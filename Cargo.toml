@@ -1,0 +1,41 @@
+# galadriel — Galadriel's Mirror
+# An information-theoretic cross-sensor consistency / spoof detector for
+# multi-sensor fusion (counter-UAS and embodied-agent perception).
+#
+# The default build is PURE and light: galadriel-core (the cheap NIS chi-squared
+# baseline) + galadriel-sim (synthetic scenarios) + galadriel-cli (the demo).
+# The optional `pid` and `ncp` features are additive and pull heavier deps
+# (pid-core, ncp-core/ncp-zenoh) only when explicitly enabled.
+[workspace]
+resolver = "2"
+members = [
+    "crates/galadriel-core",
+    "crates/galadriel-sim",
+    "crates/galadriel-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT OR Apache-2.0"
+authors = ["Sepehr Mahmoudian"]
+repository = "https://github.com/sepahead/galadriel"
+homepage = "https://github.com/sepahead/galadriel"
+description = "Galadriel's Mirror — an information-theoretic cross-sensor consistency and spoof detector for multi-sensor fusion."
+keywords = ["security", "sensor-fusion", "anomaly-detection", "counter-uas", "information-theory"]
+categories = ["science", "algorithms"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+rand = "0.8"
+rand_distr = "0.4"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+galadriel-core = { path = "crates/galadriel-core" }
+galadriel-sim = { path = "crates/galadriel-sim" }
+
+[profile.release]
+lto = "thin"
