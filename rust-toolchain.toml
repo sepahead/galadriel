@@ -1,0 +1,5 @@
+[toolchain]
+# galadriel builds on stable. The union MSRV of the optional path dependencies
+# (pid-core, ncp-core/ncp-zenoh) is 1.88; the default (pure) build is much lower.
+channel = "stable"
+components = ["rustfmt", "clippy"]

@@ -1,0 +1,15 @@
+# Rust
+/target
+**/target
+**/*.rs.bk
+*.pdb
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Scratch / local artifacts
+/scratch
+*.jsonl.tmp
