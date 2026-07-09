@@ -39,5 +39,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.80.0
       - uses: Swatinem/rust-cache@v2
-      - name: Build (default features) on the pinned MSRV
-        run: cargo build --workspace
+      # Only the pure default members (core + sim + cli) hold the 1.80 MSRV; the
+      # optional pid/ncp crates raise the union MSRV to 1.88 via pid-core/ncp-core.
+      - name: Build the pure default members on the pinned MSRV
+        run: cargo build

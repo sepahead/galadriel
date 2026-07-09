@@ -27,12 +27,18 @@ versions may make breaking changes).
 - **`galadriel-cli`** — the `demo` subcommand: CLEAN → NOMINAL, phantom → SPOOF,
   jam → JAM, with per-channel NIS sparklines; under `--features pid`, a
   baseline-vs-PID panel showing the baseline blind while PID catches the stealthy spoof.
+- **`galadriel-ncp`** (feature `ncp`) — NCP observation-plane ingest:
+  `PidObservation` JSONL read/write plus the NCP key scheme via `ncp-core`
+  (`observation_key`, and the non-wire `sidecar_key` that never touches
+  `CONTRACT_HASH`). The cli gains a `replay <jsonl>` subcommand that runs a captured
+  stream through the baseline (and PID with `--features pid,ncp`). `.ncp-consumer`
+  pins the dependency.
 - Dual MIT / Apache-2.0 licensing, CI (fmt + clippy + test + MSRV + pure-core
   smoke), and project docs.
 
 ### Notes
-- The `ncp` observation-ingest feature (pulls `ncp-core`; live Zenoh tap behind
-  `ncp-live`) is planned and additive; the default build remains pure and
+- The live Zenoh observation tap (`ncp-zenoh` + `tokio`, behind a future `ncp-live`
+  feature) is planned and additive; the default build remains pure and
   heavy-dependency-free.
 
 [Unreleased]: https://github.com/sepahead/galadriel

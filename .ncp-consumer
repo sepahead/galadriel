@@ -1,0 +1,6 @@
+# .ncp-consumer — declares how galadriel pins NCP, for NCP's consumer-agnostic pin
+# tooling (check-consumer-pins.sh / repin-ncp.sh). NCP holds no knowledge of this
+# repo; it discovers us by globbing for this file. One "<type> <relative-path>" per
+# line. galadriel depends on ncp-core only under the off-by-default `ncp` feature.
+cargo_tag   crates/galadriel-ncp/Cargo.toml
+cargo_lock  Cargo.lock

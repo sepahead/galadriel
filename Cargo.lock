@@ -176,6 +176,7 @@ dependencies = [
  "anyhow",
  "clap",
  "galadriel-core",
+ "galadriel-ncp",
  "galadriel-pid",
  "galadriel-sim",
 ]
@@ -187,6 +188,15 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "galadriel-ncp"
+version = "0.1.0"
+dependencies = [
+ "galadriel-core",
+ "ncp-core",
+ "serde_json",
 ]
 
 [[package]]
@@ -299,6 +309,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "ncp-core"
+version = "0.6.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

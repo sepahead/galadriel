@@ -1,0 +1,16 @@
+[package]
+name = "galadriel-ncp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "NCP observation-plane ingest for Galadriel's Mirror (feature `ncp`)."
+
+[dependencies]
+galadriel-core = { workspace = true }
+serde_json = { workspace = true }
+# ncp-core is light (serde + serde_json only). Path dep into the intact NCP tree;
+# for a fresh clone / CI use: ncp-core = { git = "https://github.com/sepahead/NCP", tag = "v0.6.0" }
+ncp-core = { path = "../../../NCP/ncp-core" }

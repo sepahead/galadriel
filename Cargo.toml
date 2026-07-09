@@ -13,6 +13,7 @@ members = [
     "crates/galadriel-sim",
     "crates/galadriel-cli",
     "crates/galadriel-pid",
+    "crates/galadriel-ncp",
 ]
 # The default build (`cargo build` / `cargo test` with no args) stays PURE — it
 # excludes galadriel-pid, which pulls the heavier pid-core. Build/test it with
@@ -46,6 +47,7 @@ anyhow = "1"
 galadriel-core = { path = "crates/galadriel-core" }
 galadriel-sim = { path = "crates/galadriel-sim" }
 galadriel-pid = { path = "crates/galadriel-pid" }
+galadriel-ncp = { path = "crates/galadriel-ncp" }
 
 [profile.release]
 lto = "thin"

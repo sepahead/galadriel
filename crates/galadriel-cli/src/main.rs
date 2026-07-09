@@ -35,11 +35,19 @@ enum Cmd {
         #[arg(long, default_value_t = 7)]
         seed: u64,
     },
+    /// Replay a JSONL capture of PidObservations through the detector(s).
+    #[cfg(feature = "ncp")]
+    Replay {
+        /// Path to a `.jsonl` file (one PidObservation per line).
+        path: String,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
     match Cli::parse().cmd {
         Cmd::Demo { frames, seed } => run_demo(frames, seed),
+        #[cfg(feature = "ncp")]
+        Cmd::Replay { path } => run_replay(&path)?,
     }
     Ok(())
 }
@@ -238,6 +246,67 @@ fn cyan(s: &str, color: bool) -> String {
 }
 fn dim(s: &str, color: bool) -> String {
     wrap(s, "2", color)
+}
+
+/// Replay a JSONL capture of `PidObservation`s through the baseline (and the PID
+/// engine when built with `--features pid,ncp`).
+#[cfg(feature = "ncp")]
+fn run_replay(path: &str) -> anyhow::Result<()> {
+    let color = std::io::stdout().is_terminal();
+    let obs = galadriel_ncp::read_jsonl(path)?;
+    if obs.is_empty() {
+        anyhow::bail!("no observations parsed from {path}");
+    }
+    let mut tracks: Vec<u64> = obs.iter().map(|o| o.track_id).collect();
+    tracks.sort_unstable();
+    tracks.dedup();
+
+    println!();
+    println!(
+        "{}",
+        cyan(
+            &format!(
+                "┌─ REPLAY {path} — {} obs, {} track(s)",
+                obs.len(),
+                tracks.len()
+            ),
+            color
+        )
+    );
+
+    let mut mirror = Mirror::new(DetectorConfig::default());
+    for o in &obs {
+        mirror.ingest(o);
+    }
+    for t in &tracks {
+        let last_seq = obs
+            .iter()
+            .filter(|o| o.track_id == *t)
+            .map(|o| o.seq)
+            .max()
+            .unwrap_or(0);
+        let rep = mirror.assess(*t, last_seq);
+        let v = verdict_str(&rep.verdict);
+        let vc = match rep.verdict {
+            Verdict::Nominal => green(&v, color),
+            Verdict::Spoof { .. } | Verdict::Jam => red(&v, color),
+            Verdict::InsufficientEvidence => dim(&v, color),
+        };
+        println!("│  baseline · track {t}: {}  {}", vc, dim(&rep.note, color));
+    }
+
+    #[cfg(feature = "pid")]
+    {
+        use galadriel_pid::{analyze, scalar_channels, PidConfig};
+        let mut mods: Vec<Modality> = obs.iter().map(|o| o.modality).collect();
+        mods.sort_by_key(|m| *m as u8);
+        mods.dedup();
+        let rep = analyze(&scalar_channels(&obs, &mods, 0), &PidConfig::default());
+        println!("│  PID · {:?}  {}", rep.verdict, dim(&rep.note, color));
+    }
+
+    println!("└▷ replay complete");
+    Ok(())
 }
 
 /// The `pid` feature demo: on a moment-matched stealthy spoof the magnitude

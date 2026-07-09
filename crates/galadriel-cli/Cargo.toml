@@ -16,6 +16,7 @@ path = "src/main.rs"
 galadriel-core = { workspace = true }
 galadriel-sim = { workspace = true }
 galadriel-pid = { workspace = true, optional = true }
+galadriel-ncp = { workspace = true, optional = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
 
@@ -23,3 +24,5 @@ anyhow = { workspace = true }
 default = []
 # The cross-sensor PID engine (pulls pid-core). Demo: `cargo run --features pid -- demo`.
 pid = ["dep:galadriel-pid"]
+# NCP observation-plane ingest (pulls ncp-core). Adds `replay <jsonl>`.
+ncp = ["dep:galadriel-ncp"]
