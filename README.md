@@ -123,6 +123,15 @@ MI is at chance. On the linear stealthy spoof it merely *matches* the correlatio
 irreducible, correlation where it is not. The full 10-lens design review lives in the
 sibling `haldir` planning repository (`galadriels-mirror.md`).
 
+## Documentation
+
+| Document | What it is |
+|---|---|
+| [`docs/MOTIVATION.md`](docs/MOTIVATION.md) | **Why this matters** — the real threat (UAV GNSS spoofing, multi-sensor-fusion attacks), with cited sources, and how galadriel's thesis maps onto the real attack classes. |
+| [`docs/PAPER.md`](docs/PAPER.md) | The **research paper** — threat model, method, the nine-part evaluation, and the *forced-vs-justified* result. Every number is a `cargo` command. |
+| [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) | The focused argument: **when is information decomposition worth its cost, and when is it merely forced?** |
+| [`docs/EVALUATION.md`](docs/EVALUATION.md) | The Monte-Carlo evaluation report (accuracy · latency · cost · boundary · collusion · adaptive · non-stationary · attacker-success), with confidence intervals. |
+
 ## Architecture
 
 ```
@@ -180,6 +189,12 @@ features). Every crate is `#![forbid(unsafe_code)]`.
 
 ## Honest limitations
 
+- **A consistency-*matching* adversary defeats it.** An attacker who fabricates
+  cross-channel agreement is invisible to *any* consistency check, galadriel included —
+  and this is the real state of the art, not a hypothetical: the
+  [frustum attack](https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton)
+  (USENIX Security '22) defeats camera-LiDAR fusion *precisely by preserving cross-sensor
+  consistency*. galadriel raises the adversary's bar *to* that capability; it does not remove it.
 - **Consistency, not truth.** A signed frame of a dazzled scene, or a moment-matched
   spoof kept inside each channel's own covariance, passes the baseline.
 - **Attribution is advisory.** A redundancy collapse is equally consistent with a
