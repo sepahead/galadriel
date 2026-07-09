@@ -95,10 +95,17 @@ or adversarially structured. This dichotomy is not academic; it partitions the r
 - **GNSS / kinematic spoofing** (the counter-UAS tracker case) produces **linear-Gaussian**
   innovation residuals. Here MI/PID is forced — a correlation check is provably sufficient, ~100×
   cheaper, and (near the detection boundary) strictly better. Use the cheap detector.
-- **Learned-perception MSF attacks** (the frustum attack, `MSF-ADV`) act on a **nonlinear,
-  synergistic** neural fusion feature — exactly the regime where the paper shows correlation
-  collapses and a joint-information measure is the *only* thing that can see the structure. Here
-  the escalation earns its cost.
+- **Learned-perception MSF attacks** (`MSF-ADV`, the frustum attack) act on a **nonlinear,
+  synergistic** neural fusion feature — the *kind* of regime §4.2 describes, where a
+  joint-information measure *could in principle* see structure a correlation check on that feature
+  cannot. Two honest caveats keep this short of a claim that the escalation *beats* these attacks:
+  galadriel consumes kinematic innovation residuals, not that fusion feature (so this argues *where*
+  escalation would pay off, it is not a galadriel result); and the frustum attack is *defined* by
+  preserving cross-sensor consistency (§2), which by construction defeats **every** consistency
+  detector — correlation and MI/PID alike. The escalation's payoff is confined to couplings that are
+  nonlinear/synergistic yet still leave a dependence signature; a statistics-matching FDI is the
+  whole family's shared blind spot, and the paper leaves the neural-fusion mapping itself to future
+  work.
 
 So the disciplined recommendation ("correlation by default, PID on escalation") is a *map* from the
 attack you face to the detector you should pay for.
@@ -131,9 +138,11 @@ so PID adds nothing over correlation there — is **Barrett's** closed-form Gaus
 Barrett, *Phys. Rev. E* **91**, 052802, 2015,
 [arXiv:1411.2832](https://arxiv.org/abs/1411.2832)), reproduced by later constructions
 ([Venkatesh & Schamberg, ISIT 2022](https://arxiv.org/abs/2105.00769)). The finite-sample
-behaviour of the KSG estimator we escalate to — its bias under strong dependence, and why it is
-untrustworthy in the high-dimensional / short-window regime our geometry gate rejects — is
-characterised by [Gao, Oh & Viswanath (IEEE Trans. IT 2018)](https://arxiv.org/abs/1604.03006).
+behaviour of the KSG estimator we escalate to splits across two sources: its dimension-dependent
+bias in the high-dimensional / short-window regime our geometry gate rejects is characterised by
+[Gao, Oh & Viswanath (IEEE Trans. IT 2018)](https://arxiv.org/abs/1604.03006), while its tendency to
+*underestimate* mutual information under strong dependence at feasible sample sizes is due to
+[Gao, Ver Steeg & Galstyan (AISTATS 2015)](https://arxiv.org/abs/1411.2003).
 
 ---
 

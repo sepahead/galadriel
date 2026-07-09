@@ -175,8 +175,10 @@ redundancy [Makkeh2021]) alongside. Synergy, when needed, is the top atom of the
 lattice [WilliamsBeer2010], obtained by Möbius inversion — distinct from $I^{sx}$, which is a
 *redundancy* measure. A geometry gate (intrinsic-dimension and distance-concentration checks)
 fails the estimator *closed* to `InsufficientEvidence` when the window is too short/high-
-dimensional for KSG to be trustworthy — the regime where fixed-$k$ nearest-neighbour estimators
-are known to break down and where best practice is simply not to use them [Gao2018].
+dimensional for KSG to be trustworthy — the regime where its bias-convergence rate
+$\tilde O(N^{-1/(d_x+d_y)})$ [Gao2018] degrades with dimension, and where, under strong dependence,
+fixed-$k$ nearest-neighbour MI estimators are known to underestimate the true value at feasible
+sample sizes [GaoSVG2015].
 
 **3.4 Source-agnostic fusion.** A single 2×2 rule combines the baseline's per-channel elevation
 with *any* consistency detector's decoupled set into one verdict:
@@ -300,14 +302,26 @@ residual security value over a correlation check is to **raise the adversary's b
 ground-truth-aware, statistics-matching FDI** (§6) — the escalation's accuracy payoff appears only
 when a modality or fusion stage leaves the Gaussian manifold.
 
-**This dichotomy maps onto the real attack landscape**, which is what makes it more than a
-methodological curiosity. GNSS/kinematic spoofing of a tracker [Humphreys2012, DefenseOne2024]
-produces linear-Gaussian residuals — the *forced* regime, where the cheap correlation check
-suffices. The state-of-the-art multi-sensor-fusion attacks, by contrast, act on a **learned,
-nonlinear, synergistic** fusion feature: `MSF-ADV` [Cao2021] and the frustum attack
-[Hallyburton2022] are precisely §4.2's territory, where a joint-information measure is the only
-thing that can see the structure and the escalation earns its cost. The recommendation is thus a
-map from the attack one faces to the detector one should pay for (see `docs/MOTIVATION.md`).
+**This dichotomy is suggestive of the real attack landscape** — one half established, the other a
+hypothesis we are careful not to oversell. GNSS/kinematic spoofing of a tracker [Humphreys2012,
+DefenseOne2024] produces linear-Gaussian residuals — the *forced* regime, where the cheap
+correlation check provably suffices (§4.1, §5). The state-of-the-art multi-sensor-fusion attacks act
+instead on a **learned, nonlinear, synergistic** fusion feature: `MSF-ADV` [Cao2021] and the frustum
+attack [Hallyburton2022] operate in the *kind* of regime §4.2(1)/(3) describes, where — on the
+hypothesis we state but explicitly do **not** evaluate here (§4.2(3)) — a joint-information measure
+*could in principle* separate structure a correlation check on that feature would miss. We stop short
+of claiming the escalation *catches* these attacks, for two reasons §6 makes precise. (i) Galadriel
+consumes kinematic innovation residuals, not the semantic fusion feature these attacks target, so the
+mapping argues *where* escalation would pay off in a differently-instrumented detector — it is not a
+result about galadriel's deployed input. (ii) More fundamentally, the frustum attack is *defined* by
+preserving cross-sensor consistency [Hallyburton2022]: an injection that matches **all** the fused
+statistics defeats *every* consistency detector — correlation and MI/PID alike — so it lies past even
+a joint measure's reach (§6), not within it. The honest reading is therefore: correlation is provably
+right for the linear-Gaussian regime galadriel is deployed in; a joint measure is the only
+*candidate* worth escalating to for genuinely nonlinear/synergistic couplings that still leave a
+dependence signature; and a statistics-matching FDI is the shared blind spot of the entire family.
+The recommendation is thus a map from the attack one faces to the detector one should pay for — with
+its blind spot named, not papered over (see `docs/MOTIVATION.md`).
 
 ---
 
@@ -402,9 +416,10 @@ The correlation default is **essentially free** (~15 % over the bare baseline). 
 (a k-NN search per channel pair) is **~100×** slower *at this configuration* (128-frame window,
 3 channels, scalar projection). This ratio is configuration-dependent: KSG scales super-linearly
 in window samples while $|\rho|$ is linear, so it grows with window length; and the *isolated*
-consistency-check ratio (KSG vs the few-µs $|\rho|$ pass over the shared baseline) is larger still
-(~$700\times$). On the linear-Gaussian spoof — where §5.1 shows MI delivers the *same* AUC — this
-is ~100× compute for zero accuracy gain: the compute face of §4.1.
+consistency-check ratio (the pure KSG score vs the sub-µs $|\rho|$ pass, stripped of the shared NIS
+baseline) is larger still — of order $10^3$ (the window sweep below). On the linear-Gaussian spoof
+— where §5.1 shows MI delivers the *same* AUC — this is ~100× compute for zero accuracy gain: the
+compute face of §4.1.
 
 To turn that single point into a curve, we sweep the analysis window $W$ over the *isolated*
 consistency scores ($|\rho|$ vs KSG, no shared baseline):
@@ -468,7 +483,7 @@ statistics: sample $|\rho|$ is the *efficient* dependence statistic for Gaussian
 mutual information is a nonparametric $k$-NN estimator carrying finite-sample error — a variance and,
 more importantly for a *rank* statistic, a **dependence-dependent bias** that differs between the
 coupled and decoupled classes and so no constant offset can absorb (KSG is known to fall below the
-true MI under strong dependence and finite $n$ [Gao2018]). At full decoupling both saturate at AUC
+true MI under strong dependence and finite $n$ [GaoSVG2015]). At full decoupling both saturate at AUC
 1.0 and the error is invisible; through the mid-boundary that error blurs the rank separation and PID
 loses AUC faster. **So on linear-Gaussian residuals MI/PID is not merely
 *forced* (§4.1, no better at full decoupling) — through the discriminable mid-boundary, the regime
@@ -522,8 +537,8 @@ still misses, detection $\le 0.5$ — the most the adversary injects undetected)
 Evasion ceiling (max undetected d):  correlation 0.20   PID 0.40
 ```
 
-At a matched operating point correlation detects **more at every strength**, so its evasion ceiling is
-*lower* (0.20 vs 0.40): the adaptive adversary must retain *more* correlation with the honest channels
+At a matched operating point correlation detects **more at every strength we tested**, so its evasion
+ceiling is *lower* (0.20 vs 0.40): the adaptive adversary must retain *more* correlation with the honest channels
 — inject *less* — to slip past correlation than to slip past PID. **The Kerckhoffs-aware adversary does
 not favour PID; if anything correlation is the harder detector to evade**, exactly as its dominant ROC
 (§5.5) predicts. This closes reason (2) empirically: MI's adversarial-robustness argument buys nothing
@@ -677,6 +692,12 @@ security-motivated, cost-aware account of *when* this machinery is warranted ove
 statistics — grounded in the Gaussian MI–correlation identity [CoverThomas2006] and Barrett's
 Gaussian decomposition — not a new measure.
 
+**A fuller comparison** — the competing and complementary detector families laid out by observation
+layer (signal-level GNSS anti-spoofing, cryptographic authentication / OSNMA, RAIM, innovation-based
+FDI, cross-sensor consistency, resilient state estimation, Byzantine-robust fusion, learning-based
+anomaly detection, active challenge-response), a head-to-head comparison table, and a
+fair-benchmark methodology for comparing them — is in [`docs/RELATED-WORK.md`](RELATED-WORK.md).
+
 ---
 
 ## 8. Conclusion
@@ -709,8 +730,9 @@ cargo test  --workspace                          # the hypotheses as assertions
 ```
 
 The real-world threat grounding and its sources are in `docs/MOTIVATION.md`; the detector rationale
-in `docs/JUSTIFICATION.md`; the full evaluation in `docs/EVALUATION.md`. (The 10-lens design review
-lives in the sibling `haldir` planning repository.)
+in `docs/JUSTIFICATION.md`; the full evaluation in `docs/EVALUATION.md`; the survey of competing
+approaches and how to compare them in `docs/RELATED-WORK.md`. (The 10-lens design review lives in
+the sibling `haldir` planning repository.)
 
 ## References
 
@@ -721,6 +743,7 @@ lives in the sibling `haldir` planning repository.)
 - **[CoverThomas2006]** T. M. Cover, J. A. Thomas. *Elements of Information Theory,* 2nd ed. Wiley, 2006.
 - **[DefenseOne2024]** P. Tucker. "In Ukraine, a US firm tests a promising tool against GPS jammers: cell phones." *Defense One,* Sept. 2024. [link](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/).
 - **[Gao2018]** W. Gao, S. Oh, P. Viswanath. "Demystifying Fixed k-Nearest Neighbor Information Estimators." *IEEE Trans. Inf. Theory* **64**(8), 5629–5661, 2018. [arXiv:1604.03006](https://arxiv.org/abs/1604.03006).
+- **[GaoSVG2015]** S. Gao, G. Ver Steeg, A. Galstyan. "Efficient Estimation of Mutual Information for Strongly Dependent Variables." *AISTATS,* 2015. [arXiv:1411.2003](https://arxiv.org/abs/1411.2003).
 - **[Hallyburton2022]** R. S. Hallyburton, Y. Liu, Y. Cao, Z. M. Mao, M. Pajic. "Security Analysis of Camera-LiDAR Fusion Against Black-Box Attacks on Autonomous Vehicles." *USENIX Security,* 2022. [arXiv:2106.07098](https://arxiv.org/abs/2106.07098).
 - **[Humphreys2008]** T. E. Humphreys et al. "Assessing the Spoofing Threat: Development of a Portable GPS Civilian Spoofer." *Proc. ION GNSS,* 2008.
 - **[Humphreys2012]** T. E. Humphreys / UT Austin Radionavigation Lab. "Spoofing demonstration commandeers a UAV at White Sands," DHS-invited test, 2012. [UT Austin](https://www.eurekalert.org/pub_releases/2012-06/uota-uot062912.php); [GPS World](https://www.gpsworld.com/drone-hack/).

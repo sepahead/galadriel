@@ -97,7 +97,7 @@ impl Injection for BroadbandJam {
 /// A **benign target maneuver** (not an attack): from `start_frame`, a deterministic
 /// triangular ramp of peak height `magnitude` over `duration` frames is added to every
 /// channel's first innovation axis — but each modality sees it with its own **lag**
-/// (`lag_step` × the modality's index), modelling heterogeneous sensor dynamics/latency.
+/// (`lag_step` × the modality's enum discriminant), modelling heterogeneous sensor dynamics/latency.
 ///
 /// A *synchronized* maneuver (`lag_step = 0`) stays perfectly correlated across channels,
 /// so the consistency detectors should not flag it; the per-channel lag transiently

@@ -131,6 +131,7 @@ sibling `haldir` planning repository (`galadriels-mirror.md`).
 | [`docs/PAPER.md`](docs/PAPER.md) | The **research paper** — threat model, method, the nine-part evaluation, and the *forced-vs-justified* result. Every number is a `cargo` command. |
 | [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) | The focused argument: **when is information decomposition worth its cost, and when is it merely forced?** |
 | [`docs/EVALUATION.md`](docs/EVALUATION.md) | The Monte-Carlo evaluation report (accuracy · latency · cost · boundary · collusion · adaptive · non-stationary · attacker-success), with confidence intervals. |
+| [`docs/RELATED-WORK.md`](docs/RELATED-WORK.md) | **Competing & related approaches** — a taxonomy of spoof/fault detectors (signal-level GNSS AS, crypto/OSNMA, RAIM, innovation FDI, cross-sensor consistency, resilient state estimation, Byzantine-robust fusion, learning-based, challenge-response), a head-to-head comparison table, and a fair-benchmark methodology. |
 
 ## Architecture
 

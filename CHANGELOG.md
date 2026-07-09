@@ -84,6 +84,15 @@ versions may make breaking changes).
   hardened through **two adversarial peer-review passes** (a 5-lens review, then a 3-lens
   verification) to a state all reviewers rated ready-for-preprint. Every number is a `cargo`
   command; linked from the README.
+- **`docs/RELATED-WORK.md`** — a survey of competing and complementary spoof/fault detectors
+  organized by **observation layer** (signal-level GNSS anti-spoofing, cryptographic
+  authentication / OSNMA, RAIM, innovation-based FDI, cross-sensor consistency, resilient state
+  estimation, Byzantine-robust fusion, learning-based anomaly detection, active challenge-response),
+  each with its threat model, honest limits, cited sources, and relation to galadriel; a two-part
+  head-to-head comparison table; and a **fair-benchmark methodology** (comparison axes, a shared
+  attack ontology, a matched operating point) — most of which galadriel's own eval harness already
+  instantiates. RAIM is named as galadriel's closest classical analog (galadriel = its model-free,
+  multi-modality generalization).
 - **`galadriel-core` correlation default** — a `correlation` module (cheap pairwise-`|ρ|`
   cross-sensor consistency) and a source-agnostic `fusion::combine` + `assess_default`
   (NIS ⊕ correlation): a **complete detector with no `pid-core` dependency**, the pure
@@ -109,6 +118,30 @@ versions may make breaking changes).
   logic, so both variants speak one `FusedVerdict`. The `galadriel demo` gained a fourth,
   **pure** scene showing the correlation default catch a stealthy spoof the baseline
   misses; `--features pid` reframes the PID panel as the KSG-MI escalation.
+
+### Fixed
+- **Scientific-rigour triple-check.** A six-dimension adversarial verification (theory · statistics ·
+  reproducibility · code-vs-prose fidelity · overclaim/consistency · citation integrity; each raised
+  concern confirmed by three independent skeptics) reproduced every number and confirmed 74/74 tests
+  pass, and surfaced three prose defects — now fixed:
+  - **Overclaim corrected (PAPER §4.3, MOTIVATION §4a).** The claim that MI/PID is "the only thing
+    that can see" the `MSF-ADV` / frustum attacks and that "the escalation earns its cost" against
+    them contradicted the paper's own honest boundary (§6/§7: the frustum attack *preserves*
+    cross-sensor consistency and so defeats **every** consistency detector, MI/PID included). It is
+    now stated as a hypothesis (restoring §4.2(3)'s "we do not evaluate this here"): a joint measure
+    is the only *candidate* worth escalating to for genuinely nonlinear/synergistic couplings that
+    still leave a dependence signature, while a statistics-matching FDI is the family's shared blind
+    spot — and galadriel consumes kinematic residuals, not the semantic fusion feature these attacks
+    target.
+  - **Citation corrected (PAPER §3.3, §5.5, MOTIVATION §5).** "KSG underestimates MI under strong
+    dependence" / "k-NN estimators break down in high dimensions" were misattributed to [Gao2018]
+    (*Demystifying Fixed k-NN Information Estimators*, which in fact proves KSG **consistent**). The
+    strong-dependence underestimation is now cited to **Gao, Ver Steeg & Galstyan (AISTATS 2015)**
+    [GaoSVG2015]; only the dimension-dependent bias-rate claim stays with [Gao2018].
+  - **Minor precision.** Removed an inconsistent "~700×" isolated-cost figure (the isolated
+    KSG-vs-`|ρ|` ratio is now uniformly reported as ~10³); softened §5.7 "detects more at every
+    strength" to "…every strength we tested"; corrected a `Maneuver` doc-comment ("modality's index"
+    → "enum discriminant").
 
 ### Notes
 - The default build remains pure and heavy-dependency-free; `pid`, `ncp`, and
