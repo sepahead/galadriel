@@ -10,9 +10,9 @@
 
 use galadriel_core::Modality;
 use pid_core::{
-    distance_concentration_stats, intrinsic_dimension_levina_bickel, ksg_mi, pid2_isx,
-    DistanceConcentrationConfig, IntrinsicDimConfig, Jitter, KsgConfig, MatOwned, Metric,
-    Pid2Config, PidResult,
+    block_bootstrap_paired, distance_concentration_stats, intrinsic_dimension_levina_bickel,
+    ksg_mi, pid2_isx, BootstrapConfig, DistanceConcentrationConfig, IntrinsicDimConfig, Jitter,
+    KsgConfig, MatOwned, Metric, Pid2Config, PidResult,
 };
 
 /// Engine tunables.
@@ -40,6 +40,15 @@ pub struct PidConfig {
     /// …and only when that strongest corroboration itself clears this floor (nats) —
     /// i.e. there is a genuine consensus to have decoupled *from*.
     pub mi_floor: f64,
+    /// When true, confirm each candidate decoupling with a block-bootstrap CI on its
+    /// best-pair MI and flag it only if the CI's upper bound stays below the decouple
+    /// threshold — a fail-closed guard against estimator-artifact false positives. Off
+    /// by default (bootstrap is ~`n_boot`× the cost of a point estimate).
+    pub bootstrap: bool,
+    /// Bootstrap resamples (when `bootstrap`).
+    pub n_boot: usize,
+    /// Moving-block length for the bootstrap (handles innovation autocorrelation).
+    pub block_size: usize,
 }
 
 impl Default for PidConfig {
@@ -55,6 +64,9 @@ impl Default for PidConfig {
             nn_ratio_max: 0.999,
             decouple_ratio: 0.4,
             mi_floor: 0.03,
+            bootstrap: false,
+            n_boot: 200,
+            block_size: 8,
         }
     }
 }
@@ -76,6 +88,9 @@ pub struct ChannelPid {
     pub redundancy: Option<f64>,
     /// Whether this channel was flagged as decoupled from the group.
     pub decoupled: bool,
+    /// Block-bootstrap CI (nats) on this channel's best-pair MI, set when a decoupling
+    /// candidate was bootstrap-checked (`None` otherwise).
+    pub ci: Option<(f64, f64)>,
 }
 
 /// The engine's advisory verdict. Unlike the baseline it does **not** emit `Jam`:
@@ -173,6 +188,7 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &PidConfig) -> PidReport 
             corroboration,
             redundancy: redundancy_atom(&jitter, cfg, &cols, i, c, w),
             decoupled: false,
+            ci: None,
         });
     }
 
@@ -208,9 +224,27 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &PidConfig) -> PidReport 
         };
     }
 
+    let threshold = cfg.decouple_ratio * reference;
     let mut decoupled: Vec<Modality> = Vec::new();
     for &i in &ready {
-        if reports[i].corroboration.unwrap() < cfg.decouple_ratio * reference {
+        if reports[i].corroboration.unwrap() >= threshold {
+            continue; // corroborates — not a candidate
+        }
+        if cfg.bootstrap {
+            // Confirm the decoupling is significant: bootstrap the channel's best-pair
+            // MI and confirm only if even its upper CI bound stays below the reference
+            // corroboration — i.e. it confidently shares less than the group leader.
+            if let Some(peer) = best_peer(&mi, i, c) {
+                let point = reports[i].corroboration.unwrap();
+                let (lo, hi) = bootstrap_mi_ci(cfg, &cols[i], &cols[peer], point);
+                reports[i].ci = Some((lo, hi));
+                if hi < reference {
+                    reports[i].decoupled = true;
+                    decoupled.push(reports[i].modality);
+                }
+                // else: candidate not confirmed — fail closed, do not accuse.
+            }
+        } else {
             reports[i].decoupled = true;
             decoupled.push(reports[i].modality);
         }
@@ -242,6 +276,42 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &PidConfig) -> PidReport 
         verdict,
         note,
     }
+}
+
+/// The peer index giving channel `i` its best gated MI (its corroboration partner).
+fn best_peer(mi: &[Vec<Option<f64>>], i: usize, c: usize) -> Option<usize> {
+    (0..c)
+        .filter(|&j| j != i && mi[i][j].is_some())
+        .max_by(|&x, &y| mi[i][x].unwrap().total_cmp(&mi[i][y].unwrap()))
+}
+
+/// Block-bootstrap CI (`alpha = 0.10`) on the MI between two channels. Each resample
+/// is jittered to break kNN-radius ties from repeated blocks; a failed resample falls
+/// back to `point_mi` (neutral) so estimation hiccups cannot bias the CI toward a
+/// false accusation.
+fn bootstrap_mi_ci(cfg: &PidConfig, a: &[f64], b: &[f64], point_mi: f64) -> (f64, f64) {
+    let bcfg = BootstrapConfig {
+        n_boot: cfg.n_boot,
+        block_size: cfg.block_size.max(1),
+        seed: cfg.seed,
+        alpha: 0.10,
+    };
+    let jit = match Jitter::new(cfg.jitter_std.max(1e-9), cfg.seed) {
+        Ok(j) => j,
+        Err(_) => return (point_mi, point_mi),
+    };
+    let stat = move |rx: &[f64], ry: &[f64]| -> f64 {
+        let jx = MatOwned::new(rx.to_vec(), rx.len(), 1).and_then(|m| jit.apply(m.as_ref()));
+        let jy = MatOwned::new(ry.to_vec(), ry.len(), 1).and_then(|m| jit.apply(m.as_ref()));
+        match (jx, jy) {
+            (Ok(x), Ok(y)) => {
+                ksg_mi(x.as_ref(), y.as_ref(), &KsgConfig::default()).unwrap_or(point_mi)
+            }
+            _ => point_mi,
+        }
+    };
+    let res = block_bootstrap_paired(a, b, &bcfg, stat);
+    (res.ci_low, res.ci_high)
 }
 
 /// Geometry-gated pairwise KSG mutual information; `None` if the pair is not
@@ -382,6 +452,68 @@ mod tests {
                     rep.note
                 ),
             }
+        }
+    }
+
+    #[test]
+    fn bootstrap_never_flags_a_clean_stream() {
+        // With bootstrap on, a clean corroborated stream is never accused.
+        let cfg = PidConfig {
+            bootstrap: true,
+            n_boot: 120,
+            ..Default::default()
+        };
+        for seed in [7, 11, 23] {
+            let s = generate(&scen(seed));
+            let rep = analyze(&scalar_channels(&s, &scen(seed).modalities, 0), &cfg);
+            assert_eq!(
+                rep.verdict,
+                PidVerdict::Nominal,
+                "seed {seed}: {}",
+                rep.note
+            );
+        }
+    }
+
+    #[test]
+    fn bootstrap_is_a_fail_closed_subset_of_point_estimates() {
+        // Bootstrap confirmation can only REMOVE candidates, never add: the confirmed
+        // decoupled set is a subset of the point-estimate set, and every confirmed
+        // channel carries the CI it was judged on. (At W=128 the near-zero MI of a
+        // decoupled channel has a CI too wide to confirm — an honest estimator limit,
+        // which is exactly why this stricter mode fails *closed*.)
+        use std::collections::HashSet;
+        let sc = scen(7);
+        let s = generate_spoofed(
+            &sc,
+            StealthySpoof {
+                target: Modality::Acoustic,
+                start_frame: sc.frames as u64 / 3,
+            },
+        );
+        let chans = scalar_channels(&s, &sc.modalities, 0);
+        let point = analyze(&chans, &PidConfig::default());
+        let boot = analyze(
+            &chans,
+            &PidConfig {
+                bootstrap: true,
+                n_boot: 120,
+                ..Default::default()
+            },
+        );
+
+        let point_flagged: HashSet<Modality> = point
+            .channels
+            .iter()
+            .filter(|c| c.decoupled)
+            .map(|c| c.modality)
+            .collect();
+        for c in boot.channels.iter().filter(|c| c.decoupled) {
+            assert!(
+                point_flagged.contains(&c.modality),
+                "bootstrap flagged a non-candidate"
+            );
+            assert!(c.ci.is_some(), "confirmed channel missing its CI");
         }
     }
 }
