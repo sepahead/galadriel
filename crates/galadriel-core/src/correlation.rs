@@ -275,3 +275,36 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod prop_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// `|ρ|` is always a finite value in [0, 1] and symmetric in its arguments.
+        #[test]
+        fn abs_pearson_is_a_unit_symmetric_magnitude(
+            pairs in prop::collection::vec((-1000.0f64..1000.0, -1000.0f64..1000.0), 3..80)
+        ) {
+            let x: Vec<f64> = pairs.iter().map(|p| p.0).collect();
+            let y: Vec<f64> = pairs.iter().map(|p| p.1).collect();
+            let r = abs_pearson(&x, &y);
+            prop_assert!(r.is_finite(), "abs_pearson not finite: {r}");
+            prop_assert!((-1e-9..=1.0 + 1e-9).contains(&r), "abs_pearson {r} ∉ [0,1]");
+            prop_assert!(
+                (abs_pearson(&x, &y) - abs_pearson(&y, &x)).abs() < 1e-9,
+                "abs_pearson not symmetric"
+            );
+        }
+
+        /// A non-constant series correlates perfectly with itself.
+        #[test]
+        fn abs_pearson_self_correlation_is_one(
+            v in prop::collection::vec(-1000.0f64..1000.0, 3..80)
+        ) {
+            prop_assume!(v.iter().any(|&a| (a - v[0]).abs() > 1e-2));
+            prop_assert!((abs_pearson(&v, &v) - 1.0).abs() < 1e-4, "self-corr ≠ 1");
+        }
+    }
+}

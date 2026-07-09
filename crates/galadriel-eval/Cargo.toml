@@ -25,3 +25,4 @@ galadriel-pid = { workspace = true }
 # Lean criterion: keep the statistical harness, drop the plotters/rayon extras so
 # `cargo bench` stays quick to build.
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+proptest = "1"

@@ -155,3 +155,33 @@ mod tests {
         assert!(chi2_cdf(192.0, 192.0) > 0.45 && chi2_cdf(192.0, 192.0) < 0.55);
     }
 }
+
+#[cfg(test)]
+mod prop_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// The CDF is always a valid probability.
+        #[test]
+        fn chi2_cdf_is_a_probability(x in 0.0f64..2000.0, k in 1.0f64..300.0) {
+            let p = chi2_cdf(x, k);
+            prop_assert!((-1e-9..=1.0 + 1e-9).contains(&p), "cdf {p} ∉ [0,1] at x={x} k={k}");
+        }
+
+        /// The CDF is monotone non-decreasing in x.
+        #[test]
+        fn chi2_cdf_is_monotone_in_x(x in 0.0f64..1000.0, dx in 0.0f64..1000.0, k in 1.0f64..300.0) {
+            prop_assert!(
+                chi2_cdf(x + dx, k) >= chi2_cdf(x, k) - 1e-9,
+                "not monotone at x={x} dx={dx} k={k}"
+            );
+        }
+
+        /// The survival function complements the CDF.
+        #[test]
+        fn chi2_sf_complements_cdf(x in 0.0f64..2000.0, k in 1.0f64..300.0) {
+            prop_assert!((chi2_cdf(x, k) + chi2_sf(x, k) - 1.0).abs() < 1e-6);
+        }
+    }
+}

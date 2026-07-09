@@ -1622,3 +1622,50 @@ mod tests {
         assert!(lo > 0.40 && hi < 0.60, "wilson(50,100)=[{lo:.3},{hi:.3}]");
     }
 }
+
+#[cfg(test)]
+mod prop_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// The AUC is a probability in [0, 1] and antisymmetric: swapping the classes
+        /// gives `1 − AUC`.
+        #[test]
+        fn auc_is_a_unit_antisymmetric_probability(
+            pos in prop::collection::vec(-100.0f64..100.0, 1..40),
+            neg in prop::collection::vec(-100.0f64..100.0, 1..40),
+        ) {
+            let a = auc(&pos, &neg);
+            prop_assert!((-1e-9..=1.0 + 1e-9).contains(&a), "auc {a} ∉ [0,1]");
+            prop_assert!(
+                (a + auc(&neg, &pos) - 1.0).abs() < 1e-9,
+                "auc not antisymmetric: {a} + {} ≠ 1",
+                auc(&neg, &pos)
+            );
+        }
+
+        /// The Wilson interval is a sub-interval of [0, 1] that brackets the point estimate.
+        #[test]
+        fn wilson_ci_brackets_the_estimate(
+            (n, k) in (1usize..2000).prop_flat_map(|n| (Just(n), 0usize..=n))
+        ) {
+            let (lo, hi) = wilson_ci(k, n);
+            let p = k as f64 / n as f64;
+            prop_assert!(lo >= -1e-12 && hi <= 1.0 + 1e-12, "wilson [{lo},{hi}] ∉ [0,1]");
+            prop_assert!(lo <= hi, "wilson lo {lo} > hi {hi}");
+            prop_assert!(lo <= p + 1e-9 && p <= hi + 1e-9, "wilson [{lo},{hi}] misses p̂={p}");
+        }
+
+        /// A bootstrap AUC CI is ordered and within [0, 1].
+        #[test]
+        fn auc_ci_is_ordered_within_unit(
+            pos in prop::collection::vec(-100.0f64..100.0, 2..30),
+            neg in prop::collection::vec(-100.0f64..100.0, 2..30),
+        ) {
+            let (lo, hi) = auc_ci(&pos, &neg, 200, 7);
+            prop_assert!(lo <= hi + 1e-12, "auc_ci lo {lo} > hi {hi}");
+            prop_assert!(lo >= -1e-9 && hi <= 1.0 + 1e-9, "auc_ci [{lo},{hi}] ∉ [0,1]");
+        }
+    }
+}
