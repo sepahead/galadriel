@@ -163,6 +163,38 @@ broadband jam                |    4f (100%) |    4f (100%) |     — (  0%)
   it fired in*) is the occasional chance NIS excursion of the phantom latent, not reliable
   detection — contrast the **100 %** reach of the cross-sensor detectors.
 
+### 2.2 Detector cost (throughput)
+
+Accuracy and latency are two of three axes; the third is **compute cost**. A criterion
+micro-benchmark (`benches/detectors.rs`) prices each detector on the same 300-frame,
+3-channel stealthy-spoof workload. Indicative single-machine timings (release, per
+full-stream assessment — absolute numbers are hardware-dependent; the *ratios* are the
+point):
+
+```
+detector                       |  time/assessment |  vs default
+----------------------------------------------------------------
+baseline (NIS χ²)              |           ~19 µs |      0.9×
+correlation default (NIS ⊕|ρ|) |           ~22 µs |      1.0×  (reference)
+PID engine (KSG-MI)            |         ~2160 µs |      ~99×
+fused (NIS ⊕ PID)              |         ~2180 µs |     ~100×
+```
+
+- **The correlation default is essentially free.** Adding the pairwise-`|ρ|` consistency
+  check costs ~15 % over the bare NIS baseline — both are tens of microseconds, trivially
+  real-time at any sensible fusion rate.
+- **The PID escalation costs ~100× the default.** The KSG mutual-information estimator
+  (a k-NN search per channel pair) is three orders of magnitude slower. On the
+  linear-Gaussian stealthy spoof — where §2 shows it delivers the *same* AUC as
+  correlation — that is **~100× the compute for zero accuracy gain**. This is the cost
+  face of [`JUSTIFICATION.md`](JUSTIFICATION.md): run the cheap default, and pay the 100×
+  only where the dependence is genuinely nonlinear/synergistic and the escalation actually
+  buys something.
+- The fused detector is KSG-dominated (the µs-scale NIS pass is lost in the noise), so it
+  costs the same order as PID alone.
+
+Reproduce: `cargo bench -p galadriel-eval --bench detectors`.
+
 ---
 
 ## 3. Discussion

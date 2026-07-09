@@ -12,7 +12,16 @@ description = "Monte-Carlo evaluation harness: the PID engine vs the NIS baselin
 name = "galadriel-eval"
 path = "src/main.rs"
 
+[[bench]]
+name = "detectors"
+harness = false
+
 [dependencies]
 galadriel-core = { workspace = true }
 galadriel-sim = { workspace = true }
 galadriel-pid = { workspace = true }
+
+[dev-dependencies]
+# Lean criterion: keep the statistical harness, drop the plotters/rayon extras so
+# `cargo bench` stays quick to build.
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }

@@ -142,6 +142,7 @@ cargo test --workspace          # unit + integration tests
 cargo clippy --all-targets      # lint (CI enforces -D warnings)
 cargo fmt --all --check         # formatting
 cargo build -p galadriel-core --no-default-features   # pure-core smoke
+cargo bench -p galadriel-eval --bench detectors       # detector cost (accuracy×latency×cost)
 ```
 
 MSRV is **1.80** for the default build (rising to 1.88 with the `pid`/`ncp`
