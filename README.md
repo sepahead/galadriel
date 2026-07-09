@@ -44,7 +44,7 @@ cargo run --bin galadriel -- demo
 
 ```text
 ═══ GALADRIEL'S MIRROR · cross-sensor consistency monitor ═══
-    NIS χ² baseline — the cheap yardstick the PID engine must beat
+    NIS χ² magnitude ⊕ |ρ| cross-sensor consistency — the pure default detector
 
 ┌─ CLEAN — corroborated airspace picture
 │  visual          ▁▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂  μ=  2.81  ● consistent
@@ -58,6 +58,13 @@ cargo run --bin galadriel -- demo
 
 ┌─ BROADBAND JAM — correlated all-channel denial
 └▷ VERDICT: JAM   3/3 channels inflated together — correlated denial
+
+┌─ MOMENT-MATCHED STEALTHY SPOOF (acoustic) — baseline blind, correlation default catches it
+│  visual          |ρ| corroboration=0.658  ● corroborates
+│  radar           |ρ| corroboration=0.658  ● corroborates
+│  acoustic        |ρ| corroboration=0.087  ● DECOUPLED
+│  baseline (NIS χ²):      NOMINAL — blind (NIS stays in-covariance)
+└▷ correlation default:   VERDICT: SPOOF (stealthy) [acoustic]   cross-sensor decoupling (structure broken)
 ```
 
 ## How it works

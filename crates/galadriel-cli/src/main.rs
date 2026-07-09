@@ -1,15 +1,16 @@
 #![forbid(unsafe_code)]
 //! `galadriel` — command-line demo and driver for Galadriel's Mirror.
 //!
-//! `galadriel demo` runs three synthetic scenarios — clean, a targeted acoustic
-//! spoof, and a broadband jam — through the NIS χ² baseline and prints the
-//! per-channel consistency traces and the fail-closed verdict for each.
+//! `galadriel demo` runs four synthetic scenarios — clean, a targeted acoustic spoof, a
+//! broadband jam, and a moment-matched stealthy spoof — through the pure default detector
+//! (NIS χ² magnitude ⊕ `|ρ|` cross-sensor consistency) and prints the per-channel traces
+//! and the fused verdict for each. With `--features pid` it adds the KSG-MI escalation view.
 
 use std::collections::HashMap;
 use std::io::IsTerminal;
 
 use clap::{Parser, Subcommand};
-use galadriel_core::{DetectorConfig, Mirror, Modality, PidObservation, Verdict};
+use galadriel_core::{DetectorConfig, FusedVerdict, Mirror, Modality, PidObservation, Verdict};
 use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
 use galadriel_sim::scenario::{generate, ScenarioConfig};
 
@@ -17,7 +18,7 @@ use galadriel_sim::scenario::{generate, ScenarioConfig};
 #[command(
     name = "galadriel",
     version,
-    about = "Galadriel's Mirror — a cross-sensor spoof/jam detector (MVP: NIS χ² baseline)."
+    about = "Galadriel's Mirror — a cross-sensor spoof/jam detector (pure default: NIS χ² ⊕ |ρ| consistency)."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -26,7 +27,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Run the synthetic demo: clean vs targeted-spoof vs broadband-jam.
+    /// Run the synthetic demo: clean vs targeted spoof vs jam vs moment-matched stealthy spoof.
     Demo {
         /// Number of fusion frames to simulate.
         #[arg(long, default_value_t = 220)]
@@ -107,13 +108,17 @@ fn run_demo(frames: usize, seed: u64) {
         color,
     );
 
+    // The stealthy spoof the magnitude baseline is blind to — caught by the pure
+    // correlation default (no pid-core). This scene needs correlated honest channels.
+    run_stealthy_default_demo(frames, seed, color);
+
     #[cfg(feature = "pid")]
     run_pid_demo(frames, seed, color);
     #[cfg(not(feature = "pid"))]
     println!(
         "\n  {}",
         dim(
-            "build with `--features pid` to watch the PID engine catch a stealthy spoof the baseline misses",
+            "build with `--features pid` to add the KSG-MI escalation (for nonlinear / synergistic couplings)",
             color
         )
     );
@@ -122,7 +127,7 @@ fn run_demo(frames: usize, seed: u64) {
     println!(
         "  {}",
         dim(
-            "advisory only · calibrated_posterior=false · the PID engine (feature `pid`) must beat this",
+            "advisory only · calibrated_posterior=false · PID (feature `pid`) escalates where correlation cannot",
             color
         )
     );
@@ -210,6 +215,98 @@ fn verdict_str(v: &Verdict) -> String {
     }
 }
 
+fn fused_verdict_str(v: &FusedVerdict) -> String {
+    match v {
+        FusedVerdict::Nominal => "VERDICT: NOMINAL".into(),
+        FusedVerdict::Spoof { channels, stealthy } => format!(
+            "VERDICT: SPOOF{} [{}]",
+            if *stealthy { " (stealthy)" } else { "" },
+            channels
+                .iter()
+                .map(|m| m.label())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        FusedVerdict::Jam => "VERDICT: JAM".into(),
+        FusedVerdict::InsufficientEvidence => "VERDICT: INSUFFICIENT-EVIDENCE".into(),
+    }
+}
+
+/// The pure stealthy-spoof scene: on a moment-matched spoof the magnitude baseline is
+/// blind (NIS stays in-covariance) while the cheap correlation default — shipped in the
+/// pure build with no `pid-core` — catches the decoupled channel by its broken
+/// cross-sensor `|ρ|` agreement. Needs correlated honest channels (`ρ = 0.7`).
+fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) {
+    use galadriel_core::{assess_default, CorrConfig};
+    use galadriel_sim::scenario::{generate_spoofed, StealthySpoof};
+
+    let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
+    let cfg = ScenarioConfig {
+        track_id: 1,
+        frames,
+        modalities: mods.clone(),
+        sigma: 1.0,
+        rho: 0.7,
+        dt_ms: 100,
+        seed,
+    };
+    let stream = generate_spoofed(
+        &cfg,
+        StealthySpoof {
+            target: Modality::Acoustic,
+            start_frame: (frames as u64) / 3,
+        },
+    );
+
+    let report = assess_default(
+        &stream,
+        &mods,
+        &DetectorConfig::default(),
+        &CorrConfig::default(),
+    );
+
+    println!();
+    println!(
+        "{}",
+        cyan(
+            "┌─ MOMENT-MATCHED STEALTHY SPOOF (acoustic) — baseline blind, correlation default catches it",
+            color
+        )
+    );
+    for c in &report.correlation.channels {
+        let tag = if c.decoupled {
+            red("● DECOUPLED", color)
+        } else {
+            green("● corroborates", color)
+        };
+        let rho = c
+            .corroboration
+            .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));
+        println!(
+            "│  {:<15} |ρ| corroboration={}  {}",
+            c.modality.label(),
+            rho,
+            tag
+        );
+    }
+    let bl = match report.baseline.verdict {
+        Verdict::Nominal => green("NOMINAL — blind (NIS stays in-covariance)", color),
+        _ => red(&verdict_str(&report.baseline.verdict), color),
+    };
+    let fused = fused_verdict_str(&report.verdict);
+    let fc = match report.verdict {
+        FusedVerdict::Nominal => green(&fused, color),
+        FusedVerdict::InsufficientEvidence => dim(&fused, color),
+        _ => red(&fused, color),
+    };
+    println!("│  baseline (NIS χ²):      {}", bl);
+    println!(
+        "└▷ correlation default:   {}   {}",
+        fc,
+        dim(&report.note, color)
+    );
+}
+
 fn banner(color: bool) {
     println!();
     println!(
@@ -222,7 +319,7 @@ fn banner(color: bool) {
     println!(
         "{}",
         dim(
-            "    NIS χ² baseline — the cheap yardstick the PID engine must beat",
+            "    NIS χ² magnitude ⊕ |ρ| cross-sensor consistency — the pure default detector",
             color
         )
     );
@@ -335,25 +432,15 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) {
         },
     );
 
-    // Baseline verdict on the same stream.
-    let mut mirror = Mirror::new(DetectorConfig::default());
-    let mut base = None;
-    for chunk in stream.chunks(mods.len()) {
-        for o in chunk {
-            mirror.ingest(o);
-        }
-        base = Some(mirror.assess(cfg.track_id, chunk[0].seq));
-    }
-    let base = base.expect("non-empty stream");
-
-    // PID verdict.
+    // The KSG-MI escalation on the same stream: it should agree with the correlation
+    // default above — on a linear-Gaussian spoof MI and |ρ| see the same structure.
     let pid = analyze(&scalar_channels(&stream, &mods, 0), &PidConfig::default());
 
     println!();
     println!(
         "{}",
         cyan(
-            "┌─ MOMENT-MATCHED STEALTHY SPOOF (acoustic) — baseline vs PID",
+            "┌─ …SAME STEALTHY SPOOF through the KSG-MI escalation (feature `pid`)",
             color
         )
     );
@@ -367,21 +454,24 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) {
             .corroboration
             .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));
         println!(
-            "│  {:<15} corroboration={}  {}",
+            "│  {:<15} KSG-MI corroboration={}  {}",
             c.modality.label(),
             mi,
             tag
         );
     }
-    let bl = match base.verdict {
-        Verdict::Nominal => green("NOMINAL — blind (NIS stays in-covariance)", color),
-        _ => red(&verdict_str(&base.verdict), color),
-    };
     let pv = match pid.verdict {
         PidVerdict::Spoof(_) => red("SPOOF", color),
         PidVerdict::Nominal => green("NOMINAL", color),
         PidVerdict::InsufficientEvidence => dim("INSUFFICIENT-EVIDENCE", color),
     };
-    println!("│  baseline (NIS χ²):  {}", bl);
-    println!("└▷ PID engine:        {}   {}", pv, dim(&pid.note, color));
+    println!(
+        "└▷ PID engine:        {}   {}   {}",
+        pv,
+        dim(&pid.note, color),
+        dim(
+            "(confirms the correlation default — MI is forced here, not justified)",
+            color
+        )
+    );
 }
