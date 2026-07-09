@@ -137,13 +137,15 @@ integrations are additive, off-by-default features:
 | `ncp` | `ncp-core` (serde-only) | `PidObservation` JSONL ingest |
 | `ncp-live` | `ncp-zenoh` + `tokio` | live Zenoh observation-plane tap |
 
-> **Build layout.** This repo is developed inside the `sepahead` sibling tree, where
-> `galadriel-{pid,ncp,justify}` reach `pid-rs` and `NCP` by relative **path** dependency.
-> A clone in isolation therefore will not resolve the workspace until those siblings are
-> present. To build standalone, either clone `pid-rs` and `NCP` alongside `galadriel`, or
-> swap each `path = "../../../…"` in the crate manifests for the pinned **git** dependency
-> noted in the same `Cargo.toml` comment. The pure `galadriel-core` / `-sim` / `-cli`
-> default carries none of these deps.
+> **Build layout.** `galadriel-{pid,ncp,justify}` depend on the sibling ecosystem crates
+> `pid-core` (pid-rs) and `ncp-core` / `ncp-zenoh` (NCP), **pinned by git tag**
+> (`v0.4.0` / `v0.6.0`) in the workspace root — so a clone resolves the workspace without the
+> siblings on disk. Those repos are **private**, so building the `pid` / `ncp` / `ncp-live`
+> features needs read access: the shipped `.cargo/config.toml` sets `git-fetch-with-cli = true`
+> so your git credentials (SSH key or token) are used, and CI needs a deploy key / token. For
+> local sibling-tree development, add a `paths` override to `.cargo/config.toml` to build
+> against the on-disk siblings without fetching. The pure `galadriel-core` / `-sim` / `-cli`
+> default pulls none of these.
 
 > **On NCP.** `ncp-core` is light (serde only) and usable as-is for the wire types;
 > `ncp-zenoh` pulls the full Zenoh stack, so the live tap is strictly feature-gated.

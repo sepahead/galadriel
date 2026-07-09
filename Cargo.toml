@@ -50,6 +50,12 @@ galadriel-core = { path = "crates/galadriel-core" }
 galadriel-sim = { path = "crates/galadriel-sim" }
 galadriel-pid = { path = "crates/galadriel-pid" }
 galadriel-ncp = { path = "crates/galadriel-ncp" }
+# Sibling ecosystem crates, pinned by git tag so an isolated clone / CI can resolve the
+# workspace (a private-clone still needs read access to these repos — see the README build
+# note). For local sibling-tree dev, add a `paths` override in .cargo/config.toml.
+pid-core = { git = "https://github.com/sepahead/pid-rs", tag = "v0.4.0" }
+ncp-core = { git = "https://github.com/sepahead/NCP", tag = "v0.6.0" }
+ncp-zenoh = { git = "https://github.com/sepahead/NCP", tag = "v0.6.0" }
 
 [profile.release]
 lto = "thin"

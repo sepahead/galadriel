@@ -13,6 +13,6 @@ name = "galadriel-justify"
 path = "src/main.rs"
 
 [dependencies]
-pid-core = { path = "../../../pid-rs/crates/pid-core" }
+pid-core = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }

@@ -1,0 +1,17 @@
+# Fetch the pinned private sibling deps (pid-rs, NCP) with the git CLI so your existing
+# git credentials (SSH key or a token via the credential helper) are used — the plain
+# libgit2 fetcher cannot auth to a private repo. CI needs a deploy key / token with read
+# access to those repos.
+[net]
+git-fetch-with-cli = true
+
+# --- Local sibling-tree development (optional) -------------------------------------------
+# If you have pid-rs and NCP checked out next to this repo, uncomment the override below to
+# build against them on disk (no fetch, offline-friendly). Leave commented for a clean
+# clone, which resolves the pinned git tags instead.
+#
+# paths = [
+#     "../pid-rs/crates/pid-core",
+#     "../NCP/ncp-core",
+#     "../NCP/ncp-zenoh",
+# ]

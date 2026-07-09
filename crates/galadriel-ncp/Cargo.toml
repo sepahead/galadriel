@@ -11,12 +11,11 @@ description = "NCP observation-plane ingest for Galadriel's Mirror (feature `ncp
 [dependencies]
 galadriel-core = { workspace = true }
 serde_json = { workspace = true }
-# ncp-core is light (serde + serde_json only). Path dep into the intact NCP tree;
-# for a fresh clone / CI use: ncp-core = { git = "https://github.com/sepahead/NCP", tag = "v0.6.0" }
-ncp-core = { path = "../../../NCP/ncp-core" }
+# ncp-core is light (serde + serde_json only); pinned by git tag in the workspace root.
+ncp-core = { workspace = true }
 # The live Zenoh tap (feature `zenoh`) pulls the full Zenoh + tokio stack; the JSONL
 # ingest path needs none of it, so it is strictly optional.
-ncp-zenoh = { path = "../../../NCP/ncp-zenoh", optional = true }
+ncp-zenoh = { workspace = true, optional = true }
 
 [features]
 default = []

@@ -10,9 +10,9 @@ description = "The cross-sensor Partial Information Decomposition engine for Gal
 
 [dependencies]
 galadriel-core = { workspace = true }
-# Path dependency into the intact pid-rs tree (three levels up from this crate).
-# For a fresh clone / CI, swap to: pid-core = { git = "https://github.com/sepahead/pid-rs", tag = "..." }
-pid-core = { path = "../../../pid-rs/crates/pid-core" }
+# pid-core is pinned by git tag in the workspace root (with a .cargo/config.toml `paths`
+# override for local sibling-tree development).
+pid-core = { workspace = true }
 
 [dev-dependencies]
 galadriel-sim = { path = "../galadriel-sim" }

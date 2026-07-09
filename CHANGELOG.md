@@ -89,6 +89,12 @@ versions may make breaking changes).
   smoke), and project docs.
 
 ### Changed
+- **Sibling ecosystem deps pinned by git tag** (was: relative path deps). `pid-core`
+  (pid-rs `v0.4.0`) and `ncp-core` / `ncp-zenoh` (NCP `v0.6.0`) are now git dependencies in
+  the workspace root, so a clone resolves the workspace without the siblings on disk. The
+  repos are private, so the `pid` / `ncp` features need read access to build (the shipped
+  `.cargo/config.toml` sets `git-fetch-with-cli`; a commented `paths` override is offered for
+  local sibling-tree development).
 - **Correlation is now the default cross-sensor detector; PID is the opt-in escalation.**
   Following the `JUSTIFICATION.md` analysis, the pure build ships `assess_default`
   (NIS ⊕ correlation) and `galadriel-pid` reuses the shared `galadriel_core::fusion`
