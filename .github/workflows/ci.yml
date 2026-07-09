@@ -1,5 +1,11 @@
 name: CI
 
+# NOTE: galadriel-{pid,ncp,justify} depend on the PRIVATE sibling repos pid-rs and NCP as
+# pinned git deps, so every cargo command resolves them. CI must be able to read those repos:
+# add a repository secret `SIBLING_REPOS_TOKEN` — a PAT or GitHub App token with *read* access
+# to sepahead/pid-rs and sepahead/NCP — and the auth step rewrites the https git-dep URLs to
+# use it. Without the secret the jobs fail at dependency resolution (cannot fetch the siblings).
+
 on:
   push:
     branches: [main]
@@ -15,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Authenticate to private sibling repos
+        run: git config --global url."https://x-access-token:${{ secrets.SIBLING_REPOS_TOKEN }}@github.com/".insteadOf "https://github.com/"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -37,9 +45,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Authenticate to private sibling repos
+        run: git config --global url."https://x-access-token:${{ secrets.SIBLING_REPOS_TOKEN }}@github.com/".insteadOf "https://github.com/"
       - uses: dtolnay/rust-toolchain@1.80.0
       - uses: Swatinem/rust-cache@v2
-      # Only the pure default members (core + sim + cli) hold the 1.80 MSRV; the
-      # optional pid/ncp crates raise the union MSRV to 1.88 via pid-core/ncp-core.
+      # Only the pure default members (core + sim + cli) hold the 1.80 MSRV; the optional
+      # pid/ncp crates raise the union MSRV to 1.88 via pid-core/ncp-core. The workspace still
+      # resolves the git deps (hence the auth step), but only the pure members are compiled.
       - name: Build the pure default members on the pinned MSRV
         run: cargo build

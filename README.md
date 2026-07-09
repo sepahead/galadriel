@@ -142,7 +142,8 @@ integrations are additive, off-by-default features:
 > (`v0.4.0` / `v0.6.0`) in the workspace root — so a clone resolves the workspace without the
 > siblings on disk. Those repos are **private**, so building the `pid` / `ncp` / `ncp-live`
 > features needs read access: the shipped `.cargo/config.toml` sets `git-fetch-with-cli = true`
-> so your git credentials (SSH key or token) are used, and CI needs a deploy key / token. For
+> so your git credentials (SSH key or token) are used, and CI reads a `SIBLING_REPOS_TOKEN`
+> repository secret (a token with read access to `pid-rs` + `NCP` — see `.github/workflows/ci.yml`). For
 > local sibling-tree development, add a `paths` override to `.cargo/config.toml` to build
 > against the on-disk siblings without fetching. The pure `galadriel-core` / `-sim` / `-cli`
 > default pulls none of these.
