@@ -23,6 +23,15 @@ it stops agreeing with the consensus of the others. **galadriel is the mirror th
 catches that decoupling** and tells an operator *which* channel to distrust — before
 the fused track pulls an interceptor off the real inbound.
 
+> **Why this is a real problem.** Spoofing a UAV's navigation was demonstrated on a
+> government range with a ~$1,000 device in 2012, and GNSS jamming/spoofing is now
+> theatre-wide in Ukraine (drone-strike accuracy drops below 10 % under jamming). The
+> multi-sensor *fusion* that is meant to defend against this is itself attackable — the
+> [frustum attack](https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton)
+> (USENIX Security '22) defeats camera-LiDAR fusion *by preserving cross-sensor
+> consistency*, which is exactly the boundary galadriel draws for itself. Evidence and
+> sources: [**`docs/MOTIVATION.md`**](docs/MOTIVATION.md).
+
 It is the security/guardian sibling of [**crebain**](https://github.com/sepahead/crebain)
 (the tactical ARAS fuser). Its pure default is a cheap **cross-sensor correlation**
 consistency check; it *escalates* to the information-theoretic estimators of

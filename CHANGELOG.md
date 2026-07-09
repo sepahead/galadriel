@@ -71,6 +71,14 @@ versions may make breaking changes).
   (3) **irreducible synergy** — on `T=A⊕B`, correlation *and* pairwise MI are both at chance
   (0.544, CIs bracket 0.5) while only a joint-information contrast `Q` separates (AUC 1.000).
   `I^sx` is correctly the *redundancy* atom (Makkeh–Gutknecht–Wibral 2021).
+- **`docs/MOTIVATION.md`** — the real-world threat grounding, with cited sources: UAV GNSS
+  spoofing is demonstrated and theatre-wide (UT Austin 2012; Ukraine EW), multi-sensor fusion is
+  the standard defense but is itself attacked by *faking* cross-sensor consistency (`MSF-ADV`,
+  IEEE S&P 2021; the frustum attack, USENIX Security 2022 — which is exactly galadriel's honest
+  limit), and cross-sensor consistency checking is a recognized countermeasure. Crucially, the
+  paper's *forced-vs-justified* dichotomy maps onto the real attack classes: GNSS/kinematic
+  spoofing is linear-Gaussian (correlation forced) while learned-perception fusion attacks are
+  nonlinear/synergistic (PID justified). All academic and threat citations independently verified.
 - **`docs/PAPER.md`** — the consolidated research paper (*Forced or Justified? Mutual
   Information vs. Correlation for Cross-Sensor Spoof Detection in Counter-UAS Fusion*),
   hardened through **two adversarial peer-review passes** (a 5-lens review, then a 3-lens

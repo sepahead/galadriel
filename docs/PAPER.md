@@ -62,10 +62,16 @@ optical/IR cameras, radar, acoustic direction-of-arrival (DOA) arrays, lidar, RF
 single track estimate that drives decisions with real consequences (an interceptor cue, an
 evasive maneuver). The fusion filter is a high-value target: an adversary does not need to
 defeat the whole system, only to make *one* channel report a plausible lie that the filter
-will trust. This is a **false-data injection** attack [Liu2011, Mo2010], and against a
-kinematic tracker it is well within reach — GPS/GNSS spoofing of UAVs is demonstrated and
-portable [Humphreys2008], and adversarial patches, phantom acoustic bearings, and spoofed
-radar returns are the sensor-domain analogues.
+will trust. This is a **false-data injection** attack [Liu2011, Mo2010], and it is neither
+hypothetical nor exotic. Spoofing a UAV's navigation from a half-mile standoff with a
+portable ~\$1{,}000 civil-GPS spoofer [Humphreys2008] was demonstrated on a government range in
+2012 [Humphreys2012]; a decade on,
+GNSS jamming and spoofing are theatre-wide in the war in Ukraine, dropping drone-strike
+accuracy below 10 % [DefenseOne2024]. And the redundancy that fusion is *meant* to provide is
+itself attackable: `MSF-ADV` [Cao2021] and the **frustum attack** [Hallyburton2022] defeat
+production camera–LiDAR fusion with physical-world objects — the latter *precisely by
+preserving cross-sensor consistency*. A grounded account of the threat, with sources, is in
+`docs/MOTIVATION.md`.
 
 The magnitude defenses a tracker already carries — a per-channel **Normalized Innovation
 Squared (NIS)** χ² gate [BarShalom2001] — catch the *loud* attacks (a large bias, a jam)
@@ -289,6 +295,15 @@ it is not.* Honestly, in the pure kinematic-Gaussian deployment none of the thre
 residual security value over a correlation check is to **raise the adversary's bar to a
 ground-truth-aware, statistics-matching FDI** (§6) — the escalation's accuracy payoff appears only
 when a modality or fusion stage leaves the Gaussian manifold.
+
+**This dichotomy maps onto the real attack landscape**, which is what makes it more than a
+methodological curiosity. GNSS/kinematic spoofing of a tracker [Humphreys2012, DefenseOne2024]
+produces linear-Gaussian residuals — the *forced* regime, where the cheap correlation check
+suffices. The state-of-the-art multi-sensor-fusion attacks, by contrast, act on a **learned,
+nonlinear, synergistic** fusion feature: `MSF-ADV` [Cao2021] and the frustum attack
+[Hallyburton2022] are precisely §4.2's territory, where a joint-information measure is the only
+thing that can see the structure and the escalation earns its cost. The recommendation is thus a
+map from the attack one faces to the detector one should pay for (see `docs/MOTIVATION.md`).
 
 ---
 
@@ -620,9 +635,16 @@ readily — tightens the bound further (the shipped default `decouple_ratio` is 
 ## 7. Related work
 
 **Sensor-fusion and estimator attacks.** False-data injection against state estimation is studied
-in power systems [Liu2011] and control [Mo2010]; GNSS spoofing of UAVs is demonstrated
-[Humphreys2008]. Our contribution is not a new attack but a disciplined, cost-aware
-*detector-selection* result for the cross-sensor consistency defense.
+in power systems [Liu2011] and control [Mo2010]; GNSS spoofing of UAVs is demonstrated and portable
+[Humphreys2012, DefenseOne2024]. Closest to our setting, the multi-sensor-fusion security
+literature shows that fusion *redundancy* is not a free guarantee: `MSF-ADV` [Cao2021] and the
+**frustum attack** [Hallyburton2022] defeat production camera–LiDAR fusion with physical-world
+objects, the latter *by preserving cross-sensor consistency* — which is exactly the
+statistics-matching adversary our detector cannot see (§6), i.e. our honest boundary is the current
+state-of-the-art attack. Surveys of robotic-vehicle sensor spoofing [Ren2022] list *cross-sensor
+consistency checks and spatio-temporal anomaly detection* as the defensive toolkit our detector
+sits in. Our contribution is not a new attack but a disciplined, cost-aware *detector-selection*
+result for that defense — which detector to pay for against which class of attack.
 
 **Innovation-based fault/attack detection.** NIS/χ² gating and CUSUM are classical [BarShalom2001,
 Page1954]; they are our magnitude baseline, and the stealthy spoof is their designed blind spot.
@@ -665,19 +687,25 @@ cargo run   -p galadriel-justify --release      # §4 justification studies
 cargo test  --workspace                          # the hypotheses as assertions
 ```
 
-The detector rationale is in `docs/JUSTIFICATION.md`; the full evaluation in `docs/EVALUATION.md`.
-(The 10-lens design review lives in the sibling `haldir` planning repository.)
+The real-world threat grounding and its sources are in `docs/MOTIVATION.md`; the detector rationale
+in `docs/JUSTIFICATION.md`; the full evaluation in `docs/EVALUATION.md`. (The 10-lens design review
+lives in the sibling `haldir` planning repository.)
 
 ## References
 
 - **[BarShalom2001]** Y. Bar-Shalom, X.-R. Li, T. Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001.
+- **[Cao2021]** Y. Cao, N. Wang, C. Xiao, et al. "Invisible for both Camera and LiDAR: Security of Multi-Sensor Fusion based Perception in Autonomous Driving Under Physical-World Attacks." *IEEE S&P,* 2021. [arXiv:2106.09249](https://arxiv.org/abs/2106.09249).
 - **[CoverThomas2006]** T. M. Cover, J. A. Thomas. *Elements of Information Theory,* 2nd ed. Wiley, 2006.
+- **[DefenseOne2024]** P. Tucker. "In Ukraine, a US firm tests a promising tool against GPS jammers: cell phones." *Defense One,* Sept. 2024. [link](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/).
+- **[Hallyburton2022]** R. S. Hallyburton, Y. Liu, Y. Cao, Z. M. Mao, M. Pajic. "Security Analysis of Camera-LiDAR Fusion Against Black-Box Attacks on Autonomous Vehicles." *USENIX Security,* 2022. [arXiv:2106.07098](https://arxiv.org/abs/2106.07098).
 - **[Humphreys2008]** T. E. Humphreys et al. "Assessing the Spoofing Threat: Development of a Portable GPS Civilian Spoofer." *Proc. ION GNSS,* 2008.
+- **[Humphreys2012]** T. E. Humphreys / UT Austin Radionavigation Lab. "Spoofing demonstration commandeers a UAV at White Sands," DHS-invited test, 2012. [UT Austin](https://www.eurekalert.org/pub_releases/2012-06/uota-uot062912.php); [GPS World](https://www.gpsworld.com/drone-hack/).
 - **[Kerckhoffs1883]** A. Kerckhoffs. "La cryptographie militaire." *Journal des sciences militaires,* 1883.
 - **[Kraskov2004]** A. Kraskov, H. Stögbauer, P. Grassberger. "Estimating mutual information." *Phys. Rev. E* 69, 066138, 2004.
 - **[Liu2011]** Y. Liu, P. Ning, M. K. Reiter. "False data injection attacks against state estimation in electric power grids." *ACM TISSEC* 14(1), 2011.
 - **[Makkeh2021]** A. Makkeh, A. J. Gutknecht, M. Wibral. "Introducing a differentiable measure of pointwise shared information." *Phys. Rev. E* 103, 032149, 2021.
 - **[Mo2010]** Y. Mo, B. Sinopoli. "False data injection attacks in control systems." *Proc. 1st Workshop on Secure Control Systems,* 2010.
 - **[Page1954]** E. S. Page. "Continuous inspection schemes." *Biometrika* 41(1/2), 1954.
+- **[Ren2022]** K. Ren, Q. Wang, C. Wang, et al. "SoK: Rethinking Sensor Spoofing Attacks against Robotic Vehicles from a Systematic View." *IEEE EuroS&P,* 2023. [arXiv:2205.04662](https://arxiv.org/abs/2205.04662).
 - **[Timme2014]** N. Timme, W. Alford, B. Flecker, J. M. Beggs. "Synergy, redundancy, and multivariate information measures: an experimentalist's perspective." *J. Comput. Neurosci.* 36, 2014.
 - **[WilliamsBeer2010]** P. L. Williams, R. D. Beer. "Nonnegative Decomposition of Multivariate Information." *arXiv:1004.2515,* 2010.
