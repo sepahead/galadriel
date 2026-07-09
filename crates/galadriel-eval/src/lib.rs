@@ -659,6 +659,133 @@ pub fn format_collusion(r: &CollusionResult) -> String {
     )
 }
 
+// ---------------------------------------------------------------------------
+// Adaptive (threshold-hugging) adversary
+// ---------------------------------------------------------------------------
+
+/// One row of the adaptive-adversary sweep: operating-point **detection rate** (the
+/// fraction of trials the detector actually alarms) at decoupling `d` — the quantity a
+/// Kerckhoffs-aware attacker optimizes against, distinct from the threshold-free AUC of §5.5.
+#[derive(Debug, Clone)]
+pub struct AdaptiveRow {
+    /// Decoupling strength.
+    pub decoupling: f64,
+    /// Correlation-default detection rate at `d`.
+    pub corr_detect: f64,
+    /// PID detection rate at `d`.
+    pub pid_detect: f64,
+}
+
+fn quantile(sorted_scores: &[f64], q: f64) -> f64 {
+    if sorted_scores.is_empty() {
+        return f64::NAN;
+    }
+    let idx =
+        ((q * (sorted_scores.len() as f64 - 1.0)).round() as usize).min(sorted_scores.len() - 1);
+    sorted_scores[idx]
+}
+
+/// Sweep decoupling strength and report each detector's detection rate **at a matched
+/// false-alarm rate** `far`. This is the fair adaptive-adversary comparison: each detector's
+/// threshold is set to its own clean-score `(1 − far)` quantile, so the two operate at the
+/// *same* operating point (their arbitrary default `decouple_ratio` gates sit at different
+/// FARs and would confound the comparison with threshold placement, not discriminability).
+/// A threshold-hugging adversary injects the largest `d` that stays below the gate; the
+/// *evasion ceiling* ([`evasion_ceiling`]) is the largest `d` a detector still misses
+/// (detection ≤ τ). A lower ceiling = a harder detector to evade — and at matched FAR this
+/// tracks the ROC (§5.5), so the more discriminative detector is the harder one to evade.
+pub fn adaptive_adversary(cfg: &EvalConfig, decouplings: &[f64], far: f64) -> Vec<AdaptiveRow> {
+    let spoof = StealthySpoof {
+        target: Modality::Acoustic,
+        start_frame: (cfg.frames as u64) / 3,
+    };
+    // Calibrate each detector's threshold to the shared FAR on clean scores.
+    let (mut cc, mut cp) = (
+        Vec::with_capacity(cfg.trials),
+        Vec::with_capacity(cfg.trials),
+    );
+    for t in 0..cfg.trials {
+        let clean = build(Attack::Clean, cfg, cfg.base_seed + t as u64);
+        cc.push(corr_eval(&clean).1);
+        cp.push(pid_eval(&clean).1);
+    }
+    cc.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    cp.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let corr_thresh = quantile(&cc, 1.0 - far);
+    let pid_thresh = quantile(&cp, 1.0 - far);
+
+    decouplings
+        .iter()
+        .map(|&d| {
+            let (mut cd, mut pd) = (0usize, 0usize);
+            for t in 0..cfg.trials {
+                let s = scenario(cfg, cfg.base_seed + t as u64);
+                let stream = generate_spoofed_partial(&s, spoof, d);
+                if corr_eval(&stream).1 > corr_thresh {
+                    cd += 1;
+                }
+                if pid_eval(&stream).1 > pid_thresh {
+                    pd += 1;
+                }
+            }
+            let nf = cfg.trials as f64;
+            AdaptiveRow {
+                decoupling: d,
+                corr_detect: cd as f64 / nf,
+                pid_detect: pd as f64 / nf,
+            }
+        })
+        .collect()
+}
+
+/// The evasion ceiling: the largest decoupling a detector still misses (detection ≤ `tau`) —
+/// i.e. the most an adaptive adversary can inject undetected. `0.0` if even the weakest
+/// decoupling in the grid is caught.
+pub fn evasion_ceiling(
+    rows: &[AdaptiveRow],
+    detect: impl Fn(&AdaptiveRow) -> f64,
+    tau: f64,
+) -> f64 {
+    rows.iter()
+        .filter(|r| detect(r) <= tau)
+        .map(|r| r.decoupling)
+        .fold(0.0, f64::max)
+}
+
+/// Format the adaptive-adversary study (detection rates + the corr/PID evasion ceilings).
+pub fn format_adaptive(rows: &[AdaptiveRow], tau: f64) -> String {
+    let mut s = String::new();
+    s.push_str(&format!(
+        "Adaptive (threshold-hugging) adversary — detection rate vs decoupling at MATCHED FAR\n\
+         both detectors thresholded to the same clean-score quantile; the attacker injects the\n\
+         largest d that stays below the gate (detection ≤ {tau:.2})\n\n"
+    ));
+    s.push_str(&format!(
+        "{:>5} | {:>12} | {:>12}\n",
+        "d", "corr detect", "PID detect"
+    ));
+    s.push_str(&format!("{}\n", "-".repeat(35)));
+    for r in rows {
+        s.push_str(&format!(
+            "{:>5.2} | {:>12.3} | {:>12.3}\n",
+            r.decoupling, r.corr_detect, r.pid_detect
+        ));
+    }
+    let corr_ceil = evasion_ceiling(rows, |r| r.corr_detect, tau);
+    let pid_ceil = evasion_ceiling(rows, |r| r.pid_detect, tau);
+    s.push_str(&format!(
+        "\nEvasion ceiling (max undetected d): correlation {corr_ceil:.2}   PID {pid_ceil:.2}\n"
+    ));
+    s.push_str(if corr_ceil <= pid_ceil {
+        "Correlation's ceiling is no higher than PID's — a Kerckhoffs-aware adversary can inject\n\
+         at least as much undetected past PID as past correlation. The MI engine buys no evasion\n\
+         resistance here; the adaptive adversary does not favour it.\n"
+    } else {
+        "PID's ceiling is lower — it forces the adaptive adversary to a smaller undetected injection.\n"
+    });
+    s
+}
+
 /// Per-attack metrics for both detectors and their fusion.
 #[derive(Debug, Clone)]
 pub struct AttackMetrics {
@@ -1148,6 +1275,38 @@ mod tests {
         assert!(
             strict,
             "the paired corr−PID ΔAUC CI should exclude 0 somewhere on the boundary"
+        );
+    }
+
+    #[test]
+    fn adaptive_adversary_evasion_ceiling_does_not_favour_pid() {
+        let cfg = EvalConfig {
+            trials: 50,
+            ..Default::default()
+        };
+        let grid = [1.0, 0.6, 0.4, 0.2, 0.1, 0.05];
+        let rows = adaptive_adversary(&cfg, &grid, 0.05);
+
+        // Detection rate falls as the decoupling weakens (easier attacks are caught more).
+        assert!(
+            rows[0].corr_detect >= rows[rows.len() - 1].corr_detect,
+            "corr detection should not rise as d shrinks: {:.3} -> {:.3}",
+            rows[0].corr_detect,
+            rows[rows.len() - 1].corr_detect
+        );
+        // Full decoupling is reliably caught by the correlation default.
+        assert!(
+            rows[0].corr_detect > 0.8,
+            "full-decouple corr detect {:.3}",
+            rows[0].corr_detect
+        );
+        // The Kerckhoffs point: correlation's evasion ceiling is no higher than PID's, so an
+        // adaptive adversary gains nothing by facing correlation rather than the MI engine.
+        let corr_ceil = evasion_ceiling(&rows, |r| r.corr_detect, 0.5);
+        let pid_ceil = evasion_ceiling(&rows, |r| r.pid_detect, 0.5);
+        assert!(
+            corr_ceil <= pid_ceil + 1e-9,
+            "correlation evasion ceiling {corr_ceil:.2} should be ≤ PID's {pid_ceil:.2}"
         );
     }
 

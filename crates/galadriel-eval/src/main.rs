@@ -5,8 +5,9 @@
 //! detection/AUC report, a detection-latency study, and bootstrap 95% CIs.
 
 use galadriel_eval::{
-    collusion_study, decoupling_sweep, format_ci, format_collusion, format_latency, format_report,
-    format_sweep, measure_latency, run, stealthy_ci_study, EvalConfig,
+    adaptive_adversary, collusion_study, decoupling_sweep, format_adaptive, format_ci,
+    format_collusion, format_latency, format_report, format_sweep, measure_latency, run,
+    stealthy_ci_study, EvalConfig,
 };
 
 fn main() {
@@ -47,4 +48,11 @@ fn main() {
     // Colluding compromise: the honest-majority failure mode.
     println!();
     print!("{}", format_collusion(&collusion_study(&cfg, trials)));
+
+    // Adaptive threshold-hugging adversary at a matched 5% FAR: the evasion ceiling.
+    println!();
+    print!(
+        "{}",
+        format_adaptive(&adaptive_adversary(&cfg, &grid, 0.05), 0.5)
+    );
 }

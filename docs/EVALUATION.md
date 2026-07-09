@@ -243,6 +243,27 @@ scope: consistency detection needs `f < C/2`; beyond that the backstop is struct
 cryptographic channel authentication against an external spoofer, plus hardware attestation /
 physical diversity for a genuinely owned sensor — not a smarter statistic.
 
+### 2.5 The adaptive (threshold-hugging) adversary
+
+A Kerckhoffs-aware adversary injects the largest decoupling that stays below the gate.
+Comparing the two detectors at a **matched 5 % FAR** (so the comparison is threshold-fair):
+
+```
+   d  | corr detect | PID detect        (200 trials, matched 5% FAR)
+ 1.00 |    1.000    |    0.995
+ 0.60 |    1.000    |    0.755
+ 0.40 |    0.825    |    0.445
+ 0.20 |    0.290    |    0.165
+Evasion ceiling (max undetected d):  correlation 0.20   PID 0.40
+```
+
+Correlation detects more at every strength, so its evasion ceiling is **lower** (0.20 vs
+0.40): the adaptive adversary must inject *less* to slip past correlation than past PID.
+The Kerckhoffs-aware adversary does not favour PID — correlation is the harder detector to
+evade, as its dominant ROC (§2.3) predicts. This closes the "adversarial robustness"
+argument (`JUSTIFICATION.md` reason 2) on the linear-Gaussian manifold: MI buys no evasion
+resistance there; it earns its keep only where the coupling is genuinely nonlinear (reason 1).
+
 ---
 
 ## 3. Discussion

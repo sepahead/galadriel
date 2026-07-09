@@ -71,11 +71,15 @@ statistic — for **one or more** of these concrete reasons:
    feature. A correlation or parity check only catches the specific relationship it was
    built for. §2 quantifies the gap: ΔAUC 0.34 on a nonlinear coupling correlation
    cannot see.
-2. **Adversarial robustness (Kerckhoffs).** Assume the adversary knows the detector. A
-   correlation-aware attacker can craft an injection that **preserves `ρ` while breaking
-   higher-order structure** — invisible to correlation, visible to MI. MI is the line
-   such an attacker must *also* defeat; it raises adversary cost even when the cheap
-   check is deployed. This is a genuine defense-in-depth argument, not a performance one.
+2. **Adversarial robustness (Kerckhoffs) — only off the Gaussian manifold.** Assume the
+   adversary knows the detector. A correlation-aware attacker can craft an injection that
+   **preserves `ρ` while breaking higher-order structure** — invisible to correlation,
+   visible to MI. But on *linear-Gaussian* residuals `ρ` and MI are functionally locked, so
+   this is impossible there — and indeed the adaptive threshold-hugging adversary study
+   (`EVALUATION.md` §2.5, matched-FAR evasion ceiling) shows correlation is the *harder*
+   detector to evade on the linear manifold, so MI buys **no** adversarial robustness there.
+   This reason is therefore a defense-in-depth *framing of reason 1*: it bites only where the
+   coupling is genuinely nonlinear, not as an independent justification.
 3. **The decomposition itself is irreducible.** A **synergy** measure detects structure
    carried *only* jointly by two or more channels (an XOR/parity-like relationship): all
    pairwise correlations **and** all pairwise MIs are ≈ 0, yet the channels are dependent.

@@ -458,16 +458,48 @@ structural, not statistical — cryptographic channel authentication (per-plane 
 hardware attestation or physical/vendor diversity. Reporting this failure is part of stating honestly
 what the method does and does not buy.
 
+### 5.7 The adaptive (threshold-hugging) adversary
+
+§4.2(2) argued that MI's supposed *adversarial-robustness* advantage bites only off the Gaussian
+manifold. We test it directly. A Kerckhoffs-aware adversary knows the gate and injects the *largest*
+decoupling that stays below it (maximizing the pull it sneaks past). To compare the two detectors
+fairly we hold the operating point fixed — each is thresholded to the **same 5 % false-alarm rate**
+(their arbitrary default gates sit at different FARs, which would confound evasion with threshold
+placement). Detection rate vs decoupling $d$, and the **evasion ceiling** (the largest $d$ a detector
+still misses, detection $\le 0.5$ — the most the adversary injects undetected):
+
+```
+   d  | corr detect | PID detect        (200 trials, matched 5% FAR)
+--------------------------------------
+ 1.00 |    1.000    |    0.995
+ 0.60 |    1.000    |    0.755
+ 0.40 |    0.825    |    0.445
+ 0.20 |    0.290    |    0.165
+ 0.10 |    0.130    |    0.095
+
+Evasion ceiling (max undetected d):  correlation 0.20   PID 0.40
+```
+
+At a matched operating point correlation detects **more at every strength**, so its evasion ceiling is
+*lower* (0.20 vs 0.40): the adaptive adversary must retain *more* correlation with the honest channels
+— inject *less* — to slip past correlation than to slip past PID. **The Kerckhoffs-aware adversary does
+not favour PID; if anything correlation is the harder detector to evade**, exactly as its dominant ROC
+(§5.5) predicts. This closes reason (2) empirically: MI's adversarial-robustness argument buys nothing
+on the linear-Gaussian manifold — it bites only where the coupling is genuinely nonlinear (reason (1)).
+(Caveat: the ceiling measures undetected *decoupling*, a proxy for injectable track pull; the true
+fused-track displacement needs the downstream filter and is out of scope here.)
+
 ---
 
 ## 6. Discussion and limitations
 
 - **Non-adaptive, single-channel adversary.** Every detection number is against a fixed attack on
   one channel. A threshold-aware adaptive adversary optimizing injected bias subject to staying
-  above `decouple_ratio × reference` (a boundary-hugging attack that pulls the track while flagged
-  nominal) is not evaluated. The **colluding $2$-of-$3$** failure *is* now demonstrated (§5.6: the
-  detector inverts and accuses the honest channel, correlation 100 % / PID 97.5 %). Characterizing
-  the maximum undetectable bias under a threshold-aware adaptive adversary is the primary open item.
+  above the gate is now evaluated (§5.7: at matched FAR the adaptive adversary's *evasion ceiling* is
+  lower against correlation than PID, so it does not favour PID). The **colluding $2$-of-$3$** failure
+  is demonstrated in §5.6 (the detector inverts, correlation 100 % / PID 97.5 %). What remains open is
+  the true **fused-track displacement** an evading adversary induces — the evasion ceiling is a proxy
+  for it, but the actual pull needs the downstream filter (crebain), out of scope here.
 - **Interval estimates: partial.** AUCs now carry percentile-bootstrap 95 % CIs (with a paired
   corr-vs-PID bootstrap), which is what backs the "tie" and "at chance" claims. Detection rates
   and latencies are still bare point estimates; extending Wilson/bootstrap CIs to them, and adding
