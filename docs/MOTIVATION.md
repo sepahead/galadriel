@@ -73,10 +73,14 @@ and anomaly detection leveraging temporal and spatial correlations"** as the def
 ([SoK: sensor-spoofing of robotic vehicles, arXiv:2205.04662](https://arxiv.org/abs/2205.04662)).
 In the GNSS setting specifically, spoofing "is detected and rejected by **comparing GPS data to
 visual or inertial position data**" — cross-sensor consistency by another name
-([Defense One, 2024](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/)).
+([Defense One, 2024](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/)) —
+and this is a mature academic method: Broumandan & Lachapelle detect spoofing by a **consistency
+check between the GNSS solution and a self-contained INS/odometer** over an observation window
+([*Sensors* 18(5):1305, 2018](https://www.mdpi.com/1424-8220/18/5/1305)).
 
-galadriel is a clean, tested, honestly-scoped **reference implementation** of that idea, plus the
-methodological result in §4 below.
+galadriel is the **multi-sensor generalization** of that established idea — a clean, tested,
+honestly-scoped reference implementation past a single GNSS-vs-INS residual to an $N$-channel
+cross-sensor test — plus the methodological result in §4 below (which detector to pay for).
 
 ## 4. Where galadriel fits — and the sharper contribution
 
@@ -122,9 +126,14 @@ The information-theoretic machinery is standard and correctly attributed:
   032149 (2021) ([APS](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149)) — a
   redundancy measure with a Möbius inversion on the redundancy lattice, exactly as used here.
 
-The claim that on jointly-Gaussian data the *entire* decomposition is fixed by the covariance
-(so PID adds nothing over correlation there) is consistent with recent closed-form Gaussian-PID
-results ([arXiv:2605.09919](https://arxiv.org/abs/2605.09919)).
+The claim that on jointly-Gaussian data the *entire* decomposition is fixed by the covariance —
+so PID adds nothing over correlation there — is **Barrett's** closed-form Gaussian PID (A. B.
+Barrett, *Phys. Rev. E* **91**, 052802, 2015,
+[arXiv:1411.2832](https://arxiv.org/abs/1411.2832)), reproduced by later constructions
+([Venkatesh & Schamberg, ISIT 2022](https://arxiv.org/abs/2105.00769)). The finite-sample
+behaviour of the KSG estimator we escalate to — its bias under strong dependence, and why it is
+untrustworthy in the high-dimensional / short-window regime our geometry gate rejects — is
+characterised by [Gao, Oh & Viswanath (IEEE Trans. IT 2018)](https://arxiv.org/abs/1604.03006).
 
 ---
 

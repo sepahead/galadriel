@@ -175,7 +175,8 @@ redundancy [Makkeh2021]) alongside. Synergy, when needed, is the top atom of the
 lattice [WilliamsBeer2010], obtained by Möbius inversion — distinct from $I^{sx}$, which is a
 *redundancy* measure. A geometry gate (intrinsic-dimension and distance-concentration checks)
 fails the estimator *closed* to `InsufficientEvidence` when the window is too short/high-
-dimensional for KSG to be trustworthy.
+dimensional for KSG to be trustworthy — the regime where fixed-$k$ nearest-neighbour estimators
+are known to break down and where best practice is simply not to use them [Gao2018].
 
 **3.4 Source-agnostic fusion.** A single 2×2 rule combines the baseline's per-channel elevation
 with *any* consistency detector's decoupled set into one verdict:
@@ -211,10 +212,13 @@ A monotone transform of a score leaves its ROC unchanged, so a *plug-in* Gaussia
 (computing $-\tfrac12\ln(1-\hat\rho^2)$) and a $|\hat\rho|$ detector are **identical**.
 The KSG estimator we actually benchmark only *approximates* this and carries its own finite-
 sample variance; that is why in §5.1 it scores 0.999, marginally below the exact 1.000, rather
-than exactly equal. Crucially, the point extends past MI: for a **jointly-Gaussian** joint
-distribution, *every* PID atom (redundancy, unique, synergy) is a deterministic function of the
-covariance matrix, hence of the pairwise correlations — so the whole decomposition carries no
-information beyond $\rho$. Empirically:
+than exactly equal. Crucially, the point extends past MI **to the full decomposition**: Barrett
+derived the closed-form PID for jointly-Gaussian systems and showed every atom (redundancy,
+unique, synergy) is a deterministic function of the covariance matrix — redundancy, in
+particular, reduces to the minimum-information (MMI) redundancy and is fixed by the pairwise
+correlations [Barrett2015]. (This has since been reproduced by other Gaussian-PID constructions
+[Venkatesh2021].) So on jointly-Gaussian residuals the whole decomposition carries **no
+information beyond $\rho$** — not just MI. Empirically:
 
 ```
 coupling            | |rho| mn | corr AUC [95% CI]      | MI AUC [95% CI]
@@ -461,9 +465,12 @@ at every one of those strengths (e.g. $d=0.6$: $\Delta$AUC $+0.092$, CI $[+0.062
 extremes the two are a statistical tie: at $d=1$ ($\Delta$AUC $\le 0.001$, as §5.1) and at $d\le0.1$,
 where both have collapsed to chance and the $\Delta$AUC CI includes 0. The mechanism is estimator
 statistics: sample $|\rho|$ is the *efficient* dependence statistic for Gaussian data, whereas KSG
-mutual information is a nonparametric $k$-NN estimator carrying extra finite-sample variance. At full
-decoupling both saturate at AUC 1.0 and the variance is invisible; through the mid-boundary KSG's
-variance dominates and PID loses AUC faster. **So on linear-Gaussian residuals MI/PID is not merely
+mutual information is a nonparametric $k$-NN estimator carrying finite-sample error — a variance and,
+more importantly for a *rank* statistic, a **dependence-dependent bias** that differs between the
+coupled and decoupled classes and so no constant offset can absorb (KSG is known to fall below the
+true MI under strong dependence and finite $n$ [Gao2018]). At full decoupling both saturate at AUC
+1.0 and the error is invisible; through the mid-boundary that error blurs the rank separation and PID
+loses AUC faster. **So on linear-Gaussian residuals MI/PID is not merely
 *forced* (§4.1, no better at full decoupling) — through the discriminable mid-boundary, the regime
 that matters most operationally, it is strictly *worse*.** This is the strongest form of the paper's
 thesis, and it answers the "best-case-only" objection directly.
@@ -646,15 +653,29 @@ consistency checks and spatio-temporal anomaly detection* as the defensive toolk
 sits in. Our contribution is not a new attack but a disciplined, cost-aware *detector-selection*
 result for that defense — which detector to pay for against which class of attack.
 
+**Cross-sensor consistency for spoof detection.** Comparing an untrusted channel against
+independent references is an *established* anti-spoofing method, not a new idea: GNSS spoofing is
+routinely detected by checking the navigation solution against a self-contained INS/odometer over
+an observation window [Broumandan2018], and, more broadly, the GNSS anti-spoofing taxonomy names
+intra-system, inter-system and multi-sensor consistency checks as distinct detector families. Our
+detector is the multi-sensor case of exactly this idea, generalised past a GNSS-vs-INS pairwise
+residual to an $N$-channel cross-sensor test — and our contribution is the *detector-selection*
+question that literature does not ask: given the residuals are near-Gaussian, does an
+information-theoretic consistency score beat a correlation one? (§4: no, until the coupling leaves
+the Gaussian manifold.)
+
 **Innovation-based fault/attack detection.** NIS/χ² gating and CUSUM are classical [BarShalom2001,
 Page1954]; they are our magnitude baseline, and the stealthy spoof is their designed blind spot.
 
 **Information decomposition.** The redundancy lattice and PID framework are due to Williams & Beer
 [WilliamsBeer2010]; redundancy/synergy measures are surveyed in [Timme2014]; the $I^{sx}$
 shared-exclusions redundancy we report is due to Makkeh, Gutknecht & Wibral [Makkeh2021]; KSG
-[Kraskov2004] is our MI back-end. We contribute a security-motivated, cost-aware account of *when*
-this machinery is warranted over second-order statistics — grounded in the Gaussian MI–correlation
-identity [CoverThomas2006] and extended to the full Gaussian decomposition — not a new measure.
+[Kraskov2004] is our MI back-end, whose finite-sample behaviour is characterised by
+Gao, Oh & Viswanath [Gao2018]. That the Gaussian PID has a closed form fixed by the covariance —
+the backbone of our "forced" result — is Barrett's [Barrett2015]. We contribute a
+security-motivated, cost-aware account of *when* this machinery is warranted over second-order
+statistics — grounded in the Gaussian MI–correlation identity [CoverThomas2006] and Barrett's
+Gaussian decomposition — not a new measure.
 
 ---
 
@@ -693,10 +714,13 @@ lives in the sibling `haldir` planning repository.)
 
 ## References
 
+- **[Barrett2015]** A. B. Barrett. "Exploration of synergistic and redundant information sharing in static and dynamical Gaussian systems." *Phys. Rev. E* **91**, 052802, 2015. [arXiv:1411.2832](https://arxiv.org/abs/1411.2832).
 - **[BarShalom2001]** Y. Bar-Shalom, X.-R. Li, T. Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001.
+- **[Broumandan2018]** A. Broumandan, G. Lachapelle. "Spoofing Detection Using GNSS/INS/Odometer Coupling for Vehicular Navigation." *Sensors* **18**(5), 1305, 2018. [MDPI](https://www.mdpi.com/1424-8220/18/5/1305).
 - **[Cao2021]** Y. Cao, N. Wang, C. Xiao, et al. "Invisible for both Camera and LiDAR: Security of Multi-Sensor Fusion based Perception in Autonomous Driving Under Physical-World Attacks." *IEEE S&P,* 2021. [arXiv:2106.09249](https://arxiv.org/abs/2106.09249).
 - **[CoverThomas2006]** T. M. Cover, J. A. Thomas. *Elements of Information Theory,* 2nd ed. Wiley, 2006.
 - **[DefenseOne2024]** P. Tucker. "In Ukraine, a US firm tests a promising tool against GPS jammers: cell phones." *Defense One,* Sept. 2024. [link](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/).
+- **[Gao2018]** W. Gao, S. Oh, P. Viswanath. "Demystifying Fixed k-Nearest Neighbor Information Estimators." *IEEE Trans. Inf. Theory* **64**(8), 5629–5661, 2018. [arXiv:1604.03006](https://arxiv.org/abs/1604.03006).
 - **[Hallyburton2022]** R. S. Hallyburton, Y. Liu, Y. Cao, Z. M. Mao, M. Pajic. "Security Analysis of Camera-LiDAR Fusion Against Black-Box Attacks on Autonomous Vehicles." *USENIX Security,* 2022. [arXiv:2106.07098](https://arxiv.org/abs/2106.07098).
 - **[Humphreys2008]** T. E. Humphreys et al. "Assessing the Spoofing Threat: Development of a Portable GPS Civilian Spoofer." *Proc. ION GNSS,* 2008.
 - **[Humphreys2012]** T. E. Humphreys / UT Austin Radionavigation Lab. "Spoofing demonstration commandeers a UAV at White Sands," DHS-invited test, 2012. [UT Austin](https://www.eurekalert.org/pub_releases/2012-06/uota-uot062912.php); [GPS World](https://www.gpsworld.com/drone-hack/).
@@ -708,4 +732,5 @@ lives in the sibling `haldir` planning repository.)
 - **[Page1954]** E. S. Page. "Continuous inspection schemes." *Biometrika* 41(1/2), 1954.
 - **[Ren2022]** K. Ren, Q. Wang, C. Wang, et al. "SoK: Rethinking Sensor Spoofing Attacks against Robotic Vehicles from a Systematic View." *IEEE EuroS&P,* 2023. [arXiv:2205.04662](https://arxiv.org/abs/2205.04662).
 - **[Timme2014]** N. Timme, W. Alford, B. Flecker, J. M. Beggs. "Synergy, redundancy, and multivariate information measures: an experimentalist's perspective." *J. Comput. Neurosci.* 36, 2014.
+- **[Venkatesh2021]** P. Venkatesh, G. Schamberg. "Partial Information Decomposition via Deficiency for Multivariate Gaussians." *IEEE ISIT,* 2022. [arXiv:2105.00769](https://arxiv.org/abs/2105.00769).
 - **[WilliamsBeer2010]** P. L. Williams, R. D. Beer. "Nonnegative Decomposition of Multivariate Information." *arXiv:1004.2515,* 2010.
