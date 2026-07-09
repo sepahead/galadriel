@@ -103,15 +103,16 @@ broadband jam                |    1.000 |    1.000 |   0.000 |     1.000 |    1.
 
 Reading the table:
 
-- **Stealthy spoof — the headline.** Baseline detection **0.020** and AUC **0.547**
-  (statistically indistinguishable from the chance value 0.5) confirm the baseline is
-  blind, *as the construction guarantees*. Both cross-sensor detectors recover it: the
-  **correlation default** at AUC **1.000** / detection **1.000**, the **PID** engine at
-  AUC **0.999** / detection **0.965**. That the cheap correlation check **edges** the MI
-  estimator here is not noise but the point: for linear-Gaussian data `MI = −½ln(1−ρ²)`
-  is a monotone function of `ρ`, so the two detect the *same* structure — but `|ρ|` is
-  computed exactly while KSG-MI carries finite-sample estimator variance. **This is the
-  empirical face of `JUSTIFICATION.md` §1: PID is forced, not justified, on this spoof.**
+- **Stealthy spoof — the headline.** Baseline detection **0.020** and AUC **0.547
+  [0.490, 0.603]** — the bootstrap CI **brackets 0.5**, confirming the baseline is blind,
+  *as the construction guarantees*. Both cross-sensor detectors recover it: the
+  **correlation default** at AUC **1.000 [1.000, 1.000]**, the **PID** engine at **0.999
+  [0.999, 1.000]**. A **paired** bootstrap gives their difference as **ΔAUC +0.001, CI
+  [+0.000, +0.001]** — the CI reaches 0, so they are a **statistical tie**; the tiny gap is
+  not interpreted as an ordering (for linear-Gaussian data `MI = −½ln(1−ρ²)` is monotone in
+  `ρ`, so the two detect the *same* structure, `|ρ|` exactly and KSG-MI with estimator
+  variance). **This is the empirical face of `JUSTIFICATION.md` §1: MI/PID is forced, not
+  justified, on this spoof** — same accuracy, ~100× the cost (§2.2).
 - **Loud bias spoof & jam — complementarity.** Baseline AUC **1.000** on both; the
   consistency *scores* sit at AUC **0.500** (silent). A constant bias shifts a channel's
   mean but leaves its fluctuation structure — hence its cross-channel `|ρ|` and MI —
@@ -155,10 +156,12 @@ broadband jam                |    4f (100%) |    4f (100%) |     — (  0%)
   default)** — 5–8 s. This is an intrinsic cost of the stealthy regime, not a tuning gap:
   a moment-matched spoof is *designed* to reveal itself slowly. It is caught **reliably**
   (100 % reach) but not instantly, and saying so is part of an honest evaluation.
-- **A latency/accuracy nuance.** Here PID trips ~28 frames *earlier* than the correlation
-  default (a decision-threshold placement difference), even though at the full window the
-  correlation default's AUC (1.000) edges PID's (0.999). Neither dominates on both axes;
-  reporting both — accuracy *and* latency — is the disciplined position.
+- **A latency nuance (reported descriptively, not as an ordering).** Here PID's column
+  trips ~28 frames *earlier* than the correlation column — but the two are **not** measured
+  under the same wiring (the `corr` column is the fused NIS ⊕ correlation detector, the
+  `PID` column the standalone engine), the numbers are ±4-frame quantized, and at the full
+  window their accuracy is a statistical tie (§2, ΔAUC ≤ 0.001). We therefore do not read an
+  ordering from the latency gap; reporting accuracy *and* latency honestly is the point.
 - The baseline's **30 % reach** on the stealthy spoof (median 40 f *among only the trials
   it fired in*) is the occasional chance NIS excursion of the phantom latent, not reliable
   detection — contrast the **100 %** reach of the cross-sensor detectors.

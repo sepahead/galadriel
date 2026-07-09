@@ -39,10 +39,10 @@ permutation null — same marginal, dependence destroyed), under two couplings.
 Is PID/MI justified over correlation?  300 trials/class · n=400 samples/pair
 Detector ROC-AUC at separating a coupled pair from a decoupled one:
 
-coupling                       | |rho| mean |  MI mean |  corr AUC |   MI AUC
+coupling                  | |rho| mn | corr AUC [95% CI]      | MI AUC [95% CI]
 ------------------------------------------------------------------------------
-linear     (Y = X + e)         |      0.894 |    0.814 |     1.000 |    1.000
-nonlinear  (Y = +/-X + e)      |      0.067 |    0.391 |     0.662 |    1.000
+linear     (Y = X + e)    |    0.894 | 1.000 [1.000, 1.000]  | 1.000 [1.000, 1.000]
+nonlinear  (Y = +/-X + e) |    0.067 | 0.662 [0.617, 0.707]  | 1.000 [1.000, 1.000]
 ```
 
 - **Linear** (`Y = X + ε`): `|ρ| = 0.89`, and **corr AUC = MI AUC = 1.000**. Correlation
@@ -90,10 +90,10 @@ statistic — for **one or more** of these concrete reasons:
    XOR) — on `T = A⊕B` (independent bits `A`, `B`):
 
    ```
-   detector                   |  AUC (bits target)
-   correlation (pairwise)     |  0.544    <- at chance (indistinguishable from 0.5)
-   mutual info (pairwise)     |  0.544    <- ALSO at chance — pairwise MI is not enough
-   synergy contrast Q (joint) |  1.000    <- only a joint measure sees it (0.997 bits)
+   detector                   |  AUC   [95% CI]        (bits target)
+   correlation (pairwise)     | 0.544  [0.496, 0.592]  <- CI brackets 0.5: at chance
+   mutual info (pairwise)     | 0.544  [0.496, 0.594]  <- CI brackets 0.5: at chance
+   synergy contrast Q (joint) | 1.000  [1.000, 1.000]  <- only a joint measure (0.997 bits)
    ```
 
    Even *pairwise mutual information* is at chance: it is specifically a **joint** measure

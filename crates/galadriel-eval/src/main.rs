@@ -2,9 +2,11 @@
 //! `galadriel-eval` — run the Monte-Carlo evaluation and print the report.
 //!
 //! Usage: `galadriel-eval [trials]` (default 200 trials per regime). Prints the
-//! detection/AUC report, then a detection-latency (time-to-detect) study.
+//! detection/AUC report, a detection-latency study, and bootstrap 95% CIs.
 
-use galadriel_eval::{format_latency, format_report, measure_latency, run, EvalConfig};
+use galadriel_eval::{
+    format_ci, format_latency, format_report, measure_latency, run, stealthy_ci_study, EvalConfig,
+};
 
 fn main() {
     let trials = std::env::args()
@@ -28,4 +30,10 @@ fn main() {
         "{}",
         format_latency(&measure_latency(&cfg, lat_trials, step), lat_trials, step)
     );
+
+    // Bootstrap 95% CIs on the stealthy-spoof AUCs + the paired corr−PID difference.
+    let n_boot = 2000;
+    let (rows, diff) = stealthy_ci_study(&cfg, n_boot);
+    println!();
+    print!("{}", format_ci(&rows, diff, n_boot));
 }

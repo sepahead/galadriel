@@ -8,9 +8,11 @@
 //! genuine consensus. Per trial we record, for each detector, a binary alarm and a
 //! continuous score; across trials we report detection rate, false-alarm rate (on the
 //! clean/null regime), and ROC-AUC (attack scores vs clean scores, via the Mann–Whitney
-//! identity `AUC = P(score_attack > score_clean)`). A companion study ([`measure_latency`])
-//! reports median **time-to-detect** — frames from attack onset to first alarm on growing
-//! prefixes — because how *fast* a detector fires matters as much as whether it does.
+//! identity `AUC = P(score_attack > score_clean)`). AUCs carry percentile-bootstrap 95 % CIs
+//! ([`stealthy_ci_study`], with a *paired* corr-vs-PID difference CI via [`auc_diff_ci`]).
+//! A companion study ([`measure_latency`]) reports median **time-to-detect** — frames from
+//! attack onset to first alarm on growing prefixes — because how *fast* a detector fires
+//! matters as much as whether it does.
 //!
 //! The headline result is **complementarity**: the baseline catches the *magnitude*
 //! attacks (a loud bias spoof and a jam) but is blind to a *moment-matched stealthy
@@ -250,6 +252,173 @@ pub fn auc(pos: &[f64], neg: &[f64]) -> f64 {
         }
     }
     s / (pos.len() as f64 * neg.len() as f64)
+}
+
+// ---------------------------------------------------------------------------
+// Bootstrap confidence intervals
+// ---------------------------------------------------------------------------
+
+/// A tiny deterministic SplitMix64 PRNG for bootstrap resampling — no dependency, no
+/// `unsafe`, reproducible from a seed (the harness bans `Math.random`-style entropy).
+struct SplitMix64(u64);
+
+impl SplitMix64 {
+    fn next_u64(&mut self) -> u64 {
+        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    }
+    /// A uniform index in `0..n`.
+    fn below(&mut self, n: usize) -> usize {
+        (self.next_u64() % n as u64) as usize
+    }
+}
+
+fn percentiles(mut xs: Vec<f64>, lo: f64, hi: f64) -> (f64, f64) {
+    xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let pick = |q: f64| {
+        let idx = ((q * (xs.len() as f64 - 1.0)).round() as usize).min(xs.len() - 1);
+        xs[idx]
+    };
+    (pick(lo), pick(hi))
+}
+
+/// Percentile bootstrap 95% CI for an AUC, resampling each class with replacement.
+pub fn auc_ci(pos: &[f64], neg: &[f64], n_boot: usize, seed: u64) -> (f64, f64) {
+    if pos.is_empty() || neg.is_empty() {
+        return (f64::NAN, f64::NAN);
+    }
+    let mut rng = SplitMix64(seed.wrapping_add(0x5EED));
+    let mut aucs = Vec::with_capacity(n_boot);
+    let (mut rp, mut rn) = (vec![0.0; pos.len()], vec![0.0; neg.len()]);
+    for _ in 0..n_boot {
+        for r in rp.iter_mut() {
+            *r = pos[rng.below(pos.len())];
+        }
+        for r in rn.iter_mut() {
+            *r = neg[rng.below(neg.len())];
+        }
+        aucs.push(auc(&rp, &rn));
+    }
+    percentiles(aucs, 0.025, 0.975)
+}
+
+/// Paired bootstrap 95% CI for the AUC *difference* `AUC(a) − AUC(b)`, resampling the
+/// trial indices **jointly** so the two detectors share the same resamples (they are
+/// scored on the same streams, so a paired bootstrap is the correct pairing).
+/// `a_pos`/`b_pos` must be aligned by attack-trial; `a_neg`/`b_neg` by clean-trial.
+pub fn auc_diff_ci(
+    a_pos: &[f64],
+    a_neg: &[f64],
+    b_pos: &[f64],
+    b_neg: &[f64],
+    n_boot: usize,
+    seed: u64,
+) -> (f64, f64) {
+    let (np, nn) = (a_pos.len(), a_neg.len());
+    if np == 0 || nn == 0 || b_pos.len() != np || b_neg.len() != nn {
+        return (f64::NAN, f64::NAN);
+    }
+    let mut rng = SplitMix64(seed.wrapping_add(0xD1FF));
+    let mut diffs = Vec::with_capacity(n_boot);
+    let (mut ap, mut an, mut bp, mut bn) =
+        (vec![0.0; np], vec![0.0; nn], vec![0.0; np], vec![0.0; nn]);
+    for _ in 0..n_boot {
+        for i in 0..np {
+            let j = rng.below(np);
+            ap[i] = a_pos[j];
+            bp[i] = b_pos[j];
+        }
+        for i in 0..nn {
+            let j = rng.below(nn);
+            an[i] = a_neg[j];
+            bn[i] = b_neg[j];
+        }
+        diffs.push(auc(&ap, &an) - auc(&bp, &bn));
+    }
+    percentiles(diffs, 0.025, 0.975)
+}
+
+/// A bootstrap-CI row for one detector on the stealthy spoof.
+#[derive(Debug, Clone)]
+pub struct CiRow {
+    /// Detector name.
+    pub name: String,
+    /// Point AUC.
+    pub auc: f64,
+    /// 95% CI lower / upper.
+    pub lo: f64,
+    pub hi: f64,
+}
+
+/// Bootstrap 95% CIs for the three detectors' AUC on the **stealthy spoof** (the regime
+/// where the fine-grained corr-vs-PID claim lives), plus the paired corr−PID AUC-difference
+/// CI. Returns `(rows, (diff, diff_lo, diff_hi))`. Resamples the already-computed scores —
+/// no re-simulation beyond the one score pass.
+pub fn stealthy_ci_study(cfg: &EvalConfig, n_boot: usize) -> (Vec<CiRow>, (f64, f64, f64)) {
+    let (mut cb, mut sb) = (Vec::new(), Vec::new()); // baseline clean/stealthy
+    let (mut cc, mut sc) = (Vec::new(), Vec::new()); // correlation
+    let (mut cp, mut sp) = (Vec::new(), Vec::new()); // PID
+    for t in 0..cfg.trials {
+        let seed = cfg.base_seed + t as u64;
+        let clean = build(Attack::Clean, cfg, seed);
+        let steal = build(Attack::Stealthy, cfg, seed);
+        cb.push(baseline_eval(&clean).1);
+        sb.push(baseline_eval(&steal).1);
+        cc.push(corr_eval(&clean).1);
+        sc.push(corr_eval(&steal).1);
+        cp.push(pid_eval(&clean).1);
+        sp.push(pid_eval(&steal).1);
+    }
+    let seed = cfg.base_seed;
+    let row = |name: &str, pos: &[f64], neg: &[f64]| {
+        let (lo, hi) = auc_ci(pos, neg, n_boot, seed);
+        CiRow {
+            name: name.to_string(),
+            auc: auc(pos, neg),
+            lo,
+            hi,
+        }
+    };
+    let rows = vec![
+        row("baseline (NIS χ²)", &sb, &cb),
+        row("correlation default", &sc, &cc),
+        row("PID (KSG-MI)", &sp, &cp),
+    ];
+    let diff = auc(&sc, &cc) - auc(&sp, &cp);
+    let (dlo, dhi) = auc_diff_ci(&sc, &cc, &sp, &cp, n_boot, seed);
+    (rows, (diff, dlo, dhi))
+}
+
+/// Format the bootstrap-CI study as a plain-text block.
+pub fn format_ci(rows: &[CiRow], diff: (f64, f64, f64), n_boot: usize) -> String {
+    let mut s = String::new();
+    s.push_str(&format!(
+        "Bootstrap 95% CIs — stealthy spoof · {n_boot} resamples\n\n"
+    ));
+    for r in rows {
+        s.push_str(&format!(
+            "{:<22} AUC {:.3}  [{:.3}, {:.3}]\n",
+            r.name, r.auc, r.lo, r.hi
+        ));
+    }
+    let (d, lo, hi) = diff;
+    let tied = lo <= 0.0 && hi >= 0.0;
+    s.push_str(&format!(
+        "{:<22} ΔAUC {:+.3}  [{:+.3}, {:+.3}]  → {}\n",
+        "corr − PID (paired)",
+        d,
+        lo,
+        hi,
+        if tied {
+            "CI includes 0: statistically tied"
+        } else {
+            "CI excludes 0: a real difference"
+        }
+    ));
+    s
 }
 
 /// Per-attack metrics for both detectors and their fusion.
@@ -633,5 +802,46 @@ mod tests {
             "baseline reach on loud {:.2}",
             loud.reach.0
         );
+    }
+
+    #[test]
+    fn bootstrap_cis_show_corr_and_pid_are_tied_but_beat_baseline() {
+        let cfg = EvalConfig {
+            trials: 80,
+            ..Default::default()
+        };
+        let (rows, (diff, dlo, dhi)) = stealthy_ci_study(&cfg, 500);
+
+        // The paired corr−PID AUC-difference CI includes 0 → statistically tied (the
+        // whole point: on this linear-Gaussian spoof MI is forced, not better).
+        assert!(
+            dlo <= 0.0 && dhi >= 0.0,
+            "corr−PID ΔAUC CI [{dlo:.3},{dhi:.3}] should include 0 (diff {diff:.3})"
+        );
+
+        // Both cross-sensor detectors' CIs sit well above the baseline's.
+        let baseline = &rows[0];
+        let corr = &rows[1];
+        assert!(
+            baseline.hi < corr.lo,
+            "baseline CI [.,{:.3}] should not overlap correlation CI [{:.3},.]",
+            baseline.hi,
+            corr.lo
+        );
+        // The baseline is not distinguishable from chance (its CI brackets 0.5).
+        assert!(
+            baseline.lo <= 0.5 && baseline.hi >= 0.45,
+            "baseline AUC CI [{:.3},{:.3}] should be near chance",
+            baseline.lo,
+            baseline.hi
+        );
+    }
+
+    #[test]
+    fn auc_ci_brackets_a_cleanly_separable_case() {
+        let pos: Vec<f64> = (0..50).map(|i| 10.0 + i as f64).collect();
+        let neg: Vec<f64> = (0..50).map(|i| i as f64 * 0.1).collect();
+        let (lo, hi) = auc_ci(&pos, &neg, 500, 1);
+        assert!(lo > 0.95 && hi <= 1.0, "CI [{lo:.3},{hi:.3}] near 1.0");
     }
 }

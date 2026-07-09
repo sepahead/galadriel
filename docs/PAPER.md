@@ -8,12 +8,13 @@ accuracy, latency, cost, and justification numbers in this paper are reproduced 
 `cargo run -p galadriel-eval --release`, `cargo bench -p galadriel-eval --bench detectors`,
 and `cargo run -p galadriel-justify --release`.*
 
-> **Statistical scope (read first).** All reported AUCs, detection rates, and latencies are
-> **point estimates from single fixed-seed Monte-Carlo realizations**; this version does not
-> yet report confidence intervals. We therefore do **not** interpret fine-grained gaps
-> (e.g. AUC 1.000 vs 0.999, or 0.544 vs 0.500) as orderings — they are within sampling
-> resolution and are stated as ties. Bootstrap/DeLong interval estimation is the top item of
-> planned work (§6). All detection numbers are against a **non-adaptive** adversary (§2).
+> **Statistical scope (read first).** Headline AUCs now carry **percentile-bootstrap 95 %
+> confidence intervals** (resampling each class; the corr-vs-PID comparison uses a *paired*
+> bootstrap). Fine-grained gaps are read *through* the CIs: the stealthy-spoof corr-vs-PID
+> difference is ΔAUC ≤ 0.001 with a CI reaching 0 (a **tie**, §5.1), and the two "at chance"
+> claims (baseline AUC 0.547; synergy pairwise AUC 0.544) are confirmed by CIs that **bracket
+> 0.5**. Detection rates/latencies are still bare point estimates. All detection numbers are
+> against a **non-adaptive** adversary (§2).
 
 ---
 
@@ -188,9 +189,9 @@ This section is the paper's methodological core. We measure MI against correlati
 as anomaly detectors — ROC-AUC at separating a *coupled* channel pair from a *decoupled*
 (independence-null) one, a permutation null that holds the marginal fixed so the comparison
 isolates dependence. The coupling study uses **300 trials/class, $n = 400$**; the synergy study
-(§4.2(3)) uses **250 trials/class, $n = 600$**. All values are single-realization point estimates
-(see the Statistical-scope note); information quantities are in **nats** for the MI/KSG columns
-and **bits** for the discrete XOR synergy.
+(§4.2(3)) uses **250 trials/class, $n = 600$**. AUCs carry **percentile-bootstrap 95 % CIs**
+(1000 resamples); information quantities are in **nats** for the MI/KSG columns and **bits** for
+the discrete XOR synergy.
 
 ### 4.1 The trap: on linear-Gaussian data, MI is a monotone function of correlation
 
@@ -207,14 +208,14 @@ covariance matrix, hence of the pairwise correlations — so the whole decomposi
 information beyond $\rho$. Empirically:
 
 ```
-coupling                  | |rho| mean | MI mean (nats) | corr AUC | MI AUC
---------------------------------------------------------------------------
-linear   (Y = X + e)      |     0.894  |     0.814      |  1.000   | 1.000
+coupling            | |rho| mn | corr AUC [95% CI]      | MI AUC [95% CI]
+------------------------------------------------------------------------
+linear  (Y = X + e) |   0.894  | 1.000 [1.000, 1.000]  | 1.000 [1.000, 1.000]
 ```
-(The MI mean 0.814 sits ~0.012 nats above the closed-form $-\tfrac12\ln(1-0.894^2)=0.80$ — the
-known positive finite-sample bias of KSG.) **Correlation and MI are tied at AUC 1.000; using
-KSG mutual information here is forced** — it cannot improve on a detector that is already perfect,
-and §5.3 shows it costs ~100× more to be no better.
+(The KSG MI mean is 0.814 nats, ~0.012 above the closed-form $-\tfrac12\ln(1-0.894^2)=0.80$ — the
+known positive finite-sample bias of KSG.) **Correlation and MI are tied at AUC 1.000 (identical,
+degenerate CIs); using KSG mutual information here is forced** — it cannot improve on a detector
+that is already perfect, and §5.3 shows it costs ~100× more to be no better.
 
 ### 4.2 The three regimes where MI/PID *is* justified (canonical constructions)
 
@@ -226,15 +227,17 @@ correlation is $0$ even though the variables are strongly dependent. On a random
 flip $Y = \pm X + \varepsilon$:
 
 ```
-nonlinear (Y = +/-X + e)  |     0.067  |     0.391      |  0.662   | 1.000
+nonlinear (Y=+-X+e) |   0.067  | 0.662 [0.617, 0.707]  | 1.000 [1.000, 1.000]
 ```
 
-MI is decisive (AUC 1.000) while correlation reaches only 0.662 — and even that is **not linear
-signal**: the population $\rho$ is $0$, but the *sample* correlation's variance is inflated by
-the kurtosis of $X$ (a fourth-moment effect, $\mathrm{Var}(\hat\rho)$ scaling with
-$\mathbb{E}[X^4]/\mathrm{Var}(X)^2$), and a $|\hat\rho|$ detector rides that variance artifact
-to 0.66. The precise reason to use MI is that it catches a **correlation-preserving** attack that
-breaks a nonlinear dependence, without the defender knowing the attack's form in advance.
+MI is decisive (AUC 1.000) while correlation reaches only 0.662 [0.617, 0.707] — and even that is
+**not linear signal**: the population $\rho$ is $0$, but the *sample* correlation's variance is
+inflated by the kurtosis of $X$ (a fourth-moment effect, $\mathrm{Var}(\hat\rho)$ scaling with
+$\mathbb{E}[X^4]/\mathrm{Var}(X)^2$), and a $|\hat\rho|$ detector rides that variance artifact to
+0.66. (The correlation CI excludes 0.5, so the artifact is real but bounded; MI's CI excludes
+correlation's entirely, so the ~0.34 gap is not sampling noise.) The precise reason to use MI is
+that it catches a **correlation-preserving** attack that breaks a nonlinear dependence, without the
+defender knowing the attack's form in advance.
 
 **(2) Adversarial robustness (Kerckhoffs) — a framing of (1), not an independent reason.**
 Under Kerckhoffs [Kerckhoffs1883] the adversary knows the detector and may craft an injection
@@ -255,17 +258,18 @@ unique atoms vanish, so $Q = \mathrm{Syn}$); it is a joint-MI test, not the $I^{
 decomposition itself.
 
 ```
-detector                 |   AUC (bits target)
------------------------------------------------
-correlation (pairwise)   |  0.544    <- at chance
-mutual info (pairwise)   |  0.544    <- also at chance
-synergy contrast Q       |  1.000    (0.997 bits)
+detector                 |  AUC   [95% CI]        (bits target)
+---------------------------------------------------------------
+correlation (pairwise)   | 0.544  [0.496, 0.592]  <- CI brackets 0.5: chance
+mutual info (pairwise)   | 0.544  [0.496, 0.594]  <- CI brackets 0.5: chance
+synergy contrast Q       | 1.000  [1.000, 1.000]  (0.997 bits)
 ```
 
-Correlation **and pairwise MI alike** are at chance (both 0.544, indistinguishable from 0.5;
-note that on binary variables discrete MI is a monotone function of the sample correlation $\phi$,
-so their identical AUC is *expected*, not independent corroboration) — only the joint measure
-separates the attack. **No pairwise statistic can see synergy; a joint-information (or PID)
+Correlation **and pairwise MI alike** are at chance — both AUC 0.544 with CIs that **bracket
+0.5**, so neither is distinguishable from chance (note that on binary variables discrete MI is a
+monotone function of the sample correlation $\phi$, so their identical AUC is *expected*, not
+independent corroboration) — while only the joint measure separates the attack (1.000 [1.000,
+1.000]). **No pairwise statistic can see synergy; a joint-information (or PID)
 measure can.** This is the one regime where a joint measure is a necessity, not a choice. We
 *hypothesize* — but do not evaluate here — that this regime dominates for neural fusion policies
 (e.g. the vision-language-action analysis in the sibling `prisoma` project); the claim is left
@@ -313,13 +317,23 @@ beats PID on magnitude attacks; that is a bundling artifact. **The only apples-t
 comparison of the two consistency scores is the AUC pair** (`corr AUC`, `PID AUC`), which share
 the identical decoupling-depth score.
 
-On that fair comparison, on the stealthy spoof the magnitude baseline is at chance (AUC 0.547),
-*as its construction guarantees*, while both cross-sensor detectors recover it — correlation
-1.000 and PID 0.999. Per the Statistical-scope note we treat these as **tied**: the 0.001 gap is
-within sampling resolution and consistent with KSG's finite-sample variance; we do not claim
-correlation "beats" PID. On the magnitude attacks the ordering flips (baseline 1.000, consistency
-scores at chance): the baseline owns that half of the space. These results are against a
-non-adaptive, single-channel adversary (§2).
+On that fair comparison, on the stealthy spoof the magnitude baseline is at chance while both
+cross-sensor detectors recover it. A bootstrap (2000 resamples) makes this precise:
+
+```
+Bootstrap 95% CIs — stealthy spoof (200 trials)
+  baseline (NIS χ²)      AUC 0.547  [0.490, 0.603]   <- brackets 0.5: at chance
+  correlation default    AUC 1.000  [1.000, 1.000]
+  PID (KSG-MI)           AUC 0.999  [0.999, 1.000]
+  corr − PID (paired)   ΔAUC +0.001  [+0.000, +0.001] <- reaches 0: a TIE
+```
+
+The baseline's CI **brackets 0.5** (not distinguishable from chance, *as its construction
+guarantees*); the two cross-sensor detectors sit at 1.000/0.999 with a **paired** AUC difference
+of at most **0.001** whose CI reaches 0 — a statistical tie. We do **not** claim correlation
+"beats" PID; the ~100×-costlier estimator buys nothing here. On the magnitude attacks the ordering
+flips (baseline 1.000, consistency scores at chance): the baseline owns that half of the space.
+These results are against a non-adaptive, single-channel adversary (§2).
 
 ### 5.2 Detection latency (time-to-detect)
 
@@ -388,9 +402,10 @@ default, MI/PID on escalation" recommendation defensible.
   nominal) is not evaluated, and a colluding $2$-of-$3$ compromise can invert the consensus and
   cause the detector to accuse the honest channel. Characterizing the maximum undetectable bias,
   and the honest-majority assumption's failure mode, is the primary open item.
-- **No interval estimates yet.** All numbers are single-realization point estimates; the paper
-  states ties where gaps are within plausible sampling noise but does not yet compute bootstrap/
-  DeLong CIs. Adding them (and a paired corr-vs-PID test) is the top rigor task.
+- **Interval estimates: partial.** AUCs now carry percentile-bootstrap 95 % CIs (with a paired
+  corr-vs-PID bootstrap), which is what backs the "tie" and "at chance" claims. Detection rates
+  and latencies are still bare point estimates; extending Wilson/bootstrap CIs to them, and adding
+  DeLong CIs alongside the bootstrap, is remaining work.
 - **Best-case attack instance.** The accuracy study exercises full decoupling (phantom latent
   correlation ≈ 0) on 1 of 3 channels. A sweep of decoupling strength (partial `ρ` retention → an
   AUC-degradation curve) and multi-channel compromise, which show where consistency detection
