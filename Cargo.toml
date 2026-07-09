@@ -12,6 +12,15 @@ members = [
     "crates/galadriel-core",
     "crates/galadriel-sim",
     "crates/galadriel-cli",
+    "crates/galadriel-pid",
+]
+# The default build (`cargo build` / `cargo test` with no args) stays PURE — it
+# excludes galadriel-pid, which pulls the heavier pid-core. Build/test it with
+# `-p galadriel-pid`, `--workspace`, or via the cli `pid` feature.
+default-members = [
+    "crates/galadriel-core",
+    "crates/galadriel-sim",
+    "crates/galadriel-cli",
 ]
 
 [workspace.package]
@@ -36,6 +45,7 @@ clap = { version = "4", features = ["derive"] }
 anyhow = "1"
 galadriel-core = { path = "crates/galadriel-core" }
 galadriel-sim = { path = "crates/galadriel-sim" }
+galadriel-pid = { path = "crates/galadriel-pid" }
 
 [profile.release]
 lto = "thin"

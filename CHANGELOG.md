@@ -16,15 +16,23 @@ versions may make breaking changes).
   (`Nominal` / `Spoof` / `Jam` / `InsufficientEvidence`).
 - **`galadriel-sim`** — deterministic synthetic χ²(3) scenarios plus the
   `PhantomAcousticDoa` (targeted single-channel) and `BroadbandJam` (correlated
-  all-channel) injections.
+  all-channel) injections; **shared-latent correlated scenarios** (`rho`) and a
+  **moment-matched `StealthySpoof`** (same variance, so the NIS baseline is blind).
+- **`galadriel-pid`** (feature `pid`) — the **cross-sensor PID engine**:
+  geometry-gated **pairwise KSG mutual information** as a corroboration score plus
+  the `I^sx` **redundancy atom** (via `pid-core`), with a leave-one-out framing and
+  a fail-closed `InsufficientEvidence` state. On a moment-matched stealthy spoof it
+  flags the decoupled channel the NIS baseline cannot see — empirically validating
+  the "must beat the baseline" hypothesis (robust across seeds).
 - **`galadriel-cli`** — the `demo` subcommand: CLEAN → NOMINAL, phantom → SPOOF,
-  jam → JAM, with per-channel NIS sparklines.
+  jam → JAM, with per-channel NIS sparklines; under `--features pid`, a
+  baseline-vs-PID panel showing the baseline blind while PID catches the stealthy spoof.
 - Dual MIT / Apache-2.0 licensing, CI (fmt + clippy + test + MSRV + pure-core
   smoke), and project docs.
 
 ### Notes
-- The `pid` (cross-sensor PID engine, pulls `pid-core`) and `ncp` (observation
-  ingest, pulls `ncp-core`; live tap behind `ncp-live`) features are planned and
-  additive; the default build remains pure and heavy-dependency-free.
+- The `ncp` observation-ingest feature (pulls `ncp-core`; live Zenoh tap behind
+  `ncp-live`) is planned and additive; the default build remains pure and
+  heavy-dependency-free.
 
 [Unreleased]: https://github.com/sepahead/galadriel

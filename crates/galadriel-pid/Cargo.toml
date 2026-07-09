@@ -1,0 +1,18 @@
+[package]
+name = "galadriel-pid"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "The cross-sensor Partial Information Decomposition engine for Galadriel's Mirror (feature `pid`)."
+
+[dependencies]
+galadriel-core = { workspace = true }
+# Path dependency into the intact pid-rs tree (three levels up from this crate).
+# For a fresh clone / CI, swap to: pid-core = { git = "https://github.com/sepahead/pid-rs", tag = "..." }
+pid-core = { path = "../../../pid-rs/crates/pid-core" }
+
+[dev-dependencies]
+galadriel-sim = { path = "../galadriel-sim" }

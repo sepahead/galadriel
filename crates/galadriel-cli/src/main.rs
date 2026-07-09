@@ -52,6 +52,7 @@ fn run_demo(frames: usize, seed: u64) {
         frames,
         modalities: mods.clone(),
         sigma: 1.0,
+        rho: 0.0,
         dt_ms: 100,
         seed,
     };
@@ -96,6 +97,17 @@ fn run_demo(frames: usize, seed: u64) {
         &jam,
         &mods,
         color,
+    );
+
+    #[cfg(feature = "pid")]
+    run_pid_demo(frames, seed, color);
+    #[cfg(not(feature = "pid"))]
+    println!(
+        "\n  {}",
+        dim(
+            "build with `--features pid` to watch the PID engine catch a stealthy spoof the baseline misses",
+            color
+        )
     );
 
     println!();
@@ -226,4 +238,81 @@ fn cyan(s: &str, color: bool) -> String {
 }
 fn dim(s: &str, color: bool) -> String {
     wrap(s, "2", color)
+}
+
+/// The `pid` feature demo: on a moment-matched stealthy spoof the magnitude
+/// baseline is blind (NIS stays in-covariance) while the cross-sensor PID engine
+/// catches the decoupled channel.
+#[cfg(feature = "pid")]
+fn run_pid_demo(frames: usize, seed: u64, color: bool) {
+    use galadriel_pid::{analyze, scalar_channels, PidConfig, PidVerdict};
+    use galadriel_sim::scenario::{generate_spoofed, StealthySpoof};
+
+    let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
+    let cfg = ScenarioConfig {
+        track_id: 1,
+        frames,
+        modalities: mods.clone(),
+        sigma: 1.0,
+        rho: 0.7,
+        dt_ms: 100,
+        seed,
+    };
+    let stream = generate_spoofed(
+        &cfg,
+        StealthySpoof {
+            target: Modality::Acoustic,
+            start_frame: (frames as u64) / 3,
+        },
+    );
+
+    // Baseline verdict on the same stream.
+    let mut mirror = Mirror::new(DetectorConfig::default());
+    let mut base = None;
+    for chunk in stream.chunks(mods.len()) {
+        for o in chunk {
+            mirror.ingest(o);
+        }
+        base = Some(mirror.assess(cfg.track_id, chunk[0].seq));
+    }
+    let base = base.expect("non-empty stream");
+
+    // PID verdict.
+    let pid = analyze(&scalar_channels(&stream, &mods, 0), &PidConfig::default());
+
+    println!();
+    println!(
+        "{}",
+        cyan(
+            "┌─ MOMENT-MATCHED STEALTHY SPOOF (acoustic) — baseline vs PID",
+            color
+        )
+    );
+    for c in &pid.channels {
+        let tag = if c.decoupled {
+            red("● DECOUPLED", color)
+        } else {
+            green("● corroborates", color)
+        };
+        let mi = c
+            .corroboration
+            .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));
+        println!(
+            "│  {:<15} corroboration={}  {}",
+            c.modality.label(),
+            mi,
+            tag
+        );
+    }
+    let bl = match base.verdict {
+        Verdict::Nominal => green("NOMINAL — blind (NIS stays in-covariance)", color),
+        _ => red(&verdict_str(&base.verdict), color),
+    };
+    let pv = match pid.verdict {
+        PidVerdict::Spoof(_) => red("SPOOF", color),
+        PidVerdict::Nominal => green("NOMINAL", color),
+        PidVerdict::InsufficientEvidence => dim("INSUFFICIENT-EVIDENCE", color),
+    };
+    println!("│  baseline (NIS χ²):  {}", bl);
+    println!("└▷ PID engine:        {}   {}", pv, dim(&pid.note, color));
 }
