@@ -33,6 +33,12 @@ versions may make breaking changes).
   `CONTRACT_HASH`). The cli gains a `replay <jsonl>` subcommand that runs a captured
   stream through the baseline (and PID with `--features pid,ncp`). `.ncp-consumer`
   pins the dependency.
+- **`galadriel-eval`** — a Monte-Carlo harness (PID vs baseline across clean / loud
+  bias spoof / moment-matched stealthy spoof / jam) reporting detection rate,
+  false-alarm rate, and ROC-AUC. Result (`docs/EVALUATION.md`, 200 trials/regime): on
+  the stealthy spoof the baseline is at chance (AUC 0.547) while PID reaches AUC 0.999
+  at 0% false-alarm rate; on magnitude attacks the baseline is 100% and PID is
+  correctly silent — the two detectors are complementary.
 - Dual MIT / Apache-2.0 licensing, CI (fmt + clippy + test + MSRV + pure-core
   smoke), and project docs.
 

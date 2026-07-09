@@ -83,7 +83,10 @@ optional cross-sensor PID engine compares each channel's innovation against a
 check and block-subsample CIs, to separate a moment-matched spoof (one channel
 decouples in *information structure* while its NIS stays in-covariance) from benign
 decorrelation — something the NIS baseline alone cannot do. It ships only if it
-**beats the baseline** on the fixtures. Full design: `galadriels-mirror.md`.
+**beats the baseline** on the fixtures — and it does: on a moment-matched stealthy
+spoof the baseline is at chance (ROC-AUC 0.547) while PID reaches **0.999** at a 0%
+false-alarm rate ([`docs/EVALUATION.md`](docs/EVALUATION.md)). Full design:
+`galadriels-mirror.md`.
 
 ## Architecture
 

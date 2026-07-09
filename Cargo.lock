@@ -191,6 +191,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "galadriel-eval"
+version = "0.1.0"
+dependencies = [
+ "galadriel-core",
+ "galadriel-pid",
+ "galadriel-sim",
+]
+
+[[package]]
 name = "galadriel-ncp"
 version = "0.1.0"
 dependencies = [

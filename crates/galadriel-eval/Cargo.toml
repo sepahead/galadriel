@@ -1,0 +1,18 @@
+[package]
+name = "galadriel-eval"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Monte-Carlo evaluation harness: the PID engine vs the NIS baseline across attack types."
+
+[[bin]]
+name = "galadriel-eval"
+path = "src/main.rs"
+
+[dependencies]
+galadriel-core = { workspace = true }
+galadriel-sim = { workspace = true }
+galadriel-pid = { workspace = true }
