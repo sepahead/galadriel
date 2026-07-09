@@ -30,8 +30,8 @@
 //! This is an **advisory** detector. It authenticates *statistical consistency*,
 //! not truth: a moment-matched spoof that keeps each channel's NIS within its own
 //! covariance passes the baseline — separating those from benign decorrelation is
-//! the job of the optional `pid` engine (cross-channel information structure),
-//! documented in `docs/galadriels-mirror.md`.
+//! the job of the optional `pid` engine (cross-channel information structure). See the
+//! repository's `docs/JUSTIFICATION.md` and `docs/EVALUATION.md`.
 
 pub mod baseline;
 pub mod chi2;

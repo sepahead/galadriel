@@ -205,6 +205,39 @@ mod tests {
     }
 
     #[test]
+    fn phantom_scalar_fallback_raises_nis_by_bias_squared() {
+        // A baseline-only observation (innovation None) exercises the scalar NIS fallback.
+        let mut obs = PidObservation::scalar(1, 500, 5, Modality::Acoustic, 3.0, 3);
+        PhantomAcousticDoa {
+            target: Modality::Acoustic,
+            start_frame: 5,
+            bias: 4.0,
+        }
+        .apply(&mut obs);
+        assert!((obs.nis - (3.0 + 16.0)).abs() < 1e-9, "nis={}", obs.nis);
+
+        let mut early = PidObservation::scalar(1, 0, 0, Modality::Acoustic, 3.0, 3);
+        PhantomAcousticDoa {
+            target: Modality::Acoustic,
+            start_frame: 5,
+            bias: 4.0,
+        }
+        .apply(&mut early);
+        assert!((early.nis - 3.0).abs() < 1e-12, "pre-onset untouched");
+    }
+
+    #[test]
+    fn jam_scalar_fallback_scales_nis_by_inflation_squared() {
+        let mut obs = PidObservation::scalar(1, 500, 5, Modality::Radar, 4.0, 3);
+        BroadbandJam {
+            start_frame: 5,
+            inflation: 3.0,
+        }
+        .apply(&mut obs);
+        assert!((obs.nis - 4.0 * 9.0).abs() < 1e-9, "nis={}", obs.nis);
+    }
+
+    #[test]
     fn maneuver_perturbs_the_innovation_inside_its_window() {
         let cfg = ScenarioConfig {
             frames: 200,

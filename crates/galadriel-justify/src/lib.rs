@@ -229,15 +229,16 @@ pub fn format_report(s: &Study) -> String {
         "Detector ROC-AUC at separating a coupled pair from a decoupled (independent) one:\n\n",
     );
     out.push_str(&format!(
-        "{:<26} | {:>8} | {:>19} | {:>19}\n",
-        "coupling", "|rho| mn", "corr AUC [95% CI]", "MI AUC [95% CI]"
+        "{:<26} | {:>8} | {:>8} | {:>19} | {:>19}\n",
+        "coupling", "|rho| mn", "MI nats", "corr AUC [95% CI]", "MI AUC [95% CI]"
     ));
-    out.push_str(&format!("{}\n", "-".repeat(80)));
+    out.push_str(&format!("{}\n", "-".repeat(91)));
     for r in &s.results {
         out.push_str(&format!(
-            "{:<26} | {:>8.3} | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}]\n",
+            "{:<26} | {:>8.3} | {:>8.3} | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}]\n",
             r.coupling.label(),
             r.corr_coupled_mean,
+            r.mi_coupled_mean,
             r.corr_auc,
             r.corr_auc_ci.0,
             r.corr_auc_ci.1,

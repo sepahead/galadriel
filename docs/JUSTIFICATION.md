@@ -24,7 +24,8 @@ and a `|ρ|`-threshold detector are the **same detector** on linear-Gaussian dat
 adds exactly nothing. Galadriel's original stealthy-spoof fixture (a channel decoupling
 to an independent Gaussian latent) is *linear-Gaussian*. **On that fixture, using KSG
 mutual information instead of a one-line correlation is forcing the method.** This is
-the honest weakness the design review (`galadriels-mirror.md`, lens 04) flagged, made
+the honest weakness the design review (the sibling `haldir` repo's `galadriels-mirror.md`,
+lens 04) flagged, made
 concrete.
 
 ## 2. The reason: MI is a *model-free* dependence detector

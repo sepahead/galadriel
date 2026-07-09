@@ -28,6 +28,6 @@ for an undisclosed vulnerability. We aim to acknowledge within a few business da
 
 - Safe Rust only (`#![forbid(unsafe_code)]`).
 - The default build has a small, audited dependency surface (serde, thiserror,
-  rand, clap, anyhow). Heavier optional dependencies (pid-core, ncp-core,
+  rand, rand_distr, clap, anyhow). Heavier optional dependencies (pid-core, ncp-core,
   ncp-zenoh) are gated behind off-by-default features and pinned for reproducible
   builds.

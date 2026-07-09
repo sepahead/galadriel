@@ -231,14 +231,16 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &PidConfig) -> PidReport 
             continue; // corroborates — not a candidate
         }
         if cfg.bootstrap {
-            // Confirm the decoupling is significant: bootstrap the channel's best-pair
-            // MI and confirm only if even its upper CI bound stays below the reference
-            // corroboration — i.e. it confidently shares less than the group leader.
+            // Confirm the decoupling is significant: bootstrap the channel's best-pair MI
+            // and confirm only if even its upper CI bound stays below the *decouple
+            // threshold* (`decouple_ratio × reference`) — i.e. it confidently sits below
+            // the decouple line, not merely below the group leader. This is strictly
+            // stronger than the point gate, so the confirmed set is a fail-closed subset.
             if let Some(peer) = best_peer(&mi, i, c) {
                 let point = reports[i].corroboration.unwrap();
                 let (lo, hi) = bootstrap_mi_ci(cfg, &cols[i], &cols[peer], point);
                 reports[i].ci = Some((lo, hi));
-                if hi < reference {
+                if hi < threshold {
                     reports[i].decoupled = true;
                     decoupled.push(reports[i].modality);
                 }

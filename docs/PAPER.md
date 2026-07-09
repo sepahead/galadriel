@@ -494,10 +494,12 @@ fused-track displacement needs the downstream filter and is out of scope here.)
 The stationary sim reports FAR on a *clean, stationary* stream; real innovations spike and
 decorrelate under a target maneuver, a false-positive source the consistency check cannot, by
 itself, distinguish from a spoof. We inject a **benign** stress-test maneuver — a shared 12σ
-triangular ramp over 90 frames (filling most of the 128-frame window) — with a **per-channel
-lag** (`lag_step` × the channel index, a first-order proxy for heterogeneous sensor dynamics),
-and count the consistency **false-decoupling** rate (isolated from the NIS/jam alarm a coherent
-maneuver legitimately raises):
+triangular ramp over 90 frames (onset at frame 100, so its tail extends into the last-128
+analysis window) — with a **per-channel lag** (`lag_step` × the modality's enum discriminant, a
+first-order proxy for heterogeneous sensor dynamics; so radar is the most-lagged channel, and at
+large `lag_step` a channel's lagged ramp falls partly outside the 300-frame capture — itself a
+form of extreme asymmetry). We count the consistency **false-decoupling** rate (isolated from the
+NIS/jam alarm a coherent maneuver legitimately raises):
 
 ```
  lag_step | corr FAR | PID FAR      (200 trials, benign 12σ / 90-frame maneuver)
@@ -509,9 +511,11 @@ maneuver legitimately raises):
    64     |  0.375   |  0.180
 ```
 
-Three honest findings. **(i) A synchronized maneuver does not false-alarm** (0.000): the detector
-keys off *asymmetric* decoupling — one channel against the consensus — and a shared maneuver
-perturbs all channels alike, so coherent non-stationarity is invisible to it by construction.
+Three honest findings. **(i) A synchronized maneuver does not false-alarm** (0.000): a *common-mode*
+ramp is a strong shared signal that, if anything, *raises* inter-channel correlation — it cannot
+produce the *asymmetric* decoupling (one channel against the consensus) the detector keys off. This
+holds regardless of how much of the ramp lands in the analysis window, so coherent non-stationarity
+is invisible to the check by construction.
 **(ii) Strongly heterogeneous (large-lag) maneuvers do false-alarm** (up to ~0.24–0.38) — a real,
 disclosed benign false-positive limit: sufficiently divergent per-channel dynamics *are*
 indistinguishable from a decoupling. **(iii) Correlation is again the more robust of the two**

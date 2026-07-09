@@ -5,6 +5,11 @@
 //! cumulative sum exceeds the threshold `h`. It catches a *sustained* mean shift
 //! (a persistent spoof/jam) faster than a single-window test, while a slack band
 //! rejects transient benign spikes.
+//!
+//! Note: the lower arm accrues only when `x < target − slack`, so with the default
+//! configuration (`cusum_slack == dof`) it is inert for a non-negative NIS — the detector
+//! is effectively one-sided there, watching only for *inflation*. A configuration with
+//! `slack < target` activates the below-target arm.
 
 /// Two-sided tabular CUSUM.
 #[derive(Debug, Clone)]
@@ -82,5 +87,38 @@ mod tests {
         }
         let at = fired_at.expect("CUSUM never fired on a large step");
         assert!(at <= 3, "CUSUM too slow: fired at frame {at}");
+    }
+
+    #[test]
+    fn fires_on_sustained_step_down_via_the_lower_arm() {
+        // The lower arm is active only when slack < target; with slack 1.0 < target 3.0 a
+        // sustained below-target NIS accrues on `lo` and alarms.
+        let mut c = Cusum::new(3.0, 1.0, 5.0);
+        let mut fired = None;
+        for i in 0..20 {
+            if c.update(0.0) {
+                fired = Some(i);
+                break;
+            }
+        }
+        let at = fired.expect("lower arm never fired on a sustained drop");
+        assert!(
+            c.lo() > 0.0 && c.hi() == 0.0,
+            "the LOWER arm should drive the alarm (hi={}, lo={})",
+            c.hi(),
+            c.lo()
+        );
+        assert!(at <= 4, "lower CUSUM too slow: fired at {at}");
+    }
+
+    #[test]
+    fn reset_clears_both_arms() {
+        let mut c = Cusum::new(3.0, 1.0, 5.0);
+        for _ in 0..10 {
+            c.update(20.0);
+        }
+        assert!(c.alarm());
+        c.reset();
+        assert!(!c.alarm() && c.hi() == 0.0 && c.lo() == 0.0);
     }
 }

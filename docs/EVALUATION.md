@@ -371,4 +371,4 @@ cargo test -p galadriel-eval
 ```
 
 Design provenance: the full, adversarially-reviewed method (threat model, estimand,
-estimator gates) is `galadriels-mirror.md`.
+estimator gates) is `galadriels-mirror.md` in the sibling `haldir` planning repository.

@@ -244,4 +244,34 @@ mod tests {
             other => panic!("expected Spoof(acoustic), got {other:?}"),
         }
     }
+
+    #[test]
+    fn fewer_than_three_channels_is_insufficient_evidence() {
+        let n = 128;
+        let a = series(n, |i| (i as f64).sin());
+        let b = series(n, |i| (i as f64).sin() + 0.05);
+        let two = vec![(Modality::Visual, a), (Modality::Radar, b)];
+        assert_eq!(
+            analyze(&two, &CorrConfig::default()).verdict,
+            CorrVerdict::InsufficientEvidence
+        );
+    }
+
+    #[test]
+    fn no_linear_consensus_fails_closed() {
+        use std::f64::consts::PI;
+        // Three orthogonal sinusoids (DFT basis over a full period) — pairwise |ρ| ≈ 0, so
+        // there is no coherent consensus to decouple from → fail closed, not a false Spoof.
+        let n = 120;
+        let s = |k: f64| series(n, |i| (2.0 * PI * k * i as f64 / n as f64).sin());
+        let chans = vec![
+            (Modality::Visual, s(1.0)),
+            (Modality::Radar, s(2.0)),
+            (Modality::Acoustic, s(3.0)),
+        ];
+        assert_eq!(
+            analyze(&chans, &CorrConfig::default()).verdict,
+            CorrVerdict::InsufficientEvidence
+        );
+    }
 }

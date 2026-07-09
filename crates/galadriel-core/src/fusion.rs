@@ -96,9 +96,15 @@ pub fn combine(
                 ),
             )
         }
-        _ => (
+        Verdict::Nominal => (
             FusedVerdict::Nominal,
             "all channels corroborate and NIS is consistent".to_string(),
+        ),
+        // Baseline could not assess magnitude and there is no decoupling to escalate on:
+        // fail closed rather than silently upgrade an insufficient baseline to Nominal.
+        Verdict::InsufficientEvidence => (
+            FusedVerdict::InsufficientEvidence,
+            "baseline lacks magnitude evidence and no decoupling seen — fail closed".to_string(),
         ),
     }
 }
@@ -249,5 +255,31 @@ mod tests {
     fn both_insufficient_fails_closed() {
         let (v, _) = combine(&baseline(Verdict::InsufficientEvidence, &[]), &[], true);
         assert_eq!(v, FusedVerdict::InsufficientEvidence);
+    }
+
+    #[test]
+    fn insufficient_baseline_without_decoupling_fails_closed_not_nominal() {
+        // Baseline can't assess magnitude; the consistency check HAS evidence and sees no
+        // decoupling. We must NOT upgrade to Nominal (we never verified magnitude) — the
+        // fail-closed contract of Verdict::InsufficientEvidence.
+        let (v, _) = combine(&baseline(Verdict::InsufficientEvidence, &[]), &[], false);
+        assert_eq!(v, FusedVerdict::InsufficientEvidence);
+    }
+
+    #[test]
+    fn insufficient_baseline_with_decoupling_still_escalates_to_spoof() {
+        // A consistency decoupling escalates to Spoof even when the baseline is out.
+        let (v, _) = combine(
+            &baseline(Verdict::InsufficientEvidence, &[]),
+            &[Modality::Acoustic],
+            false,
+        );
+        assert_eq!(
+            v,
+            FusedVerdict::Spoof {
+                channels: vec![Modality::Acoustic],
+                stealthy: true
+            }
+        );
     }
 }

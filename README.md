@@ -111,7 +111,8 @@ The justification study quantifies exactly when this earns its cost
 coupling correlation can't see, and an *irreducible* synergy regime where even pairwise
 MI is at chance. On the linear stealthy spoof it merely *matches* the correlation default
 (AUC 0.999) — so there, honestly, MI is **forced, not justified**. Use PID where it is
-irreducible, correlation where it is not. Full design: `galadriels-mirror.md`.
+irreducible, correlation where it is not. The full 10-lens design review lives in the
+sibling `haldir` planning repository (`galadriels-mirror.md`).
 
 ## Architecture
 
@@ -126,7 +127,7 @@ crates/
   galadriel-eval   Monte-Carlo: baseline vs correlation-default vs PID vs fused (docs/EVALUATION.md)
 ```
 
-The **default build is pure and light** (serde, thiserror, rand, clap). Heavier
+The **default build is pure and light** (serde, thiserror, rand, rand_distr, clap, anyhow). Heavier
 integrations are additive, off-by-default features:
 
 | feature | pulls | adds |

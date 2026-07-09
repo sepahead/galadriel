@@ -135,6 +135,11 @@ fn run_demo(frames: usize, seed: u64) {
 }
 
 fn run_case(title: &str, stream: &[PidObservation], mods: &[Modality], color: bool) {
+    if stream.is_empty() {
+        println!("\n{}", cyan(&format!("┌─ {title}"), color));
+        println!("└▷ {}", dim("(no observations — nothing to assess)", color));
+        return;
+    }
     let mut mirror = Mirror::new(DetectorConfig::default());
     let track = stream[0].track_id;
     let mut history: HashMap<Modality, Vec<f64>> = HashMap::new();
