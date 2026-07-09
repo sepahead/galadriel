@@ -36,24 +36,46 @@ versions may make breaking changes).
   `CONTRACT_HASH`). The cli gains a `replay <jsonl>` subcommand that runs a captured
   stream through the baseline (and PID with `--features pid,ncp`). `.ncp-consumer`
   pins the dependency.
-- **`galadriel-eval`** — a Monte-Carlo harness across clean / loud bias spoof /
-  moment-matched stealthy spoof / jam, on a **three-axis** basis:
-  - *Accuracy* — detection rate, false-alarm rate, ROC-AUC. On the stealthy spoof the
-    baseline is at chance (AUC 0.547) while the cross-sensor detectors recover it; on
-    magnitude attacks the baseline is 100% and they are correctly silent (complementary).
-  - *Latency* (§2.1, `measure_latency`) — median time-to-detect over growing prefixes:
-    magnitude attacks fire in ~4 frames, the stealthy spoof carries a real window-fill
-    latency (52 f PID / 80 f correlation), caught reliably (100% reach) but not instantly.
-  - *Cost* (§2.2, `benches/detectors.rs`, criterion) — the correlation default is
-    ~1× the NIS baseline (tens of µs), the PID/KSG engine ~100×; on the linear spoof
-    that is ~100× compute for zero accuracy gain.
-- **`docs/JUSTIFICATION.md` + `galadriel-justify`** — a rigorous answer to *when is PID
-  justified, and when is it forced?* On linear-Gaussian data `MI = −½ln(1−ρ²)` is
-  monotone in `ρ`, so MI and correlation are the same detector (corr AUC = MI AUC =
-  1.000) — **PID is forced**. It is **justified** only by (1) model-free nonlinear
-  dependence (ΔAUC 0.34 on `Y=±X`), (2) adversarial robustness (Kerckhoffs), and
-  (3) **irreducible synergy** — on `T=A⊕B` correlation *and* pairwise MI are both at
-  chance while only the joint decomposition separates (AUC 1.000). Both empirical.
+- **`galadriel-eval`** — a Monte-Carlo harness (clean / loud bias spoof / moment-matched
+  stealthy spoof / jam) that grew into an **eight-part evaluation**, all with
+  **percentile-bootstrap 95 % confidence intervals** (`auc_ci`, plus a *paired* corr-vs-PID
+  `auc_diff_ci`) and, for rates, Wilson intervals:
+  - *Accuracy* — detection rate, FAR, ROC-AUC. Stealthy spoof: baseline at chance
+    (AUC 0.547 [0.490, 0.603], CI brackets 0.5) while the cross-sensor detectors recover it
+    (corr 1.000, PID 0.999, paired ΔAUC +0.001 [+0.000, +0.001] — a tie).
+  - *Latency* (`measure_latency`) — median time-to-detect: magnitude attacks fire in
+    ~4 frames, the stealthy spoof carries a real window-fill latency (52 f / 80 f).
+  - *Cost* (`benches/detectors.rs`, criterion) — correlation default ~1× the NIS baseline,
+    the PID/KSG engine ~100× (≈100× compute for zero accuracy gain on the linear spoof).
+  - *Detection boundary* (`decoupling_sweep`) — sweeping decoupling strength, correlation
+    **strictly beats** PID through the mid-boundary (paired ΔAUC CI > 0, `d ∈ [0.2, 0.8]`):
+    MI/PID is not merely forced but strictly *worse* where the nonparametric estimator's
+    variance bites.
+  - *Honest-majority failure* (`collusion_study`) — a colluding 2-of-3 majority inverts the
+    detector: it accuses the honest channel (correlation 100 % [0.981, 1.000], PID 97.5 %),
+    structurally, so neither escapes it.
+  - *Adaptive adversary* (`adaptive_adversary`) — at a **matched FAR**, correlation's evasion
+    ceiling is lower (0.20 vs 0.40): a Kerckhoffs-aware adversary does not favour PID.
+  - *Non-stationary FAR* (`maneuver_far`, `galadriel-sim`'s `Maneuver`) — a synchronized
+    maneuver never false-alarms; heterogeneous ones do (a disclosed limit), with correlation
+    again more robust than PID, and coherent maneuvers routed to `Jam` not `Spoof`.
+- **`docs/JUSTIFICATION.md` + `galadriel-justify`** — a rigorous answer to *when is MI/PID
+  justified, and when is it forced?* On linear-Gaussian data the plug-in Gaussian
+  `MI = −½ln(1−ρ²)` is monotone in `ρ` (and every Gaussian PID atom is a function of the
+  covariance), so MI/PID and correlation are the same detector (corr AUC = MI AUC = 1.000,
+  CIs both degenerate) — **MI/PID is forced**, and (per the eval) strictly *worse* near the
+  boundary. It is **justified** only by (1) model-free nonlinear dependence
+  (ΔAUC 0.34 on `Y=±X`; corr 0.662 [0.617, 0.707] is a kurtosis artifact); (2) adversarial
+  robustness — *a framing of (1) that bites only off the Gaussian manifold* (the §5.7 adaptive
+  study shows correlation is the harder detector to evade on the linear manifold); and
+  (3) **irreducible synergy** — on `T=A⊕B`, correlation *and* pairwise MI are both at chance
+  (0.544, CIs bracket 0.5) while only a joint-information contrast `Q` separates (AUC 1.000).
+  `I^sx` is correctly the *redundancy* atom (Makkeh–Gutknecht–Wibral 2021).
+- **`docs/PAPER.md`** — the consolidated research paper (*Forced or Justified? Mutual
+  Information vs. Correlation for Cross-Sensor Spoof Detection in Counter-UAS Fusion*),
+  hardened through **two adversarial peer-review passes** (a 5-lens review, then a 3-lens
+  verification) to a state all reviewers rated ready-for-preprint. Every number is a `cargo`
+  command; linked from the README.
 - **`galadriel-core` correlation default** — a `correlation` module (cheap pairwise-`|ρ|`
   cross-sensor consistency) and a source-agnostic `fusion::combine` + `assess_default`
   (NIS ⊕ correlation): a **complete detector with no `pid-core` dependency**, the pure
@@ -77,5 +99,10 @@ versions may make breaking changes).
 ### Notes
 - The default build remains pure and heavy-dependency-free; `pid`, `ncp`, and
   `ncp-live` are additive, off-by-default features.
+- **Headline finding.** Across five independent axes — accuracy, detection boundary,
+  compute cost, adaptive evasion, and non-stationary FAR — the cheap correlation default is
+  ≥ the KSG-MI/PID engine on the linear-Gaussian sensor-fusion regime; MI/PID is *forced*
+  there (and ~100× costlier), justified only for genuinely nonlinear or synergistic couplings.
+  This is the disciplined position the project was built to establish.
 
 [Unreleased]: https://github.com/sepahead/galadriel
