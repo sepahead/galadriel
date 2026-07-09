@@ -137,6 +137,14 @@ integrations are additive, off-by-default features:
 | `ncp` | `ncp-core` (serde-only) | `PidObservation` JSONL ingest |
 | `ncp-live` | `ncp-zenoh` + `tokio` | live Zenoh observation-plane tap |
 
+> **Build layout.** This repo is developed inside the `sepahead` sibling tree, where
+> `galadriel-{pid,ncp,justify}` reach `pid-rs` and `NCP` by relative **path** dependency.
+> A clone in isolation therefore will not resolve the workspace until those siblings are
+> present. To build standalone, either clone `pid-rs` and `NCP` alongside `galadriel`, or
+> swap each `path = "../../../…"` in the crate manifests for the pinned **git** dependency
+> noted in the same `Cargo.toml` comment. The pure `galadriel-core` / `-sim` / `-cli`
+> default carries none of these deps.
+
 > **On NCP.** `ncp-core` is light (serde only) and usable as-is for the wire types;
 > `ncp-zenoh` pulls the full Zenoh stack, so the live tap is strictly feature-gated.
 > galadriel's `PidObservation` rides a **non-wire sidecar key**
