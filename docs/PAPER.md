@@ -36,8 +36,11 @@ forced?** On linear-Gaussian sensor residuals — the regime that dominates kine
 the Gaussian MI is a *monotone function of the Pearson correlation*, so an MI-threshold and a
 `|ρ|`-threshold detector share an identical ROC; and because *every* PID atom of a jointly-
 Gaussian distribution is a function of its covariance matrix, the whole decomposition carries
-nothing beyond `ρ` either. There, MI/PID is **forced** — no accuracy to gain — while the
-KSG-MI engine costs **~100× the compute** at our deployed configuration. We then delimit,
+nothing beyond `ρ` either. There, MI/PID is **forced** — no accuracy to gain at full decoupling,
+and, across the detection boundary (a decoupling-strength sweep, §5.5), *strictly worse*, because
+the nonparametric KSG estimator's variance makes it lose AUC faster than the efficient sample `|ρ|`
+exactly where the effect is small — all while it costs **~100× the compute** at our deployed
+configuration. We then delimit,
 on **canonical constructions**, the three regimes where MI/PID genuinely earns its cost:
 (i) **model-free nonlinear** dependence (MI AUC 1.000 vs a correlation check that reaches
 only 0.66, and only via a kurtosis artifact); (ii) **adversarial robustness** under
@@ -392,6 +395,41 @@ correlation's accuracy collapses to chance. A single-axis (accuracy-only) evalua
 hidden the cost verdict and over-sold PID; the three-axis view is what makes the "correlation by
 default, MI/PID on escalation" recommendation defensible.
 
+### 5.5 The detection boundary (decoupling sweep)
+
+§5.1 evaluated the *fully* decoupled spoof (the easiest instance). To trace the operating
+**boundary**, we sweep the spoof's decoupling strength $d\in[0,1]$: the compromised channel tracks
+$\sqrt{1-d}\,m + \sqrt{d}\,p$ (shared truth $m$, phantom $p$), which keeps its marginal variance —
+so it stays moment-matched at every $d$ — while its correlation with honest channels scales as
+$\sqrt{1-d}$. $d=1$ is full decoupling (easiest); $d\to0$ is an undetectable non-attack. AUC of the
+two consistency scores (200 trials, bootstrap 95 % CIs):
+
+```
+   d  |  corr AUC [95% CI]     |  PID AUC [95% CI]
+------------------------------------------------------
+ 1.00 |  1.000 [1.000, 1.000]  |  0.999 [0.998, 1.000]
+ 0.80 |  1.000 [1.000, 1.000]  |  0.979 [0.964, 0.992]
+ 0.60 |  1.000 [0.999, 1.000]  |  0.908 [0.874, 0.938]   <- CIs separate
+ 0.40 |  0.959 [0.938, 0.977]  |  0.767 [0.718, 0.811]   <- corr strictly beats PID
+ 0.30 |  0.879 [0.843, 0.911]  |  0.702 [0.648, 0.750]
+ 0.20 |  0.710 [0.658, 0.760]  |  0.636 [0.578, 0.688]
+ 0.10 |  0.550 [0.490, 0.606]  |  0.522 [0.465, 0.574]
+ 0.05 |  0.512 [0.453, 0.567]  |  0.475 [0.419, 0.529]
+```
+
+Two things happen. Both detectors degrade smoothly to chance as the decoupling weakens (the boundary
+is graceful, not a cliff). But — the sharper finding — **correlation does not merely tie PID off the
+best case; it strictly beats it through the mid-boundary** ($d\in[0.4,0.6]$, non-overlapping CIs;
+e.g. at $d=0.6$, corr 1.000 vs PID 0.908). The mechanism is estimator statistics: sample $|\rho|$ is
+the *efficient* dependence statistic for Gaussian data, whereas KSG mutual information is a
+nonparametric $k$-NN estimator carrying extra finite-sample variance. When the true decoupling is
+*large* (full decouple) both saturate at AUC 1.0 and the variance is invisible; as the effect shrinks
+toward the boundary, KSG's variance dominates and PID loses AUC faster. **So on linear-Gaussian
+residuals MI/PID is not merely *forced* (§4.1, no better at full decoupling) — in the hard,
+near-boundary regime that matters most operationally it is strictly *worse*.** This is the strongest
+form of the paper's thesis, and it answers the "best-case-only" objection directly: correlation
+dominates the *entire* boundary, not just its easy end.
+
 ---
 
 ## 6. Discussion and limitations
@@ -406,10 +444,9 @@ default, MI/PID on escalation" recommendation defensible.
   corr-vs-PID bootstrap), which is what backs the "tie" and "at chance" claims. Detection rates
   and latencies are still bare point estimates; extending Wilson/bootstrap CIs to them, and adding
   DeLong CIs alongside the bootstrap, is remaining work.
-- **Best-case attack instance.** The accuracy study exercises full decoupling (phantom latent
-  correlation ≈ 0) on 1 of 3 channels. A sweep of decoupling strength (partial `ρ` retention → an
-  AUC-degradation curve) and multi-channel compromise, which show where consistency detection
-  *fails*, are future work.
+- **Attack instance.** §5.5 sweeps decoupling strength (the AUC-degradation curve), so the accuracy
+  result is no longer best-case-only — correlation dominates the whole boundary. What remains is
+  *multi-channel* compromise (a colluding subset), which the single-channel sweep does not cover.
 - **Detection reach, not attacker success.** §5.2 measures whether an attack is eventually
   detected, not the induced track displacement before detection — the operationally decisive
   quantity for an interceptor cue.
@@ -452,7 +489,9 @@ Reaching for mutual information or its decomposition because it is powerful is n
 needing it. We showed, precisely and reproducibly, that for the linear-Gaussian residuals of
 kinematic sensor fusion, MI is a monotone function of correlation — and, since every Gaussian PID
 atom is a function of the covariance, the whole decomposition adds nothing over `ρ` — so MI/PID
-there is forced, and ~100× more expensive for no gain. We delimited, on canonical constructions,
+there is forced, ~100× more expensive for no gain, and (§5.5) *strictly worse across the detection
+boundary*, where the nonparametric estimator's variance penalty bites. We delimited, on canonical
+constructions,
 the three regimes (nonlinearity, adversarial robustness, irreducible synergy) where it genuinely
 earns its cost, the last of which no pairwise statistic can match. Galadriel's Mirror
 operationalizes this as a layered detector: cheap correlation by default, gated MI/PID escalation,

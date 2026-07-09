@@ -22,10 +22,12 @@
 //! **fused** detector covers the whole space.
 //!
 //! The second, methodological result: the **pure correlation default matches the PID
-//! engine** on this (linear-Gaussian) stealthy spoof — the empirical statement of
-//! `docs/JUSTIFICATION.md` that MI is *forced*, not justified, in this regime. The PID
-//! engine earns its cost only on nonlinear or synergistic couplings, quantified
-//! separately in the `galadriel-justify` crate.
+//! engine** on this (linear-Gaussian) stealthy spoof — and, across a decoupling-strength
+//! sweep ([`decoupling_sweep`]), **strictly beats it near the detection boundary** (the
+//! nonparametric KSG estimator's finite-sample variance costs it AUC where the effect is
+//! small). This is the empirical statement of `docs/JUSTIFICATION.md` that MI is *forced*,
+//! not justified, in this regime; the PID engine earns its cost only on nonlinear or
+//! synergistic couplings, quantified separately in the `galadriel-justify` crate.
 
 use std::collections::HashMap;
 
@@ -34,7 +36,9 @@ use galadriel_core::{
 };
 use galadriel_pid::{analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidVerdict};
 use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
-use galadriel_sim::scenario::{generate, generate_spoofed, ScenarioConfig, StealthySpoof};
+use galadriel_sim::scenario::{
+    generate, generate_spoofed, generate_spoofed_partial, ScenarioConfig, StealthySpoof,
+};
 
 /// The sensor channels under test.
 pub const MODALITIES: [Modality; 3] = [Modality::Visual, Modality::Radar, Modality::Acoustic];
@@ -105,8 +109,8 @@ impl Attack {
     }
 }
 
-fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> Vec<PidObservation> {
-    let s = ScenarioConfig {
+fn scenario(cfg: &EvalConfig, seed: u64) -> ScenarioConfig {
+    ScenarioConfig {
         track_id: 1,
         frames: cfg.frames,
         modalities: MODALITIES.to_vec(),
@@ -114,7 +118,11 @@ fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> Vec<PidObservation> {
         rho: cfg.rho,
         dt_ms: 100,
         seed,
-    };
+    }
+}
+
+fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> Vec<PidObservation> {
+    let s = scenario(cfg, seed);
     let start = (cfg.frames as u64) / 3;
     match attack {
         Attack::Clean => generate(&s),
@@ -418,6 +426,104 @@ pub fn format_ci(rows: &[CiRow], diff: (f64, f64, f64), n_boot: usize) -> String
             "CI excludes 0: a real difference"
         }
     ));
+    s
+}
+
+// ---------------------------------------------------------------------------
+// Decoupling-strength sweep (the detection boundary)
+// ---------------------------------------------------------------------------
+
+/// One row of the decoupling-strength sweep.
+#[derive(Debug, Clone)]
+pub struct SweepRow {
+    /// Decoupling strength `d ∈ [0,1]` (1 = full decouple / easiest, 0 = no attack).
+    pub decoupling: f64,
+    /// Correlation-default consistency-score AUC and its bootstrap 95% CI.
+    pub corr_auc: f64,
+    pub corr_ci: (f64, f64),
+    /// PID consistency-score AUC and its bootstrap 95% CI.
+    pub pid_auc: f64,
+    pub pid_ci: (f64, f64),
+}
+
+/// Sweep the stealthy spoof's **decoupling strength** and report, for each `d`, the AUC of
+/// the correlation and PID consistency scores (the shared decoupling-depth score → this is
+/// the like-for-like comparison) with bootstrap 95% CIs. Traces the *detection boundary*:
+/// how weak a decoupling each detector can still resolve. The clean/null scores are shared
+/// across all `d`. Since the spoof stays moment-matched at every `d`, the NIS baseline is
+/// blind throughout, so only the two consistency scores are reported.
+pub fn decoupling_sweep(cfg: &EvalConfig, decouplings: &[f64], n_boot: usize) -> Vec<SweepRow> {
+    let (mut clean_c, mut clean_p) = (
+        Vec::with_capacity(cfg.trials),
+        Vec::with_capacity(cfg.trials),
+    );
+    for t in 0..cfg.trials {
+        let clean = build(Attack::Clean, cfg, cfg.base_seed + t as u64);
+        clean_c.push(corr_eval(&clean).1);
+        clean_p.push(pid_eval(&clean).1);
+    }
+    let spoof = StealthySpoof {
+        target: Modality::Acoustic,
+        start_frame: (cfg.frames as u64) / 3,
+    };
+    decouplings
+        .iter()
+        .map(|&d| {
+            let (mut sc, mut sp) = (
+                Vec::with_capacity(cfg.trials),
+                Vec::with_capacity(cfg.trials),
+            );
+            for t in 0..cfg.trials {
+                let s = scenario(cfg, cfg.base_seed + t as u64);
+                let stream = generate_spoofed_partial(&s, spoof, d);
+                sc.push(corr_eval(&stream).1);
+                sp.push(pid_eval(&stream).1);
+            }
+            SweepRow {
+                decoupling: d,
+                corr_auc: auc(&sc, &clean_c),
+                corr_ci: auc_ci(&sc, &clean_c, n_boot, cfg.base_seed),
+                pid_auc: auc(&sp, &clean_p),
+                pid_ci: auc_ci(&sp, &clean_p, n_boot, cfg.base_seed ^ 0xF),
+            }
+        })
+        .collect()
+}
+
+/// Format the decoupling sweep as a plain-text table, with a data-driven verdict on
+/// whether the two detectors' CIs overlap at every strength.
+pub fn format_sweep(rows: &[SweepRow]) -> String {
+    let mut s = String::new();
+    s.push_str(
+        "Decoupling-strength sweep — AUC vs decoupling (the detection boundary)\n\
+         d=1 full decouple (easiest) → d→0 weak decouple (hardest); corr retained ∝ √(1−d)\n\n",
+    );
+    s.push_str(&format!(
+        "{:>5} | {:>21} | {:>21}\n",
+        "d", "corr AUC [95% CI]", "PID AUC [95% CI]"
+    ));
+    s.push_str(&format!("{}\n", "-".repeat(53)));
+    for r in rows {
+        s.push_str(&format!(
+            "{:>5.2} | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}]\n",
+            r.decoupling, r.corr_auc, r.corr_ci.0, r.corr_ci.1, r.pid_auc, r.pid_ci.0, r.pid_ci.1,
+        ));
+    }
+    let corr_dominates = rows.iter().all(|r| r.corr_auc >= r.pid_auc - 1e-9);
+    let strict_somewhere = rows.iter().any(|r| r.corr_ci.0 > r.pid_ci.1);
+    s.push_str(match (corr_dominates, strict_somewhere) {
+        (true, true) => {
+            "\nCorrelation ties PID at full decoupling and STRICTLY BEATS it as the spoof weakens\n\
+             (non-overlapping CIs mid-boundary): the nonparametric KSG estimator's finite-sample\n\
+             variance penalises PID exactly where the effect is small. On linear-Gaussian data,\n\
+             MI/PID is not merely *forced* — near the detection boundary it is strictly WORSE.\n"
+        }
+        (true, false) => {
+            "\nCorrelation matches or beats PID at every strength (CIs overlap) — MI/PID buys no\n\
+             boundary on linear-Gaussian data.\n"
+        }
+        _ => "\nThe detectors diverge on the boundary — inspect the per-strength CIs above.\n",
+    });
     s
 }
 
@@ -843,5 +949,45 @@ mod tests {
         let neg: Vec<f64> = (0..50).map(|i| i as f64 * 0.1).collect();
         let (lo, hi) = auc_ci(&pos, &neg, 500, 1);
         assert!(lo > 0.95 && hi <= 1.0, "CI [{lo:.3},{hi:.3}] near 1.0");
+    }
+
+    #[test]
+    fn decoupling_sweep_shows_correlation_dominates_the_boundary() {
+        let cfg = EvalConfig {
+            trials: 60,
+            ..Default::default()
+        };
+        let grid = [1.0, 0.6, 0.4, 0.2, 0.1];
+        let rows = decoupling_sweep(&cfg, &grid, 400);
+
+        // Detection degrades as the decoupling weakens: full decouple is easier than weak.
+        assert!(
+            rows[0].corr_auc >= rows[rows.len() - 1].corr_auc,
+            "corr AUC should not increase as d shrinks: {:.3} -> {:.3}",
+            rows[0].corr_auc,
+            rows[rows.len() - 1].corr_auc
+        );
+        // Full decoupling is essentially perfect for correlation.
+        assert!(
+            rows[0].corr_auc > 0.95,
+            "full-decouple corr AUC {:.3}",
+            rows[0].corr_auc
+        );
+        // The finding: correlation is never meaningfully worse than PID, and STRICTLY beats
+        // it somewhere on the boundary — the nonparametric KSG estimator's variance penalty.
+        for r in &rows {
+            assert!(
+                r.corr_auc >= r.pid_auc - 0.03,
+                "d={:.2}: correlation {:.3} should not trail PID {:.3}",
+                r.decoupling,
+                r.corr_auc,
+                r.pid_auc
+            );
+        }
+        let strict = rows.iter().any(|r| r.corr_ci.0 > r.pid_ci.1);
+        assert!(
+            strict,
+            "correlation should strictly beat PID (non-overlapping CIs) somewhere on the boundary"
+        );
     }
 }

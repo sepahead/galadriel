@@ -198,6 +198,30 @@ fused (NIS ⊕ PID)              |         ~2180 µs |     ~100×
 
 Reproduce: `cargo bench -p galadriel-eval --bench detectors`.
 
+### 2.3 The detection boundary (decoupling sweep)
+
+§2 used a *fully* decoupled spoof. Sweeping the decoupling strength `d` (the compromised
+channel tracks `√(1−d)·truth + √d·phantom`, staying moment-matched while its honest
+correlation scales as `√(1−d)`) traces the operating boundary (200 trials, bootstrap CIs):
+
+```
+   d  |  corr AUC [95% CI]     |  PID AUC [95% CI]
+------------------------------------------------------
+ 1.00 |  1.000 [1.000, 1.000]  |  0.999 [0.998, 1.000]
+ 0.60 |  1.000 [0.999, 1.000]  |  0.908 [0.874, 0.938]   <- CIs separate
+ 0.40 |  0.959 [0.938, 0.977]  |  0.767 [0.718, 0.811]
+ 0.20 |  0.710 [0.658, 0.760]  |  0.636 [0.578, 0.688]
+ 0.05 |  0.512 [0.453, 0.567]  |  0.475 [0.419, 0.529]
+```
+
+Both degrade smoothly to chance as the spoof weakens, but **correlation does not merely
+tie PID off the best case — it strictly beats it through the mid-boundary** (non-overlapping
+CIs at `d ∈ [0.4, 0.6]`). Sample `|ρ|` is the efficient dependence statistic for Gaussian
+data; KSG-MI is a nonparametric estimator whose finite-sample variance dominates once the
+effect is small. So on linear-Gaussian residuals MI/PID is not just *forced* — near the
+boundary it is strictly **worse**. This is the degradation curve the accuracy study's
+single (full-decouple) point could not show.
+
 ---
 
 ## 3. Discussion

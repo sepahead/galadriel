@@ -5,7 +5,8 @@
 //! detection/AUC report, a detection-latency study, and bootstrap 95% CIs.
 
 use galadriel_eval::{
-    format_ci, format_latency, format_report, measure_latency, run, stealthy_ci_study, EvalConfig,
+    decoupling_sweep, format_ci, format_latency, format_report, format_sweep, measure_latency, run,
+    stealthy_ci_study, EvalConfig,
 };
 
 fn main() {
@@ -36,4 +37,10 @@ fn main() {
     let (rows, diff) = stealthy_ci_study(&cfg, n_boot);
     println!();
     print!("{}", format_ci(&rows, diff, n_boot));
+
+    // Decoupling-strength sweep: the detection boundary (does PID hold on longer than
+    // correlation as the spoof weakens? — on linear-Gaussian data it should not).
+    let grid = [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05];
+    println!();
+    print!("{}", format_sweep(&decoupling_sweep(&cfg, &grid, n_boot)));
 }

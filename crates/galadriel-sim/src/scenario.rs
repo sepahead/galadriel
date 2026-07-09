@@ -66,7 +66,11 @@ pub struct StealthySpoof {
     pub start_frame: u64,
 }
 
-fn generate_inner(cfg: &ScenarioConfig, spoof: Option<StealthySpoof>) -> Vec<PidObservation> {
+fn generate_inner(
+    cfg: &ScenarioConfig,
+    spoof: Option<StealthySpoof>,
+    decoupling: f64,
+) -> Vec<PidObservation> {
     let mut r = rng::seeded(cfg.seed);
     let rho = cfg.rho.clamp(0.0, 0.999);
     let var = cfg.sigma * cfg.sigma;
@@ -99,7 +103,23 @@ fn generate_inner(cfg: &ScenarioConfig, spoof: Option<StealthySpoof>) -> Vec<Pid
         for &modality in &cfg.modalities {
             let spoofed =
                 matches!(spoof, Some(s) if s.target == modality && f as u64 >= s.start_frame);
-            let base = if spoofed { p } else { m };
+            // Partial decoupling: mix the shared truth `m` and the phantom `p` as
+            // `√(1−d)·m + √d·p`. Since m and p are independent with equal variance this
+            // preserves the marginal variance for *every* d (so the spoof stays
+            // moment-matched: NIS ~ χ²(3) throughout), while the cross-channel covariance
+            // with honest channels scales as √(1−d). d = 1 is full decoupling (base = p);
+            // d = 0 is no attack (base = m).
+            let base = if spoofed {
+                let d = decoupling.clamp(0.0, 1.0);
+                let (a, b) = ((1.0 - d).sqrt(), d.sqrt());
+                [
+                    a * m[0] + b * p[0],
+                    a * m[1] + b * p[1],
+                    a * m[2] + b * p[2],
+                ]
+            } else {
+                m
+            };
             let y = [
                 base[0] + noise.sample(&mut r),
                 base[1] + noise.sample(&mut r),
@@ -126,14 +146,28 @@ fn generate_inner(cfg: &ScenarioConfig, spoof: Option<StealthySpoof>) -> Vec<Pid
 /// Observations are emitted frame-major (all modalities of frame 0, then frame 1,
 /// …), so downstream code can chunk by `modalities.len()` to recover frames.
 pub fn generate(cfg: &ScenarioConfig) -> Vec<PidObservation> {
-    generate_inner(cfg, None)
+    generate_inner(cfg, None, 1.0)
 }
 
-/// Generate a corroborated stream with a moment-matched stealthy spoof on one
-/// channel. Requires `cfg.rho > 0` for the spoof to be meaningful (otherwise there
-/// is no consensus to decouple from).
+/// Generate a corroborated stream with a **fully** moment-matched stealthy spoof on one
+/// channel (the target decouples onto an independent phantom latent). Requires
+/// `cfg.rho > 0` for the spoof to be meaningful (otherwise there is no consensus to
+/// decouple from).
 pub fn generate_spoofed(cfg: &ScenarioConfig, spoof: StealthySpoof) -> Vec<PidObservation> {
-    generate_inner(cfg, Some(spoof))
+    generate_inner(cfg, Some(spoof), 1.0)
+}
+
+/// Generate a stealthy spoof with a tunable **decoupling strength** `d ∈ [0, 1]`: the
+/// target tracks `√(1−d)·(shared truth) + √d·(phantom)`, preserving its marginal variance
+/// (so it stays moment-matched, NIS ~ χ²(3)) while its correlation with honest channels
+/// scales as `√(1−d)`. `d = 1` is [`generate_spoofed`]; `d = 0` is [`generate`]. Sweeping
+/// `d` traces the detection *boundary* — how weak a decoupling each detector can still see.
+pub fn generate_spoofed_partial(
+    cfg: &ScenarioConfig,
+    spoof: StealthySpoof,
+    decoupling: f64,
+) -> Vec<PidObservation> {
+    generate_inner(cfg, Some(spoof), decoupling)
 }
 
 #[cfg(test)]
