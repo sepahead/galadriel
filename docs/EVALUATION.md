@@ -1,17 +1,25 @@
-# Evaluation — the PID engine vs the NIS baseline
+# Evaluation — cross-sensor consistency vs the NIS baseline
 
-**Question.** Does Galadriel's cross-sensor **Partial Information Decomposition
-(PID)** engine detect an attack that its cheap **NIS χ² baseline** provably cannot,
-without paying for it in false alarms?
+**Question.** Does a Galadriel **cross-sensor consistency** check detect an attack that
+its cheap **NIS χ² baseline** provably cannot, without paying for it in false alarms —
+and, sharper, does that check have to be **Partial Information Decomposition (PID)**, or
+does a one-line correlation suffice?
 
-**Answer (headline).** Yes, and the two are **complementary**. On a *moment-matched
-stealthy spoof* — a false-data injection engineered to keep each channel's NIS inside
-its own covariance — the baseline operates at chance (ROC-AUC **0.547**) while the PID
-engine reaches AUC **0.999** and a **96.5%** detection rate at a **0%** false-alarm
-rate. On pure-magnitude attacks (a loud bias spoof, a broadband jam) the ordering
-flips: the baseline detects **100%** and PID is correctly silent, because those
-attacks preserve cross-channel correlation and are the baseline's job. Neither
-detector alone is sufficient; **together they cover the space.**
+**Answer (headline).** Yes to the first, and — for this attack — *no, it need not be PID*.
+On a *moment-matched stealthy spoof* — a false-data injection engineered to keep each
+channel's NIS inside its own covariance — the baseline operates at chance (ROC-AUC
+**0.547**), while **both** cross-sensor detectors recover it: the cheap **pure
+correlation default** reaches AUC **1.000** and the **KSG-MI PID engine** AUC **0.999**,
+each at a ≤3% false-alarm rate. On pure-magnitude attacks (a loud bias spoof, a
+broadband jam) the baseline detects **100%** and the consistency detectors' *scores* are
+correctly at chance, because those attacks preserve cross-channel correlation and are
+the baseline's job. No single component suffices; **the fused detector covers the space.**
+
+Two results, at two levels. **Operationally:** cross-sensor consistency beats magnitude
+on the stealthy spoof. **Methodologically:** on this *linear-Gaussian* spoof the cheap
+correlation check *matches* the MI engine (AUC 1.000 vs 0.999) — so here PID is
+**forced, not justified**; it earns its cost only on the nonlinear/synergistic couplings
+quantified in [`JUSTIFICATION.md`](JUSTIFICATION.md). This study is honest about that.
 
 This document is generated from, and reproducible by, the `galadriel-eval` harness.
 
@@ -54,12 +62,19 @@ single channel is, by construction, blind to it.
   or `Jam` verdict. **Score** = the strongest per-channel NIS surprise,
   `max_c −log₁₀ p_right(c)`, where `p_right` is the right-tail p-value of the windowed
   NIS sum under χ²(n·dof).
-- **PID** (`galadriel-pid`): geometry-gated **pairwise KSG mutual information** as a
-  corroboration score per channel (its best MI with any peer), plus the `I^sx`
+- **Correlation default** (`galadriel-core`, *pure* — no `pid-core`): the NIS baseline
+  ⊕ a pairwise-`|ρ|` cross-sensor consistency check (`assess_default`). **Alarm** = a
+  `Spoof`/`Jam` fused verdict. **Score** = the decoupling depth
+  `1 − min_c |ρ|(c) / max_c |ρ|(c)` over each channel's best-peer correlation. This is
+  the detector the **default build ships** — a complete detector with no heavy dependency.
+- **PID** (`galadriel-pid`): the same structure with geometry-gated **pairwise KSG mutual
+  information** substituted for `|ρ|` as the corroboration score, plus the `I^sx`
   redundancy atom. **Alarm** = a `Spoof` verdict (a channel decoupled from the group).
-  **Score** = the decoupling depth `1 − min_c corroboration / max_c corroboration`.
+  **Score** = the decoupling depth over MI corroborations — *the identical formula*, so
+  the correlation default and the PID engine are read off the same axis and are directly
+  comparable.
 
-Both detectors use their default configuration; no per-regime tuning.
+All detectors use their default configuration; no per-regime tuning.
 
 ### 1.4 Metrics
 
@@ -77,33 +92,40 @@ Mann–Whitney identity `AUC = P(score_attack > score_clean)` (ties = ½).
 
 ```
 Galadriel evaluation — 200 trials/regime · rho=0.7 · frames=300 · sigma=1
-False-alarm rate (clean):   baseline 0.030   PID 0.000   fused 0.030
+False-alarm rate (clean):   baseline 0.030   corr 0.030   PID 0.000   fused 0.030
 
-regime                       | base det | PID det | fused det | base AUC | PID AUC
-------------------------------------------------------------------------------------
-loud bias spoof              |    1.000 |   0.000 |     1.000 |    1.000 |   0.500
-stealthy (moment-matched)    |    0.020 |   0.965 |     0.965 |    0.547 |   0.999
-broadband jam                |    1.000 |   0.000 |     1.000 |    1.000 |   0.500
+regime                       | base det | corr det | PID det | fused det | base AUC | corr AUC | PID AUC
+--------------------------------------------------------------------------------------------------------
+loud bias spoof              |    1.000 |    1.000 |   0.000 |     1.000 |    1.000 |    0.500 |   0.500
+stealthy (moment-matched)    |    0.020 |    1.000 |   0.965 |     0.965 |    0.547 |    1.000 |   0.999
+broadband jam                |    1.000 |    1.000 |   0.000 |     1.000 |    1.000 |    0.500 |   0.500
 ```
 
 Reading the table:
 
 - **Stealthy spoof — the headline.** Baseline detection **0.020** and AUC **0.547**
   (statistically indistinguishable from the chance value 0.5) confirm the baseline is
-  blind, *as the construction guarantees*. PID detection **0.965** and AUC **0.999**
-  show it recovers almost all of that lost detection power — this is the capability
-  PID adds and the reason it earns its complexity.
-- **Loud bias spoof & jam — complementarity.** Baseline AUC **1.000** on both; PID AUC
-  **0.500** (silent). PID is a *correlation* detector: a constant bias shifts a
-  channel's mean but leaves its fluctuation structure — and hence its cross-channel
-  correlation — intact, and a uniform scale factor is an invertible transform that KSG
-  mutual information is invariant to. So PID correctly declines to flag them; the
-  baseline's magnitude test owns this half of the space.
-- **False alarms.** Baseline **0.030**, PID **0.000** at the default operating points —
-  PID adds its detection at no false-alarm cost in this study.
-- **Fused detector — full coverage.** Combining the two (§3) detects **all three**
-  attacks (1.000 / 0.965 / 1.000) at the baseline's **0.030** false-alarm rate: neither
-  detector alone suffices, but together they cover the space.
+  blind, *as the construction guarantees*. Both cross-sensor detectors recover it: the
+  **correlation default** at AUC **1.000** / detection **1.000**, the **PID** engine at
+  AUC **0.999** / detection **0.965**. That the cheap correlation check **edges** the MI
+  estimator here is not noise but the point: for linear-Gaussian data `MI = −½ln(1−ρ²)`
+  is a monotone function of `ρ`, so the two detect the *same* structure — but `|ρ|` is
+  computed exactly while KSG-MI carries finite-sample estimator variance. **This is the
+  empirical face of `JUSTIFICATION.md` §1: PID is forced, not justified, on this spoof.**
+- **Loud bias spoof & jam — complementarity.** Baseline AUC **1.000** on both; the
+  consistency *scores* sit at AUC **0.500** (silent). A constant bias shifts a channel's
+  mean but leaves its fluctuation structure — hence its cross-channel `|ρ|` and MI —
+  intact, and a uniform scale factor is invertible so both correlation and MI are
+  invariant to it. So the consistency *score* correctly declines to flag them; the
+  baseline's magnitude test owns this half of the space. (The `corr det` **1.000** here
+  comes from the *NIS component* of the fused default, not the correlation score — the
+  pure default is itself a complete detector.)
+- **False alarms.** Baseline **0.030**, correlation default **0.030**, PID **0.000** at
+  the default operating points — the added detection costs no false alarms in this study.
+- **Fused detector — full coverage.** The NIS ⊕ PID fusion (§3) detects **all three**
+  attacks (1.000 / 0.965 / 1.000) at the baseline's **0.030** false-alarm rate; the pure
+  NIS ⊕ correlation default (the `corr det` column) does the same (1.000 / 1.000 / 1.000)
+  **with no `pid-core` dependency at all**.
 
 ---
 
@@ -114,34 +136,40 @@ channel's magnitude, or its cross-channel agreement?** — and shows the two det
 partition it:
 
 ```
-                      preserves correlation        breaks correlation
-   inflates NIS   →   loud spoof / jam  (BASELINE)      (—)
-   NIS unchanged  →        (clean)                stealthy spoof  (PID)
+                      preserves correlation           breaks correlation
+   inflates NIS   →   loud spoof / jam  (BASELINE)          (—)
+   NIS unchanged  →        (clean)              stealthy spoof  (CONSISTENCY: corr | PID)
 ```
 
-The baseline occupies the top-left; PID occupies the bottom-right; the top-right cell
-(inflates NIS *and* breaks correlation) is caught by *both*. This is the motivation
-for **fusing** the two into a single jam-vs-spoof verdict — implemented as `galadriel_pid::assess_stream` (the `fused det` column above): a stealthy
-spoof with in-covariance NIS + a PID decoupling ⇒ *spoof*; an all-channel NIS inflation
-with intact correlation ⇒ *jam*; both together ⇒ a loud spoof.
+The baseline occupies the top-left; a **cross-sensor consistency** detector occupies the
+bottom-right; the top-right cell (inflates NIS *and* breaks correlation) is caught by
+*both*. This is the motivation for **fusing** magnitude with consistency into a single
+jam-vs-spoof verdict — the shared, source-agnostic 2×2 in `galadriel_core::fusion`. Two
+wirings ship: the pure **`assess_default`** (NIS ⊕ correlation, no `pid-core`) and the
+**`assess_stream`** escalation (NIS ⊕ PID). Both read: a stealthy spoof with
+in-covariance NIS + a consistency decoupling ⇒ *spoof*; an all-channel NIS inflation with
+intact correlation ⇒ *jam*; both together ⇒ a loud spoof.
 
-The scientific claim is deliberately narrow and honest: **PID does not make the
-baseline obsolete, and the baseline does not make PID redundant.** PID closes one
-specific, adversary-optimal blind spot of magnitude detection.
+The scientific claim is deliberately narrow and honest: **cross-sensor consistency does
+not make the baseline obsolete, and the baseline does not make it redundant.** Consistency
+closes one specific, adversary-optimal blind spot of magnitude detection — and on *this*
+linear spoof the cheap correlation form of it is enough (the `corr AUC` column); PID is
+the escalation for when it is not.
 
 ---
 
-> **Scope — read this with [`JUSTIFICATION.md`](JUSTIFICATION.md).** The detector that
-> closes the baseline's blind spot above need not be PID. Because this stealthy spoof is
-> *linear-Gaussian*, a cheap **pairwise-correlation** consistency check
-> (`galadriel_core::correlation`, in the pure default build) catches it **just as well**
-> as the MI/PID engine — so PID is *not uniquely* responsible for the result. The
-> justification study shows MI beats correlation only when the cross-channel dependence
-> is **nonlinear or synergistic** (there, `corr AUC 0.66` vs `MI AUC 1.00`). On
+> **Scope — read this with [`JUSTIFICATION.md`](JUSTIFICATION.md).** The `corr AUC`
+> column *is* the proof that the detector closing the baseline's blind spot need not be
+> PID: because this stealthy spoof is *linear-Gaussian*, the cheap **pairwise-correlation**
+> consistency check (`galadriel_core::correlation`, in the pure default build) catches it
+> at **AUC 1.000** — matching, even edging, the MI/PID engine's 0.999. PID is *not
+> uniquely* responsible for the result. The justification study shows MI beats correlation
+> only when the cross-channel dependence is **nonlinear** (`corr AUC 0.66` vs `MI 1.00`)
+> or **synergistic** (`corr` *and* pairwise `MI` both 0.54 vs joint synergy 1.00). On
 > galadriel's linear residuals, **correlation is the right default; PID is the opt-in
 > escalation** for nonlinear modalities, synergistic fusion, or a correlation-aware
-> adversary. This evaluation demonstrates *cross-sensor consistency* beats magnitude —
-> it does not, by itself, justify MI over correlation.
+> adversary. This evaluation demonstrates *cross-sensor consistency* beats magnitude — it
+> does not, by itself, justify MI over correlation, and the table now says so in a column.
 
 ## 4. Honest limitations
 
@@ -176,8 +204,9 @@ cargo run -p galadriel-eval --release 200
 # Fast pass:
 cargo run -p galadriel-eval 40
 
-# The hypothesis as a unit test (asserts PID>0.8 / baseline<0.2 detection on the
-# stealthy spoof, PID AUC>0.85, baseline AUC<0.75, and both magnitude attacks caught):
+# The hypothesis as a unit test (asserts, on the stealthy spoof: baseline blind
+# <0.2 detection / AUC <0.75; PID *and* the pure correlation default both >0.8
+# detection & AUC >0.85; and both magnitude attacks caught by the fused detector):
 cargo test -p galadriel-eval
 ```
 

@@ -24,8 +24,10 @@ catches that decoupling** and tells an operator *which* channel to distrust — 
 the fused track pulls an interceptor off the real inbound.
 
 It is the security/guardian sibling of [**crebain**](https://github.com/sepahead/crebain)
-(the tactical ARAS fuser), and it uses the information-theoretic estimators of
-[**pid-rs**](https://github.com/sepahead/pid-rs). It rides the
+(the tactical ARAS fuser). Its pure default is a cheap **cross-sensor correlation**
+consistency check; it *escalates* to the information-theoretic estimators of
+[**pid-rs**](https://github.com/sepahead/pid-rs) only where a linear check is provably
+not enough ([`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md)). It rides the
 [**NCP**](https://github.com/sepahead/NCP) bus's read-only observation plane.
 
 > **The one honest sentence.** galadriel shows that a channel has stopped agreeing
@@ -77,27 +79,37 @@ flags fold into a **fail-closed jam-vs-spoof** verdict:
 | **most/all** channels inflated together | `Jam` — correlated denial |
 | too few samples / channels | `InsufficientEvidence` — **fail closed** |
 
-**The engine (feature `pid`).** The cheap baseline is a *yardstick*. The cross-sensor
-PID engine scores each channel by its **geometry-gated pairwise mutual information**
-with the others (with the `I^sx` redundancy atom alongside), so a channel that stops
-sharing information — a moment-matched spoof that decouples in *information structure*
-while its NIS stays in-covariance — stands out, something the NIS baseline alone
-cannot see. It ships only because it **beats the baseline**: on that stealthy spoof
-the baseline is at chance (ROC-AUC 0.547) while PID reaches **0.999** at a 0%
-false-alarm rate ([`docs/EVALUATION.md`](docs/EVALUATION.md)). The two then **fuse**
-into one jam-vs-spoof verdict (`galadriel_pid::assess_stream`) that covers the whole
-attack space. Full design: `galadriels-mirror.md`.
+**The consistency default (pure).** A moment-matched spoof that keeps its NIS inside
+each channel's own covariance is invisible to the magnitude baseline — but it must still
+*break the channel's agreement with the consensus of the others*. The pure default adds
+a cheap **pairwise-`|ρ|` cross-sensor consistency check** and fuses it with the NIS
+baseline into one jam-vs-spoof verdict (`galadriel_core::assess_default`). On that
+stealthy spoof it reaches ROC-AUC **1.000** where the baseline is at chance (0.547) — a
+**complete detector with no heavy dependency** ([`docs/EVALUATION.md`](docs/EVALUATION.md)).
+
+**The PID escalation (feature `pid`).** Correlation is provably sufficient *only* while
+the cross-channel dependence stays linear-Gaussian — as galadriel's kinematic residuals
+do. Where it is **nonlinear, synergistic, or the adversary is correlation-aware**,
+galadriel escalates to a geometry-gated **KSG mutual-information / PID** engine (the
+`I^sx` atoms, pid-core), reusing the *same* fused 2×2 (`galadriel_pid::assess_stream`).
+The justification study quantifies exactly when this earns its cost
+([`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md)): a **ΔAUC ≈ 0.34** on a nonlinear
+coupling correlation can't see, and an *irreducible* synergy regime where even pairwise
+MI is at chance. On the linear stealthy spoof it merely *matches* the correlation default
+(AUC 0.999) — so there, honestly, MI is **forced, not justified**. Use PID where it is
+irreducible, correlation where it is not. Full design: `galadriels-mirror.md`.
 
 ## Architecture
 
 ```
 crates/
-  galadriel-core   pure: PidObservation/Modality, NIS window, χ², baseline, CUSUM, decision
+  galadriel-core   pure: PidObservation/Modality, NIS χ² baseline, CUSUM, correlation
+                   consistency check + the fused 2×2 default detector (assess_default)
   galadriel-sim    pure: (correlated) scenarios + phantom-DOA / stealthy-spoof / jam injections
   galadriel-cli    the `galadriel demo` / `replay` driver
-  galadriel-pid    feature `pid`:  cross-sensor PID engine (pid-core) + the fused 2×2 detector
+  galadriel-pid    feature `pid`:  the KSG-MI/PID escalation (pid-core), reusing core's 2×2
   galadriel-ncp    feature `ncp`:  PidObservation JSONL ingest (ncp-core)
-  galadriel-eval   Monte-Carlo evaluation: baseline vs PID vs fused (docs/EVALUATION.md)
+  galadriel-eval   Monte-Carlo: baseline vs correlation-default vs PID vs fused (docs/EVALUATION.md)
 ```
 
 The **default build is pure and light** (serde, thiserror, rand, clap). Heavier
@@ -105,8 +117,8 @@ integrations are additive, off-by-default features:
 
 | feature | pulls | adds |
 |---|---|---|
-| *(default)* | — | pure core + sim + demo |
-| `pid` | `pid-core` | the cross-sensor PID engine |
+| *(default)* | — | pure core (NIS baseline + correlation-default detector) + sim + demo |
+| `pid` | `pid-core` | the KSG-MI/PID escalation |
 | `ncp` | `ncp-core` (serde-only) | `PidObservation` JSONL ingest |
 | `ncp-live` | `ncp-zenoh` + `tokio` | live Zenoh observation-plane tap |
 

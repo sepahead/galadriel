@@ -40,6 +40,7 @@ pub mod correlation;
 pub mod cusum;
 pub mod decision;
 pub mod error;
+pub mod fusion;
 pub mod observation;
 pub mod window;
 
@@ -48,6 +49,7 @@ pub use correlation::{CorrChannel, CorrConfig, CorrReport, CorrVerdict};
 pub use cusum::Cusum;
 pub use decision::{ChannelReport, Mirror, MirrorReport, Verdict};
 pub use error::{GaladrielError, Result};
+pub use fusion::{assess_default, combine, DefaultReport, FusedVerdict};
 pub use observation::{Modality, PidObservation};
 pub use window::NisWindow;
 

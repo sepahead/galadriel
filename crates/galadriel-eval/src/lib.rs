@@ -1,24 +1,33 @@
 #![forbid(unsafe_code)]
-//! Monte-Carlo evaluation of Galadriel's Mirror: the cheap **NIS χ² baseline**, the
-//! **cross-sensor PID engine**, and their **fusion**, across four regimes.
+//! Monte-Carlo evaluation of Galadriel's Mirror across four regimes, comparing four
+//! detectors: the cheap **NIS χ² baseline**, the **pure correlation default**
+//! (NIS ⊕ `|ρ|`, no `pid-core`), the **cross-sensor PID engine** (KSG-MI), and the
+//! **NIS ⊕ PID fusion**.
 //!
-//! All four regimes run on the *same* corroborated sim (`rho > 0`) so both detectors
-//! see a genuine consensus. Per trial we record, for each detector, a binary alarm
-//! and (for the two base detectors) a continuous score; across trials we report
-//! detection rate, false-alarm rate (on the clean/null regime), and ROC-AUC (attack
-//! scores vs clean scores, via the Mann–Whitney identity
-//! `AUC = P(score_attack > score_clean)`).
+//! All regimes run on the *same* corroborated sim (`rho > 0`) so every detector sees a
+//! genuine consensus. Per trial we record, for each detector, a binary alarm and a
+//! continuous score; across trials we report detection rate, false-alarm rate (on the
+//! clean/null regime), and ROC-AUC (attack scores vs clean scores, via the Mann–Whitney
+//! identity `AUC = P(score_attack > score_clean)`).
 //!
 //! The headline result is **complementarity**: the baseline catches the *magnitude*
 //! attacks (a loud bias spoof and a jam) but is blind to a *moment-matched stealthy
-//! spoof* whose NIS stays χ²(3) by construction; the PID engine catches exactly that
-//! stealthy spoof — and, correctly, stays quiet on the pure-magnitude attacks, which
-//! preserve cross-channel correlation and are the baseline's job. The **fused**
-//! detector covers the whole space.
+//! spoof* whose NIS stays χ²(3) by construction; the cross-sensor detectors catch
+//! exactly that stealthy spoof — and, correctly, stay quiet on the pure-magnitude
+//! attacks, which preserve cross-channel correlation and are the baseline's job. The
+//! **fused** detector covers the whole space.
+//!
+//! The second, methodological result: the **pure correlation default matches the PID
+//! engine** on this (linear-Gaussian) stealthy spoof — the empirical statement of
+//! `docs/JUSTIFICATION.md` that MI is *forced*, not justified, in this regime. The PID
+//! engine earns its cost only on nonlinear or synergistic couplings, quantified
+//! separately in the `galadriel-justify` crate.
 
 use std::collections::HashMap;
 
-use galadriel_core::{DetectorConfig, Mirror, Modality, PidObservation, Verdict};
+use galadriel_core::{
+    assess_default, CorrConfig, DetectorConfig, Mirror, Modality, PidObservation, Verdict,
+};
 use galadriel_pid::{analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidVerdict};
 use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
 use galadriel_sim::scenario::{generate, generate_spoofed, ScenarioConfig, StealthySpoof};
@@ -157,7 +166,23 @@ fn baseline_eval(stream: &[PidObservation]) -> (bool, f64) {
     (alarm, score)
 }
 
-/// PID: alarm = `Spoof`; score = decoupling depth `1 - min/max corroboration`.
+/// Decoupling depth `1 − min/max corroboration` over a channel group's best-peer
+/// corroborations — the score shared by the PID engine and the correlation default so
+/// the two are **directly comparable** (the whole point of `docs/JUSTIFICATION.md`).
+fn decoupling_depth(corrs: &[f64]) -> f64 {
+    if corrs.len() < 2 {
+        return 0.0;
+    }
+    let mx = corrs.iter().copied().fold(f64::MIN, f64::max);
+    let mn = corrs.iter().copied().fold(f64::MAX, f64::min);
+    if mx > 1e-9 {
+        (1.0 - mn / mx).clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
+/// PID: alarm = `Spoof`; score = decoupling depth over KSG-MI corroborations.
 fn pid_eval(stream: &[PidObservation]) -> (bool, f64) {
     let rep = analyze(
         &scalar_channels(stream, &MODALITIES, 0),
@@ -169,21 +194,32 @@ fn pid_eval(stream: &[PidObservation]) -> (bool, f64) {
         .iter()
         .filter_map(|c| c.corroboration)
         .collect();
-    let score = if corrs.len() >= 2 {
-        let mx = corrs.iter().copied().fold(f64::MIN, f64::max);
-        let mn = corrs.iter().copied().fold(f64::MAX, f64::min);
-        if mx > 1e-9 {
-            (1.0 - mn / mx).clamp(0.0, 1.0)
-        } else {
-            0.0
-        }
-    } else {
-        0.0
-    };
-    (alarm, score)
+    (alarm, decoupling_depth(&corrs))
 }
 
-/// Fused detector: alarm on a `Spoof` or `Jam` fused verdict.
+/// Correlation default: the **pure** NIS ⊕ correlation fused detector (no `pid-core`).
+/// Alarm on a Spoof/Jam verdict; score = decoupling depth over `|ρ|` corroborations —
+/// the same score as [`pid_eval`], so the cheap default and the MI engine are directly
+/// comparable. Per `docs/JUSTIFICATION.md`, they should **match** on this linear-Gaussian
+/// stealthy spoof, because `MI = −½ln(1−ρ²)` is monotone in `ρ`.
+fn corr_eval(stream: &[PidObservation]) -> (bool, f64) {
+    let rep = assess_default(
+        stream,
+        &MODALITIES,
+        &DetectorConfig::default(),
+        &CorrConfig::default(),
+    );
+    let alarm = matches!(rep.verdict, FusedVerdict::Spoof { .. } | FusedVerdict::Jam);
+    let corrs: Vec<f64> = rep
+        .correlation
+        .channels
+        .iter()
+        .filter_map(|c| c.corroboration)
+        .collect();
+    (alarm, decoupling_depth(&corrs))
+}
+
+/// Fused detector: alarm on a `Spoof` or `Jam` fused verdict (NIS ⊕ PID escalation).
 fn fused_eval(stream: &[PidObservation]) -> bool {
     let r = assess_stream(
         stream,
@@ -221,12 +257,16 @@ pub struct AttackMetrics {
     pub attack: Attack,
     /// Baseline detection rate.
     pub baseline_rate: f64,
+    /// Correlation-default (pure NIS ⊕ |ρ|) detection rate.
+    pub corr_rate: f64,
     /// PID detection rate.
     pub pid_rate: f64,
     /// Fused (baseline ⊕ PID) detection rate.
     pub fused_rate: f64,
     /// Baseline ROC-AUC vs clean.
     pub baseline_auc: f64,
+    /// Correlation-default ROC-AUC vs clean.
+    pub corr_auc: f64,
     /// PID ROC-AUC vs clean.
     pub pid_auc: f64,
 }
@@ -238,6 +278,8 @@ pub struct EvalResults {
     pub cfg: EvalConfig,
     /// Baseline false-alarm rate (on clean).
     pub baseline_far: f64,
+    /// Correlation-default false-alarm rate (on clean).
+    pub corr_far: f64,
     /// PID false-alarm rate (on clean).
     pub pid_far: f64,
     /// Fused false-alarm rate (on clean).
@@ -249,34 +291,43 @@ pub struct EvalResults {
 /// Run the Monte-Carlo evaluation.
 pub fn run(cfg: &EvalConfig) -> EvalResults {
     let mut b_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
+    let mut c_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
     let mut p_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
     let mut b_alarms: HashMap<Attack, usize> = HashMap::new();
+    let mut c_alarms: HashMap<Attack, usize> = HashMap::new();
     let mut p_alarms: HashMap<Attack, usize> = HashMap::new();
     let mut f_alarms: HashMap<Attack, usize> = HashMap::new();
 
     for &attack in &Attack::ALL {
         let mut bs = Vec::with_capacity(cfg.trials);
+        let mut cs = Vec::with_capacity(cfg.trials);
         let mut ps = Vec::with_capacity(cfg.trials);
-        let (mut ba, mut pa, mut fa) = (0usize, 0usize, 0usize);
+        let (mut ba, mut ca, mut pa, mut fa) = (0usize, 0usize, 0usize, 0usize);
         for t in 0..cfg.trials {
             let stream = build(attack, cfg, cfg.base_seed + t as u64);
             let (b_al, b_sc) = baseline_eval(&stream);
+            let (c_al, c_sc) = corr_eval(&stream);
             let (p_al, p_sc) = pid_eval(&stream);
             bs.push(b_sc);
+            cs.push(c_sc);
             ps.push(p_sc);
             ba += usize::from(b_al);
+            ca += usize::from(c_al);
             pa += usize::from(p_al);
             fa += usize::from(fused_eval(&stream));
         }
         b_scores.insert(attack, bs);
+        c_scores.insert(attack, cs);
         p_scores.insert(attack, ps);
         b_alarms.insert(attack, ba);
+        c_alarms.insert(attack, ca);
         p_alarms.insert(attack, pa);
         f_alarms.insert(attack, fa);
     }
 
     let n = cfg.trials as f64;
     let clean_b = &b_scores[&Attack::Clean];
+    let clean_c = &c_scores[&Attack::Clean];
     let clean_p = &p_scores[&Attack::Clean];
     let per_attack = Attack::ALL
         .iter()
@@ -284,15 +335,18 @@ pub fn run(cfg: &EvalConfig) -> EvalResults {
         .map(|&a| AttackMetrics {
             attack: a,
             baseline_rate: b_alarms[&a] as f64 / n,
+            corr_rate: c_alarms[&a] as f64 / n,
             pid_rate: p_alarms[&a] as f64 / n,
             fused_rate: f_alarms[&a] as f64 / n,
             baseline_auc: auc(&b_scores[&a], clean_b),
+            corr_auc: auc(&c_scores[&a], clean_c),
             pid_auc: auc(&p_scores[&a], clean_p),
         })
         .collect();
 
     EvalResults {
         baseline_far: b_alarms[&Attack::Clean] as f64 / n,
+        corr_far: c_alarms[&Attack::Clean] as f64 / n,
         pid_far: p_alarms[&Attack::Clean] as f64 / n,
         fused_far: f_alarms[&Attack::Clean] as f64 / n,
         per_attack,
@@ -308,25 +362,31 @@ pub fn format_report(r: &EvalResults) -> String {
         r.cfg.trials, r.cfg.rho, r.cfg.frames, r.cfg.sigma
     ));
     s.push_str(&format!(
-        "False-alarm rate (clean):   baseline {:.3}   PID {:.3}   fused {:.3}\n\n",
-        r.baseline_far, r.pid_far, r.fused_far
+        "False-alarm rate (clean):   baseline {:.3}   corr {:.3}   PID {:.3}   fused {:.3}\n\n",
+        r.baseline_far, r.corr_far, r.pid_far, r.fused_far
     ));
     s.push_str(&format!(
-        "{:<28} | {:>8} | {:>7} | {:>9} | {:>8} | {:>7}\n",
-        "regime", "base det", "PID det", "fused det", "base AUC", "PID AUC"
+        "{:<28} | {:>8} | {:>8} | {:>7} | {:>9} | {:>8} | {:>8} | {:>7}\n",
+        "regime", "base det", "corr det", "PID det", "fused det", "base AUC", "corr AUC", "PID AUC"
     ));
-    s.push_str(&format!("{}\n", "-".repeat(84)));
+    s.push_str(&format!("{}\n", "-".repeat(104)));
     for m in &r.per_attack {
         s.push_str(&format!(
-            "{:<28} | {:>8.3} | {:>7.3} | {:>9.3} | {:>8.3} | {:>7.3}\n",
+            "{:<28} | {:>8.3} | {:>8.3} | {:>7.3} | {:>9.3} | {:>8.3} | {:>8.3} | {:>7.3}\n",
             m.attack.label(),
             m.baseline_rate,
+            m.corr_rate,
             m.pid_rate,
             m.fused_rate,
             m.baseline_auc,
+            m.corr_auc,
             m.pid_auc,
         ));
     }
+    s.push_str(
+        "\ncorr = pure NIS⊕|rho| default (no pid-core); PID = KSG-MI escalation. They match on\n\
+         the linear-Gaussian stealthy spoof — the empirical basis for docs/JUSTIFICATION.md.\n",
+    );
     s
 }
 
@@ -352,10 +412,12 @@ mod tests {
 
         // Every detector is quiet on the null.
         assert!(r.baseline_far < 0.1, "baseline FAR {:.3}", r.baseline_far);
+        assert!(r.corr_far < 0.1, "corr-default FAR {:.3}", r.corr_far);
         assert!(r.pid_far < 0.1, "PID FAR {:.3}", r.pid_far);
         assert!(r.fused_far < 0.1, "fused FAR {:.3}", r.fused_far);
 
-        // The headline: PID catches the stealthy spoof the baseline is blind to.
+        // The headline: the cross-sensor detectors catch the stealthy spoof the baseline
+        // is blind to.
         let st = metrics(&r, Attack::Stealthy);
         assert!(
             st.pid_rate > 0.8,
@@ -372,6 +434,20 @@ mod tests {
             st.baseline_auc < 0.75,
             "baseline stealthy AUC {:.3}",
             st.baseline_auc
+        );
+
+        // The JUSTIFICATION claim, empirically: on this linear-Gaussian stealthy spoof
+        // the CHEAP correlation default matches the MI engine — PID is *forced*, not
+        // justified, here. It should detect at least as reliably as PID does.
+        assert!(
+            st.corr_rate > 0.8,
+            "corr-default stealthy detection {:.3}",
+            st.corr_rate
+        );
+        assert!(
+            st.corr_auc > 0.85,
+            "corr-default stealthy AUC {:.3}",
+            st.corr_auc
         );
 
         // Complementarity: the baseline owns the magnitude attacks.

@@ -12,31 +12,15 @@
 //! | **one channel's NIS inflated** | `Spoof { stealthy: false }` | `Spoof { stealthy: false }` |
 //! | **all channels' NIS inflated** | `Jam` | `Spoof` (jam + decoupling) |
 
-use std::collections::HashSet;
-
-use galadriel_core::{DetectorConfig, Mirror, MirrorReport, Modality, PidObservation, Verdict};
+use galadriel_core::{
+    combine, DetectorConfig, FusedVerdict, Mirror, MirrorReport, Modality, PidObservation,
+};
 
 use crate::{analyze, scalar_channels, PidConfig, PidReport, PidVerdict};
 
-/// The unified verdict.
-#[derive(Debug, Clone, PartialEq)]
-pub enum FusedVerdict {
-    /// All channels corroborate and NIS is consistent.
-    Nominal,
-    /// One or more channels compromised. `stealthy` is true when the catch came from
-    /// PID decoupling while the baseline saw *in-covariance* NIS — the moment-matched
-    /// spoof the baseline is blind to.
-    Spoof {
-        channels: Vec<Modality>,
-        stealthy: bool,
-    },
-    /// All channels' NIS inflated together while correlation stays intact — denial.
-    Jam,
-    /// Neither detector has enough evidence. Fail closed.
-    InsufficientEvidence,
-}
-
-/// The fused report carries both component reports for transparency.
+/// The fused report carries both component reports for transparency. The verdict type
+/// ([`FusedVerdict`]) is shared with the pure default via `galadriel_core::fusion`, so
+/// the MI escalation and the correlation default speak the same language.
 #[derive(Debug, Clone)]
 pub struct FusedReport {
     /// The unified verdict.
@@ -49,71 +33,17 @@ pub struct FusedReport {
     pub note: String,
 }
 
-/// Fuse a baseline report and a PID report into one verdict.
+/// Fuse a baseline report and a PID report into one verdict, using the shared
+/// source-agnostic [`combine`] with the PID engine as the consistency source.
 pub fn fuse(baseline: MirrorReport, pid: PidReport) -> FusedReport {
-    let elevated: HashSet<Modality> = baseline
-        .channels
-        .iter()
-        .filter(|c| c.anomalous())
-        .map(|c| c.modality)
-        .collect();
     let decoupled: Vec<Modality> = pid
         .channels
         .iter()
         .filter(|c| c.decoupled)
         .map(|c| c.modality)
         .collect();
-
-    let baseline_out = matches!(baseline.verdict, Verdict::InsufficientEvidence);
     let pid_out = matches!(pid.verdict, PidVerdict::InsufficientEvidence);
-
-    let (verdict, note) = if baseline_out && pid_out {
-        (
-            FusedVerdict::InsufficientEvidence,
-            "both detectors lack evidence — fail closed".to_string(),
-        )
-    } else if !decoupled.is_empty() {
-        // A decoupled channel is a spoof; it is stealthy iff its NIS stayed in-covariance.
-        let stealthy = decoupled.iter().all(|m| !elevated.contains(m));
-        let names: Vec<&str> = decoupled.iter().map(|m| m.label()).collect();
-        let kind = if stealthy {
-            "moment-matched — NIS in-covariance, correlation broken"
-        } else {
-            "loud — NIS inflated and correlation broken"
-        };
-        (
-            FusedVerdict::Spoof {
-                channels: decoupled,
-                stealthy,
-            },
-            format!("PID decoupling on {} ({kind})", names.join(", ")),
-        )
-    } else {
-        match &baseline.verdict {
-            Verdict::Jam => (
-                FusedVerdict::Jam,
-                "all channels' NIS inflated, correlation intact — denial".to_string(),
-            ),
-            Verdict::Spoof { channels } => {
-                let names: Vec<&str> = channels.iter().map(|m| m.label()).collect();
-                (
-                    FusedVerdict::Spoof {
-                        channels: channels.clone(),
-                        stealthy: false,
-                    },
-                    format!(
-                        "baseline NIS spike on {} — magnitude spoof",
-                        names.join(", ")
-                    ),
-                )
-            }
-            _ => (
-                FusedVerdict::Nominal,
-                "all channels corroborate and NIS is consistent".to_string(),
-            ),
-        }
-    };
-
+    let (verdict, note) = combine(&baseline, &decoupled, pid_out);
     FusedReport {
         verdict,
         baseline,

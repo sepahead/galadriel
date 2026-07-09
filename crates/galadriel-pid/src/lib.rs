@@ -31,7 +31,8 @@ mod engine;
 mod fusion;
 
 pub use engine::{analyze, ChannelPid, PidConfig, PidReport, PidVerdict};
-pub use fusion::{assess_stream, fuse, FusedReport, FusedVerdict};
+pub use fusion::{assess_stream, fuse, FusedReport};
+pub use galadriel_core::FusedVerdict;
 
 // The signed-scalar channel extractor lives in galadriel-core (it is shared with the
 // pure correlation detector); re-exported here for convenience.
