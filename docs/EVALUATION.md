@@ -215,12 +215,14 @@ correlation scales as `√(1−d)`) traces the operating boundary (200 trials, b
 ```
 
 Both degrade smoothly to chance as the spoof weakens, but **correlation does not merely
-tie PID off the best case — it strictly beats it through the mid-boundary** (non-overlapping
-CIs at `d ∈ [0.4, 0.6]`). Sample `|ρ|` is the efficient dependence statistic for Gaussian
-data; KSG-MI is a nonparametric estimator whose finite-sample variance dominates once the
-effect is small. So on linear-Gaussian residuals MI/PID is not just *forced* — near the
-boundary it is strictly **worse**. This is the degradation curve the accuracy study's
-single (full-decouple) point could not show.
+tie PID off the best case — through the mid-boundary `d ∈ [0.2, 0.8]` it strictly beats it**:
+the *paired* corr−PID ΔAUC bootstrap (the powerful test, consistent with §2) lies wholly
+above 0 there (e.g. `d=0.6`: ΔAUC +0.092 [+0.062, +0.127]). At the extremes they tie — `d=1`
+(ΔAUC ≤0.001) and `d ≤ 0.1` where both have collapsed to chance. Sample `|ρ|` is the
+efficient dependence statistic for Gaussian data; KSG-MI is a nonparametric estimator whose
+finite-sample variance dominates once the effect is small. So on linear-Gaussian residuals
+MI/PID is not just *forced* — through the discriminable mid-boundary it is strictly **worse**.
+This is the degradation curve the accuracy study's single (full-decouple) point could not show.
 
 ### 2.4 Where consistency breaks — the honest-majority failure
 
@@ -229,15 +231,17 @@ channels collude on a *shared* phantom (radar + acoustic track one lie), visual 
 two liars mutually corroborate and become the false consensus (200 trials):
 
 ```
-correlation flags the HONEST channel:  1.000   (fires: 1.000)
-PID         flags the HONEST channel:  0.975
+correlation flags the HONEST channel:  1.000 [0.981, 1.000]   (fires: 1.000)
+PID         flags the HONEST channel:  0.975 [0.943, 0.989]
 ```
+(Wilson 95 % CIs.)
 
 The detector **inverts** — it fires, but accuses the *innocent* channel (correlation every
 time, PID 97.5 %). This is **structural**: consensus-based consistency cannot distinguish a
 true majority from a colluding one, so neither correlation nor PID escapes it. The honest
-scope: consistency detection needs `f < C/2`; beyond that the backstop is cryptographic
-channel authentication, not a smarter statistic.
+scope: consistency detection needs `f < C/2`; beyond that the backstop is structural —
+cryptographic channel authentication against an external spoofer, plus hardware attestation /
+physical diversity for a genuinely owned sensor — not a smarter statistic.
 
 ---
 

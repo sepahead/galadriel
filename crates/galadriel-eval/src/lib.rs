@@ -351,6 +351,25 @@ pub fn auc_diff_ci(
     percentiles(diffs, 0.025, 0.975)
 }
 
+/// Wilson score 95% CI for a binomial proportion `k/n` (a closed-form interval, correct
+/// even at the `k = n` / `k = 0` boundaries where a normal approximation degenerates).
+pub fn wilson_ci(k: usize, n: usize) -> (f64, f64) {
+    if n == 0 {
+        return (f64::NAN, f64::NAN);
+    }
+    let z = 1.959_964_f64;
+    let nf = n as f64;
+    let p = k as f64 / nf;
+    let z2 = z * z;
+    let denom = 1.0 + z2 / nf;
+    let center = p + z2 / (2.0 * nf);
+    let margin = z * (p * (1.0 - p) / nf + z2 / (4.0 * nf * nf)).sqrt();
+    (
+        ((center - margin) / denom).max(0.0),
+        ((center + margin) / denom).min(1.0),
+    )
+}
+
 /// A bootstrap-CI row for one detector on the stealthy spoof.
 #[derive(Debug, Clone)]
 pub struct CiRow {
@@ -446,6 +465,9 @@ pub struct SweepRow {
     /// PID consistency-score AUC and its bootstrap 95% CI.
     pub pid_auc: f64,
     pub pid_ci: (f64, f64),
+    /// **Paired** bootstrap 95% CI for the AUC difference `corr − PID` (the powerful,
+    /// §5.1-consistent test: > 0 across the CI means correlation strictly beats PID here).
+    pub diff_ci: (f64, f64),
 }
 
 /// Sweep the stealthy spoof's **decoupling strength** and report, for each `d`, the AUC of
@@ -487,6 +509,7 @@ pub fn decoupling_sweep(cfg: &EvalConfig, decouplings: &[f64], n_boot: usize) ->
                 corr_ci: auc_ci(&sc, &clean_c, n_boot, cfg.base_seed),
                 pid_auc: auc(&sp, &clean_p),
                 pid_ci: auc_ci(&sp, &clean_p, n_boot, cfg.base_seed ^ 0xF),
+                diff_ci: auc_diff_ci(&sc, &clean_c, &sp, &clean_p, n_boot, cfg.base_seed ^ 0xAB),
             }
         })
         .collect()
@@ -501,31 +524,49 @@ pub fn format_sweep(rows: &[SweepRow]) -> String {
          d=1 full decouple (easiest) → d→0 weak decouple (hardest); corr retained ∝ √(1−d)\n\n",
     );
     s.push_str(&format!(
-        "{:>5} | {:>21} | {:>21}\n",
-        "d", "corr AUC [95% CI]", "PID AUC [95% CI]"
+        "{:>5} | {:>21} | {:>21} | {:>18}\n",
+        "d", "corr AUC [95% CI]", "PID AUC [95% CI]", "Δ(corr−PID) [95% CI]"
     ));
-    s.push_str(&format!("{}\n", "-".repeat(53)));
+    s.push_str(&format!("{}\n", "-".repeat(74)));
     for r in rows {
+        let sig = if r.diff_ci.0 > 0.0 { " *" } else { "" };
         s.push_str(&format!(
-            "{:>5.2} | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}]\n",
-            r.decoupling, r.corr_auc, r.corr_ci.0, r.corr_ci.1, r.pid_auc, r.pid_ci.0, r.pid_ci.1,
+            "{:>5.2} | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}] | {:+.3} [{:+.3},{:+.3}]{}\n",
+            r.decoupling,
+            r.corr_auc,
+            r.corr_ci.0,
+            r.corr_ci.1,
+            r.pid_auc,
+            r.pid_ci.0,
+            r.pid_ci.1,
+            r.corr_auc - r.pid_auc,
+            r.diff_ci.0,
+            r.diff_ci.1,
+            sig,
         ));
     }
-    let corr_dominates = rows.iter().all(|r| r.corr_auc >= r.pid_auc - 1e-9);
-    let strict_somewhere = rows.iter().any(|r| r.corr_ci.0 > r.pid_ci.1);
-    s.push_str(match (corr_dominates, strict_somewhere) {
-        (true, true) => {
-            "\nCorrelation ties PID at full decoupling and STRICTLY BEATS it as the spoof weakens\n\
-             (non-overlapping CIs mid-boundary): the nonparametric KSG estimator's finite-sample\n\
-             variance penalises PID exactly where the effect is small. On linear-Gaussian data,\n\
-             MI/PID is not merely *forced* — near the detection boundary it is strictly WORSE.\n"
-        }
-        (true, false) => {
-            "\nCorrelation matches or beats PID at every strength (CIs overlap) — MI/PID buys no\n\
-             boundary on linear-Gaussian data.\n"
-        }
-        _ => "\nThe detectors diverge on the boundary — inspect the per-strength CIs above.\n",
-    });
+    // Use the PAIRED difference bootstrap (the powerful, §5.1-consistent test): correlation
+    // strictly beats PID at strengths where the paired ΔAUC CI lies wholly above 0 (marked *).
+    let strict_band: Vec<String> = rows
+        .iter()
+        .filter(|r| r.diff_ci.0 > 0.0)
+        .map(|r| format!("{:.2}", r.decoupling))
+        .collect();
+    if strict_band.is_empty() {
+        s.push_str(
+            "\nThe paired ΔAUC CI includes 0 at every strength — correlation and PID are tied\n\
+             across the boundary; MI/PID buys nothing on linear-Gaussian data.\n",
+        );
+    } else {
+        s.push_str(&format!(
+            "\nCorrelation ties PID at the extremes but STRICTLY BEATS it (paired ΔAUC CI > 0, *)\n\
+             at d ∈ {{{}}}: the nonparametric KSG estimator's finite-sample variance penalises\n\
+             PID exactly where the effect is small. On linear-Gaussian data MI/PID is not merely\n\
+             *forced* — through the mid-boundary it is strictly WORSE. (At d→0 both collapse to\n\
+             chance, indistinguishable.)\n",
+            strict_band.join(", ")
+        ));
+    }
     s
 }
 
@@ -540,8 +581,12 @@ pub struct CollusionResult {
     pub trials: usize,
     /// Fraction of trials the correlation detector flagged the **honest** channel as decoupled.
     pub corr_accuses_honest: f64,
+    /// Wilson 95% CI for `corr_accuses_honest`.
+    pub corr_ci: (f64, f64),
     /// Fraction the PID detector flagged the **honest** channel.
     pub pid_accuses_honest: f64,
+    /// Wilson 95% CI for `pid_accuses_honest`.
+    pub pid_ci: (f64, f64),
     /// Fraction the correlation detector flagged **any** channel (it fires — at the wrong one).
     pub corr_fires: f64,
 }
@@ -586,22 +631,31 @@ pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CollusionResult {
     CollusionResult {
         trials: n,
         corr_accuses_honest: c_acc as f64 / nf,
+        corr_ci: wilson_ci(c_acc, n),
         pid_accuses_honest: p_acc as f64 / nf,
+        pid_ci: wilson_ci(p_acc, n),
         corr_fires: c_fire as f64 / nf,
     }
 }
 
-/// Format the colluding-compromise study.
+/// Format the colluding-compromise study (mis-attribution rates with Wilson 95% CIs).
 pub fn format_collusion(r: &CollusionResult) -> String {
     format!(
         "Colluding compromise (2 of 3) — the honest-majority assumption FAILS ({} trials)\n\
          radar + acoustic share a phantom (mutually corroborate); visual is honest.\n\n\
-         correlation flags the HONEST channel: {:.3}   (fires at all: {:.3})\n\
-         PID         flags the HONEST channel: {:.3}\n\n\
+         correlation flags the HONEST channel: {:.3} [{:.3},{:.3}]   (fires at all: {:.3})\n\
+         PID         flags the HONEST channel: {:.3} [{:.3},{:.3}]\n\n\
          With a colluding majority the 'consensus' is the liars' — the honest minority\n\
          decouples from it and is (mis-)accused. Cross-sensor consistency assumes an honest\n\
          majority; a 2-of-3 compromise inverts it, and neither correlation nor PID escapes it.\n",
-        r.trials, r.corr_accuses_honest, r.corr_fires, r.pid_accuses_honest,
+        r.trials,
+        r.corr_accuses_honest,
+        r.corr_ci.0,
+        r.corr_ci.1,
+        r.corr_fires,
+        r.pid_accuses_honest,
+        r.pid_ci.0,
+        r.pid_ci.1,
     )
 }
 
@@ -1089,10 +1143,24 @@ mod tests {
                 r.pid_auc
             );
         }
-        let strict = rows.iter().any(|r| r.corr_ci.0 > r.pid_ci.1);
+        // The paired ΔAUC bootstrap (the powerful test) excludes 0 somewhere on the boundary.
+        let strict = rows.iter().any(|r| r.diff_ci.0 > 0.0);
         assert!(
             strict,
-            "correlation should strictly beat PID (non-overlapping CIs) somewhere on the boundary"
+            "the paired corr−PID ΔAUC CI should exclude 0 somewhere on the boundary"
         );
+    }
+
+    #[test]
+    fn wilson_ci_is_sane_at_the_boundaries() {
+        // k = n: upper bound is 1.0, lower bound strictly below 1.
+        let (lo, hi) = wilson_ci(200, 200);
+        assert!(
+            lo > 0.97 && lo < 1.0 && (hi - 1.0).abs() < 1e-9,
+            "wilson(200,200)=[{lo:.3},{hi:.3}]"
+        );
+        // A p̂ = 0.5 interval is centered near 0.5.
+        let (lo, hi) = wilson_ci(50, 100);
+        assert!(lo > 0.40 && hi < 0.60, "wilson(50,100)=[{lo:.3},{hi:.3}]");
     }
 }

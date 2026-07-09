@@ -3,7 +3,7 @@
 **Sepehr Mahmoudian**
 *sepahead — [github.com/sepahead/galadriel](https://github.com/sepahead/galadriel)*
 
-*Working paper / preprint — v0.2, 2026. Artifact: the `galadriel` repository. The
+*Working paper / preprint — v0.3, 2026. Artifact: the `galadriel` repository. The
 accuracy, latency, cost, and justification numbers in this paper are reproduced by
 `cargo run -p galadriel-eval --release`, `cargo bench -p galadriel-eval --bench detectors`,
 and `cargo run -p galadriel-justify --release`.*
@@ -328,12 +328,13 @@ Bootstrap 95% CIs — stealthy spoof (200 trials)
   baseline (NIS χ²)      AUC 0.547  [0.490, 0.603]   <- brackets 0.5: at chance
   correlation default    AUC 1.000  [1.000, 1.000]
   PID (KSG-MI)           AUC 0.999  [0.999, 1.000]
-  corr − PID (paired)   ΔAUC +0.001  [+0.000, +0.001] <- reaches 0: a TIE
+  corr − PID (paired)   ΔAUC +0.001  [+0.000, +0.001] <- ≤0.001: a TIE
 ```
 
 The baseline's CI **brackets 0.5** (not distinguishable from chance, *as its construction
-guarantees*); the two cross-sensor detectors sit at 1.000/0.999 with a **paired** AUC difference
-of at most **0.001** whose CI reaches 0 — a statistical tie. We do **not** claim correlation
+guarantees*); the two cross-sensor detectors sit at 1.000/0.999 with a **paired** AUC difference of at
+most **0.001** (95 % CI lower bound at 0) — a magnitude so small we read it as a statistical tie
+rather than an ordering. We do **not** claim correlation
 "beats" PID; the ~100×-costlier estimator buys nothing here. On the magnitude attacks the ordering
 flips (baseline 1.000, consistency scores at chance): the baseline owns that half of the space.
 These results are against a non-adaptive, single-channel adversary (§2).
@@ -402,33 +403,35 @@ default, MI/PID on escalation" recommendation defensible.
 $\sqrt{1-d}\,m + \sqrt{d}\,p$ (shared truth $m$, phantom $p$), which keeps its marginal variance —
 so it stays moment-matched at every $d$ — while its correlation with honest channels scales as
 $\sqrt{1-d}$. $d=1$ is full decoupling (easiest); $d\to0$ is an undetectable non-attack. AUC of the
-two consistency scores (200 trials, bootstrap 95 % CIs):
+two consistency scores, with per-detector bootstrap CIs *and* the **paired** corr−PID $\Delta$AUC CI
+(the powerful, §5.1-consistent test; 200 trials, 2000 resamples; `*` = $\Delta$AUC CI wholly above 0):
 
 ```
-   d  |  corr AUC [95% CI]     |  PID AUC [95% CI]
-------------------------------------------------------
- 1.00 |  1.000 [1.000, 1.000]  |  0.999 [0.998, 1.000]
- 0.80 |  1.000 [1.000, 1.000]  |  0.979 [0.964, 0.992]
- 0.60 |  1.000 [0.999, 1.000]  |  0.908 [0.874, 0.938]   <- CIs separate
- 0.40 |  0.959 [0.938, 0.977]  |  0.767 [0.718, 0.811]   <- corr strictly beats PID
- 0.30 |  0.879 [0.843, 0.911]  |  0.702 [0.648, 0.750]
- 0.20 |  0.710 [0.658, 0.760]  |  0.636 [0.578, 0.688]
- 0.10 |  0.550 [0.490, 0.606]  |  0.522 [0.465, 0.574]
- 0.05 |  0.512 [0.453, 0.567]  |  0.475 [0.419, 0.529]
+   d  |  corr AUC [95% CI]     |  PID AUC [95% CI]     | Δ(corr−PID) [95% CI]
+----------------------------------------------------------------------------
+ 1.00 |  1.000 [1.000, 1.000]  |  0.999 [0.998, 1.000] | +0.001 [+0.000, +0.001]
+ 0.80 |  1.000 [1.000, 1.000]  |  0.979 [0.964, 0.992] | +0.021 [+0.008, +0.037] *
+ 0.60 |  1.000 [0.999, 1.000]  |  0.908 [0.874, 0.938] | +0.092 [+0.062, +0.127] *
+ 0.40 |  0.959 [0.938, 0.977]  |  0.767 [0.718, 0.811] | +0.192 [+0.146, +0.239] *
+ 0.30 |  0.879 [0.843, 0.911]  |  0.702 [0.648, 0.750] | +0.176 [+0.116, +0.230] *
+ 0.20 |  0.710 [0.658, 0.760]  |  0.636 [0.578, 0.688] | +0.074 [+0.004, +0.142] *
+ 0.10 |  0.550 [0.490, 0.606]  |  0.522 [0.465, 0.574] | +0.028 [−0.049, +0.104]
+ 0.05 |  0.512 [0.453, 0.567]  |  0.475 [0.419, 0.529] | +0.038 [−0.036, +0.113]
 ```
 
-Two things happen. Both detectors degrade smoothly to chance as the decoupling weakens (the boundary
-is graceful, not a cliff). But — the sharper finding — **correlation does not merely tie PID off the
-best case; it strictly beats it through the mid-boundary** ($d\in[0.4,0.6]$, non-overlapping CIs;
-e.g. at $d=0.6$, corr 1.000 vs PID 0.908). The mechanism is estimator statistics: sample $|\rho|$ is
-the *efficient* dependence statistic for Gaussian data, whereas KSG mutual information is a
-nonparametric $k$-NN estimator carrying extra finite-sample variance. When the true decoupling is
-*large* (full decouple) both saturate at AUC 1.0 and the variance is invisible; as the effect shrinks
-toward the boundary, KSG's variance dominates and PID loses AUC faster. **So on linear-Gaussian
-residuals MI/PID is not merely *forced* (§4.1, no better at full decoupling) — in the hard,
-near-boundary regime that matters most operationally it is strictly *worse*.** This is the strongest
-form of the paper's thesis, and it answers the "best-case-only" objection directly: correlation
-dominates the *entire* boundary, not just its easy end.
+Both detectors degrade smoothly to chance as the decoupling weakens (the boundary is graceful, not a
+cliff). The sharper finding — **correlation does not merely tie PID off the best case; through the
+*mid*-boundary $d\in[0.2,0.8]$ it strictly beats it**, the paired $\Delta$AUC CI lying wholly above 0
+at every one of those strengths (e.g. $d=0.6$: $\Delta$AUC $+0.092$, CI $[+0.062,+0.127]$). At the two
+extremes the two are a statistical tie: at $d=1$ ($\Delta$AUC $\le 0.001$, as §5.1) and at $d\le0.1$,
+where both have collapsed to chance and the $\Delta$AUC CI includes 0. The mechanism is estimator
+statistics: sample $|\rho|$ is the *efficient* dependence statistic for Gaussian data, whereas KSG
+mutual information is a nonparametric $k$-NN estimator carrying extra finite-sample variance. At full
+decoupling both saturate at AUC 1.0 and the variance is invisible; through the mid-boundary KSG's
+variance dominates and PID loses AUC faster. **So on linear-Gaussian residuals MI/PID is not merely
+*forced* (§4.1, no better at full decoupling) — through the discriminable mid-boundary, the regime
+that matters most operationally, it is strictly *worse*.** This is the strongest form of the paper's
+thesis, and it answers the "best-case-only" objection directly.
 
 ### 5.6 Where consistency itself breaks: the honest-majority failure
 
@@ -439,19 +442,21 @@ corroborate and become the false "consensus"; the honest channel is the one that
 Over 200 trials:
 
 ```
-Colluding compromise (2 of 3) — radar+acoustic share a phantom; visual honest
-  correlation flags the HONEST channel:  1.000   (it fires: 1.000)
-  PID         flags the HONEST channel:  0.975
+Colluding compromise (2 of 3) — radar+acoustic share a phantom; visual honest  (Wilson 95% CIs)
+  correlation flags the HONEST channel:  1.000 [0.981, 1.000]   (it fires: 1.000)
+  PID         flags the HONEST channel:  0.975 [0.943, 0.989]
 ```
 
 The detector **inverts**: it fires reliably, but points at the *innocent* channel — correlation on
-**every** trial, PID on 97.5 %. Crucially this is **structural**, not an estimator artifact:
-consensus-based consistency has no way to tell a true majority from a colluding one, so *neither*
-correlation nor MI/PID escapes it (PID's decomposition offers no protection here either). This is
-the honest boundary of the whole approach: cross-sensor consistency needs $f < C/2$ compromised
-channels, and where that cannot be guaranteed the backstop must be cryptographic channel
-authentication (per-plane ACL / mTLS), not a smarter statistic. Reporting this failure is part of
-stating honestly what the method does and does not buy.
+**every** trial (Wilson CI $[0.981,1.000]$), PID on 97.5 % ($[0.943,0.989]$). Crucially this is
+**structural**, not an estimator artifact: consensus-based consistency has no way to tell a true
+majority from a colluding one, so *neither* correlation nor MI/PID escapes it (PID's decomposition
+offers no protection here either). This is the honest boundary of the whole approach: cross-sensor
+consistency needs $f < C/2$ compromised channels, and where that cannot be guaranteed the backstop is
+structural, not statistical — cryptographic channel authentication (per-plane ACL / mTLS) against an
+*external* spoofer, and, for a genuinely owned/credentialed sensor (which passes authentication),
+hardware attestation or physical/vendor diversity. Reporting this failure is part of stating honestly
+what the method does and does not buy.
 
 ---
 
