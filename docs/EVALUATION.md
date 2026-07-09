@@ -127,6 +127,42 @@ Reading the table:
   NIS ⊕ correlation default (the `corr det` column) does the same (1.000 / 1.000 / 1.000)
   **with no `pid-core` dependency at all**.
 
+### 2.1 Detection latency (time-to-detect)
+
+AUC and detection rate score the *final* window; operationally, **how fast** a detector
+fires after onset matters just as much. Re-running each detector on growing prefixes
+(every 4 frames, 100 ms/frame) and taking the median frame of first alarm — with `reach`,
+the fraction of trials that ever alarmed:
+
+```
+Detection latency — median frames from attack onset to first alarm
+50 trials/regime · prefix step 4 frames · 100 ms/frame · '—' = never fires
+
+regime                       |     baseline | corr default |          PID
+--------------------------------------------------------------------------
+loud bias spoof              |    4f (100%) |    4f (100%) |     — (  0%)
+stealthy (moment-matched)    |   40f ( 30%) |   80f (100%) |   52f (100%)
+broadband jam                |    4f (100%) |    4f (100%) |     — (  0%)
+```
+
+- **Magnitude attacks fire near-instantly.** The baseline (and the correlation default's
+  NIS component) alarm within **~4 frames / 0.4 s** of a loud spoof or a jam — magnitude
+  is visible the moment one inflated window accumulates. PID correctly never fires (0%);
+  a bias/scale attack preserves the cross-channel structure it keys off.
+- **Stealthy detection carries a real window-fill latency.** The cross-sensor detectors
+  need enough *post-onset* decoupled frames inside their 128-frame window before the
+  broken agreement is statistically legible: **52 frames (PID) / 80 frames (correlation
+  default)** — 5–8 s. This is an intrinsic cost of the stealthy regime, not a tuning gap:
+  a moment-matched spoof is *designed* to reveal itself slowly. It is caught **reliably**
+  (100 % reach) but not instantly, and saying so is part of an honest evaluation.
+- **A latency/accuracy nuance.** Here PID trips ~28 frames *earlier* than the correlation
+  default (a decision-threshold placement difference), even though at the full window the
+  correlation default's AUC (1.000) edges PID's (0.999). Neither dominates on both axes;
+  reporting both — accuracy *and* latency — is the disciplined position.
+- The baseline's **30 % reach** on the stealthy spoof (median 40 f *among only the trials
+  it fired in*) is the occasional chance NIS excursion of the phantom latent, not reliable
+  detection — contrast the **100 %** reach of the cross-sensor detectors.
+
 ---
 
 ## 3. Discussion
@@ -198,15 +234,17 @@ shows a regime where it provably does not.
 ## 5. Reproduce
 
 ```bash
-# Full study (200 trials/regime; ~seconds in release):
+# Full study (200 trials/regime; the detection/AUC report + the §2.1 latency table):
 cargo run -p galadriel-eval --release 200
 
 # Fast pass:
 cargo run -p galadriel-eval 40
 
-# The hypothesis as a unit test (asserts, on the stealthy spoof: baseline blind
-# <0.2 detection / AUC <0.75; PID *and* the pure correlation default both >0.8
-# detection & AUC >0.85; and both magnitude attacks caught by the fused detector):
+# The hypotheses as unit tests: (1) on the stealthy spoof the baseline is blind
+# (<0.2 detection / AUC <0.75) while PID *and* the pure correlation default both clear
+# >0.8 detection & AUC >0.85, and both magnitude attacks are caught by the fused
+# detector; (2) latency tracks attack ownership — the cross-sensor detectors reach the
+# stealthy spoof (100% reach) while the baseline owns the loud spoof:
 cargo test -p galadriel-eval
 ```
 

@@ -8,7 +8,9 @@
 //! genuine consensus. Per trial we record, for each detector, a binary alarm and a
 //! continuous score; across trials we report detection rate, false-alarm rate (on the
 //! clean/null regime), and ROC-AUC (attack scores vs clean scores, via the Mann–Whitney
-//! identity `AUC = P(score_attack > score_clean)`).
+//! identity `AUC = P(score_attack > score_clean)`). A companion study ([`measure_latency`])
+//! reports median **time-to-detect** — frames from attack onset to first alarm on growing
+//! prefixes — because how *fast* a detector fires matters as much as whether it does.
 //!
 //! The headline result is **complementarity**: the baseline catches the *magnitude*
 //! attacks (a loud bias spoof and a jam) but is blind to a *moment-matched stealthy
@@ -390,6 +392,128 @@ pub fn format_report(r: &EvalResults) -> String {
     s
 }
 
+// ---------------------------------------------------------------------------
+// Detection latency (time-to-detect)
+// ---------------------------------------------------------------------------
+
+/// Median time-to-detect per detector: frames from attack onset to the first alarm on a
+/// growing prefix of the stream. A `None` TTD means the detector never alarmed within the
+/// capture — the *correct* outcome for a detector that owns a different half of the attack
+/// space (PID on a magnitude jam, say). `reach` is the fraction of trials each detector
+/// eventually alarmed in (baseline, correlation-default, PID).
+#[derive(Debug, Clone)]
+pub struct AttackLatency {
+    /// Which regime.
+    pub attack: Attack,
+    /// Median frames-to-detect for the NIS baseline.
+    pub baseline_ttd: Option<f64>,
+    /// Median frames-to-detect for the pure correlation default.
+    pub corr_ttd: Option<f64>,
+    /// Median frames-to-detect for the PID engine.
+    pub pid_ttd: Option<f64>,
+    /// Fraction of trials that eventually alarmed: (baseline, corr-default, PID).
+    pub reach: (f64, f64, f64),
+}
+
+fn median(v: &mut [usize]) -> Option<f64> {
+    if v.is_empty() {
+        return None;
+    }
+    v.sort_unstable();
+    let n = v.len();
+    Some(if n % 2 == 1 {
+        v[n / 2] as f64
+    } else {
+        f64::from(u32::try_from(v[n / 2 - 1] + v[n / 2]).unwrap_or(u32::MAX)) / 2.0
+    })
+}
+
+/// First alarm frame offset from `onset`, searching growing prefixes stepped by `step`
+/// frames; `None` if the detector never alarms within the capture.
+fn ttd(
+    stream: &[PidObservation],
+    onset: usize,
+    step: usize,
+    alarm: impl Fn(&[PidObservation]) -> bool,
+) -> Option<usize> {
+    let n_mods = MODALITIES.len();
+    let frames = stream.len() / n_mods;
+    let step = step.max(1);
+    let mut k = onset.max(1);
+    while k <= frames {
+        if alarm(&stream[..k * n_mods]) {
+            return Some(k - onset);
+        }
+        k += step;
+    }
+    None
+}
+
+/// Measure detection latency for the three attack regimes over `trials` seeds, probing
+/// prefixes every `step` frames. Detectors that never fire (by design) yield `None`.
+pub fn measure_latency(cfg: &EvalConfig, trials: usize, step: usize) -> Vec<AttackLatency> {
+    let onset = cfg.frames / 3;
+    Attack::ALL
+        .iter()
+        .filter(|a| **a != Attack::Clean)
+        .map(|&attack| {
+            let (mut bt, mut ct, mut pt) = (Vec::new(), Vec::new(), Vec::new());
+            let (mut br, mut cr, mut pr) = (0usize, 0usize, 0usize);
+            for t in 0..trials {
+                let s = build(attack, cfg, cfg.base_seed + t as u64);
+                if let Some(d) = ttd(&s, onset, step, |p| baseline_eval(p).0) {
+                    bt.push(d);
+                    br += 1;
+                }
+                if let Some(d) = ttd(&s, onset, step, |p| corr_eval(p).0) {
+                    ct.push(d);
+                    cr += 1;
+                }
+                if let Some(d) = ttd(&s, onset, step, |p| pid_eval(p).0) {
+                    pt.push(d);
+                    pr += 1;
+                }
+            }
+            let tn = trials as f64;
+            AttackLatency {
+                attack,
+                baseline_ttd: median(&mut bt),
+                corr_ttd: median(&mut ct),
+                pid_ttd: median(&mut pt),
+                reach: (br as f64 / tn, cr as f64 / tn, pr as f64 / tn),
+            }
+        })
+        .collect()
+}
+
+/// Format the latency study as a plain-text table (median frames + reach%).
+pub fn format_latency(rows: &[AttackLatency], trials: usize, step: usize) -> String {
+    let cell = |t: Option<f64>, reach: f64| match t {
+        Some(v) => format!("{v:>4.0}f ({:>3.0}%)", reach * 100.0),
+        None => format!("{:>5} ({:>3.0}%)", "—", reach * 100.0),
+    };
+    let mut s = String::new();
+    s.push_str(&format!(
+        "Detection latency — median frames from attack onset to first alarm\n\
+         {trials} trials/regime · prefix step {step} frames · 100 ms/frame · '—' = never fires\n\n"
+    ));
+    s.push_str(&format!(
+        "{:<28} | {:>12} | {:>12} | {:>12}\n",
+        "regime", "baseline", "corr default", "PID"
+    ));
+    s.push_str(&format!("{}\n", "-".repeat(74)));
+    for r in rows {
+        s.push_str(&format!(
+            "{:<28} | {} | {} | {}\n",
+            r.attack.label(),
+            cell(r.baseline_ttd, r.reach.0),
+            cell(r.corr_ttd, r.reach.1),
+            cell(r.pid_ttd, r.reach.2),
+        ));
+    }
+    s
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -478,5 +602,36 @@ mod tests {
     fn auc_basics() {
         assert!((auc(&[1.0, 2.0, 3.0], &[0.0, 0.5]) - 1.0).abs() < 1e-9);
         assert!((auc(&[0.0], &[0.0]) - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn latency_tracks_attack_ownership() {
+        // Lean settings: enough trials for a stable median, small enough to stay fast.
+        let cfg = EvalConfig {
+            frames: 210,
+            ..Default::default()
+        };
+        let rows = measure_latency(&cfg, 12, 6);
+
+        let st = rows.iter().find(|r| r.attack == Attack::Stealthy).unwrap();
+        // The cross-sensor detectors detect the stealthy spoof, at a finite latency…
+        assert!(
+            st.corr_ttd.is_some(),
+            "corr should detect the stealthy spoof"
+        );
+        assert!(st.pid_ttd.is_some(), "PID should detect the stealthy spoof");
+        assert!(st.reach.1 > 0.8, "corr reach on stealthy {:.2}", st.reach.1);
+
+        // …while the magnitude baseline owns the loud spoof and never (mostly) the stealthy.
+        let loud = rows.iter().find(|r| r.attack == Attack::LoudSpoof).unwrap();
+        assert!(
+            loud.baseline_ttd.is_some(),
+            "baseline should detect the loud spoof"
+        );
+        assert!(
+            loud.reach.0 > 0.8,
+            "baseline reach on loud {:.2}",
+            loud.reach.0
+        );
     }
 }
