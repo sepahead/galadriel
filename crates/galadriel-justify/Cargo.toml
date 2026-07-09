@@ -1,0 +1,18 @@
+[package]
+name = "galadriel-justify"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Is PID/mutual-information actually justified over cheap Pearson correlation? A head-to-head study."
+
+[[bin]]
+name = "galadriel-justify"
+path = "src/main.rs"
+
+[dependencies]
+pid-core = { path = "../../../pid-rs/crates/pid-core" }
+rand = { workspace = true }
+rand_distr = { workspace = true }

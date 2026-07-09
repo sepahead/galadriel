@@ -200,6 +200,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "galadriel-justify"
+version = "0.1.0"
+dependencies = [
+ "pid-core",
+ "rand",
+ "rand_distr",
+]
+
+[[package]]
 name = "galadriel-ncp"
 version = "0.1.0"
 dependencies = [

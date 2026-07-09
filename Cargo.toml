@@ -15,6 +15,7 @@ members = [
     "crates/galadriel-pid",
     "crates/galadriel-ncp",
     "crates/galadriel-eval",
+    "crates/galadriel-justify",
 ]
 # The default build (`cargo build` / `cargo test` with no args) stays PURE — it
 # excludes galadriel-pid, which pulls the heavier pid-core. Build/test it with
