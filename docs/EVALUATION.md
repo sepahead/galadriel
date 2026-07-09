@@ -69,7 +69,8 @@ single channel is, by construction, blind to it.
   the detector the **default build ships** — a complete detector with no heavy dependency.
 - **PID** (`galadriel-pid`): the same structure with geometry-gated **pairwise KSG mutual
   information** substituted for `|ρ|` as the corroboration score, plus the `I^sx`
-  redundancy atom. **Alarm** = a `Spoof` verdict (a channel decoupled from the group).
+  redundancy and synergy atoms (advisory, report-only — the verdict never reads them).
+  **Alarm** = a `Spoof` verdict (a channel decoupled from the group).
   **Score** = the decoupling depth over MI corroborations — *the identical formula*, so
   the correlation default and the PID engine are read off the same axis and are directly
   comparable.
@@ -153,9 +154,13 @@ broadband jam                |    4f (100%) |    4f (100%) |     — (  0%)
 - **Stealthy detection carries a real window-fill latency.** The cross-sensor detectors
   need enough *post-onset* decoupled frames inside their 128-frame window before the
   broken agreement is statistically legible: **52 frames (PID) / 80 frames (correlation
-  default)** — 5–8 s. This is an intrinsic cost of the stealthy regime, not a tuning gap:
-  a moment-matched spoof is *designed* to reveal itself slowly. It is caught **reliably**
-  (100 % reach) but not instantly, and saying so is part of an honest evaluation.
+  default)** — 5–8 s. This is an intrinsic cost of the *windowed* formulation, not of the
+  problem: the pointwise sequential study ([`JUSTIFICATION.md`](JUSTIFICATION.md) §3,
+  reason 4; `PAPER.md` §4.4) shows a per-frame CUSUM formulation of the same consistency
+  question detects a moment-matched decoupling in 2–19 frames at matched FAR on canonical
+  couplings — porting that mode into the deployed engine is roadmap work. Within the
+  windowed formulation the spoof is caught **reliably** (100 % reach) but not instantly,
+  and saying so is part of an honest evaluation.
 - **A latency nuance (reported descriptively, not as an ordering).** Here PID's column
   trips ~28 frames *earlier* than the correlation column — but the two are **not** measured
   under the same wiring (the `corr` column is the fused NIS ⊕ correlation detector, the

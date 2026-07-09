@@ -87,8 +87,10 @@ cargo run --bin galadriel -- demo
 
 galadriel consumes a stream of `PidObservation` records — one per associated
 measurement — carrying the **Normalized Innovation Squared** `NIS = yᵀ S⁻¹ y ~ χ²(dof)`
-formed against the *a priori* (pre-update) track state. In the ecosystem these are
-emitted by crebain's fusion `update_track`; here they are transport-agnostic data.
+formed against the *a priori* (pre-update) track state. In the ecosystem crebain's fusion
+`update_track` is the **designated emitter** of these records (the live wiring is on the
+roadmap; the sidecar payload contract is frozen by test in `galadriel-ncp`); here they are
+transport-agnostic data.
 
 **The baseline (default build).** Per channel, a sliding window of NIS is tested for
 χ² consistency (the window sum is `~ χ²(n·dof)`; an improbably high sum flags an
@@ -111,14 +113,22 @@ stealthy spoof it reaches ROC-AUC **1.000** where the baseline is at chance (0.5
 **complete detector with no heavy dependency** ([`docs/EVALUATION.md`](docs/EVALUATION.md)).
 
 **The PID escalation (feature `pid`).** Correlation is provably sufficient *only* while
-the cross-channel dependence stays linear-Gaussian — as galadriel's kinematic residuals
-do. Where it is **nonlinear, synergistic, or the adversary is correlation-aware**,
-galadriel escalates to a geometry-gated **KSG mutual-information / PID** engine (the
-`I^sx` atoms, pid-core), reusing the *same* fused 2×2 (`galadriel_pid::assess_stream`).
+the cross-channel dependence stays linear-Gaussian — as kinematic innovation residuals are
+by design (confirming this on *recorded* innovations is roadmap item 1). Where it is
+**nonlinear, synergistic, or the adversary is correlation-aware**,
+galadriel escalates to a geometry-gated **KSG mutual-information / PID** engine, reusing
+the *same* fused 2×2 (`galadriel_pid::assess_stream`). The decomposition is the **Wibral
+shared-exclusions PID**: per channel, the continuous `I^sx` redundancy and synergy atoms
+(Makkeh–Gutknecht–Wibral 2021; continuous estimator per Ehrlich et al. 2024, via pid-core)
+are reported advisory alongside the MI corroboration score that drives the verdict.
 The justification study quantifies exactly when this earns its cost
 ([`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md)): a **ΔAUC ≈ 0.34** on a nonlinear
-coupling correlation can't see, and an *irreducible* synergy regime where even pairwise
-MI is at chance. On the linear stealthy spoof it merely *matches* the correlation default
+coupling correlation can't see; an *irreducible* synergy regime where even pairwise
+MI is at chance while the SxPID synergy atom separates at AUC 1.0 (discrete XOR **and** a
+continuous sign-parity coupling); and, on the latency axis, a **pointwise** sequential mode
+where the per-frame local-information CUSUM is the only fast detector off the Gaussian
+manifold (19 vs 43 frames at matched FAR). On the linear stealthy spoof the escalation
+merely *matches* the correlation default
 (AUC 0.999) — so there, honestly, MI is **forced, not justified**. Use PID where it is
 irreducible, correlation where it is not. The full 10-lens design review lives in the
 sibling `haldir` planning repository (`galadriels-mirror.md`).
@@ -136,14 +146,14 @@ in [`CHANGELOG.md`](CHANGELOG.md) under `[Unreleased]`. galadriel pins its priva
 | [`galadriel-sim`](crates/galadriel-sim) | correlated scenarios + phantom-DOA / stealthy-spoof / jam / collusion / maneuver injections | ✅ **shipped default** | 9 |
 | [`galadriel-cli`](crates/galadriel-cli) | `galadriel demo` / `replay` driver | ✅ **shipped default** | — |
 | [`galadriel-pid`](crates/galadriel-pid) | geometry-gated KSG-MI / PID escalation | ✅ feature `pid` | 9 |
-| [`galadriel-ncp`](crates/galadriel-ncp) | `PidObservation` JSONL ingest · read-only Zenoh `SidecarTap` | ✅ `ncp` · 🟡 `ncp-live`¹ | 3 |
+| [`galadriel-ncp`](crates/galadriel-ncp) | `PidObservation` JSONL ingest · frozen sidecar contract · read-only Zenoh `SidecarTap` | ✅ `ncp` · 🟡 `ncp-live`¹ | 4 |
 | [`galadriel-eval`](crates/galadriel-eval) | the nine-part Monte-Carlo evaluation + criterion cost bench | ✅ | 14 |
-| [`galadriel-justify`](crates/galadriel-justify) | the forced-vs-justified studies | ✅ | 3 |
+| [`galadriel-justify`](crates/galadriel-justify) | the forced-vs-justified studies (incl. SxPID atoms · continuous synergy · pointwise/sequential) | ✅ | 7 |
 
 ¹ The live Zenoh tap **compiles against the real `ncp-zenoh` 1.9 API** but is not yet
 integration-tested against a running broker in CI.
 
-**Quality bar.** **74 tests pass** (including property-based `proptest` suites in `-core` and
+**Quality bar.** **79 tests pass** (including property-based `proptest` suites in `-core` and
 `-eval`), `cargo fmt` + `cargo clippy -D warnings` clean, every crate `#![forbid(unsafe_code)]`,
 MSRV **1.80** (default; 1.88 with `pid` / `ncp`). Every number in the docs is a reproducible
 `cargo` command.
@@ -256,6 +266,11 @@ stays out of reach *by design*, and enforcement stays a bus/crypto concern.
   with RAIM, signal-level GNSS anti-spoofing, and resilient state estimation on one ground truth.
 - **Richer maneuver model.** Replace §5.8's first-order per-channel-lag proxy with real maneuver
   dynamics and the fusion filter's own response, tightening the non-stationary false-alarm story.
+- **Port the pointwise sequential mode into the engine.** The per-frame local-information CUSUM
+  ([`PAPER.md`](docs/PAPER.md) §4.4) replaces window-refill latency with sequential accumulation —
+  19 vs 43 frames off the Gaussian manifold at matched FAR on canonical couplings — at the price of
+  a clean calibration window; the streaming calibration/reference-window management is open
+  engineering.
 
 **Integration** *(engineering)*
 - **End-to-end crebain wiring.** Consume crebain's `update_track` innovations live over the NCP

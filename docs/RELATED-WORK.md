@@ -115,7 +115,7 @@ estimators.
 **Honest limit.** RAIM is **intra-modality** — it exploits the redundancy of many satellites within
 *one* GNSS receiver, and it needs the linearized observation geometry. It has no notion of a
 *heterogeneous* cross-sensor check, and classical single-fault RAIM inverts under a colluding
-majority (the same structural failure galadriel discloses in `EVALUATION.md` §5.6).
+majority (the same structural failure galadriel discloses in `PAPER.md` §5.6 / `EVALUATION.md` §2.4).
 
 **Relation to galadriel.** Galadriel is the **model-free, cross-modality generalization of RAIM's
 core idea** — "residual consistency + identify and exclude the outlier" — moved from *pseudorange
@@ -143,7 +143,7 @@ galadriel adds a *cross-channel* layer.
 default), *and* the honest comparison floor every evaluation table is run against. Galadriel does not
 replace it — it fuses it (`fusion::combine`) with the cross-sensor test so the loud attacks it *does*
 catch cost nothing extra. **A component, and the baseline galadriel must beat to justify itself
-(`EVALUATION.md` §5.1: baseline at chance 0.547 on the stealthy spoof; cross-sensor recovers 1.000).**
+(`PAPER.md` §5.1: baseline at chance 0.547 on the stealthy spoof; cross-sensor recovers 1.000).**
 
 ### 2.5 Cross-sensor / cross-modal consistency (L2/L4) *(galadriel's family)*
 
@@ -309,7 +309,7 @@ built to correct:
    training data? honest majority? key infrastructure? actuation authority?). Two methods with equal
    AUC are not equivalent if one needs a validated dynamics model and the other needs nothing.
 
-Galadriel's three-axis synthesis (accuracy × latency × cost, `EVALUATION.md` §5.4) plus its adaptive
+Galadriel's three-axis synthesis (accuracy × latency × cost, `PAPER.md` §5.4) plus its adaptive
 (§5.7), non-stationary-FAR (§5.8), and attacker-gain (§5.9) studies already report axes 1–4 and 6;
 its per-channel verdict supplies axis 5.
 
@@ -340,7 +340,7 @@ Detectors with different score distributions cannot be compared at a single thre
 comparison fixes a **common false-alarm rate** and reads detection (or the adversary's evasion
 ceiling) *there*. Galadriel's adaptive study does exactly this — at **matched FAR**, correlation's
 evasion ceiling (0.20) is *lower* than PID's (0.40), reversing the naive intuition that the fancier
-detector is harder to evade (`EVALUATION.md` §5.7). Any cross-approach table must pin the operating
+detector is harder to evade (`PAPER.md` §5.7 / `EVALUATION.md` §2.5). Any cross-approach table must pin the operating
 point the same way, or it is comparing thresholds, not detectors.
 
 ### 4.4 Metrics, precisely

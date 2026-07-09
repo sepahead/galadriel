@@ -3,7 +3,7 @@
 **Sepehr Mahmoudian**
 *sepahead — [github.com/sepahead/galadriel](https://github.com/sepahead/galadriel)*
 
-*Working paper / preprint — v0.4, 2026. Artifact: the `galadriel` repository. The
+*Working paper / preprint — v0.5, 2026. Artifact: the `galadriel` repository. The
 accuracy, latency, cost, and justification numbers in this paper are reproduced by
 `cargo run -p galadriel-eval --release`, `cargo bench -p galadriel-eval --bench detectors`,
 and `cargo run -p galadriel-justify --release`.*
@@ -13,7 +13,11 @@ and `cargo run -p galadriel-justify --release`.*
 > bootstrap). Fine-grained gaps are read *through* the CIs: the stealthy-spoof corr-vs-PID
 > difference is ΔAUC ≤ 0.001 with a CI reaching 0 (a **tie**, §5.1), and the two "at chance"
 > claims (baseline AUC 0.547; synergy pairwise AUC 0.544) are confirmed by CIs that **bracket
-> 0.5**. Detection rates/latencies are still bare point estimates. All detection numbers are
+> 0.5**. An AUC of 1.000 with a **degenerate CI [1.000, 1.000]** means *no class overlap was
+> observed in the trials run* — a percentile bootstrap cannot see past complete separation, and
+> at 200–300 trials/class such a result is consistent (at 95 %) with a true AUC as low as
+> ≈ 0.99; read those cells as "no observed error", never as certainty. Detection
+> rates/latencies are still bare point estimates. All detection numbers are
 > against a **non-adaptive** adversary (§2).
 
 ---
@@ -46,8 +50,14 @@ on **canonical constructions**, the three regimes where MI/PID genuinely earns i
 only 0.66, and only via a kurtosis artifact); (ii) **adversarial robustness** under
 Kerckhoffs' assumption, which we argue is a defense-in-depth framing of (i) that bites only
 off the Gaussian manifold; and (iii) **irreducible synergy**, where correlation *and pairwise
-MI alike* are at chance (AUC ≈ 0.54, indistinguishable from 0.5) while a joint-information
-measure separates the attack (AUC 1.000). We build **Galadriel's Mirror**, a layered detector
+MI alike* are at chance (AUC ≈ 0.54, indistinguishable from 0.5) while the joint measures —
+a joint-MI contrast *and the shipped shared-exclusions (SxPID) synergy atom itself, discrete
+and continuous* — separate the attack (AUC 1.000). A fourth study moves the same discipline to
+the **latency axis**: the pointwise local-information term is the plug-in log-likelihood ratio
+for a moment-matched decoupling, so a CUSUM over it is the canonical sequential detector — on
+the Gaussian manifold a parametric $\hat\rho$ plug-in of it wins (pointwise information is
+*forced* there too), while off the manifold it is the only fast detector (19 vs 43 frames at
+matched false-alarm rate). We build **Galadriel's Mirror**, a layered detector
 that ships the cheap correlation check as its default and gates the MI/PID engine for exactly
 those regimes, and evaluate it on a three-axis basis — **accuracy, detection latency, and
 compute cost** — against a non-adaptive, single-channel adversary. The system is open-source,
@@ -98,17 +108,24 @@ justified, demonstrated on canonical constructions — and build a system around
 
 **Contributions.**
 1. A closed-form + empirical demonstration that on linear-Gaussian couplings, MI-threshold and
-   `|ρ|`-threshold detectors have identical ROC, extended from MI to the full decomposition via
-   the observation that all Gaussian PID atoms are functions of the covariance (§4.1) — with a
+   `|ρ|`-threshold detectors have identical ROC — together with the observation that *every*
+   Gaussian PID atom, for any measure (the deployed $I^{sx}$ included), is a function of the
+   covariance, so no decomposition atom can out-inform the correlations (§4.1) — with a
    compute measurement of the ~100× price of using MI/PID anyway (§5.3).
 2. A precise characterization, on **canonical constructions** (not counter-UAS-instantiated),
    of the three regimes where MI/PID is justified: model-free nonlinearity, adversarial
    robustness, and irreducible synergy — the last of which defeats *pairwise* MI as well as
-   correlation (§4.2).
-3. **Galadriel's Mirror**, a layered detector — a cheap NIS ⊕ correlation default with a gated
+   correlation, demonstrated with both a joint-MI contrast **and the deployed SxPID synergy
+   atom itself**, discrete (exact XOR atoms) and continuous (sign-parity coupling) (§4.2).
+3. A **pointwise extension of the discipline to the latency axis** (§4.4): the per-frame local
+   MI term is the plug-in log-likelihood ratio for a moment-matched decoupling, so a CUSUM
+   over it is the canonical sequential detector — parametrically forced on the Gaussian
+   manifold (a $\hat\rho$ plug-in wins), justified and uniquely fast off it (19f vs 43f at
+   matched FAR), which is the Wibral-pointwise capability made operational.
+4. **Galadriel's Mirror**, a layered detector — a cheap NIS ⊕ correlation default with a gated
    MI/PID escalation, unified under one source-agnostic fusion — that operationalizes the
    discipline (§3).
-4. A **three-axis evaluation** methodology (accuracy × latency × cost) and an open,
+5. A **three-axis evaluation** methodology (accuracy × latency × cost) and an open,
    `cargo`-reproducible artifact (§5).
 
 We do not claim that MI/PID beats cheaper statistics in general. We claim the opposite for the
@@ -170,12 +187,22 @@ channels.)
 
 **3.3 The MI/PID escalation.** The optional engine replaces $|\rho|$ with geometry-gated
 **pairwise Kraskov–Stögbauer–Grassberger (KSG) mutual information** [Kraskov2004] as the
-corroboration score, and reports the $I^{sx}$ **redundancy** atom (shared-exclusions
-redundancy [Makkeh2021]) alongside. Synergy, when needed, is the top atom of the Williams–Beer
-lattice [WilliamsBeer2010], obtained by Möbius inversion — distinct from $I^{sx}$, which is a
-*redundancy* measure. A geometry gate (intrinsic-dimension and distance-concentration checks)
+corroboration score — this score alone drives the verdict — and reports, per channel and
+advisory-only, the **shared-exclusions PID atoms**: the $I^{sx}$ redundancy of Makkeh,
+Gutknecht & Wibral [Makkeh2021] (estimated on continuous residuals with the KSG-style
+estimator of Ehrlich et al. [Ehrlich2024] — the same measure across the discrete and
+continuous regimes), and the **synergy** atom obtained from it by Möbius inversion on the
+Williams–Beer redundancy *lattice* [WilliamsBeer2010, Gutknecht2021]:
+$\mathrm{Syn} = I(S_1,S_2;T) - I(S_1;T) - I(S_2;T) + I^{sx}_\cap$. Note the attribution: the
+*lattice* is Williams–Beer's, but the atom values are those of the $I^{sx}$-based (SxPID)
+decomposition, not of Williams–Beer's own $I_{\min}$ — the two disagree even on XOR (§4.2(3)).
+We choose this decomposition deliberately: it is **pointwise** (atoms exist per realization —
+the granularity a streaming monitor needs, §4.4), differentiable, defined by one measure for
+discrete and continuous variables alike, and extends to $n$ sources on the lattice; the price
+is that atoms can be legitimately **negative** (misinformation), which we report, never clamp.
+A geometry gate (intrinsic-dimension and distance-concentration checks)
 fails the estimator *closed* to `InsufficientEvidence` when the window is too short/high-
-dimensional for KSG to be trustworthy — the regime where its bias-convergence rate
+dimensional for KSG to be trustworthy — the regime where its bias-convergence upper bound
 $\tilde O(N^{-1/(d_x+d_y)})$ [Gao2018] degrades with dimension, and where, under strong dependence,
 fixed-$k$ nearest-neighbour MI estimators are known to underestimate the true value at feasible
 sample sizes [GaoSVG2015].
@@ -214,21 +241,36 @@ A monotone transform of a score leaves its ROC unchanged, so a *plug-in* Gaussia
 (computing $-\tfrac12\ln(1-\hat\rho^2)$) and a $|\hat\rho|$ detector are **identical**.
 The KSG estimator we actually benchmark only *approximates* this and carries its own finite-
 sample variance; that is why in §5.1 it scores 0.999, marginally below the exact 1.000, rather
-than exactly equal. Crucially, the point extends past MI **to the full decomposition**: Barrett
-derived the closed-form PID for jointly-Gaussian systems and showed every atom (redundancy,
-unique, synergy) is a deterministic function of the covariance matrix — redundancy, in
-particular, reduces to the minimum-information (MMI) redundancy and is fixed by the pairwise
-correlations [Barrett2015]. (This has since been reproduced by other Gaussian-PID constructions
-[Venkatesh2021].) So on jointly-Gaussian residuals the whole decomposition carries **no
-information beyond $\rho$** — not just MI. Empirically:
+than exactly equal. Crucially, the point extends past MI **to the full decomposition**, by an
+argument that costs nothing: a zero-mean jointly-Gaussian distribution is completely
+parameterized by its covariance, so *any* PID functional of it — any measure, any atom, the
+deployed $I^{sx}$ included — is a deterministic function of the correlation structure and can
+carry no information the sample covariance does not already carry. Barrett makes this concrete
+for a specific class: for jointly-Gaussian sources and a **univariate** target, every PID whose
+redundant and unique atoms depend only on the pairwise source–target marginals (which covers
+$I_{\min}$, BROJA, and the other pre-2015 proposals) collapses to the minimum-mutual-information
+(MMI) redundancy $\min_i I(X_i;Y)$ [Barrett2015]; Venkatesh & Schamberg confirm that reduction
+for scalar targets and show it *fails* for multivariate ones [Venkatesh2021]. The $I^{sx}$
+decomposition we deploy is **not** in Barrett's class — it reads the full joint (its Gaussian
+redundancy is a different function of the covariance than MMI; `pid-core`'s Gaussian-oracle
+test pins the additive-Gaussian value at ≈ 0.22 nats where MMI gives ≈ 0.28) and it permits
+negative atoms, which MMI never does. None of that weakens the argument: *whichever* function
+of the covariance the atoms are, they add nothing beyond it. So on jointly-Gaussian residuals
+the whole decomposition carries **no information beyond the correlations** — not just MI. (One
+care with quantifiers: this is an *information* statement, not a per-atom ROC identity. A
+single atom thresholded as a detector is a function of *several* correlations and need not
+share the ROC of any one $|\rho|$; what it cannot do is out-inform the covariance it is
+computed from.) Empirically:
 
 ```
 coupling            | |rho| mn | corr AUC [95% CI]      | MI AUC [95% CI]
 ------------------------------------------------------------------------
 linear  (Y = X + e) |   0.894  | 1.000 [1.000, 1.000]  | 1.000 [1.000, 1.000]
 ```
-(The KSG MI mean is 0.814 nats, ~0.012 above the closed-form $-\tfrac12\ln(1-0.894^2)=0.80$ — the
-known positive finite-sample bias of KSG.) **Correlation and MI are tied at AUC 1.000 (identical,
+(The KSG MI mean is 0.814 nats, ~0.012 above the closed-form $-\tfrac12\ln(1-0.894^2)=0.80$ — a
+small positive finite-sample bias *at this configuration*; KSG's bias has no universal sign — it
+is regime-dependent [HolmesNemenman2019], and under strong dependence it turns negative
+[GaoSVG2015].) **Correlation and MI are tied at AUC 1.000 (identical,
 degenerate CIs); using KSG mutual information here is forced** — it cannot improve on a detector
 that is already perfect, and §5.3 shows it costs ~100× more to be no better.
 
@@ -265,30 +307,68 @@ therefore present (2) as a defense-in-depth *framing* of (1), not a separate jus
 give no benchmark for it.
 
 **(3) Irreducible synergy.** For a target carried *only jointly* by two or more sources, no
-pairwise statistic suffices. On $T = A \oplus B$ for independent bits $A, B$ — where
-$\mathrm{MI}(A;T) = \mathrm{MI}(B;T) = 0$ *exactly* — we measure the joint-information contrast
-$Q = \mathrm{MI}(A,B;T) - \max(\mathrm{MI}(A;T),\mathrm{MI}(B;T))$. This $Q = \mathrm{Syn} +
-\min(U_A, U_B)$ is an **upper bound** on the Williams–Beer synergy atom, tight for XOR (both
-unique atoms vanish, so $Q = \mathrm{Syn}$); it is a joint-MI test, not the $I^{sx}$
-decomposition itself.
+statistic of any single channel pair suffices. On $T = A \oplus B$ for independent bits $A, B$,
+**every pairwise population marginal — $(A,T)$, $(B,T)$, $(A,B)$ — is exactly the
+independent-uniform distribution** ($\mathrm{MI}(A;T) = \mathrm{MI}(B;T) = 0$), so no
+single-pair statistic carries population-level signal; the attack lives wholly in the triple.
+We measure two joint detectors. First, the model-free joint-information contrast
+$Q = \mathrm{MI}(A,B;T) - \max(\mathrm{MI}(A;T),\mathrm{MI}(B;T))$. The lattice identity
+$Q = \mathrm{Syn} + \min(U_A, U_B)$ holds for *any* redundancy-based two-source PID; how tight
+$Q$ is against the synergy atom is **measure-dependent**. Under Williams–Beer's $I_{\min}$,
+XOR decomposes as $(\mathrm{Red}, U_A, U_B, \mathrm{Syn}) = (0, 0, 0, 1)$ bit and $Q$ is tight.
+Under the shared-exclusions decomposition this project actually ships, XOR decomposes as
+$(\log_2\tfrac23,\, +0.585,\, +0.585,\, \log_2\tfrac43) \approx (-0.585, +0.585, +0.585, +0.415)$
+bits [Makkeh2021] — *negative* (misinformative) redundancy and non-vanishing unique atoms — so
+$Q = 0.415 + 0.585 = 1$ bit **over-counts the SxPID synergy atom** (and $Q \ge \mathrm{Syn}$ is
+itself only guaranteed when the unique atoms are non-negative, which SxPID does not promise).
+Second, therefore, we also measure **the SxPID synergy atom itself** (exact discrete plug-in,
+`pid-core`):
 
 ```
-detector                 |  AUC   [95% CI]        (bits target)
----------------------------------------------------------------
-correlation (pairwise)   | 0.544  [0.496, 0.592]  <- CI brackets 0.5: chance
-mutual info (pairwise)   | 0.544  [0.496, 0.594]  <- CI brackets 0.5: chance
-synergy contrast Q       | 1.000  [1.000, 1.000]  (0.997 bits)
+detector                  |  AUC   [95% CI]        (bits target)
+----------------------------------------------------------------
+correlation (pairwise)    | 0.544  [0.496, 0.592]  <- CI brackets 0.5: chance
+mutual info (pairwise)    | 0.544  [0.496, 0.594]  <- CI brackets 0.5: chance
+synergy contrast Q        | 1.000  [1.000, 1.000]  (0.997 bits)
+SxPID synergy atom (i^sx) | 1.000  [1.000, 1.000]  (0.413 bits; exact log2(4/3)=0.415)
 ```
 
-Correlation **and pairwise MI alike** are at chance — both AUC 0.544 with CIs that **bracket
-0.5**, so neither is distinguishable from chance (note that on binary variables discrete MI is a
-monotone function of the sample correlation $\phi$, so their identical AUC is *expected*, not
-independent corroboration) — while only the joint measure separates the attack (1.000 [1.000,
-1.000]). **No pairwise statistic can see synergy; a joint-information (or PID)
-measure can.** This is the one regime where a joint measure is a necessity, not a choice. We
-*hypothesize* — but do not evaluate here — that this regime dominates for neural fusion policies
-(e.g. the vision-language-action analysis in the sibling `prisoma` project); the claim is left
-to future work.
+The measured coupled-class atoms match the closed form (syn $+0.413$, red $-0.583$ vs the exact
+$+0.415$, $-0.585$): the deployed decomposition reads XOR as unique-plus-synergistic with
+misinformative sharing — a different bookkeeping than $I_{\min}$'s pure synergy, detecting the
+same structure. Correlation **and pairwise MI alike** are at chance — both AUC 0.544 with CIs
+that **bracket 0.5** (on binary variables discrete MI is a monotone function of the sample
+correlation $\phi$, so their identical AUC is *expected*, not independent corroboration) — while
+both joint measures separate the attack perfectly. **No single-pair statistic can see synergy;
+a joint-information (or PID) measure can.** (Short of a bespoke parity test that presumes the
+attack's algebraic form — exactly the model knowledge a defender does not have — a joint
+measure is the only option.)
+
+Because the deployed engine is *continuous* (KSG + the Ehrlich et al. estimator), we validate
+the same verdict off the discrete gate with a **sign-parity coupling** — the continuous XOR:
+$A, B \sim \mathcal N(0,1)$ independent, $T = \mathrm{sign}(A)\,\mathrm{sign}(B)\,|Z|$. Again
+every pairwise marginal is exactly independent, while jointly $\mathrm{sign}(T)$ *is* the
+parity bit: $\mathrm{MI}(A,B;T) = \ln 2$ exactly.
+
+```
+detector                  |  AUC   [95% CI]         (continuous estimators)
+---------------------------------------------------------------------------
+correlation (pairwise)    | 0.470  [0.420, 0.518]   <- chance
+KSG MI (pairwise)         | 0.513  [0.459, 0.562]   <- chance
+joint contrast Q (KSG)    | 1.000  [1.000, 1.000]
+I^sx synergy atom (cont.) | 1.000  [1.000, 1.000]
+```
+
+(The joint-KSG point estimate is 0.511 nats against the exact $\ln 2 = 0.693$ — the
+finite-sample underestimation of [GaoSVG2015] again — yet the rank separation is perfect:
+estimator bias is not rank blindness.) This is the one regime where a joint measure is a
+necessity, not a choice. We *hypothesize* — but do not evaluate here — that this regime is
+substantial in learned multimodal fusion, a hypothesis with independent support: synergy is
+what multimodal networks use to integrate modalities [Proca2024], and PID-based analyses
+quantify large synergistic interactions in multimodal models [Liang2023, EhrlichTMLR2023]
+(none of these shows synergy *dominates* every learned fusion — that stronger claim is what
+the sibling `prisoma` vision-language-action analysis must test); the claim is left to future
+work.
 
 ### 4.3 Verdict for the sensor-fusion case
 
@@ -322,6 +402,65 @@ right for the linear-Gaussian regime galadriel is deployed in; a joint measure i
 dependence signature; and a statistics-matching FDI is the shared blind spot of the entire family.
 The recommendation is thus a map from the attack one faces to the detector one should pay for — with
 its blind spot named, not papered over (see `docs/MOTIVATION.md`).
+
+### 4.4 The pointwise escalation: the same discipline on the latency axis
+
+Everything above scores *windows*, and §5.2 measures the price: a trailing window must refill
+with post-onset frames before a broken coupling is legible (52–80 frames for the windowed
+detectors). The distinctive capability of the shared-exclusions framework is that its
+quantities are **pointwise** — they exist per realization [Makkeh2021] (the single-source
+lattice node *is* the pointwise MI, by self-redundancy) — so consistency can be scored per
+frame and fed to a sequential test. The theory says more: the per-frame local MI term is a
+plug-in estimate of $\log\!\big[p_{\text{coupled}}(x,y)\,/\,(p(x)\,p(y))\big]$ — the
+**log-likelihood ratio** between the calibrated coupled regime and the decoupled
+(independent, same-marginals) regime — and a CUSUM over exactly that log-LR is the classical
+optimal sequential changepoint procedure [Page1954, Moustakides1986]. Pointwise information is
+not a heuristic score; it is the canonical statistic for a moment-matched decoupling.
+
+The forced-vs-justified question then recurs at the pointwise level, and we ask it the same
+way (canonical couplings; onset mid-stream; **every** detector thresholded to the same 5 %
+stream-level FAR calibrated on 100 clean streams; 100 attacked trials): two windowed
+detectors ($|\hat\rho|$, KSG MI; $W = 128$, 4-frame stride) against three per-frame CUSUMs —
+the naive product $x_t y_t$, the **parametric Gaussian log-LR** (the closed-form pointwise MI
+at the calibration $\hat\rho$ — "correlation, pointwise"), and the **model-free local-MI**
+(kNN against a frozen 256-frame clean reference — "Wibral-pointwise").
+
+```
+linear (Y = X + e)          | FAR   | reach | median latency
+window |rho|  (W=128)       | 0.050 | 1.000 |  7f
+window KSG MI (W=128)       | 0.050 | 1.000 | 23f
+product CUSUM (x*y)         | 0.050 | 1.000 | 14f
+Gauss-LR CUSUM (rho-hat)    | 0.050 | 1.000 |  2f   <- parametric pointwise wins
+local-MI CUSUM (kNN)        | 0.050 | 1.000 |  6f
+
+nonlinear (Y = ±X + e)      | FAR   | reach | median latency
+window |rho|  (W=128)       | 0.050 | 0.082 | (blind)
+window KSG MI (W=128)       | 0.050 | 1.000 | 43f
+product CUSUM (x*y)         | 0.050 | 0.000 | (blind: E[xy]=0 on both sides)
+Gauss-LR CUSUM (rho-hat)    | 0.050 | 0.000 | (blind: rho-hat_cal ≈ 0)
+local-MI CUSUM (kNN)        | 0.050 | 1.000 | 19f   <- only fast off-manifold detector
+```
+
+Three findings, symmetric with §4.1–§4.2. **(i) On the Gaussian manifold, pointwise
+information is again forced:** the *parametric* Gauss-LR CUSUM — a one-line $\hat\rho$
+plug-in of the very same log-LR functional — detects in 2 frames, ahead of the kNN local-MI
+estimate of it (6f), and the windowed $|\hat\rho|$ (7f) is nearly as fast; the efficient
+statistic keeps winning where it applies. (The naive product CUSUM at 14f shows "pointwise"
+is not automatically faster — it is the *LR structure*, not per-frame-ness, that matters.)
+**(ii) Off the manifold the ordering inverts exactly as §4.2(1) predicts:** every cheap
+statistic is dead (product: $\mathbb E[xy] = 0$ on both sides of onset; Gauss-LR:
+$\hat\rho_{\text{cal}} \approx 0$ freezes the chart; windowed $|\hat\rho|$ at reach 0.082) —
+and the **model-free pointwise detector is the only fast one**, reaching 100 % at 19 frames,
+under half the windowed KSG MI's 43. (A variance-tracking chart could see this particular
+construction through its second moment — a bespoke feature choice, the pointwise echo of
+§4.2(1)'s kurtosis artifact; the local-MI chart needs no such choice.) **(iii) The latency
+win is conditional, not free:** the local-MI CUSUM assumes a **clean calibration window** (the
+frozen reference — the standard CUSUM assumption, but stronger than what the windowed
+self-consistency detectors need), and its per-frame cost is one kNN query against the
+reference (~$O(N_{\text{ref}}$) per frame) versus the windowed KSG's full $O(W^2)$ refit per
+stride. The disciplined position extends cleanly: *pointwise-parametric on the Gaussian
+manifold, pointwise-information (local MI) where the coupling is genuinely nonlinear — and the
+window-refill latency of §5.2 is not a law of nature but a consequence of scoring windows.*
 
 ---
 
@@ -393,7 +532,11 @@ fused NIS ⊕ correlation detector, `PID` the standalone engine — so the 80f-v
 conflates the estimator swap with two fusion architectures; we report it descriptively, not as an
 ordering, and its ±4-frame quantization and low sample counts preclude a fine claim. (b) The
 baseline's 30 % "reach" on the stealthy spoof is occasional **chance NIS excursions** of the
-phantom latent, not reliable detection (its final detection rate is 0.020, §5.1). **Security
+phantom latent, not reliable detection (its final detection rate is 0.020, §5.1). (c) The
+window-fill latency is a property of *scoring windows*, not of the problem: §4.4 shows that on
+canonical couplings a pointwise sequential (CUSUM) formulation of the same consistency question
+detects a moment-matched decoupling in 2–19 frames at matched FAR; porting that sequential mode
+into the deployed engine is future work. **Security
 caveat:** time-to-*detect* is not time-to-*damage*; the security-relevant quantity is how far the
 fused track is pulled before detection (and the maximum bias injectable while staying below
 `decouple_ratio`), which we do not measure here (§6).
@@ -479,10 +622,12 @@ cliff). The sharper finding — **correlation does not merely tie PID off the be
 at every one of those strengths (e.g. $d=0.6$: $\Delta$AUC $+0.092$, CI $[+0.062,+0.127]$). At the two
 extremes the two are a statistical tie: at $d=1$ ($\Delta$AUC $\le 0.001$, as §5.1) and at $d\le0.1$,
 where both have collapsed to chance and the $\Delta$AUC CI includes 0. The mechanism is estimator
-statistics: sample $|\rho|$ is the *efficient* dependence statistic for Gaussian data, whereas KSG
-mutual information is a nonparametric $k$-NN estimator carrying finite-sample error — a variance and,
-more importantly for a *rank* statistic, a **dependence-dependent bias** that differs between the
-coupled and decoupled classes and so no constant offset can absorb (KSG is known to fall below the
+statistics: sample $|\rho|$ is the asymptotically *efficient* dependence estimator for this Gaussian
+family, whereas KSG mutual information is a nonparametric $k$-NN estimator carrying finite-sample
+error. For AUC — a rank statistic — what matters is the extra **overlap** the KSG score
+distributions acquire: added estimator variance in both classes, plus a bias that varies
+*nonlinearly with the dependence strength* across the boundary, so it shifts the two classes
+unequally and no monotone recalibration can undo it (KSG is known to fall below the
 true MI under strong dependence and finite $n$ [GaoSVG2015]). At full decoupling both saturate at AUC
 1.0 and the error is invisible; through the mid-boundary that error blurs the rank separation and PID
 loses AUC faster. **So on linear-Gaussian residuals MI/PID is not merely
@@ -683,14 +828,30 @@ the Gaussian manifold.)
 Page1954]; they are our magnitude baseline, and the stealthy spoof is their designed blind spot.
 
 **Information decomposition.** The redundancy lattice and PID framework are due to Williams & Beer
-[WilliamsBeer2010]; redundancy/synergy measures are surveyed in [Timme2014]; the $I^{sx}$
-shared-exclusions redundancy we report is due to Makkeh, Gutknecht & Wibral [Makkeh2021]; KSG
-[Kraskov2004] is our MI back-end, whose finite-sample behaviour is characterised by
-Gao, Oh & Viswanath [Gao2018]. That the Gaussian PID has a closed form fixed by the covariance —
-the backbone of our "forced" result — is Barrett's [Barrett2015]. We contribute a
+[WilliamsBeer2010]; redundancy/synergy measures are surveyed in [Timme2014]. The decomposition we
+deploy is the **shared-exclusions (SxPID)** family of the Wibral group: the pointwise $I^{sx}$
+redundancy of Makkeh, Gutknecht & Wibral [Makkeh2021], its part-whole/formal-logic foundation
+[Gutknecht2021], and its continuous-variable formulation with the kNN estimator we actually run
+[Ehrlich2024] (a measure-theoretic existence precursor is [SchickPoland2021]). The choice over
+alternatives is deliberate, not fashion: BROJA [Bertschinger2014] is two-source and
+average-level (a convex program per window — no pointwise/per-frame form); $I_{\min}$
+[WilliamsBeer2010] attributes maximal redundancy to the two-bit copy of *independent* sources
+(the identity criticism that motivated SxPID [Makkeh2021]) and is likewise not pointwise; the
+MMI redundancy is degenerate on Gaussians (redundancy = the weaker source's whole MI). SxPID is
+pointwise (per-frame, §4.4), differentiable, $n$-source, and one measure across discrete and
+continuous data — at the disclosed price of legitimately negative (misinformative) atoms. To our
+knowledge this is the **first application of the shared-exclusions PID to cross-sensor
+consistency / spoof detection** (we found no prior SxPID work on streaming, anomaly-detection,
+or sensor-security problems). KSG [Kraskov2004] is our MI back-end, whose finite-sample
+behaviour is characterised by Gao, Oh & Viswanath [Gao2018] (bias-rate upper bound), Gao, Ver
+Steeg & Galstyan [GaoSVG2015] (underestimation under strong dependence), and Holmes & Nemenman
+[HolmesNemenman2019] (bias of either sign). The Gaussian scalar-target MMI reduction — one
+ingredient of our "forced" result, alongside the elementary covariance-sufficiency argument —
+is Barrett's [Barrett2015], confirmed for scalar targets and shown *not* to extend to
+multivariate targets by [Venkatesh2021]. We contribute a
 security-motivated, cost-aware account of *when* this machinery is warranted over second-order
-statistics — grounded in the Gaussian MI–correlation identity [CoverThomas2006] and Barrett's
-Gaussian decomposition — not a new measure.
+statistics — grounded in the Gaussian MI–correlation identity [CoverThomas2006] and the
+covariance-sufficiency of Gaussian PID atoms — not a new measure.
 
 **A fuller comparison** — the competing and complementary detector families laid out by observation
 layer (signal-level GNSS anti-spoofing, cryptographic authentication / OSNMA, RAIM, innovation-based
@@ -705,12 +866,17 @@ fair-benchmark methodology for comparing them — is in [`docs/RELATED-WORK.md`]
 Reaching for mutual information or its decomposition because it is powerful is not the same as
 needing it. We showed, precisely and reproducibly, that for the linear-Gaussian residuals of
 kinematic sensor fusion, MI is a monotone function of correlation — and, since every Gaussian PID
-atom is a function of the covariance, the whole decomposition adds nothing over `ρ` — so MI/PID
+atom of *any* measure is a function of the covariance, the whole decomposition adds nothing over
+the correlations — so MI/PID
 there is forced, ~100× more expensive for no gain, and (§5.5) *strictly worse across the detection
 boundary*, where the nonparametric estimator's variance penalty bites. We delimited, on canonical
 constructions,
 the three regimes (nonlinearity, adversarial robustness, irreducible synergy) where it genuinely
-earns its cost, the last of which no pairwise statistic can match. Galadriel's Mirror
+earns its cost — the last demonstrated with the deployed SxPID synergy atom itself, discrete and
+continuous, not only a joint-MI proxy — and we extended the same discipline to the **latency
+axis** (§4.4): the pointwise local-information term is the canonical (log-likelihood-ratio)
+sequential statistic for a moment-matched decoupling, parametrically forced on the Gaussian
+manifold and uniquely fast off it. Galadriel's Mirror
 operationalizes this as a layered detector: cheap correlation by default, gated MI/PID escalation,
 one shared verdict. The broader lesson generalizes beyond counter-UAS: **evaluate a fashionable
 method on accuracy, latency, *and* cost, quantify its assumptions, and be willing to publish the
@@ -738,22 +904,31 @@ the sibling `haldir` planning repository.)
 
 - **[Barrett2015]** A. B. Barrett. "Exploration of synergistic and redundant information sharing in static and dynamical Gaussian systems." *Phys. Rev. E* **91**, 052802, 2015. [arXiv:1411.2832](https://arxiv.org/abs/1411.2832).
 - **[BarShalom2001]** Y. Bar-Shalom, X.-R. Li, T. Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001.
+- **[Bertschinger2014]** N. Bertschinger, J. Rauh, E. Olbrich, J. Jost, N. Ay. "Quantifying unique information." *Entropy* **16**(4), 2161–2183, 2014. [arXiv:1311.2852](https://arxiv.org/abs/1311.2852).
 - **[Broumandan2018]** A. Broumandan, G. Lachapelle. "Spoofing Detection Using GNSS/INS/Odometer Coupling for Vehicular Navigation." *Sensors* **18**(5), 1305, 2018. [MDPI](https://www.mdpi.com/1424-8220/18/5/1305).
 - **[Cao2021]** Y. Cao, N. Wang, C. Xiao, et al. "Invisible for both Camera and LiDAR: Security of Multi-Sensor Fusion based Perception in Autonomous Driving Under Physical-World Attacks." *IEEE S&P,* 2021. [arXiv:2106.09249](https://arxiv.org/abs/2106.09249).
 - **[CoverThomas2006]** T. M. Cover, J. A. Thomas. *Elements of Information Theory,* 2nd ed. Wiley, 2006.
 - **[DefenseOne2024]** P. Tucker. "In Ukraine, a US firm tests a promising tool against GPS jammers: cell phones." *Defense One,* Sept. 2024. [link](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/).
+- **[Ehrlich2024]** D. A. Ehrlich, K. Schick-Poland, A. Makkeh, F. Lanfermann, P. Wollstadt, M. Wibral. "Partial information decomposition for continuous variables based on shared exclusions: Analytical formulation and estimation." *Phys. Rev. E* **110**, 014115, 2024. [arXiv:2311.06373](https://arxiv.org/abs/2311.06373).
+- **[EhrlichTMLR2023]** D. A. Ehrlich, A. C. Schneider, V. Priesemann, M. Wibral, A. Makkeh. "A Measure of the Complexity of Neural Representations based on Partial Information Decomposition." *Transactions on Machine Learning Research,* 2023. [arXiv:2209.10438](https://arxiv.org/abs/2209.10438).
 - **[Gao2018]** W. Gao, S. Oh, P. Viswanath. "Demystifying Fixed k-Nearest Neighbor Information Estimators." *IEEE Trans. Inf. Theory* **64**(8), 5629–5661, 2018. [arXiv:1604.03006](https://arxiv.org/abs/1604.03006).
 - **[GaoSVG2015]** S. Gao, G. Ver Steeg, A. Galstyan. "Efficient Estimation of Mutual Information for Strongly Dependent Variables." *AISTATS,* 2015. [arXiv:1411.2003](https://arxiv.org/abs/1411.2003).
+- **[Gutknecht2021]** A. J. Gutknecht, M. Wibral, A. Makkeh. "Bits and pieces: understanding information decomposition from part-whole relationships and formal logic." *Proc. R. Soc. A* **477**(2251), 20210110, 2021. [arXiv:2008.09535](https://arxiv.org/abs/2008.09535).
 - **[Hallyburton2022]** R. S. Hallyburton, Y. Liu, Y. Cao, Z. M. Mao, M. Pajic. "Security Analysis of Camera-LiDAR Fusion Against Black-Box Attacks on Autonomous Vehicles." *USENIX Security,* 2022. [arXiv:2106.07098](https://arxiv.org/abs/2106.07098).
 - **[Humphreys2008]** T. E. Humphreys et al. "Assessing the Spoofing Threat: Development of a Portable GPS Civilian Spoofer." *Proc. ION GNSS,* 2008.
+- **[HolmesNemenman2019]** C. M. Holmes, I. Nemenman. "Estimation of mutual information for real-valued data with error bars and controlled bias." *Phys. Rev. E* **100**, 022404, 2019. [arXiv:1903.09280](https://arxiv.org/abs/1903.09280).
 - **[Humphreys2012]** T. E. Humphreys / UT Austin Radionavigation Lab. "Spoofing demonstration commandeers a UAV at White Sands," DHS-invited test, 2012. [UT Austin](https://www.eurekalert.org/pub_releases/2012-06/uota-uot062912.php); [GPS World](https://www.gpsworld.com/drone-hack/).
 - **[Kerckhoffs1883]** A. Kerckhoffs. "La cryptographie militaire." *Journal des sciences militaires,* 1883.
 - **[Kraskov2004]** A. Kraskov, H. Stögbauer, P. Grassberger. "Estimating mutual information." *Phys. Rev. E* 69, 066138, 2004.
+- **[Liang2023]** P. P. Liang, Y. Cheng, X. Fan, C. K. Ling, et al. "Quantifying & Modeling Multimodal Interactions: An Information Decomposition Framework." *NeurIPS,* 2023. [arXiv:2302.12247](https://arxiv.org/abs/2302.12247).
 - **[Liu2011]** Y. Liu, P. Ning, M. K. Reiter. "False data injection attacks against state estimation in electric power grids." *ACM TISSEC* 14(1), 2011.
-- **[Makkeh2021]** A. Makkeh, A. J. Gutknecht, M. Wibral. "Introducing a differentiable measure of pointwise shared information." *Phys. Rev. E* 103, 032149, 2021.
+- **[Makkeh2021]** A. Makkeh, A. J. Gutknecht, M. Wibral. "Introducing a differentiable measure of pointwise shared information." *Phys. Rev. E* 103, 032149, 2021. [arXiv:2002.03356](https://arxiv.org/abs/2002.03356).
 - **[Mo2010]** Y. Mo, B. Sinopoli. "False data injection attacks in control systems." *Proc. 1st Workshop on Secure Control Systems,* 2010.
+- **[Moustakides1986]** G. V. Moustakides. "Optimal Stopping Times for Detecting Changes in Distributions." *Ann. Statist.* **14**(4), 1379–1387, 1986. [doi:10.1214/aos/1176350164](https://doi.org/10.1214/aos/1176350164).
 - **[Page1954]** E. S. Page. "Continuous inspection schemes." *Biometrika* 41(1/2), 1954.
+- **[Proca2024]** A. M. Proca, F. E. Rosas, A. I. Luppi, D. Bor, M. Crosby, P. A. M. Mediano. "Synergistic information supports modality integration and flexible learning in neural networks solving multiple tasks." *PLOS Comput. Biol.* **20**(6), e1012178, 2024. [arXiv:2210.02996](https://arxiv.org/abs/2210.02996).
 - **[Ren2022]** K. Ren, Q. Wang, C. Wang, et al. "SoK: Rethinking Sensor Spoofing Attacks against Robotic Vehicles from a Systematic View." *IEEE EuroS&P,* 2023. [arXiv:2205.04662](https://arxiv.org/abs/2205.04662).
+- **[SchickPoland2021]** K. Schick-Poland, A. Makkeh, A. J. Gutknecht, P. Wollstadt, A. Sturm, M. Wibral. "A partial information decomposition for discrete and continuous variables." [arXiv:2106.12393](https://arxiv.org/abs/2106.12393), 2021.
 - **[Timme2014]** N. Timme, W. Alford, B. Flecker, J. M. Beggs. "Synergy, redundancy, and multivariate information measures: an experimentalist's perspective." *J. Comput. Neurosci.* 36, 2014.
 - **[Venkatesh2021]** P. Venkatesh, G. Schamberg. "Partial Information Decomposition via Deficiency for Multivariate Gaussians." *IEEE ISIT,* 2022. [arXiv:2105.00769](https://arxiv.org/abs/2105.00769).
 - **[WilliamsBeer2010]** P. L. Williams, R. D. Beer. "Nonnegative Decomposition of Multivariate Information." *arXiv:1004.2515,* 2010.

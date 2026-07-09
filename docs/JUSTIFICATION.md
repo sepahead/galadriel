@@ -82,30 +82,85 @@ statistic — for **one or more** of these concrete reasons:
    This reason is therefore a defense-in-depth *framing of reason 1*: it bites only where the
    coupling is genuinely nonlinear, not as an independent justification.
 3. **The decomposition itself is irreducible.** A **synergy** measure detects structure
-   carried *only* jointly by two or more channels (an XOR/parity-like relationship): all
-   pairwise correlations **and** all pairwise MIs are ≈ 0, yet the channels are dependent.
-   (`I^sx` is the *redundancy* atom [Makkeh–Gutknecht–Wibral 2021]; the synergy atom is the
-   top of the Williams–Beer lattice, obtained by Möbius inversion — distinct from `I^sx`.)
-   **No pairwise statistic of any kind can see synergy** — only a joint-information measure
-   can. Where an attack targets synergistic fusion, a joint/PID measure is not merely
-   better, it is the *only* option. It also gives per-channel **attribution** (which channel
-   decoupled) that a single scalar cannot. **Confirmed empirically** by the
-   `galadriel-justify` synergy study, which uses the joint-information contrast
-   `Q = MI(A,B;T) − max(MI(A;T),MI(B;T))` (an upper bound on the synergy atom, tight for
-   XOR) — on `T = A⊕B` (independent bits `A`, `B`):
+   carried *only* jointly by two or more channels (an XOR/parity-like relationship). In the
+   XOR system every pairwise *population* marginal — `(A,T)`, `(B,T)`, `(A,B)` — is exactly
+   independent-uniform, so **no statistic of any single channel pair carries population-level
+   signal**; the attack lives wholly in the triple, and only a joint-information measure can
+   see it. Where an attack targets synergistic fusion, a joint/PID measure is not merely
+   better, it is the *only* option (short of a bespoke parity test that presumes the attack's
+   algebraic form — exactly the model knowledge a defender does not have). It also gives
+   per-channel **attribution** (which channel decoupled) that a single scalar cannot.
+   **Confirmed empirically** by the `galadriel-justify` synergy study on `T = A⊕B`
+   (independent bits), with two joint detectors: the model-free contrast
+   `Q = MI(A,B;T) − max(MI(A;T),MI(B;T))` and **the SxPID synergy atom itself** (the deployed
+   Wibral decomposition, exact discrete plug-in):
 
    ```
    detector                   |  AUC   [95% CI]        (bits target)
    correlation (pairwise)     | 0.544  [0.496, 0.592]  <- CI brackets 0.5: at chance
    mutual info (pairwise)     | 0.544  [0.496, 0.594]  <- CI brackets 0.5: at chance
-   synergy contrast Q (joint) | 1.000  [1.000, 1.000]  <- only a joint measure (0.997 bits)
+   synergy contrast Q (joint) | 1.000  [1.000, 1.000]  (0.997 bits)
+   SxPID synergy atom (i^sx)  | 1.000  [1.000, 1.000]  (0.413 bits; exact log2(4/3) = 0.415)
    ```
 
    Even *pairwise mutual information* is at chance: it is specifically a **joint** measure
    that is required. (On binary variables discrete MI is a monotone function of the sample
    correlation `φ`, so pairwise MI and `|ρ|` returning the *same* 0.544 is expected, not
-   independent corroboration.) This is the one regime where a joint/PID measure is not a
-   choice but a necessity — no pairwise statistic of any kind suffices.
+   independent corroboration.)
+
+   **The measure matters for the bookkeeping, not the verdict — say which one you mean.**
+   The lattice identity `Q = Syn + min(U_A, U_B)` holds for *any* redundancy-based two-source
+   PID. Under Williams–Beer's `I_min`, XOR decomposes as `(Red, U_A, U_B, Syn) = (0, 0, 0, 1)`
+   bit, so `Q` is tight. Under the **shared-exclusions decomposition this project actually
+   ships** (`i^sx`, Makkeh–Gutknecht–Wibral 2021; synergy = the top Möbius atom over the
+   Williams–Beer *lattice* with `i^sx` as the redundancy base), XOR decomposes as
+   `(log2(2/3), +0.585, +0.585, log2(4/3)) ≈ (−0.585, +0.585, +0.585, +0.415)` bits —
+   *negative* (misinformative) redundancy, non-vanishing unique atoms — so `Q = 1` bit
+   over-counts the SxPID synergy atom (`0.415 + 0.585`). The study's measured atoms
+   (`syn +0.413`, `red −0.583`) match the closed form; both joint detectors separate at
+   AUC 1.000. And because the deployed engine is *continuous*, the study repeats the verdict
+   on a **sign-parity coupling** `T = sign(A)·sign(B)·|Z|` (the continuous XOR: pairwise
+   marginals exactly independent, joint MI exactly ln 2) with the deployed estimators —
+   pairwise KSG MI at chance (0.513 [0.459, 0.562]), joint `Q` and the **continuous `I^sx`
+   synergy atom** (Ehrlich et al. 2024 estimator) both at AUC 1.000 [1.000, 1.000].
+
+4. **Pointwise (per-frame) detection — the latency reason.** All of §1–§3 scores *windows*,
+   and the evaluation measures the price: a trailing window must refill with post-onset
+   frames before a broken coupling is legible (52–80 frames). The distinctive capability of
+   the shared-exclusions framework is that its quantities are **pointwise** — they exist per
+   realization (the single-source lattice node *is* the pointwise MI, by self-redundancy) —
+   and the per-frame local MI term is a plug-in estimate of the **log-likelihood ratio**
+   between the calibrated coupled regime and a moment-matched decoupling. A CUSUM over that
+   log-LR is the classical *optimal* sequential changepoint procedure (Page 1954;
+   Moustakides 1986). The forced-vs-justified question recurs pointwise, and the
+   `galadriel-justify` sequential study answers it at one matched 5 % stream-level FAR:
+
+   ```
+   linear (Y = X + e)          | reach | median latency
+   window |rho|  (W=128)       | 1.000 |  7f
+   window KSG MI (W=128)       | 1.000 | 23f
+   product CUSUM (x*y)         | 1.000 | 14f
+   Gauss-LR CUSUM (rho-hat)    | 1.000 |  2f   <- parametric pointwise: forced regime again
+   local-MI CUSUM (kNN)        | 1.000 |  6f
+
+   nonlinear (Y = ±X + e)      | reach | median latency
+   window |rho|  (W=128)       | 0.082 |  (blind)
+   window KSG MI (W=128)       | 1.000 | 43f
+   product CUSUM (x*y)         | 0.000 |  (blind: E[xy] = 0 on both sides of onset)
+   Gauss-LR CUSUM (rho-hat)    | 0.000 |  (blind: rho-hat_cal ≈ 0 freezes the chart)
+   local-MI CUSUM (kNN)        | 1.000 | 19f   <- the only fast off-manifold detector
+   ```
+
+   Same discipline, third axis: **on the Gaussian manifold pointwise information is again
+   forced** (the one-line parametric `ρ̂` plug-in of the same log-LR functional detects in
+   2 frames; the naive product chart at 14f shows per-frame-ness alone buys nothing — it is
+   the LR structure that matters); **off the manifold the model-free pointwise detector is
+   the only fast one** (19f, with every cheap statistic dead and the windowed KSG at 43f).
+   Honest caveats: the local-MI CUSUM assumes a **clean calibration window** (the frozen
+   reference — the standard CUSUM assumption, but stronger than what windowed
+   self-consistency needs), and a variance-tracking chart could see this particular
+   sign-flip construction through its second moment — a bespoke feature choice, the
+   pointwise echo of §2's kurtosis artifact.
 
 ## 4. Honest verdict for *galadriel*
 
@@ -141,15 +196,25 @@ sell.
    information: a correlation-preserving, MI-visible anomaly is the adversarial case).
 3. Never present MI results as beating the baseline *in general* — only in the regimes
    §2–§3 name. The evaluation (`EVALUATION.md`) must be read with this scope.
+4. When **detection latency** is the binding constraint, prefer the pointwise sequential
+   formulation (§3, reason 4) over widening/shortening analysis windows: parametric Gauss-LR CUSUM
+   on the Gaussian manifold, local-MI CUSUM off it. Wiring that sequential mode into the
+   deployed engine (it currently scores windows) is roadmap work; the study establishes the
+   payoff and its calibration assumption.
 
 This is the disciplined position: **PID where it is irreducible, correlation where it
-is not.**
+is not** — and, on the latency axis, *pointwise information where the coupling is nonlinear,
+the parametric plug-in where it is not.*
 
 ---
 
 ## 5. Reproduce
 
 ```bash
-cargo run -p galadriel-justify --release        # the §2 table
-cargo test -p galadriel-justify                 # asserts: linear corr≈MI; nonlinear MI≫corr
+cargo run -p galadriel-justify --release        # every table in this document
+cargo test -p galadriel-justify                 # the hypotheses as assertions:
+#   linear corr≈MI · nonlinear MI≫corr · XOR: pairwise blind, Q and the SxPID synergy atom
+#   separate (atoms match the closed form: syn +0.415, red −0.585 bits) · sign-parity:
+#   the continuous I^sx synergy atom separates · sequential: pointwise CUSUMs beat window
+#   refill on-manifold, only the local-MI CUSUM survives off-manifold
 ```

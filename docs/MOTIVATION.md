@@ -131,18 +131,36 @@ The information-theoretic machinery is standard and correctly attributed:
 - **The `I^sx` shared-exclusions redundancy** — A. Makkeh, A. J. Gutknecht, M. Wibral,
   "Introducing a differentiable measure of pointwise shared information," *Phys. Rev. E* **103**,
   032149 (2021) ([APS](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149)) — a
-  redundancy measure with a Möbius inversion on the redundancy lattice, exactly as used here.
+  pointwise redundancy measure with a Möbius inversion on the redundancy lattice, exactly as
+  used here; its **continuous-variable formulation and the kNN estimator galadriel actually
+  runs** are D. A. Ehrlich, K. Schick-Poland, A. Makkeh, F. Lanfermann, P. Wollstadt,
+  M. Wibral, "Partial information decomposition for continuous variables based on shared
+  exclusions," *Phys. Rev. E* **110**, 014115 (2024)
+  ([arXiv:2311.06373](https://arxiv.org/abs/2311.06373)); the part-whole/formal-logic
+  foundation is Gutknecht, Wibral & Makkeh, *Proc. R. Soc. A* **477**:20210110 (2021)
+  ([arXiv:2008.09535](https://arxiv.org/abs/2008.09535)).
 
 The claim that on jointly-Gaussian data the *entire* decomposition is fixed by the covariance —
-so PID adds nothing over correlation there — is **Barrett's** closed-form Gaussian PID (A. B.
-Barrett, *Phys. Rev. E* **91**, 052802, 2015,
-[arXiv:1411.2832](https://arxiv.org/abs/1411.2832)), reproduced by later constructions
-([Venkatesh & Schamberg, ISIT 2022](https://arxiv.org/abs/2105.00769)). The finite-sample
-behaviour of the KSG estimator we escalate to splits across two sources: its dimension-dependent
+so PID adds nothing over correlation there — needs no deep theorem: a zero-mean Gaussian is
+completely parameterized by its covariance, so *any* PID functional of it (any measure, the
+deployed `I^sx` included) is a function of the correlations. What **Barrett** proved is the
+sharper, measure-collapsing statement: for jointly-Gaussian sources and a *univariate* target,
+every PID whose redundant/unique atoms depend only on the pairwise source–target marginals
+(I_min, BROJA, and the other pre-2015 proposals) reduces to the minimum-mutual-information
+redundancy (A. B. Barrett, *Phys. Rev. E* **91**, 052802, 2015,
+[arXiv:1411.2832](https://arxiv.org/abs/1411.2832)); Venkatesh & Schamberg confirm that
+reduction for scalar targets and show it does **not** extend to multivariate targets
+([ISIT 2022](https://arxiv.org/abs/2105.00769)). The deployed `I^sx` is *outside* Barrett's
+class (it reads the full joint and permits negative atoms; on Gaussians its redundancy is a
+different function of the covariance than MMI) — which changes nothing for the "forced"
+argument: it is still a function of the covariance. The finite-sample
+behaviour of the KSG estimator we escalate to splits across three sources: its dimension-dependent
 bias in the high-dimensional / short-window regime our geometry gate rejects is characterised by
-[Gao, Oh & Viswanath (IEEE Trans. IT 2018)](https://arxiv.org/abs/1604.03006), while its tendency to
+[Gao, Oh & Viswanath (IEEE Trans. IT 2018)](https://arxiv.org/abs/1604.03006); its tendency to
 *underestimate* mutual information under strong dependence at feasible sample sizes is due to
-[Gao, Ver Steeg & Galstyan (AISTATS 2015)](https://arxiv.org/abs/1411.2003).
+[Gao, Ver Steeg & Galstyan (AISTATS 2015)](https://arxiv.org/abs/1411.2003); and the sign of its
+bias is regime-dependent in general
+([Holmes & Nemenman, PRE 2019](https://arxiv.org/abs/1903.09280)).
 
 ---
 
