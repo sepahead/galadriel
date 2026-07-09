@@ -33,26 +33,6 @@ mod fusion;
 pub use engine::{analyze, ChannelPid, PidConfig, PidReport, PidVerdict};
 pub use fusion::{assess_stream, fuse, FusedReport, FusedVerdict};
 
-use galadriel_core::observation::{Modality, PidObservation};
-
-/// Extract, per modality, the aligned series of a single signed innovation axis
-/// from a stream of observations — the scalar the engine keys off. A signed axis
-/// (not the NIS magnitude) is used so the shared-latent correlation that a spoof
-/// breaks is preserved.
-pub fn scalar_channels(
-    stream: &[PidObservation],
-    modalities: &[Modality],
-    axis: usize,
-) -> Vec<(Modality, Vec<f64>)> {
-    modalities
-        .iter()
-        .map(|&m| {
-            let series: Vec<f64> = stream
-                .iter()
-                .filter(|o| o.modality == m)
-                .filter_map(|o| o.innovation.map(|y| y[axis.min(2)]))
-                .collect();
-            (m, series)
-        })
-        .collect()
-}
+// The signed-scalar channel extractor lives in galadriel-core (it is shared with the
+// pure correlation detector); re-exported here for convenience.
+pub use galadriel_core::scalar_channels;

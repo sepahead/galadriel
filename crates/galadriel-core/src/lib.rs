@@ -36,6 +36,7 @@
 pub mod baseline;
 pub mod chi2;
 pub mod config;
+pub mod correlation;
 pub mod cusum;
 pub mod decision;
 pub mod error;
@@ -43,8 +44,31 @@ pub mod observation;
 pub mod window;
 
 pub use config::DetectorConfig;
+pub use correlation::{CorrChannel, CorrConfig, CorrReport, CorrVerdict};
 pub use cusum::Cusum;
 pub use decision::{ChannelReport, Mirror, MirrorReport, Verdict};
 pub use error::{GaladrielError, Result};
 pub use observation::{Modality, PidObservation};
 pub use window::NisWindow;
+
+/// Extract, per modality, the aligned series of a single signed innovation axis from a
+/// stream of observations — the scalar the cross-sensor consistency detectors key off.
+/// A *signed* axis (not the NIS magnitude) is used so the cross-channel correlation a
+/// spoof breaks is preserved.
+pub fn scalar_channels(
+    stream: &[PidObservation],
+    modalities: &[Modality],
+    axis: usize,
+) -> Vec<(Modality, Vec<f64>)> {
+    modalities
+        .iter()
+        .map(|&m| {
+            let series: Vec<f64> = stream
+                .iter()
+                .filter(|o| o.modality == m)
+                .filter_map(|o| o.innovation.map(|y| y[axis.min(2)]))
+                .collect();
+            (m, series)
+        })
+        .collect()
+}

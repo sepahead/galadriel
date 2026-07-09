@@ -131,6 +131,18 @@ specific, adversary-optimal blind spot of magnitude detection.
 
 ---
 
+> **Scope — read this with [`JUSTIFICATION.md`](JUSTIFICATION.md).** The detector that
+> closes the baseline's blind spot above need not be PID. Because this stealthy spoof is
+> *linear-Gaussian*, a cheap **pairwise-correlation** consistency check
+> (`galadriel_core::correlation`, in the pure default build) catches it **just as well**
+> as the MI/PID engine — so PID is *not uniquely* responsible for the result. The
+> justification study shows MI beats correlation only when the cross-channel dependence
+> is **nonlinear or synergistic** (there, `corr AUC 0.66` vs `MI AUC 1.00`). On
+> galadriel's linear residuals, **correlation is the right default; PID is the opt-in
+> escalation** for nonlinear modalities, synergistic fusion, or a correlation-aware
+> adversary. This evaluation demonstrates *cross-sensor consistency* beats magnitude —
+> it does not, by itself, justify MI over correlation.
+
 ## 4. Honest limitations
 
 - **Gaussian, stationary sim.** Real innovations are non-Gaussian and non-stationary
