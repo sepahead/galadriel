@@ -7,9 +7,9 @@
 
 use std::hint::black_box;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use galadriel_core::{
-    assess_default, CorrConfig, DetectorConfig, Mirror, Modality, PidObservation,
+    assess_default, correlation, CorrConfig, DetectorConfig, Mirror, Modality, PidObservation,
 };
 use galadriel_pid::{analyze, assess_stream, scalar_channels, PidConfig};
 use galadriel_sim::scenario::{generate_spoofed, ScenarioConfig, StealthySpoof};
@@ -88,5 +88,35 @@ fn bench_detectors(c: &mut Criterion) {
     g.finish();
 }
 
-criterion_group!(benches, bench_detectors);
+/// How the two **consistency scores** scale with the analysis window `W` (this turns §5.3's
+/// single-point ratio into a curve). `|ρ|` is linear in `W` and sub-µs; the KSG engine caps
+/// its own window, so its cost is roughly constant (~2 ms) once its geometry gate passes
+/// (W ≥ 64; below that the gate fails closed and it does no work). The isolated ratio is thus
+/// ~10³ across the range, dominated by KSG's fixed k-NN cost rather than the window length.
+fn bench_cost_vs_window(c: &mut Criterion) {
+    let base = stream(600);
+    let full = scalar_channels(&base, &MODS, 0);
+    let mut g = c.benchmark_group("cost_vs_window");
+    for &w in &[32usize, 64, 128, 256, 512] {
+        // The like-for-like comparison: both consistency scores over the same W samples.
+        let chans: Vec<(Modality, Vec<f64>)> = full
+            .iter()
+            .map(|(m, v)| (*m, v[v.len() - w..].to_vec()))
+            .collect();
+        let corr_cfg = CorrConfig {
+            window: w,
+            min_samples: (w / 2).max(2),
+            ..CorrConfig::default()
+        };
+        g.bench_with_input(BenchmarkId::new("correlation", w), &w, |b, _| {
+            b.iter(|| black_box(correlation::analyze(&chans, &corr_cfg)))
+        });
+        g.bench_with_input(BenchmarkId::new("pid_ksg", w), &w, |b, _| {
+            b.iter(|| black_box(analyze(&chans, &PidConfig::default())))
+        });
+    }
+    g.finish();
+}
+
+criterion_group!(benches, bench_detectors, bench_cost_vs_window);
 criterion_main!(benches);

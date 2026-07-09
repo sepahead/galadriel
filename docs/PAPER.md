@@ -387,6 +387,26 @@ consistency-check ratio (KSG vs the few-µs $|\rho|$ pass over the shared baseli
 (~$700\times$). On the linear-Gaussian spoof — where §5.1 shows MI delivers the *same* AUC — this
 is ~100× compute for zero accuracy gain: the compute face of §4.1.
 
+To turn that single point into a curve, we sweep the analysis window $W$ over the *isolated*
+consistency scores ($|\rho|$ vs KSG, no shared baseline):
+
+```
+   W  | correlation (|ρ|) | KSG-MI  | ratio
+  64  |      0.44 µs      |  574 µs | ~1300×
+ 128  |      0.70 µs      | 2.22 ms | ~3200×
+ 256  |      1.24 µs      | 2.25 ms | ~1800×
+ 512  |      2.45 µs      | 2.21 ms |  ~900×
+```
+
+Two things the single point hid. (i) The *isolated* consistency-score ratio is ~$10^3$, an order of
+magnitude above the ~100× full-detector figure — because the full detector's cheap side is dominated
+by the shared ~19 µs NIS baseline, not the sub-µs $|\rho|$. (ii) The ratio is **not** monotone in $W$:
+KSG mutual information is a $k$-NN search, but the engine **caps its own window**, so its cost
+plateaus at ~2.2 ms for $W\ge128$ (and below $W=64$ its geometry gate fails closed and it does no
+work), while $|\rho|$ stays sub-µs and scales linearly. The premium is therefore a large **fixed**
+$k$-NN cost, not a window-growth effect — and it is $\gg 1$ at every window, so "escalate only when
+the accuracy case (§4.2) demands it" holds across the operating range.
+
 ### 5.4 The three axes together
 
 On the linear stealthy spoof the correlation default **ties PID's accuracy, at ~1/100th the cost,
@@ -581,8 +601,9 @@ readily — tightens the bound further (the shipped default `decouple_ratio` is 
   bias an undetected spoof injects (≈0.29σ at the shipped operating point) under memoryless static
   fusion; the *integrated* track displacement over the undetected window needs the downstream
   filter's dynamics (crebain) and is not modelled here.
-- **Single-configuration cost.** The ~100× cost ratio is one (window, channels, dimension) point;
-  §5.3 states its scaling but does not sweep it.
+- **Cost sweep is window-only.** §5.3 sweeps the analysis window (the isolated ratio is ~10³, a
+  fixed k-NN cost, not window-growth); a sweep over channel count and measurement dimensionality —
+  where KSG's k-NN cost grows with the number of channel pairs and the search dimension — is not run.
 - **Consistency, not truth; synthetic sim.** A statistics-matching FDI (an adversary who knows the
   true track and fakes cross-channel consistency) defeats consistency detection entirely — a
   fundamental limit; raising the bar to *that* capability is the honest security claim. §5.8 now
