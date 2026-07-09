@@ -111,6 +111,43 @@ mod tests {
         assert!(err.to_string().contains("line 1"));
     }
 
+    /// The **frozen sidecar payload contract**. Any producer — crebain's Rust
+    /// emitter, a TS publisher — writes exactly this JSON shape onto
+    /// `{realm}/session/{id}/galadriel/pid`; the live tap *silently drops* what it
+    /// cannot decode, so an unnoticed wire change would surface as "no data", the
+    /// worst failure mode for a monitor. If a `galadriel-core` change alters this
+    /// serialization, this test fails and the sidecar contract must be re-versioned
+    /// deliberately (and every producer updated), never by accident.
+    #[test]
+    fn sidecar_payload_contract_is_frozen() {
+        let full = PidObservation {
+            track_id: 42,
+            timestamp_ms: 1_700_000_000_000,
+            seq: 7,
+            modality: Modality::Radar,
+            nis: 2.75,
+            dof: 3,
+            innovation: Some([1.0, -2.5, 0.25]),
+            innovation_cov: Some([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+        };
+        let expect_full = concat!(
+            r#"{"track_id":42,"timestamp_ms":1700000000000,"seq":7,"#,
+            r#""modality":"radar","nis":2.75,"dof":3,"#,
+            r#""innovation":[1.0,-2.5,0.25],"#,
+            r#""innovation_cov":[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]}"#
+        );
+        assert_eq!(serde_json::to_string(&full).unwrap(), expect_full);
+
+        // The baseline-only (research fields omitted) shape, as a consumer:
+        let minimal =
+            r#"{"track_id":1,"timestamp_ms":0,"seq":0,"modality":"acoustic","nis":3.1,"dof":3}"#;
+        let obs: PidObservation = serde_json::from_str(minimal).expect("minimal contract parses");
+        assert_eq!(obs.modality, Modality::Acoustic);
+        assert!(obs.innovation.is_none() && obs.innovation_cov.is_none());
+        // And byte-for-byte back out (skip_serializing_if drops the None fields):
+        assert_eq!(serde_json::to_string(&obs).unwrap(), minimal);
+    }
+
     #[test]
     fn keys_follow_the_ncp_scheme() {
         assert_eq!(

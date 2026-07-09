@@ -23,6 +23,9 @@
 //! # Ok(()) }
 //! ```
 
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
 use galadriel_core::observation::PidObservation;
 use ncp_core::{Keys, DEFAULT_REALM};
 use ncp_zenoh::{ZenohBus, ZenohError};
@@ -33,6 +36,7 @@ use crate::sidecar_key;
 pub struct SidecarTap {
     bus: ZenohBus,
     realm: String,
+    decode_failures: Arc<AtomicU64>,
 }
 
 impl SidecarTap {
@@ -41,6 +45,7 @@ impl SidecarTap {
         Ok(Self {
             bus: ZenohBus::open().await?,
             realm: DEFAULT_REALM.to_string(),
+            decode_failures: Arc::new(AtomicU64::new(0)),
         })
     }
 
@@ -48,7 +53,11 @@ impl SidecarTap {
     pub async fn open_realm(realm: impl Into<String>) -> Result<Self, ZenohError> {
         let realm = realm.into();
         let bus = ZenohBus::open_realm(Keys::new(&realm)).await?;
-        Ok(Self { bus, realm })
+        Ok(Self {
+            bus,
+            realm,
+            decode_failures: Arc::new(AtomicU64::new(0)),
+        })
     }
 
     /// Wrap an already-open bus, so a host app can share one Zenoh session across its
@@ -57,7 +66,19 @@ impl SidecarTap {
         Self {
             bus,
             realm: realm.into(),
+            decode_failures: Arc::new(AtomicU64::new(0)),
         }
+    }
+
+    /// Payloads on the sidecar key that failed to decode as a [`PidObservation`],
+    /// across all subscriptions of this tap. Malformed input is *dropped* (the
+    /// callback must never see adversarial bytes) but **never silently**: a rising
+    /// counter here is the first symptom of sidecar-contract drift (a producer
+    /// serializing a different shape — see `sidecar_payload_contract_is_frozen`)
+    /// or of garbage injected on the key, and a monitor must be able to see its
+    /// own feed rotting.
+    pub fn decode_failures(&self) -> u64 {
+        self.decode_failures.load(Ordering::Relaxed)
     }
 
     /// The underlying bus (e.g. to close it, or share the session).
@@ -67,8 +88,10 @@ impl SidecarTap {
 
     /// Subscribe to a session's galadriel sidecar key. `on_obs` runs **inline on Zenoh's
     /// receive task** for each decoded observation, so keep it cheap (decode + hand off).
-    /// Malformed payloads are silently dropped: the callback must never panic on
-    /// adversarial input, because a panic unwinds Zenoh's task (see `ZenohBus::subscribe`).
+    /// Malformed payloads are dropped — the callback must never see adversarial bytes,
+    /// and must never panic, because a panic unwinds Zenoh's task (see
+    /// `ZenohBus::subscribe`) — but each drop is **counted** ([`Self::decode_failures`]),
+    /// so contract drift shows up as a rising counter rather than as silence.
     /// Errors if `session_id` is not a valid NCP id segment.
     pub async fn subscribe<F>(&self, session_id: &str, on_obs: F) -> Result<(), ZenohError>
     where
@@ -76,10 +99,14 @@ impl SidecarTap {
     {
         let key = sidecar_key(&self.realm, session_id)
             .ok_or_else(|| ZenohError(format!("invalid NCP session id segment: {session_id:?}")))?;
+        let failures = Arc::clone(&self.decode_failures);
         self.bus
             .subscribe(&key, move |_key, bytes| {
-                if let Ok(obs) = serde_json::from_slice::<PidObservation>(&bytes) {
-                    on_obs(obs);
+                match serde_json::from_slice::<PidObservation>(&bytes) {
+                    Ok(obs) => on_obs(obs),
+                    Err(_) => {
+                        failures.fetch_add(1, Ordering::Relaxed);
+                    }
                 }
             })
             .await

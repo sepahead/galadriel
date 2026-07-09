@@ -6,13 +6,14 @@
 //! other* no matter what a spoofed third channel does, so the spoofed channel
 //! stands out as the one that shares information with *no one*. A leave-one-out
 //! *mean* consensus, by contrast, is polluted by the very channel it is trying to
-//! judge. The `I^sx` redundancy atom is reported alongside as the decomposition.
+//! judge. The `I^sx` redundancy and synergy atoms are reported alongside as the
+//! decomposition — advisory and report-only; the verdict never reads them.
 
 use galadriel_core::Modality;
 use pid_core::{
     block_bootstrap_paired, distance_concentration_stats, intrinsic_dimension_levina_bickel,
-    ksg_mi, pid2_isx, BootstrapConfig, DistanceConcentrationConfig, IntrinsicDimConfig, Jitter,
-    KsgConfig, MatOwned, Metric, Pid2Config, PidResult,
+    ksg_mi, pid2_isx_estimate, BootstrapConfig, DistanceConcentrationConfig, IntrinsicDimConfig,
+    Jitter, KsgConfig, MatOwned, Metric, Pid2Config, PidResult,
 };
 
 /// Engine tunables.
@@ -84,8 +85,19 @@ pub struct ChannelPid {
     pub gate_note: String,
     /// Corroboration score (nats): the channel's best gated pairwise MI with another channel.
     pub corroboration: Option<f64>,
-    /// `I^sx` redundancy atom (nats): info this channel shares about the rest.
+    /// `I^sx` redundancy atom (nats) of this channel's decomposition triple
+    /// (`S1` = this channel, `S2` = its designated peer, `T` = consensus of the
+    /// rest): the shared-exclusions shared information (Makkeh–Gutknecht–Wibral
+    /// 2021; continuous estimator per Ehrlich et al. 2024). Advisory, report-only —
+    /// the verdict never reads it. May legitimately be **negative** (misinformative
+    /// sharing); never clamped.
     pub redundancy: Option<f64>,
+    /// SxPID **synergy** atom (nats) of the same triple, by Möbius inversion on the
+    /// Williams–Beer lattice with `I^sx` as the redundancy base:
+    /// `Syn = I(S1,S2;T) − I(S1;T) − I(S2;T) + I^sx`. The diagnostic for
+    /// joint-only (synergistic) structure — the one regime where no pairwise
+    /// statistic suffices. Advisory, report-only; may be negative.
+    pub synergy: Option<f64>,
     /// Whether this channel was flagged as decoupled from the group.
     pub decoupled: bool,
     /// Block-bootstrap CI (nats) on this channel's best-pair MI, set when a decoupling
@@ -176,6 +188,7 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &PidConfig) -> PidReport 
             .collect();
         let corroboration = peers.iter().copied().reduce(f64::max);
         let gate_ok = !peers.is_empty();
+        let atoms = isx_atoms(&jitter, &cols, i, c, w);
         reports.push(ChannelPid {
             modality: *modality,
             n: w,
@@ -186,7 +199,8 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &PidConfig) -> PidReport 
                 "no gated pair".into()
             },
             corroboration,
-            redundancy: redundancy_atom(&jitter, cfg, &cols, i, c, w),
+            redundancy: atoms.map(|a| a.0),
+            synergy: atoms.map(|a| a.1),
             decoupled: false,
             ci: None,
         });
@@ -346,17 +360,13 @@ fn pair_mi(j: &Jitter, cfg: &PidConfig, a: &[f64], b: &[f64]) -> Option<f64> {
     ksg_mi(sa.as_ref(), sb.as_ref(), &KsgConfig::default()).ok()
 }
 
-/// `I^sx` redundancy atom for channel `i`: info that `i` and one peer share about
-/// the consensus of the remaining channels. `s1 = i`, `s2 = first other`,
-/// `t = mean of the rest`.
-fn redundancy_atom(
-    j: &Jitter,
-    _cfg: &PidConfig,
-    cols: &[Vec<f64>],
-    i: usize,
-    c: usize,
-    w: usize,
-) -> Option<f64> {
+/// `I^sx` atoms for channel `i`'s decomposition triple: `s1 = i`, `s2 = i`'s first
+/// peer in input order (a fixed, order-dependent designation — the atoms are a
+/// per-channel *diagnostic*, not a symmetrized statistic), `t = mean of the rest`.
+/// One `pid2_isx_estimate` call yields the redundancy atom and, by Möbius
+/// inversion, the synergy atom `I(S1,S2;T) − I(S1;T) − I(S2;T) + I^sx`. Returns
+/// `(redundancy, synergy)` in nats; either may legitimately be negative.
+fn isx_atoms(j: &Jitter, cols: &[Vec<f64>], i: usize, c: usize, w: usize) -> Option<(f64, f64)> {
     let others: Vec<usize> = (0..c).filter(|&x| x != i).collect();
     if others.len() < 2 {
         return None;
@@ -365,9 +375,11 @@ fn redundancy_atom(
     let s2 = jcol(j, &cols[others[0]]).ok()?;
     let t_raw = consensus(cols, &others[1..], w);
     let t = jcol(j, &t_raw).ok()?;
-    pid2_isx(s1.as_ref(), s2.as_ref(), t.as_ref(), &Pid2Config::default())
-        .ok()
-        .map(|p| p.redundancy)
+    let est =
+        pid2_isx_estimate(s1.as_ref(), s2.as_ref(), t.as_ref(), &Pid2Config::default()).ok()?;
+    let red = est.redundancy_isx;
+    let syn = est.mi_s1s2_t - est.mi_s1_t - est.mi_s2_t + red;
+    Some((red, syn))
 }
 
 /// Per-frame mean of the given channel columns.

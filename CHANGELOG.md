@@ -8,6 +8,44 @@ versions may make breaking changes).
 ## [Unreleased]
 
 ### Added
+- **`galadriel-justify` — the deployed Wibral decomposition now evidences its own
+  justification.** The XOR synergy study gains the **SxPID synergy atom** as a detector
+  (exact discrete plug-in via `pid_core::discrete_sxpid2`): AUC 1.000 [1.000, 1.000], with
+  the coupled-class atoms matching the closed form (syn +0.413 ≈ log2(4/3), red −0.583 ≈
+  log2(2/3) — SxPID's deliberately *negative*, misinformative XOR redundancy, never clamped).
+- **`galadriel-justify` — continuous synergy study (`run_synergy_continuous`)**: a
+  sign-parity coupling `T = sign(A)·sign(B)·|Z|` (the continuous XOR — every pairwise
+  marginal exactly independent, joint MI exactly ln 2) evaluated with the *deployed*
+  continuous estimators via one `pid2_isx_estimate` call per triple: pairwise KSG MI at
+  chance (0.513), the joint contrast Q **and the continuous `I^sx` synergy atom** (Ehrlich
+  et al. 2024 estimator) both AUC 1.000 — the irreducible-synergy verdict now demonstrated
+  on the estimators the engine actually runs, not only on discrete plug-ins.
+- **`galadriel-justify` — sequential (pointwise) detection study (`run_seq`)**: five
+  detectors at one matched 5 % stream-level FAR — windowed `|ρ̂|` / windowed KSG MI vs three
+  per-frame CUSUMs (naive product, **parametric Gaussian log-LR** at the calibration ρ̂, and
+  **model-free kNN local-MI** against a frozen clean reference). The per-frame local MI term
+  is the plug-in log-likelihood ratio for a moment-matched decoupling, so the CUSUM over it
+  is the classical optimal sequential test (Page 1954; Moustakides 1986). Results: on the
+  linear coupling the parametric pointwise plug-in wins (2 f — pointwise information is
+  *forced* on the Gaussian manifold too); on the sign-flip coupling every cheap statistic is
+  blind (reach 0.000–0.082) while the local-MI CUSUM reaches 100 % at **19 f vs 43 f** for
+  the windowed KSG — the pointwise capability of the shared-exclusions PID made operational,
+  with its calibration assumption (a clean reference window) disclosed. Three new tests
+  assert the closed-form atoms, the continuous-synergy separation, and the sequential
+  hypotheses (7 tests total in `-justify`).
+- **`galadriel-pid` — the engine now reports the full 2-source SxPID atom set**: `ChannelPid`
+  gains a `synergy` field (the top Möbius atom `I(S1,S2;T) − I(S1;T) − I(S2;T) + I^sx`)
+  alongside `redundancy`, both from the single `pid2_isx_estimate` call the engine already
+  made (zero added estimator cost). Report-only: the verdict logic is unchanged and all
+  evaluation numbers are unaffected.
+- **`galadriel-ncp` — the sidecar payload contract is frozen by test**
+  (`sidecar_payload_contract_is_frozen`): byte-exact golden JSON for the full and minimal
+  `PidObservation` shapes, so a producer (crebain's emitter) can be written against a tested
+  contract and an accidental wire change fails CI instead of silently starving the tap. The
+  live `SidecarTap` now **counts decode failures** (`decode_failures()`): malformed payloads
+  are still dropped (never delivered to the callback) but never silently — contract drift
+  surfaces as a rising counter instead of "no data".
+
 - **`galadriel-core`** — the pure baseline: `Modality` / `PidObservation` wire
   types (byte-compatible with crebain's `SensorModality`); a fixed-capacity NIS
   sliding window; a dependency-free χ² implementation (`ln_gamma`, regularized
@@ -125,6 +163,39 @@ versions may make breaking changes).
   build" (galadriel is `0.1.0`, untagged).
 
 ### Fixed
+- **Wibral-PID faithfulness pass (theory · attribution · citations), with primary-source
+  verification.** A second adversarial review focused on the decomposition itself:
+  - **Barrett's theorem re-scoped (PAPER §4.1, MOTIVATION §5).** Previous text implied every
+    Gaussian PID redundancy reduces to MMI per Barrett (2015) and that Venkatesh & Schamberg
+    "reproduced" the covariance claim. Barrett's reduction covers PIDs whose redundant/unique
+    atoms depend only on the pairwise source–target marginals, for a **univariate** target; the
+    deployed `I^sx` is **outside** that class (full-joint dependence, negative atoms; on additive
+    Gaussians its redundancy ≈ 0.22 nats where MMI gives ≈ 0.28 — pid-core's Gaussian oracle).
+    Venkatesh & Schamberg *confirm* the scalar-target reduction and show it **fails** for
+    multivariate targets. The "forced" argument now rests, correctly, on covariance sufficiency
+    (any atom of any measure is a function of the covariance) plus a quantifier note (an
+    information statement, not a per-atom ROC identity).
+  - **Q-bound tightness measure-scoped (PAPER §4.2(3), JUSTIFICATION §3.3).** "Q is tight for
+    XOR (both unique atoms vanish)" holds under Williams–Beer's `I_min` but is **false under the
+    shipped SxPID**, whose XOR atoms are (−0.585, +0.585, +0.585, +0.415) bits
+    (Makkeh–Gutknecht–Wibral 2021 §VI; reproduced exactly by the extended study) — Q = 1 bit
+    over-counts the SxPID synergy atom, and Q ≥ Syn is only guaranteed for non-negative unique
+    atoms. The "no pairwise statistic" claim is tightened to its exact population form (every
+    single-pair marginal of XOR is independent-uniform).
+  - **Synergy-atom attribution (PAPER §3.3).** The synergy the engine computes is the SxPID
+    synergy (Möbius inversion of `I^sx` on the Williams–Beer *lattice*), not Williams–Beer's
+    `I_min` atom; and the continuous `I^sx` estimator actually deployed is **Ehrlich et al. 2024**
+    (PRE 110, 014115) — now cited alongside the discrete Makkeh 2021 measure (previously the
+    continuous estimator was uncited).
+  - **KSG bias-sign claim corrected (PAPER §4.1).** "The known positive finite-sample bias of
+    KSG" is unsupported: the bias sign is regime-dependent (Holmes & Nemenman 2019) and negative
+    under strong dependence (GaoSVG 2015). Now described as configuration-specific.
+  - **Stale estimand docstring (`galadriel-pid/src/lib.rs`).** It described
+    MI-with-leave-one-out-consensus as the corroboration score; the verdict-driving score is (and
+    was) *best pairwise* MI, the consensus being only the PID atoms' target. Docs now match code.
+  - **Degenerate-CI gloss (PAPER scope box).** `AUC 1.000 [1.000, 1.000]` cells are now read as
+    "no observed class overlap" (consistent with true AUC ≈ 0.99 at these trial counts), never
+    as certainty.
 - **Scientific-rigour triple-check.** A six-dimension adversarial verification (theory · statistics ·
   reproducibility · code-vs-prose fidelity · overclaim/consistency · citation integrity; each raised
   concern confirmed by three independent skeptics) reproduced every number and confirmed 74/74 tests

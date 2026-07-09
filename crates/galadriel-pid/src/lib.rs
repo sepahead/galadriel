@@ -15,13 +15,17 @@
 //!
 //! ## The estimand (honestly scoped)
 //!
-//! For each channel `c`, the target `T` is the **leave-one-out consensus** of the
-//! *other* channels — never the fused state (which is a function of `c` itself, so
-//! a successful attack would perversely *raise* `c`'s MI with it). The signal is a
-//! **collapse of `c`'s mutual information / redundancy with that consensus**, using
-//! the `pid-core` KSG and `I^sx` estimators. Every window passes a mandatory
-//! **geometry gate** first; a channel that fails the gate is reported as
-//! not-assessable (fail closed), never as corroborating.
+//! For each channel `c`, the **verdict-driving corroboration score is its best
+//! pairwise KSG mutual information with any other channel** (two honest channels
+//! keep high MI *with each other* no matter what a spoofed third does, so the
+//! spoofed channel is the one that shares information with no one). Alongside it —
+//! advisory, **report-only**, never read by the verdict — the engine reports the
+//! channel's shared-exclusions **PID atoms** (`I^sx` redundancy and its Möbius
+//! synergy) for the triple (channel, designated peer, consensus of the rest).
+//! The fused state is never used as a target: it is a function of `c` itself, so
+//! a successful attack would perversely *raise* `c`'s MI with it. Every pair
+//! passes a mandatory **geometry gate** first; a channel with no gated pair is
+//! reported as not-assessable (fail closed), never as corroborating.
 //!
 //! Estimator validity is real and bounded: this runs on a **scalar** signed
 //! innovation projection to stay in the low-dimensional band the estimators are
