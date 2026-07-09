@@ -54,9 +54,12 @@ nonlinear  (Y = +/-X + e)      |      0.067 |    0.391 |     0.662 |    1.000
   catches an attack that preserves linear correlation while breaking the dependence,
   without the defender having to know the attack's nonlinear form in advance.**
 
-The sign-flip construction is deliberately the hardest honest case: it has `corr ≈ 0`
-*and the same sample-correlation variance as pure independence*, so correlation cannot
-lean on a variance artifact — and it still loses to MI by 0.34 AUC.
+The sign-flip construction is deliberately a hard honest case: its *population* `corr = 0`,
+so the linear signal is genuinely gone. The `|ρ|` detector still reaches AUC 0.662 — but
+**only via an artifact**: the *sample* correlation's variance is inflated by the kurtosis of
+`X` (a fourth-moment effect), and a `|ρ|`-threshold rides that inflation, not any linear
+dependence. MI, seeing the magnitude dependence directly, wins by ≈ 0.34 AUC over that
+artifact (≈ 0.5 over true chance).
 
 ## 3. The good reasons, stated precisely
 
@@ -73,32 +76,38 @@ statistic — for **one or more** of these concrete reasons:
    higher-order structure** — invisible to correlation, visible to MI. MI is the line
    such an attacker must *also* defeat; it raises adversary cost even when the cheap
    check is deployed. This is a genuine defense-in-depth argument, not a performance one.
-3. **The decomposition itself is irreducible.** The `I^sx` **synergy** atom detects
-   structure carried *only* jointly by three or more channels (an XOR/parity-like
-   relationship): all pairwise correlations **and** all pairwise MIs are ≈ 0, yet the
-   channels are dependent. **No pairwise statistic of any kind can see synergy** — only
-   the decomposition can. Where an attack targets synergistic fusion, PID is not merely
-   better, it is the *only* option. It also gives per-channel **attribution**
-   (which channel decoupled) that a single scalar cannot. **Confirmed empirically** by
-   the `galadriel-justify` synergy study — on `T = A⊕B` (independent bits `A`, `B`):
+3. **The decomposition itself is irreducible.** A **synergy** measure detects structure
+   carried *only* jointly by two or more channels (an XOR/parity-like relationship): all
+   pairwise correlations **and** all pairwise MIs are ≈ 0, yet the channels are dependent.
+   (`I^sx` is the *redundancy* atom [Makkeh–Gutknecht–Wibral 2021]; the synergy atom is the
+   top of the Williams–Beer lattice, obtained by Möbius inversion — distinct from `I^sx`.)
+   **No pairwise statistic of any kind can see synergy** — only a joint-information measure
+   can. Where an attack targets synergistic fusion, a joint/PID measure is not merely
+   better, it is the *only* option. It also gives per-channel **attribution** (which channel
+   decoupled) that a single scalar cannot. **Confirmed empirically** by the
+   `galadriel-justify` synergy study, which uses the joint-information contrast
+   `Q = MI(A,B;T) − max(MI(A;T),MI(B;T))` (an upper bound on the synergy atom, tight for
+   XOR) — on `T = A⊕B` (independent bits `A`, `B`):
 
    ```
-   detector                   |  AUC
-   correlation (pairwise)     |  0.544    <- blind (chance)
-   mutual info (pairwise)     |  0.544    <- ALSO blind — pairwise MI is not enough
-   synergy (joint)            |  1.000    <- only the decomposition sees it (0.997 bits)
+   detector                   |  AUC (bits target)
+   correlation (pairwise)     |  0.544    <- at chance (indistinguishable from 0.5)
+   mutual info (pairwise)     |  0.544    <- ALSO at chance — pairwise MI is not enough
+   synergy contrast Q (joint) |  1.000    <- only a joint measure sees it (0.997 bits)
    ```
 
-   Note that even *pairwise mutual information* is at chance here: it is specifically the
-   **joint** decomposition that is required. This is the one regime where using PID is not
-   a choice but a necessity.
+   Even *pairwise mutual information* is at chance: it is specifically a **joint** measure
+   that is required. (On binary variables discrete MI is a monotone function of the sample
+   correlation `φ`, so pairwise MI and `|ρ|` returning the *same* 0.544 is expected, not
+   independent corroboration.) This is the one regime where a joint/PID measure is not a
+   choice but a necessity — no pairwise statistic of any kind suffices.
 
 ## 4. Honest verdict for *galadriel*
 
 Galadriel's core input is the **innovation residual** `y = z − Hx̂⁻` of each sensor
 against a shared tracked target. For position/kinematic residuals, the cross-channel
 relationship is essentially **linear-Gaussian** — so, per §1, **PID does not beat a
-cheap partial-correlation / parity check for galadriel's primary spoof-detection job.**
+cheap best-pairwise `|ρ|` / parity check for galadriel's primary spoof-detection job.**
 Using it there is forced.
 
 PID is justified in galadriel **only** in these specific situations, and the honest

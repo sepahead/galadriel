@@ -11,7 +11,9 @@
 //! while MI is decisive. This study measures both detectors' ROC-AUC at separating a
 //! *coupled* pair from a *decoupled* one (a permutation null), under a **linear**
 //! coupling (`Y = X + ε`) and a **nonlinear** one (`Y = ±X + ε`, random sign — for
-//! which `corr(X, Y) = 0` with the same sample-correlation variance as independence).
+//! which the *population* `corr(X, Y) = 0`, though the sample correlation has an
+//! inflated variance from the kurtosis of `X`, so a `|ρ|` check still scores modestly
+//! above chance via that artifact — see the AUC 0.662 below).
 //!
 //! The result is the good reason to use PID, stated precisely: **MI is a model-free
 //! dependence detector**. It catches an attack that breaks cross-channel structure
@@ -32,8 +34,10 @@ pub enum Coupling {
     /// `Y = X + ε` — the linear-Gaussian case where correlation ≡ MI as a detector.
     Linear,
     /// `Y = ±X + ε` (random sign per sample) — strongly dependent (`|Y| ≈ |X|`) yet
-    /// `corr(X, Y) = 0`, *and* with the same sample-correlation variance as the
-    /// independent case, so correlation is genuinely chance-level here.
+    /// *population* `corr(X, Y) = 0`. The sample correlation is *not* chance-level: its
+    /// variance is inflated by the kurtosis of `X` (a fourth-moment artifact), so a
+    /// `|ρ|` detector reaches AUC ≈ 0.66 purely via that inflation — while MI, seeing
+    /// the magnitude dependence directly, is decisive (AUC ≈ 1.0).
     Nonlinear,
 }
 
@@ -91,9 +95,9 @@ fn gen_coupled(coupling: Coupling, n: usize, sigma: f64, rng: &mut StdRng) -> (V
         .iter()
         .map(|&xi| match coupling {
             Coupling::Linear => xi + noise.sample(rng),
-            // Random sign flip: corr(X, ±X) = 0 (and the sample-corr variance matches
-            // the independent case), but |Y| ≈ |X| so the magnitude dependence is
-            // strong — decisive to MI, invisible to correlation.
+            // Random sign flip: population corr(X, ±X) = 0, but |Y| ≈ |X| so the
+            // magnitude dependence is strong — decisive to MI, and only weakly visible
+            // to correlation via the kurtosis-inflated variance of the sample |ρ|.
             Coupling::Nonlinear => {
                 let s = if rng.gen::<bool>() { 1.0 } else { -1.0 };
                 xi * s + noise.sample(rng)
@@ -208,10 +212,11 @@ pub fn format_report(s: &Study) -> String {
         ));
     }
     out.push_str(
-        "\nLinear:    correlation = MI (same AUC) -> MI adds nothing; using PID here is FORCED.\n\
-         Nonlinear: |rho|~0 and correlation is weak (a higher-moment artifact) while MI is\n\
-         decisive -> PID's model-free dependence detection is the good, precise reason to\n\
-         use it: it catches a correlation-preserving attack a linear check largely misses.\n",
+        "\nLinear:    MI = monotone(|rho|) (same AUC) -> MI adds nothing; using it here is FORCED.\n\
+         Nonlinear: population rho=0; the |rho| detector still scores 0.66 via a kurtosis-\n\
+         inflated sample-corr variance (an artifact, not linear signal), while MI is decisive\n\
+         -> MI's model-free dependence detection is the good, precise reason to use it: it\n\
+         catches a correlation-preserving attack a linear check largely misses.\n",
     );
     out
 }
@@ -222,9 +227,10 @@ pub fn format_report(s: &Study) -> String {
 // A, B are independent bits; the target T = A XOR B. Then A alone and B alone each
 // carry ZERO information about T (MI(A;T) = MI(B;T) = 0) and are uncorrelated with it,
 // yet A and B JOINTLY determine it. No pairwise statistic — correlation OR mutual
-// information — can see this; only a joint/decomposition measure can. We use the
-// synergy lower bound  Syn ≥ MI(A,B;T) − max(MI(A;T), MI(B;T))  (the exact atoms are
-// pid-core's `I^sx` decomposition).
+// information — can see this; only a joint measure can. We use the joint-information
+// contrast  Q = MI(A,B;T) − max(MI(A;T), MI(B;T)) = Syn + min(Un_A, Un_B),  an UPPER
+// bound on the Williams–Beer synergy atom that is TIGHT for XOR (both unique atoms are
+// zero, so Q = Syn exactly). This is a joint-MI test, not the I^sx decomposition itself.
 // ─────────────────────────────────────────────────────────────────────────────
 
 use std::collections::HashMap;
