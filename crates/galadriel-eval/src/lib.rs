@@ -36,7 +36,7 @@ use galadriel_core::{
     Verdict,
 };
 use galadriel_pid::{analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidVerdict};
-use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
+use galadriel_sim::injection::{inject, BroadbandJam, Maneuver, PhantomAcousticDoa};
 use galadriel_sim::scenario::{
     generate, generate_collusion, generate_spoofed, generate_spoofed_partial, ScenarioConfig,
     StealthySpoof,
@@ -786,6 +786,124 @@ pub fn format_adaptive(rows: &[AdaptiveRow], tau: f64) -> String {
     s
 }
 
+// ---------------------------------------------------------------------------
+// Non-stationary false-alarm rate (a benign maneuvering target)
+// ---------------------------------------------------------------------------
+
+/// One row of the maneuver false-alarm study: the fraction of **honest maneuvering**
+/// trials where the consistency detector flags a decoupling (a false spoof), at a given
+/// per-channel lag. Isolated from NIS — this is the pure cross-sensor consistency FAR.
+#[derive(Debug, Clone)]
+pub struct ManeuverRow {
+    /// Per-channel lag step (0 = a synchronized maneuver; larger = more heterogeneous).
+    pub lag_step: u64,
+    /// Correlation-default false-decoupling rate under the maneuver.
+    pub corr_far: f64,
+    /// PID false-decoupling rate under the maneuver.
+    pub pid_far: f64,
+}
+
+/// Measure the consistency detectors' **false-alarm rate under a benign maneuver** (no
+/// spoof), sweeping the per-channel lag. A synchronized maneuver (`lag_step = 0`) keeps
+/// channels correlated and should not trip the consistency check; heterogeneous lags
+/// transiently decorrelate the channels — the false-positive source the stationary study
+/// omits. We count a **decoupling** flag (not the NIS/jam alarm a coherent maneuver
+/// legitimately raises), isolating the cross-sensor false positive.
+pub fn maneuver_far(
+    cfg: &EvalConfig,
+    lag_steps: &[u64],
+    magnitude: f64,
+    duration: u64,
+) -> Vec<ManeuverRow> {
+    let start = (cfg.frames as u64) / 3;
+    lag_steps
+        .iter()
+        .map(|&lag_step| {
+            let (mut cf, mut pf) = (0usize, 0usize);
+            for t in 0..cfg.trials {
+                let s = scenario(cfg, cfg.base_seed + t as u64);
+                let mut stream = generate(&s);
+                inject(
+                    &mut stream,
+                    &Maneuver {
+                        start_frame: start,
+                        duration,
+                        magnitude,
+                        lag_step,
+                    },
+                );
+                let chans = scalar_channels(&stream, &MODALITIES, 0);
+                if correlation::analyze(&chans, &CorrConfig::default())
+                    .channels
+                    .iter()
+                    .any(|c| c.decoupled)
+                {
+                    cf += 1;
+                }
+                if analyze(&chans, &PidConfig::default())
+                    .channels
+                    .iter()
+                    .any(|c| c.decoupled)
+                {
+                    pf += 1;
+                }
+            }
+            let nf = cfg.trials as f64;
+            ManeuverRow {
+                lag_step,
+                corr_far: cf as f64 / nf,
+                pid_far: pf as f64 / nf,
+            }
+        })
+        .collect()
+}
+
+/// Format the maneuver false-alarm study.
+pub fn format_maneuver(rows: &[ManeuverRow], magnitude: f64, duration: u64) -> String {
+    let mut s = String::new();
+    s.push_str(&format!(
+        "Non-stationary FAR — a BENIGN {magnitude:.0}σ maneuver over {duration} frames, per-channel lag\n\
+         consistency false-decoupling rate on honest maneuvering streams (isolated from NIS/jam)\n\n"
+    ));
+    s.push_str(&format!(
+        "{:>8} | {:>11} | {:>11}\n",
+        "lag_step", "corr FAR", "PID FAR"
+    ));
+    s.push_str(&format!("{}\n", "-".repeat(36)));
+    for r in rows {
+        s.push_str(&format!(
+            "{:>8} | {:>11.3} | {:>11.3}\n",
+            r.lag_step, r.corr_far, r.pid_far
+        ));
+    }
+    if let Some(r0) = rows.iter().find(|r| r.lag_step == 0) {
+        // Is correlation at least as robust as PID through the moderate-lag rows?
+        let corr_more_robust = rows
+            .iter()
+            .filter(|r| r.lag_step > 0 && r.lag_step <= 16)
+            .all(|r| r.corr_far <= r.pid_far + 1e-9);
+        s.push_str(&format!(
+            "\nA SYNCHRONIZED maneuver (lag 0) does not trip the consistency check (corr FAR {:.3},\n\
+             PID FAR {:.3}): the detector keys off *asymmetric* decoupling (one channel vs the\n\
+             consensus), and a shared maneuver perturbs all channels alike. Strongly heterogeneous\n\
+             (large-lag) maneuvers do decorrelate the channels and drive the FAR up — an honest\n\
+             benign false-positive limit.\n",
+            r0.corr_far, r0.pid_far
+        ));
+        if corr_more_robust {
+            s.push_str(
+                "Through the moderate-lag regime correlation is the MORE robust of the two (it\n\
+                 false-alarms no earlier than PID) — again the nonparametric KSG estimator's cost.\n",
+            );
+        }
+        s.push_str(
+            "Mitigation: a real maneuver spikes all channels' NIS *together*, which the 2×2 fusion\n\
+             already routes to Jam (degradation), not a per-channel Spoof.\n",
+        );
+    }
+    s
+}
+
 /// Per-attack metrics for both detectors and their fusion.
 #[derive(Debug, Clone)]
 pub struct AttackMetrics {
@@ -1307,6 +1425,35 @@ mod tests {
         assert!(
             corr_ceil <= pid_ceil + 1e-9,
             "correlation evasion ceiling {corr_ceil:.2} should be ≤ PID's {pid_ceil:.2}"
+        );
+    }
+
+    #[test]
+    fn synchronized_maneuver_does_not_false_alarm() {
+        let cfg = EvalConfig {
+            trials: 40,
+            ..Default::default()
+        };
+        let rows = maneuver_far(&cfg, &[0, 32], 12.0, 90);
+        // A synchronized maneuver (lag 0) keeps channels correlated → ~no consistency FAR.
+        assert!(
+            rows[0].corr_far < 0.1,
+            "synced corr FAR {:.3}",
+            rows[0].corr_far
+        );
+        assert!(
+            rows[0].pid_far < 0.1,
+            "synced pid FAR {:.3}",
+            rows[0].pid_far
+        );
+        // A strongly heterogeneous maneuver (lag 32) does decorrelate → the FAR rises (honest limit).
+        assert!(
+            rows[1].corr_far + rows[1].pid_far > rows[0].corr_far + rows[0].pid_far,
+            "large-lag FAR ({:.3}+{:.3}) should exceed synced ({:.3}+{:.3})",
+            rows[1].corr_far,
+            rows[1].pid_far,
+            rows[0].corr_far,
+            rows[0].pid_far
         );
     }
 

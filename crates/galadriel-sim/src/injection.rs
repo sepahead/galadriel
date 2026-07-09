@@ -94,6 +94,58 @@ impl Injection for BroadbandJam {
     }
 }
 
+/// A **benign target maneuver** (not an attack): from `start_frame`, a deterministic
+/// triangular ramp of peak height `magnitude` over `duration` frames is added to every
+/// channel's first innovation axis — but each modality sees it with its own **lag**
+/// (`lag_step` × the modality's index), modelling heterogeneous sensor dynamics/latency.
+///
+/// A *synchronized* maneuver (`lag_step = 0`) stays perfectly correlated across channels,
+/// so the consistency detectors should not flag it; the per-channel lag transiently
+/// **decorrelates** the channels through the ramp, a benign false-positive source the
+/// consistency check cannot distinguish from a spoof. This is a first-order proxy for
+/// maneuver-induced non-stationarity — the false-alarm regime the stationary sim omits.
+#[derive(Debug, Clone)]
+pub struct Maneuver {
+    /// Frame the maneuver begins.
+    pub start_frame: u64,
+    /// Length of the ramp (frames).
+    pub duration: u64,
+    /// Peak ramp height added to innovation axis 0 (σ units).
+    pub magnitude: f64,
+    /// Per-modality lag: modality with discriminant `i` is delayed by `i × lag_step` frames.
+    pub lag_step: u64,
+}
+
+impl Maneuver {
+    fn profile(&self, seq: u64, lag: u64) -> f64 {
+        let s = self.start_frame + lag;
+        if self.duration == 0 || seq < s || seq >= s + self.duration {
+            return 0.0;
+        }
+        let t = (seq - s) as f64 / self.duration as f64; // 0..1
+        let tri = 1.0 - (2.0 * t - 1.0).abs(); // triangular bump: 0 at ends, 1 at centre
+        self.magnitude * tri
+    }
+}
+
+impl Injection for Maneuver {
+    fn name(&self) -> &'static str {
+        "maneuver"
+    }
+
+    fn apply(&self, obs: &mut PidObservation) {
+        let lag = (obs.modality as u64) * self.lag_step;
+        let add = self.profile(obs.seq, lag);
+        if add != 0.0 {
+            if let Some(mut y) = obs.innovation {
+                y[0] += add;
+                obs.innovation = Some(y);
+                recompute_nis(obs);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -150,5 +202,44 @@ mod tests {
             },
         );
         assert_eq!(final_verdict(&s, cfg.modalities.len()), Verdict::Jam);
+    }
+
+    #[test]
+    fn maneuver_perturbs_the_innovation_inside_its_window() {
+        let cfg = ScenarioConfig {
+            frames: 200,
+            seed: 3,
+            ..Default::default()
+        };
+        let base = generate(&cfg);
+        let mut man = base.clone();
+        inject(
+            &mut man,
+            &Maneuver {
+                start_frame: 100,
+                duration: 20,
+                magnitude: 8.0,
+                lag_step: 0,
+            },
+        );
+        // Inside the maneuver window the innovation is perturbed; well outside it is untouched.
+        let mid = man
+            .iter()
+            .zip(&base)
+            .find(|(m, _)| m.seq == 108 && m.modality == Modality::Visual)
+            .unwrap();
+        assert!(
+            (mid.0.innovation.unwrap()[0] - mid.1.innovation.unwrap()[0]).abs() > 1.0,
+            "innovation should be perturbed mid-maneuver"
+        );
+        let far = man
+            .iter()
+            .zip(&base)
+            .find(|(m, _)| m.seq == 5 && m.modality == Modality::Visual)
+            .unwrap();
+        assert!(
+            (far.0.innovation.unwrap()[0] - far.1.innovation.unwrap()[0]).abs() < 1e-12,
+            "innovation should be untouched before the maneuver"
+        );
     }
 }

@@ -3,7 +3,7 @@
 **Sepehr Mahmoudian**
 *sepahead — [github.com/sepahead/galadriel](https://github.com/sepahead/galadriel)*
 
-*Working paper / preprint — v0.3, 2026. Artifact: the `galadriel` repository. The
+*Working paper / preprint — v0.4, 2026. Artifact: the `galadriel` repository. The
 accuracy, latency, cost, and justification numbers in this paper are reproduced by
 `cargo run -p galadriel-eval --release`, `cargo bench -p galadriel-eval --bench detectors`,
 and `cargo run -p galadriel-justify --release`.*
@@ -489,6 +489,40 @@ on the linear-Gaussian manifold — it bites only where the coupling is genuinel
 (Caveat: the ceiling measures undetected *decoupling*, a proxy for injectable track pull; the true
 fused-track displacement needs the downstream filter and is out of scope here.)
 
+### 5.8 Non-stationary false alarms (a benign maneuver)
+
+The stationary sim reports FAR on a *clean, stationary* stream; real innovations spike and
+decorrelate under a target maneuver, a false-positive source the consistency check cannot, by
+itself, distinguish from a spoof. We inject a **benign** stress-test maneuver — a shared 12σ
+triangular ramp over 90 frames (filling most of the 128-frame window) — with a **per-channel
+lag** (`lag_step` × the channel index, a first-order proxy for heterogeneous sensor dynamics),
+and count the consistency **false-decoupling** rate (isolated from the NIS/jam alarm a coherent
+maneuver legitimately raises):
+
+```
+ lag_step | corr FAR | PID FAR      (200 trials, benign 12σ / 90-frame maneuver)
+--------------------------------------
+    0     |  0.000   |  0.000       (synchronized)
+    8     |  0.000   |  0.005
+   16     |  0.000   |  0.185       (PID starts false-alarming; correlation robust)
+   32     |  0.235   |  0.210
+   64     |  0.375   |  0.180
+```
+
+Three honest findings. **(i) A synchronized maneuver does not false-alarm** (0.000): the detector
+keys off *asymmetric* decoupling — one channel against the consensus — and a shared maneuver
+perturbs all channels alike, so coherent non-stationarity is invisible to it by construction.
+**(ii) Strongly heterogeneous (large-lag) maneuvers do false-alarm** (up to ~0.24–0.38) — a real,
+disclosed benign false-positive limit: sufficiently divergent per-channel dynamics *are*
+indistinguishable from a decoupling. **(iii) Correlation is again the more robust of the two**
+through the moderate-lag regime (at lag 16, corr FAR 0.000 vs PID 0.185): the nonparametric KSG
+estimator false-alarms *earlier* under benign non-stationarity, consistent with §5.5/§5.7. The
+practical **mitigation** is already in the architecture: a real maneuver spikes every channel's
+NIS *together*, which the §3.4 fusion routes to `Jam` (degradation), not a per-channel `Spoof` —
+so a maneuver, even one that decorrelates, is far more likely to be read as denial than as a
+false accusation of a sensor. (Caveat: the per-channel-lag model is a first-order proxy; real
+maneuver dynamics — and the fusion filter's own maneuver response — are richer.)
+
 ---
 
 ## 6. Discussion and limitations
@@ -514,10 +548,11 @@ fused-track displacement needs the downstream filter and is out of scope here.)
   §5.3 states its scaling but does not sweep it.
 - **Consistency, not truth; synthetic sim.** A statistics-matching FDI (an adversary who knows the
   true track and fakes cross-channel consistency) defeats consistency detection entirely — a
-  fundamental limit; raising the bar to *that* capability is the honest security claim. FAR is
-  reported only on a clean, stationary Gaussian sim; real innovations are non-Gaussian and
-  non-stationary under maneuver, maneuver-induced decoupling is a false-positive source the check
-  cannot distinguish from a spoof, and precision under a near-zero spoof base rate is unbounded here.
+  fundamental limit; raising the bar to *that* capability is the honest security claim. §5.8 now
+  measures FAR under a benign maneuver (synchronized maneuvers are robust; strongly heterogeneous
+  ones do false-alarm, and are routed to `Jam` not `Spoof` by the fusion) — but the maneuver model
+  is a first-order per-channel-lag proxy, real innovations are non-Gaussian, and precision under a
+  near-zero spoof base rate is unbounded here.
 - **Advisory attribution.** A decoupling is equally consistent with a spoof, a genuinely *unique*
   true detection, or an estimator artifact. Cryptographic bus controls and a safety governor are
   the enforcement layer; galadriel is instrumentation on top.

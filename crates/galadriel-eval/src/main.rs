@@ -6,8 +6,8 @@
 
 use galadriel_eval::{
     adaptive_adversary, collusion_study, decoupling_sweep, format_adaptive, format_ci,
-    format_collusion, format_latency, format_report, format_sweep, measure_latency, run,
-    stealthy_ci_study, EvalConfig,
+    format_collusion, format_latency, format_maneuver, format_report, format_sweep, maneuver_far,
+    measure_latency, run, stealthy_ci_study, EvalConfig,
 };
 
 fn main() {
@@ -54,5 +54,14 @@ fn main() {
     print!(
         "{}",
         format_adaptive(&adaptive_adversary(&cfg, &grid, 0.05), 0.5)
+    );
+
+    // Non-stationary FAR: a benign maneuver, swept over per-channel lag.
+    let (mag, dur) = (12.0, 90);
+    let lags = [0, 8, 16, 32, 64];
+    println!();
+    print!(
+        "{}",
+        format_maneuver(&maneuver_far(&cfg, &lags, mag, dur), mag, dur)
     );
 }

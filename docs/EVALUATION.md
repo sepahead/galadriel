@@ -264,6 +264,27 @@ evade, as its dominant ROC (§2.3) predicts. This closes the "adversarial robust
 argument (`JUSTIFICATION.md` reason 2) on the linear-Gaussian manifold: MI buys no evasion
 resistance there; it earns its keep only where the coupling is genuinely nonlinear (reason 1).
 
+### 2.6 Non-stationary FAR (a benign maneuver)
+
+FAR above is on a stationary sim. A benign 12σ / 90-frame maneuver (a stress test) with a
+per-channel lag, counting only the consistency false-decoupling rate:
+
+```
+ lag_step | corr FAR | PID FAR      (200 trials)
+    0     |  0.000   |  0.000       (synchronized — robust)
+   16     |  0.000   |  0.185       (PID false-alarms; correlation robust)
+   32     |  0.235   |  0.210
+   64     |  0.375   |  0.180
+```
+
+A **synchronized** maneuver never false-alarms — the detector keys off *asymmetric*
+decoupling, and a shared maneuver perturbs all channels alike. Strongly heterogeneous
+(large-lag) maneuvers do decorrelate the channels and false-alarm (a disclosed benign
+limit), but correlation is again the more robust (PID false-alarms earlier, lag 16). The
+mitigation is architectural: a real maneuver spikes all channels' NIS *together* → the 2×2
+fusion routes it to `Jam` (degradation), not a per-channel `Spoof`. (The lag model is a
+first-order proxy.)
+
 ---
 
 ## 3. Discussion
