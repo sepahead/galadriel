@@ -90,7 +90,7 @@ measurement — carrying the **Normalized Innovation Squared** `NIS = yᵀ S⁻�
 formed against the *a priori* (pre-update) track state. In the ecosystem these are
 emitted by crebain's fusion `update_track`; here they are transport-agnostic data.
 
-**The baseline (this release).** Per channel, a sliding window of NIS is tested for
+**The baseline (default build).** Per channel, a sliding window of NIS is tested for
 χ² consistency (the window sum is `~ χ²(n·dof)`; an improbably high sum flags an
 inflated channel), backed by a two-sided CUSUM for sustained shifts. The per-channel
 flags fold into a **fail-closed jam-vs-spoof** verdict:
@@ -123,6 +123,38 @@ MI is at chance. On the linear stealthy spoof it merely *matches* the correlatio
 irreducible, correlation where it is not. The full 10-lens design review lives in the
 sibling `haldir` planning repository (`galadriels-mirror.md`).
 
+## Project status
+
+**Version `0.1.0` · pre-1.0 · experimental.** The detector is **feature-complete and
+validated**; the API is not yet frozen and there is **no tagged release** — all work is tracked
+in [`CHANGELOG.md`](CHANGELOG.md) under `[Unreleased]`. galadriel pins its private siblings
+`pid-rs` `v0.4.0` and `NCP` `v0.6.0`, but is itself untagged.
+
+| Crate | Role | State | Tests |
+|---|---|---|:--:|
+| [`galadriel-core`](crates/galadriel-core) | NIS χ² baseline · CUSUM · correlation default · fused 2×2 (`assess_default`) | ✅ **shipped default** | 36 |
+| [`galadriel-sim`](crates/galadriel-sim) | correlated scenarios + phantom-DOA / stealthy-spoof / jam / collusion / maneuver injections | ✅ **shipped default** | 9 |
+| [`galadriel-cli`](crates/galadriel-cli) | `galadriel demo` / `replay` driver | ✅ **shipped default** | — |
+| [`galadriel-pid`](crates/galadriel-pid) | geometry-gated KSG-MI / PID escalation | ✅ feature `pid` | 9 |
+| [`galadriel-ncp`](crates/galadriel-ncp) | `PidObservation` JSONL ingest · read-only Zenoh `SidecarTap` | ✅ `ncp` · 🟡 `ncp-live`¹ | 3 |
+| [`galadriel-eval`](crates/galadriel-eval) | the nine-part Monte-Carlo evaluation + criterion cost bench | ✅ | 14 |
+| [`galadriel-justify`](crates/galadriel-justify) | the forced-vs-justified studies | ✅ | 3 |
+
+¹ The live Zenoh tap **compiles against the real `ncp-zenoh` 1.9 API** but is not yet
+integration-tested against a running broker in CI.
+
+**Quality bar.** **74 tests pass** (including property-based `proptest` suites in `-core` and
+`-eval`), `cargo fmt` + `cargo clippy -D warnings` clean, every crate `#![forbid(unsafe_code)]`,
+MSRV **1.80** (default; 1.88 with `pid` / `ncp`). Every number in the docs is a reproducible
+`cargo` command.
+
+**Independent review.** The claims and numbers were put through a six-dimension adversarial
+rigour check — theory · statistics · reproducibility · code-vs-prose fidelity ·
+overclaim/consistency · citation integrity, each raised concern confirmed by three independent
+skeptics. **Five of six dimensions held on the first pass**; the sixth surfaced three prose
+defects (one internal overclaim, two miscitations), **now fixed** (`CHANGELOG.md` → Fixed). Every
+evaluation number reproduced.
+
 ## Documentation
 
 | Document | What it is |
@@ -136,14 +168,16 @@ sibling `haldir` planning repository (`galadriels-mirror.md`).
 ## Architecture
 
 ```
-crates/
-  galadriel-core   pure: PidObservation/Modality, NIS χ² baseline, CUSUM, correlation
-                   consistency check + the fused 2×2 default detector (assess_default)
-  galadriel-sim    pure: (correlated) scenarios + phantom-DOA / stealthy-spoof / jam injections
-  galadriel-cli    the `galadriel demo` / `replay` driver
-  galadriel-pid    feature `pid`:  the KSG-MI/PID escalation (pid-core), reusing core's 2×2
-  galadriel-ncp    feature `ncp`:  JSONL ingest (ncp-core); `ncp-live`: live Zenoh SidecarTap
-  galadriel-eval   Monte-Carlo: baseline vs correlation-default vs PID vs fused (docs/EVALUATION.md)
+crates/                                          # ● default-members (pure, no private deps)
+● galadriel-core     pure: PidObservation/Modality, NIS χ² baseline, CUSUM, correlation
+                     consistency check + the fused 2×2 default detector (assess_default)
+● galadriel-sim      pure: (correlated) scenarios + phantom-DOA / stealthy-spoof / jam /
+                     collusion / maneuver injections
+● galadriel-cli      the `galadriel demo` / `replay` driver (binary: `galadriel`)
+  galadriel-pid      feature `pid`:  the KSG-MI/PID escalation (pid-core), reusing core's 2×2
+  galadriel-ncp      feature `ncp`:  JSONL ingest (ncp-core); `ncp-live`: read-only Zenoh SidecarTap
+  galadriel-eval     Monte-Carlo: the nine-part evaluation + criterion cost bench (docs/EVALUATION.md)
+  galadriel-justify  the forced-vs-justified studies (docs/JUSTIFICATION.md); pulls pid-core
 ```
 
 The **default build is pure and light** (serde, thiserror, rand, rand_distr, clap, anyhow). Heavier
@@ -202,6 +236,46 @@ features). Every crate is `#![forbid(unsafe_code)]`.
   spoof, a genuinely-unique *true* detection, or an estimator artifact.
 - **Not the enforcement layer.** The real bus remedies are cryptographic (per-plane
   ACL + mTLS) and the safety governor; galadriel is instrumentation on top.
+
+## Roadmap
+
+The detector core is complete and validated (see [Project status](#project-status)); the roadmap is about
+**hardening the evidence base, wiring it in live, and stabilizing the API** — not widening the
+threat model. Nothing here changes the honest scope above: a consistency-*matching* adversary
+stays out of reach *by design*, and enforcement stays a bus/crypto concern.
+
+**Validation & evidence** *(research)*
+- **Non-synthetic evaluation.** Confirm the linear-Gaussian residual assumption on *recorded* or
+  crebain-generated innovations, augmenting the synthetic Gaussian study ([`PAPER.md`](docs/PAPER.md) §6).
+- **Test the PID-*justified* regime in practice.** Whether the *irreducible-synergy* regime — the
+  one place PID is justified rather than forced — actually dominates for learned/neural fusion is
+  left open in [`PAPER.md`](docs/PAPER.md) §4.2(3) (the sibling `prisoma` VLA analysis). This is
+  the pivotal open question for the thesis.
+- **Cross-approach benchmark.** Build the multi-layer dataset [`RELATED-WORK.md`](docs/RELATED-WORK.md)
+  §4.5 specifies (signal · measurement · residual layers) so galadriel can be compared head-to-head
+  with RAIM, signal-level GNSS anti-spoofing, and resilient state estimation on one ground truth.
+- **Richer maneuver model.** Replace §5.8's first-order per-channel-lag proxy with real maneuver
+  dynamics and the fusion filter's own response, tightening the non-stationary false-alarm story.
+
+**Integration** *(engineering)*
+- **End-to-end crebain wiring.** Consume crebain's `update_track` innovations live over the NCP
+  observation plane (today: transport-agnostic JSONL + a read-only Zenoh tap that compiles against
+  the real API).
+- **Runtime-test the live tap** against a running NCP broker (currently compile-verified only).
+- **Operator surface.** A minimal always-on monitor/alert path beyond the `demo` / `replay` CLI.
+
+**Release** *(stabilization)*
+- **First tagged release (`v0.1.0`)** once the private siblings publish the stable tags galadriel
+  pins; galadriel is itself untagged today.
+- **API review** toward semver stability and a path to `1.0`.
+
+**Explicitly *not* on the roadmap** *(out of scope by design)*
+- Detecting a statistics-matching / consistency-preserving adversary (frustum-class) — a
+  fundamental limit of *any* consistency detector (see [Honest limitations](#honest-limitations)).
+- Cryptographic enforcement (per-plane ACL / mTLS) and the safety governor — these live at the
+  NCP / crebain layer; galadriel is instrumentation on top.
+- Turning advisory attribution into a silent control-path veto — galadriel stays
+  `calibrated_posterior = false` by design.
 
 ## License
 

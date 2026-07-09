@@ -118,6 +118,11 @@ versions may make breaking changes).
   logic, so both variants speak one `FusedVerdict`. The `galadriel demo` gained a fourth,
   **pure** scene showing the correlation default catch a stealthy spoof the baseline
   misses; `--features pid` reframes the PID panel as the KSG-MI escalation.
+- **README `Project status` + `Roadmap`.** Added a per-crate status table (role · state · test
+  count, summing to the 74 passing) and a grounded roadmap (validation · integration · release,
+  with an explicit *out-of-scope-by-design* list). Fixed the architecture crate listing (it omitted
+  `galadriel-justify`) and marked the pure default-members; corrected "this release" → "default
+  build" (galadriel is `0.1.0`, untagged).
 
 ### Fixed
 - **Scientific-rigour triple-check.** A six-dimension adversarial verification (theory · statistics ·
