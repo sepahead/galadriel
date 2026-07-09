@@ -430,6 +430,29 @@ near-boundary regime that matters most operationally it is strictly *worse*.** T
 form of the paper's thesis, and it answers the "best-case-only" objection directly: correlation
 dominates the *entire* boundary, not just its easy end.
 
+### 5.6 Where consistency itself breaks: the honest-majority failure
+
+Everything above assumes an **honest majority** (§2). We now demonstrate the failure when that
+assumption is violated: **two of three** channels collude, decoupling onto *one shared* phantom
+(radar and acoustic track the same lie), while visual stays honest. The two liars now mutually
+corroborate and become the false "consensus"; the honest channel is the one that decouples from it.
+Over 200 trials:
+
+```
+Colluding compromise (2 of 3) — radar+acoustic share a phantom; visual honest
+  correlation flags the HONEST channel:  1.000   (it fires: 1.000)
+  PID         flags the HONEST channel:  0.975
+```
+
+The detector **inverts**: it fires reliably, but points at the *innocent* channel — correlation on
+**every** trial, PID on 97.5 %. Crucially this is **structural**, not an estimator artifact:
+consensus-based consistency has no way to tell a true majority from a colluding one, so *neither*
+correlation nor MI/PID escapes it (PID's decomposition offers no protection here either). This is
+the honest boundary of the whole approach: cross-sensor consistency needs $f < C/2$ compromised
+channels, and where that cannot be guaranteed the backstop must be cryptographic channel
+authentication (per-plane ACL / mTLS), not a smarter statistic. Reporting this failure is part of
+stating honestly what the method does and does not buy.
+
 ---
 
 ## 6. Discussion and limitations
@@ -437,9 +460,9 @@ dominates the *entire* boundary, not just its easy end.
 - **Non-adaptive, single-channel adversary.** Every detection number is against a fixed attack on
   one channel. A threshold-aware adaptive adversary optimizing injected bias subject to staying
   above `decouple_ratio × reference` (a boundary-hugging attack that pulls the track while flagged
-  nominal) is not evaluated, and a colluding $2$-of-$3$ compromise can invert the consensus and
-  cause the detector to accuse the honest channel. Characterizing the maximum undetectable bias,
-  and the honest-majority assumption's failure mode, is the primary open item.
+  nominal) is not evaluated. The **colluding $2$-of-$3$** failure *is* now demonstrated (§5.6: the
+  detector inverts and accuses the honest channel, correlation 100 % / PID 97.5 %). Characterizing
+  the maximum undetectable bias under a threshold-aware adaptive adversary is the primary open item.
 - **Interval estimates: partial.** AUCs now carry percentile-bootstrap 95 % CIs (with a paired
   corr-vs-PID bootstrap), which is what backs the "tie" and "at chance" claims. Detection rates
   and latencies are still bare point estimates; extending Wilson/bootstrap CIs to them, and adding

@@ -66,9 +66,14 @@ pub struct StealthySpoof {
     pub start_frame: u64,
 }
 
+/// The shared generator. `targets` are the spoofed channels; from `start_frame` each
+/// tracks the frame's **shared** phantom latent `p` (mixed via `decoupling`). Because all
+/// targets share the *same* `p`, a set of ≥2 targets **mutually corroborate** — that is the
+/// colluding-compromise mechanism ([`generate_collusion`]).
 fn generate_inner(
     cfg: &ScenarioConfig,
-    spoof: Option<StealthySpoof>,
+    targets: &[Modality],
+    start_frame: u64,
     decoupling: f64,
 ) -> Vec<PidObservation> {
     let mut r = rng::seeded(cfg.seed);
@@ -101,8 +106,7 @@ fn generate_inner(
             ([0.0; 3], [0.0; 3])
         };
         for &modality in &cfg.modalities {
-            let spoofed =
-                matches!(spoof, Some(s) if s.target == modality && f as u64 >= s.start_frame);
+            let spoofed = targets.contains(&modality) && f as u64 >= start_frame;
             // Partial decoupling: mix the shared truth `m` and the phantom `p` as
             // `√(1−d)·m + √d·p`. Since m and p are independent with equal variance this
             // preserves the marginal variance for *every* d (so the spoof stays
@@ -146,7 +150,7 @@ fn generate_inner(
 /// Observations are emitted frame-major (all modalities of frame 0, then frame 1,
 /// …), so downstream code can chunk by `modalities.len()` to recover frames.
 pub fn generate(cfg: &ScenarioConfig) -> Vec<PidObservation> {
-    generate_inner(cfg, None, 1.0)
+    generate_inner(cfg, &[], 0, 1.0)
 }
 
 /// Generate a corroborated stream with a **fully** moment-matched stealthy spoof on one
@@ -154,7 +158,7 @@ pub fn generate(cfg: &ScenarioConfig) -> Vec<PidObservation> {
 /// `cfg.rho > 0` for the spoof to be meaningful (otherwise there is no consensus to
 /// decouple from).
 pub fn generate_spoofed(cfg: &ScenarioConfig, spoof: StealthySpoof) -> Vec<PidObservation> {
-    generate_inner(cfg, Some(spoof), 1.0)
+    generate_inner(cfg, &[spoof.target], spoof.start_frame, 1.0)
 }
 
 /// Generate a stealthy spoof with a tunable **decoupling strength** `d ∈ [0, 1]`: the
@@ -167,7 +171,21 @@ pub fn generate_spoofed_partial(
     spoof: StealthySpoof,
     decoupling: f64,
 ) -> Vec<PidObservation> {
-    generate_inner(cfg, Some(spoof), decoupling)
+    generate_inner(cfg, &[spoof.target], spoof.start_frame, decoupling)
+}
+
+/// Generate a stream with a **colluding compromise**: from `start_frame`, every channel in
+/// `colluders` tracks ONE *shared* phantom latent (independent of the honest consensus), so
+/// the colluders **mutually corroborate** and form a false consensus. When the colluders are
+/// a majority (e.g. 2 of 3), cross-sensor consistency *inverts*: the honest minority is the
+/// one that decouples from the (false) consensus and is mis-flagged. This exercises the
+/// honest-majority assumption failing — the security limit of consistency detection.
+pub fn generate_collusion(
+    cfg: &ScenarioConfig,
+    colluders: &[Modality],
+    start_frame: u64,
+) -> Vec<PidObservation> {
+    generate_inner(cfg, colluders, start_frame, 1.0)
 }
 
 #[cfg(test)]

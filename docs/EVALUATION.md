@@ -222,6 +222,23 @@ effect is small. So on linear-Gaussian residuals MI/PID is not just *forced* —
 boundary it is strictly **worse**. This is the degradation curve the accuracy study's
 single (full-decouple) point could not show.
 
+### 2.4 Where consistency breaks — the honest-majority failure
+
+Cross-sensor consistency assumes an **honest majority**. When it is violated — **2 of 3**
+channels collude on a *shared* phantom (radar + acoustic track one lie), visual honest — the
+two liars mutually corroborate and become the false consensus (200 trials):
+
+```
+correlation flags the HONEST channel:  1.000   (fires: 1.000)
+PID         flags the HONEST channel:  0.975
+```
+
+The detector **inverts** — it fires, but accuses the *innocent* channel (correlation every
+time, PID 97.5 %). This is **structural**: consensus-based consistency cannot distinguish a
+true majority from a colluding one, so neither correlation nor PID escapes it. The honest
+scope: consistency detection needs `f < C/2`; beyond that the backstop is cryptographic
+channel authentication, not a smarter statistic.
+
 ---
 
 ## 3. Discussion

@@ -32,12 +32,14 @@
 use std::collections::HashMap;
 
 use galadriel_core::{
-    assess_default, CorrConfig, DetectorConfig, Mirror, Modality, PidObservation, Verdict,
+    assess_default, correlation, CorrConfig, DetectorConfig, Mirror, Modality, PidObservation,
+    Verdict,
 };
 use galadriel_pid::{analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidVerdict};
 use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
 use galadriel_sim::scenario::{
-    generate, generate_spoofed, generate_spoofed_partial, ScenarioConfig, StealthySpoof,
+    generate, generate_collusion, generate_spoofed, generate_spoofed_partial, ScenarioConfig,
+    StealthySpoof,
 };
 
 /// The sensor channels under test.
@@ -527,6 +529,82 @@ pub fn format_sweep(rows: &[SweepRow]) -> String {
     s
 }
 
+// ---------------------------------------------------------------------------
+// Colluding compromise (the honest-majority failure mode)
+// ---------------------------------------------------------------------------
+
+/// Result of the 2-of-3 colluding-compromise study.
+#[derive(Debug, Clone)]
+pub struct CollusionResult {
+    /// Trials.
+    pub trials: usize,
+    /// Fraction of trials the correlation detector flagged the **honest** channel as decoupled.
+    pub corr_accuses_honest: f64,
+    /// Fraction the PID detector flagged the **honest** channel.
+    pub pid_accuses_honest: f64,
+    /// Fraction the correlation detector flagged **any** channel (it fires — at the wrong one).
+    pub corr_fires: f64,
+}
+
+/// The colluding-compromise study: two channels (radar + acoustic) jointly spoof onto a
+/// **shared** phantom (so they mutually corroborate), while visual stays honest. Measures how
+/// often each detector flags the *honest* channel — the mis-attribution a colluding majority
+/// forces. This is the honest-majority assumption failing: with the liars in the majority the
+/// "consensus" is theirs, and the honest minority is the one that looks decoupled.
+pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CollusionResult {
+    let honest = Modality::Visual;
+    let colluders = [Modality::Radar, Modality::Acoustic];
+    let start = (cfg.frames as u64) / 3;
+    let (mut c_acc, mut p_acc, mut c_fire) = (0usize, 0usize, 0usize);
+    for t in 0..n {
+        let s = scenario(cfg, cfg.base_seed + t as u64);
+        let stream = generate_collusion(&s, &colluders, start);
+        let chans = scalar_channels(&stream, &MODALITIES, 0);
+
+        let cr = correlation::analyze(&chans, &CorrConfig::default());
+        if cr
+            .channels
+            .iter()
+            .any(|c| c.modality == honest && c.decoupled)
+        {
+            c_acc += 1;
+        }
+        if cr.channels.iter().any(|c| c.decoupled) {
+            c_fire += 1;
+        }
+
+        let pr = analyze(&chans, &PidConfig::default());
+        if pr
+            .channels
+            .iter()
+            .any(|c| c.modality == honest && c.decoupled)
+        {
+            p_acc += 1;
+        }
+    }
+    let nf = n as f64;
+    CollusionResult {
+        trials: n,
+        corr_accuses_honest: c_acc as f64 / nf,
+        pid_accuses_honest: p_acc as f64 / nf,
+        corr_fires: c_fire as f64 / nf,
+    }
+}
+
+/// Format the colluding-compromise study.
+pub fn format_collusion(r: &CollusionResult) -> String {
+    format!(
+        "Colluding compromise (2 of 3) — the honest-majority assumption FAILS ({} trials)\n\
+         radar + acoustic share a phantom (mutually corroborate); visual is honest.\n\n\
+         correlation flags the HONEST channel: {:.3}   (fires at all: {:.3})\n\
+         PID         flags the HONEST channel: {:.3}\n\n\
+         With a colluding majority the 'consensus' is the liars' — the honest minority\n\
+         decouples from it and is (mis-)accused. Cross-sensor consistency assumes an honest\n\
+         majority; a 2-of-3 compromise inverts it, and neither correlation nor PID escapes it.\n",
+        r.trials, r.corr_accuses_honest, r.corr_fires, r.pid_accuses_honest,
+    )
+}
+
 /// Per-attack metrics for both detectors and their fusion.
 #[derive(Debug, Clone)]
 pub struct AttackMetrics {
@@ -949,6 +1027,33 @@ mod tests {
         let neg: Vec<f64> = (0..50).map(|i| i as f64 * 0.1).collect();
         let (lo, hi) = auc_ci(&pos, &neg, 500, 1);
         assert!(lo > 0.95 && hi <= 1.0, "CI [{lo:.3},{hi:.3}] near 1.0");
+    }
+
+    #[test]
+    fn colluding_majority_inverts_the_detector_onto_the_honest_channel() {
+        let cfg = EvalConfig {
+            trials: 40,
+            ..Default::default()
+        };
+        let r = collusion_study(&cfg, 40);
+        // The detector fires (it is not silent)…
+        assert!(
+            r.corr_fires > 0.8,
+            "correlation should fire under collusion {:.3}",
+            r.corr_fires
+        );
+        // …but at the HONEST channel — the mis-attribution the honest-majority failure forces.
+        assert!(
+            r.corr_accuses_honest > 0.8,
+            "correlation should mis-flag the honest channel {:.3}",
+            r.corr_accuses_honest
+        );
+        // PID inherits the same structural failure (it is not a way out).
+        assert!(
+            r.pid_accuses_honest > 0.5,
+            "PID should also mis-flag the honest channel {:.3}",
+            r.pid_accuses_honest
+        );
     }
 
     #[test]

@@ -5,8 +5,8 @@
 //! detection/AUC report, a detection-latency study, and bootstrap 95% CIs.
 
 use galadriel_eval::{
-    decoupling_sweep, format_ci, format_latency, format_report, format_sweep, measure_latency, run,
-    stealthy_ci_study, EvalConfig,
+    collusion_study, decoupling_sweep, format_ci, format_collusion, format_latency, format_report,
+    format_sweep, measure_latency, run, stealthy_ci_study, EvalConfig,
 };
 
 fn main() {
@@ -43,4 +43,8 @@ fn main() {
     let grid = [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05];
     println!();
     print!("{}", format_sweep(&decoupling_sweep(&cfg, &grid, n_boot)));
+
+    // Colluding compromise: the honest-majority failure mode.
+    println!();
+    print!("{}", format_collusion(&collusion_study(&cfg, trials)));
 }
