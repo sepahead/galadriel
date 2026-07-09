@@ -430,6 +430,20 @@ mod tests {
     }
 
     #[test]
+    fn fewer_than_three_channels_is_insufficient_evidence() {
+        // The engine needs ≥3 channels to form a consensus; below that it fails closed.
+        let s = generate(&scen(7));
+        let two = [Modality::Visual, Modality::Radar];
+        let rep = analyze(&scalar_channels(&s, &two, 0), &PidConfig::default());
+        assert_eq!(
+            rep.verdict,
+            PidVerdict::InsufficientEvidence,
+            "{}",
+            rep.note
+        );
+    }
+
+    #[test]
     fn stealthy_spoof_missed_by_baseline_is_caught_by_pid() {
         for seed in [7, 11, 23, 42] {
             let cfg = scen(seed);
