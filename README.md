@@ -36,6 +36,13 @@ not enough ([`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md)). It rides the
 > **advisory** (`calibrated_posterior = false`): it softens and attributes, it never
 > silently vetoes a control path.
 
+📄 **The write-up.** [`docs/PAPER.md`](docs/PAPER.md) — the research paper (*Forced or
+Justified? Mutual Information vs. Correlation for Cross-Sensor Spoof Detection in
+Counter-UAS Fusion*): threat model, method, the three-axis evaluation, and the precise
+account of **when information decomposition is worth its cost and when it is merely
+forced**. Backed by [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) and
+[`docs/EVALUATION.md`](docs/EVALUATION.md); every number is a `cargo` command.
+
 ## Quickstart
 
 ```bash
