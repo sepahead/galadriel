@@ -14,3 +14,11 @@ serde_json = { workspace = true }
 # ncp-core is light (serde + serde_json only). Path dep into the intact NCP tree;
 # for a fresh clone / CI use: ncp-core = { git = "https://github.com/sepahead/NCP", tag = "v0.6.0" }
 ncp-core = { path = "../../../NCP/ncp-core" }
+# The live Zenoh tap (feature `zenoh`) pulls the full Zenoh + tokio stack; the JSONL
+# ingest path needs none of it, so it is strictly optional.
+ncp-zenoh = { path = "../../../NCP/ncp-zenoh", optional = true }
+
+[features]
+default = []
+# The live Zenoh observation-plane tap. Off by default — only the `ncp-live` build enables it.
+zenoh = ["dep:ncp-zenoh"]

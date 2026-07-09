@@ -115,7 +115,7 @@ crates/
   galadriel-sim    pure: (correlated) scenarios + phantom-DOA / stealthy-spoof / jam injections
   galadriel-cli    the `galadriel demo` / `replay` driver
   galadriel-pid    feature `pid`:  the KSG-MI/PID escalation (pid-core), reusing core's 2×2
-  galadriel-ncp    feature `ncp`:  PidObservation JSONL ingest (ncp-core)
+  galadriel-ncp    feature `ncp`:  JSONL ingest (ncp-core); `ncp-live`: live Zenoh SidecarTap
   galadriel-eval   Monte-Carlo: baseline vs correlation-default vs PID vs fused (docs/EVALUATION.md)
 ```
 
@@ -131,9 +131,11 @@ integrations are additive, off-by-default features:
 
 > **On NCP.** `ncp-core` is light (serde only) and usable as-is for the wire types;
 > `ncp-zenoh` pulls the full Zenoh stack, so the live tap is strictly feature-gated.
-> galadriel's `PidObservation` rides a **non-wire sidecar key** (never a proto
-> variant, so it can't trip NCP's `CONTRACT_HASH`); the MVP ingest path is plain
-> JSONL, no network.
+> galadriel's `PidObservation` rides a **non-wire sidecar key**
+> (`{realm}/session/{id}/galadriel/pid`, never a proto variant, so it can't trip NCP's
+> `CONTRACT_HASH`); the default ingest path is plain JSONL, no network. The live tap
+> (`galadriel_ncp::live::SidecarTap`, feature `ncp-live`) is a **read-only** subscriber
+> on that sidecar key — it observes, never publishes to a control plane.
 
 ## Building & testing
 

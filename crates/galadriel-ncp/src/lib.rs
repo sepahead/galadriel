@@ -17,8 +17,9 @@
 //!   `CONTRACT_HASH`. [`sidecar_key`] builds it from the NCP key scheme (`ncp-core`
 //!   [`Keys`]), and [`observation_key`] gives the canonical read-only observation key
 //!   galadriel would subscribe to.
-//! - The live Zenoh tap (`ncp-zenoh` + `tokio`) is a separate, heavier concern
-//!   gated behind a future `ncp-live` feature; it is intentionally not pulled here.
+//! - The live Zenoh tap ([`live::SidecarTap`], `ncp-zenoh`) is a separate, heavier
+//!   concern behind the `zenoh` feature (reached via galadriel's `ncp-live`) — it is not
+//!   pulled by the default JSONL path.
 
 use std::fs;
 use std::io;
@@ -26,6 +27,9 @@ use std::path::Path;
 
 use galadriel_core::observation::PidObservation;
 use ncp_core::{valid_id_segment, Keys, DEFAULT_REALM};
+
+#[cfg(feature = "zenoh")]
+pub mod live;
 
 /// The canonical NCP observation-plane key for a session:
 /// `{realm}/session/{id}/observation` — the read-only tap galadriel subscribes to.

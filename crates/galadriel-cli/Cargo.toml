@@ -26,3 +26,5 @@ default = []
 pid = ["dep:galadriel-pid"]
 # NCP observation-plane ingest (pulls ncp-core). Adds `replay <jsonl>`.
 ncp = ["dep:galadriel-ncp"]
+# The live Zenoh observation-plane tap (pulls ncp-zenoh + the full Zenoh/tokio stack).
+ncp-live = ["ncp", "galadriel-ncp/zenoh"]
