@@ -904,6 +904,130 @@ pub fn format_maneuver(rows: &[ManeuverRow], magnitude: f64, duration: u64) -> S
     s
 }
 
+// ---------------------------------------------------------------------------
+// Attacker success — the undetected track pull
+// ---------------------------------------------------------------------------
+
+/// The **fused innovation** per frame under the simplest sound fusion: the inverse-variance
+/// weighted mean of the channels' signed innovation (axis 0). For equal-variance channels
+/// this is the plain mean — the maximum-likelihood static estimate of the common deviation
+/// the tracker acts on. A spoof that decouples one channel injects a bias into this signal.
+fn fused_innovation(stream: &[PidObservation]) -> Vec<f64> {
+    let n = MODALITIES.len();
+    stream
+        .chunks(n)
+        .map(|frame| {
+            let (sum, cnt) = frame
+                .iter()
+                .filter_map(|o| o.innovation.map(|y| y[0]))
+                .fold((0.0, 0usize), |(s, c), v| (s + v, c + 1));
+            if cnt == 0 {
+                0.0
+            } else {
+                sum / cnt as f64
+            }
+        })
+        .collect()
+}
+
+/// One row of the attacker-success study: at decoupling `d`, the RMS **bias** (σ units) the
+/// spoof injects into the fused innovation the tracker acts on, alongside the detection rate.
+#[derive(Debug, Clone)]
+pub struct AttackerGainRow {
+    /// Decoupling strength.
+    pub decoupling: f64,
+    /// RMS injected bias on the fused innovation over the attack window (σ units).
+    pub fused_bias_rms: f64,
+    /// Correlation-default detection rate (matched to the default operating point).
+    pub detect_rate: f64,
+}
+
+/// Measure the **undetected track pull**: for each decoupling `d`, how large a bias the spoof
+/// injects into the fused innovation (vs the same seed's clean stream, so the subtraction
+/// isolates the spoof) and how often it is detected. Reading the two together bounds what an
+/// adaptive adversary can inject while staying under the gate — the security payoff of the
+/// detector. (Static fusion is memoryless; a filter with memory would *accumulate* this bias.)
+pub fn attacker_gain(cfg: &EvalConfig, decouplings: &[f64]) -> Vec<AttackerGainRow> {
+    let onset = cfg.frames / 3;
+    let spoof = StealthySpoof {
+        target: Modality::Acoustic,
+        start_frame: onset as u64,
+    };
+    decouplings
+        .iter()
+        .map(|&d| {
+            let (mut bias_sq, mut cnt) = (0.0_f64, 0usize);
+            let mut detect = 0usize;
+            for t in 0..cfg.trials {
+                let s = scenario(cfg, cfg.base_seed + t as u64);
+                let clean = generate(&s);
+                let spoofed = generate_spoofed_partial(&s, spoof, d);
+                let (cf, sf) = (fused_innovation(&clean), fused_innovation(&spoofed));
+                for f in onset..cf.len().min(sf.len()) {
+                    let b = sf[f] - cf[f];
+                    bias_sq += b * b;
+                    cnt += 1;
+                }
+                if corr_eval(&spoofed).0 {
+                    detect += 1;
+                }
+            }
+            AttackerGainRow {
+                decoupling: d,
+                fused_bias_rms: if cnt == 0 {
+                    0.0
+                } else {
+                    (bias_sq / cnt as f64).sqrt()
+                },
+                detect_rate: detect as f64 / cfg.trials as f64,
+            }
+        })
+        .collect()
+}
+
+/// Format the attacker-success study, highlighting the largest undetected injected bias.
+pub fn format_attacker_gain(rows: &[AttackerGainRow], detect_tol: f64) -> String {
+    let mut s = String::new();
+    s.push_str(
+        "Attacker success — injected fused-innovation bias vs detection (static inverse-variance\n\
+         fusion; bias in σ units). Reading both columns bounds the UNDETECTED pull.\n\n",
+    );
+    s.push_str(&format!(
+        "{:>5} | {:>16} | {:>12}\n",
+        "d", "fused bias (σ)", "corr detect"
+    ));
+    s.push_str(&format!("{}\n", "-".repeat(40)));
+    for r in rows {
+        s.push_str(&format!(
+            "{:>5.2} | {:>16.3} | {:>12.3}\n",
+            r.decoupling, r.fused_bias_rms, r.detect_rate
+        ));
+    }
+    // The most bias injectable while staying at/under the detection tolerance.
+    let undetected = rows
+        .iter()
+        .filter(|r| r.detect_rate <= detect_tol)
+        .map(|r| r.fused_bias_rms)
+        .fold(0.0_f64, f64::max);
+    let detected_min = rows
+        .iter()
+        .filter(|r| r.detect_rate > detect_tol)
+        .map(|r| r.fused_bias_rms)
+        .fold(f64::INFINITY, f64::min);
+    s.push_str(&format!(
+        "\nMax bias injectable while detection ≤ {detect_tol:.2}: ≈ {undetected:.3} σ.\n\
+         To inject more, the adversary must cross into the detected regime (bias ≥ {:.3} σ is\n\
+         reliably flagged). The detector thus BOUNDS the undetected per-frame track pull — the\n\
+         security payoff: evasion (§adaptive) and impact (here) trade off against each other.\n",
+        if detected_min.is_finite() {
+            detected_min
+        } else {
+            undetected
+        }
+    ));
+    s
+}
+
 /// Per-attack metrics for both detectors and their fusion.
 #[derive(Debug, Clone)]
 pub struct AttackMetrics {
@@ -1454,6 +1578,34 @@ mod tests {
             rows[1].pid_far,
             rows[0].corr_far,
             rows[0].pid_far
+        );
+    }
+
+    #[test]
+    fn attacker_bias_grows_with_decoupling_and_trades_off_against_detection() {
+        let cfg = EvalConfig {
+            trials: 60,
+            ..Default::default()
+        };
+        let rows = attacker_gain(&cfg, &[0.1, 0.4, 1.0]);
+        // More decoupling injects more fused-innovation bias…
+        assert!(
+            rows[2].fused_bias_rms > rows[0].fused_bias_rms,
+            "bias should grow with d: {:.3} -> {:.3}",
+            rows[0].fused_bias_rms,
+            rows[2].fused_bias_rms
+        );
+        // …but also becomes more detectable — the security trade-off.
+        assert!(
+            rows[2].detect_rate >= rows[0].detect_rate,
+            "detection should grow with d: {:.3} -> {:.3}",
+            rows[0].detect_rate,
+            rows[2].detect_rate
+        );
+        // A weak (near-undetectable) decoupling injects only a small bias.
+        assert!(
+            rows[0].fused_bias_rms < rows[2].fused_bias_rms,
+            "weak decoupling should inject less bias"
         );
     }
 

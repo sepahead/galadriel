@@ -285,6 +285,28 @@ mitigation is architectural: a real maneuver spikes all channels' NIS *together*
 fusion routes it to `Jam` (degradation), not a per-channel `Spoof`. (The lag model is a
 first-order proxy.)
 
+### 2.7 Attacker success — the undetected pull is bounded
+
+Detection reach (§2) says *whether* a spoof is caught, not how far it moves the fused
+track first. Under the simplest sound fusion (inverse-variance mean of the channels'
+innovations), the bias a spoof injects — measured against the same seed's clean stream —
+grows with the decoupling, but so does detection (200 trials, σ units):
+
+```
+   d  | fused bias (σ) | corr detect
+ 1.00 |     0.391      |    1.000
+ 0.80 |     0.291      |    0.275
+ 0.40 |     0.186      |    0.020
+ 0.10 |     0.089      |    0.030
+```
+
+The two are **coupled**: to inject more bias the adversary must decouple more, which is
+more detectable. At the shipped operating point the most bias injectable while detection
+stays ≤0.5 is ≈ **0.29σ per frame**; full decoupling (0.39σ) is caught every time. The
+detector thus **bounds the undetected pull** — evasion (§2.5) and impact trade off. (Static
+fusion is memoryless; a filter with memory accumulates this, and a tighter threshold — §2.5's
+matched FAR — lowers the bound.)
+
 ---
 
 ## 3. Discussion

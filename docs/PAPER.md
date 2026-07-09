@@ -527,6 +527,38 @@ so a maneuver, even one that decorrelates, is far more likely to be read as deni
 false accusation of a sensor. (Caveat: the per-channel-lag model is a first-order proxy; real
 maneuver dynamics — and the fusion filter's own maneuver response — are richer.)
 
+### 5.9 Attacker success: the undetected track pull is bounded
+
+Detection reach (§5.1) and time-to-detect (§5.2) say *whether* and *when* a spoof is caught, not
+*how far it moves the fused track* first — the operationally decisive quantity §5.2 flagged as
+unmeasured. galadriel consumes innovations, not the fused state, so the true displacement needs the
+downstream filter; but we can bound the *per-frame* impact with the **simplest sound fusion** — the
+inverse-variance weighted mean of the channels' innovations (the ML static estimate of the common
+deviation), where a decoupled channel's pull is a well-grounded $1/C$ fraction, not an arbitrary
+filter gain. Measuring the injected bias against the *same seed's* clean stream isolates the spoof's
+contribution (200 trials, σ units, shipped operating point):
+
+```
+   d  | fused bias (σ) | corr detect
+ 1.00 |     0.391      |    1.000
+ 0.80 |     0.291      |    0.275
+ 0.60 |     0.237      |    0.025
+ 0.40 |     0.186      |    0.020
+ 0.20 |     0.127      |    0.025
+ 0.10 |     0.089      |    0.030
+```
+
+Read the two columns together. The injected bias grows with the decoupling (0.06σ at $d=0.05$ to
+0.39σ at full decoupling), but so does detection — and the two are **coupled**: to inject more bias
+the adversary must decouple more, which is more detectable. At the shipped operating point the
+largest bias injectable while detection stays $\le 0.5$ is $\approx$ **0.29σ per frame** ($d=0.8$);
+pushing to the 0.39σ of full decoupling is caught every time. So the detector **bounds the
+undetected per-frame pull** — the security payoff, and the missing half of the §5.7 evasion story:
+**evasion and impact trade off against each other.** Two honest caveats: this is the *memoryless*
+static-fusion bias (a tracker with memory *accumulates* it over the undetected window, §5.2), and a
+more sensitive operating point — §5.7's matched-FAR threshold, where correlation flags each $d$ more
+readily — tightens the bound further (the shipped default `decouple_ratio` is deliberately lenient).
+
 ---
 
 ## 6. Discussion and limitations
@@ -545,9 +577,10 @@ maneuver dynamics — and the fusion filter's own maneuver response — are rich
 - **Attack instance.** §5.5 sweeps decoupling strength (the AUC-degradation curve), so the accuracy
   result is no longer best-case-only — correlation dominates the whole boundary. What remains is
   *multi-channel* compromise (a colluding subset), which the single-channel sweep does not cover.
-- **Detection reach, not attacker success.** §5.2 measures whether an attack is eventually
-  detected, not the induced track displacement before detection — the operationally decisive
-  quantity for an interceptor cue.
+- **Attacker success — per-frame, not integrated.** §5.9 bounds the *per-frame* fused-innovation
+  bias an undetected spoof injects (≈0.29σ at the shipped operating point) under memoryless static
+  fusion; the *integrated* track displacement over the undetected window needs the downstream
+  filter's dynamics (crebain) and is not modelled here.
 - **Single-configuration cost.** The ~100× cost ratio is one (window, channels, dimension) point;
   §5.3 states its scaling but does not sweep it.
 - **Consistency, not truth; synthetic sim.** A statistics-matching FDI (an adversary who knows the

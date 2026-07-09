@@ -5,9 +5,9 @@
 //! detection/AUC report, a detection-latency study, and bootstrap 95% CIs.
 
 use galadriel_eval::{
-    adaptive_adversary, collusion_study, decoupling_sweep, format_adaptive, format_ci,
-    format_collusion, format_latency, format_maneuver, format_report, format_sweep, maneuver_far,
-    measure_latency, run, stealthy_ci_study, EvalConfig,
+    adaptive_adversary, attacker_gain, collusion_study, decoupling_sweep, format_adaptive,
+    format_attacker_gain, format_ci, format_collusion, format_latency, format_maneuver,
+    format_report, format_sweep, maneuver_far, measure_latency, run, stealthy_ci_study, EvalConfig,
 };
 
 fn main() {
@@ -64,4 +64,8 @@ fn main() {
         "{}",
         format_maneuver(&maneuver_far(&cfg, &lags, mag, dur), mag, dur)
     );
+
+    // Attacker success: the undetected fused-innovation bias vs decoupling.
+    println!();
+    print!("{}", format_attacker_gain(&attacker_gain(&cfg, &grid), 0.5));
 }
