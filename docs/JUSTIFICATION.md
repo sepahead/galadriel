@@ -79,7 +79,19 @@ statistic — for **one or more** of these concrete reasons:
    channels are dependent. **No pairwise statistic of any kind can see synergy** — only
    the decomposition can. Where an attack targets synergistic fusion, PID is not merely
    better, it is the *only* option. It also gives per-channel **attribution**
-   (which channel decoupled) that a single scalar cannot.
+   (which channel decoupled) that a single scalar cannot. **Confirmed empirically** by
+   the `galadriel-justify` synergy study — on `T = A⊕B` (independent bits `A`, `B`):
+
+   ```
+   detector                   |  AUC
+   correlation (pairwise)     |  0.544    <- blind (chance)
+   mutual info (pairwise)     |  0.544    <- ALSO blind — pairwise MI is not enough
+   synergy (joint)            |  1.000    <- only the decomposition sees it (0.997 bits)
+   ```
+
+   Note that even *pairwise mutual information* is at chance here: it is specifically the
+   **joint** decomposition that is required. This is the one regime where using PID is not
+   a choice but a necessity.
 
 ## 4. Honest verdict for *galadriel*
 

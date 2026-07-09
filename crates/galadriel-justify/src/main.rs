@@ -3,7 +3,7 @@
 //!
 //! Usage: `galadriel-justify [trials]` (default 300 trials per class).
 
-use galadriel_justify::{format_report, run};
+use galadriel_justify::{format_report, format_synergy, run, run_synergy};
 
 fn main() {
     let trials = std::env::args()
@@ -11,4 +11,5 @@ fn main() {
         .and_then(|s| s.parse().ok())
         .unwrap_or(300usize);
     print!("{}", format_report(&run(trials, 400, 0.5, 7)));
+    print!("{}", format_synergy(&run_synergy(trials.min(250), 600, 7)));
 }

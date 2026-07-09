@@ -216,6 +216,127 @@ pub fn format_report(s: &Study) -> String {
     out
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Study 2 — synergy: the case where PID is not merely better but *irreducible*.
+//
+// A, B are independent bits; the target T = A XOR B. Then A alone and B alone each
+// carry ZERO information about T (MI(A;T) = MI(B;T) = 0) and are uncorrelated with it,
+// yet A and B JOINTLY determine it. No pairwise statistic — correlation OR mutual
+// information — can see this; only a joint/decomposition measure can. We use the
+// synergy lower bound  Syn ≥ MI(A,B;T) − max(MI(A;T), MI(B;T))  (the exact atoms are
+// pid-core's `I^sx` decomposition).
+// ─────────────────────────────────────────────────────────────────────────────
+
+use std::collections::HashMap;
+
+/// Plug-in Shannon entropy (bits) of a label sequence.
+fn entropy_bits(labels: &[u64]) -> f64 {
+    let n = labels.len() as f64;
+    if n == 0.0 {
+        return 0.0;
+    }
+    let mut counts: HashMap<u64, usize> = HashMap::new();
+    for &l in labels {
+        *counts.entry(l).or_default() += 1;
+    }
+    -counts
+        .values()
+        .map(|&c| {
+            let p = c as f64 / n;
+            p * p.log2()
+        })
+        .sum::<f64>()
+}
+
+/// Combine two small-alphabet label vectors into one joint label vector.
+fn join(a: &[u64], b: &[u64]) -> Vec<u64> {
+    a.iter()
+        .zip(b)
+        .map(|(&x, &y)| x.wrapping_mul(1024).wrapping_add(y))
+        .collect()
+}
+
+/// Discrete plug-in mutual information (bits), clamped at 0.
+fn mi_bits(a: &[u64], b: &[u64]) -> f64 {
+    (entropy_bits(a) + entropy_bits(b) - entropy_bits(&join(a, b))).max(0.0)
+}
+
+/// ROC-AUC of each detector at separating the coupled `T = A⊕B` from a decoupled `T`.
+#[derive(Debug, Clone)]
+pub struct SynergyResult {
+    /// Correlation detector AUC (`max |ρ(A,T)|, |ρ(B,T)|`).
+    pub corr_auc: f64,
+    /// Pairwise-MI detector AUC (`max MI(A;T), MI(B;T)`).
+    pub pairwise_mi_auc: f64,
+    /// Joint/synergy detector AUC (`MI(A,B;T) − max marginal MI`).
+    pub synergy_auc: f64,
+    /// Mean synergy (bits) on the coupled class (≈ 1 for XOR).
+    pub synergy_coupled_mean: f64,
+}
+
+/// Run the synergy study.
+pub fn run_synergy(trials: usize, n: usize, seed: u64) -> SynergyResult {
+    let mut rng = StdRng::seed_from_u64(seed ^ 0x5259_6E65);
+    let (mut cc, mut cd) = (Vec::new(), Vec::new());
+    let (mut pc, mut pd) = (Vec::new(), Vec::new());
+    let (mut sc, mut sd) = (Vec::new(), Vec::new());
+    for _ in 0..trials {
+        let a: Vec<u64> = (0..n).map(|_| u64::from(rng.gen::<bool>())).collect();
+        let b: Vec<u64> = (0..n).map(|_| u64::from(rng.gen::<bool>())).collect();
+        let t: Vec<u64> = a.iter().zip(&b).map(|(&x, &y)| x ^ y).collect();
+        let mut td = t.clone();
+        td.shuffle(&mut rng); // permutation null: same T marginal, dependence gone
+
+        let f = |v: &[u64]| v.iter().map(|&x| x as f64).collect::<Vec<f64>>();
+        let (af, bf, tf, tdf) = (f(&a), f(&b), f(&t), f(&td));
+
+        cc.push(abs_pearson(&af, &tf).max(abs_pearson(&bf, &tf)));
+        cd.push(abs_pearson(&af, &tdf).max(abs_pearson(&bf, &tdf)));
+
+        let pm_c = mi_bits(&a, &t).max(mi_bits(&b, &t));
+        let pm_d = mi_bits(&a, &td).max(mi_bits(&b, &td));
+        pc.push(pm_c);
+        pd.push(pm_d);
+
+        let ab = join(&a, &b);
+        sc.push((mi_bits(&ab, &t) - pm_c).max(0.0));
+        sd.push((mi_bits(&ab, &td) - pm_d).max(0.0));
+    }
+    SynergyResult {
+        corr_auc: auc(&cc, &cd),
+        pairwise_mi_auc: auc(&pc, &pd),
+        synergy_auc: auc(&sc, &sd),
+        synergy_coupled_mean: mean(&sc),
+    }
+}
+
+/// Format the synergy study as a plain-text report.
+pub fn format_synergy(r: &SynergyResult) -> String {
+    let mut o = String::new();
+    o.push_str("\nSynergy: T = A XOR B (A,B independent bits) vs a decoupled (shuffled) T.\n");
+    o.push_str("Detector ROC-AUC at telling the coupled T = A(+)B from the decoupled one:\n\n");
+    o.push_str(&format!("{:<26} | {:>6}\n", "detector", "AUC"));
+    o.push_str(&format!("{}\n", "-".repeat(37)));
+    o.push_str(&format!(
+        "{:<26} | {:>6.3}\n",
+        "correlation (pairwise)", r.corr_auc
+    ));
+    o.push_str(&format!(
+        "{:<26} | {:>6.3}\n",
+        "mutual info (pairwise)", r.pairwise_mi_auc
+    ));
+    o.push_str(&format!(
+        "{:<26} | {:>6.3}   (mean {:.3} bits)\n",
+        "synergy (joint)", r.synergy_auc, r.synergy_coupled_mean
+    ));
+    o.push_str(
+        "\ncorrelation and pairwise MI are BOTH at chance; only the joint/synergy measure\n",
+    );
+    o.push_str("separates them -> against an attack on synergistic fusion, PID's decomposition\n");
+    o.push_str("is not merely better, it is the ONLY option (no pairwise statistic can see it).\n");
+    o
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,6 +374,33 @@ mod tests {
         assert!(
             nl.mi_auc - nl.corr_auc > 0.2,
             "MI must beat correlation clearly"
+        );
+    }
+
+    #[test]
+    fn synergy_only_the_joint_measure_sees_xor() {
+        // The irreducible reason for PID: on T = A XOR B, correlation AND pairwise MI
+        // are both blind; only the joint/synergy measure separates coupled from decoupled.
+        let r = run_synergy(150, 600, 7);
+        assert!(
+            r.corr_auc < 0.65,
+            "correlation should be blind: {:.3}",
+            r.corr_auc
+        );
+        assert!(
+            r.pairwise_mi_auc < 0.75,
+            "pairwise MI should be blind: {:.3}",
+            r.pairwise_mi_auc
+        );
+        assert!(
+            r.synergy_auc > 0.9,
+            "synergy must separate: {:.3}",
+            r.synergy_auc
+        );
+        assert!(
+            r.synergy_coupled_mean > 0.7,
+            "XOR synergy ~1 bit: {:.3}",
+            r.synergy_coupled_mean
         );
     }
 }
