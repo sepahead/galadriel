@@ -23,7 +23,10 @@ versions may make breaking changes).
   the `I^sx` **redundancy atom** (via `pid-core`), with a leave-one-out framing and
   a fail-closed `InsufficientEvidence` state. On a moment-matched stealthy spoof it
   flags the decoupled channel the NIS baseline cannot see — empirically validating
-  the "must beat the baseline" hypothesis (robust across seeds).
+  the "must beat the baseline" hypothesis (robust across seeds). A `fuse` /
+  `assess_stream` layer combines the baseline and PID into one jam-vs-spoof verdict
+  (`Nominal` / `Spoof { stealthy }` / `Jam`); the evaluation shows the fused detector
+  covers all attack regimes (1.000 / 0.965 / 1.000) at the baseline's false-alarm rate.
 - **`galadriel-cli`** — the `demo` subcommand: CLEAN → NOMINAL, phantom → SPOOF,
   jam → JAM, with per-channel NIS sparklines; under `--features pid`, a
   baseline-vs-PID panel showing the baseline blind while PID catches the stealthy spoof.

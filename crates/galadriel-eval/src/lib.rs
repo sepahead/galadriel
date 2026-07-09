@@ -1,23 +1,25 @@
 #![forbid(unsafe_code)]
-//! Monte-Carlo evaluation of Galadriel's Mirror: the cheap **NIS χ² baseline** vs
-//! the **cross-sensor PID engine** across four regimes.
+//! Monte-Carlo evaluation of Galadriel's Mirror: the cheap **NIS χ² baseline**, the
+//! **cross-sensor PID engine**, and their **fusion**, across four regimes.
 //!
-//! All four regimes run on the *same* corroborated sim (`rho > 0`) so both
-//! detectors see a genuine consensus. Per trial we record, for each detector, a
-//! binary alarm and a continuous score; across trials we report detection rate,
-//! false-alarm rate (on the clean/null regime), and ROC-AUC (attack scores vs
-//! clean scores, via the Mann–Whitney identity `AUC = P(score_attack > score_clean)`).
+//! All four regimes run on the *same* corroborated sim (`rho > 0`) so both detectors
+//! see a genuine consensus. Per trial we record, for each detector, a binary alarm
+//! and (for the two base detectors) a continuous score; across trials we report
+//! detection rate, false-alarm rate (on the clean/null regime), and ROC-AUC (attack
+//! scores vs clean scores, via the Mann–Whitney identity
+//! `AUC = P(score_attack > score_clean)`).
 //!
 //! The headline result is **complementarity**: the baseline catches the *magnitude*
 //! attacks (a loud bias spoof and a jam) but is blind to a *moment-matched stealthy
 //! spoof* whose NIS stays χ²(3) by construction; the PID engine catches exactly that
 //! stealthy spoof — and, correctly, stays quiet on the pure-magnitude attacks, which
-//! preserve cross-channel correlation and are the baseline's job.
+//! preserve cross-channel correlation and are the baseline's job. The **fused**
+//! detector covers the whole space.
 
 use std::collections::HashMap;
 
 use galadriel_core::{DetectorConfig, Mirror, Modality, PidObservation, Verdict};
-use galadriel_pid::{analyze, scalar_channels, PidConfig, PidVerdict};
+use galadriel_pid::{analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidVerdict};
 use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
 use galadriel_sim::scenario::{generate, generate_spoofed, ScenarioConfig, StealthySpoof};
 
@@ -181,6 +183,17 @@ fn pid_eval(stream: &[PidObservation]) -> (bool, f64) {
     (alarm, score)
 }
 
+/// Fused detector: alarm on a `Spoof` or `Jam` fused verdict.
+fn fused_eval(stream: &[PidObservation]) -> bool {
+    let r = assess_stream(
+        stream,
+        &MODALITIES,
+        &DetectorConfig::default(),
+        &PidConfig::default(),
+    );
+    matches!(r.verdict, FusedVerdict::Spoof { .. } | FusedVerdict::Jam)
+}
+
 /// ROC-AUC via the Mann–Whitney identity (ties count 0.5).
 pub fn auc(pos: &[f64], neg: &[f64]) -> f64 {
     if pos.is_empty() || neg.is_empty() {
@@ -201,7 +214,7 @@ pub fn auc(pos: &[f64], neg: &[f64]) -> f64 {
     s / (pos.len() as f64 * neg.len() as f64)
 }
 
-/// Per-attack metrics for both detectors.
+/// Per-attack metrics for both detectors and their fusion.
 #[derive(Debug, Clone)]
 pub struct AttackMetrics {
     /// Which regime.
@@ -210,6 +223,8 @@ pub struct AttackMetrics {
     pub baseline_rate: f64,
     /// PID detection rate.
     pub pid_rate: f64,
+    /// Fused (baseline ⊕ PID) detection rate.
+    pub fused_rate: f64,
     /// Baseline ROC-AUC vs clean.
     pub baseline_auc: f64,
     /// PID ROC-AUC vs clean.
@@ -225,6 +240,8 @@ pub struct EvalResults {
     pub baseline_far: f64,
     /// PID false-alarm rate (on clean).
     pub pid_far: f64,
+    /// Fused false-alarm rate (on clean).
+    pub fused_far: f64,
     /// Metrics for the three attack regimes.
     pub per_attack: Vec<AttackMetrics>,
 }
@@ -235,11 +252,12 @@ pub fn run(cfg: &EvalConfig) -> EvalResults {
     let mut p_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
     let mut b_alarms: HashMap<Attack, usize> = HashMap::new();
     let mut p_alarms: HashMap<Attack, usize> = HashMap::new();
+    let mut f_alarms: HashMap<Attack, usize> = HashMap::new();
 
     for &attack in &Attack::ALL {
         let mut bs = Vec::with_capacity(cfg.trials);
         let mut ps = Vec::with_capacity(cfg.trials);
-        let (mut ba, mut pa) = (0usize, 0usize);
+        let (mut ba, mut pa, mut fa) = (0usize, 0usize, 0usize);
         for t in 0..cfg.trials {
             let stream = build(attack, cfg, cfg.base_seed + t as u64);
             let (b_al, b_sc) = baseline_eval(&stream);
@@ -248,11 +266,13 @@ pub fn run(cfg: &EvalConfig) -> EvalResults {
             ps.push(p_sc);
             ba += usize::from(b_al);
             pa += usize::from(p_al);
+            fa += usize::from(fused_eval(&stream));
         }
         b_scores.insert(attack, bs);
         p_scores.insert(attack, ps);
         b_alarms.insert(attack, ba);
         p_alarms.insert(attack, pa);
+        f_alarms.insert(attack, fa);
     }
 
     let n = cfg.trials as f64;
@@ -265,6 +285,7 @@ pub fn run(cfg: &EvalConfig) -> EvalResults {
             attack: a,
             baseline_rate: b_alarms[&a] as f64 / n,
             pid_rate: p_alarms[&a] as f64 / n,
+            fused_rate: f_alarms[&a] as f64 / n,
             baseline_auc: auc(&b_scores[&a], clean_b),
             pid_auc: auc(&p_scores[&a], clean_p),
         })
@@ -273,6 +294,7 @@ pub fn run(cfg: &EvalConfig) -> EvalResults {
     EvalResults {
         baseline_far: b_alarms[&Attack::Clean] as f64 / n,
         pid_far: p_alarms[&Attack::Clean] as f64 / n,
+        fused_far: f_alarms[&Attack::Clean] as f64 / n,
         per_attack,
         cfg: cfg.clone(),
     }
@@ -286,20 +308,21 @@ pub fn format_report(r: &EvalResults) -> String {
         r.cfg.trials, r.cfg.rho, r.cfg.frames, r.cfg.sigma
     ));
     s.push_str(&format!(
-        "False-alarm rate (clean):   baseline {:.3}   PID {:.3}\n\n",
-        r.baseline_far, r.pid_far
+        "False-alarm rate (clean):   baseline {:.3}   PID {:.3}   fused {:.3}\n\n",
+        r.baseline_far, r.pid_far, r.fused_far
     ));
     s.push_str(&format!(
-        "{:<28} | {:>10} | {:>7} | {:>10} | {:>7}\n",
-        "regime", "base det", "PID det", "base AUC", "PID AUC"
+        "{:<28} | {:>8} | {:>7} | {:>9} | {:>8} | {:>7}\n",
+        "regime", "base det", "PID det", "fused det", "base AUC", "PID AUC"
     ));
-    s.push_str(&format!("{}\n", "-".repeat(74)));
+    s.push_str(&format!("{}\n", "-".repeat(84)));
     for m in &r.per_attack {
         s.push_str(&format!(
-            "{:<28} | {:>10.3} | {:>7.3} | {:>10.3} | {:>7.3}\n",
+            "{:<28} | {:>8.3} | {:>7.3} | {:>9.3} | {:>8.3} | {:>7.3}\n",
             m.attack.label(),
             m.baseline_rate,
             m.pid_rate,
+            m.fused_rate,
             m.baseline_auc,
             m.pid_auc,
         ));
@@ -327,9 +350,10 @@ mod tests {
             ..Default::default()
         });
 
-        // Both detectors are quiet on the null.
+        // Every detector is quiet on the null.
         assert!(r.baseline_far < 0.1, "baseline FAR {:.3}", r.baseline_far);
         assert!(r.pid_far < 0.1, "PID FAR {:.3}", r.pid_far);
+        assert!(r.fused_far < 0.1, "fused FAR {:.3}", r.fused_far);
 
         // The headline: PID catches the stealthy spoof the baseline is blind to.
         let st = metrics(&r, Attack::Stealthy);
@@ -363,6 +387,15 @@ mod tests {
             "baseline jam {:.3}",
             jam.baseline_rate
         );
+
+        // The fused detector covers all three attacks.
+        for a in [Attack::LoudSpoof, Attack::Stealthy, Attack::Jam] {
+            assert!(
+                metrics(&r, a).fused_rate > 0.8,
+                "{a:?} fused {:.3}",
+                metrics(&r, a).fused_rate
+            );
+        }
     }
 
     #[test]

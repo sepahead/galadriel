@@ -77,26 +77,27 @@ flags fold into a **fail-closed jam-vs-spoof** verdict:
 | **most/all** channels inflated together | `Jam` — correlated denial |
 | too few samples / channels | `InsufficientEvidence` — **fail closed** |
 
-**The engine (roadmap, feature `pid`).** The cheap baseline is a *yardstick*. The
-optional cross-sensor PID engine compares each channel's innovation against a
-**leave-one-out consensus** (never the fused state), gated by a mandatory geometry
-check and block-subsample CIs, to separate a moment-matched spoof (one channel
-decouples in *information structure* while its NIS stays in-covariance) from benign
-decorrelation — something the NIS baseline alone cannot do. It ships only if it
-**beats the baseline** on the fixtures — and it does: on a moment-matched stealthy
-spoof the baseline is at chance (ROC-AUC 0.547) while PID reaches **0.999** at a 0%
-false-alarm rate ([`docs/EVALUATION.md`](docs/EVALUATION.md)). Full design:
-`galadriels-mirror.md`.
+**The engine (feature `pid`).** The cheap baseline is a *yardstick*. The cross-sensor
+PID engine scores each channel by its **geometry-gated pairwise mutual information**
+with the others (with the `I^sx` redundancy atom alongside), so a channel that stops
+sharing information — a moment-matched spoof that decouples in *information structure*
+while its NIS stays in-covariance — stands out, something the NIS baseline alone
+cannot see. It ships only because it **beats the baseline**: on that stealthy spoof
+the baseline is at chance (ROC-AUC 0.547) while PID reaches **0.999** at a 0%
+false-alarm rate ([`docs/EVALUATION.md`](docs/EVALUATION.md)). The two then **fuse**
+into one jam-vs-spoof verdict (`galadriel_pid::assess_stream`) that covers the whole
+attack space. Full design: `galadriels-mirror.md`.
 
 ## Architecture
 
 ```
 crates/
   galadriel-core   pure: PidObservation/Modality, NIS window, χ², baseline, CUSUM, decision
-  galadriel-sim    pure: synthetic χ²(3) scenarios + phantom-DOA / broadband-jam injections
-  galadriel-cli    the `galadriel demo` driver
-  galadriel-pid    (planned, feature `pid`)  cross-sensor PID engine over pid-core
-  galadriel-ncp    (planned, feature `ncp`)  PidObservation ingest over ncp-core
+  galadriel-sim    pure: (correlated) scenarios + phantom-DOA / stealthy-spoof / jam injections
+  galadriel-cli    the `galadriel demo` / `replay` driver
+  galadriel-pid    feature `pid`:  cross-sensor PID engine (pid-core) + the fused 2×2 detector
+  galadriel-ncp    feature `ncp`:  PidObservation JSONL ingest (ncp-core)
+  galadriel-eval   Monte-Carlo evaluation: baseline vs PID vs fused (docs/EVALUATION.md)
 ```
 
 The **default build is pure and light** (serde, thiserror, rand, clap). Heavier

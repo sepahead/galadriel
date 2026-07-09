@@ -28,8 +28,10 @@
 //! trustworthy in. It is advisory (`calibrated_posterior = false`).
 
 mod engine;
+mod fusion;
 
 pub use engine::{analyze, ChannelPid, PidConfig, PidReport, PidVerdict};
+pub use fusion::{assess_stream, fuse, FusedReport, FusedVerdict};
 
 use galadriel_core::observation::{Modality, PidObservation};
 

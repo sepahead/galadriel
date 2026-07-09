@@ -77,13 +77,13 @@ Mann–Whitney identity `AUC = P(score_attack > score_clean)` (ties = ½).
 
 ```
 Galadriel evaluation — 200 trials/regime · rho=0.7 · frames=300 · sigma=1
-False-alarm rate (clean):   baseline 0.030   PID 0.000
+False-alarm rate (clean):   baseline 0.030   PID 0.000   fused 0.030
 
-regime                       |   base det | PID det |   base AUC | PID AUC
---------------------------------------------------------------------------
-loud bias spoof              |      1.000 |   0.000 |      1.000 |   0.500
-stealthy (moment-matched)    |      0.020 |   0.965 |      0.547 |   0.999
-broadband jam                |      1.000 |   0.000 |      1.000 |   0.500
+regime                       | base det | PID det | fused det | base AUC | PID AUC
+------------------------------------------------------------------------------------
+loud bias spoof              |    1.000 |   0.000 |     1.000 |    1.000 |   0.500
+stealthy (moment-matched)    |    0.020 |   0.965 |     0.965 |    0.547 |   0.999
+broadband jam                |    1.000 |   0.000 |     1.000 |    1.000 |   0.500
 ```
 
 Reading the table:
@@ -101,6 +101,9 @@ Reading the table:
   baseline's magnitude test owns this half of the space.
 - **False alarms.** Baseline **0.030**, PID **0.000** at the default operating points —
   PID adds its detection at no false-alarm cost in this study.
+- **Fused detector — full coverage.** Combining the two (§3) detects **all three**
+  attacks (1.000 / 0.965 / 1.000) at the baseline's **0.030** false-alarm rate: neither
+  detector alone suffices, but together they cover the space.
 
 ---
 
@@ -118,7 +121,7 @@ partition it:
 
 The baseline occupies the top-left; PID occupies the bottom-right; the top-right cell
 (inflates NIS *and* breaks correlation) is caught by *both*. This is the motivation
-for **fusing** the two into a single jam-vs-spoof verdict (future work): a stealthy
+for **fusing** the two into a single jam-vs-spoof verdict — implemented as `galadriel_pid::assess_stream` (the `fused det` column above): a stealthy
 spoof with in-covariance NIS + a PID decoupling ⇒ *spoof*; an all-channel NIS inflation
 with intact correlation ⇒ *jam*; both together ⇒ a loud spoof.
 
