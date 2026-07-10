@@ -53,7 +53,11 @@
   <!-- shield body: angular chamfered crest -->
   <path d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z" fill="url(#plate)"/>
   <!-- crown panel above the visor -->
-  <path d="M44 48 L71 26 L169 26 L196 48 L196 70 L44 70 Z" fill="url(#crown)" opacity="0.55"/>
+  <path d="M44 48 L71 26 L169 26 L196 48 L196 70 L44 70 Z" fill="url(#crown)" opacity="0.65"/>
+  <!-- crest ridge descending to the visor -->
+  <path d="M112 18 L128 18 L124 74 L116 74 Z" fill="url(#crown)" opacity="0.9" stroke="#22d3ee" stroke-opacity="0.28" stroke-width="1"/>
+  <!-- specular sheen -->
+  <path d="M74 18 L104 18 L58 118 L46 92 Z" fill="#9fdcec" opacity="0.045"/>
   <!-- inner bevel -->
   <path class="bevel" d="M44 48 L71 26 L169 26 L196 48 L196 119 L181 158 L120 215 L59 158 L44 119 Z"/>
 
@@ -73,9 +77,9 @@
     <path class="trace" d="M104 122 H136"/>
     <path class="traceglow" d="M120 122 V104"/>
     <path class="trace" d="M120 122 V104"/>
-    <circle class="tnode" cx="120" cy="204" r="4.6"/><circle class="tdot" cx="120" cy="204" r="1.8"/>
-    <circle class="tnode" cx="84" cy="168" r="4.6"/><circle class="tdot" cx="84" cy="168" r="1.8"/>
-    <circle class="tnode" cx="156" cy="168" r="4.6"/><circle class="tdot" cx="156" cy="168" r="1.8"/>
+    <path class="tnode" d="M120 198.8 L125.2 204 L120 209.2 L114.8 204 Z"/><path class="tdot" d="M120 202 L122 204 L120 206 L118 204 Z"/>
+    <path class="tnode" d="M84 162.8 L89.2 168 L84 173.2 L78.8 168 Z"/><path class="tdot" d="M84 166 L86 168 L84 170 L82 168 Z"/>
+    <path class="tnode" d="M156 162.8 L161.2 168 L156 173.2 L150.8 168 Z"/><path class="tdot" d="M156 166 L158 168 L156 170 L154 168 Z"/>
   </g>
 
   <!-- visor slit: hexagonal, pointed ends -->
