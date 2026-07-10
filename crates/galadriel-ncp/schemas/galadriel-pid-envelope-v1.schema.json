@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sepahead/galadriel/blob/main/crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
+  "title": "Galadriel PID sidecar envelope v1",
+  "description": "Project-owned payload carried on the NCP named perception route sensor/galadriel-pid. Transport authentication is external; producer_id is a claim bound by the receiver to its expected publisher.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "schema_version",
+    "ncp_version",
+    "contract_hash",
+    "session_id",
+    "producer_id",
+    "observation"
+  ],
+  "properties": {
+    "kind": {
+      "const": "galadriel_pid_observation"
+    },
+    "schema_version": {
+      "const": "1.0"
+    },
+    "ncp_version": {
+      "const": "0.7"
+    },
+    "contract_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "session_id": {
+      "$ref": "#/$defs/ncpKeySegment"
+    },
+    "producer_id": {
+      "$ref": "#/$defs/ncpKeySegment"
+    },
+    "observation": {
+      "$ref": "#/$defs/pidObservation"
+    }
+  },
+  "$defs": {
+    "ncpKeySegment": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/\\*\\$#\\?\\s\\u0000-\\u001F\\u007F]+$"
+    },
+    "safeUnsignedInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "finiteNumber": {
+      "type": "number"
+    },
+    "vec3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/finiteNumber"
+      }
+    },
+    "matrix3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/vec3"
+      }
+    },
+    "consistencyProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "values",
+        "dimensions",
+        "frame_id",
+        "context_id",
+        "prior_id"
+      ],
+      "properties": {
+        "values": {
+          "$ref": "#/$defs/vec3"
+        },
+        "dimensions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "frame_id": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "context_id": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "prior_id": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        }
+      }
+    },
+    "pidObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "track_id",
+        "timestamp_ms",
+        "seq",
+        "modality",
+        "nis",
+        "dof"
+      ],
+      "properties": {
+        "track_id": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "timestamp_ms": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "seq": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "modality": {
+          "enum": [
+            "visual",
+            "thermal",
+            "acoustic",
+            "radar",
+            "lidar",
+            "radiofrequency"
+          ]
+        },
+        "nis": {
+          "type": "number",
+          "minimum": 0
+        },
+        "dof": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 255
+        },
+        "innovation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/vec3"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "innovation_cov": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/matrix3"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "consistency_projection": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/consistencyProjection"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

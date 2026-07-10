@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/galadriel-logo.svg" alt="Galadriel's Mirror — a sentinel shield whose visor carries a sweeping red scanning eye; three sensor channels feed it from below." width="200" height="200" />
+  <img src="assets/galadriel-logo.svg" alt="Galadriel's Mirror — a sentinel shield whose visor carries a sweeping red scanning eye; three fiber-optic sensor channels stream into it from below." width="200" height="200" />
 </p>
 
 <h1 align="center">galadriel</h1>
@@ -127,7 +127,7 @@ current evidence supports calling it field-validated or production-ready.
 | [`galadriel-sim`](crates/galadriel-sim) | synthetic scenarios and injections | Synthetic only |
 | [`galadriel-cli`](crates/galadriel-cli) | `demo` / `replay` driver | Operator prototype |
 | [`galadriel-pid`](crates/galadriel-pid) | KSG-MI / PID evidence | Optional research path |
-| [`galadriel-ncp`](crates/galadriel-ncp) | bounded JSONL ingest; optional Zenoh subscriber | JSONL tested; live path not operationally integrated |
+| [`galadriel-ncp`](crates/galadriel-ncp) | bounded JSONL ingest; versioned named-sensor envelope; optional Zenoh subscriber | Payload/ingest tested; no live Crebain publisher or deployment evidence |
 | [`galadriel-eval`](crates/galadriel-eval) | Monte Carlo evaluation and cost bench | Synthetic only |
 | [`galadriel-justify`](crates/galadriel-justify) | canonical forced-vs-justified studies | Synthetic/theoretical only |
 
@@ -140,21 +140,43 @@ treated as project-status claims.
 |---|---|---|
 | default | no sibling integration crates | core, simulator, CLI |
 | `pid` | `pid-core` | KSG-MI/PID research layer |
-| `ncp` | `ncp-core` | line-, record-, and aggregate-byte-bounded JSONL ingest; NCP key helpers |
-| `ncp-live` | `ncp-zenoh`, `tokio` | read-only Zenoh subscriber prototype with bounded sequence state |
+| `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.7 key helpers and versioned sidecar envelope; the CLI `replay` subcommand |
+| `ncp-live` | `ncp-zenoh`, `tokio` | read-only named-perception subscriber with explicit secure/development mode and bounded sequence state |
 
-The public `pid-rs` and `NCP` repositories are pinned by tag and lockfile. No private
-repository token or global git credential rewrite is required.
+The public `pid-rs` repository is pinned by tag and lockfile. `ncp-core`/`ncp-zenoh` are
+temporarily consumed as sibling-path dependencies while the NCP 0.7 wire revision is
+finalized: a fresh clone cannot build them, and the tagged, lockfile-pinned source must be
+restored before this tree is pushed or released. No private repository token or global git
+credential rewrite is required.
 
-The live subscriber uses a non-wire sidecar key,
-`{realm}/session/{id}/galadriel/pid`. It compiles against `ncp-zenoh`, but NCP's
-current hardened ACL does not grant this key and no production publisher emits to it.
-Subscriber silence can mean no traffic, a realm/key mismatch, or ACL denial; compilation
-is not evidence of an end-to-end live path. Each subscription exposes local receive,
-reject, panic, sequence-eviction, and reset counters. Live sequence state is bounded and
-rejects implausibly large forward advances; producers must still use a fresh session ID
-for every process epoch. The explicit reset handle is only a recovery path after an
-authenticated restart because clearing state makes old sequence numbers eligible again.
+The live subscriber uses NCP's named perception route,
+`{realm}/session/{id}/sensor/galadriel-pid`, built through
+`Keys::try_sensor_named(id, "galadriel-pid")`. NCP's hardened ACL already covers that route
+with its least-privilege sensor-plane rules: an authenticated plant/producer may publish
+and an authenticated observer may subscribe. Galadriel does not yet have a production
+Crebain publisher or an end-to-end mTLS deployment test, so compilation is still not live
+integration evidence.
+
+Every live payload is a strict `galadriel_pid_observation` schema `1.0` envelope carrying
+`ncp_version`, advisory `contract_hash`, `session_id`, `producer_id`, and the existing
+Crebain-compatible `observation`; the exact independent-producer contract is
+[`galadriel-pid-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json)
+(a descriptive snapshot — the runtime `SidecarEnvelope` validation gate is normative).
+The tap rejects incompatible versions, undeclared fields, malformed
+metadata, cross-session/cross-producer payloads, unsafe JSON integers, invalid observations,
+and replay/sequence violations. Contract-hash drift is accepted per NCP policy but counted
+for operators. Callers must choose `TransportMode::Secure` (strict mTLS client config) or
+explicitly acknowledge `TransportMode::QuietDevelopment`; there is no implicit security
+default. Subscriber silence can still mean no traffic, a realm/key mismatch, ACL denial,
+or producer failure. Producers must use a fresh session ID for every process epoch, and
+all-modal silence still requires a heartbeat.
+
+This is a project-owned sidecar payload, not a normative NCP `SensorFrame`. A future
+Crebain producer therefore builds the key with
+`bus.keys().try_sensor_named(session_id, "galadriel-pid")` and publishes the serialized
+envelope through `ZenohBus::put(..., Plane::Perception)`. It must not call
+`put_sensor_named`, whose publisher gate correctly accepts only a complete NCP
+`sensor_frame`.
 
 ## Building and testing
 
@@ -197,14 +219,16 @@ release label:
    unique shared prior ID per sequence.
 2. Emit association/gate misses and rejected updates so selection bias and liveness are
    observable.
-3. Add producer **heartbeats**, stable **session identifiers**, and an explicit,
-   versioned **schema** with restart semantics.
+3. Add producer **heartbeats** and use a fresh NCP **session identifier** for every
+   process epoch. The live schema and restart identity are now explicit; the producer
+   implementation is still absent.
 4. Provide a supported normal-runtime option for the common projection (and optional
    native innovation/covariance diagnostics); `CREBAIN_PID_JSONL` alone does not.
 5. Evaluate recorded, pre-gate data and report producer selection effects separately
    from detector errors.
-6. Add an authorized NCP publisher and least-privilege ACL entry, then test traffic,
-   denial, restart, decode-failure, and all-modal-silence behavior end to end.
+6. Add the Crebain NCP named-sensor publisher under the existing least-privilege
+   sensor-plane ACL, then test traffic, denial, restart, decode-failure, and
+   all-modal-silence behavior end to end over mTLS.
 7. Keep packages `publish = false` until the producer contract, recorded evidence, and
    API stability receive an explicit release review.
 

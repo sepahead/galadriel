@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Galadriel sentinel shield: an angular futuristic crest whose visor slit carries a sweeping red scanning eye; three sensor channels feed it from below — the watcher that looks for the channel that lies.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Galadriel sentinel shield: an angular futuristic crest whose visor slit carries a sweeping red scanning eye; three fiber-optic sensor channels stream into it from below — the watcher that looks for the channel that lies.">
   <title>Galadriel — Sentinel Shield (the eye that scans for the lying channel)</title>
   <defs>
     <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
@@ -41,13 +41,14 @@
       .bevel{fill:none;stroke:#3b82a0;stroke-width:1.2;stroke-opacity:.5;stroke-linejoin:miter}
       .facet{stroke:#22d3ee;stroke-width:1;stroke-opacity:.14}
       .slitedge{fill:none;stroke:#22d3ee;stroke-width:1.4;stroke-opacity:.55;stroke-linejoin:miter}
-      .trace{fill:none;stroke:#22d3ee;stroke-width:1.6;stroke-linecap:round;stroke-opacity:.75}
-      .traceglow{fill:none;stroke:#22d3ee;stroke-width:4;stroke-linecap:round;stroke-opacity:.18;filter:url(#glow)}
-      .tnode{fill:#0a121c;stroke:#22d3ee;stroke-width:1.4}
-      .tdot{fill:#22d3ee}
+      .fiber{fill:none;stroke:#22d3ee;stroke-width:3;stroke-linecap:round;stroke-opacity:.75}
+      .fiberglow{fill:none;stroke:#22d3ee;stroke-width:7;stroke-linecap:round;stroke-opacity:.16;filter:url(#glow)}
+      .pulse{fill:none;stroke:#a5f3fc;stroke-width:3.4;stroke-linecap:round;stroke-opacity:.95;stroke-dasharray:13 174}
+      .fport{fill:#0a121c;stroke:#22d3ee;stroke-width:2.4}
+      .fjack{fill:#a5f3fc}
       .eye{animation:scan 3.6s ease-in-out infinite}
       @keyframes scan{0%{transform:translateX(0)}25%{transform:translateX(42px)}75%{transform:translateX(-42px)}100%{transform:translateX(0)}}
-      @media (prefers-reduced-motion:reduce){.eye{animation:none}}
+      @media (prefers-reduced-motion:reduce){.eye{animation:none}animate{display:none}}
       @media (prefers-color-scheme:light){.rimglow{stroke-opacity:.28}.rim{stroke-opacity:1}.rimdark{stroke:#123240}.vtick{stroke-opacity:1}}
     </style>
   </defs>
@@ -67,21 +68,25 @@
   <path class="facet" d="M52 132 L120 172 L188 132" fill="none"/>
   <path class="facet" d="M68 160 L120 190 L172 160" fill="none"/>
 
-  <!-- three sensor channels feeding the visor -->
+  <!-- three fiber-optic sensor channels streaming into the visor: a symmetric
+       harness of light-guides from connector ports at the shield's foot,
+       each carrying a pulse toward the eye (matches the sepahead profile mark) -->
   <g>
-    <path class="traceglow" d="M120 204 V122"/>
-    <path class="trace" d="M120 204 V122"/>
-    <path class="traceglow" d="M84 168 V142 L104 122"/>
-    <path class="trace" d="M84 168 V142 L104 122"/>
-    <path class="traceglow" d="M156 168 V142 L136 122"/>
-    <path class="trace" d="M156 168 V142 L136 122"/>
-    <path class="traceglow" d="M104 122 H136"/>
-    <path class="trace" d="M104 122 H136"/>
-    <path class="traceglow" d="M120 122 V104"/>
-    <path class="trace" d="M120 122 V104"/>
-    <path class="tnode" d="M120 198.8 L125.2 204 L120 209.2 L114.8 204 Z"/><path class="tdot" d="M120 202 L122 204 L120 206 L118 204 Z"/>
-    <path class="tnode" d="M84 162.8 L89.2 168 L84 173.2 L78.8 168 Z"/><path class="tdot" d="M84 166 L86 168 L84 170 L82 168 Z"/>
-    <path class="tnode" d="M156 162.8 L161.2 168 L156 173.2 L150.8 168 Z"/><path class="tdot" d="M156 166 L158 168 L156 170 L154 168 Z"/>
+    <path class="fiberglow" d="M90 185 C74 152 87 120 103 104"/>
+    <path class="fiber" d="M90 185 C74 152 87 120 103 104"/>
+    <path class="pulse" d="M90 185 C74 152 87 120 103 104"><animate attributeName="stroke-dashoffset" from="187" to="0" dur="2.6s" begin="0.9s" repeatCount="indefinite"/></path>
+    <path class="fiberglow" d="M120 205 C120 172 120 137 120 104"/>
+    <path class="fiber" d="M120 205 C120 172 120 137 120 104"/>
+    <path class="pulse" d="M120 205 C120 172 120 137 120 104"><animate attributeName="stroke-dashoffset" from="187" to="0" dur="2.6s" begin="0s" repeatCount="indefinite"/></path>
+    <path class="fiberglow" d="M150 185 C166 152 153 120 137 104"/>
+    <path class="fiber" d="M150 185 C166 152 153 120 137 104"/>
+    <path class="pulse" d="M150 185 C166 152 153 120 137 104"><animate attributeName="stroke-dashoffset" from="187" to="0" dur="2.6s" begin="0.9s" repeatCount="indefinite"/></path>
+    <circle class="fport" cx="90" cy="185" r="5"/>
+    <circle class="fport" cx="120" cy="205" r="5"/>
+    <circle class="fport" cx="150" cy="185" r="5"/>
+    <circle class="fjack" cx="103" cy="104" r="3"/>
+    <circle class="fjack" cx="120" cy="104" r="3"/>
+    <circle class="fjack" cx="137" cy="104" r="3"/>
   </g>
 
   <!-- visor slit: hexagonal, pointed ends -->
