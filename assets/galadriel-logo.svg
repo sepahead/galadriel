@@ -72,21 +72,21 @@
        harness of light-guides from connector ports at the shield's foot,
        each carrying a pulse toward the eye (matches the sepahead profile mark) -->
   <g>
-    <path class="fiberglow" d="M90 185 C74 152 87 120 103 104"/>
-    <path class="fiber" d="M90 185 C74 152 87 120 103 104"/>
-    <path class="pulse" d="M90 185 C74 152 87 120 103 104"><animate attributeName="stroke-dashoffset" from="187" to="0" dur="2.6s" begin="0.9s" repeatCount="indefinite"/></path>
-    <path class="fiberglow" d="M120 205 C120 172 120 137 120 104"/>
-    <path class="fiber" d="M120 205 C120 172 120 137 120 104"/>
-    <path class="pulse" d="M120 205 C120 172 120 137 120 104"><animate attributeName="stroke-dashoffset" from="187" to="0" dur="2.6s" begin="0s" repeatCount="indefinite"/></path>
-    <path class="fiberglow" d="M150 185 C166 152 153 120 137 104"/>
-    <path class="fiber" d="M150 185 C166 152 153 120 137 104"/>
-    <path class="pulse" d="M150 185 C166 152 153 120 137 104"><animate attributeName="stroke-dashoffset" from="187" to="0" dur="2.6s" begin="0.9s" repeatCount="indefinite"/></path>
-    <circle class="fport" cx="90" cy="185" r="5"/>
-    <circle class="fport" cx="120" cy="205" r="5"/>
-    <circle class="fport" cx="150" cy="185" r="5"/>
-    <circle class="fjack" cx="103" cy="104" r="3"/>
+    <path class="fiberglow" d="M74 163 C74 139 87 126 87 104"/>
+    <path class="fiber" d="M74 163 C74 139 87 126 87 104"/>
+    <path class="pulse" d="M74 163 C74 139 87 126 87 104"><animate attributeName="stroke-dashoffset" from="187" to="0" dur="2.6s" begin="0.9s" repeatCount="indefinite"/></path>
+    <path class="fiberglow" d="M120 202 C120 170 120 135 120 104"/>
+    <path class="fiber" d="M120 202 C120 170 120 135 120 104"/>
+    <path class="pulse" d="M120 202 C120 170 120 135 120 104"><animate attributeName="stroke-dashoffset" from="187" to="0" dur="2.6s" begin="0s" repeatCount="indefinite"/></path>
+    <path class="fiberglow" d="M166 163 C166 139 153 126 153 104"/>
+    <path class="fiber" d="M166 163 C166 139 153 126 153 104"/>
+    <path class="pulse" d="M166 163 C166 139 153 126 153 104"><animate attributeName="stroke-dashoffset" from="187" to="0" dur="2.6s" begin="0.9s" repeatCount="indefinite"/></path>
+    <circle class="fport" cx="74" cy="163" r="5"/>
+    <circle class="fport" cx="120" cy="202" r="5"/>
+    <circle class="fport" cx="166" cy="163" r="5"/>
+    <circle class="fjack" cx="87" cy="104" r="3"/>
     <circle class="fjack" cx="120" cy="104" r="3"/>
-    <circle class="fjack" cx="137" cy="104" r="3"/>
+    <circle class="fjack" cx="153" cy="104" r="3"/>
   </g>
 
   <!-- visor slit: hexagonal, pointed ends -->
