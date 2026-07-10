@@ -88,9 +88,10 @@ cargo run --bin galadriel -- demo
 galadriel consumes a stream of `PidObservation` records — one per associated
 measurement — carrying the **Normalized Innovation Squared** `NIS = yᵀ S⁻¹ y ~ χ²(dof)`
 formed against the *a priori* (pre-update) track state. In the ecosystem crebain's fusion
-`update_track` is the **designated emitter** of these records (the live wiring is on the
-roadmap; the sidecar payload contract is frozen by test in `galadriel-ncp`); here they are
-transport-agnostic data.
+`update_track` **emits these records** (feature `emit_innovations` / `CREBAIN_PID_JSONL`,
+JSONL directly consumable by `galadriel-ncp`'s `read_jsonl`; the payload contract is frozen
+by golden tests on **both** sides). The live Zenoh leg remains on the roadmap; here they
+are transport-agnostic data.
 
 **The baseline (default build).** Per channel, a sliding window of NIS is tested for
 χ² consistency (the window sum is `~ χ²(n·dof)`; an improbably high sum flags an

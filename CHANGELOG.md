@@ -7,6 +7,12 @@ versions may make breaking changes).
 
 ## [Unreleased]
 
+### Changed
+- **README: crebain now emits the sidecar.** The "designated emitter" hedge is resolved -
+  crebain's `update_track` emits contract-frozen `PidObservation` records (feature
+  `emit_innovations` / `CREBAIN_PID_JSONL` JSONL sink, golden-tested against this repo's
+  frozen contract on both sides). The live Zenoh leg remains on the roadmap.
+
 ### Added
 - **`galadriel-justify` — the deployed Wibral decomposition now evidences its own
   justification.** The XOR synergy study gains the **SxPID synergy atom** as a detector
