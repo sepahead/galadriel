@@ -976,7 +976,7 @@ version = "0.1.0"
 dependencies = [
  "galadriel-core",
  "pid-core",
- "rand 0.8.6",
+ "rand 0.10.2",
  "rand_distr",
 ]
 
@@ -1004,7 +1004,7 @@ name = "galadriel-sim"
 version = "0.1.0"
 dependencies = [
  "galadriel-core",
- "rand 0.8.6",
+ "rand 0.10.2",
  "rand_distr",
 ]
 
