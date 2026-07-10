@@ -37,6 +37,7 @@ pub struct SidecarTap {
     bus: ZenohBus,
     realm: String,
     decode_failures: Arc<AtomicU64>,
+    payloads_received: Arc<AtomicU64>,
 }
 
 impl SidecarTap {
@@ -46,6 +47,7 @@ impl SidecarTap {
             bus: ZenohBus::open().await?,
             realm: DEFAULT_REALM.to_string(),
             decode_failures: Arc::new(AtomicU64::new(0)),
+            payloads_received: Arc::new(AtomicU64::new(0)),
         })
     }
 
@@ -57,6 +59,7 @@ impl SidecarTap {
             bus,
             realm,
             decode_failures: Arc::new(AtomicU64::new(0)),
+            payloads_received: Arc::new(AtomicU64::new(0)),
         })
     }
 
@@ -67,6 +70,7 @@ impl SidecarTap {
             bus,
             realm: realm.into(),
             decode_failures: Arc::new(AtomicU64::new(0)),
+            payloads_received: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -79,6 +83,20 @@ impl SidecarTap {
     /// own feed rotting.
     pub fn decode_failures(&self) -> u64 {
         self.decode_failures.load(Ordering::Relaxed)
+    }
+
+    /// Total payloads seen on the sidecar key (decoded **or** dropped), across all
+    /// subscriptions of this tap. This is the tap's **liveness signal**: brokered
+    /// pub/sub fails *silent* — a realm mismatch (producer on `"engram/ncp"`, tap on
+    /// another realm), a key typo, or an ACL denial all look identical to "no traffic".
+    /// [`Self::decode_failures`] only catches drift in payloads that *arrive*; a stuck
+    /// zero **here**, while the producer's session is known to be active, is the
+    /// symptom of a mis-wired feed. Operators should alarm on it — the detector itself
+    /// already fails closed (starved windows yield `InsufficientEvidence`, never a
+    /// clean `Nominal`), so this counter is about *diagnosing* the starvation, not
+    /// about safety.
+    pub fn payloads_received(&self) -> u64 {
+        self.payloads_received.load(Ordering::Relaxed)
     }
 
     /// The underlying bus (e.g. to close it, or share the session).
@@ -100,8 +118,10 @@ impl SidecarTap {
         let key = sidecar_key(&self.realm, session_id)
             .ok_or_else(|| ZenohError(format!("invalid NCP session id segment: {session_id:?}")))?;
         let failures = Arc::clone(&self.decode_failures);
+        let received = Arc::clone(&self.payloads_received);
         self.bus
             .subscribe(&key, move |_key, bytes| {
+                received.fetch_add(1, Ordering::Relaxed);
                 match serde_json::from_slice::<PidObservation>(&bytes) {
                     Ok(obs) => on_obs(obs),
                     Err(_) => {
