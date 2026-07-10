@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/galadriel-logo.svg" alt="Galadriel's Mirror — a cross-sensor consistency monitor: several sensor channels corroborate one track while one channel decouples in red." width="200" height="200" />
+  <img src="assets/galadriel-logo.svg" alt="Galadriel's Mirror — a sentinel shield whose visor carries a sweeping red scanning eye; three sensor channels feed it from below: the watcher that looks for the channel that lies." width="200" height="200" />
 </p>
 
 <h1 align="center">galadriel</h1>

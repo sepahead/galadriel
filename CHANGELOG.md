@@ -7,6 +7,14 @@ versions may make breaking changes).
 
 ## [Unreleased]
 
+### Changed
+- **Logo redesigned** as a sentinel shield: an angular chamfered crest (modern
+  futuristic plate) with a Cylon-visor slit carrying a sweeping red scanning eye,
+  fed by three sensor-channel traces (the three live modalities). One animated
+  element (the eye; `prefers-reduced-motion` honored), centered at t=0 so static
+  renderers get a meaningful frame; self-contained dark body reads on light and
+  dark backgrounds. Same viewBox — drop-in for existing references.
+
 ### Added (cross-repo integration proof)
 - **A real crebain-emitted capture is now a CI-checked galadriel fixture.**
   `crates/galadriel-ncp/tests/fixtures/crebain_clean_capture.jsonl` (476 records; one
