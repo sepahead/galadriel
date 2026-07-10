@@ -7,12 +7,16 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 description = "The cross-sensor Partial Information Decomposition engine for Galadriel's Mirror (feature `pid`)."
+publish = false
+
+[lints]
+workspace = true
 
 [dependencies]
 galadriel-core = { workspace = true }
-# pid-core is pinned by git tag in the workspace root (with a .cargo/config.toml `paths`
-# override for local sibling-tree development).
+# pid-core is pinned by public git tag in the workspace root and resolved exactly
+# by Cargo.lock.
 pid-core = { workspace = true }
 
 [dev-dependencies]
-galadriel-sim = { path = "../galadriel-sim" }
+galadriel-sim = { version = "0.1.0", path = "../galadriel-sim" }

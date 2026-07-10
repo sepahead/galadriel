@@ -1,15 +1,14 @@
-//! A two-sided CUSUM change detector on a per-channel NIS stream.
+//! A two-sided CUSUM change detector.
 //!
-//! The tabular CUSUM accumulates deviations of the NIS from its expected mean
-//! (`dof`) beyond a slack `k`, and alarms when either the upper or lower
+//! The tabular CUSUM accumulates deviations from a configured target beyond a
+//! slack `k`, and alarms when either the upper or lower
 //! cumulative sum exceeds the threshold `h`. It catches a *sustained* mean shift
 //! (a persistent spoof/jam) faster than a single-window test, while a slack band
 //! rejects transient benign spikes.
 //!
-//! Note: the lower arm accrues only when `x < target − slack`, so with the default
-//! configuration (`cusum_slack == dof`) it is inert for a non-negative NIS — the detector
-//! is effectively one-sided there, watching only for *inflation*. A configuration with
-//! `slack < target` activates the below-target arm.
+//! [`crate::Mirror`] scales NIS and its null mean by `sqrt(2*dof)` before
+//! calling this generic accumulator, so detector-level slack and threshold
+//! parameters have comparable null-standard-deviation units across dimensions.
 
 /// Two-sided tabular CUSUM.
 #[derive(Debug, Clone)]
@@ -22,28 +21,58 @@ pub struct Cusum {
 }
 
 impl Cusum {
-    /// New detector targeting `target` (the null NIS mean, i.e. `dof`), with the
-    /// given slack `k` and alarm threshold `h`.
-    pub fn new(target: f64, slack: f64, threshold: f64) -> Self {
-        Self {
+    /// New detector targeting `target`, with slack `k` and alarm threshold `h`
+    /// expressed in the same units as the input series.
+    pub fn new(target: f64, slack: f64, threshold: f64) -> crate::Result<Self> {
+        use crate::GaladrielError::InvalidConfig;
+        if !target.is_finite() || target <= 0.0 {
+            return Err(InvalidConfig("CUSUM target must be finite and > 0".into()));
+        }
+        if !slack.is_finite() || slack < 0.0 {
+            return Err(InvalidConfig("CUSUM slack must be finite and >= 0".into()));
+        }
+        if !threshold.is_finite() || threshold <= 0.0 {
+            return Err(InvalidConfig(
+                "CUSUM threshold must be finite and > 0".into(),
+            ));
+        }
+        Ok(Self {
             target,
             slack,
             threshold,
             hi: 0.0,
             lo: 0.0,
-        }
+        })
     }
 
     /// Feed one NIS sample; returns whether the detector is currently in alarm.
-    pub fn update(&mut self, x: f64) -> bool {
-        self.hi = (self.hi + x - self.target - self.slack).max(0.0);
-        self.lo = (self.lo + self.target - x - self.slack).max(0.0);
-        self.alarm()
+    pub fn update(&mut self, x: f64) -> crate::Result<bool> {
+        if !x.is_finite() {
+            return Err(crate::GaladrielError::NonFinite("Cusum::update"));
+        }
+        let hi = (self.hi + x - self.target - self.slack).max(0.0);
+        let lo = (self.lo + self.target - x - self.slack).max(0.0);
+        if !hi.is_finite() || !lo.is_finite() {
+            return Err(crate::GaladrielError::NonFinite("Cusum accumulator"));
+        }
+        self.hi = hi;
+        self.lo = lo;
+        Ok(self.alarm())
     }
 
     /// Whether either cumulative sum has crossed the threshold.
     pub fn alarm(&self) -> bool {
-        self.hi > self.threshold || self.lo > self.threshold
+        self.high_alarm() || self.low_alarm()
+    }
+
+    /// Whether the above-target arm has crossed the threshold.
+    pub fn high_alarm(&self) -> bool {
+        self.hi >= self.threshold
+    }
+
+    /// Whether the below-target arm has crossed the threshold.
+    pub fn low_alarm(&self) -> bool {
+        self.lo >= self.threshold
     }
 
     /// Current upper cumulative sum (drift above target).
@@ -69,18 +98,18 @@ mod tests {
 
     #[test]
     fn stays_quiet_on_target() {
-        let mut c = Cusum::new(3.0, 2.0, 12.0);
+        let mut c = Cusum::new(3.0, 2.0, 12.0).unwrap();
         for _ in 0..1000 {
-            assert!(!c.update(3.0));
+            assert!(!c.update(3.0).unwrap());
         }
     }
 
     #[test]
     fn fires_quickly_on_step_up() {
-        let mut c = Cusum::new(3.0, 2.0, 12.0);
+        let mut c = Cusum::new(3.0, 2.0, 12.0).unwrap();
         let mut fired_at = None;
         for i in 0..20 {
-            if c.update(15.0) {
+            if c.update(15.0).unwrap() {
                 fired_at = Some(i);
                 break;
             }
@@ -93,10 +122,10 @@ mod tests {
     fn fires_on_sustained_step_down_via_the_lower_arm() {
         // The lower arm is active only when slack < target; with slack 1.0 < target 3.0 a
         // sustained below-target NIS accrues on `lo` and alarms.
-        let mut c = Cusum::new(3.0, 1.0, 5.0);
+        let mut c = Cusum::new(3.0, 1.0, 5.0).unwrap();
         let mut fired = None;
         for i in 0..20 {
-            if c.update(0.0) {
+            if c.update(0.0).unwrap() {
                 fired = Some(i);
                 break;
             }
@@ -113,12 +142,21 @@ mod tests {
 
     #[test]
     fn reset_clears_both_arms() {
-        let mut c = Cusum::new(3.0, 1.0, 5.0);
+        let mut c = Cusum::new(3.0, 1.0, 5.0).unwrap();
         for _ in 0..10 {
-            c.update(20.0);
+            c.update(20.0).unwrap();
         }
         assert!(c.alarm());
         c.reset();
         assert!(!c.alarm() && c.hi() == 0.0 && c.lo() == 0.0);
+    }
+
+    #[test]
+    fn invalid_values_do_not_poison_state() {
+        assert!(Cusum::new(0.0, 1.0, 5.0).is_err());
+        assert!(Cusum::new(3.0, f64::NAN, 5.0).is_err());
+        let mut c = Cusum::new(3.0, 1.0, 5.0).unwrap();
+        assert!(c.update(f64::INFINITY).is_err());
+        assert_eq!((c.hi(), c.lo()), (0.0, 0.0));
     }
 }

@@ -1,71 +1,100 @@
 #![forbid(unsafe_code)]
 //! `galadriel-eval` — run the Monte-Carlo evaluation and print the report.
 //!
-//! Usage: `galadriel-eval [trials]` (default 200 trials per regime). Prints the
+//! Usage: `galadriel-eval [trials]` (default 20 trials per regime). Prints the
 //! detection/AUC report, a detection-latency study, and bootstrap 95% CIs.
 
 use galadriel_eval::{
     adaptive_adversary, attacker_gain, collusion_study, decoupling_sweep, format_adaptive,
     format_attacker_gain, format_ci, format_collusion, format_latency, format_maneuver,
-    format_report, format_sweep, maneuver_far, measure_latency, run, stealthy_ci_study, EvalConfig,
+    format_report, format_sweep, maneuver_far, measure_latency, run, stealthy_ci_study,
+    validate_report_suite, EvalConfig, MIN_INFERENCE_TRIALS,
 };
 
-fn main() {
-    let trials = std::env::args()
-        .nth(1)
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(200usize);
+const MAX_TRIALS: usize = 1_000;
+
+fn trials_arg(default: usize) -> Result<usize, String> {
+    let mut args = std::env::args().skip(1);
+    let Some(raw) = args.next() else {
+        return Ok(default);
+    };
+    if args.next().is_some() {
+        return Err("usage: galadriel-eval [trials]".into());
+    }
+    let trials = raw.parse::<usize>().map_err(|_| {
+        format!("trials must be an integer in {MIN_INFERENCE_TRIALS}..={MAX_TRIALS} (got {raw:?})")
+    })?;
+    if !(MIN_INFERENCE_TRIALS..=MAX_TRIALS).contains(&trials) {
+        return Err(format!(
+            "trials must be in {MIN_INFERENCE_TRIALS}..={MAX_TRIALS} (got {trials})"
+        ));
+    }
+    Ok(trials)
+}
+
+fn run_main() -> Result<(), String> {
+    let trials = trials_arg(MIN_INFERENCE_TRIALS)?;
     let cfg = EvalConfig {
         trials,
         ..Default::default()
     };
+    cfg.validate()?;
 
-    let results = run(&cfg);
+    let lat_trials = trials.min(20);
+    let step = 10;
+    let n_boot = 200;
+    let grid = [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05];
+    let lags = [0, 8, 16, 32, 64];
+    validate_report_suite(&cfg, &grid, &lags, n_boot, lat_trials, step)
+        .map_err(|error| error.to_string())?;
+
+    let results = run(&cfg).map_err(|error| error.to_string())?;
     print!("{}", format_report(&results));
 
     // Latency study: lighter (fewer trials, coarse prefix step) — re-running each detector
-    // on every prefix is quadratic, so it uses a capped trial count and a 4-frame step.
-    let lat_trials = trials.min(50);
-    let step = 4;
+    // on every prefix is quadratic, so it uses a capped trial count and a coarse step.
     println!();
-    print!(
-        "{}",
-        format_latency(&measure_latency(&cfg, lat_trials, step), lat_trials, step)
-    );
+    let latency = measure_latency(&cfg, lat_trials, step).map_err(|error| error.to_string())?;
+    print!("{}", format_latency(&latency, lat_trials, step));
 
     // Bootstrap 95% CIs on the stealthy-spoof AUCs + the paired corr−PID difference.
-    let n_boot = 2000;
-    let (rows, diff) = stealthy_ci_study(&cfg, n_boot);
+    let (rows, diff) = stealthy_ci_study(&cfg, n_boot).map_err(|error| error.to_string())?;
     println!();
     print!("{}", format_ci(&rows, diff, n_boot));
 
     // Decoupling-strength sweep: the detection boundary (does PID hold on longer than
     // correlation as the spoof weakens? — on linear-Gaussian data it should not).
-    let grid = [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05];
     println!();
-    print!("{}", format_sweep(&decoupling_sweep(&cfg, &grid, n_boot)));
+    let sweep = decoupling_sweep(&cfg, &grid, n_boot).map_err(|error| error.to_string())?;
+    print!("{}", format_sweep(&sweep));
 
     // Colluding compromise: the honest-majority failure mode.
     println!();
-    print!("{}", format_collusion(&collusion_study(&cfg, trials)));
+    let collusion = collusion_study(&cfg, trials).map_err(|error| error.to_string())?;
+    print!("{}", format_collusion(&collusion));
 
-    // Adaptive threshold-hugging adversary at a matched 5% FAR: the evasion ceiling.
+    // Adaptive threshold-hugging adversary at a target 5% clean upper-tail quantile;
+    // the independently seeded holdout arm reports the observed FAR.
     println!();
-    print!(
-        "{}",
-        format_adaptive(&adaptive_adversary(&cfg, &grid, 0.05), 0.5)
-    );
+    let adaptive = adaptive_adversary(&cfg, &grid, 0.05).map_err(|error| error.to_string())?;
+    print!("{}", format_adaptive(&adaptive, 0.5));
 
     // Non-stationary FAR: a benign maneuver, swept over per-channel lag.
     let (mag, dur) = (12.0, 90);
-    let lags = [0, 8, 16, 32, 64];
     println!();
-    print!(
-        "{}",
-        format_maneuver(&maneuver_far(&cfg, &lags, mag, dur), mag, dur)
-    );
+    let maneuver = maneuver_far(&cfg, &lags, mag, dur).map_err(|error| error.to_string())?;
+    print!("{}", format_maneuver(&maneuver, mag, dur));
 
     // Attacker success: the undetected fused-innovation bias vs decoupling.
     println!();
-    print!("{}", format_attacker_gain(&attacker_gain(&cfg, &grid), 0.5));
+    let gain = attacker_gain(&cfg, &grid).map_err(|error| error.to_string())?;
+    print!("{}", format_attacker_gain(&gain, 0.5));
+    Ok(())
+}
+
+fn main() {
+    if let Err(error) = run_main() {
+        eprintln!("error: {error}");
+        std::process::exit(2);
+    }
 }

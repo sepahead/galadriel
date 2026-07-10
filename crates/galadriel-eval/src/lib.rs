@@ -1,46 +1,58 @@
 #![forbid(unsafe_code)]
 //! Monte-Carlo evaluation of Galadriel's Mirror across four regimes, comparing four
-//! detectors: the cheap **NIS χ² baseline**, the **pure correlation default**
-//! (NIS ⊕ `|ρ|`, no `pid-core`), the **cross-sensor PID engine** (KSG-MI), and the
-//! **NIS ⊕ PID fusion**.
+//! detectors: the cheap **NIS χ² baseline**, the signed-correlation consistency
+//! component, the cross-sensor **pairwise-MI/PID research engine**, and the full
+//! additive fusion.
 //!
 //! All regimes run on the *same* corroborated sim (`rho > 0`) so every detector sees a
 //! genuine consensus. Per trial we record, for each detector, a binary alarm and a
 //! continuous score; across trials we report detection rate, false-alarm rate (on the
-//! clean/null regime), and ROC-AUC (attack scores vs clean scores, via the Mann–Whitney
-//! identity `AUC = P(score_attack > score_clean)`). AUCs carry percentile-bootstrap 95 % CIs
+//! clean/null regime), and alarm-ranked ROC-AUC (alarms rank above non-alarms, then the
+//! continuous score; attack vs clean uses the Mann–Whitney identity
+//! `AUC = P(score_attack > score_clean)`). AUCs carry percentile-bootstrap 95 % CIs
 //! ([`stealthy_ci_study`], with a *paired* corr-vs-PID difference CI via [`auc_diff_ci`]).
 //! A companion study ([`measure_latency`]) reports median **time-to-detect** — frames from
 //! attack onset to first alarm on growing prefixes — because how *fast* a detector fires
 //! matters as much as whether it does.
 //!
-//! The headline result is **complementarity**: the baseline catches the *magnitude*
-//! attacks (a loud bias spoof and a jam) but is blind to a *moment-matched stealthy
-//! spoof* whose NIS stays χ²(3) by construction; the cross-sensor detectors catch
-//! exactly that stealthy spoof — and, correctly, stay quiet on the pure-magnitude
-//! attacks, which preserve cross-channel correlation and are the baseline's job. The
-//! **fused** detector covers the whole space.
+//! Under this simulator and the stated parameter grid, the detectors show
+//! complementarity: the baseline responds to magnitude attacks while cross-sensor
+//! consistency can respond to the modeled moment-matched decoupling. These results
+//! are an evaluation of the modeled regimes, not a claim of operational coverage.
+//! Standalone correlation and PID component metrics are deliberately pre-registered to
+//! producer-attested consistency-projection axis 0. The full fused verdict evaluates every
+//! attested axis and applies the detector's cross-axis family control and conflict handling.
 //!
-//! The second, methodological result: the **pure correlation default matches the PID
-//! engine** on this (linear-Gaussian) stealthy spoof — and, across a decoupling-strength
-//! sweep ([`decoupling_sweep`]), **strictly beats it near the detection boundary** (the
-//! nonparametric KSG estimator's finite-sample variance costs it AUC where the effect is
-//! small). This is the empirical statement of `docs/JUSTIFICATION.md` that MI is *forced*,
-//! not justified, in this regime; the PID engine earns its cost only on nonlinear or
-//! synergistic couplings, quantified separately in the `galadriel-justify` crate.
+//! A decoupling-strength sweep ([`decoupling_sweep`]) compares the signed-correlation
+//! and pairwise-MI paths on linear-Gaussian data using pointwise intervals. It does
+//! not establish equivalence, family-wise superiority, or pure-synergy detection.
 
 use std::collections::HashMap;
 
 use galadriel_core::{
-    assess_default, correlation, CorrConfig, DetectorConfig, Mirror, Modality, PidObservation,
-    Verdict,
+    correlation, CorrConfig, CorrVerdict, DetectorConfig, GaladrielError, Mirror, Modality,
+    PidObservation, Result as CoreResult, Verdict,
 };
+use galadriel_pid::MAX_PID_WINDOW;
 use galadriel_pid::{analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidVerdict};
 use galadriel_sim::injection::{inject, BroadbandJam, Maneuver, PhantomAcousticDoa};
 use galadriel_sim::scenario::{
     generate, generate_collusion, generate_spoofed, generate_spoofed_partial, ScenarioConfig,
     StealthySpoof,
 };
+
+/// Minimum trial count accepted by inferential reports.
+pub const MIN_INFERENCE_TRIALS: usize = 20;
+const MAX_BOOTSTRAP_AUC_COMPARISONS: usize = 250_000_000;
+const MAX_GRID_TRIAL_COMBINATIONS: usize = 50_000;
+const MAX_STUDY_OBSERVATIONS: usize = 100_000_000;
+const MAX_LATENCY_PREFIX_OBSERVATIONS: usize = 100_000_000;
+const EVAL_PROJECTION_AXES: usize = 3;
+const PAIR_ESTIMATOR_FITS: usize = 3;
+const ATOM_ESTIMATOR_FITS: usize = 4;
+const MAX_SUITE_PID_QUADRATIC_WORK: u128 = 75_000_000_000;
+const ADAPTIVE_CALIBRATION_DOMAIN: u64 = 0x4144_4150_5443_414c;
+const ADAPTIVE_HOLDOUT_DOMAIN: u64 = 0x4144_4150_5448_4f4c;
 
 /// The sensor channels under test.
 pub const MODALITIES: [Modality; 3] = [Modality::Visual, Modality::Radar, Modality::Acoustic];
@@ -50,7 +62,7 @@ pub const MODALITIES: [Modality; 3] = [Modality::Visual, Modality::Radar, Modali
 pub struct EvalConfig {
     /// Trials per attack regime.
     pub trials: usize,
-    /// First seed (trial `t` uses `base_seed + t`).
+    /// Base seed; each study derives trial seeds in a named deterministic domain.
     pub base_seed: u64,
     /// Frames per trial.
     pub frames: usize,
@@ -76,6 +88,299 @@ impl Default for EvalConfig {
             jam_inflation: 3.0,
         }
     }
+}
+
+impl EvalConfig {
+    /// Validate workload bounds and every numeric simulation parameter.
+    pub fn validate(&self) -> Result<(), String> {
+        if !(MIN_INFERENCE_TRIALS..=1_000).contains(&self.trials) {
+            return Err(format!(
+                "trials must be in {MIN_INFERENCE_TRIALS}..=1000 for inferential reports"
+            ));
+        }
+        if !(128..=10_000).contains(&self.frames) {
+            return Err("frames must be in 128..=10000".into());
+        }
+        if !self.rho.is_finite() || self.rho <= 0.0 || self.rho >= 1.0 {
+            return Err("rho must be finite and in (0, 1) for corroborated studies".into());
+        }
+        if !self.sigma.is_finite()
+            || self.sigma <= 0.0
+            || !(self.sigma * self.sigma).is_finite()
+            || self.sigma * self.sigma == 0.0
+        {
+            return Err("sigma must be finite, > 0, and have a finite nonzero square".into());
+        }
+        if !self.spoof_bias.is_finite()
+            || self.spoof_bias <= 0.0
+            || !(self.spoof_bias * self.spoof_bias).is_finite()
+        {
+            return Err("spoof_bias must be finite, > 0, and have a finite square".into());
+        }
+        if !self.jam_inflation.is_finite()
+            || self.jam_inflation <= 1.0
+            || !(self.jam_inflation * self.jam_inflation).is_finite()
+        {
+            return Err("jam_inflation must be finite, > 1, and have a finite square".into());
+        }
+        Ok(())
+    }
+}
+
+fn validate_config(cfg: &EvalConfig) -> CoreResult<()> {
+    cfg.validate().map_err(GaladrielError::InvalidConfig)
+}
+
+fn validate_trials(trials: usize) -> CoreResult<()> {
+    if !(MIN_INFERENCE_TRIALS..=1_000).contains(&trials) {
+        return Err(GaladrielError::InvalidConfig(format!(
+            "study trials must be in {MIN_INFERENCE_TRIALS}..=1000"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_bootstrap(n_boot: usize) -> CoreResult<()> {
+    if !(200..=100_000).contains(&n_boot) {
+        return Err(GaladrielError::InvalidConfig(
+            "inferential bootstrap resamples must be in 200..=100000".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_decouplings(decouplings: &[f64]) -> CoreResult<()> {
+    if decouplings.is_empty() || decouplings.len() > 10_000 {
+        return Err(GaladrielError::InvalidConfig(
+            "decoupling grid must contain 1..=10000 entries".into(),
+        ));
+    }
+    if decouplings
+        .iter()
+        .any(|value| !value.is_finite() || !(0.0..=1.0).contains(value))
+    {
+        return Err(GaladrielError::InvalidConfig(
+            "decoupling values must be finite and in [0, 1]".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_grid_work(cfg: &EvalConfig, grid_len: usize) -> CoreResult<()> {
+    let combinations = cfg.trials.checked_mul(grid_len).ok_or_else(|| {
+        GaladrielError::InvalidConfig("grid × trials work estimate overflowed".into())
+    })?;
+    if combinations > MAX_GRID_TRIAL_COMBINATIONS {
+        return Err(GaladrielError::InvalidConfig(format!(
+            "grid requests {combinations} trial combinations; maximum is {MAX_GRID_TRIAL_COMBINATIONS}"
+        )));
+    }
+    validate_observation_work(cfg.trials, cfg.frames, grid_len)?;
+    Ok(())
+}
+
+fn validate_observation_work(
+    trials: usize,
+    frames: usize,
+    streams_per_trial: usize,
+) -> CoreResult<()> {
+    let observations = trials
+        .checked_mul(frames)
+        .and_then(|frames| frames.checked_mul(MODALITIES.len()))
+        .and_then(|observations| observations.checked_mul(streams_per_trial))
+        .ok_or_else(|| GaladrielError::InvalidConfig("study work estimate overflowed".into()))?;
+    if observations > MAX_STUDY_OBSERVATIONS {
+        return Err(GaladrielError::InvalidConfig(format!(
+            "study requests about {observations} generated observations; maximum is {MAX_STUDY_OBSERVATIONS}"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_bootstrap_work(trials: usize, n_boot: usize, interval_count: usize) -> CoreResult<()> {
+    let combined = trials.checked_mul(2).ok_or_else(|| {
+        GaladrielError::InvalidConfig("bootstrap AUC work estimate overflowed".into())
+    })?;
+    let rank_levels = usize::try_from(usize::BITS - combined.leading_zeros()).unwrap_or(usize::MAX);
+    let work = combined
+        .checked_mul(rank_levels)
+        .and_then(|rank_work| rank_work.checked_mul(n_boot))
+        .and_then(|comparisons| comparisons.checked_mul(interval_count))
+        .ok_or_else(|| {
+            GaladrielError::InvalidConfig("bootstrap AUC work estimate overflowed".into())
+        })?;
+    if work > MAX_BOOTSTRAP_AUC_COMPARISONS {
+        return Err(GaladrielError::InvalidConfig(format!(
+            "bootstrap requests about {work} rank-work units; maximum is {MAX_BOOTSTRAP_AUC_COMPARISONS}"
+        )));
+    }
+    Ok(())
+}
+
+fn pid_fit_count(cfg: &PidConfig) -> CoreResult<u128> {
+    cfg.validate()?;
+    let channels = MODALITIES.len();
+    let pair_count = channels
+        .checked_mul(channels.saturating_sub(1))
+        .map(|pairs| pairs / 2)
+        .ok_or_else(|| GaladrielError::InvalidConfig("PID pair count overflowed".into()))?;
+    let point_fits = pair_count
+        .checked_mul(PAIR_ESTIMATOR_FITS)
+        .and_then(|fits| fits.checked_add(channels.saturating_mul(ATOM_ESTIMATOR_FITS)))
+        .ok_or_else(|| GaladrielError::InvalidConfig("PID point-fit count overflowed".into()))?;
+    let confirmation_fits = if cfg.bootstrap {
+        let consensus = channels / 2 + 1;
+        let consensus_edges = consensus
+            .checked_mul(consensus.saturating_sub(1))
+            .map(|edges| edges / 2)
+            .ok_or_else(|| {
+                GaladrielError::InvalidConfig("PID confirmation-edge count overflowed".into())
+            })?;
+        let excluded_edges = channels
+            .saturating_sub(consensus)
+            .checked_mul(consensus)
+            .ok_or_else(|| {
+                GaladrielError::InvalidConfig("PID candidate-edge count overflowed".into())
+            })?;
+        consensus_edges
+            .checked_add(excluded_edges)
+            .and_then(|edges| edges.checked_mul(cfg.n_boot))
+            .ok_or_else(|| {
+                GaladrielError::InvalidConfig("PID confirmation-fit count overflowed".into())
+            })?
+    } else {
+        0
+    };
+    point_fits
+        .checked_add(confirmation_fits)
+        .map(|fits| fits as u128)
+        .ok_or_else(|| GaladrielError::InvalidConfig("PID total-fit count overflowed".into()))
+}
+
+fn pid_analysis_work(cfg: &PidConfig, samples: usize, fit_count: u128) -> CoreResult<u128> {
+    if samples < cfg.min_samples {
+        return Ok(0);
+    }
+    let window = samples.min(cfg.window).min(MAX_PID_WINDOW) as u128;
+    window
+        .checked_mul(window)
+        .and_then(|distance_pairs| distance_pairs.checked_mul(fit_count))
+        .ok_or_else(|| GaladrielError::InvalidConfig("PID analysis work overflowed".into()))
+}
+
+fn checked_work_product(left: u128, right: u128, label: &str) -> CoreResult<u128> {
+    left.checked_mul(right).ok_or_else(|| {
+        GaladrielError::InvalidConfig(format!("{label} PID work estimate overflowed"))
+    })
+}
+
+fn validate_suite_pid_work(
+    cfg: &EvalConfig,
+    grid_len: usize,
+    lag_count: usize,
+    latency_trials: usize,
+    latency_step: usize,
+) -> CoreResult<()> {
+    let pid_cfg = PidConfig::default();
+    let fit_count = pid_fit_count(&pid_cfg)?;
+    let full_analysis = pid_analysis_work(&pid_cfg, cfg.frames, fit_count)?;
+
+    // Per trial: main report (axis-0 component plus every fused axis), CI study,
+    // sweep, collusion, adaptive calibration/holdout/attacks, and maneuver study.
+    let full_calls_per_trial = Attack::ALL
+        .len()
+        .checked_mul(1 + EVAL_PROJECTION_AXES)
+        .and_then(|calls| calls.checked_add(2))
+        .and_then(|calls| calls.checked_add(1 + grid_len))
+        .and_then(|calls| calls.checked_add(1))
+        .and_then(|calls| calls.checked_add(2 + grid_len))
+        .and_then(|calls| calls.checked_add(lag_count))
+        .ok_or_else(|| GaladrielError::InvalidConfig("suite PID call count overflowed".into()))?;
+    let full_calls = checked_work_product(
+        cfg.trials as u128,
+        full_calls_per_trial as u128,
+        "full-stream",
+    )?;
+    let full_work = checked_work_product(full_calls, full_analysis, "full-stream")?;
+
+    let onset = cfg.frames / 3;
+    let latency_per_stream = ttd_probe_schedule(cfg.frames, onset, latency_step)
+        .into_iter()
+        .try_fold(0_u128, |work, probe| {
+            let probe_work = pid_analysis_work(&pid_cfg, probe.frames, fit_count)?;
+            work.checked_add(probe_work).ok_or_else(|| {
+                GaladrielError::InvalidConfig("latency PID work estimate overflowed".into())
+            })
+        })?;
+    let attack_count = Attack::ALL.len() - 1;
+    let latency_streams = checked_work_product(
+        latency_trials as u128,
+        attack_count as u128,
+        "latency-stream",
+    )?;
+    let latency_work = checked_work_product(latency_streams, latency_per_stream, "latency")?;
+    let total = full_work.checked_add(latency_work).ok_or_else(|| {
+        GaladrielError::InvalidConfig("suite PID work estimate overflowed".into())
+    })?;
+    if total > MAX_SUITE_PID_QUADRATIC_WORK {
+        return Err(GaladrielError::InvalidConfig(format!(
+            "suite requests about {total} PID quadratic fit-units across full streams, fused axes, confirmation resamples, and latency prefixes; maximum is {MAX_SUITE_PID_QUADRATIC_WORK}; reduce trials/grid/frames or increase latency step"
+        )));
+    }
+    Ok(())
+}
+
+/// Preflight the complete command-line report suite before any simulations run.
+/// This prevents a late study from rejecting a workload only after earlier,
+/// expensive sections have already completed and printed partial results.
+pub fn validate_report_suite(
+    cfg: &EvalConfig,
+    decouplings: &[f64],
+    lag_steps: &[u64],
+    n_boot: usize,
+    latency_trials: usize,
+    latency_step: usize,
+) -> CoreResult<()> {
+    validate_config(cfg)?;
+    validate_decouplings(decouplings)?;
+    if lag_steps.is_empty() || lag_steps.len() > 10_000 {
+        return Err(GaladrielError::InvalidConfig(
+            "maneuver lag grid must contain 1..=10000 entries".into(),
+        ));
+    }
+    validate_trials(latency_trials)?;
+    validate_bootstrap(n_boot)?;
+
+    let stream_factor = decouplings
+        .len()
+        .checked_mul(4)
+        .and_then(|factor| factor.checked_add(lag_steps.len()))
+        .and_then(|factor| factor.checked_add(10))
+        .ok_or_else(|| GaladrielError::InvalidConfig("suite work estimate overflowed".into()))?;
+    validate_observation_work(cfg.trials, cfg.frames, stream_factor)?;
+
+    let bootstrap_intervals = decouplings
+        .len()
+        .checked_mul(4)
+        .and_then(|intervals| intervals.checked_add(5))
+        .ok_or_else(|| {
+            GaladrielError::InvalidConfig("suite bootstrap work estimate overflowed".into())
+        })?;
+    validate_bootstrap_work(cfg.trials, n_boot, bootstrap_intervals)?;
+
+    if latency_step == 0 || latency_step > cfg.frames {
+        return Err(GaladrielError::InvalidConfig(
+            "latency step must be in 1..=frames".into(),
+        ));
+    }
+    validate_suite_pid_work(
+        cfg,
+        decouplings.len(),
+        lag_steps.len(),
+        latency_trials,
+        latency_step,
+    )?;
+    validate_latency_work(cfg, latency_trials, latency_step)
 }
 
 /// The four regimes.
@@ -111,6 +416,36 @@ impl Attack {
     }
 }
 
+fn attack_seed(cfg: &EvalConfig, trial: usize, attack: Attack) -> u64 {
+    let domain = match attack {
+        Attack::Clean => 0x434c_4541_4e00_0001,
+        Attack::LoudSpoof => 0x4c4f_5544_0000_0002,
+        Attack::Stealthy => 0x5354_4541_4c54_4803,
+        Attack::Jam => 0x4a41_4d00_0000_0004,
+    };
+    cfg.base_seed.wrapping_add(trial as u64) ^ domain
+}
+
+#[derive(Debug, Clone, Copy)]
+enum AdaptiveCleanArm {
+    Calibration,
+    Holdout,
+}
+
+fn adaptive_clean_seed(cfg: &EvalConfig, trial: usize, arm: AdaptiveCleanArm) -> u64 {
+    let domain = match arm {
+        AdaptiveCleanArm::Calibration => ADAPTIVE_CALIBRATION_DOMAIN,
+        AdaptiveCleanArm::Holdout => ADAPTIVE_HOLDOUT_DOMAIN,
+    };
+    let mut mixer = SplitMix64(
+        cfg.base_seed
+            .wrapping_add(trial as u64)
+            .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            ^ domain,
+    );
+    mixer.next_u64()
+}
+
 fn scenario(cfg: &EvalConfig, seed: u64) -> ScenarioConfig {
     ScenarioConfig {
         track_id: 1,
@@ -123,13 +458,14 @@ fn scenario(cfg: &EvalConfig, seed: u64) -> ScenarioConfig {
     }
 }
 
-fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> Vec<PidObservation> {
+fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> CoreResult<Vec<PidObservation>> {
+    validate_config(cfg)?;
     let s = scenario(cfg, seed);
     let start = (cfg.frames as u64) / 3;
     match attack {
         Attack::Clean => generate(&s),
         Attack::LoudSpoof => {
-            let mut v = generate(&s);
+            let mut v = generate(&s)?;
             inject(
                 &mut v,
                 &PhantomAcousticDoa {
@@ -137,8 +473,8 @@ fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> Vec<PidObservation> {
                     start_frame: start,
                     bias: cfg.spoof_bias,
                 },
-            );
-            v
+            )?;
+            Ok(v)
         }
         Attack::Stealthy => generate_spoofed(
             &s,
@@ -148,120 +484,217 @@ fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> Vec<PidObservation> {
             },
         ),
         Attack::Jam => {
-            let mut v = generate(&s);
+            let mut v = generate(&s)?;
             inject(
                 &mut v,
                 &BroadbandJam {
                     start_frame: start,
                     inflation: cfg.jam_inflation,
                 },
-            );
-            v
+            )?;
+            Ok(v)
         }
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct DetectorEvidence {
+    /// `None` means the detector explicitly lacked sufficient evidence.
+    alarm: Option<bool>,
+    /// A continuous score can remain estimable even when the discrete consensus
+    /// graph is inconclusive. `None` means no defensible score was available.
+    score: Option<f64>,
+}
+
+impl DetectorEvidence {
+    fn require_score(self, detector: &str) -> CoreResult<f64> {
+        self.score.ok_or_else(|| {
+            GaladrielError::InvalidConfig(format!(
+                "{detector} had no continuous score in a study requiring one"
+            ))
+        })
+    }
+}
+
 /// Baseline: streaming NIS χ² Mirror. Alarm = `Spoof`/`Jam`; score = the strongest
-/// per-channel NIS surprise `max_c -log10(p_right)`.
-fn baseline_eval(stream: &[PidObservation]) -> (bool, f64) {
-    let mut m = Mirror::new(DetectorConfig::default());
+/// per-channel terminal-window surprise `1 − min_c p_right`, ranked above all
+/// non-alarms when a CUSUM-only alarm fires.
+fn baseline_eval(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
+    let mut m = Mirror::with_modalities(DetectorConfig::default(), &MODALITIES)?;
     for o in stream {
-        m.ingest(o);
+        m.ingest(o)?;
     }
     let last = stream.iter().map(|o| o.seq).max().unwrap_or(0);
-    let rep = m.assess(1, last);
-    let alarm = matches!(rep.verdict, Verdict::Spoof { .. } | Verdict::Jam);
-    let score = rep
+    let rep = m.assess(1, last)?;
+    let alarm = match rep.verdict {
+        Verdict::InsufficientEvidence => None,
+        Verdict::Spoof { .. } | Verdict::Jam | Verdict::Anomaly { .. } => Some(true),
+        Verdict::Nominal => Some(false),
+    };
+    let minimum_p = rep
         .channels
         .iter()
         .filter(|c| c.ready)
-        .map(|c| -(c.p_right + 1e-300).log10())
-        .fold(0.0_f64, f64::max);
-    (alarm, score)
+        .map(|c| c.p_right)
+        .reduce(f64::min);
+    Ok(DetectorEvidence {
+        alarm,
+        score: minimum_p.map(|p| alarm_rank(alarm == Some(true), 1.0 - p)),
+    })
 }
 
 /// Decoupling depth `1 − min/max corroboration` over a channel group's best-peer
 /// corroborations — the score shared by the PID engine and the correlation default so
 /// the two are **directly comparable** (the whole point of `docs/JUSTIFICATION.md`).
-fn decoupling_depth(corrs: &[f64]) -> f64 {
+fn decoupling_depth(corrs: &[f64]) -> Option<f64> {
     if corrs.len() < 2 {
-        return 0.0;
+        return None;
     }
     let mx = corrs.iter().copied().fold(f64::MIN, f64::max);
     let mn = corrs.iter().copied().fold(f64::MAX, f64::min);
     if mx > 1e-9 {
-        (1.0 - mn / mx).clamp(0.0, 1.0)
+        Some((1.0 - mn / mx).clamp(0.0, 1.0))
     } else {
-        0.0
+        Some(0.0)
     }
 }
 
-/// PID: alarm = `Spoof`; score = decoupling depth over KSG-MI corroborations.
-fn pid_eval(stream: &[PidObservation]) -> (bool, f64) {
-    let rep = analyze(
-        &scalar_channels(stream, &MODALITIES, 0),
-        &PidConfig::default(),
-    );
-    let alarm = matches!(rep.verdict, PidVerdict::Spoof(_));
-    let corrs: Vec<f64> = rep
-        .channels
-        .iter()
-        .filter_map(|c| c.corroboration)
-        .collect();
-    (alarm, decoupling_depth(&corrs))
+fn alarm_rank(alarm: bool, continuous_score: f64) -> f64 {
+    let score = continuous_score.clamp(0.0, 1.0);
+    if alarm {
+        2.0 + score
+    } else {
+        score
+    }
 }
 
-/// Correlation default: the **pure** NIS ⊕ correlation fused detector (no `pid-core`).
-/// Alarm on a Spoof/Jam verdict; score = decoupling depth over `|ρ|` corroborations —
-/// the same score as [`pid_eval`], so the cheap default and the MI engine are directly
-/// comparable. Per `docs/JUSTIFICATION.md`, they should **match** on this linear-Gaussian
-/// stealthy spoof, because `MI = −½ln(1−ρ²)` is monotone in `ρ`.
-fn corr_eval(stream: &[PidObservation]) -> (bool, f64) {
-    let rep = assess_default(
-        stream,
-        &MODALITIES,
-        &DetectorConfig::default(),
-        &CorrConfig::default(),
-    );
-    let alarm = matches!(rep.verdict, FusedVerdict::Spoof { .. } | FusedVerdict::Jam);
+fn alarm_rank_evidence(evidence: DetectorEvidence) -> DetectorEvidence {
+    DetectorEvidence {
+        alarm: evidence.alarm,
+        score: evidence
+            .score
+            .map(|score| alarm_rank(evidence.alarm == Some(true), score)),
+    }
+}
+
+/// Registered projection-axis-0 PID component: alarm = `Spoof`; score =
+/// decoupling depth over KSG-MI corroborations.
+fn pid_evidence(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
+    let channels = scalar_channels(stream, &MODALITIES, 0)?;
+    let rep = analyze(&channels, &PidConfig::default())?;
+    let alarm = match rep.verdict {
+        PidVerdict::Spoof(_) => Some(true),
+        PidVerdict::Nominal => Some(false),
+        PidVerdict::InsufficientEvidence => None,
+    };
     let corrs: Vec<f64> = rep
-        .correlation
         .channels
         .iter()
         .filter_map(|c| c.corroboration)
         .collect();
-    (alarm, decoupling_depth(&corrs))
+    Ok(DetectorEvidence {
+        alarm,
+        score: decoupling_depth(&corrs),
+    })
+}
+
+fn pid_eval(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
+    pid_evidence(stream).map(alarm_rank_evidence)
+}
+
+/// Registered projection-axis-0 signed-correlation component. Its alarm and score
+/// are derived from the same report; all-axis fusion is evaluated separately.
+fn corr_evidence(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
+    let channels = scalar_channels(stream, &MODALITIES, 0)?;
+    let report = correlation::analyze(&channels, &CorrConfig::default())?;
+    let alarm = match report.verdict {
+        CorrVerdict::Spoof(_) => Some(true),
+        CorrVerdict::Nominal => Some(false),
+        CorrVerdict::InsufficientEvidence => None,
+    };
+    let corrs: Vec<f64> = report
+        .channels
+        .iter()
+        .filter_map(|c| c.corroboration)
+        .collect();
+    Ok(DetectorEvidence {
+        alarm,
+        score: decoupling_depth(&corrs),
+    })
+}
+
+fn corr_eval(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
+    corr_evidence(stream).map(alarm_rank_evidence)
+}
+
+fn component_evaluations(stream: &[PidObservation]) -> CoreResult<[DetectorEvidence; 3]> {
+    Ok([
+        baseline_eval(stream)?,
+        corr_eval(stream)?,
+        pid_eval(stream)?,
+    ])
 }
 
 /// Fused detector: alarm on a `Spoof` or `Jam` fused verdict (NIS ⊕ PID escalation).
-fn fused_eval(stream: &[PidObservation]) -> bool {
+fn fused_eval(stream: &[PidObservation]) -> CoreResult<Option<bool>> {
     let r = assess_stream(
         stream,
         &MODALITIES,
         &DetectorConfig::default(),
         &PidConfig::default(),
-    );
-    matches!(r.verdict, FusedVerdict::Spoof { .. } | FusedVerdict::Jam)
+    )?;
+    Ok(match r.verdict {
+        FusedVerdict::InsufficientEvidence => None,
+        FusedVerdict::Spoof { .. } | FusedVerdict::Jam | FusedVerdict::Anomaly { .. } => Some(true),
+        FusedVerdict::Nominal => Some(false),
+    })
 }
 
 /// ROC-AUC via the Mann–Whitney identity (ties count 0.5).
 pub fn auc(pos: &[f64], neg: &[f64]) -> f64 {
-    if pos.is_empty() || neg.is_empty() {
+    if pos.is_empty() || neg.is_empty() || !pos.iter().chain(neg).all(|value| value.is_finite()) {
         return f64::NAN;
     }
-    let mut s = 0.0;
-    for &p in pos {
-        for &n in neg {
-            s += if p > n + 1e-12 {
-                1.0
-            } else if (p - n).abs() <= 1e-12 {
-                0.5
-            } else {
-                0.0
-            };
-        }
+    let Some(capacity) = pos.len().checked_add(neg.len()) else {
+        return f64::NAN;
+    };
+    let mut ranked = Vec::new();
+    if ranked.try_reserve_exact(capacity).is_err() {
+        return f64::NAN;
     }
-    s / (pos.len() as f64 * neg.len() as f64)
+    ranked.extend(pos.iter().copied().map(|score| (score, true)));
+    ranked.extend(neg.iter().copied().map(|score| (score, false)));
+    ranked.sort_by(|left, right| left.0.total_cmp(&right.0));
+
+    // Mann–Whitney U in O(n log n): every positive in a tie group beats all
+    // earlier negatives and ties half of the negatives in its own group.
+    let (mut index, mut negatives_before, mut wins) = (0usize, 0usize, 0.0_f64);
+    while index < ranked.len() {
+        let mut end = index + 1;
+        while end < ranked.len() && ranked[end].0 == ranked[index].0 {
+            end += 1;
+        }
+        let positives = ranked[index..end]
+            .iter()
+            .filter(|(_, positive)| *positive)
+            .count();
+        let negatives = end - index - positives;
+        wins += positives as f64 * (negatives_before as f64 + 0.5 * negatives as f64);
+        negatives_before += negatives;
+        index = end;
+    }
+    wins / (pos.len() as f64 * neg.len() as f64)
+}
+
+fn auc_bootstrap_work_ok(pos: usize, neg: usize, n_boot: usize) -> bool {
+    let Some(combined) = pos.checked_add(neg) else {
+        return false;
+    };
+    let rank_levels = usize::try_from(usize::BITS - combined.leading_zeros()).unwrap_or(usize::MAX);
+    combined
+        .checked_mul(rank_levels)
+        .and_then(|work| work.checked_mul(n_boot))
+        .is_some_and(|work| work <= MAX_BOOTSTRAP_AUC_COMPARISONS)
 }
 
 // ---------------------------------------------------------------------------
@@ -287,7 +720,11 @@ impl SplitMix64 {
 }
 
 fn percentiles(mut xs: Vec<f64>, lo: f64, hi: f64) -> (f64, f64) {
-    xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    xs.retain(|value| value.is_finite());
+    if xs.is_empty() {
+        return (f64::NAN, f64::NAN);
+    }
+    xs.sort_by(f64::total_cmp);
     let pick = |q: f64| {
         let idx = ((q * (xs.len() as f64 - 1.0)).round() as usize).min(xs.len() - 1);
         xs[idx]
@@ -297,7 +734,13 @@ fn percentiles(mut xs: Vec<f64>, lo: f64, hi: f64) -> (f64, f64) {
 
 /// Percentile bootstrap 95% CI for an AUC, resampling each class with replacement.
 pub fn auc_ci(pos: &[f64], neg: &[f64], n_boot: usize, seed: u64) -> (f64, f64) {
-    if pos.is_empty() || neg.is_empty() {
+    let work_ok = auc_bootstrap_work_ok(pos.len(), neg.len(), n_boot);
+    if pos.len() < 2
+        || neg.len() < 2
+        || !(200..=100_000).contains(&n_boot)
+        || !work_ok
+        || !pos.iter().chain(neg).all(|value| value.is_finite())
+    {
         return (f64::NAN, f64::NAN);
     }
     let mut rng = SplitMix64(seed.wrapping_add(0x5EED));
@@ -328,7 +771,21 @@ pub fn auc_diff_ci(
     seed: u64,
 ) -> (f64, f64) {
     let (np, nn) = (a_pos.len(), a_neg.len());
-    if np == 0 || nn == 0 || b_pos.len() != np || b_neg.len() != nn {
+    // Each paired-difference resample computes two AUCs.
+    let work_ok = auc_bootstrap_work_ok(np, nn, n_boot.saturating_mul(2));
+    if np < 2
+        || nn < 2
+        || b_pos.len() != np
+        || b_neg.len() != nn
+        || !(200..=100_000).contains(&n_boot)
+        || !work_ok
+        || !a_pos
+            .iter()
+            .chain(a_neg)
+            .chain(b_pos)
+            .chain(b_neg)
+            .all(|value| value.is_finite())
+    {
         return (f64::NAN, f64::NAN);
     }
     let mut rng = SplitMix64(seed.wrapping_add(0xD1FF));
@@ -354,7 +811,7 @@ pub fn auc_diff_ci(
 /// Wilson score 95% CI for a binomial proportion `k/n` (a closed-form interval, correct
 /// even at the `k = n` / `k = 0` boundaries where a normal approximation degenerates).
 pub fn wilson_ci(k: usize, n: usize) -> (f64, f64) {
-    if n == 0 {
+    if n == 0 || k > n {
         return (f64::NAN, f64::NAN);
     }
     let z = 1.959_964_f64;
@@ -370,7 +827,7 @@ pub fn wilson_ci(k: usize, n: usize) -> (f64, f64) {
     )
 }
 
-/// A bootstrap-CI row for one detector on the stealthy spoof.
+/// A bootstrap-CI row for one detector's alarm-ranked ROC-AUC on the stealthy spoof.
 #[derive(Debug, Clone)]
 pub struct CiRow {
     /// Detector name.
@@ -380,26 +837,42 @@ pub struct CiRow {
     /// 95% CI lower / upper.
     pub lo: f64,
     pub hi: f64,
+    /// Assessable attack and clean score counts used by this AUC.
+    pub positive_n: usize,
+    pub negative_n: usize,
 }
 
-/// Bootstrap 95% CIs for the three detectors' AUC on the **stealthy spoof** (the regime
-/// where the fine-grained corr-vs-PID claim lives), plus the paired corr−PID AUC-difference
-/// CI. Returns `(rows, (diff, diff_lo, diff_hi))`. Resamples the already-computed scores —
-/// no re-simulation beyond the one score pass.
-pub fn stealthy_ci_study(cfg: &EvalConfig, n_boot: usize) -> (Vec<CiRow>, (f64, f64, f64)) {
+/// Bootstrap 95% CIs for the three detectors' alarm-ranked ROC-AUC on the
+/// **stealthy spoof** (the statistic reported by [`run`]), plus the paired corr−PID
+/// AUC-difference CI. Correlation and PID are the pre-registered axis-0 component
+/// studies; the fused detector remains all-axis. Returns
+/// `(rows, (diff, diff_lo, diff_hi))`. Resamples the already-computed scores — no
+/// re-simulation beyond the one score pass. Clean and attack arms use
+/// domain-separated independent seeds; detector scores remain paired within each arm.
+pub fn stealthy_ci_study(
+    cfg: &EvalConfig,
+    n_boot: usize,
+) -> CoreResult<(Vec<CiRow>, (f64, f64, f64))> {
+    validate_config(cfg)?;
+    validate_observation_work(cfg.trials, cfg.frames, 2)?;
+    validate_bootstrap(n_boot)?;
+    // Three single-detector AUC intervals plus two AUC evaluations inside
+    // each paired difference resample.
+    validate_bootstrap_work(cfg.trials, n_boot, 5)?;
     let (mut cb, mut sb) = (Vec::new(), Vec::new()); // baseline clean/stealthy
     let (mut cc, mut sc) = (Vec::new(), Vec::new()); // correlation
     let (mut cp, mut sp) = (Vec::new(), Vec::new()); // PID
     for t in 0..cfg.trials {
-        let seed = cfg.base_seed + t as u64;
-        let clean = build(Attack::Clean, cfg, seed);
-        let steal = build(Attack::Stealthy, cfg, seed);
-        cb.push(baseline_eval(&clean).1);
-        sb.push(baseline_eval(&steal).1);
-        cc.push(corr_eval(&clean).1);
-        sc.push(corr_eval(&steal).1);
-        cp.push(pid_eval(&clean).1);
-        sp.push(pid_eval(&steal).1);
+        let clean = build(Attack::Clean, cfg, attack_seed(cfg, t, Attack::Clean))?;
+        let steal = build(Attack::Stealthy, cfg, attack_seed(cfg, t, Attack::Stealthy))?;
+        let [clean_baseline, clean_corr, clean_pid] = component_evaluations(&clean)?;
+        let [stealthy_baseline, stealthy_corr, stealthy_pid] = component_evaluations(&steal)?;
+        cb.push(clean_baseline.require_score("baseline")?);
+        sb.push(stealthy_baseline.require_score("baseline")?);
+        cc.push(clean_corr.require_score("correlation")?);
+        sc.push(stealthy_corr.require_score("correlation")?);
+        cp.push(clean_pid.require_score("PID")?);
+        sp.push(stealthy_pid.require_score("PID")?);
     }
     let seed = cfg.base_seed;
     let row = |name: &str, pos: &[f64], neg: &[f64]| {
@@ -409,42 +882,44 @@ pub fn stealthy_ci_study(cfg: &EvalConfig, n_boot: usize) -> (Vec<CiRow>, (f64, 
             auc: auc(pos, neg),
             lo,
             hi,
+            positive_n: pos.len(),
+            negative_n: neg.len(),
         }
     };
     let rows = vec![
         row("baseline (NIS χ²)", &sb, &cb),
-        row("correlation default", &sc, &cc),
-        row("PID (KSG-MI)", &sp, &cp),
+        row("correlation axis 0", &sc, &cc),
+        row("PID axis 0 (KSG-MI)", &sp, &cp),
     ];
     let diff = auc(&sc, &cc) - auc(&sp, &cp);
     let (dlo, dhi) = auc_diff_ci(&sc, &cc, &sp, &cp, n_boot, seed);
-    (rows, (diff, dlo, dhi))
+    Ok((rows, (diff, dlo, dhi)))
 }
 
 /// Format the bootstrap-CI study as a plain-text block.
 pub fn format_ci(rows: &[CiRow], diff: (f64, f64, f64), n_boot: usize) -> String {
     let mut s = String::new();
     s.push_str(&format!(
-        "Bootstrap 95% CIs — stealthy spoof · {n_boot} resamples\n\n"
+        "Bootstrap 95% CIs — stealthy spoof · alarm-ranked ROC-AUC · {n_boot} resamples\n\n"
     ));
     for r in rows {
         s.push_str(&format!(
-            "{:<22} AUC {:.3}  [{:.3}, {:.3}]\n",
-            r.name, r.auc, r.lo, r.hi
+            "{:<22} AUC {:.3}  [{:.3}, {:.3}]  n={}/{} (attack/clean)\n",
+            r.name, r.auc, r.lo, r.hi, r.positive_n, r.negative_n,
         ));
     }
     let (d, lo, hi) = diff;
-    let tied = lo <= 0.0 && hi >= 0.0;
+    let includes_zero = lo <= 0.0 && hi >= 0.0;
     s.push_str(&format!(
         "{:<22} ΔAUC {:+.3}  [{:+.3}, {:+.3}]  → {}\n",
         "corr − PID (paired)",
         d,
         lo,
         hi,
-        if tied {
-            "CI includes 0: statistically tied"
+        if includes_zero {
+            "CI includes 0: no difference detected at this sample size"
         } else {
-            "CI excludes 0: a real difference"
+            "pointwise CI excludes 0"
         }
     ));
     s
@@ -465,54 +940,67 @@ pub struct SweepRow {
     /// PID consistency-score AUC and its bootstrap 95% CI.
     pub pid_auc: f64,
     pub pid_ci: (f64, f64),
-    /// **Paired** bootstrap 95% CI for the AUC difference `corr − PID` (the powerful,
-    /// §5.1-consistent test: > 0 across the CI means correlation strictly beats PID here).
+    /// Pointwise paired-bootstrap 95% CI for the AUC difference `corr − PID`.
+    /// A grid-wide superiority claim requires simultaneous-error control.
     pub diff_ci: (f64, f64),
 }
 
 /// Sweep the stealthy spoof's **decoupling strength** and report, for each `d`, the AUC of
-/// the correlation and PID consistency scores (the shared decoupling-depth score → this is
+/// the pre-registered axis-0 correlation and PID consistency scores (the shared
+/// decoupling-depth score → this is
 /// the like-for-like comparison) with bootstrap 95% CIs. Traces the *detection boundary*:
 /// how weak a decoupling each detector can still resolve. The clean/null scores are shared
 /// across all `d`. Since the spoof stays moment-matched at every `d`, the NIS baseline is
 /// blind throughout, so only the two consistency scores are reported.
-pub fn decoupling_sweep(cfg: &EvalConfig, decouplings: &[f64], n_boot: usize) -> Vec<SweepRow> {
+pub fn decoupling_sweep(
+    cfg: &EvalConfig,
+    decouplings: &[f64],
+    n_boot: usize,
+) -> CoreResult<Vec<SweepRow>> {
+    validate_config(cfg)?;
+    validate_decouplings(decouplings)?;
+    validate_bootstrap(n_boot)?;
+    validate_grid_work(cfg, decouplings.len())?;
+    validate_observation_work(cfg.trials, cfg.frames, decouplings.len().saturating_add(1))?;
+    let intervals = decouplings.len().checked_mul(4).ok_or_else(|| {
+        GaladrielError::InvalidConfig("sweep bootstrap work estimate overflowed".into())
+    })?;
+    validate_bootstrap_work(cfg.trials, n_boot, intervals)?;
     let (mut clean_c, mut clean_p) = (
         Vec::with_capacity(cfg.trials),
         Vec::with_capacity(cfg.trials),
     );
     for t in 0..cfg.trials {
-        let clean = build(Attack::Clean, cfg, cfg.base_seed + t as u64);
-        clean_c.push(corr_eval(&clean).1);
-        clean_p.push(pid_eval(&clean).1);
+        let clean = build(Attack::Clean, cfg, attack_seed(cfg, t, Attack::Clean))?;
+        clean_c.push(corr_evidence(&clean)?.require_score("correlation")?);
+        clean_p.push(pid_evidence(&clean)?.require_score("PID")?);
     }
     let spoof = StealthySpoof {
         target: Modality::Acoustic,
         start_frame: (cfg.frames as u64) / 3,
     };
-    decouplings
-        .iter()
-        .map(|&d| {
-            let (mut sc, mut sp) = (
-                Vec::with_capacity(cfg.trials),
-                Vec::with_capacity(cfg.trials),
-            );
-            for t in 0..cfg.trials {
-                let s = scenario(cfg, cfg.base_seed + t as u64);
-                let stream = generate_spoofed_partial(&s, spoof, d);
-                sc.push(corr_eval(&stream).1);
-                sp.push(pid_eval(&stream).1);
-            }
-            SweepRow {
-                decoupling: d,
-                corr_auc: auc(&sc, &clean_c),
-                corr_ci: auc_ci(&sc, &clean_c, n_boot, cfg.base_seed),
-                pid_auc: auc(&sp, &clean_p),
-                pid_ci: auc_ci(&sp, &clean_p, n_boot, cfg.base_seed ^ 0xF),
-                diff_ci: auc_diff_ci(&sc, &clean_c, &sp, &clean_p, n_boot, cfg.base_seed ^ 0xAB),
-            }
-        })
-        .collect()
+    let mut rows = Vec::with_capacity(decouplings.len());
+    for &d in decouplings {
+        let (mut sc, mut sp) = (
+            Vec::with_capacity(cfg.trials),
+            Vec::with_capacity(cfg.trials),
+        );
+        for t in 0..cfg.trials {
+            let scenario = scenario(cfg, attack_seed(cfg, t, Attack::Stealthy));
+            let stream = generate_spoofed_partial(&scenario, spoof, d)?;
+            sc.push(corr_evidence(&stream)?.require_score("correlation")?);
+            sp.push(pid_evidence(&stream)?.require_score("PID")?);
+        }
+        rows.push(SweepRow {
+            decoupling: d,
+            corr_auc: auc(&sc, &clean_c),
+            corr_ci: auc_ci(&sc, &clean_c, n_boot, cfg.base_seed),
+            pid_auc: auc(&sp, &clean_p),
+            pid_ci: auc_ci(&sp, &clean_p, n_boot, cfg.base_seed ^ 0xF),
+            diff_ci: auc_diff_ci(&sc, &clean_c, &sp, &clean_p, n_boot, cfg.base_seed ^ 0xAB),
+        });
+    }
+    Ok(rows)
 }
 
 /// Format the decoupling sweep as a plain-text table, with a data-driven verdict on
@@ -520,7 +1008,7 @@ pub fn decoupling_sweep(cfg: &EvalConfig, decouplings: &[f64], n_boot: usize) ->
 pub fn format_sweep(rows: &[SweepRow]) -> String {
     let mut s = String::new();
     s.push_str(
-        "Decoupling-strength sweep — AUC vs decoupling (the detection boundary)\n\
+        "Decoupling-strength sweep — axis-0 AUC vs decoupling (the detection boundary)\n\
          d=1 full decouple (easiest) → d→0 weak decouple (hardest); corr retained ∝ √(1−d)\n\n",
     );
     s.push_str(&format!(
@@ -529,9 +1017,8 @@ pub fn format_sweep(rows: &[SweepRow]) -> String {
     ));
     s.push_str(&format!("{}\n", "-".repeat(74)));
     for r in rows {
-        let sig = if r.diff_ci.0 > 0.0 { " *" } else { "" };
         s.push_str(&format!(
-            "{:>5.2} | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}] | {:+.3} [{:+.3},{:+.3}]{}\n",
+            "{:>5.2} | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}] | {:+.3} [{:+.3},{:+.3}]\n",
             r.decoupling,
             r.corr_auc,
             r.corr_ci.0,
@@ -542,29 +1029,24 @@ pub fn format_sweep(rows: &[SweepRow]) -> String {
             r.corr_auc - r.pid_auc,
             r.diff_ci.0,
             r.diff_ci.1,
-            sig,
         ));
     }
-    // Use the PAIRED difference bootstrap (the powerful, §5.1-consistent test): correlation
-    // strictly beats PID at strengths where the paired ΔAUC CI lies wholly above 0 (marked *).
-    let strict_band: Vec<String> = rows
+    let pointwise_band: Vec<String> = rows
         .iter()
         .filter(|r| r.diff_ci.0 > 0.0)
         .map(|r| format!("{:.2}", r.decoupling))
         .collect();
-    if strict_band.is_empty() {
+    if pointwise_band.is_empty() {
         s.push_str(
-            "\nThe paired ΔAUC CI includes 0 at every strength — correlation and PID are tied\n\
-             across the boundary; MI/PID buys nothing on linear-Gaussian data.\n",
+            "\nEvery pointwise paired ΔAUC interval includes 0. The sweep provides no evidence\n\
+             of a difference at any sampled strength.\n",
         );
     } else {
         s.push_str(&format!(
-            "\nCorrelation ties PID at the extremes but STRICTLY BEATS it (paired ΔAUC CI > 0, *)\n\
-             at d ∈ {{{}}}: the nonparametric KSG estimator's finite-sample variance penalises\n\
-             PID exactly where the effect is small. On linear-Gaussian data MI/PID is not merely\n\
-             *forced* — through the mid-boundary it is strictly WORSE. (At d→0 both collapse to\n\
-             chance, indistinguishable.)\n",
-            strict_band.join(", ")
+            "\nExploratory pointwise 95% intervals exclude 0 at d ∈ {{{}}}. Because this scans\n\
+             the grid without a simultaneous/max-statistic correction, it is not confirmatory\n\
+             evidence that correlation strictly beats PID somewhere on the boundary.\n",
+            pointwise_band.join(", ")
         ));
     }
     s
@@ -591,22 +1073,25 @@ pub struct CollusionResult {
     pub corr_fires: f64,
 }
 
-/// The colluding-compromise study: two channels (radar + acoustic) jointly spoof onto a
+/// The axis-0 colluding-compromise study: two channels (radar + acoustic) jointly spoof onto a
 /// **shared** phantom (so they mutually corroborate), while visual stays honest. Measures how
 /// often each detector flags the *honest* channel — the mis-attribution a colluding majority
 /// forces. This is the honest-majority assumption failing: with the liars in the majority the
 /// "consensus" is theirs, and the honest minority is the one that looks decoupled.
-pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CollusionResult {
+pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CoreResult<CollusionResult> {
+    validate_config(cfg)?;
+    validate_trials(n)?;
+    validate_observation_work(n, cfg.frames, 1)?;
     let honest = Modality::Visual;
     let colluders = [Modality::Radar, Modality::Acoustic];
     let start = (cfg.frames as u64) / 3;
     let (mut c_acc, mut p_acc, mut c_fire) = (0usize, 0usize, 0usize);
     for t in 0..n {
-        let s = scenario(cfg, cfg.base_seed + t as u64);
-        let stream = generate_collusion(&s, &colluders, start);
-        let chans = scalar_channels(&stream, &MODALITIES, 0);
+        let s = scenario(cfg, cfg.base_seed.wrapping_add(t as u64));
+        let stream = generate_collusion(&s, &colluders, start)?;
+        let chans = scalar_channels(&stream, &MODALITIES, 0)?;
 
-        let cr = correlation::analyze(&chans, &CorrConfig::default());
+        let cr = correlation::analyze(&chans, &CorrConfig::default())?;
         if cr
             .channels
             .iter()
@@ -618,7 +1103,7 @@ pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CollusionResult {
             c_fire += 1;
         }
 
-        let pr = analyze(&chans, &PidConfig::default());
+        let pr = analyze(&chans, &PidConfig::default())?;
         if pr
             .channels
             .iter()
@@ -628,20 +1113,20 @@ pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CollusionResult {
         }
     }
     let nf = n as f64;
-    CollusionResult {
+    Ok(CollusionResult {
         trials: n,
         corr_accuses_honest: c_acc as f64 / nf,
         corr_ci: wilson_ci(c_acc, n),
         pid_accuses_honest: p_acc as f64 / nf,
         pid_ci: wilson_ci(p_acc, n),
         corr_fires: c_fire as f64 / nf,
-    }
+    })
 }
 
 /// Format the colluding-compromise study (mis-attribution rates with Wilson 95% CIs).
 pub fn format_collusion(r: &CollusionResult) -> String {
     format!(
-        "Colluding compromise (2 of 3) — the honest-majority assumption FAILS ({} trials)\n\
+        "Colluding compromise axis 0 (2 of 3) — the honest-majority assumption FAILS ({} trials)\n\
          radar + acoustic share a phantom (mutually corroborate); visual is honest.\n\n\
          correlation flags the HONEST channel: {:.3} [{:.3},{:.3}]   (fires at all: {:.3})\n\
          PID         flags the HONEST channel: {:.3} [{:.3},{:.3}]\n\n\
@@ -664,16 +1149,43 @@ pub fn format_collusion(r: &CollusionResult) -> String {
 // ---------------------------------------------------------------------------
 
 /// One row of the adaptive-adversary sweep: operating-point **detection rate** (the
-/// fraction of trials the detector actually alarms) at decoupling `d` — the quantity a
-/// Kerckhoffs-aware attacker optimizes against, distinct from the threshold-free AUC of §5.5.
+/// fraction of attack scores exceeding the independently calibrated threshold) at
+/// decoupling `d`. These are axis-0 component scores, distinct from the detectors'
+/// built-in gates and from the threshold-free AUC.
 #[derive(Debug, Clone)]
 pub struct AdaptiveRow {
     /// Decoupling strength.
     pub decoupling: f64,
-    /// Correlation-default detection rate at `d`.
+    /// Correlation axis-0 score-threshold detection proportion at `d`.
     pub corr_detect: f64,
-    /// PID detection rate at `d`.
+    /// PID axis-0 score-threshold detection proportion at `d`.
     pub pid_detect: f64,
+}
+
+/// A binomial rate and its Wilson 95% interval.
+#[derive(Debug, Clone, Copy)]
+pub struct RateInterval {
+    /// Observed rate on the fixed denominator.
+    pub rate: f64,
+    /// Wilson 95% confidence interval.
+    pub ci: (f64, f64),
+}
+
+/// Adaptive score-threshold study with independent clean calibration and holdout arms.
+#[derive(Debug, Clone)]
+pub struct AdaptiveStudy {
+    /// Detection proportions across the requested decoupling grid.
+    pub rows: Vec<AdaptiveRow>,
+    /// Requested upper-tail clean quantile used to fit each threshold.
+    pub target_far: f64,
+    /// Number of clean trials used only for threshold calibration.
+    pub calibration_trials: usize,
+    /// Number of independently seeded clean trials used only to estimate holdout FAR.
+    pub holdout_trials: usize,
+    /// Correlation axis-0 observed holdout FAR and Wilson interval.
+    pub corr_holdout_far: RateInterval,
+    /// PID axis-0 observed holdout FAR and Wilson interval.
+    pub pid_holdout_far: RateInterval,
 }
 
 fn quantile(sorted_scores: &[f64], q: f64) -> f64 {
@@ -685,57 +1197,100 @@ fn quantile(sorted_scores: &[f64], q: f64) -> f64 {
     sorted_scores[idx]
 }
 
-/// Sweep decoupling strength and report each detector's detection rate **at a matched
-/// false-alarm rate** `far`. This is the fair adaptive-adversary comparison: each detector's
-/// threshold is set to its own clean-score `(1 − far)` quantile, so the two operate at the
-/// *same* operating point (their arbitrary default `decouple_ratio` gates sit at different
-/// FARs and would confound the comparison with threshold placement, not discriminability).
+/// Sweep decoupling strength and report each axis-0 component's detection rate at a
+/// separately fitted target clean upper-tail quantile `far`. Calibration and clean
+/// holdout streams use disjoint deterministic seed domains. The returned independent
+/// holdout FARs and Wilson intervals show the operating points actually observed; a
+/// finite calibration sample does not guarantee that either realized FAR equals `far`.
 /// A threshold-hugging adversary injects the largest `d` that stays below the gate; the
 /// *evasion ceiling* ([`evasion_ceiling`]) is the largest `d` a detector still misses
-/// (detection ≤ τ). A lower ceiling = a harder detector to evade — and at matched FAR this
-/// tracks the ROC (§5.5), so the more discriminative detector is the harder one to evade.
-pub fn adaptive_adversary(cfg: &EvalConfig, decouplings: &[f64], far: f64) -> Vec<AdaptiveRow> {
+/// (detection ≤ τ). A lower ceiling indicates less evasion on this finite synthetic grid;
+/// it is not a worst-case bound or a matched-realized-FAR comparison.
+pub fn adaptive_adversary(
+    cfg: &EvalConfig,
+    decouplings: &[f64],
+    far: f64,
+) -> CoreResult<AdaptiveStudy> {
+    validate_config(cfg)?;
+    validate_decouplings(decouplings)?;
+    validate_grid_work(cfg, decouplings.len())?;
+    validate_observation_work(cfg.trials, cfg.frames, decouplings.len().saturating_add(2))?;
+    if !far.is_finite() || far <= 0.0 || far >= 1.0 {
+        return Err(GaladrielError::InvalidConfig(
+            "target clean upper-tail quantile must be finite and in (0, 1)".into(),
+        ));
+    }
     let spoof = StealthySpoof {
         target: Modality::Acoustic,
         start_frame: (cfg.frames as u64) / 3,
     };
-    // Calibrate each detector's threshold to the shared FAR on clean scores.
+    // Calibration and holdout are deliberately separate data arms. Reusing the
+    // fitted sample would report a tautological in-sample operating point.
     let (mut cc, mut cp) = (
         Vec::with_capacity(cfg.trials),
         Vec::with_capacity(cfg.trials),
     );
     for t in 0..cfg.trials {
-        let clean = build(Attack::Clean, cfg, cfg.base_seed + t as u64);
-        cc.push(corr_eval(&clean).1);
-        cp.push(pid_eval(&clean).1);
+        let clean = build(
+            Attack::Clean,
+            cfg,
+            adaptive_clean_seed(cfg, t, AdaptiveCleanArm::Calibration),
+        )?;
+        cc.push(corr_evidence(&clean)?.require_score("correlation")?);
+        cp.push(pid_evidence(&clean)?.require_score("PID")?);
     }
-    cc.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    cp.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    cc.sort_by(f64::total_cmp);
+    cp.sort_by(f64::total_cmp);
     let corr_thresh = quantile(&cc, 1.0 - far);
     let pid_thresh = quantile(&cp, 1.0 - far);
 
-    decouplings
-        .iter()
-        .map(|&d| {
-            let (mut cd, mut pd) = (0usize, 0usize);
-            for t in 0..cfg.trials {
-                let s = scenario(cfg, cfg.base_seed + t as u64);
-                let stream = generate_spoofed_partial(&s, spoof, d);
-                if corr_eval(&stream).1 > corr_thresh {
-                    cd += 1;
-                }
-                if pid_eval(&stream).1 > pid_thresh {
-                    pd += 1;
-                }
+    let (mut corr_holdout_alarms, mut pid_holdout_alarms) = (0usize, 0usize);
+    for t in 0..cfg.trials {
+        let clean = build(
+            Attack::Clean,
+            cfg,
+            adaptive_clean_seed(cfg, t, AdaptiveCleanArm::Holdout),
+        )?;
+        corr_holdout_alarms +=
+            usize::from(corr_evidence(&clean)?.require_score("correlation")? > corr_thresh);
+        pid_holdout_alarms += usize::from(pid_evidence(&clean)?.require_score("PID")? > pid_thresh);
+    }
+
+    let mut rows = Vec::with_capacity(decouplings.len());
+    for &d in decouplings {
+        let (mut cd, mut pd) = (0usize, 0usize);
+        for t in 0..cfg.trials {
+            let scenario = scenario(cfg, attack_seed(cfg, t, Attack::Stealthy));
+            let stream = generate_spoofed_partial(&scenario, spoof, d)?;
+            if corr_evidence(&stream)?.require_score("correlation")? > corr_thresh {
+                cd += 1;
             }
-            let nf = cfg.trials as f64;
-            AdaptiveRow {
-                decoupling: d,
-                corr_detect: cd as f64 / nf,
-                pid_detect: pd as f64 / nf,
+            if pid_evidence(&stream)?.require_score("PID")? > pid_thresh {
+                pd += 1;
             }
-        })
-        .collect()
+        }
+        let nf = cfg.trials as f64;
+        rows.push(AdaptiveRow {
+            decoupling: d,
+            corr_detect: cd as f64 / nf,
+            pid_detect: pd as f64 / nf,
+        });
+    }
+    let trials = cfg.trials as f64;
+    Ok(AdaptiveStudy {
+        rows,
+        target_far: far,
+        calibration_trials: cfg.trials,
+        holdout_trials: cfg.trials,
+        corr_holdout_far: RateInterval {
+            rate: corr_holdout_alarms as f64 / trials,
+            ci: wilson_ci(corr_holdout_alarms, cfg.trials),
+        },
+        pid_holdout_far: RateInterval {
+            rate: pid_holdout_alarms as f64 / trials,
+            ci: wilson_ci(pid_holdout_alarms, cfg.trials),
+        },
+    })
 }
 
 /// The evasion ceiling: the largest decoupling a detector still misses (detection ≤ `tau`) —
@@ -752,37 +1307,44 @@ pub fn evasion_ceiling(
         .fold(0.0, f64::max)
 }
 
-/// Format the adaptive-adversary study (detection rates + the corr/PID evasion ceilings).
-pub fn format_adaptive(rows: &[AdaptiveRow], tau: f64) -> String {
+/// Format the adaptive-adversary study, independent holdout FARs, and sampled ceilings.
+pub fn format_adaptive(study: &AdaptiveStudy, tau: f64) -> String {
     let mut s = String::new();
     s.push_str(&format!(
-        "Adaptive (threshold-hugging) adversary — detection rate vs decoupling at MATCHED FAR\n\
-         both detectors thresholded to the same clean-score quantile; the attacker injects the\n\
-         largest d that stays below the gate (detection ≤ {tau:.2})\n\n"
+        "Adaptive axis-0 score sweep — detection rate vs decoupling at target clean upper-tail {:.3}\n\
+         thresholds fitted on {} clean trials; FAR evaluated on {} independently seeded clean trials\n\
+         holdout FAR: corr {:.3} [{:.3},{:.3}] · PID {:.3} [{:.3},{:.3}] (Wilson 95%)\n\
+         sampled-grid ceiling uses detection ≤ {tau:.2}\n\n",
+        study.target_far,
+        study.calibration_trials,
+        study.holdout_trials,
+        study.corr_holdout_far.rate,
+        study.corr_holdout_far.ci.0,
+        study.corr_holdout_far.ci.1,
+        study.pid_holdout_far.rate,
+        study.pid_holdout_far.ci.0,
+        study.pid_holdout_far.ci.1,
     ));
     s.push_str(&format!(
         "{:>5} | {:>12} | {:>12}\n",
         "d", "corr detect", "PID detect"
     ));
     s.push_str(&format!("{}\n", "-".repeat(35)));
-    for r in rows {
+    for r in &study.rows {
         s.push_str(&format!(
             "{:>5.2} | {:>12.3} | {:>12.3}\n",
             r.decoupling, r.corr_detect, r.pid_detect
         ));
     }
-    let corr_ceil = evasion_ceiling(rows, |r| r.corr_detect, tau);
-    let pid_ceil = evasion_ceiling(rows, |r| r.pid_detect, tau);
+    let corr_ceil = evasion_ceiling(&study.rows, |r| r.corr_detect, tau);
+    let pid_ceil = evasion_ceiling(&study.rows, |r| r.pid_detect, tau);
     s.push_str(&format!(
-        "\nEvasion ceiling (max undetected d): correlation {corr_ceil:.2}   PID {pid_ceil:.2}\n"
+        "\nObserved sampled-grid ceiling: correlation {corr_ceil:.2}   PID {pid_ceil:.2}\n"
     ));
-    s.push_str(if corr_ceil <= pid_ceil {
-        "Correlation's ceiling is no higher than PID's — a Kerckhoffs-aware adversary can inject\n\
-         at least as much undetected past PID as past correlation. The MI engine buys no evasion\n\
-         resistance here; the adaptive adversary does not favour it.\n"
-    } else {
-        "PID's ceiling is lower — it forces the adaptive adversary to a smaller undetected injection.\n"
-    });
+    s.push_str(
+        "Target quantiles need not yield identical realized holdout FARs. This descriptive finite\n\
+         grid is not a worst-case evasion bound or an equivalence/superiority result.\n",
+    );
     s
 }
 
@@ -803,7 +1365,7 @@ pub struct ManeuverRow {
     pub pid_far: f64,
 }
 
-/// Measure the consistency detectors' **false-alarm rate under a benign maneuver** (no
+/// Measure the axis-0 consistency components' **false-alarm rate under a benign maneuver** (no
 /// spoof), sweeping the per-channel lag. A synchronized maneuver (`lag_step = 0`) keeps
 /// channels correlated and should not trip the consistency check; heterogeneous lags
 /// transiently decorrelate the channels — the false-positive source the stationary study
@@ -814,55 +1376,61 @@ pub fn maneuver_far(
     lag_steps: &[u64],
     magnitude: f64,
     duration: u64,
-) -> Vec<ManeuverRow> {
+) -> CoreResult<Vec<ManeuverRow>> {
+    validate_config(cfg)?;
+    if lag_steps.is_empty() || lag_steps.len() > 10_000 {
+        return Err(GaladrielError::InvalidConfig(
+            "maneuver lag grid must contain 1..=10000 entries".into(),
+        ));
+    }
+    validate_grid_work(cfg, lag_steps.len())?;
     let start = (cfg.frames as u64) / 3;
-    lag_steps
-        .iter()
-        .map(|&lag_step| {
-            let (mut cf, mut pf) = (0usize, 0usize);
-            for t in 0..cfg.trials {
-                let s = scenario(cfg, cfg.base_seed + t as u64);
-                let mut stream = generate(&s);
-                inject(
-                    &mut stream,
-                    &Maneuver {
-                        start_frame: start,
-                        duration,
-                        magnitude,
-                        lag_step,
-                    },
-                );
-                let chans = scalar_channels(&stream, &MODALITIES, 0);
-                if correlation::analyze(&chans, &CorrConfig::default())
-                    .channels
-                    .iter()
-                    .any(|c| c.decoupled)
-                {
-                    cf += 1;
-                }
-                if analyze(&chans, &PidConfig::default())
-                    .channels
-                    .iter()
-                    .any(|c| c.decoupled)
-                {
-                    pf += 1;
-                }
+    let mut rows = Vec::with_capacity(lag_steps.len());
+    for &lag_step in lag_steps {
+        let (mut cf, mut pf) = (0usize, 0usize);
+        for t in 0..cfg.trials {
+            let scenario = scenario(cfg, cfg.base_seed.wrapping_add(t as u64));
+            let mut stream = generate(&scenario)?;
+            inject(
+                &mut stream,
+                &Maneuver {
+                    start_frame: start,
+                    duration,
+                    magnitude,
+                    lag_step,
+                },
+            )?;
+            let channels = scalar_channels(&stream, &MODALITIES, 0)?;
+            if correlation::analyze(&channels, &CorrConfig::default())?
+                .channels
+                .iter()
+                .any(|channel| channel.decoupled)
+            {
+                cf += 1;
             }
-            let nf = cfg.trials as f64;
-            ManeuverRow {
-                lag_step,
-                corr_far: cf as f64 / nf,
-                pid_far: pf as f64 / nf,
+            if analyze(&channels, &PidConfig::default())?
+                .channels
+                .iter()
+                .any(|channel| channel.decoupled)
+            {
+                pf += 1;
             }
-        })
-        .collect()
+        }
+        let nf = cfg.trials as f64;
+        rows.push(ManeuverRow {
+            lag_step,
+            corr_far: cf as f64 / nf,
+            pid_far: pf as f64 / nf,
+        });
+    }
+    Ok(rows)
 }
 
 /// Format the maneuver false-alarm study.
 pub fn format_maneuver(rows: &[ManeuverRow], magnitude: f64, duration: u64) -> String {
     let mut s = String::new();
     s.push_str(&format!(
-        "Non-stationary FAR — a BENIGN {magnitude:.0}σ maneuver over {duration} frames, per-channel lag\n\
+        "Non-stationary FAR — axis 0 · a BENIGN {magnitude:.0}σ maneuver over {duration} frames, per-channel lag\n\
          consistency false-decoupling rate on honest maneuvering streams (isolated from NIS/jam)\n\n"
     ));
     s.push_str(&format!(
@@ -877,41 +1445,26 @@ pub fn format_maneuver(rows: &[ManeuverRow], magnitude: f64, duration: u64) -> S
         ));
     }
     if let Some(r0) = rows.iter().find(|r| r.lag_step == 0) {
-        // Is correlation at least as robust as PID through the moderate-lag rows?
-        let corr_more_robust = rows
-            .iter()
-            .filter(|r| r.lag_step > 0 && r.lag_step <= 16)
-            .all(|r| r.corr_far <= r.pid_far + 1e-9);
         s.push_str(&format!(
-            "\nA SYNCHRONIZED maneuver (lag 0) does not trip the consistency check (corr FAR {:.3},\n\
-             PID FAR {:.3}): the detector keys off *asymmetric* decoupling (one channel vs the\n\
-             consensus), and a shared maneuver perturbs all channels alike. Strongly heterogeneous\n\
-             (large-lag) maneuvers do decorrelate the channels and drive the FAR up — an honest\n\
-             benign false-positive limit.\n",
+            "\nObserved synchronized (lag 0) false-decoupling rates: correlation {:.3}, PID {:.3}.\n",
             r0.corr_far, r0.pid_far
         ));
-        if corr_more_robust {
-            s.push_str(
-                "Through the moderate-lag regime correlation is the MORE robust of the two (it\n\
-                 false-alarms no earlier than PID) — again the nonparametric KSG estimator's cost.\n",
-            );
-        }
         s.push_str(
-            "Mitigation: a real maneuver spikes all channels' NIS *together*, which the 2×2 fusion\n\
-             already routes to Jam (degradation), not a per-channel Spoof.\n",
+            "Rows are descriptive for this maneuver model and grid. Relabeling a fused alarm as\n\
+             degradation does not eliminate the operational cost of a benign false alarm.\n",
         );
     }
     s
 }
 
 // ---------------------------------------------------------------------------
-// Attacker success — the undetected track pull
+// Modeled attacker impact — fused-innovation perturbation
 // ---------------------------------------------------------------------------
 
 /// The **fused innovation** per frame under the simplest sound fusion: the inverse-variance
-/// weighted mean of the channels' signed innovation (axis 0). For equal-variance channels
-/// this is the plain mean — the maximum-likelihood static estimate of the common deviation
-/// the tracker acts on. A spoof that decouples one channel injects a bias into this signal.
+/// weighted mean of the channels' attested common projection (axis 0). For the
+/// equal-variance simulator this is the plain mean — a static model of the common
+/// deviation the tracker acts on. Native modality innovations are not substituted.
 fn fused_innovation(stream: &[PidObservation]) -> Vec<f64> {
     let n = MODALITIES.len();
     stream
@@ -919,7 +1472,11 @@ fn fused_innovation(stream: &[PidObservation]) -> Vec<f64> {
         .map(|frame| {
             let (sum, cnt) = frame
                 .iter()
-                .filter_map(|o| o.innovation.map(|y| y[0]))
+                .filter_map(|observation| {
+                    observation
+                        .consistency_projection
+                        .map(|projection| projection.values[0])
+                })
                 .fold((0.0, 0usize), |(s, c), v| (s + v, c + 1));
             if cnt == 0 {
                 0.0
@@ -930,95 +1487,101 @@ fn fused_innovation(stream: &[PidObservation]) -> Vec<f64> {
         .collect()
 }
 
-/// One row of the attacker-success study: at decoupling `d`, the RMS **bias** (σ units) the
-/// spoof injects into the fused innovation the tracker acts on, alongside the detection rate.
+/// One row of the attacker-impact study: at decoupling `d`, the RMS perturbation
+/// (σ units) induced in a static fused innovation, alongside the detection rate.
 #[derive(Debug, Clone)]
 pub struct AttackerGainRow {
     /// Decoupling strength.
     pub decoupling: f64,
-    /// RMS injected bias on the fused innovation over the attack window (σ units).
-    pub fused_bias_rms: f64,
+    /// RMS perturbation of the fused innovation over the attack window (σ units).
+    /// The modeled phantom is zero-mean, so this is not a directional state bias.
+    pub fused_perturbation_rms: f64,
     /// Correlation-default detection rate (matched to the default operating point).
     pub detect_rate: f64,
 }
 
-/// Measure the **undetected track pull**: for each decoupling `d`, how large a bias the spoof
-/// injects into the fused innovation (vs the same seed's clean stream, so the subtraction
-/// isolates the spoof) and how often it is detected. Reading the two together bounds what an
-/// adaptive adversary can inject while staying under the gate — the security payoff of the
-/// detector. (Static fusion is memoryless; a filter with memory would *accumulate* this bias.)
-pub fn attacker_gain(cfg: &EvalConfig, decouplings: &[f64]) -> Vec<AttackerGainRow> {
+/// Measure modeled fused-innovation perturbation: for each decoupling `d`, the
+/// RMS difference from the same-seed clean stream and how often correlation flags
+/// it. The zero-mean phantom does not model an attacker-chosen directional bias or
+/// accumulated state-estimation error.
+pub fn attacker_gain(cfg: &EvalConfig, decouplings: &[f64]) -> CoreResult<Vec<AttackerGainRow>> {
+    validate_config(cfg)?;
+    validate_decouplings(decouplings)?;
+    validate_grid_work(cfg, decouplings.len())?;
+    let streams = decouplings.len().checked_mul(2).ok_or_else(|| {
+        GaladrielError::InvalidConfig("attacker-study work estimate overflowed".into())
+    })?;
+    validate_observation_work(cfg.trials, cfg.frames, streams)?;
     let onset = cfg.frames / 3;
     let spoof = StealthySpoof {
         target: Modality::Acoustic,
         start_frame: onset as u64,
     };
-    decouplings
-        .iter()
-        .map(|&d| {
-            let (mut bias_sq, mut cnt) = (0.0_f64, 0usize);
-            let mut detect = 0usize;
-            for t in 0..cfg.trials {
-                let s = scenario(cfg, cfg.base_seed + t as u64);
-                let clean = generate(&s);
-                let spoofed = generate_spoofed_partial(&s, spoof, d);
-                let (cf, sf) = (fused_innovation(&clean), fused_innovation(&spoofed));
-                for f in onset..cf.len().min(sf.len()) {
-                    let b = sf[f] - cf[f];
-                    bias_sq += b * b;
-                    cnt += 1;
-                }
-                if corr_eval(&spoofed).0 {
-                    detect += 1;
-                }
+    let mut rows = Vec::with_capacity(decouplings.len());
+    for &d in decouplings {
+        let (mut bias_sq, mut count) = (0.0_f64, 0usize);
+        let mut detect = 0usize;
+        for t in 0..cfg.trials {
+            let scenario = scenario(cfg, cfg.base_seed.wrapping_add(t as u64));
+            let clean = generate(&scenario)?;
+            let spoofed = generate_spoofed_partial(&scenario, spoof, d)?;
+            let (clean_fused, spoofed_fused) =
+                (fused_innovation(&clean), fused_innovation(&spoofed));
+            for frame in onset..clean_fused.len().min(spoofed_fused.len()) {
+                let bias = (spoofed_fused[frame] - clean_fused[frame]) / cfg.sigma;
+                bias_sq += bias * bias;
+                count += 1;
             }
-            AttackerGainRow {
-                decoupling: d,
-                fused_bias_rms: if cnt == 0 {
-                    0.0
-                } else {
-                    (bias_sq / cnt as f64).sqrt()
-                },
-                detect_rate: detect as f64 / cfg.trials as f64,
+            if corr_evidence(&spoofed)?.alarm == Some(true) {
+                detect += 1;
             }
-        })
-        .collect()
+        }
+        rows.push(AttackerGainRow {
+            decoupling: d,
+            fused_perturbation_rms: if count == 0 {
+                0.0
+            } else {
+                (bias_sq / count as f64).sqrt()
+            },
+            detect_rate: detect as f64 / cfg.trials as f64,
+        });
+    }
+    Ok(rows)
 }
 
-/// Format the attacker-success study, highlighting the largest undetected injected bias.
+/// Format the modeled perturbation study.
 pub fn format_attacker_gain(rows: &[AttackerGainRow], detect_tol: f64) -> String {
     let mut s = String::new();
     s.push_str(
-        "Attacker success — injected fused-innovation bias vs detection (static inverse-variance\n\
-         fusion; bias in σ units). Reading both columns bounds the UNDETECTED pull.\n\n",
+        "Modeled impact — fused-innovation RMS perturbation vs detection (static equal-variance\n\
+         fusion; perturbation in σ units; zero-mean phantom, not directional bias).\n\n",
     );
     s.push_str(&format!(
         "{:>5} | {:>16} | {:>12}\n",
-        "d", "fused bias (σ)", "corr detect"
+        "d", "fused RMS (σ)", "corr detect"
     ));
     s.push_str(&format!("{}\n", "-".repeat(40)));
     for r in rows {
         s.push_str(&format!(
             "{:>5.2} | {:>16.3} | {:>12.3}\n",
-            r.decoupling, r.fused_bias_rms, r.detect_rate
+            r.decoupling, r.fused_perturbation_rms, r.detect_rate
         ));
     }
-    // The most bias injectable while staying at/under the detection tolerance.
+    // Largest sampled perturbation at or below the detection tolerance.
     let undetected = rows
         .iter()
         .filter(|r| r.detect_rate <= detect_tol)
-        .map(|r| r.fused_bias_rms)
+        .map(|r| r.fused_perturbation_rms)
         .fold(0.0_f64, f64::max);
     let detected_min = rows
         .iter()
         .filter(|r| r.detect_rate > detect_tol)
-        .map(|r| r.fused_bias_rms)
+        .map(|r| r.fused_perturbation_rms)
         .fold(f64::INFINITY, f64::min);
     s.push_str(&format!(
-        "\nMax bias injectable while detection ≤ {detect_tol:.2}: ≈ {undetected:.3} σ.\n\
-         To inject more, the adversary must cross into the detected regime (bias ≥ {:.3} σ is\n\
-         reliably flagged). The detector thus BOUNDS the undetected per-frame track pull — the\n\
-         security payoff: evasion (§adaptive) and impact (here) trade off against each other.\n",
+        "\nLargest sampled RMS perturbation with detection ≤ {detect_tol:.2}: {undetected:.3} σ.\n\
+         Smallest sampled RMS perturbation above that detection tolerance: {:.3} σ.\n\
+         These are descriptive grid results, not an operational safety bound.\n",
         if detected_min.is_finite() {
             detected_min
         } else {
@@ -1029,25 +1592,39 @@ pub fn format_attacker_gain(rows: &[AttackerGainRow], detect_tol: f64) -> String
 }
 
 /// Per-attack metrics for both detectors and their fusion.
+///
+/// Standalone correlation and PID fields are pre-registered projection-axis-0
+/// component metrics; fused fields evaluate every attested projection axis.
 #[derive(Debug, Clone)]
 pub struct AttackMetrics {
     /// Which regime.
     pub attack: Attack,
     /// Baseline detection rate.
     pub baseline_rate: f64,
-    /// Correlation-default (pure NIS ⊕ |ρ|) detection rate.
+    /// Signed-correlation axis-0 consistency detection rate.
     pub corr_rate: f64,
-    /// PID detection rate.
+    /// PID axis-0 detection rate.
     pub pid_rate: f64,
-    /// Fused (baseline ⊕ PID) detection rate.
+    /// Full fused (baseline ⊕ signed correlation ⊕ PID) detection rate.
     pub fused_rate: f64,
+    /// Wilson 95% intervals for the four detection rates in the same order.
+    pub detection_ci: FourDetectorIntervals,
+    /// Explicit insufficient-evidence rates on the fixed trial denominator
+    /// (baseline, signed correlation, PID, fused).
+    pub insufficient_rate: (f64, f64, f64, f64),
+    /// Fraction of trials contributing a continuous AUC score (baseline,
+    /// signed correlation, PID).
+    pub score_availability: (f64, f64, f64),
     /// Baseline ROC-AUC vs clean.
     pub baseline_auc: f64,
-    /// Correlation-default ROC-AUC vs clean.
+    /// Signed-correlation axis-0 component ROC-AUC vs clean.
     pub corr_auc: f64,
-    /// PID ROC-AUC vs clean.
+    /// PID axis-0 ROC-AUC vs clean.
     pub pid_auc: f64,
 }
+
+/// Confidence intervals ordered as baseline, correlation axis 0, PID axis 0, and fused.
+pub type FourDetectorIntervals = ((f64, f64), (f64, f64), (f64, f64), (f64, f64));
 
 /// Full evaluation results.
 #[derive(Debug, Clone)]
@@ -1056,18 +1633,28 @@ pub struct EvalResults {
     pub cfg: EvalConfig,
     /// Baseline false-alarm rate (on clean).
     pub baseline_far: f64,
-    /// Correlation-default false-alarm rate (on clean).
+    /// Correlation axis-0 component false-alarm rate (on clean).
     pub corr_far: f64,
-    /// PID false-alarm rate (on clean).
+    /// PID axis-0 component false-alarm rate (on clean).
     pub pid_far: f64,
     /// Fused false-alarm rate (on clean).
     pub fused_far: f64,
+    /// Wilson 95% intervals for the four clean false-alarm rates in the same order.
+    pub far_ci: FourDetectorIntervals,
+    /// Explicit insufficient-evidence rates on clean trials (baseline,
+    /// signed correlation, PID, fused).
+    pub clean_insufficient_rate: (f64, f64, f64, f64),
+    /// Fraction of clean trials contributing a continuous AUC score (baseline,
+    /// signed correlation, PID).
+    pub clean_score_availability: (f64, f64, f64),
     /// Metrics for the three attack regimes.
     pub per_attack: Vec<AttackMetrics>,
 }
 
 /// Run the Monte-Carlo evaluation.
-pub fn run(cfg: &EvalConfig) -> EvalResults {
+pub fn run(cfg: &EvalConfig) -> CoreResult<EvalResults> {
+    validate_config(cfg)?;
+    validate_observation_work(cfg.trials, cfg.frames, Attack::ALL.len())?;
     let mut b_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
     let mut c_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
     let mut p_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
@@ -1075,24 +1662,48 @@ pub fn run(cfg: &EvalConfig) -> EvalResults {
     let mut c_alarms: HashMap<Attack, usize> = HashMap::new();
     let mut p_alarms: HashMap<Attack, usize> = HashMap::new();
     let mut f_alarms: HashMap<Attack, usize> = HashMap::new();
+    let mut b_insufficient: HashMap<Attack, usize> = HashMap::new();
+    let mut c_insufficient: HashMap<Attack, usize> = HashMap::new();
+    let mut p_insufficient: HashMap<Attack, usize> = HashMap::new();
+    let mut f_insufficient: HashMap<Attack, usize> = HashMap::new();
 
     for &attack in &Attack::ALL {
         let mut bs = Vec::with_capacity(cfg.trials);
         let mut cs = Vec::with_capacity(cfg.trials);
         let mut ps = Vec::with_capacity(cfg.trials);
         let (mut ba, mut ca, mut pa, mut fa) = (0usize, 0usize, 0usize, 0usize);
+        let (mut bi, mut ci, mut pi, mut fi) = (0usize, 0usize, 0usize, 0usize);
         for t in 0..cfg.trials {
-            let stream = build(attack, cfg, cfg.base_seed + t as u64);
-            let (b_al, b_sc) = baseline_eval(&stream);
-            let (c_al, c_sc) = corr_eval(&stream);
-            let (p_al, p_sc) = pid_eval(&stream);
-            bs.push(b_sc);
-            cs.push(c_sc);
-            ps.push(p_sc);
-            ba += usize::from(b_al);
-            ca += usize::from(c_al);
-            pa += usize::from(p_al);
-            fa += usize::from(fused_eval(&stream));
+            let stream = build(attack, cfg, attack_seed(cfg, t, attack))?;
+            let [b, c, p] = component_evaluations(&stream)?;
+            if let Some(score) = b.score {
+                bs.push(score);
+            }
+            if let Some(alarm) = b.alarm {
+                ba += usize::from(alarm);
+            } else {
+                bi += 1;
+            }
+            if let Some(score) = c.score {
+                cs.push(score);
+            }
+            if let Some(alarm) = c.alarm {
+                ca += usize::from(alarm);
+            } else {
+                ci += 1;
+            }
+            if let Some(score) = p.score {
+                ps.push(score);
+            }
+            if let Some(alarm) = p.alarm {
+                pa += usize::from(alarm);
+            } else {
+                pi += 1;
+            }
+            match fused_eval(&stream)? {
+                Some(alarm) => fa += usize::from(alarm),
+                None => fi += 1,
+            }
         }
         b_scores.insert(attack, bs);
         c_scores.insert(attack, cs);
@@ -1101,6 +1712,10 @@ pub fn run(cfg: &EvalConfig) -> EvalResults {
         c_alarms.insert(attack, ca);
         p_alarms.insert(attack, pa);
         f_alarms.insert(attack, fa);
+        b_insufficient.insert(attack, bi);
+        c_insufficient.insert(attack, ci);
+        p_insufficient.insert(attack, pi);
+        f_insufficient.insert(attack, fi);
     }
 
     let n = cfg.trials as f64;
@@ -1116,20 +1731,54 @@ pub fn run(cfg: &EvalConfig) -> EvalResults {
             corr_rate: c_alarms[&a] as f64 / n,
             pid_rate: p_alarms[&a] as f64 / n,
             fused_rate: f_alarms[&a] as f64 / n,
+            detection_ci: (
+                wilson_ci(b_alarms[&a], cfg.trials),
+                wilson_ci(c_alarms[&a], cfg.trials),
+                wilson_ci(p_alarms[&a], cfg.trials),
+                wilson_ci(f_alarms[&a], cfg.trials),
+            ),
+            insufficient_rate: (
+                b_insufficient[&a] as f64 / n,
+                c_insufficient[&a] as f64 / n,
+                p_insufficient[&a] as f64 / n,
+                f_insufficient[&a] as f64 / n,
+            ),
+            score_availability: (
+                b_scores[&a].len() as f64 / n,
+                c_scores[&a].len() as f64 / n,
+                p_scores[&a].len() as f64 / n,
+            ),
             baseline_auc: auc(&b_scores[&a], clean_b),
             corr_auc: auc(&c_scores[&a], clean_c),
             pid_auc: auc(&p_scores[&a], clean_p),
         })
         .collect();
 
-    EvalResults {
+    Ok(EvalResults {
         baseline_far: b_alarms[&Attack::Clean] as f64 / n,
         corr_far: c_alarms[&Attack::Clean] as f64 / n,
         pid_far: p_alarms[&Attack::Clean] as f64 / n,
         fused_far: f_alarms[&Attack::Clean] as f64 / n,
+        far_ci: (
+            wilson_ci(b_alarms[&Attack::Clean], cfg.trials),
+            wilson_ci(c_alarms[&Attack::Clean], cfg.trials),
+            wilson_ci(p_alarms[&Attack::Clean], cfg.trials),
+            wilson_ci(f_alarms[&Attack::Clean], cfg.trials),
+        ),
+        clean_insufficient_rate: (
+            b_insufficient[&Attack::Clean] as f64 / n,
+            c_insufficient[&Attack::Clean] as f64 / n,
+            p_insufficient[&Attack::Clean] as f64 / n,
+            f_insufficient[&Attack::Clean] as f64 / n,
+        ),
+        clean_score_availability: (
+            clean_b.len() as f64 / n,
+            clean_c.len() as f64 / n,
+            clean_p.len() as f64 / n,
+        ),
         per_attack,
         cfg: cfg.clone(),
-    }
+    })
 }
 
 /// Format results as a plain-text report (suitable for a docs code block).
@@ -1140,8 +1789,30 @@ pub fn format_report(r: &EvalResults) -> String {
         r.cfg.trials, r.cfg.rho, r.cfg.frames, r.cfg.sigma
     ));
     s.push_str(&format!(
-        "False-alarm rate (clean):   baseline {:.3}   corr {:.3}   PID {:.3}   fused {:.3}\n\n",
+        "False-alarm rate (clean):   baseline {:.3}   corr-ax0 {:.3}   PID-ax0 {:.3}   fused {:.3}\n\n",
         r.baseline_far, r.corr_far, r.pid_far, r.fused_far
+    ));
+    s.push_str(&format!(
+        "Wilson 95% CI (clean):      [{:.3},{:.3}] [{:.3},{:.3}] [{:.3},{:.3}] [{:.3},{:.3}]\n\n",
+        r.far_ci.0 .0,
+        r.far_ci.0 .1,
+        r.far_ci.1 .0,
+        r.far_ci.1 .1,
+        r.far_ci.2 .0,
+        r.far_ci.2 .1,
+        r.far_ci.3 .0,
+        r.far_ci.3 .1,
+    ));
+    s.push_str(&format!(
+        "Insufficient rate (clean):  baseline {:.3}   corr-ax0 {:.3}   PID-ax0 {:.3}   fused {:.3}\n\n",
+        r.clean_insufficient_rate.0,
+        r.clean_insufficient_rate.1,
+        r.clean_insufficient_rate.2,
+        r.clean_insufficient_rate.3,
+    ));
+    s.push_str(&format!(
+        "AUC-score availability:     baseline {:.3}   corr-ax0 {:.3}   PID-ax0 {:.3}\n\n",
+        r.clean_score_availability.0, r.clean_score_availability.1, r.clean_score_availability.2,
     ));
     s.push_str(&format!(
         "{:<28} | {:>8} | {:>8} | {:>7} | {:>9} | {:>8} | {:>8} | {:>7}\n",
@@ -1160,10 +1831,35 @@ pub fn format_report(r: &EvalResults) -> String {
             m.corr_auc,
             m.pid_auc,
         ));
+        s.push_str(&format!(
+            "  insufficient (base/corr/PID/fused): {:.3}/{:.3}/{:.3}/{:.3}\n",
+            m.insufficient_rate.0,
+            m.insufficient_rate.1,
+            m.insufficient_rate.2,
+            m.insufficient_rate.3,
+        ));
+        s.push_str(&format!(
+            "  detection Wilson CIs: [{:.3},{:.3}] [{:.3},{:.3}] [{:.3},{:.3}] [{:.3},{:.3}]\n",
+            m.detection_ci.0 .0,
+            m.detection_ci.0 .1,
+            m.detection_ci.1 .0,
+            m.detection_ci.1 .1,
+            m.detection_ci.2 .0,
+            m.detection_ci.2 .1,
+            m.detection_ci.3 .0,
+            m.detection_ci.3 .1,
+        ));
+        s.push_str(&format!(
+            "  score available (base/corr/PID): {:.3}/{:.3}/{:.3}\n",
+            m.score_availability.0, m.score_availability.1, m.score_availability.2,
+        ));
     }
     s.push_str(
-        "\ncorr = pure NIS⊕|rho| default (no pid-core); PID = KSG-MI escalation. They match on\n\
-         the linear-Gaussian stealthy spoof — the empirical basis for docs/JUSTIFICATION.md.\n",
+        "\ncorr/PID standalone metrics = registered consistency-projection axis 0; fused = all axes.\n\
+         corr = signed-correlation consistency component; PID = pairwise KSG-MI escalation.\n\
+         Rates use all configured trials; insufficient-evidence rates are shown separately.\n\
+         AUC alarm-ranks discrete alarms above non-alarms, then uses the continuous score.\n\
+         AUC uses assessable scores only and may therefore have a smaller denominator.\n",
     );
     s
 }
@@ -1174,21 +1870,25 @@ pub fn format_report(r: &EvalResults) -> String {
 
 /// Median time-to-detect per detector: frames from attack onset to the first alarm on a
 /// growing prefix of the stream. A `None` TTD means the detector never alarmed within the
-/// capture — the *correct* outcome for a detector that owns a different half of the attack
-/// space (PID on a magnitude jam, say). `reach` is the fraction of trials each detector
-/// eventually alarmed in (baseline, correlation-default, PID).
+/// capture. `reach` is the fraction of all trials that alarmed after onset without
+/// an earlier sampled false start; `false_start_rate` reports that distinct failure
+/// mode instead of conflating it with a never-detected attack.
 #[derive(Debug, Clone)]
 pub struct AttackLatency {
     /// Which regime.
     pub attack: Attack,
     /// Median frames-to-detect for the NIS baseline.
     pub baseline_ttd: Option<f64>,
-    /// Median frames-to-detect for the pure correlation default.
+    /// Median frames-to-detect for the correlation axis-0 component.
     pub corr_ttd: Option<f64>,
-    /// Median frames-to-detect for the PID engine.
+    /// Median frames-to-detect for the PID axis-0 component.
     pub pid_ttd: Option<f64>,
-    /// Fraction of trials that eventually alarmed: (baseline, corr-default, PID).
+    /// Fraction with a post-onset alarm and no sampled false start:
+    /// (baseline, correlation axis 0, PID axis 0).
     pub reach: (f64, f64, f64),
+    /// Fraction of trials with a sampled pre-onset alarm: (baseline,
+    /// corr-default, PID).
+    pub false_start_rate: (f64, f64, f64),
 }
 
 fn median(v: &mut [usize]) -> Option<f64> {
@@ -1205,61 +1905,178 @@ fn median(v: &mut [usize]) -> Option<f64> {
 }
 
 /// First alarm frame offset from `onset`, searching growing prefixes stepped by `step`
-/// frames; `None` if the detector never alarms within the capture.
+/// frames and always probing the complete capture once; `None` if the detector never
+/// alarms within the capture.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TtdOutcome {
+    Detected(usize),
+    FalseStart,
+    Never,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProbePhase {
+    PreOnset,
+    PostOnset,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TtdProbe {
+    frames: usize,
+    phase: ProbePhase,
+}
+
+fn push_unique_probe(probes: &mut Vec<TtdProbe>, frames: usize, phase: ProbePhase) {
+    if probes.last().is_none_or(|probe| probe.frames != frames) {
+        probes.push(TtdProbe { frames, phase });
+    }
+}
+
+fn ttd_probe_schedule(frames: usize, onset: usize, step: usize) -> Vec<TtdProbe> {
+    let step = step.max(1);
+    let pre_onset_frames = onset.min(frames);
+    let mut probes = Vec::new();
+    if pre_onset_frames > 0 {
+        let mut prefix = 1usize;
+        loop {
+            let probe = prefix.min(pre_onset_frames);
+            push_unique_probe(&mut probes, probe, ProbePhase::PreOnset);
+            if probe == pre_onset_frames {
+                break;
+            }
+            prefix = prefix.saturating_add(step).min(pre_onset_frames);
+        }
+    }
+    if onset < frames {
+        let mut prefix = onset.saturating_add(1).max(1);
+        while prefix <= frames {
+            push_unique_probe(&mut probes, prefix, ProbePhase::PostOnset);
+            prefix = prefix.saturating_add(step);
+        }
+        // A stepped schedule generally overshoots the capture boundary. Always
+        // assess the complete capture once so a final-frame alarm is reachable.
+        push_unique_probe(&mut probes, frames, ProbePhase::PostOnset);
+    }
+    probes
+}
+
 fn ttd(
     stream: &[PidObservation],
     onset: usize,
     step: usize,
-    alarm: impl Fn(&[PidObservation]) -> bool,
-) -> Option<usize> {
+    alarm: impl Fn(&[PidObservation]) -> CoreResult<bool>,
+) -> CoreResult<TtdOutcome> {
     let n_mods = MODALITIES.len();
     let frames = stream.len() / n_mods;
-    let step = step.max(1);
-    let mut k = onset.max(1);
-    while k <= frames {
-        if alarm(&stream[..k * n_mods]) {
-            return Some(k - onset);
+    for probe in ttd_probe_schedule(frames, onset, step) {
+        if alarm(&stream[..probe.frames * n_mods])? {
+            return Ok(match probe.phase {
+                // Any alarm at a pre-onset probe is a false start, not attack
+                // detection. Exclude it from latency reach even if it clears.
+                ProbePhase::PreOnset => TtdOutcome::FalseStart,
+                ProbePhase::PostOnset => TtdOutcome::Detected(probe.frames - onset - 1),
+            });
         }
-        k += step;
     }
-    None
+    Ok(TtdOutcome::Never)
+}
+
+fn validate_latency_work(cfg: &EvalConfig, trials: usize, step: usize) -> CoreResult<()> {
+    let probes = ttd_probe_schedule(cfg.frames, cfg.frames / 3, step).len();
+    let observations = trials
+        .checked_mul(Attack::ALL.len() - 1)
+        .and_then(|work| work.checked_mul(3))
+        .and_then(|work| work.checked_mul(probes))
+        .and_then(|work| work.checked_mul(cfg.frames))
+        .and_then(|work| work.checked_mul(MODALITIES.len()))
+        .ok_or_else(|| {
+            GaladrielError::InvalidConfig("latency prefix-work estimate overflowed".into())
+        })?;
+    if observations > MAX_LATENCY_PREFIX_OBSERVATIONS {
+        return Err(GaladrielError::InvalidConfig(format!(
+            "latency study requests about {observations} prefix-observation visits; maximum is {MAX_LATENCY_PREFIX_OBSERVATIONS}; increase step or reduce frames/trials"
+        )));
+    }
+    Ok(())
 }
 
 /// Measure detection latency for the three attack regimes over `trials` seeds, probing
-/// prefixes every `step` frames. Detectors that never fire (by design) yield `None`.
-pub fn measure_latency(cfg: &EvalConfig, trials: usize, step: usize) -> Vec<AttackLatency> {
+/// prefixes every `step` frames and the final capture frame. Correlation and PID are
+/// pre-registered to projection axis 0. Detectors that never fire yield `None`.
+pub fn measure_latency(
+    cfg: &EvalConfig,
+    trials: usize,
+    step: usize,
+) -> CoreResult<Vec<AttackLatency>> {
+    validate_config(cfg)?;
+    validate_trials(trials)?;
+    if step == 0 || step > cfg.frames {
+        return Err(GaladrielError::InvalidConfig(
+            "latency step must be in 1..=frames".into(),
+        ));
+    }
+    validate_latency_work(cfg, trials, step)?;
     let onset = cfg.frames / 3;
-    Attack::ALL
+    let mut rows = Vec::with_capacity(Attack::ALL.len() - 1);
+    for &attack in Attack::ALL
         .iter()
-        .filter(|a| **a != Attack::Clean)
-        .map(|&attack| {
-            let (mut bt, mut ct, mut pt) = (Vec::new(), Vec::new(), Vec::new());
-            let (mut br, mut cr, mut pr) = (0usize, 0usize, 0usize);
-            for t in 0..trials {
-                let s = build(attack, cfg, cfg.base_seed + t as u64);
-                if let Some(d) = ttd(&s, onset, step, |p| baseline_eval(p).0) {
-                    bt.push(d);
-                    br += 1;
+        .filter(|attack| **attack != Attack::Clean)
+    {
+        let (mut baseline_ttd, mut corr_ttd, mut pid_ttd) = (Vec::new(), Vec::new(), Vec::new());
+        let (mut baseline_reach, mut corr_reach, mut pid_reach) = (0usize, 0usize, 0usize);
+        let (mut baseline_false, mut corr_false, mut pid_false) = (0usize, 0usize, 0usize);
+        for trial in 0..trials {
+            let stream = build(attack, cfg, attack_seed(cfg, trial, attack))?;
+            match ttd(&stream, onset, step, |prefix| {
+                baseline_eval(prefix).map(|result| result.alarm == Some(true))
+            })? {
+                TtdOutcome::Detected(delay) => {
+                    baseline_ttd.push(delay);
+                    baseline_reach += 1;
                 }
-                if let Some(d) = ttd(&s, onset, step, |p| corr_eval(p).0) {
-                    ct.push(d);
-                    cr += 1;
-                }
-                if let Some(d) = ttd(&s, onset, step, |p| pid_eval(p).0) {
-                    pt.push(d);
-                    pr += 1;
-                }
+                TtdOutcome::FalseStart => baseline_false += 1,
+                TtdOutcome::Never => {}
             }
-            let tn = trials as f64;
-            AttackLatency {
-                attack,
-                baseline_ttd: median(&mut bt),
-                corr_ttd: median(&mut ct),
-                pid_ttd: median(&mut pt),
-                reach: (br as f64 / tn, cr as f64 / tn, pr as f64 / tn),
+            match ttd(&stream, onset, step, |prefix| {
+                corr_evidence(prefix).map(|result| result.alarm == Some(true))
+            })? {
+                TtdOutcome::Detected(delay) => {
+                    corr_ttd.push(delay);
+                    corr_reach += 1;
+                }
+                TtdOutcome::FalseStart => corr_false += 1,
+                TtdOutcome::Never => {}
             }
-        })
-        .collect()
+            match ttd(&stream, onset, step, |prefix| {
+                pid_evidence(prefix).map(|result| result.alarm == Some(true))
+            })? {
+                TtdOutcome::Detected(delay) => {
+                    pid_ttd.push(delay);
+                    pid_reach += 1;
+                }
+                TtdOutcome::FalseStart => pid_false += 1,
+                TtdOutcome::Never => {}
+            }
+        }
+        let trial_count = trials as f64;
+        rows.push(AttackLatency {
+            attack,
+            baseline_ttd: median(&mut baseline_ttd),
+            corr_ttd: median(&mut corr_ttd),
+            pid_ttd: median(&mut pid_ttd),
+            reach: (
+                baseline_reach as f64 / trial_count,
+                corr_reach as f64 / trial_count,
+                pid_reach as f64 / trial_count,
+            ),
+            false_start_rate: (
+                baseline_false as f64 / trial_count,
+                corr_false as f64 / trial_count,
+                pid_false as f64 / trial_count,
+            ),
+        });
+    }
+    Ok(rows)
 }
 
 /// Format the latency study as a plain-text table (median frames + reach%).
@@ -1270,8 +2087,8 @@ pub fn format_latency(rows: &[AttackLatency], trials: usize, step: usize) -> Str
     };
     let mut s = String::new();
     s.push_str(&format!(
-        "Detection latency — median frames from attack onset to first alarm\n\
-         {trials} trials/regime · prefix step {step} frames · 100 ms/frame · '—' = never fires\n\n"
+        "Detection latency — axis-0 consistency components · median frames from attack onset to first alarm\n\
+         {trials} trials/regime · prefix step {step} frames · 100 ms/frame · '—' = no qualifying post-onset alarm\n\n"
     ));
     s.push_str(&format!(
         "{:<28} | {:>12} | {:>12} | {:>12}\n",
@@ -1285,6 +2102,12 @@ pub fn format_latency(rows: &[AttackLatency], trials: usize, step: usize) -> Str
             cell(r.baseline_ttd, r.reach.0),
             cell(r.corr_ttd, r.reach.1),
             cell(r.pid_ttd, r.reach.2),
+        ));
+        s.push_str(&format!(
+            "  pre-onset false starts (base/corr/PID): {:.1}%/{:.1}%/{:.1}%\n",
+            r.false_start_rate.0 * 100.0,
+            r.false_start_rate.1 * 100.0,
+            r.false_start_rate.2 * 100.0,
         ));
     }
     s
@@ -1308,7 +2131,8 @@ mod tests {
         let r = run(&EvalConfig {
             trials: 40,
             ..Default::default()
-        });
+        })
+        .expect("valid evaluation");
 
         // Every detector is quiet on the null.
         assert!(r.baseline_far < 0.1, "baseline FAR {:.3}", r.baseline_far);
@@ -1336,9 +2160,8 @@ mod tests {
             st.baseline_auc
         );
 
-        // The JUSTIFICATION claim, empirically: on this linear-Gaussian stealthy spoof
-        // the CHEAP correlation default matches the MI engine — PID is *forced*, not
-        // justified, here. It should detect at least as reliably as PID does.
+        // On this linear-Gaussian stealthy spoof the cheap axis-0 correlation component
+        // is sufficient; this study does not establish a need for PID here.
         assert!(
             st.corr_rate > 0.8,
             "corr-default stealthy detection {:.3}",
@@ -1381,13 +2204,39 @@ mod tests {
     }
 
     #[test]
+    fn ttd_probes_non_aligned_final_capture_frame_once() {
+        let cfg = EvalConfig {
+            trials: MIN_INFERENCE_TRIALS,
+            frames: 128,
+            ..Default::default()
+        };
+        let stream = build(Attack::Clean, &cfg, 7).expect("valid synthetic stream");
+        let onset = cfg.frames / 3;
+        let final_probes = std::cell::Cell::new(0usize);
+        let outcome = ttd(&stream, onset, 6, |prefix| {
+            if prefix.len() == stream.len() {
+                final_probes.set(final_probes.get() + 1);
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        })
+        .expect("valid TTD probe sequence");
+
+        assert_eq!(
+            (outcome, final_probes.get()),
+            (TtdOutcome::Detected(cfg.frames - onset - 1), 1)
+        );
+    }
+
+    #[test]
     fn latency_tracks_attack_ownership() {
         // Lean settings: enough trials for a stable median, small enough to stay fast.
         let cfg = EvalConfig {
             frames: 210,
             ..Default::default()
         };
-        let rows = measure_latency(&cfg, 12, 6);
+        let rows = measure_latency(&cfg, 20, 6).expect("valid latency study");
 
         let st = rows.iter().find(|r| r.attack == Attack::Stealthy).unwrap();
         // The cross-sensor detectors detect the stealthy spoof, at a finite latency…
@@ -1412,28 +2261,28 @@ mod tests {
     }
 
     #[test]
-    fn bootstrap_cis_show_corr_and_pid_are_tied_but_beat_baseline() {
+    fn bootstrap_cis_match_alarm_ranked_auc_and_beat_baseline() {
         let cfg = EvalConfig {
             trials: 80,
             ..Default::default()
         };
-        let (rows, (diff, dlo, dhi)) = stealthy_ci_study(&cfg, 500);
+        let (rows, (diff, dlo, dhi)) = stealthy_ci_study(&cfg, 500).expect("valid bootstrap study");
 
-        // The paired corr−PID AUC-difference CI includes 0 → statistically tied (the
-        // whole point: on this linear-Gaussian spoof MI is forced, not better).
+        let corr = &rows[1];
+        let pid = &rows[2];
         assert!(
-            dlo <= 0.0 && dhi >= 0.0,
-            "corr−PID ΔAUC CI [{dlo:.3},{dhi:.3}] should include 0 (diff {diff:.3})"
+            (diff - (corr.auc - pid.auc)).abs() < 1e-12 && dlo <= dhi,
+            "paired ΔAUC {diff:.3} [{dlo:.3},{dhi:.3}] must match row AUCs"
         );
 
         // Both cross-sensor detectors' CIs sit well above the baseline's.
         let baseline = &rows[0];
-        let corr = &rows[1];
         assert!(
-            baseline.hi < corr.lo,
-            "baseline CI [.,{:.3}] should not overlap correlation CI [{:.3},.]",
+            baseline.hi < corr.lo.min(pid.lo),
+            "baseline CI [.,{:.3}] should not overlap corr/PID lower bounds {:.3}/{:.3}",
             baseline.hi,
-            corr.lo
+            corr.lo,
+            pid.lo,
         );
         // The baseline is not distinguishable from chance (its CI brackets 0.5).
         assert!(
@@ -1442,6 +2291,20 @@ mod tests {
             baseline.lo,
             baseline.hi
         );
+    }
+
+    #[test]
+    fn component_auc_ranking_places_alarms_above_non_alarms() {
+        let alarmed = alarm_rank_evidence(DetectorEvidence {
+            alarm: Some(true),
+            score: Some(0.0),
+        });
+        let quiet = alarm_rank_evidence(DetectorEvidence {
+            alarm: Some(false),
+            score: Some(1.0),
+        });
+
+        assert!(alarmed.score.expect("ranked alarm") > quiet.score.expect("ranked non-alarm"));
     }
 
     #[test]
@@ -1458,7 +2321,7 @@ mod tests {
             trials: 40,
             ..Default::default()
         };
-        let r = collusion_study(&cfg, 40);
+        let r = collusion_study(&cfg, 40).expect("valid collusion study");
         // The detector fires (it is not silent)…
         assert!(
             r.corr_fires > 0.8,
@@ -1486,7 +2349,7 @@ mod tests {
             ..Default::default()
         };
         let grid = [1.0, 0.6, 0.4, 0.2, 0.1];
-        let rows = decoupling_sweep(&cfg, &grid, 400);
+        let rows = decoupling_sweep(&cfg, &grid, 400).expect("valid sweep");
 
         // Detection degrades as the decoupling weakens: full decouple is easier than weak.
         assert!(
@@ -1501,8 +2364,7 @@ mod tests {
             "full-decouple corr AUC {:.3}",
             rows[0].corr_auc
         );
-        // The finding: correlation is never meaningfully worse than PID, and STRICTLY beats
-        // it somewhere on the boundary — the nonparametric KSG estimator's variance penalty.
+        // At these configured points correlation is not materially worse than PID.
         for r in &rows {
             assert!(
                 r.corr_auc >= r.pid_auc - 0.03,
@@ -1512,22 +2374,20 @@ mod tests {
                 r.pid_auc
             );
         }
-        // The paired ΔAUC bootstrap (the powerful test) excludes 0 somewhere on the boundary.
-        let strict = rows.iter().any(|r| r.diff_ci.0 > 0.0);
-        assert!(
-            strict,
-            "the paired corr−PID ΔAUC CI should exclude 0 somewhere on the boundary"
-        );
+        // Pointwise intervals are descriptive only; scanning them cannot support a
+        // family-wise "strictly beats somewhere" claim without max-stat correction.
+        assert!(rows.iter().all(|row| row.diff_ci.0 <= row.diff_ci.1));
     }
 
     #[test]
-    fn adaptive_adversary_evasion_ceiling_does_not_favour_pid() {
+    fn adaptive_detection_declines_as_decoupling_weakens() {
         let cfg = EvalConfig {
             trials: 50,
             ..Default::default()
         };
         let grid = [1.0, 0.6, 0.4, 0.2, 0.1, 0.05];
-        let rows = adaptive_adversary(&cfg, &grid, 0.05);
+        let study = adaptive_adversary(&cfg, &grid, 0.05).expect("valid adaptive study");
+        let rows = &study.rows;
 
         // Detection rate falls as the decoupling weakens (easier attacks are caught more).
         assert!(
@@ -1542,14 +2402,47 @@ mod tests {
             "full-decouple corr detect {:.3}",
             rows[0].corr_detect
         );
-        // The Kerckhoffs point: correlation's evasion ceiling is no higher than PID's, so an
-        // adaptive adversary gains nothing by facing correlation rather than the MI engine.
-        let corr_ceil = evasion_ceiling(&rows, |r| r.corr_detect, 0.5);
-        let pid_ceil = evasion_ceiling(&rows, |r| r.pid_detect, 0.5);
-        assert!(
-            corr_ceil <= pid_ceil + 1e-9,
-            "correlation evasion ceiling {corr_ceil:.2} should be ≤ PID's {pid_ceil:.2}"
-        );
+        // The independent holdout rates disclose whether the two fitted thresholds
+        // actually landed at comparable operating points; target quantiles alone do not.
+        assert!(study.corr_holdout_far.rate.is_finite() && study.pid_holdout_far.rate.is_finite());
+    }
+
+    #[test]
+    fn adaptive_clean_calibration_and_holdout_seed_domains_are_disjoint() {
+        let cfg = EvalConfig::default();
+        let calibration: std::collections::HashSet<_> = (0..1_000)
+            .map(|trial| adaptive_clean_seed(&cfg, trial, AdaptiveCleanArm::Calibration))
+            .collect();
+        let holdout: std::collections::HashSet<_> = (0..1_000)
+            .map(|trial| adaptive_clean_seed(&cfg, trial, AdaptiveCleanArm::Holdout))
+            .collect();
+
+        assert!(calibration.is_disjoint(&holdout));
+    }
+
+    #[test]
+    fn adaptive_formatter_discloses_independent_holdout_far_intervals() {
+        let study = AdaptiveStudy {
+            rows: vec![AdaptiveRow {
+                decoupling: 0.5,
+                corr_detect: 0.4,
+                pid_detect: 0.3,
+            }],
+            target_far: 0.05,
+            calibration_trials: 20,
+            holdout_trials: 20,
+            corr_holdout_far: RateInterval {
+                rate: 0.05,
+                ci: (0.01, 0.20),
+            },
+            pid_holdout_far: RateInterval {
+                rate: 0.10,
+                ci: (0.03, 0.30),
+            },
+        };
+
+        let formatted = format_adaptive(&study, 0.5);
+        assert!(formatted.contains("holdout FAR: corr 0.050 [0.010,0.200]"));
     }
 
     #[test]
@@ -1558,7 +2451,7 @@ mod tests {
             trials: 40,
             ..Default::default()
         };
-        let rows = maneuver_far(&cfg, &[0, 32], 12.0, 90);
+        let rows = maneuver_far(&cfg, &[0, 32], 12.0, 90).expect("valid maneuver study");
         // A synchronized maneuver (lag 0) keeps channels correlated → ~no consistency FAR.
         assert!(
             rows[0].corr_far < 0.1,
@@ -1582,18 +2475,18 @@ mod tests {
     }
 
     #[test]
-    fn attacker_bias_grows_with_decoupling_and_trades_off_against_detection() {
+    fn modeled_perturbation_grows_with_decoupling() {
         let cfg = EvalConfig {
             trials: 60,
             ..Default::default()
         };
-        let rows = attacker_gain(&cfg, &[0.1, 0.4, 1.0]);
+        let rows = attacker_gain(&cfg, &[0.1, 0.4, 1.0]).expect("valid attacker study");
         // More decoupling injects more fused-innovation bias…
         assert!(
-            rows[2].fused_bias_rms > rows[0].fused_bias_rms,
-            "bias should grow with d: {:.3} -> {:.3}",
-            rows[0].fused_bias_rms,
-            rows[2].fused_bias_rms
+            rows[2].fused_perturbation_rms > rows[0].fused_perturbation_rms,
+            "RMS perturbation should grow with d: {:.3} -> {:.3}",
+            rows[0].fused_perturbation_rms,
+            rows[2].fused_perturbation_rms
         );
         // …but also becomes more detectable — the security trade-off.
         assert!(
@@ -1604,8 +2497,8 @@ mod tests {
         );
         // A weak (near-undetectable) decoupling injects only a small bias.
         assert!(
-            rows[0].fused_bias_rms < rows[2].fused_bias_rms,
-            "weak decoupling should inject less bias"
+            rows[0].fused_perturbation_rms < rows[2].fused_perturbation_rms,
+            "weak decoupling should induce less RMS perturbation"
         );
     }
 
@@ -1620,6 +2513,69 @@ mod tests {
         // A p̂ = 0.5 interval is centered near 0.5.
         let (lo, hi) = wilson_ci(50, 100);
         assert!(lo > 0.40 && hi < 0.60, "wilson(50,100)=[{lo:.3},{hi:.3}]");
+    }
+
+    #[test]
+    fn command_report_suite_preflights_before_work() {
+        let cfg = EvalConfig {
+            trials: MIN_INFERENCE_TRIALS,
+            ..Default::default()
+        };
+        let grid = [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05];
+        let lags = [0, 8, 16, 32, 64];
+        validate_report_suite(&cfg, &grid, &lags, 200, MIN_INFERENCE_TRIALS, 10)
+            .expect("minimum CLI suite must pass preflight");
+
+        let documented_larger = EvalConfig {
+            trials: 200,
+            ..Default::default()
+        };
+        validate_report_suite(
+            &documented_larger,
+            &grid,
+            &lags,
+            200,
+            MIN_INFERENCE_TRIALS,
+            10,
+        )
+        .expect("documented 200-trial release suite must pass preflight");
+
+        let excessive = EvalConfig {
+            trials: 1_000,
+            frames: 10_000,
+            ..Default::default()
+        };
+        assert!(
+            validate_report_suite(&excessive, &grid, &lags, 200, 1_000, 1).is_err(),
+            "accepted field maxima must not imply an unbounded aggregate suite"
+        );
+    }
+
+    #[test]
+    fn command_preflight_rejects_pid_estimator_work_before_observation_limits() {
+        let estimator_heavy = EvalConfig {
+            trials: 1_000,
+            frames: 128,
+            ..Default::default()
+        };
+        let error = validate_report_suite(
+            &estimator_heavy,
+            &[1.0, 0.6, 0.2],
+            &[0, 16],
+            200,
+            1_000,
+            128,
+        )
+        .expect_err("quadratic PID work must reject this otherwise bounded suite");
+
+        assert!(error.to_string().contains("PID quadratic fit-units"));
+    }
+
+    #[test]
+    fn inferential_intervals_reject_degenerate_sample_counts() {
+        assert!(auc_ci(&[1.0], &[0.0, 1.0], 200, 1).0.is_nan());
+        assert!(auc_ci(&[1.0, 2.0], &[0.0, 1.0], 199, 1).0.is_nan());
+        assert!(wilson_ci(2, 1).0.is_nan());
     }
 }
 

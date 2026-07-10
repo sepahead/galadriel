@@ -1,84 +1,275 @@
-//! Fusing the two detectors into one jam-vs-spoof verdict.
+//! Additive fusion of magnitude, signed-correlation, and PID evidence.
 //!
-//! The evaluation (`docs/EVALUATION.md`) shows the NIS baseline and the PID engine
-//! are **complementary**: the baseline owns *magnitude* attacks (a loud bias spoof,
-//! a jam), the PID engine owns *cross-channel decoupling* (a moment-matched stealthy
-//! spoof). Fusing them yields a detector that covers the whole space and, crucially,
-//! reports *how* a spoof was caught:
-//!
-//! | | correlation intact | PID decoupling |
-//! |---|---|---|
-//! | **NIS in-covariance** | `Nominal` | `Spoof { stealthy: true }` |
-//! | **one channel's NIS inflated** | `Spoof { stealthy: false }` | `Spoof { stealthy: false }` |
-//! | **all channels' NIS inflated** | `Jam` | `Spoof` (jam + decoupling) |
+//! PID mutual information is deliberately sign-invariant. The signed-correlation
+//! default therefore remains in the path: PID may add nonlinear pairwise
+//! decoupling evidence, but it cannot erase a correlation sign-flip finding. The
+//! reported PID atoms are diagnostic and are not a pure-synergy decision rule.
+
+use std::collections::HashSet;
 
 use galadriel_core::{
-    combine, DetectorConfig, FusedVerdict, Mirror, MirrorReport, Modality, PidObservation,
+    combine, correlation, AxisCorrelationReport, CorrConfig, CorrReport, CorrVerdict,
+    DetectorConfig, FusedVerdict, Mirror, MirrorReport, Modality, PidObservation,
 };
 
-use crate::{analyze, scalar_channels, PidConfig, PidReport, PidVerdict};
+use crate::{analyze, PidConfig, PidReport};
 
-/// The fused report carries both component reports for transparency. The verdict type
-/// ([`FusedVerdict`]) is shared with the pure default via `galadriel_core::fusion`, so
-/// the MI escalation and the correlation default speak the same language.
+/// Fused report retaining all three component views for auditability.
 #[derive(Debug, Clone)]
 pub struct FusedReport {
-    /// The unified verdict.
+    /// Unified verdict.
     pub verdict: FusedVerdict,
-    /// The baseline (NIS χ²) report.
+    /// NIS magnitude report.
     pub baseline: MirrorReport,
-    /// The PID report.
-    pub pid: PidReport,
-    /// Rationale.
+    /// Signed-correlation reports for every attested projection axis.
+    pub correlations: Vec<AxisCorrelationReport>,
+    /// Information-theoretic reports for every attested projection axis.
+    pub pids: Vec<AxisPidReport>,
+    /// Fusion rationale.
     pub note: String,
 }
 
-/// Fuse a baseline report and a PID report into one verdict, using the shared
-/// source-agnostic [`combine`] with the PID engine as the consistency source.
-pub fn fuse(baseline: MirrorReport, pid: PidReport) -> FusedReport {
-    let decoupled: Vec<Modality> = pid
+/// PID detail for one producer-attested consistency-projection axis.
+#[derive(Debug, Clone)]
+pub struct AxisPidReport {
+    /// Zero-based axis in `ConsistencyProjection::values`.
+    pub axis: usize,
+    /// PID analysis for this axis.
+    pub report: PidReport,
+}
+
+fn correlation_axis_attribution(
+    reports: &[AxisCorrelationReport],
+) -> (HashSet<Modality>, bool, bool) {
+    let insufficient = reports.is_empty()
+        || reports
+            .iter()
+            .any(|axis| matches!(axis.report.verdict, CorrVerdict::InsufficientEvidence));
+    let positives = reports
+        .iter()
+        .filter_map(|axis| match &axis.report.verdict {
+            CorrVerdict::Spoof(channels) => Some(channels.iter().copied().collect::<HashSet<_>>()),
+            CorrVerdict::Nominal | CorrVerdict::InsufficientEvidence => None,
+        })
+        .collect::<Vec<_>>();
+    let conflict = positives
+        .first()
+        .is_some_and(|first| positives.iter().skip(1).any(|set| set != first));
+    let union = positives
+        .iter()
+        .flat_map(|set| set.iter().copied())
+        .collect();
+    (union, insufficient, conflict)
+}
+
+fn pid_axis_attribution(reports: &[AxisPidReport]) -> (HashSet<Modality>, bool, bool) {
+    let insufficient = reports.is_empty()
+        || reports
+            .iter()
+            .any(|axis| matches!(axis.report.verdict, crate::PidVerdict::InsufficientEvidence));
+    let positives = reports
+        .iter()
+        .filter_map(|axis| match &axis.report.verdict {
+            crate::PidVerdict::Spoof(channels) => {
+                Some(channels.iter().copied().collect::<HashSet<_>>())
+            }
+            crate::PidVerdict::Nominal | crate::PidVerdict::InsufficientEvidence => None,
+        })
+        .collect::<Vec<_>>();
+    let conflict = positives
+        .first()
+        .is_some_and(|first| positives.iter().skip(1).any(|set| set != first));
+    let union = positives
+        .iter()
+        .flat_map(|set| set.iter().copied())
+        .collect();
+    (union, insufficient, conflict)
+}
+
+fn forced_anomaly_channels(
+    baseline: &MirrorReport,
+    consistency: &HashSet<Modality>,
+) -> Vec<Modality> {
+    let mut channels = baseline
         .channels
         .iter()
-        .filter(|c| c.decoupled)
-        .map(|c| c.modality)
+        .filter(|channel| channel.anomalous())
+        .map(|channel| channel.modality)
+        .chain(consistency.iter().copied())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    channels.sort_by_key(|modality| *modality as u8);
+    channels
+}
+
+/// Fuse baseline, signed-correlation, and PID reports.
+///
+/// Decoupled-channel evidence is the union of both consistency detectors. The
+/// signed-correlation result remains the minimum consistency contract: an
+/// optional PID limitation cannot downgrade an assessable signed default, while a
+/// nominal sign-invariant PID result cannot substitute for unavailable signed
+/// evidence. Positive PID decoupling can still add evidence when correlation is
+/// insufficient.
+pub fn fuse(baseline: MirrorReport, correlation: CorrReport, pid: PidReport) -> FusedReport {
+    fuse_axes(
+        baseline,
+        vec![AxisCorrelationReport {
+            axis: 0,
+            report: correlation,
+        }],
+        vec![AxisPidReport {
+            axis: 0,
+            report: pid,
+        }],
+    )
+}
+
+/// Fuse magnitude evidence with correlation and PID results from every supported
+/// common-projection axis.
+pub fn fuse_axes(
+    baseline: MirrorReport,
+    correlations: Vec<AxisCorrelationReport>,
+    pids: Vec<AxisPidReport>,
+) -> FusedReport {
+    let (correlation_decoupled, correlation_insufficient, correlation_axis_conflict) =
+        correlation_axis_attribution(&correlations);
+    let (pid_decoupled, pid_insufficient, pid_axis_conflict) = pid_axis_attribution(&pids);
+    let mut decoupled: Vec<Modality> = correlation_decoupled
+        .union(&pid_decoupled)
+        .copied()
         .collect();
-    let pid_out = matches!(pid.verdict, PidVerdict::InsufficientEvidence);
-    let (verdict, note) = combine(&baseline, &decoupled, pid_out);
+    decoupled.sort_by_key(|modality| *modality as u8);
+
+    let consistency_union = decoupled.iter().copied().collect::<HashSet<_>>();
+    let incomplete_positive = (correlation_insufficient && !correlation_decoupled.is_empty())
+        || (pid_insufficient && !pid_decoupled.is_empty());
+    // Two assessable consistency detectors naming different compromised channels
+    // is positive evidence, but not honest attribution. Preserve the union for
+    // investigation and fail closed to Anomaly instead of manufacturing Spoof.
+    let disagree = !correlation_decoupled.is_empty()
+        && !pid_decoupled.is_empty()
+        && correlation_decoupled != pid_decoupled;
+    let axis_conflict = correlation_axis_conflict || pid_axis_conflict;
+    let (verdict, base_note) = if disagree || axis_conflict || incomplete_positive {
+        let reason = if axis_conflict {
+            "projection axes disagree on channel attribution"
+        } else if incomplete_positive {
+            "positive attribution exists alongside an insufficient projection axis"
+        } else {
+            "consistency detectors disagree on channel attribution"
+        };
+        (
+            FusedVerdict::Anomaly {
+                channels: forced_anomaly_channels(&baseline, &consistency_union),
+            },
+            format!("{reason}; failing closed"),
+        )
+    } else {
+        combine(&baseline, &decoupled, correlation_insufficient)
+    };
+    let correlation_note = correlations
+        .iter()
+        .map(|axis| format!("axis {}: {}", axis.axis, axis.report.note))
+        .collect::<Vec<_>>()
+        .join(" | ");
+    let pid_note = pids
+        .iter()
+        .map(|axis| format!("axis {}: {}", axis.axis, axis.report.note))
+        .collect::<Vec<_>>()
+        .join(" | ");
+    let note = format!(
+        "{base_note}; signed correlation: {}; PID escalation: {}",
+        if correlation_note.is_empty() {
+            "no attested common projection"
+        } else {
+            &correlation_note
+        },
+        if pid_note.is_empty() {
+            "no attested common projection"
+        } else {
+            &pid_note
+        }
+    );
     FusedReport {
         verdict,
         baseline,
-        pid,
+        correlations,
+        pids,
         note,
     }
 }
 
-/// Run both detectors over a whole (single-track) stream and fuse them.
+/// Run the magnitude baseline, signed-correlation default, and PID escalation over
+/// a whole single-track stream.
 pub fn assess_stream(
     stream: &[PidObservation],
     modalities: &[Modality],
     baseline_cfg: &DetectorConfig,
     pid_cfg: &PidConfig,
-) -> FusedReport {
-    let mut mirror = Mirror::new(baseline_cfg.clone());
-    for o in stream {
-        mirror.ingest(o);
+) -> galadriel_core::Result<FusedReport> {
+    // Reject structurally unresolvable confirmation settings before ingesting or
+    // running any estimator. Axis multiplicity is preflighted again below once
+    // producer-attested projection dimensionality is known.
+    pid_cfg.validate()?;
+    let mut mirror = Mirror::with_modalities(baseline_cfg.clone(), modalities)?;
+    for observation in stream {
+        mirror.ingest(observation)?;
     }
-    let track = stream.first().map_or(0, |o| o.track_id);
-    let last_seq = stream.iter().map(|o| o.seq).max().unwrap_or(0);
-    let baseline = mirror.assess(track, last_seq);
-    let pid = analyze(&scalar_channels(stream, modalities, 0), pid_cfg);
-    fuse(baseline, pid)
+    let track = stream.first().map_or(0, |observation| observation.track_id);
+    let last_seq = stream
+        .iter()
+        .map(|observation| observation.seq)
+        .max()
+        .unwrap_or(0);
+    let baseline = mirror.assess(track, last_seq)?;
+
+    let projection = galadriel_core::consistency_channels_with_temporal_limits(
+        stream,
+        modalities,
+        baseline_cfg.max_seq_gap,
+        baseline_cfg.max_timestamp_skew_ms,
+        baseline_cfg.max_inter_sample_gap_ms,
+    )?;
+    let mut correlations = Vec::new();
+    let mut pids = Vec::new();
+    if let Some(projection) = projection {
+        let axis_count = projection.axes.len();
+        if axis_count == 0 {
+            return Err(galadriel_core::GaladrielError::InvalidChannels(
+                "attested consistency projection must expose at least one axis".into(),
+            ));
+        }
+        let mut adjusted_pid = pid_cfg.clone();
+        adjusted_pid.family_alpha /= axis_count as f64;
+        adjusted_pid.validate()?;
+        for (axis, channels) in projection.axes.iter().enumerate() {
+            let mut corr_cfg = CorrConfig::default();
+            corr_cfg.family_alpha /= axis_count as f64;
+            correlations.push(AxisCorrelationReport {
+                axis,
+                report: correlation::analyze(channels, &corr_cfg)?,
+            });
+            pids.push(AxisPidReport {
+                axis,
+                report: analyze(channels, &adjusted_pid)?,
+            });
+        }
+    }
+    Ok(fuse_axes(baseline, correlations, pids))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::PidVerdict;
+    use galadriel_core::{ChannelReport, CorrChannel, MagnitudeEvidence, MirrorReport, Verdict};
     use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
     use galadriel_sim::scenario::{generate, generate_spoofed, ScenarioConfig, StealthySpoof};
 
-    const MODS: [Modality; 3] = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+    const MODALITIES: [Modality; 3] = [Modality::Visual, Modality::Radar, Modality::Acoustic];
 
-    fn scen() -> ScenarioConfig {
+    fn scenario() -> ScenarioConfig {
         ScenarioConfig {
             frames: 300,
             rho: 0.7,
@@ -90,66 +281,337 @@ mod tests {
     fn fused(stream: &[PidObservation]) -> FusedVerdict {
         assess_stream(
             stream,
-            &MODS,
+            &MODALITIES,
             &DetectorConfig::default(),
             &PidConfig::default(),
         )
+        .unwrap()
         .verdict
     }
 
-    #[test]
-    fn clean_is_nominal() {
-        assert_eq!(fused(&generate(&scen())), FusedVerdict::Nominal);
-    }
-
-    #[test]
-    fn stealthy_spoof_is_flagged_stealthy() {
-        let s = generate_spoofed(
-            &scen(),
-            StealthySpoof {
-                target: Modality::Acoustic,
-                start_frame: 100,
-            },
-        );
-        match fused(&s) {
-            FusedVerdict::Spoof { channels, stealthy } => {
-                assert!(channels.contains(&Modality::Acoustic));
-                assert!(stealthy, "moment-matched spoof should be flagged stealthy");
-            }
-            other => panic!("expected stealthy Spoof, got {other:?}"),
+    fn nominal_baseline() -> MirrorReport {
+        MirrorReport {
+            track_id: 1,
+            seq: 128,
+            verdict: Verdict::Nominal,
+            channels: MODALITIES
+                .iter()
+                .map(|&modality| ChannelReport {
+                    modality,
+                    n: 128,
+                    last_seq: Some(128),
+                    last_timestamp_ms: Some(12_800),
+                    mean_nis: 3.0,
+                    p_right: 0.5,
+                    elevated: false,
+                    cusum_high_alarm: false,
+                    cusum_low_alarm: false,
+                    fresh: true,
+                    ready: true,
+                })
+                .collect(),
+            note: "nominal test baseline".into(),
         }
     }
 
     #[test]
-    fn loud_bias_spoof_is_flagged_non_stealthy() {
-        let mut s = generate(&scen());
+    fn clean_is_nominal() {
+        let report = assess_stream(
+            &generate(&scenario()).unwrap(),
+            &MODALITIES,
+            &DetectorConfig::default(),
+            &PidConfig::default(),
+        )
+        .unwrap();
+
+        assert_eq!(report.correlations.len(), 3);
+        assert_eq!(report.pids.len(), 3);
+        assert_eq!(report.verdict, FusedVerdict::Nominal);
+    }
+
+    #[test]
+    fn stream_assessment_never_falls_back_to_native_innovations() {
+        let mut stream = generate(&scenario()).unwrap();
+        for observation in &mut stream {
+            observation.consistency_projection = None;
+        }
+        let report = assess_stream(
+            &stream,
+            &MODALITIES,
+            &DetectorConfig::default(),
+            &PidConfig::default(),
+        )
+        .unwrap();
+
+        assert!(report.correlations.is_empty());
+        assert!(report.pids.is_empty());
+        assert_eq!(report.verdict, FusedVerdict::InsufficientEvidence);
+    }
+
+    #[test]
+    fn stealthy_spoof_with_an_insufficient_axis_fails_closed() {
+        let stream = generate_spoofed(
+            &scenario(),
+            StealthySpoof {
+                target: Modality::Acoustic,
+                start_frame: 100,
+            },
+        )
+        .unwrap();
+        let report = assess_stream(
+            &stream,
+            &MODALITIES,
+            &DetectorConfig::default(),
+            &PidConfig::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            report.verdict,
+            FusedVerdict::Anomaly {
+                channels: vec![Modality::Acoustic],
+            }
+        );
+        let acoustic = report
+            .baseline
+            .channels
+            .iter()
+            .find(|channel| channel.modality == Modality::Acoustic)
+            .unwrap();
+        assert!(!acoustic.anomalous());
+        assert!(report.note.contains("insufficient projection axis"));
+    }
+
+    #[test]
+    fn loud_bias_spoof_has_elevated_magnitude_evidence() {
+        let mut stream = generate(&scenario()).unwrap();
         inject(
-            &mut s,
+            &mut stream,
             &PhantomAcousticDoa {
                 target: Modality::Acoustic,
                 start_frame: 100,
                 bias: 8.0,
             },
-        );
-        match fused(&s) {
-            FusedVerdict::Spoof { channels, stealthy } => {
+        )
+        .unwrap();
+        match fused(&stream) {
+            FusedVerdict::Spoof {
+                channels,
+                magnitude,
+            } => {
                 assert!(channels.contains(&Modality::Acoustic));
-                assert!(!stealthy, "a loud magnitude spoof is not stealthy");
+                assert!(matches!(
+                    magnitude,
+                    MagnitudeEvidence::Elevated | MagnitudeEvidence::Mixed
+                ));
             }
-            other => panic!("expected non-stealthy Spoof, got {other:?}"),
+            other => panic!("expected elevated Spoof, got {other:?}"),
         }
     }
 
     #[test]
     fn jam_is_jam() {
-        let mut s = generate(&scen());
+        let mut stream = generate(&scenario()).unwrap();
         inject(
-            &mut s,
+            &mut stream,
             &BroadbandJam {
                 start_frame: 100,
                 inflation: 3.0,
             },
+        )
+        .unwrap();
+        assert_eq!(fused(&stream), FusedVerdict::Jam);
+    }
+
+    #[test]
+    fn signed_correlation_sign_flip_survives_pid_nominal_result() {
+        let n = 128;
+        let visual: Vec<f64> = (0..n).map(|i| (i as f64 * 0.17).sin()).collect();
+        let radar: Vec<f64> = (0..n)
+            .map(|i| (i as f64 * 0.17).sin() + 0.01 * (i as f64 * 0.31).cos())
+            .collect();
+        let acoustic: Vec<f64> = visual.iter().map(|value| -*value).collect();
+        let channels = vec![
+            (Modality::Visual, visual),
+            (Modality::Radar, radar),
+            (Modality::Acoustic, acoustic),
+        ];
+
+        let correlation = correlation::analyze(&channels, &CorrConfig::default()).unwrap();
+        assert!(matches!(
+            correlation.verdict,
+            CorrVerdict::Spoof(ref found) if found.contains(&Modality::Acoustic)
+        ));
+
+        let pid = analyze(&channels, &PidConfig::default()).unwrap();
+        assert_eq!(pid.verdict, PidVerdict::Nominal, "{}", pid.note);
+
+        match fuse(nominal_baseline(), correlation, pid).verdict {
+            FusedVerdict::Spoof {
+                channels,
+                magnitude,
+            } => {
+                assert!(channels.contains(&Modality::Acoustic));
+                assert_eq!(magnitude, MagnitudeEvidence::InCovariance);
+            }
+            other => panic!("signed-correlation sign flip was lost: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn pid_adds_evidence_when_signed_correlation_is_insufficient() {
+        let correlation = CorrReport {
+            channels: MODALITIES
+                .iter()
+                .map(|&modality| CorrChannel {
+                    modality,
+                    n: 128,
+                    corroboration: None,
+                    decoupled: false,
+                })
+                .collect(),
+            verdict: CorrVerdict::InsufficientEvidence,
+            note: "test correlation unavailable".into(),
+        };
+        let pid = PidReport {
+            channels: MODALITIES
+                .iter()
+                .map(|&modality| crate::ChannelPid {
+                    modality,
+                    n: 128,
+                    gate_ok: true,
+                    gate_note: "test".into(),
+                    corroboration: Some(1.0),
+                    redundancy: None,
+                    synergy: None,
+                    decoupled: modality == Modality::Acoustic,
+                    ci: None,
+                })
+                .collect(),
+            verdict: PidVerdict::Spoof(vec![Modality::Acoustic]),
+            note: "test PID decoupling".into(),
+        };
+
+        assert!(matches!(
+            fuse(nominal_baseline(), correlation, pid).verdict,
+            FusedVerdict::Spoof { ref channels, .. }
+                if channels.contains(&Modality::Acoustic)
+        ));
+    }
+
+    #[test]
+    fn conflicting_positive_attributions_fail_closed_to_anomaly() {
+        let correlation = CorrReport {
+            channels: MODALITIES
+                .iter()
+                .map(|&modality| CorrChannel {
+                    modality,
+                    n: 128,
+                    corroboration: Some(0.8),
+                    decoupled: modality == Modality::Radar,
+                })
+                .collect(),
+            verdict: CorrVerdict::Spoof(vec![Modality::Radar]),
+            note: "test correlation attribution".into(),
+        };
+        let pid = PidReport {
+            channels: MODALITIES
+                .iter()
+                .map(|&modality| crate::ChannelPid {
+                    modality,
+                    n: 128,
+                    gate_ok: true,
+                    gate_note: "test".into(),
+                    corroboration: Some(1.0),
+                    redundancy: None,
+                    synergy: None,
+                    decoupled: modality == Modality::Acoustic,
+                    ci: None,
+                })
+                .collect(),
+            verdict: PidVerdict::Spoof(vec![Modality::Acoustic]),
+            note: "test PID attribution".into(),
+        };
+
+        assert_eq!(
+            fuse(nominal_baseline(), correlation, pid).verdict,
+            FusedVerdict::Anomaly {
+                channels: vec![Modality::Acoustic, Modality::Radar],
+            }
         );
-        assert_eq!(fused(&s), FusedVerdict::Jam);
+    }
+
+    #[test]
+    fn conflicting_projection_axes_fail_closed_to_anomaly() {
+        let correlation_axis = |axis, modality| AxisCorrelationReport {
+            axis,
+            report: CorrReport {
+                channels: MODALITIES
+                    .iter()
+                    .map(|&candidate| CorrChannel {
+                        modality: candidate,
+                        n: 128,
+                        corroboration: Some(0.8),
+                        decoupled: candidate == modality,
+                    })
+                    .collect(),
+                verdict: CorrVerdict::Spoof(vec![modality]),
+                note: "axis attribution".into(),
+            },
+        };
+        let nominal_pid = |axis| AxisPidReport {
+            axis,
+            report: PidReport {
+                channels: Vec::new(),
+                verdict: PidVerdict::Nominal,
+                note: "axis nominal".into(),
+            },
+        };
+
+        let report = fuse_axes(
+            nominal_baseline(),
+            vec![
+                correlation_axis(0, Modality::Radar),
+                correlation_axis(1, Modality::Acoustic),
+            ],
+            vec![nominal_pid(0), nominal_pid(1)],
+        );
+
+        assert_eq!(
+            report.verdict,
+            FusedVerdict::Anomaly {
+                channels: vec![Modality::Acoustic, Modality::Radar]
+            }
+        );
+    }
+
+    #[test]
+    fn multi_axis_confirmation_resolution_is_rejected_before_pid_estimation() {
+        let stream = generate(&scenario()).unwrap();
+        let baseline = DetectorConfig::default();
+        let projection = galadriel_core::consistency_channels_with_temporal_limits(
+            &stream,
+            &MODALITIES,
+            baseline.max_seq_gap,
+            baseline.max_timestamp_skew_ms,
+            baseline.max_inter_sample_gap_ms,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(projection.axes.len(), 3);
+
+        let config = PidConfig {
+            n_boot: 20,
+            family_alpha: 0.10,
+            ..Default::default()
+        };
+        assert!(
+            config.validate().is_ok(),
+            "single-axis settings are resolvable"
+        );
+        assert!(matches!(
+            assess_stream(&stream, &MODALITIES, &baseline, &config),
+            Err(galadriel_core::GaladrielError::InvalidConfig(ref message))
+                if message.contains("cannot resolve family_alpha")
+        ));
     }
 }

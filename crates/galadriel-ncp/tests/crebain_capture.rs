@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Cross-repo integration proof: a **real crebain-emitted capture** flows
 //! through galadriel end to end.
 //!
@@ -5,7 +6,7 @@
 //! `generate_galadriel_pid_fixture` test: one constant-velocity target, three
 //! modalities — visual/acoustic Cartesian, radar through the EKF polar path —
 //! measurement noise matched to the declared R, 160 frames; regenerated at
-//! crebain ada3aea after audit fix B6 changed mixed-modality birth-representative
+//! crebain ada3eea after audit fix B6 changed mixed-modality birth-representative
 //! selection), NOT hand-written:
 //! every line is a `PidObservation` crebain's `update_track` actually produced
 //! (`emit_innovations` + research fields). Regenerate with
@@ -14,11 +15,13 @@
 //!
 //! What this proves beyond the byte-frozen golden contracts on both sides:
 //! genuine emitter output *parses*, covers all expected modalities with
-//! χ²(3)-plausible NIS, and — the operational claim — a clean capture does
-//! **not** false-alarm either the NIS baseline or the fused correlation
-//! default.
+//! χ²(3)-plausible NIS. The baseline does not false-alarm, while the current
+//! producer does not emit a common-frame/frozen-prior consistency projection, so
+//! fusion must preserve a fail-closed result rather than comparing native residuals.
 
-use galadriel_core::{assess_default, CorrConfig, DetectorConfig, Mirror, Modality, Verdict};
+use galadriel_core::{
+    assess_default, CorrConfig, DetectorConfig, FusedVerdict, Mirror, Modality, Verdict,
+};
 use galadriel_ncp::read_jsonl;
 
 const FIXTURE: &str = concat!(
@@ -37,10 +40,14 @@ fn crebain_capture_parses_with_full_modality_coverage_and_sane_nis() {
     }
     assert!(stream.iter().all(|o| o.dof == 3));
     assert!(stream.iter().all(|o| o.nis.is_finite() && o.nis >= 0.0));
-    // Research fields present (the PID/correlation engines key off them).
+    // Native research fields are present, but no common consistency projection is.
     assert!(stream
         .iter()
         .all(|o| o.innovation.is_some() && o.innovation_cov.is_some()));
+    assert!(
+        stream.iter().all(|o| o.consistency_projection.is_none()),
+        "legacy crebain capture must not be silently treated as common-frame data"
+    );
     // Healthy-filter capture: mean NIS ≈ dof (χ²(3)); a gross model mismatch
     // between the repos would show up here first.
     let mean_nis = stream.iter().map(|o| o.nis).sum::<f64>() / stream.len() as f64;
@@ -51,36 +58,40 @@ fn crebain_capture_parses_with_full_modality_coverage_and_sane_nis() {
 }
 
 #[test]
-fn crebain_clean_capture_does_not_false_alarm_the_detectors() {
+fn crebain_clean_capture_keeps_insufficient_correlation_fail_closed() {
     let stream = read_jsonl(FIXTURE).expect("crebain capture parses");
     let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
 
     // The NIS χ² baseline.
-    let mut mirror = Mirror::new(DetectorConfig::default());
+    let mut mirror = Mirror::new(DetectorConfig::default()).expect("valid default config");
     for observation in &stream {
-        mirror.ingest(observation);
+        mirror
+            .ingest(observation)
+            .expect("fixture remains valid and ordered");
     }
     let last = stream.iter().map(|o| o.seq).max().unwrap_or(0);
-    let report = mirror.assess(1, last);
+    let report = mirror
+        .assess(1, last)
+        .expect("baseline assessment succeeds");
     assert!(
         !matches!(report.verdict, Verdict::Spoof { .. } | Verdict::Jam),
         "clean crebain capture must not alarm the baseline: {:?}",
         report.verdict
     );
 
-    // The fused NIS ⊕ |ρ| correlation default (the shipped detector).
+    // Native radar-polar and Cartesian innovations are intentionally ignored. The
+    // producer supplied no common frame/context/frozen-prior attestation.
     let fused = assess_default(
         &stream,
         &modalities,
         &DetectorConfig::default(),
         &CorrConfig::default(),
-    );
-    assert!(
-        !matches!(
-            fused.verdict,
-            galadriel_core::FusedVerdict::Spoof { .. } | galadriel_core::FusedVerdict::Jam
-        ),
-        "clean crebain capture must not alarm the fused default: {:?}",
-        fused.verdict
+    )
+    .expect("fused assessment succeeds");
+    assert!(fused.correlations.is_empty());
+    assert_eq!(
+        fused.verdict,
+        FusedVerdict::InsufficientEvidence,
+        "fusion must preserve insufficient correlation evidence"
     );
 }

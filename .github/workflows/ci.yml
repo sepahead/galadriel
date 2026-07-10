@@ -1,15 +1,17 @@
 name: CI
 
-# NOTE: galadriel-{pid,ncp,justify} depend on the PRIVATE sibling repos pid-rs and NCP as
-# pinned git deps, so every cargo command resolves them. CI must be able to read those repos:
-# add a repository secret `SIBLING_REPOS_TOKEN` — a PAT or GitHub App token with *read* access
-# to sepahead/pid-rs and sepahead/NCP — and the auth step rewrites the https git-dep URLs to
-# use it. Without the secret the jobs fail at dependency resolution (cannot fetch the siblings).
-
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,40 +19,69 @@ env:
 
 jobs:
   check:
-    name: fmt · clippy · test
-    runs-on: ubuntu-latest
+    name: fmt · clippy · test · docs · MSRV
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - name: Authenticate to private sibling repos
-        run: git config --global url."https://x-access-token:${{ secrets.SIBLING_REPOS_TOKEN }}@github.com/".insteadOf "https://github.com/"
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install pinned workspace toolchain
+        uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4 # 1.88.0
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Fetch locked dependencies
+        run: cargo fetch --locked
 
       - name: Format
         run: cargo fmt --all --check
 
-      - name: Clippy (all targets)
-        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Clippy (workspace, all targets and features)
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
-      - name: Test (workspace)
-        run: cargo test --workspace --all-features
+      - name: Test (workspace, all features)
+        run: cargo test --workspace --all-features --locked
 
-      - name: Pure-core smoke (proves the default build stays heavy-dep-free)
-        run: cargo build -p galadriel-core --no-default-features
+      - name: Documentation (warnings denied)
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: cargo doc --workspace --all-features --no-deps --locked
 
-  msrv:
-    name: MSRV 1.80
-    runs-on: ubuntu-latest
+      - name: Pure-core smoke
+        run: cargo build -p galadriel-core --no-default-features --locked
+
+      - name: Assert vulnerable Zenoh compression path stays disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$(date -u +%F)" > "2026-10-01" ]]; then
+            echo 'RUSTSEC-2026-0041 exception expired; upgrade NCP/Zenoh or renew with review' >&2
+            exit 1
+          fi
+          feature_tree="$(cargo tree -p galadriel-ncp --all-features -e features)"
+          if [[ "$feature_tree" == *'zenoh-transport feature "transport_compression"'* ]]; then
+            echo 'RUSTSEC-2026-0041 mitigation invalid: transport_compression is enabled' >&2
+            exit 1
+          fi
+
+  supply-chain:
+    name: advisories · licenses · sources
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - name: Authenticate to private sibling repos
-        run: git config --global url."https://x-access-token:${{ secrets.SIBLING_REPOS_TOKEN }}@github.com/".insteadOf "https://github.com/"
-      - uses: dtolnay/rust-toolchain@1.80.0
-      - uses: Swatinem/rust-cache@v2
-      # Only the pure default members (core + sim + cli) hold the 1.80 MSRV; the optional
-      # pid/ncp crates raise the union MSRV to 1.88 via pid-core/ncp-core. The workspace still
-      # resolves the git deps (hence the auth step), but only the pure members are compiled.
-      - name: Build the pure default members on the pinned MSRV
-        run: cargo build
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Check dependency policy
+        uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2
+        with:
+          rust-version: "1.88.0"
+          arguments: --all-features --locked

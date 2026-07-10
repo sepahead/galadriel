@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Throughput benchmarks — the **cost** companion to the accuracy (`EVALUATION.md` §2)
 //! and latency (§2.1) studies. They price each detector on one representative workload
 //! (a 300-frame, 3-channel stealthy-spoofed stream) so the "correlation by default, PID
@@ -33,25 +34,28 @@ fn stream(frames: usize) -> Vec<PidObservation> {
             start_frame: (frames as u64) / 3,
         },
     )
+    .expect("valid benchmark scenario")
 }
 
 fn bench_detectors(c: &mut Criterion) {
     let s = stream(300);
+    let channels = scalar_channels(&s, &MODS, 0).expect("valid benchmark channels");
     let last_seq = s.iter().map(|o| o.seq).max().unwrap_or(0);
     let mut g = c.benchmark_group("detectors");
 
     // The cheap magnitude yardstick.
     g.bench_function("baseline_nis_chi2", |b| {
         b.iter(|| {
-            let mut m = Mirror::new(DetectorConfig::default());
+            let mut m = Mirror::with_modalities(DetectorConfig::default(), &MODS)
+                .expect("valid benchmark detector");
             for o in &s {
-                m.ingest(o);
+                m.ingest(o).expect("valid benchmark observation");
             }
-            black_box(m.assess(1, last_seq))
+            black_box(m.assess(1, last_seq).expect("valid benchmark assessment"))
         })
     });
 
-    // The pure default: NIS ⊕ pairwise-|ρ| consistency (no pid-core).
+    // The pure default: NIS ⊕ signed pairwise-ρ consistency (no pid-core).
     g.bench_function("correlation_default_fused", |b| {
         b.iter(|| {
             black_box(assess_default(
@@ -65,12 +69,7 @@ fn bench_detectors(c: &mut Criterion) {
 
     // The escalation: geometry-gated KSG mutual information.
     g.bench_function("pid_ksg_mi", |b| {
-        b.iter(|| {
-            black_box(analyze(
-                &scalar_channels(&s, &MODS, 0),
-                &PidConfig::default(),
-            ))
-        })
+        b.iter(|| black_box(analyze(&channels, &PidConfig::default())))
     });
 
     // The full NIS ⊕ PID fusion.
@@ -88,14 +87,11 @@ fn bench_detectors(c: &mut Criterion) {
     g.finish();
 }
 
-/// How the two **consistency scores** scale with the analysis window `W` (this turns §5.3's
-/// single-point ratio into a curve). `|ρ|` is linear in `W` and sub-µs; the KSG engine caps
-/// its own window, so its cost is roughly constant (~2 ms) once its geometry gate passes
-/// (W ≥ 64; below that the gate fails closed and it does no work). The isolated ratio is thus
-/// ~10³ across the range, dominated by KSG's fixed k-NN cost rather than the window length.
+/// How the two consistency scores scale with the same analysis window `W`.
+/// Benchmark output, rather than a hard-coded timing claim, is the source of truth.
 fn bench_cost_vs_window(c: &mut Criterion) {
     let base = stream(600);
-    let full = scalar_channels(&base, &MODS, 0);
+    let full = scalar_channels(&base, &MODS, 0).expect("valid benchmark channels");
     let mut g = c.benchmark_group("cost_vs_window");
     for &w in &[32usize, 64, 128, 256, 512] {
         // The like-for-like comparison: both consistency scores over the same W samples.
@@ -108,11 +104,16 @@ fn bench_cost_vs_window(c: &mut Criterion) {
             min_samples: (w / 2).max(2),
             ..CorrConfig::default()
         };
+        let pid_cfg = PidConfig {
+            window: w,
+            min_samples: (w / 2).max(PidConfig::default().geom_k + 1),
+            ..PidConfig::default()
+        };
         g.bench_with_input(BenchmarkId::new("correlation", w), &w, |b, _| {
             b.iter(|| black_box(correlation::analyze(&chans, &corr_cfg)))
         });
         g.bench_with_input(BenchmarkId::new("pid_ksg", w), &w, |b, _| {
-            b.iter(|| black_box(analyze(&chans, &PidConfig::default())))
+            b.iter(|| black_box(analyze(&chans, &pid_cfg)))
         });
     }
     g.finish();

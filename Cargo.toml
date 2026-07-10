@@ -29,7 +29,7 @@ default-members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 authors = ["Sepehr Mahmoudian"]
 repository = "https://github.com/sepahead/galadriel"
@@ -38,24 +38,26 @@ description = "Galadriel's Mirror — an information-theoretic cross-sensor cons
 keywords = ["security", "sensor-fusion", "anomaly-detection", "counter-uas", "information-theory"]
 categories = ["science", "algorithms"]
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+statrs = { version = "0.18", default-features = false }
 rand = "0.8"
 rand_distr = "0.4"
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"
-galadriel-core = { path = "crates/galadriel-core" }
-galadriel-sim = { path = "crates/galadriel-sim" }
-galadriel-pid = { path = "crates/galadriel-pid" }
-galadriel-ncp = { path = "crates/galadriel-ncp" }
-# Sibling ecosystem crates, pinned by git tag so an isolated clone / CI can resolve the
-# workspace (a private-clone still needs read access to these repos — see the README build
-# note). For local sibling-tree dev, add a `paths` override in .cargo/config.toml.
-pid-core = { git = "https://github.com/sepahead/pid-rs", tag = "v0.4.0" }
-ncp-core = { git = "https://github.com/sepahead/NCP", tag = "v0.6.0" }
-ncp-zenoh = { git = "https://github.com/sepahead/NCP", tag = "v0.6.0" }
+galadriel-core = { version = "0.1.0", path = "crates/galadriel-core" }
+galadriel-sim = { version = "0.1.0", path = "crates/galadriel-sim" }
+galadriel-pid = { version = "0.1.0", path = "crates/galadriel-pid" }
+galadriel-ncp = { version = "0.1.0", path = "crates/galadriel-ncp" }
+# Public sibling ecosystem crates, pinned by git tag and exact lockfile commit.
+pid-core = { version = "0.4.0", git = "https://github.com/sepahead/pid-rs", tag = "v0.4.0" }
+ncp-core = { version = "0.6.0", git = "https://github.com/sepahead/NCP", tag = "v0.6.0" }
+ncp-zenoh = { version = "0.6.0", git = "https://github.com/sepahead/NCP", tag = "v0.6.0" }
 
 [profile.release]
 lto = "thin"

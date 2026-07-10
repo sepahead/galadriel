@@ -15,6 +15,18 @@ pub enum GaladrielError {
     #[error("non-finite value in {0}")]
     NonFinite(&'static str),
 
+    /// An observation violates the detector's wire or streaming invariants.
+    #[error("invalid observation: {0}")]
+    InvalidObservation(String),
+
+    /// A cross-channel input cannot be aligned or interpreted unambiguously.
+    #[error("invalid channel input: {0}")]
+    InvalidChannels(String),
+
+    /// The detector's bounded retained-state limit was reached.
+    #[error("track limit reached: configured maximum is {limit}")]
+    TrackLimit { limit: usize },
+
     /// A configuration value was out of range.
     #[error("invalid configuration: {0}")]
     InvalidConfig(String),

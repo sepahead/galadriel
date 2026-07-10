@@ -7,6 +7,13 @@ cross-sensor agreement**; and **cross-sensor consistency checking** — exactly 
 implements — is a recognized countermeasure. This document lays out the evidence and cites its
 sources, then states honestly where galadriel does and does not help.
 
+> **Evidence status (2026-07 audit).** The threat and literature citations below motivate
+> the research question; they do not validate this implementation. Galadriel's current
+> detector evidence is synthetic. The bundled crebain capture proves parsing and baseline
+> smoke behavior only: normal captures omit research fields, modalities use mixed residual
+> frames, sequential updates do not share a frozen prior, and gating censors misses. The
+> cross-channel result for that fixture is therefore `InsufficientEvidence`.
+
 ---
 
 ## 1. The threat is real, and it is current
@@ -61,8 +68,9 @@ attacker can **fabricate cross-sensor consistency**:
 This is the crux, and it is **exactly the boundary galadriel draws for itself** (paper §6): a
 consistency detector catches a spoof that *breaks* cross-channel agreement, but is defeated by a
 **statistics-matching false-data injection** that *preserves* it. The frustum attack is that
-adversary, in the wild, at the state of the art. galadriel does not claim to beat it — it claims
-to raise the adversary's bar *to* that capability, and says so plainly.
+adversary demonstrated in a research system. galadriel does not claim to beat it. The
+example identifies a boundary for consistency monitoring; no current field evidence
+quantifies how much galadriel raises an operational adversary's cost.
 
 ## 3. Cross-sensor consistency detection is a recognized countermeasure
 
@@ -78,28 +86,29 @@ and this is a mature academic method: Broumandan & Lachapelle detect spoofing by
 check between the GNSS solution and a self-contained INS/odometer** over an observation window
 ([*Sensors* 18(5):1305, 2018](https://www.mdpi.com/1424-8220/18/5/1305)).
 
-galadriel is the **multi-sensor generalization** of that established idea — a clean, tested,
-honestly-scoped reference implementation past a single GNSS-vs-INS residual to an $N$-channel
-cross-sensor test — plus the methodological result in §4 below (which detector to pay for).
+galadriel explores an **N-channel generalization** of that established idea. It is a
+tested research implementation, not a field-validated reference detector. Its current
+producer integration does not yet provide comparable cross-modal residuals.
 
 ## 4. Where galadriel fits — and the sharper contribution
 
 Two things make galadriel more than "another consistency check":
 
 **(a) It maps the method choice onto the real attack classes.** The paper's central result is that
-*information-theoretic* consistency (mutual information / Partial Information Decomposition) is
-**forced, not justified,** over a one-line correlation check when the cross-channel dependence is
-linear-Gaussian — and is *justified* only when the dependence is genuinely nonlinear, synergistic,
-or adversarially structured. This dichotomy is not academic; it partitions the real threat:
+*information-theoretic* consistency (mutual information / Partial Information Decomposition)
+adds no population information over covariance when the registered cross-channel model is
+linear-Gaussian. It becomes a research candidate when a documented estimand is nonlinear,
+joint, or adversarially structured. Whether either regime describes field data is empirical:
 
-- **GNSS / kinematic spoofing** (the counter-UAS tracker case) produces **linear-Gaussian**
-  innovation residuals. Here MI/PID is forced — a correlation check is provably sufficient, ~100×
-  cheaper, and (near the detection boundary) strictly better. Use the cheap detector.
-- **Learned-perception MSF attacks** (`MSF-ADV`, the frustum attack) act on a **nonlinear,
-  synergistic** neural fusion feature — the *kind* of regime §4.2 describes, where a
+- **An ideal linear-Gaussian tracker model** makes MI a monotone transform of correlation.
+  In that model, MI/PID adds no population-level discrimination and correlation is the
+  appropriate cheaper statistic. Whether recorded counter-UAS innovations fit that model
+  is an open empirical question, not an established property of current crebain output.
+- **Learned-perception MSF attacks** (`MSF-ADV`, the frustum attack) act on a nonlinear
+  neural fusion stack — the kind of regime §4.2 motivates studying, where a
   joint-information measure *could in principle* see structure a correlation check on that feature
   cannot. Two honest caveats keep this short of a claim that the escalation *beats* these attacks:
-  galadriel consumes kinematic innovation residuals, not that fusion feature (so this argues *where*
+  galadriel consumes an attested projection of kinematic residuals, not that fusion feature (so this argues *where*
   escalation would pay off, it is not a galadriel result); and the frustum attack is *defined* by
   preserving cross-sensor consistency (§2), which by construction defeats **every** consistency
   detector — correlation and MI/PID alike. The escalation's payoff is confined to couplings that are
@@ -107,12 +116,12 @@ or adversarially structured. This dichotomy is not academic; it partitions the r
   whole family's shared blind spot, and the paper leaves the neural-fusion mapping itself to future
   work.
 
-So the disciplined recommendation ("correlation by default, PID on escalation") is a *map* from the
-attack you face to the detector you should pay for.
+So the disciplined recommendation is signed correlation by default and PID only as
+additive, sign-invariant evidence when validated geometry and a nonlinear estimand justify it.
 
 **(b) It is scrupulously honest about scope.** galadriel is **advisory**
 (`calibrated_posterior = false`): it authenticates statistical *consistency*, not *truth*; it
-cannot see a statistics-matching spoof (§2); and its evaluation is a synthetic, Gaussian,
+cannot see a statistics-matching spoof (§2); and its evaluation is synthetic,
 non-adaptive study whose limits are stated in the paper's §6. The real enforcement layer is
 cryptographic (per-plane ACL / mTLS on the NCP bus) plus a safety governor; galadriel is
 instrumentation on top.
@@ -140,20 +149,20 @@ The information-theoretic machinery is standard and correctly attributed:
   foundation is Gutknecht, Wibral & Makkeh, *Proc. R. Soc. A* **477**:20210110 (2021)
   ([arXiv:2008.09535](https://arxiv.org/abs/2008.09535)).
 
-The claim that on jointly-Gaussian data the *entire* decomposition is fixed by the covariance —
+The observation that on jointly-Gaussian data the *entire* decomposition is fixed by the covariance —
 so PID adds nothing over correlation there — needs no deep theorem: a zero-mean Gaussian is
 completely parameterized by its covariance, so *any* PID functional of it (any measure, the
-deployed `I^sx` included) is a function of the correlations. What **Barrett** proved is the
+the reported `I^sx` included) is a function of the correlations. What **Barrett** proved is the
 sharper, measure-collapsing statement: for jointly-Gaussian sources and a *univariate* target,
 every PID whose redundant/unique atoms depend only on the pairwise source–target marginals
 (I_min, BROJA, and the other pre-2015 proposals) reduces to the minimum-mutual-information
 redundancy (A. B. Barrett, *Phys. Rev. E* **91**, 052802, 2015,
 [arXiv:1411.2832](https://arxiv.org/abs/1411.2832)); Venkatesh & Schamberg confirm that
 reduction for scalar targets and show it does **not** extend to multivariate targets
-([ISIT 2022](https://arxiv.org/abs/2105.00769)). The deployed `I^sx` is *outside* Barrett's
+([ISIT 2022](https://arxiv.org/abs/2105.00769)). The reported `I^sx` is *outside* Barrett's
 class (it reads the full joint and permits negative atoms; on Gaussians its redundancy is a
-different function of the covariance than MMI) — which changes nothing for the "forced"
-argument: it is still a function of the covariance. The finite-sample
+different function of the covariance than MMI). It is still determined by the covariance,
+but that fact alone does not establish finite-sample estimator equivalence. The finite-sample
 behaviour of the KSG estimator we escalate to splits across three sources: its dimension-dependent
 bias in the high-dimensional / short-window regime our geometry gate rejects is characterised by
 [Gao, Oh & Viswanath (IEEE Trans. IT 2018)](https://arxiv.org/abs/1604.03006); its tendency to

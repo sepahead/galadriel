@@ -6,83 +6,753 @@
 //! `{realm}/session/{id}/galadriel/pid` (see [`crate::sidecar_key`]) — additive under
 //! the session, never a proto/wire message, so it can never touch NCP's `CONTRACT_HASH`.
 //!
-//! It is a strictly **read-only observer**: [`SidecarTap`] only *subscribes*. It never
-//! publishes to a control plane, never opens a session, never touches the safety-gated
-//! action plane — galadriel is instrumentation on top of the bus, not a participant in
-//! the loop.
+//! It is a strictly **read-only observer**: [`SidecarTap`] only *subscribes*. It opens
+//! (or shares) a Zenoh transport session, but never opens an NCP control session,
+//! publishes to a control plane, or touches the safety-gated action plane — galadriel
+//! is instrumentation on top of the bus, not a participant in the loop.
 //!
 //! ```no_run
 //! # async fn run() -> Result<(), Box<dyn std::error::Error>> {
 //! use galadriel_ncp::live::SidecarTap;
 //! let tap = SidecarTap::open().await?;
-//! tap.subscribe("uav3", |obs| {
+//! let health = tap.subscribe_with_health("uav3", |obs| {
 //!     // hand each observation to a galadriel detector (cheap: decode + enqueue)
 //!     let _ = obs.nis;
 //! })
 //! .await?;
+//! assert_eq!(health.payloads_received(), 0);
 //! # Ok(()) }
 //! ```
 
+use std::cell::Cell;
+use std::collections::{BTreeMap, HashMap};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Condvar, Mutex};
 
-use galadriel_core::observation::PidObservation;
+use galadriel_core::observation::{Modality, PidObservation};
 use ncp_core::{Keys, DEFAULT_REALM};
 use ncp_zenoh::{ZenohBus, ZenohError};
 
-use crate::sidecar_key;
+use crate::{sidecar_key, valid_realm};
+
+/// Maximum live sidecar payload accepted under [`LiveLimits::default`].
+pub const DEFAULT_MAX_LIVE_PAYLOAD_BYTES: usize = 64 * 1024;
+
+/// Maximum `(track, modality)` sequence streams retained by a live subscription.
+pub const DEFAULT_MAX_LIVE_SEQUENCE_STREAMS: usize = 6 * 1024;
+
+/// Maximum forward sequence advance after a stream's first accepted observation.
+pub const DEFAULT_MAX_LIVE_SEQUENCE_ADVANCE: u64 = 1_000_000;
+
+/// Resource limits for live sidecar ingest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LiveLimits {
+    max_payload_bytes: usize,
+    max_sequence_streams: usize,
+    max_sequence_advance: u64,
+}
+
+impl LiveLimits {
+    /// Build a nonzero live-payload limit with the default sequence-stream bound.
+    pub fn new(max_payload_bytes: usize) -> Result<Self, ZenohError> {
+        Self::with_sequence_stream_limit(max_payload_bytes, DEFAULT_MAX_LIVE_SEQUENCE_STREAMS)
+    }
+
+    /// Build nonzero live-payload and sequence-stream limits.
+    pub fn with_sequence_stream_limit(
+        max_payload_bytes: usize,
+        max_sequence_streams: usize,
+    ) -> Result<Self, ZenohError> {
+        Self::with_sequence_policy(
+            max_payload_bytes,
+            max_sequence_streams,
+            DEFAULT_MAX_LIVE_SEQUENCE_ADVANCE,
+        )
+    }
+
+    /// Build nonzero payload, retained-stream, and forward-sequence limits.
+    ///
+    /// A stream's first valid observation establishes its sequence baseline so a
+    /// healthy late subscriber can join at any sequence. `max_sequence_advance`
+    /// applies only to later observations. Producers should use a new NCP
+    /// `session_id` for every process epoch rather than resetting a sequence in an
+    /// existing session. Because the first sequence is necessarily trusted as a
+    /// baseline, an unauthenticated first payload could pin that stream at a hostile
+    /// value; authenticated ACLs and explicit session epochs remain required.
+    pub fn with_sequence_policy(
+        max_payload_bytes: usize,
+        max_sequence_streams: usize,
+        max_sequence_advance: u64,
+    ) -> Result<Self, ZenohError> {
+        if max_payload_bytes == 0 {
+            return Err(ZenohError(
+                "max live payload bytes must be greater than zero".to_string(),
+            ));
+        }
+        if max_sequence_streams == 0 {
+            return Err(ZenohError(
+                "max live sequence streams must be greater than zero".to_string(),
+            ));
+        }
+        if max_sequence_advance == 0 {
+            return Err(ZenohError(
+                "max live sequence advance must be greater than zero".to_string(),
+            ));
+        }
+        Ok(Self {
+            max_payload_bytes,
+            max_sequence_streams,
+            max_sequence_advance,
+        })
+    }
+
+    /// Maximum encoded bytes accepted for one sidecar payload.
+    pub fn max_payload_bytes(self) -> usize {
+        self.max_payload_bytes
+    }
+
+    /// Maximum retained `(track, modality)` sequence streams per subscription.
+    pub fn max_sequence_streams(self) -> usize {
+        self.max_sequence_streams
+    }
+
+    /// Maximum accepted forward advance after one stream establishes its baseline.
+    pub fn max_sequence_advance(self) -> u64 {
+        self.max_sequence_advance
+    }
+}
+
+impl Default for LiveLimits {
+    fn default() -> Self {
+        Self {
+            max_payload_bytes: DEFAULT_MAX_LIVE_PAYLOAD_BYTES,
+            max_sequence_streams: DEFAULT_MAX_LIVE_SEQUENCE_STREAMS,
+            max_sequence_advance: DEFAULT_MAX_LIVE_SEQUENCE_ADVANCE,
+        }
+    }
+}
+
+/// A reason a live payload was rejected before callback delivery.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum RejectionReason {
+    /// The encoded payload exceeded [`LiveLimits::max_payload_bytes`].
+    PayloadTooLarge,
+    /// The payload was not valid JSON for a `PidObservation`.
+    MalformedJson,
+    /// The decoded observation failed semantic validation.
+    InvalidObservation,
+    /// The sequence duplicated or regressed within its retained stream.
+    DuplicateOrRegressedSequence,
+    /// A later sequence advanced farther than [`LiveLimits::max_sequence_advance`].
+    ExcessiveForwardSequenceGap,
+    /// Internal bounded sequence state could not be reserved or remained inconsistent.
+    SequenceStateFailure,
+}
+
+/// Snapshot of typed live-payload rejection counters.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct RejectionCounts {
+    /// Payloads rejected for encoded size.
+    pub payload_too_large: u64,
+    /// Payloads rejected because JSON decoding failed.
+    pub malformed_json: u64,
+    /// Decoded observations rejected by semantic validation.
+    pub invalid_observation: u64,
+    /// Duplicate or regressed sequences.
+    pub duplicate_or_regressed_sequence: u64,
+    /// Established streams rejected for an excessive forward sequence gap.
+    pub excessive_forward_sequence_gap: u64,
+    /// Internal sequence-state failures.
+    pub sequence_state_failure: u64,
+}
+
+impl RejectionCounts {
+    /// Counter value for one typed rejection reason.
+    pub fn count(self, reason: RejectionReason) -> u64 {
+        match reason {
+            RejectionReason::PayloadTooLarge => self.payload_too_large,
+            RejectionReason::MalformedJson => self.malformed_json,
+            RejectionReason::InvalidObservation => self.invalid_observation,
+            RejectionReason::DuplicateOrRegressedSequence => self.duplicate_or_regressed_sequence,
+            RejectionReason::ExcessiveForwardSequenceGap => self.excessive_forward_sequence_gap,
+            RejectionReason::SequenceStateFailure => self.sequence_state_failure,
+        }
+    }
+
+    /// Saturating sum of all typed rejection counters.
+    pub fn total(self) -> u64 {
+        self.payload_too_large
+            .saturating_add(self.malformed_json)
+            .saturating_add(self.invalid_observation)
+            .saturating_add(self.duplicate_or_regressed_sequence)
+            .saturating_add(self.excessive_forward_sequence_gap)
+            .saturating_add(self.sequence_state_failure)
+    }
+}
+
+/// Identity and producer timestamp of the last observation accepted for delivery.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct LastAcceptedObservation {
+    /// Producer track identifier.
+    pub track_id: u64,
+    /// Sensor modality for the retained sequence stream.
+    pub modality: Modality,
+    /// Producer sequence accepted for that stream.
+    pub sequence: u64,
+    /// Producer-supplied observation timestamp, not local wall-clock receive time.
+    pub timestamp_ms: u64,
+}
+
+impl From<&PidObservation> for LastAcceptedObservation {
+    fn from(observation: &PidObservation) -> Self {
+        Self {
+            track_id: observation.track_id,
+            modality: observation.modality,
+            sequence: observation.seq,
+            timestamp_ms: observation.timestamp_ms,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct IngestCounters {
+    payloads_received: AtomicU64,
+    observations_accepted: AtomicU64,
+    decode_failures: AtomicU64,
+    callback_panics: AtomicU64,
+    sequence_evictions: AtomicU64,
+    sequence_resets: AtomicU64,
+    payload_too_large: AtomicU64,
+    malformed_json: AtomicU64,
+    invalid_observation: AtomicU64,
+    duplicate_or_regressed_sequence: AtomicU64,
+    excessive_forward_sequence_gap: AtomicU64,
+    sequence_state_failure: AtomicU64,
+    last_accepted: Mutex<Option<LastAcceptedObservation>>,
+}
+
+impl IngestCounters {
+    fn rejection_count(&self, reason: RejectionReason) -> u64 {
+        match reason {
+            RejectionReason::PayloadTooLarge => self.payload_too_large.load(Ordering::Relaxed),
+            RejectionReason::MalformedJson => self.malformed_json.load(Ordering::Relaxed),
+            RejectionReason::InvalidObservation => self.invalid_observation.load(Ordering::Relaxed),
+            RejectionReason::DuplicateOrRegressedSequence => {
+                self.duplicate_or_regressed_sequence.load(Ordering::Relaxed)
+            }
+            RejectionReason::ExcessiveForwardSequenceGap => {
+                self.excessive_forward_sequence_gap.load(Ordering::Relaxed)
+            }
+            RejectionReason::SequenceStateFailure => {
+                self.sequence_state_failure.load(Ordering::Relaxed)
+            }
+        }
+    }
+
+    fn rejection_counts(&self) -> RejectionCounts {
+        RejectionCounts {
+            payload_too_large: self.rejection_count(RejectionReason::PayloadTooLarge),
+            malformed_json: self.rejection_count(RejectionReason::MalformedJson),
+            invalid_observation: self.rejection_count(RejectionReason::InvalidObservation),
+            duplicate_or_regressed_sequence: self
+                .rejection_count(RejectionReason::DuplicateOrRegressedSequence),
+            excessive_forward_sequence_gap: self
+                .rejection_count(RejectionReason::ExcessiveForwardSequenceGap),
+            sequence_state_failure: self.rejection_count(RejectionReason::SequenceStateFailure),
+        }
+    }
+
+    fn last_accepted(&self) -> Option<LastAcceptedObservation> {
+        *self
+            .last_accepted
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+    }
+}
+
+/// Failure to establish an explicit live sequence-reset boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SequenceResetError {
+    /// Reset was requested from any live observation callback on this thread.
+    CalledFromCallback,
+    /// The target subscription is currently decoding or delivering a payload.
+    /// Retry after that delivery returns.
+    DeliveryInProgress,
+    /// The pending-reset counter could not represent another concurrent request.
+    TooManyPendingResets,
+}
+
+impl std::fmt::Display for SequenceResetError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CalledFromCallback => {
+                formatter.write_str("sequence reset cannot run from inside on_obs")
+            }
+            Self::DeliveryInProgress => {
+                formatter.write_str("sequence reset cannot run while delivery is in progress")
+            }
+            Self::TooManyPendingResets => {
+                formatter.write_str("too many concurrent sequence reset requests")
+            }
+        }
+    }
+}
+
+impl std::error::Error for SequenceResetError {}
+
+#[derive(Debug, Default)]
+struct DeliveryBoundaryState {
+    delivery_active: bool,
+    reset_active: bool,
+    pending_resets: usize,
+}
+
+#[derive(Debug, Default)]
+struct DeliveryBoundary {
+    state: Mutex<DeliveryBoundaryState>,
+    changed: Condvar,
+}
+
+impl DeliveryBoundary {
+    fn begin_delivery(&self) -> DeliveryGuard<'_> {
+        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        while state.delivery_active || state.reset_active || state.pending_resets > 0 {
+            state = self
+                .changed
+                .wait(state)
+                .unwrap_or_else(|error| error.into_inner());
+        }
+        state.delivery_active = true;
+        DeliveryGuard { boundary: self }
+    }
+
+    fn begin_reset(&self) -> Result<ResetGuard<'_>, SequenceResetError> {
+        if callback_active() {
+            return Err(SequenceResetError::CalledFromCallback);
+        }
+        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        if state.delivery_active {
+            return Err(SequenceResetError::DeliveryInProgress);
+        }
+        state.pending_resets = state
+            .pending_resets
+            .checked_add(1)
+            .ok_or(SequenceResetError::TooManyPendingResets)?;
+        self.changed.notify_all();
+        while state.reset_active {
+            state = self
+                .changed
+                .wait(state)
+                .unwrap_or_else(|error| error.into_inner());
+        }
+        state.pending_resets -= 1;
+        state.reset_active = true;
+        Ok(ResetGuard { boundary: self })
+    }
+}
+
+struct DeliveryGuard<'a> {
+    boundary: &'a DeliveryBoundary,
+}
+
+impl Drop for DeliveryGuard<'_> {
+    fn drop(&mut self) {
+        let mut state = self
+            .boundary
+            .state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        state.delivery_active = false;
+        self.boundary.changed.notify_all();
+    }
+}
+
+struct ResetGuard<'a> {
+    boundary: &'a DeliveryBoundary,
+}
+
+impl Drop for ResetGuard<'_> {
+    fn drop(&mut self) {
+        let mut state = self
+            .boundary
+            .state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        state.reset_active = false;
+        self.boundary.changed.notify_all();
+    }
+}
+
+thread_local! {
+    /// A callback may synchronously trigger another subscription's receive path on
+    /// the same thread. Remember the previous value so nested callback scopes restore
+    /// the outer scope instead of clearing it prematurely.
+    static CALLBACK_ACTIVE: Cell<bool> = const { Cell::new(false) };
+}
+
+fn callback_active() -> bool {
+    CALLBACK_ACTIVE.get()
+}
+
+struct CallbackGuard {
+    previous: bool,
+}
+
+impl CallbackGuard {
+    fn enter() -> Self {
+        let previous = CALLBACK_ACTIVE.replace(true);
+        Self { previous }
+    }
+}
+
+impl Drop for CallbackGuard {
+    fn drop(&mut self) {
+        CALLBACK_ACTIVE.set(self.previous);
+    }
+}
+
+type SequenceKey = (u64, Modality);
+
+#[derive(Debug, Clone, Copy)]
+struct LiveSequenceState {
+    last: u64,
+    touched: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SequenceRejection {
+    DuplicateOrRegressed,
+    ExcessiveForwardGap,
+    StateFailure,
+}
+
+impl From<SequenceRejection> for RejectionReason {
+    fn from(reason: SequenceRejection) -> Self {
+        match reason {
+            SequenceRejection::DuplicateOrRegressed => Self::DuplicateOrRegressedSequence,
+            SequenceRejection::ExcessiveForwardGap => Self::ExcessiveForwardSequenceGap,
+            SequenceRejection::StateFailure => Self::SequenceStateFailure,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct LiveSequenceTracker {
+    states: HashMap<SequenceKey, LiveSequenceState>,
+    recency: BTreeMap<u64, SequenceKey>,
+    touch_counter: u64,
+}
+
+impl LiveSequenceTracker {
+    /// Accept a live observation under a bounded forward-advance policy. A new
+    /// stream evicts the least-recently-used stream at capacity and reports that
+    /// eviction to the caller, which must surface it operationally.
+    fn accept(
+        &mut self,
+        observation: &PidObservation,
+        max_streams: usize,
+        max_forward_gap: u64,
+    ) -> Result<bool, SequenceRejection> {
+        if max_streams == 0 {
+            return Err(SequenceRejection::StateFailure);
+        }
+        if max_forward_gap == 0 {
+            return Err(SequenceRejection::StateFailure);
+        }
+
+        let key = (observation.track_id, observation.modality);
+        if let Some(state) = self.states.get(&key).copied() {
+            if observation.seq <= state.last {
+                return Err(SequenceRejection::DuplicateOrRegressed);
+            }
+            let gap = observation.seq - state.last;
+            if gap > max_forward_gap {
+                return Err(SequenceRejection::ExcessiveForwardGap);
+            }
+            if self.recency.get(&state.touched).copied() != Some(key) {
+                return Err(SequenceRejection::StateFailure);
+            }
+            let touched = self.next_touch()?;
+            self.recency.remove(&state.touched);
+            self.recency.insert(touched, key);
+            self.states.insert(
+                key,
+                LiveSequenceState {
+                    last: observation.seq,
+                    touched,
+                },
+            );
+            return Ok(false);
+        }
+
+        let touched = self.next_touch()?;
+        let evicted = if self.states.len() >= max_streams {
+            let (oldest_touch, oldest_key) = self
+                .recency
+                .first_key_value()
+                .map(|(touch, key)| (*touch, *key))
+                .ok_or(SequenceRejection::StateFailure)?;
+            if self.states.get(&oldest_key).map(|state| state.touched) != Some(oldest_touch) {
+                return Err(SequenceRejection::StateFailure);
+            }
+            self.recency.remove(&oldest_touch);
+            self.states.remove(&oldest_key);
+            true
+        } else {
+            self.states
+                .try_reserve(1)
+                .map_err(|_| SequenceRejection::StateFailure)?;
+            false
+        };
+        self.recency.insert(touched, key);
+        self.states.insert(
+            key,
+            LiveSequenceState {
+                last: observation.seq,
+                touched,
+            },
+        );
+        Ok(evicted)
+    }
+
+    fn clear(&mut self) -> usize {
+        let removed = self.states.len();
+        self.states.clear();
+        self.recency.clear();
+        self.touch_counter = 0;
+        removed
+    }
+
+    fn len(&self) -> usize {
+        self.states.len()
+    }
+
+    fn next_touch(&mut self) -> Result<u64, SequenceRejection> {
+        self.touch_counter = self
+            .touch_counter
+            .checked_add(1)
+            .ok_or(SequenceRejection::StateFailure)?;
+        Ok(self.touch_counter)
+    }
+}
+
+/// Per-subscription ingest health and explicit sequence-epoch recovery.
+///
+/// Clones share the same counters and sequence state. Sequence eviction keeps live
+/// state bounded but weakens replay memory for the evicted stream, so any nonzero
+/// [`Self::sequence_evictions`] value should be investigated. The sidecar key must
+/// still be protected by an authenticated, least-privilege NCP ACL.
+#[derive(Clone, Debug)]
+pub struct SubscriptionHealth {
+    counters: Arc<IngestCounters>,
+    tap_counters: Arc<IngestCounters>,
+    sequences: Arc<Mutex<LiveSequenceTracker>>,
+    delivery_boundary: Arc<DeliveryBoundary>,
+}
+
+impl SubscriptionHealth {
+    /// Payloads received for this subscription, including rejected payloads.
+    pub fn payloads_received(&self) -> u64 {
+        self.counters.payloads_received.load(Ordering::Relaxed)
+    }
+
+    /// Observations that passed decoding, validation, and sequence checks.
+    pub fn observations_accepted(&self) -> u64 {
+        self.counters.observations_accepted.load(Ordering::Relaxed)
+    }
+
+    /// Payloads rejected before the user callback. Use [`Self::rejections`] for the
+    /// reason-specific breakdown.
+    pub fn decode_failures(&self) -> u64 {
+        self.counters.decode_failures.load(Ordering::Relaxed)
+    }
+
+    /// Snapshot all typed rejection counters for this subscription.
+    pub fn rejections(&self) -> RejectionCounts {
+        self.counters.rejection_counts()
+    }
+
+    /// Counter value for one typed rejection reason in this subscription.
+    pub fn rejection_count(&self, reason: RejectionReason) -> u64 {
+        self.counters.rejection_count(reason)
+    }
+
+    /// Last observation accepted in this subscription's serialized delivery order.
+    /// Returns `None` before the first acceptance and immediately after a reset.
+    pub fn last_accepted(&self) -> Option<LastAcceptedObservation> {
+        self.counters.last_accepted()
+    }
+
+    /// User callback panics contained at the subscription boundary.
+    pub fn callback_panics(&self) -> u64 {
+        self.counters.callback_panics.load(Ordering::Relaxed)
+    }
+
+    /// Least-recently-used sequence states evicted at the configured capacity.
+    pub fn sequence_evictions(&self) -> u64 {
+        self.counters.sequence_evictions.load(Ordering::Relaxed)
+    }
+
+    /// Explicit sequence-state resets requested through this handle.
+    pub fn sequence_resets(&self) -> u64 {
+        self.counters.sequence_resets.load(Ordering::Relaxed)
+    }
+
+    /// Number of `(track, modality)` sequence streams currently retained.
+    pub fn retained_sequence_streams(&self) -> usize {
+        self.sequences
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .len()
+    }
+
+    /// Clear sequence replay state and return the number of removed streams.
+    ///
+    /// Prefer a fresh `session_id` when the producer restarts. This escape hatch is
+    /// for an authenticated, externally confirmed producer epoch change; callers
+    /// must reset the downstream detector at the same boundary. Calling it for
+    /// ordinary regressions would make replayed observations eligible again.
+    ///
+    /// Reset and callback delivery share a serialized boundary. A reset acquired
+    /// while the subscription is idle prevents a later callback from starting until
+    /// it completes. If decoding or callback delivery is already active, this method
+    /// fails fast with [`SequenceResetError::DeliveryInProgress`]; callers may retry
+    /// after delivery returns. It never waits for an active callback, so a callback
+    /// that spawns and joins a reset thread cannot deadlock the receive path.
+    ///
+    /// This method must not be called directly from **any** live `on_obs` callback,
+    /// including a callback for another subscription. Such attempts return
+    /// [`SequenceResetError::CalledFromCallback`] without changing state.
+    /// This local boundary cannot label or drain bytes already queued inside the
+    /// transport; a fresh session ID remains the only unambiguous wire-level epoch.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SequenceResetError`] for a callback-context reset, an active target
+    /// delivery, or an exhausted pending-reset counter.
+    pub fn reset_sequence_state(&self) -> Result<usize, SequenceResetError> {
+        let _reset = self.delivery_boundary.begin_reset()?;
+        let removed = self
+            .sequences
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .clear();
+        *self
+            .counters
+            .last_accepted
+            .lock()
+            .unwrap_or_else(|error| error.into_inner()) = None;
+        self.counters
+            .sequence_resets
+            .fetch_add(1, Ordering::Relaxed);
+        self.tap_counters
+            .sequence_resets
+            .fetch_add(1, Ordering::Relaxed);
+        Ok(removed)
+    }
+}
 
 /// A live, read-only tap on galadriel's sidecar observation key over Zenoh.
 pub struct SidecarTap {
     bus: ZenohBus,
     realm: String,
-    decode_failures: Arc<AtomicU64>,
-    payloads_received: Arc<AtomicU64>,
+    limits: LiveLimits,
+    counters: Arc<IngestCounters>,
 }
 
 impl SidecarTap {
     /// Open a tap on the default NCP realm with the hardened default Zenoh config.
     pub async fn open() -> Result<Self, ZenohError> {
+        Self::open_with_limits(LiveLimits::default()).await
+    }
+
+    /// Open a default-realm tap with caller-supplied payload limits.
+    pub async fn open_with_limits(limits: LiveLimits) -> Result<Self, ZenohError> {
+        Self::from_parts(ZenohBus::open().await?, DEFAULT_REALM.to_string(), limits)
+    }
+
+    fn from_parts(bus: ZenohBus, realm: String, limits: LiveLimits) -> Result<Self, ZenohError> {
+        if !valid_realm(&realm) {
+            return Err(ZenohError(format!(
+                "invalid NCP realm: expected concrete key segments, got {realm:?}"
+            )));
+        }
         Ok(Self {
-            bus: ZenohBus::open().await?,
-            realm: DEFAULT_REALM.to_string(),
-            decode_failures: Arc::new(AtomicU64::new(0)),
-            payloads_received: Arc::new(AtomicU64::new(0)),
+            bus,
+            realm,
+            limits,
+            counters: Arc::new(IngestCounters::default()),
         })
     }
 
     /// Open a tap on an explicit realm.
     pub async fn open_realm(realm: impl Into<String>) -> Result<Self, ZenohError> {
+        Self::open_realm_with_limits(realm, LiveLimits::default()).await
+    }
+
+    /// Open an explicit-realm tap with caller-supplied payload limits.
+    pub async fn open_realm_with_limits(
+        realm: impl Into<String>,
+        limits: LiveLimits,
+    ) -> Result<Self, ZenohError> {
         let realm = realm.into();
+        if !valid_realm(&realm) {
+            return Err(ZenohError(format!(
+                "invalid NCP realm: expected concrete key segments, got {realm:?}"
+            )));
+        }
         let bus = ZenohBus::open_realm(Keys::new(&realm)).await?;
-        Ok(Self {
-            bus,
-            realm,
-            decode_failures: Arc::new(AtomicU64::new(0)),
-            payloads_received: Arc::new(AtomicU64::new(0)),
-        })
+        Self::from_parts(bus, realm, limits)
     }
 
     /// Wrap an already-open bus, so a host app can share one Zenoh session across its
-    /// own traffic and galadriel's observer tap.
-    pub fn from_bus(bus: ZenohBus, realm: impl Into<String>) -> Self {
-        Self {
-            bus,
-            realm: realm.into(),
-            decode_failures: Arc::new(AtomicU64::new(0)),
-            payloads_received: Arc::new(AtomicU64::new(0)),
-        }
+    /// own traffic and galadriel's observer tap. The realm is derived from the bus,
+    /// eliminating a caller-supplied realm that could silently subscribe to the wrong
+    /// keyspace.
+    pub fn from_bus(bus: ZenohBus) -> Result<Self, ZenohError> {
+        Self::from_bus_with_limits(bus, LiveLimits::default())
     }
 
-    /// Payloads on the sidecar key that failed to decode as a [`PidObservation`],
-    /// across all subscriptions of this tap. Malformed input is *dropped* (the
-    /// callback must never see adversarial bytes) but **never silently**: a rising
-    /// counter here is the first symptom of sidecar-contract drift (a producer
-    /// serializing a different shape — see `sidecar_payload_contract_is_frozen`)
-    /// or of garbage injected on the key, and a monitor must be able to see its
-    /// own feed rotting.
+    /// Wrap an already-open bus with caller-supplied payload limits.
+    pub fn from_bus_with_limits(bus: ZenohBus, limits: LiveLimits) -> Result<Self, ZenohError> {
+        let realm = bus.keys().realm.clone();
+        Self::from_parts(bus, realm, limits)
+    }
+
+    /// Payloads rejected for excessive size, malformed JSON, invalid observation
+    /// values, duplicate/regressed sequence numbers, or excessive sequence advances,
+    /// across all subscriptions. Use [`Self::rejections`] for the typed breakdown.
+    /// Rejected input is dropped before the callback but never silently.
     pub fn decode_failures(&self) -> u64 {
-        self.decode_failures.load(Ordering::Relaxed)
+        self.counters.decode_failures.load(Ordering::Relaxed)
+    }
+
+    /// Snapshot typed rejection counters across all subscriptions.
+    pub fn rejections(&self) -> RejectionCounts {
+        self.counters.rejection_counts()
+    }
+
+    /// Counter value for one typed rejection reason across all subscriptions.
+    pub fn rejection_count(&self, reason: RejectionReason) -> u64 {
+        self.counters.rejection_count(reason)
+    }
+
+    /// Last observation accepted by any subscription on this tap.
+    /// Concurrent subscriptions have independent delivery order, so this is a
+    /// diagnostic snapshot rather than a global causal ordering.
+    pub fn last_accepted(&self) -> Option<LastAcceptedObservation> {
+        self.counters.last_accepted()
+    }
+
+    /// User callback panics caught at the receive boundary. The panicking payload is
+    /// dropped, while Zenoh's receive task remains alive for later observations.
+    pub fn callback_panics(&self) -> u64 {
+        self.counters.callback_panics.load(Ordering::Relaxed)
     }
 
     /// Total payloads seen on the sidecar key (decoded **or** dropped), across all
@@ -96,7 +766,22 @@ impl SidecarTap {
     /// clean `Nominal`), so this counter is about *diagnosing* the starvation, not
     /// about safety.
     pub fn payloads_received(&self) -> u64 {
-        self.payloads_received.load(Ordering::Relaxed)
+        self.counters.payloads_received.load(Ordering::Relaxed)
+    }
+
+    /// Observations accepted across all subscriptions before invoking callbacks.
+    pub fn observations_accepted(&self) -> u64 {
+        self.counters.observations_accepted.load(Ordering::Relaxed)
+    }
+
+    /// Sequence states evicted across all subscriptions to keep memory bounded.
+    pub fn sequence_evictions(&self) -> u64 {
+        self.counters.sequence_evictions.load(Ordering::Relaxed)
+    }
+
+    /// Explicit sequence-state resets across all subscription health handles.
+    pub fn sequence_resets(&self) -> u64 {
+        self.counters.sequence_resets.load(Ordering::Relaxed)
     }
 
     /// The underlying bus (e.g. to close it, or share the session).
@@ -106,34 +791,696 @@ impl SidecarTap {
 
     /// Subscribe to a session's galadriel sidecar key. `on_obs` runs **inline on Zenoh's
     /// receive task** for each decoded observation, so keep it cheap (decode + hand off).
-    /// Malformed payloads are dropped — the callback must never see adversarial bytes,
-    /// and must never panic, because a panic unwinds Zenoh's task (see
-    /// `ZenohBus::subscribe`) — but each drop is **counted** ([`Self::decode_failures`]),
-    /// so contract drift shows up as a rising counter rather than as silence.
+    /// Oversized, malformed, invalid, duplicate, regressed, and excessive-forward-gap
+    /// payloads are dropped and counted by [`Self::decode_failures`]. Callback panics
+    /// are caught and counted by [`Self::callback_panics`] so they cannot unwind
+    /// Zenoh's receive task.
     /// Errors if `session_id` is not a valid NCP id segment.
     pub async fn subscribe<F>(&self, session_id: &str, on_obs: F) -> Result<(), ZenohError>
     where
         F: Fn(PidObservation) + Send + Sync + 'static,
     {
+        self.subscribe_with_health(session_id, on_obs)
+            .await
+            .map(|_| ())
+    }
+
+    /// Subscribe and return counters scoped to this one session subscription.
+    ///
+    /// The returned handle also exposes an explicit sequence-state reset for a
+    /// confirmed producer restart. Prefer a fresh session ID so replay epochs are
+    /// separated by construction.
+    pub async fn subscribe_with_health<F>(
+        &self,
+        session_id: &str,
+        on_obs: F,
+    ) -> Result<SubscriptionHealth, ZenohError>
+    where
+        F: Fn(PidObservation) + Send + Sync + 'static,
+    {
         let key = sidecar_key(&self.realm, session_id)
             .ok_or_else(|| ZenohError(format!("invalid NCP session id segment: {session_id:?}")))?;
-        let failures = Arc::clone(&self.decode_failures);
-        let received = Arc::clone(&self.payloads_received);
+        let tap_counters = Arc::clone(&self.counters);
+        let subscription_counters = Arc::new(IngestCounters::default());
+        let limits = self.limits;
+        let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+        let delivery_boundary = Arc::new(DeliveryBoundary::default());
+        let health = SubscriptionHealth {
+            counters: Arc::clone(&subscription_counters),
+            tap_counters: Arc::clone(&tap_counters),
+            sequences: Arc::clone(&sequences),
+            delivery_boundary: Arc::clone(&delivery_boundary),
+        };
         self.bus
             .subscribe(&key, move |_key, bytes| {
-                received.fetch_add(1, Ordering::Relaxed);
-                match serde_json::from_slice::<PidObservation>(&bytes) {
-                    Ok(obs) => on_obs(obs),
-                    Err(_) => {
-                        failures.fetch_add(1, Ordering::Relaxed);
-                    }
-                }
+                process_payload(
+                    &bytes,
+                    limits,
+                    &delivery_boundary,
+                    &sequences,
+                    &tap_counters,
+                    &subscription_counters,
+                    &on_obs,
+                );
             })
-            .await
+            .await?;
+        Ok(health)
     }
 
     /// Gracefully close the underlying Zenoh session (undeclare subscribers and flush).
     pub async fn close(&self) -> Result<(), ZenohError> {
         self.bus.close().await
+    }
+}
+
+fn process_payload<F>(
+    bytes: &[u8],
+    limits: LiveLimits,
+    delivery_boundary: &DeliveryBoundary,
+    sequences: &Mutex<LiveSequenceTracker>,
+    tap_counters: &IngestCounters,
+    subscription_counters: &IngestCounters,
+    on_obs: &F,
+) where
+    F: Fn(PidObservation),
+{
+    increment_pair(
+        &tap_counters.payloads_received,
+        &subscription_counters.payloads_received,
+    );
+    let _delivery = delivery_boundary.begin_delivery();
+    if bytes.len() > limits.max_payload_bytes {
+        reject_pair(
+            tap_counters,
+            subscription_counters,
+            RejectionReason::PayloadTooLarge,
+        );
+        return;
+    }
+
+    let Ok(observation) = serde_json::from_slice::<PidObservation>(bytes) else {
+        reject_pair(
+            tap_counters,
+            subscription_counters,
+            RejectionReason::MalformedJson,
+        );
+        return;
+    };
+    if observation.validate().is_err() {
+        reject_pair(
+            tap_counters,
+            subscription_counters,
+            RejectionReason::InvalidObservation,
+        );
+        return;
+    }
+    {
+        let mut sequences = sequences.lock().unwrap_or_else(|error| error.into_inner());
+        match sequences.accept(
+            &observation,
+            limits.max_sequence_streams,
+            limits.max_sequence_advance,
+        ) {
+            Ok(true) => increment_pair(
+                &tap_counters.sequence_evictions,
+                &subscription_counters.sequence_evictions,
+            ),
+            Ok(false) => {}
+            Err(reason) => {
+                reject_pair(tap_counters, subscription_counters, reason.into());
+                return;
+            }
+        }
+    }
+    record_acceptance_pair(tap_counters, subscription_counters, &observation);
+
+    let callback_panicked = {
+        let _callback = CallbackGuard::enter();
+        catch_unwind(AssertUnwindSafe(|| on_obs(observation))).is_err()
+    };
+    if callback_panicked {
+        increment_pair(
+            &tap_counters.callback_panics,
+            &subscription_counters.callback_panics,
+        );
+    }
+}
+
+fn increment_pair(tap: &AtomicU64, subscription: &AtomicU64) {
+    tap.fetch_add(1, Ordering::Relaxed);
+    subscription.fetch_add(1, Ordering::Relaxed);
+}
+
+fn rejection_counter(counters: &IngestCounters, reason: RejectionReason) -> &AtomicU64 {
+    match reason {
+        RejectionReason::PayloadTooLarge => &counters.payload_too_large,
+        RejectionReason::MalformedJson => &counters.malformed_json,
+        RejectionReason::InvalidObservation => &counters.invalid_observation,
+        RejectionReason::DuplicateOrRegressedSequence => &counters.duplicate_or_regressed_sequence,
+        RejectionReason::ExcessiveForwardSequenceGap => &counters.excessive_forward_sequence_gap,
+        RejectionReason::SequenceStateFailure => &counters.sequence_state_failure,
+    }
+}
+
+fn reject_pair(tap: &IngestCounters, subscription: &IngestCounters, reason: RejectionReason) {
+    increment_pair(&tap.decode_failures, &subscription.decode_failures);
+    increment_pair(
+        rejection_counter(tap, reason),
+        rejection_counter(subscription, reason),
+    );
+}
+
+fn record_acceptance_pair(
+    tap: &IngestCounters,
+    subscription: &IngestCounters,
+    observation: &PidObservation,
+) {
+    increment_pair(
+        &tap.observations_accepted,
+        &subscription.observations_accepted,
+    );
+    let last = Some(LastAcceptedObservation::from(observation));
+    *tap.last_accepted
+        .lock()
+        .unwrap_or_else(|error| error.into_inner()) = last;
+    *subscription
+        .last_accepted
+        .lock()
+        .unwrap_or_else(|error| error.into_inner()) = last;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use galadriel_core::Modality;
+    use std::sync::{mpsc, Barrier};
+    use std::thread;
+    use std::time::Duration;
+
+    fn encoded(track_id: u64, sequence: u64) -> Vec<u8> {
+        serde_json::to_vec(&PidObservation::scalar(
+            track_id,
+            sequence,
+            sequence,
+            Modality::Radar,
+            3.0,
+            3,
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn process_payload_rejects_oversize_and_duplicate_input() {
+        let first = encoded(1, 1);
+        let limits = LiveLimits::new(first.len()).unwrap();
+        let delivery_boundary = DeliveryBoundary::default();
+        let sequences = Mutex::new(LiveSequenceTracker::default());
+        let tap = IngestCounters::default();
+        let subscription = IngestCounters::default();
+        let callbacks = AtomicU64::new(0);
+        let on_obs = |_| {
+            callbacks.fetch_add(1, Ordering::Relaxed);
+        };
+
+        process_payload(
+            &first,
+            limits,
+            &delivery_boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &on_obs,
+        );
+        process_payload(
+            &first,
+            limits,
+            &delivery_boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &on_obs,
+        );
+        let mut oversized = first;
+        oversized.push(b' ');
+        process_payload(
+            &oversized,
+            limits,
+            &delivery_boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &on_obs,
+        );
+
+        assert_eq!(tap.payloads_received.load(Ordering::Relaxed), 3);
+        assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 2);
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::DuplicateOrRegressedSequence),
+            1
+        );
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::PayloadTooLarge),
+            1
+        );
+        assert_eq!(subscription.rejection_counts().total(), 2);
+        assert_eq!(
+            subscription.observations_accepted.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(callbacks.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn process_payload_rejects_invalid_observation_values() {
+        let invalid =
+            serde_json::to_vec(&PidObservation::scalar(1, 0, 1, Modality::Radar, -0.1, 3)).unwrap();
+        let delivery_boundary = DeliveryBoundary::default();
+        let sequences = Mutex::new(LiveSequenceTracker::default());
+        let tap = IngestCounters::default();
+        let subscription = IngestCounters::default();
+        let callbacks = AtomicU64::new(0);
+
+        process_payload(
+            &invalid,
+            LiveLimits::default(),
+            &delivery_boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &|_| {
+                callbacks.fetch_add(1, Ordering::Relaxed);
+            },
+        );
+
+        assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::InvalidObservation),
+            1
+        );
+        assert_eq!(callbacks.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn process_payload_catches_callback_panic_and_accepts_later_input() {
+        let delivery_boundary = DeliveryBoundary::default();
+        let sequences = Mutex::new(LiveSequenceTracker::default());
+        let tap = IngestCounters::default();
+        let subscription = IngestCounters::default();
+        let callbacks = AtomicU64::new(0);
+        let on_obs = |_| {
+            if callbacks.fetch_add(1, Ordering::Relaxed) == 0 {
+                panic!("simulated user callback failure");
+            }
+        };
+
+        for payload in [encoded(1, 1), encoded(1, 2)] {
+            process_payload(
+                &payload,
+                LiveLimits::default(),
+                &delivery_boundary,
+                &sequences,
+                &tap,
+                &subscription,
+                &on_obs,
+            );
+        }
+
+        assert_eq!(callbacks.load(Ordering::Relaxed), 2);
+        assert_eq!(subscription.callback_panics.load(Ordering::Relaxed), 1);
+        assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn process_payload_allows_late_baseline_but_rejects_later_forward_poisoning() {
+        let limits = LiveLimits::with_sequence_policy(DEFAULT_MAX_LIVE_PAYLOAD_BYTES, 4, 10)
+            .expect("valid limits");
+        let delivery_boundary = DeliveryBoundary::default();
+        let sequences = Mutex::new(LiveSequenceTracker::default());
+        let tap = IngestCounters::default();
+        let subscription = IngestCounters::default();
+        let callbacks = AtomicU64::new(0);
+        let on_obs = |_| {
+            callbacks.fetch_add(1, Ordering::Relaxed);
+        };
+
+        for payload in [encoded(1, 0), encoded(1, 100), encoded(1, 1), encoded(2, 9)] {
+            process_payload(
+                &payload,
+                limits,
+                &delivery_boundary,
+                &sequences,
+                &tap,
+                &subscription,
+                &on_obs,
+            );
+        }
+
+        assert_eq!(callbacks.load(Ordering::Relaxed), 3);
+        assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::ExcessiveForwardSequenceGap),
+            1
+        );
+        assert_eq!(sequences.lock().unwrap().len(), 2);
+        assert_eq!(
+            subscription.last_accepted(),
+            Some(LastAcceptedObservation {
+                track_id: 2,
+                modality: Modality::Radar,
+                sequence: 9,
+                timestamp_ms: 9,
+            })
+        );
+    }
+
+    #[test]
+    fn process_payload_evicts_lru_sequence_state_at_capacity() {
+        let limits = LiveLimits::with_sequence_policy(DEFAULT_MAX_LIVE_PAYLOAD_BYTES, 2, 10)
+            .expect("valid limits");
+        let delivery_boundary = DeliveryBoundary::default();
+        let sequences = Mutex::new(LiveSequenceTracker::default());
+        let tap = IngestCounters::default();
+        let subscription = IngestCounters::default();
+        let callbacks = AtomicU64::new(0);
+        let on_obs = |_| {
+            callbacks.fetch_add(1, Ordering::Relaxed);
+        };
+
+        for payload in [
+            encoded(1, 0),
+            encoded(2, 0),
+            encoded(1, 1),
+            encoded(3, 0),
+            encoded(2, 0),
+        ] {
+            process_payload(
+                &payload,
+                limits,
+                &delivery_boundary,
+                &sequences,
+                &tap,
+                &subscription,
+                &on_obs,
+            );
+        }
+
+        assert_eq!(callbacks.load(Ordering::Relaxed), 5);
+        assert_eq!(subscription.sequence_evictions.load(Ordering::Relaxed), 2);
+        assert_eq!(tap.sequence_evictions.load(Ordering::Relaxed), 2);
+        assert_eq!(sequences.lock().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn subscription_counters_are_isolated_while_tap_counter_aggregates() {
+        let limits = LiveLimits::default();
+        let tap = IngestCounters::default();
+        let first_subscription = IngestCounters::default();
+        let second_subscription = IngestCounters::default();
+        let first_delivery_boundary = DeliveryBoundary::default();
+        let second_delivery_boundary = DeliveryBoundary::default();
+        let first_sequences = Mutex::new(LiveSequenceTracker::default());
+        let second_sequences = Mutex::new(LiveSequenceTracker::default());
+
+        process_payload(
+            &encoded(1, 0),
+            limits,
+            &first_delivery_boundary,
+            &first_sequences,
+            &tap,
+            &first_subscription,
+            &|_| {},
+        );
+        process_payload(
+            b"not json",
+            limits,
+            &second_delivery_boundary,
+            &second_sequences,
+            &tap,
+            &second_subscription,
+            &|_| {},
+        );
+
+        assert_eq!(tap.payloads_received.load(Ordering::Relaxed), 2);
+        assert_eq!(
+            first_subscription.payloads_received.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            first_subscription.decode_failures.load(Ordering::Relaxed),
+            0
+        );
+        assert_eq!(
+            second_subscription
+                .payloads_received
+                .load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            second_subscription.decode_failures.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            second_subscription.rejection_count(RejectionReason::MalformedJson),
+            1
+        );
+    }
+
+    #[test]
+    fn subscription_health_reset_clears_sequence_epoch_and_counts_it() {
+        let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+        sequences
+            .lock()
+            .unwrap()
+            .accept(
+                &PidObservation::scalar(1, 0, 1, Modality::Radar, 3.0, 3),
+                2,
+                10,
+            )
+            .unwrap();
+        let counters = Arc::new(IngestCounters::default());
+        *counters.last_accepted.lock().unwrap() = Some(LastAcceptedObservation {
+            track_id: 1,
+            modality: Modality::Radar,
+            sequence: 1,
+            timestamp_ms: 0,
+        });
+        let tap_counters = Arc::new(IngestCounters::default());
+        let health = SubscriptionHealth {
+            counters,
+            tap_counters: Arc::clone(&tap_counters),
+            sequences,
+            delivery_boundary: Arc::new(DeliveryBoundary::default()),
+        };
+
+        let removed = health.reset_sequence_state().unwrap();
+
+        assert_eq!(removed, 1);
+        assert_eq!(health.retained_sequence_streams(), 0);
+        assert_eq!(health.sequence_resets(), 1);
+        assert_eq!(health.last_accepted(), None);
+        assert_eq!(tap_counters.sequence_resets.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn reset_from_callback_returns_typed_error_without_deadlocking() {
+        let delivery_boundary = Arc::new(DeliveryBoundary::default());
+        let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+        let counters = Arc::new(IngestCounters::default());
+        let tap_counters = Arc::new(IngestCounters::default());
+        let health = SubscriptionHealth {
+            counters: Arc::clone(&counters),
+            tap_counters: Arc::clone(&tap_counters),
+            sequences: Arc::clone(&sequences),
+            delivery_boundary: Arc::clone(&delivery_boundary),
+        };
+        let (error_tx, error_rx) = mpsc::channel();
+
+        process_payload(
+            &encoded(1, 1),
+            LiveLimits::default(),
+            &delivery_boundary,
+            &sequences,
+            &tap_counters,
+            &counters,
+            &|_| {
+                error_tx
+                    .send(health.reset_sequence_state().unwrap_err())
+                    .unwrap();
+            },
+        );
+
+        assert_eq!(
+            error_rx.recv_timeout(Duration::from_secs(1)).unwrap(),
+            SequenceResetError::CalledFromCallback
+        );
+        assert_eq!(health.retained_sequence_streams(), 1);
+        assert_eq!(health.sequence_resets(), 0);
+    }
+
+    #[test]
+    fn callback_cannot_reset_a_different_idle_subscription() {
+        let source_boundary = DeliveryBoundary::default();
+        let source_sequences = Mutex::new(LiveSequenceTracker::default());
+        let source_counters = IngestCounters::default();
+        let source_tap_counters = IngestCounters::default();
+        let target_health = SubscriptionHealth {
+            counters: Arc::new(IngestCounters::default()),
+            tap_counters: Arc::new(IngestCounters::default()),
+            sequences: Arc::new(Mutex::new(LiveSequenceTracker::default())),
+            delivery_boundary: Arc::new(DeliveryBoundary::default()),
+        };
+        let (error_tx, error_rx) = mpsc::channel();
+
+        process_payload(
+            &encoded(1, 1),
+            LiveLimits::default(),
+            &source_boundary,
+            &source_sequences,
+            &source_tap_counters,
+            &source_counters,
+            &|_| {
+                error_tx
+                    .send(target_health.reset_sequence_state().unwrap_err())
+                    .unwrap();
+            },
+        );
+
+        assert_eq!(
+            error_rx.recv_timeout(Duration::from_secs(1)).unwrap(),
+            SequenceResetError::CalledFromCallback
+        );
+        assert_eq!(target_health.sequence_resets(), 0);
+    }
+
+    #[test]
+    fn callback_spawn_and_join_reset_fails_fast_without_deadlock() {
+        let delivery_boundary = Arc::new(DeliveryBoundary::default());
+        let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+        let counters = Arc::new(IngestCounters::default());
+        let tap_counters = Arc::new(IngestCounters::default());
+        let health = SubscriptionHealth {
+            counters: Arc::clone(&counters),
+            tap_counters: Arc::clone(&tap_counters),
+            sequences: Arc::clone(&sequences),
+            delivery_boundary: Arc::clone(&delivery_boundary),
+        };
+        let (error_tx, error_rx) = mpsc::channel();
+
+        process_payload(
+            &encoded(1, 1),
+            LiveLimits::default(),
+            &delivery_boundary,
+            &sequences,
+            &tap_counters,
+            &counters,
+            &|_| {
+                let health = health.clone();
+                let error = thread::spawn(move || health.reset_sequence_state().unwrap_err())
+                    .join()
+                    .unwrap();
+                error_tx.send(error).unwrap();
+            },
+        );
+
+        assert_eq!(
+            error_rx.recv_timeout(Duration::from_secs(1)).unwrap(),
+            SequenceResetError::DeliveryInProgress
+        );
+        assert_eq!(health.sequence_resets(), 0);
+    }
+
+    #[test]
+    fn reset_fails_fast_during_delivery_then_succeeds_after_callback() {
+        let delivery_boundary = Arc::new(DeliveryBoundary::default());
+        let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+        let counters = Arc::new(IngestCounters::default());
+        let tap_counters = Arc::new(IngestCounters::default());
+        let health = SubscriptionHealth {
+            counters: Arc::clone(&counters),
+            tap_counters: Arc::clone(&tap_counters),
+            sequences: Arc::clone(&sequences),
+            delivery_boundary: Arc::clone(&delivery_boundary),
+        };
+        let callback_release = Arc::new(Barrier::new(2));
+        let (entered_tx, entered_rx) = mpsc::channel();
+
+        let process_thread = {
+            let callback_release = Arc::clone(&callback_release);
+            let delivery_boundary = Arc::clone(&delivery_boundary);
+            let sequences = Arc::clone(&sequences);
+            let counters = Arc::clone(&counters);
+            let tap_counters = Arc::clone(&tap_counters);
+            thread::spawn(move || {
+                process_payload(
+                    &encoded(1, 1),
+                    LiveLimits::default(),
+                    &delivery_boundary,
+                    &sequences,
+                    &tap_counters,
+                    &counters,
+                    &|_| {
+                        entered_tx.send(()).unwrap();
+                        callback_release.wait();
+                    },
+                );
+            })
+        };
+        entered_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("callback entered serialized delivery boundary");
+
+        assert_eq!(
+            health.reset_sequence_state(),
+            Err(SequenceResetError::DeliveryInProgress)
+        );
+        assert_eq!(health.sequence_resets(), 0);
+        callback_release.wait();
+        process_thread.join().unwrap();
+        assert_eq!(health.reset_sequence_state().unwrap(), 1);
+        assert_eq!(health.sequence_resets(), 1);
+        assert_eq!(health.last_accepted(), None);
+    }
+
+    #[test]
+    fn acquired_reset_boundary_prevents_later_delivery_barging() {
+        let delivery_boundary = Arc::new(DeliveryBoundary::default());
+        let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+        let counters = Arc::new(IngestCounters::default());
+        let tap_counters = Arc::new(IngestCounters::default());
+        let reset = delivery_boundary.begin_reset().unwrap();
+        let (callback_tx, callback_rx) = mpsc::channel();
+
+        let delivery_thread = {
+            let delivery_boundary = Arc::clone(&delivery_boundary);
+            let sequences = Arc::clone(&sequences);
+            let counters = Arc::clone(&counters);
+            let tap_counters = Arc::clone(&tap_counters);
+            thread::spawn(move || {
+                process_payload(
+                    &encoded(1, 1),
+                    LiveLimits::default(),
+                    &delivery_boundary,
+                    &sequences,
+                    &tap_counters,
+                    &counters,
+                    &|_| callback_tx.send(()).unwrap(),
+                );
+            })
+        };
+
+        assert_eq!(
+            callback_rx.recv_timeout(Duration::from_millis(50)),
+            Err(mpsc::RecvTimeoutError::Timeout)
+        );
+        drop(reset);
+        callback_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+        delivery_thread.join().unwrap();
+    }
+
+    #[test]
+    fn live_limits_reject_zero_sequence_advance() {
+        let error = LiveLimits::with_sequence_policy(1, 1, 0).unwrap_err();
+
+        assert!(error.to_string().contains("sequence advance"));
     }
 }

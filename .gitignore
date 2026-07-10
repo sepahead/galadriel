@@ -13,3 +13,15 @@
 # Scratch / local artifacts
 /scratch
 *.jsonl.tmp
+
+# Secrets and local credentials (examples may be committed explicitly).
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.yaml
+keypair.json

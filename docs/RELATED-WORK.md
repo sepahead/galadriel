@@ -11,14 +11,21 @@ would be run. This document does four things:
    limits, cited sources, and its relation to galadriel.
 3. **§3 — a head-to-head comparison table** across the dimensions that matter.
 4. **§4 — how they could be compared:** a concrete benchmark methodology (axes, a shared attack
-   ontology, a matched operating point, metrics) — most of which galadriel's own evaluation harness
-   (`docs/EVALUATION.md`) already instantiates, and the parts a genuine *cross-approach* benchmark
-   would still need.
+   ontology, a matched operating point, metrics) — some of which galadriel's synthetic
+   harness (`docs/EVALUATION.md`) instantiates, and the parts a genuine
+   *cross-approach* benchmark would still need.
 5. **§5 — competing vs complementary:** the layered-defense picture, and where galadriel truly
    competes rather than composes.
 
-This complements — and does not repeat — the compact related-work paragraph in
-[`PAPER.md` §7](PAPER.md) and the real-world threat grounding in [`MOTIVATION.md`](MOTIVATION.md).
+This complements the research argument in [`PAPER.md`](PAPER.md) and the real-world
+threat grounding in [`MOTIVATION.md`](MOTIVATION.md).
+
+> **Evidence status (2026-07 audit).** This is a taxonomy and comparison proposal, not a
+> deployment ranking. Galadriel's current evidence is synthetic. Current crebain output
+> does not provide common-frame, common-frozen-prior cross-modal residuals, and its
+> successful-update-only stream is selection-biased by association/gating. The bundled
+> fixture proves parsing and baseline smoke behavior; cross-channel assessment remains
+> `InsufficientEvidence`.
 
 ---
 
@@ -37,9 +44,11 @@ attack at the wrong layer is not a tuning problem; it is an observability proble
 | **L3 · State estimate** | The fused state and its error-correcting structure | Secure/resilient state estimation; Byzantine-robust fusion | Provable state recovery under a bounded corruption budget |
 | **L4 · Perception feature** | Neural fusion features, object/occupancy semantics | Cross-modal plausibility, temporal-consistency checks for MSF-AV | Nonlinear, synergistic cross-modal structure a learned stack fuses |
 
-**Galadriel lives at L2, cross-modality.** It reads the innovations that a fusion filter already
-produces — no raw RF, no shared measurement model, no state-space dynamics assumption, no training —
-and asks whether the channels still *agree* the way independent views of one true world should. Its
+**Galadriel lives at L2, cross-modality.** It reads NIS plus an optional producer-attested
+common residual projection — no raw RF or training data — and asks whether channels still
+agree. It never compares modality-native innovations directly. This is not assumption-free:
+the producer must supply one track, exact sequence alignment, matching frame/context IDs,
+one common frozen-prior ID per sequence, and explicit lifecycle/missingness. Its
 central methodological result (`PAPER.md` §4) is about *which* dependence statistic to spend at this
 layer: a one-line correlation check by default, an information-theoretic (MI/PID) escalation only
 when the coupling genuinely leaves the Gaussian manifold. Everything below is calibrated against that
@@ -74,9 +83,9 @@ it is **GNSS-specific** and does nothing for a compromised *non-RF* modality (a 
 poisoned acoustic bearing).
 
 **Relation to galadriel.** Different observation layer (L0 vs. L2) and a strictly narrower modality
-scope. Signal-level GNSS defenses catch the *external RF* spoof that never reaches galadriel's
-residual layer as an inconsistency; galadriel catches the *insider/post-capture* channel that a
-signal-level check has already been fooled by. **Complementary, stacked — not competing.**
+scope. Signal-level GNSS defenses can stop an *external RF* spoof before it reaches the residual
+layer; galadriel is intended to flag some *insider/post-capture* inconsistencies that a
+signal-level check cannot observe. Neither guarantee applies outside its assumptions.
 
 ### 2.2 Cryptographic authentication (L0/L1)
 
@@ -89,8 +98,9 @@ unpredictable to an attacker; spreading-code authentication protects the ranging
 **Threat model.** An external party who cannot produce valid signatures/keys.
 
 **Honest limit.** Authentication proves *who sent it*, not *whether it is true*. A **compromised but
-authenticated** sensor — the correct key, lying data — sails through every signature check. That
-insider is precisely galadriel's target.
+authenticated** sensor — the correct key, lying data — sails through every signature check.
+Inconsistent authenticated content is within galadriel's threat model, while a
+consistency-preserving insider remains outside it.
 
 **Relation to galadriel.** This is the **enforcement layer galadriel explicitly defers to**
 (`MOTIVATION.md` §4b): per-plane ACL / mTLS on the NCP bus is the real fix for *impersonation*;
@@ -115,16 +125,14 @@ estimators.
 **Honest limit.** RAIM is **intra-modality** — it exploits the redundancy of many satellites within
 *one* GNSS receiver, and it needs the linearized observation geometry. It has no notion of a
 *heterogeneous* cross-sensor check, and classical single-fault RAIM inverts under a colluding
-majority (the same structural failure galadriel discloses in `PAPER.md` §5.6 / `EVALUATION.md` §2.4).
+majority (the same structural failure galadriel discloses in `PAPER.md` §2 and
+`EVALUATION.md` §5).
 
-**Relation to galadriel.** Galadriel is the **model-free, cross-modality generalization of RAIM's
-core idea** — "residual consistency + identify and exclude the outlier" — moved from *pseudorange
-residuals under a known geometry matrix* to *innovation residuals across heterogeneous modalities
-under no shared model*, using statistical dependence (|ρ|, or MI/PID) in place of the geometry
-matrix. The forced-vs-justified selection question galadriel answers is one RAIM never posed, because
-RAIM's residual test is fixed by the (linear-Gaussian) measurement model — which, tellingly, is
-exactly the regime where galadriel proves correlation is *sufficient*. **The most directly comparable
-prior art; galadriel is a strict conceptual superset for the multi-sensor case.**
+**Relation to galadriel.** Galadriel borrows RAIM's core idea — residual consistency and
+outlier attribution — for heterogeneous modalities. It replaces a shared geometry matrix
+with a registered statistical-dependence contract and uses signed correlation, with
+optional additive MI/PID. It is not a strict superset: RAIM offers model-specific integrity
+semantics that Galadriel's advisory, model-light prototype does not.
 
 ### 2.4 Innovation-based fault/attack detection (L2) *(galadriel's own baseline)*
 
@@ -139,11 +147,9 @@ prior art; galadriel is a strict conceptual superset for the multi-sensor case.*
 variance, wrong dependence — passes straight through it. That blind spot is the entire reason
 galadriel adds a *cross-channel* layer.
 
-**Relation to galadriel.** This is **`galadriel-core`'s own baseline** (the NIS ⊕ correlation
-default), *and* the honest comparison floor every evaluation table is run against. Galadriel does not
-replace it — it fuses it (`fusion::combine`) with the cross-sensor test so the loud attacks it *does*
-catch cost nothing extra. **A component, and the baseline galadriel must beat to justify itself
-(`PAPER.md` §5.1: baseline at chance 0.547 on the stealthy spoof; cross-sensor recovers 1.000).**
+**Relation to galadriel.** This is `galadriel-core`'s magnitude baseline and the
+comparison floor for the synthetic harness. Galadriel does not replace it; it preserves
+its evidence while adding a separate signed cross-sensor assessment.
 
 ### 2.5 Cross-sensor / cross-modal consistency (L2/L4) *(galadriel's family)*
 
@@ -163,14 +169,14 @@ MSF perception attacks ([Cao et al., IEEE S&P 2021](https://arxiv.org/abs/2106.0
 **Honest limit.** Defeated by a **statistics-matching false-data injection** that *preserves*
 cross-sensor consistency — the **frustum attack** is exactly this, "stealthy … because it preserves
 consistencies between camera and LiDAR" [Hallyburton2022]. This is galadriel's disclosed honest
-boundary (`PAPER.md` §6), i.e. its limit *is* the current state-of-the-art attack.
+boundary (`PAPER.md` §2/§7), i.e. its limit includes a current state-of-the-art attack.
 
 **Relation to galadriel.** **This is galadriel's family** — it is the multi-sensor generalization of
 Broumandan's pairwise GNSS-vs-INS check to an $N$-channel test, differentiated by (a) the
-forced-vs-justified *detector-selection* result the consistency-check literature never asked, (b)
-advisory per-channel **attribution** rather than a single accept/reject, and (c) zero training or
-model assumptions. **Truly competing prior art — differentiated on the selection discipline and
-attribution, not on the base idea.**
+forced-vs-justified detector-selection question, and (b) advisory per-channel
+**attribution** rather than a single accept/reject. It needs no training set, but it does
+require a strong producer geometry and timing contract. **Truly competing prior art —
+differentiated on selection discipline and attribution, not on the base idea.**
 
 ### 2.6 Secure / resilient state estimation (L3) *(guarantee-based)*
 
@@ -190,9 +196,9 @@ honest-majority ceiling — corrupt more than *p* and the guarantee is void.
 **Relation to galadriel.** A **stronger guarantee at a higher assumption cost.** Where a validated LTI
 model and the corruption bound hold, resilient estimation *provably recovers the state* — more than
 galadriel's advisory flag. Where they don't (heterogeneous modalities, no clean dynamics model, an
-operator who wants *attribution* not silent correction), galadriel's model-free advisory test
-applies. **Complementary along the guarantee/assumption trade-off; a natural L3 partner to galadriel's
-L2 flag.**
+operator who wants *attribution* not silent correction), galadriel's model-light advisory
+test may apply if its residual-registration contract holds. **Complementary along the
+guarantee/assumption trade-off; a natural L3 partner to galadriel's L2 flag.**
 
 ### 2.7 Byzantine-robust / redundancy-voting fusion (L3)
 
@@ -222,11 +228,10 @@ jam/spoof/meaconing classifiers over multi-sensor features
 **Honest limit.** Needs representative training data, degrades under distribution shift, is hard to
 certify for safety-critical use, and typically gives weak **attribution** and interpretability.
 
-**Relation to galadriel.** Overlaps galadriel's **PID-escalation regime** — genuinely
-*nonlinear/synergistic* cross-channel structure that correlation misses (`PAPER.md` §4.2). Galadriel
-stays **nonparametric and training-free** (KSG-MI / PID, geometry-gated), trading the raw capacity of
-a trained model for zero training data, a stated cost model, and per-channel attribution. **Competes
-in the nonlinear regime; differentiated on training-freeness, cost transparency, and attribution.**
+**Relation to galadriel.** Overlaps the nonlinear-dependence research question in
+`PAPER.md` §5. Galadriel's current runtime verdict uses geometry-gated pairwise KSG-MI;
+its PID atoms are diagnostic and do not implement a pure-synergy classifier. It is
+training-free, but that does not imply broader capacity or field validity than a trained model.
 
 ### 2.9 Active challenge-response / physical probing (L0)
 
@@ -258,7 +263,7 @@ Where actuation is available they stack. **Complementary.**
 | Crypto auth / OSNMA (§2.2) | L0/L1 | Per-signal / per-node | External forgery | **Prevent** impersonation | Key infrastructure | Key management |
 | RAIM (§2.3) | L1 | GNSS (intra-modality) | Faulty/spoofed satellite | Detect + exclude | Known geometry + measurement model | None (compute) |
 | Innovation NIS/CUSUM (§2.4) | L2 | Per channel | Magnitude fault | Detect | Filter innovations available | Negligible |
-| **Cross-sensor consistency — galadriel (§2.5)** | **L2** | **N heterogeneous** | **Insider that breaks agreement** | **Detect + attribute (advisory)** | **Innovations; ≥3 channels** | **~1× (corr) / ~100× (PID)** |
+| **Cross-sensor consistency — galadriel (§2.5)** | **L2** | **N heterogeneous** | **Insider that breaks agreement** | **Detect + attribute (advisory)** | **Comparable innovations; unique strict majority** | **Low (corr) / higher (PID), benchmark-dependent** |
 | Resilient state estimation (§2.6) | L3 | N (modeled) | ≤p corrupted sensors | **Recover state** (provable) | Known LTI model + redundancy bound | Compute (optimization) |
 | Byzantine-robust fusion (§2.7) | L3 | N | Corrupted minority | **Tolerate** (mask) | Honest majority | Negligible |
 | Learning-based (§2.8) | L2/L4 | N | Learned-normal anomaly | Detect (statistical) | Representative training data | Training + inference |
@@ -274,7 +279,7 @@ spot*. A "✗ / partial" is not a criticism — it names the layer each method i
 | Crypto auth / OSNMA | ✗ (valid key) | ✗ | **✓** (external forger) |
 | RAIM | partial (GNSS-only, single-fault) | ✗ | ✓ (as pseudorange fault) |
 | Innovation NIS/CUSUM | ✗ (moment-matched) | ✗ | partial (if loud) |
-| **galadriel** | **✓** | **✗ (honest limit, §6)** | ✗ (not at L2) |
+| **galadriel** | **synthetic only; recorded validation pending** | **✗ (honest limit)** | ✗ (not at L2) |
 | Resilient state estimation | ✓ (if within budget + model) | partial (if it moves the state) | ✓ (as bad measurement) |
 | Byzantine-robust fusion | masks, doesn't surface | masks if minority | masks if minority |
 | Learning-based | partial (if unlike training normal) | partial (if off-manifold) | partial |
@@ -289,9 +294,9 @@ are covered by *composing* rows, not by picking a winner.
 
 Comparing these approaches fairly is harder than tabulating ROC curves, because they observe
 different layers, assume different infrastructure, and offer different *kinds* of guarantee. A
-credible cross-approach benchmark needs four ingredients. Galadriel's own harness
-(`docs/EVALUATION.md`, `crates/galadriel-eval`) already instantiates most of them *within the L2
-consistency family*; the remainder is what a broader benchmark would still have to build.
+credible cross-approach benchmark needs four ingredients. Galadriel's synthetic harness
+(`docs/EVALUATION.md`, `crates/galadriel-eval`) exercises part of this design within the
+L2 consistency family; a broader benchmark still has to build the rest.
 
 ### 4.1 The comparison axes
 
@@ -307,11 +312,12 @@ built to correct:
 5. **Attribution** — does it identify *which* channel, or only that *something* is wrong?
 6. **Assumptions as a first-class output** — what must be true for it to run at all (model? geometry?
    training data? honest majority? key infrastructure? actuation authority?). Two methods with equal
-   AUC are not equivalent if one needs a validated dynamics model and the other needs nothing.
+   AUC are not equivalent if one needs a validated dynamics model and the other needs a
+   common-frame/common-prior residual contract.
 
-Galadriel's three-axis synthesis (accuracy × latency × cost, `PAPER.md` §5.4) plus its adaptive
-(§5.7), non-stationary-FAR (§5.8), and attacker-gain (§5.9) studies already report axes 1–4 and 6;
-its per-channel verdict supplies axis 5.
+Galadriel's harness includes accuracy, latency, cost, adaptive, non-stationary, and
+attribution experiments. Post-audit results have not yet been regenerated, and the
+synthetic injected-bias proxy is not downstream state displacement.
 
 ### 4.2 A shared attack ontology
 
@@ -337,42 +343,41 @@ layer at all.*
 ### 4.3 The matched operating point (why raw ROC is misleading)
 
 Detectors with different score distributions cannot be compared at a single threshold. The fair
-comparison fixes a **common false-alarm rate** and reads detection (or the adversary's evasion
-ceiling) *there*. Galadriel's adaptive study does exactly this — at **matched FAR**, correlation's
-evasion ceiling (0.20) is *lower* than PID's (0.40), reversing the naive intuition that the fancier
-detector is harder to evade (`PAPER.md` §5.7 / `EVALUATION.md` §2.5). Any cross-approach table must pin the operating
-point the same way, or it is comparing thresholds, not detectors.
+comparison fixes a **common false-alarm rate** and reads detection (or the adversary's
+evasion ceiling) there. Galadriel's synthetic harness includes a matched-operating-point
+design, but post-audit numeric results have not yet been regenerated. Any cross-approach
+table must pin the operating point the same way, or it is comparing thresholds, not
+detectors.
 
 ### 4.4 Metrics, precisely
 
-- **Detection:** AUC (Mann-Whitney, ties = 0.5) with a **percentile-bootstrap 95% CI**; for two
-  detectors on the *same* scenarios, a **paired** bootstrap of the AUC *difference* (galadriel's
-  `auc_diff_ci`) — the only honest way to call a "tie" or a "strictly beats."
-- **Rates:** detection/false-alarm as **Wilson intervals**, not bare fractions.
-- **Latency:** median frames-to-detect from onset.
+- **Detection:** AUC (Mann-Whitney, ties = 0.5) with uncertainty; for two detectors
+  on the same scenarios, use a paired interval for the AUC difference. Parameter-grid
+  claims additionally require multiplicity control.
+- **Rates:** detection, false alarm, error, and inconclusive fractions with intervals.
+- **Latency:** time to detect from onset, excluding and separately reporting pre-onset alarms.
 - **Cost:** relative to the cheapest baseline, with a window/channel scaling curve.
 - **Adaptive:** evasion ceiling (max undetected attack strength) at matched FAR.
-- **Attacker success:** the *bounded* undetected state-pull (galadriel's §5.9) — how far an adversary
-  can move the estimate while staying under the detector.
+- **Attacker success:** downstream state displacement, not merely synthetic injected bias.
 
 ### 4.5 What galadriel's harness already provides — and what it does not
 
-**Provides (reusable today, within the L2 family):** shared synthetic scenarios with a known
-ground-truth attack; a matched-FAR comparison; paired-bootstrap CIs; the seven-attack suite above;
-and the full accuracy/latency/cost/adaptive/FAR/attacker-gain axis set — all as reproducible `cargo`
-commands.
+**Provides (research use, within the L2 family):** shared synthetic scenarios with known
+labels, a matched-operating-point design, paired bootstrap utilities, and
+accuracy/latency/cost experiments as reproducible `cargo` commands. Exact results must be
+regenerated after the audit.
 
 **Does not yet provide (what a true cross-approach benchmark still needs):**
 1. **Multi-layer data** — the same scenario emitted at L0 (RF/IQ), L1 (measurements), and L2
    (innovations), so signal-level, RAIM, and consistency detectors run on *one* ground truth.
-2. **Real (non-synthetic) traces** — galadriel's study is Gaussian and non-adaptive by construction
-   (`PAPER.md` §6); a benchmark that ranks methods for deployment needs field data.
+2. **Real (non-synthetic) traces** — galadriel's study uses controlled simulator models;
+   a benchmark that ranks methods for deployment needs field data.
 3. **Assumption accounting** — a standard way to report each method's prerequisites (§4.1, axis 6) as
-   part of its score, so a model-free advisory flag and a model-based provable recovery are not
+   part of its score, so a model-light advisory flag and a model-based provable recovery are not
    compared as if they answered the same question.
 
-Naming these gaps *is* the honest contribution: galadriel benchmarks rigorously **within its own
-family and layer**, and the cross-family comparison is scoped, not overclaimed.
+The current harness is a useful synthetic scaffold within its own family and layer. It is
+not yet a rigorous cross-family or recorded-data benchmark.
 
 ### 4.6 Pitfalls to avoid
 
@@ -381,8 +386,8 @@ family and layer**, and the cross-family comparison is scoped, not overclaimed.
 - **Unmatched thresholds:** comparing AUC-optimal points of differently-shaped score distributions.
   Fix the FAR (§4.3).
 - **Assumption laundering:** hiding that method A needed a validated dynamics model (or labeled
-  training data, or an extra antenna) while method B needed nothing. Report assumptions as a first-
-  class result (§4.1).
+  training data, or an extra antenna) while method B needed registered common-frame,
+  common-prior residuals. Report assumptions as a first-class result (§4.1).
 - **Ignoring the shared ceiling:** *every* consistency-family method — galadriel included — is
   defeated by the statistics-matching FDI. A benchmark that omits that attack flatters the whole
   family.
@@ -414,18 +419,18 @@ is honestly labeled *advisory instrumentation on top* (`MOTIVATION.md` §4b).
 **Where galadriel genuinely competes** (rather than composes) is a short, well-defined list:
 
 - **Other cross-sensor consistency detectors (§2.5)** — same family, same layer. Galadriel's
-  differentiators: the forced-vs-justified *detector-selection* result (correlation by default, MI/PID
-  only off the Gaussian manifold), per-channel **attribution**, and zero model/training assumptions.
-- **Learning-based anomaly detectors (§2.8)** in the nonlinear regime — galadriel's PID escalation
-  targets the same synergistic structure, but training-free, cost-transparent, and attributive.
-- **Classical single-modality RAIM (§2.3)** as the conceptual ancestor — galadriel is the model-free,
-  multi-modality generalization of its residual-consistency + exclusion principle.
+  differentiators: signed correlation by default, additive MI/PID only for a validated
+  nonlinear estimand, and per-channel **attribution**. It is training-free but not
+  producer-assumption-free.
+- **Learning-based anomaly detectors (§2.8)** in the nonlinear regime — galadriel offers
+  training-free pairwise-MI evidence and diagnostic PID atoms, with different assumptions
+  rather than a demonstrated field-performance advantage.
+- **Classical single-modality RAIM (§2.3)** as a conceptual ancestor — Galadriel explores
+  a multi-modality residual-consistency principle but does not inherit RAIM's integrity guarantee.
 
 Against everything else — signal-level GNSS, cryptographic authentication, resilient state estimation,
-Byzantine-robust fusion, active challenge-response — galadriel is **complementary**, and the right
-deployment posture is *all of them, layered*, not a bake-off. That posture, and the discipline of
-knowing **which detector to pay for at which layer against which attack**, is the contribution this
-project exists to make.
+Byzantine-robust fusion, active challenge-response — galadriel is complementary. A system design
+may layer several of them rather than treat this document as a deployment ranking.
 
 ---
 

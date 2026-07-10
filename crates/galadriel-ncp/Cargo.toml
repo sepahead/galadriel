@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 description = "NCP observation-plane ingest for Galadriel's Mirror (feature `ncp`)."
+publish = false
+
+[lints]
+workspace = true
 
 [dependencies]
 galadriel-core = { workspace = true }

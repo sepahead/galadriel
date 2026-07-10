@@ -7,6 +7,10 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 description = "Monte-Carlo evaluation harness: the PID engine vs the NIS baseline across attack types."
+publish = false
+
+[lints]
+workspace = true
 
 [[bin]]
 name = "galadriel-eval"
