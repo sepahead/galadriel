@@ -2,9 +2,9 @@
   <title>Galadriel — Sentinel Shield (the eye that scans for the lying channel)</title>
   <defs>
     <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#18222f"/>
-      <stop offset="45%" stop-color="#0c141e"/>
-      <stop offset="100%" stop-color="#05080d"/>
+      <stop offset="0%" stop-color="#10202f"/>
+      <stop offset="45%" stop-color="#0a1420"/>
+      <stop offset="100%" stop-color="#050a11"/>
     </linearGradient>
     <linearGradient id="crown" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#2a3a4d"/>
@@ -34,8 +34,10 @@
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <style>
-      .rim{fill:none;stroke:#22d3ee;stroke-width:2.4;stroke-linejoin:miter;stroke-opacity:.85}
-      .rimglow{fill:none;stroke:#22d3ee;stroke-width:5;stroke-linejoin:miter;stroke-opacity:.22;filter:url(#glow)}
+      .rim{fill:none;stroke:#22d3ee;stroke-width:2.4;stroke-linejoin:miter;stroke-opacity:.9}
+      .rimdark{fill:none;stroke:#0a1a24;stroke-width:5.6;stroke-linejoin:miter}
+      .rimglow{fill:none;stroke:#22d3ee;stroke-width:7;stroke-linejoin:miter;stroke-opacity:.2;filter:url(#glow)}
+      .vtick{stroke:#22d3ee;stroke-width:2.2;stroke-linecap:round;stroke-opacity:.9}
       .bevel{fill:none;stroke:#3b82a0;stroke-width:1.2;stroke-opacity:.5;stroke-linejoin:miter}
       .facet{stroke:#22d3ee;stroke-width:1;stroke-opacity:.14}
       .slitedge{fill:none;stroke:#22d3ee;stroke-width:1.4;stroke-opacity:.55;stroke-linejoin:miter}
@@ -46,7 +48,7 @@
       .eye{animation:scan 3.6s ease-in-out infinite}
       @keyframes scan{0%{transform:translateX(0)}25%{transform:translateX(42px)}75%{transform:translateX(-42px)}100%{transform:translateX(0)}}
       @media (prefers-reduced-motion:reduce){.eye{animation:none}}
-      @media (prefers-color-scheme:light){.rimglow{stroke-opacity:.3}}
+      @media (prefers-color-scheme:light){.rimglow{stroke-opacity:.28}.rim{stroke-opacity:1}.rimdark{stroke:#123240}.vtick{stroke-opacity:1}}
     </style>
   </defs>
 
@@ -96,7 +98,14 @@
     </g>
   </g>
 
-  <!-- rim -->
+  <!-- rim: halo, dark under-stroke, bright core (crisp on white and dark) -->
   <path class="rimglow" d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z"/>
+  <path class="rimdark" d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z"/>
   <path class="rim" d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z"/>
+  <!-- cardinal vertex ticks (instrument dial accents) -->
+  <line class="vtick" x1="28" y1="122" x2="34" y2="122"/>
+  <line class="vtick" x1="206" y1="122" x2="212" y2="122"/>
+  <line class="vtick" x1="120" y1="229" x2="120" y2="235"/>
+  <line class="vtick" x1="68" y1="9" x2="68" y2="15"/>
+  <line class="vtick" x1="172" y1="9" x2="172" y2="15"/>
 </svg>
