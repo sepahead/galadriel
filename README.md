@@ -147,14 +147,14 @@ in [`CHANGELOG.md`](CHANGELOG.md) under `[Unreleased]`. galadriel pins its priva
 | [`galadriel-sim`](crates/galadriel-sim) | correlated scenarios + phantom-DOA / stealthy-spoof / jam / collusion / maneuver injections | ✅ **shipped default** | 9 |
 | [`galadriel-cli`](crates/galadriel-cli) | `galadriel demo` / `replay` driver | ✅ **shipped default** | — |
 | [`galadriel-pid`](crates/galadriel-pid) | geometry-gated KSG-MI / PID escalation | ✅ feature `pid` | 9 |
-| [`galadriel-ncp`](crates/galadriel-ncp) | `PidObservation` JSONL ingest · frozen sidecar contract · read-only Zenoh `SidecarTap` | ✅ `ncp` · 🟡 `ncp-live`¹ | 4 |
+| [`galadriel-ncp`](crates/galadriel-ncp) | `PidObservation` JSONL ingest · frozen sidecar contract · **real-crebain-capture integration tests** · read-only Zenoh `SidecarTap` | ✅ `ncp` · 🟡 `ncp-live`¹ | 6 |
 | [`galadriel-eval`](crates/galadriel-eval) | the nine-part Monte-Carlo evaluation + criterion cost bench | ✅ | 14 |
 | [`galadriel-justify`](crates/galadriel-justify) | the forced-vs-justified studies (incl. SxPID atoms · continuous synergy · pointwise/sequential) | ✅ | 7 |
 
 ¹ The live Zenoh tap **compiles against the real `ncp-zenoh` 1.9 API** but is not yet
 integration-tested against a running broker in CI.
 
-**Quality bar.** **79 tests pass** (including property-based `proptest` suites in `-core` and
+**Quality bar.** **81 tests pass** (including property-based `proptest` suites in `-core` and
 `-eval`), `cargo fmt` + `cargo clippy -D warnings` clean, every crate `#![forbid(unsafe_code)]`,
 MSRV **1.80** (default; 1.88 with `pid` / `ncp`). Every number in the docs is a reproducible
 `cargo` command.

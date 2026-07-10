@@ -7,6 +7,17 @@ versions may make breaking changes).
 
 ## [Unreleased]
 
+### Added (cross-repo integration proof)
+- **A real crebain-emitted capture is now a CI-checked galadriel fixture.**
+  `crates/galadriel-ncp/tests/fixtures/crebain_clean_capture.jsonl` (476 records; one
+  constant-velocity target; visual/acoustic Cartesian + radar through crebain's EKF polar
+  path; NIS mean 2.93 ≈ the χ²(3) expectation) was produced by crebain's own emitter
+  (its `generate_galadriel_pid_fixture` test), not hand-written. Two integration tests
+  prove the seam beyond the byte-frozen contracts: genuine emitter output parses with full
+  modality coverage and χ²-plausible NIS, and a clean capture does **not** false-alarm the
+  NIS baseline or the fused correlation default. The `replay` CLI on the fixture reads:
+  `VERDICT: NOMINAL — 3 channels corroborate; NIS consistent with χ²`.
+
 ### Changed
 - **README: crebain now emits the sidecar.** The "designated emitter" hedge is resolved -
   crebain's `update_track` emits contract-frozen `PidObservation` records (feature
