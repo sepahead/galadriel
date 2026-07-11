@@ -300,13 +300,10 @@ pub fn assess_default(
     corr_cfg: &CorrConfig,
 ) -> crate::Result<DefaultReport> {
     let mut mirror = Mirror::with_modalities(baseline_cfg.clone(), modalities)?;
-    for o in stream {
-        mirror.ingest(o)?;
-    }
-    let track = stream.first().map_or(0, |o| o.track_id);
-    let last_seq = stream.iter().map(|o| o.seq).max().unwrap_or(0);
-    let baseline = mirror.assess(track, last_seq)?;
+    corr_cfg.validate()?;
 
+    // Extract first so the whole-stream size, ordering, track, and projection
+    // invariants fail before baseline work is performed on an unassessable input.
     let projection = crate::consistency_channels_with_temporal_limits(
         stream,
         modalities,
@@ -314,6 +311,17 @@ pub fn assess_default(
         baseline_cfg.max_timestamp_skew_ms,
         baseline_cfg.max_inter_sample_gap_ms,
     )?;
+    for observation in stream {
+        mirror.ingest(observation)?;
+    }
+    let track = stream.first().map_or(0, |observation| observation.track_id);
+    let last_seq = stream
+        .iter()
+        .map(|observation| observation.seq)
+        .max()
+        .unwrap_or(0);
+    let baseline = mirror.assess(track, last_seq)?;
+
     let mut correlations = Vec::new();
     if let Some(projection) = projection {
         let axis_count = projection.axes.len();
@@ -597,5 +605,22 @@ mod tests {
 
         assert!(report.correlations.is_empty());
         assert_eq!(report.verdict, FusedVerdict::InsufficientEvidence);
+    }
+
+    #[test]
+    fn default_assessment_rejects_invalid_correlation_config_without_projection() {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let stream = modalities
+            .iter()
+            .map(|&modality| PidObservation::scalar(1, 1, 1, modality, 3.0, 3))
+            .collect::<Vec<_>>();
+        let corr_cfg = CorrConfig {
+            family_alpha: 0.0,
+            ..CorrConfig::default()
+        };
+
+        assert!(
+            assess_default(&stream, &modalities, &DetectorConfig::default(), &corr_cfg,).is_err()
+        );
     }
 }

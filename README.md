@@ -144,7 +144,7 @@ treated as project-status claims.
 | `ncp-live` | `ncp-zenoh`, `tokio` | read-only named-perception subscriber with explicit secure/development mode and bounded sequence state |
 
 The public `pid-rs` repository and NCP's `ncp-core`/`ncp-zenoh` crates are pinned by
-immutable public tags and exact lockfile commits (`v0.4.0` and `v0.7.1`, respectively).
+exact Git revisions corresponding to public tags `v0.4.0` and `v0.7.1`, respectively.
 A fresh clone requires no sibling checkout, private repository token, or global Git
 credential rewrite.
 
@@ -166,9 +166,12 @@ metadata, cross-session/cross-producer payloads, unsafe JSON integers, invalid o
 and replay/sequence violations. Contract-hash drift is accepted per NCP policy but counted
 for operators. Callers must choose `TransportMode::Secure` (strict mTLS client config) or
 explicitly acknowledge `TransportMode::QuietDevelopment`; there is no implicit security
-default. Subscriber silence can still mean no traffic, a realm/key mismatch, ACL denial,
-or producer failure. Producers must use a fresh session ID for every process epoch, and
-all-modal silence still requires a heartbeat.
+default. `LiveLimits::max_payload_bytes` bounds decoding after NCP callback delivery, but the
+pinned `ncp-zenoh` callback currently materializes an owned payload first; deployments still
+need a transport/broker message-size ceiling to bound receive-memory pressure. Subscriber
+silence can still mean no traffic, a realm/key mismatch, ACL denial, or producer failure.
+Producers must use a fresh session ID for every process epoch, and all-modal silence still
+requires a heartbeat.
 
 This is a project-owned sidecar payload, not a normative NCP `SensorFrame`. A future
 Crebain producer therefore builds the key with

@@ -65,7 +65,9 @@ const fn max_confirmation_edge_fits(max_channels: usize) -> usize {
 pub struct PidConfig {
     /// Window length (frames) analysed, taken from each channel's tail.
     pub window: usize,
-    /// Minimum aligned samples per channel before a verdict is trusted.
+    /// Minimum aligned samples per channel before a point-estimate verdict is trusted.
+    /// With bootstrap confirmation enabled, [`Self::required_samples`] also requires
+    /// enough samples to construct every distinct circular resample.
     pub min_samples: usize,
     /// Seeded jitter magnitude after per-column standardisation.
     pub jitter_std: f64,
@@ -120,6 +122,20 @@ impl Default for PidConfig {
 }
 
 impl PidConfig {
+    /// Effective aligned-sample requirement for the configured analysis.
+    ///
+    /// Bootstrap confirmation needs at least `n_boot` observations because its
+    /// circular delete-block plans use distinct starting positions. Applying this
+    /// requirement before any estimator prevents an early nominal result in a
+    /// window that cannot yet confirm a positive attribution.
+    pub fn required_samples(&self) -> usize {
+        if self.bootstrap {
+            self.min_samples.max(self.n_boot)
+        } else {
+            self.min_samples
+        }
+    }
+
     /// Validate estimator, allocation, bootstrap-diversity, and worst-case work
     /// invariants for all six unique modalities.
     pub fn validate(&self) -> galadriel_core::Result<()> {
@@ -169,6 +185,12 @@ impl PidConfig {
             return Err(InvalidConfig(
                 "PID family_alpha must be finite and in (0, 1)".into(),
             ));
+        }
+        if self.family_alpha / galadriel_core::MAX_CONSISTENCY_PROJECTION_AXES as f64 == 0.0 {
+            return Err(InvalidConfig(format!(
+                "PID family_alpha is too small to divide across {} projection axes",
+                galadriel_core::MAX_CONSISTENCY_PROJECTION_AXES
+            )));
         }
         if self.bootstrap {
             if !(MIN_BOOTSTRAP_RESAMPLES..=MAX_BOOTSTRAP_RESAMPLES).contains(&self.n_boot) {
@@ -321,13 +343,13 @@ pub fn analyze(
         .first()
         .map_or(0, |(_, values)| values.len())
         .min(cfg.window);
-    if c < 3 || w < cfg.min_samples {
+    let required_samples = cfg.required_samples();
+    if c < 3 || w < required_samples {
         return Ok(PidReport {
             channels: Vec::new(),
             verdict: PidVerdict::InsufficientEvidence,
             note: format!(
-                "need >=3 channels and >={} aligned samples (have {c} channels, w={w})",
-                cfg.min_samples
+                "need >=3 channels and >={required_samples} aligned samples (have {c} channels, w={w})"
             ),
         });
     }
@@ -1133,6 +1155,22 @@ mod tests {
     }
 
     #[test]
+    fn bootstrap_readiness_precedes_nominal_or_positive_verdicts() {
+        let scenario = ScenarioConfig {
+            frames: PidConfig::default().min_samples,
+            rho: 0.7,
+            ..Default::default()
+        };
+        let stream = generate(&scenario).unwrap();
+        let channels = scalar_channels(&stream, &scenario.modalities, 0).unwrap();
+        let report = analyze(&channels, &PidConfig::default()).unwrap();
+
+        assert_eq!(PidConfig::default().required_samples(), 100);
+        assert_eq!(report.verdict, PidVerdict::InsufficientEvidence);
+        assert!(report.note.contains("100 aligned samples"));
+    }
+
+    #[test]
     fn default_confirmation_never_overstates_point_spoof_evidence() {
         let mut confirmed = 0;
         for seed in [7, 23] {
@@ -1311,6 +1349,8 @@ mod tests {
         config.family_alpha = 1.0;
         assert!(config.validate().is_err());
         config.family_alpha = f64::NAN;
+        assert!(config.validate().is_err());
+        config.family_alpha = f64::from_bits(1);
         assert!(config.validate().is_err());
 
         config = PidConfig {

@@ -32,6 +32,20 @@ fn trials_arg(default: usize) -> Result<usize, String> {
     Ok(trials)
 }
 
+/// Print the mandatory synthetic-evidence banner (docs/EVALUATION.md §7) to stdout, so a
+/// copied report always carries its non-operational label and provenance reminder.
+fn print_synthetic_banner(seed: u64) {
+    let rule = "=".repeat(78);
+    println!(
+        "{rule}\n\
+         SYNTHETIC Monte-Carlo evidence — NOT operational detection or false-alarm rates. These\n\
+         numbers characterize explicitly generated models, not a deployed detector or field\n\
+         prevalence. Before citing a value, record the commit, Rust toolchain, build profile,\n\
+         and hardware (docs/EVALUATION.md §4/§7). seed={seed}\n\
+         {rule}"
+    );
+}
+
 fn run_main() -> Result<(), String> {
     let trials = trials_arg(MIN_INFERENCE_TRIALS)?;
     let cfg = EvalConfig {
@@ -39,6 +53,7 @@ fn run_main() -> Result<(), String> {
         ..Default::default()
     };
     cfg.validate()?;
+    print_synthetic_banner(cfg.base_seed);
 
     let lat_trials = trials.min(20);
     let step = 10;

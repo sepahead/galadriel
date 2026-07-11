@@ -170,10 +170,12 @@ I(X;Y)=-\tfrac{1}{2}\log(1-\rho^2).
 MI and correlation magnitude therefore encode the same population ranking in that model.
 KSG [Kraskov2004] is justified only when validated data contain dependence that signed
 linear correlation cannot represent. Its geometry, sample size, jitter, and bootstrap
-configuration must be validated; failure is not replaced by an optimistic point estimate.
+configuration must be validated — its finite-sample and dimension-dependent bias are
+characterized by [Gao2018] — and failure is not replaced by an optimistic point estimate.
 
-Shared-exclusions PID [Makkeh2021, Ehrlich2024] can describe redundant, unique, and
-synergistic information for a documented source/target construction. Its atoms are
+Partial information decomposition [WilliamsBeer2010], in its shared-exclusions form
+[Makkeh2021, Ehrlich2024], can describe redundant, unique, and synergistic information for
+a documented source/target construction. Its atoms are
 advisory and can legitimately be negative. They are neither probabilities nor calibrated
 attack confidence.
 
@@ -235,16 +237,38 @@ possible. See [`EVALUATION.md`](EVALUATION.md).
 - **Honest-majority boundary.** A colluding majority can invert attribution; an ambiguous
   topology remains inconclusive.
 - **Selection bias.** Association and gating can hide attacks as missing data.
-- **Temporal calibration.** Per-assessment significance does not by itself guarantee a
-  stream-level false-alarm rate under overlapping windows and repeated looks.
+- **Temporal calibration.** The Fisher-z correlation significance floor assumes the windowed
+  residual pairs are i.i.d. bivariate normal. Same-sign within-window autocorrelation in two
+  independent residual series lowers the effective sample size below the window length, so a
+  single assessment's significance is anti-conservative; opposite-sign autocorrelation can
+  instead be conservative. The canonical autocorrelation-null study in `galadriel-justify`
+  quantifies the equal-positive-persistence case at the default window. A Bartlett
+  effective-sample-size correction
+  [Bartlett1935] improves moderate-persistence calibration but is conservative when high
+  persistence leaves a small effective sample (`JUSTIFICATION.md` §5); the runtime floor
+  intentionally remains uncorrected until phi estimation and finite-sample calibration are
+  registered. Note that a
+  correctly tuned filter's *native*
+  innovations are approximately white, but the attested common-frozen-prior consistency
+  residual is not one filter's innovation and carries no such guarantee. Separately, even a
+  well-calibrated per-assessment significance does not by itself guarantee a stream-level
+  false-alarm rate under overlapping windows and repeated looks.
+- **Below-target magnitude shifts.** The windowed NIS test is right-tailed, and at the fusion
+  core's `dof = 3` with the default symmetric CUSUM slack the below-target CUSUM arm is inert
+  (see `DetectorConfig::cusum_slack`). A moment-*shrinking* channel — an over-conservative
+  filter, or a replay/frozen sensor whose innovations match the prediction too closely — is
+  therefore not flagged by the magnitude layer at that operating point.
 - **Synthetic evidence.** Current studies do not represent field prevalence, base rates,
   maneuvers, or operator outcomes.
 - **Liveness.** All-modal silence requires an external heartbeat.
-- **Transport prototype.** The Zenoh sidecar key is not authorized by NCP's current
-  hardened ACL and has no current producer. Payload and sequence-state bounds limit
-  local resource use, but LRU sequence eviction necessarily forgets replay state for
-  an evicted stream; authenticated ACLs and a fresh session ID per producer epoch remain
-  protocol requirements rather than detector features.
+- **Transport prototype.** The Zenoh sidecar now uses NCP's ACL-covered named-sensor
+  route and a versioned session/producer-bound envelope, but has no current live Crebain
+  publisher or receiver-verified mTLS deployment. Payload and sequence-state bounds limit
+  decode and retained-state work, but the pinned `ncp-zenoh` callback materializes payload
+  bytes before Galadriel's size gate, so a transport/broker message ceiling is still needed
+  for receive-memory bounds. New sequence streams fail closed at capacity instead of
+  evicting replay high-water marks; authenticated ACLs, a fresh session ID per producer
+  epoch, and heartbeat remain deployment requirements rather than detector features.
 - **Advisory only.** The verdict is not a calibrated posterior or enforcement command.
 
 ## 8. Roadmap to a defensible claim
@@ -284,6 +308,7 @@ not translate it into an operational detection or false-alarm rate.
 ## References
 
 - **[BarShalom2001]** Y. Bar-Shalom, X.-R. Li, T. Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001.
+- **[Bartlett1935]** M. S. Bartlett. "Some Aspects of the Time-Correlation Problem in Regard to Tests of Significance." *Journal of the Royal Statistical Society* 98(3), 536–543, 1935.
 - **[CoverThomas2006]** T. M. Cover, J. A. Thomas. *Elements of Information Theory,* 2nd ed. Wiley, 2006.
 - **[Ehrlich2024]** D. A. Ehrlich et al. "Partial information decomposition for continuous variables based on shared exclusions." *Phys. Rev. E* 110, 014115, 2024. [arXiv:2311.06373](https://arxiv.org/abs/2311.06373).
 - **[Gao2018]** W. Gao, S. Oh, P. Viswanath. "Demystifying Fixed k-Nearest Neighbor Information Estimators." *IEEE Transactions on Information Theory* 64(8), 2018. [arXiv:1604.03006](https://arxiv.org/abs/1604.03006).

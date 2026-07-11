@@ -34,7 +34,7 @@ pub fn nis_consistency(window: &NisWindow, alpha: f64) -> crate::Result<NisStat>
     }
     let n = window.len();
     let dof = window.dof();
-    let sum = window.sum()?;
+    let (sum, mean) = window.summary();
     let k = n as f64 * dof as f64;
     let p_right = if n == 0 { 1.0 } else { chi2::chi2_sf(sum, k) };
     if !p_right.is_finite() {
@@ -43,7 +43,7 @@ pub fn nis_consistency(window: &NisWindow, alpha: f64) -> crate::Result<NisStat>
     Ok(NisStat {
         n,
         dof,
-        mean_nis: if n == 0 { 0.0 } else { sum / n as f64 },
+        mean_nis: mean,
         sum_nis: sum,
         p_right,
         elevated: n > 0 && p_right < alpha,
@@ -85,5 +85,16 @@ mod tests {
         let w = window_of(&[3.0; 4], 3);
         assert!(nis_consistency(&w, 0.0).is_err());
         assert!(nis_consistency(&w, f64::NAN).is_err());
+    }
+
+    #[test]
+    fn finite_extreme_nis_is_an_anomaly_not_a_numeric_error() {
+        let w = window_of(&[f64::MAX, f64::MAX], 3);
+        let stat = nis_consistency(&w, 0.01).expect("finite NIS remains assessable");
+
+        assert!(stat.elevated);
+        assert_eq!(stat.p_right, 0.0);
+        assert_eq!(stat.mean_nis, f64::MAX);
+        assert_eq!(stat.sum_nis, f64::MAX);
     }
 }

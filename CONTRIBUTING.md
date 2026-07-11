@@ -37,7 +37,7 @@ cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-features --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps --locked
 cargo build -p galadriel-core --no-default-features --locked
-cargo deny --locked check
+cargo deny --all-features --locked check
 ```
 
 The pinned workspace MSRV is **Rust 1.88**. All packages currently set

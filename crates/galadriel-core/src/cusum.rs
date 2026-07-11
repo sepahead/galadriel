@@ -21,6 +21,22 @@ pub struct Cusum {
 }
 
 impl Cusum {
+    /// Add a short signed expression after normalizing its terms, saturating only
+    /// when the mathematical result itself is outside the finite `f64` range.
+    fn saturating_sum(terms: &[f64]) -> f64 {
+        let scale = terms.iter().map(|term| term.abs()).fold(0.0_f64, f64::max);
+        if scale == 0.0 {
+            return 0.0;
+        }
+        let scaled = terms.iter().map(|term| term / scale).sum::<f64>();
+        let value = scale * scaled;
+        if value.is_finite() {
+            value
+        } else {
+            value.signum() * f64::MAX
+        }
+    }
+
     /// New detector targeting `target`, with slack `k` and alarm threshold `h`
     /// expressed in the same units as the input series.
     pub fn new(target: f64, slack: f64, threshold: f64) -> crate::Result<Self> {
@@ -50,11 +66,8 @@ impl Cusum {
         if !x.is_finite() {
             return Err(crate::GaladrielError::NonFinite("Cusum::update"));
         }
-        let hi = (self.hi + x - self.target - self.slack).max(0.0);
-        let lo = (self.lo + self.target - x - self.slack).max(0.0);
-        if !hi.is_finite() || !lo.is_finite() {
-            return Err(crate::GaladrielError::NonFinite("Cusum accumulator"));
-        }
+        let hi = Self::saturating_sum(&[self.hi, x, -self.target, -self.slack]).max(0.0);
+        let lo = Self::saturating_sum(&[self.lo, self.target, -x, -self.slack]).max(0.0);
         self.hi = hi;
         self.lo = lo;
         Ok(self.alarm())
@@ -158,5 +171,15 @@ mod tests {
         let mut c = Cusum::new(3.0, 1.0, 5.0).unwrap();
         assert!(c.update(f64::INFINITY).is_err());
         assert_eq!((c.hi(), c.lo()), (0.0, 0.0));
+    }
+
+    #[test]
+    fn finite_extreme_updates_saturate_into_alarm_instead_of_erroring() {
+        let mut c = Cusum::new(3.0, 1.0, 5.0).unwrap();
+
+        assert!(c.update(f64::MAX).unwrap());
+        assert!(c.update(f64::MAX).unwrap());
+        assert_eq!(c.hi(), f64::MAX);
+        assert!(c.lo().is_finite());
     }
 }

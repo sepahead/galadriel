@@ -200,12 +200,33 @@ pub fn fuse_axes(
     }
 }
 
-/// Run the magnitude baseline, signed-correlation default, and PID escalation over
-/// a whole single-track stream.
+/// Run the magnitude baseline, default signed-correlation configuration, and PID
+/// escalation over a whole single-track stream.
 pub fn assess_stream(
     stream: &[PidObservation],
     modalities: &[Modality],
     baseline_cfg: &DetectorConfig,
+    pid_cfg: &PidConfig,
+) -> galadriel_core::Result<FusedReport> {
+    assess_stream_with_correlation(
+        stream,
+        modalities,
+        baseline_cfg,
+        &CorrConfig::default(),
+        pid_cfg,
+    )
+}
+
+/// Run the magnitude baseline, caller-configured signed correlation, and PID
+/// escalation over a whole single-track stream.
+///
+/// This is the configurable counterpart to [`assess_stream`], which deliberately
+/// preserves the default correlation operating point for compatibility.
+pub fn assess_stream_with_correlation(
+    stream: &[PidObservation],
+    modalities: &[Modality],
+    baseline_cfg: &DetectorConfig,
+    corr_cfg: &CorrConfig,
     pid_cfg: &PidConfig,
 ) -> galadriel_core::Result<FusedReport> {
     // Reject structurally unresolvable confirmation settings before ingesting or
@@ -213,6 +234,17 @@ pub fn assess_stream(
     // producer-attested projection dimensionality is known.
     pid_cfg.validate()?;
     let mut mirror = Mirror::with_modalities(baseline_cfg.clone(), modalities)?;
+    corr_cfg.validate()?;
+
+    // Preflight whole-stream bounds and structural invariants before running the
+    // baseline or any quadratic estimator.
+    let projection = galadriel_core::consistency_channels_with_temporal_limits(
+        stream,
+        modalities,
+        baseline_cfg.max_seq_gap,
+        baseline_cfg.max_timestamp_skew_ms,
+        baseline_cfg.max_inter_sample_gap_ms,
+    )?;
     for observation in stream {
         mirror.ingest(observation)?;
     }
@@ -224,13 +256,6 @@ pub fn assess_stream(
         .unwrap_or(0);
     let baseline = mirror.assess(track, last_seq)?;
 
-    let projection = galadriel_core::consistency_channels_with_temporal_limits(
-        stream,
-        modalities,
-        baseline_cfg.max_seq_gap,
-        baseline_cfg.max_timestamp_skew_ms,
-        baseline_cfg.max_inter_sample_gap_ms,
-    )?;
     let mut correlations = Vec::new();
     let mut pids = Vec::new();
     if let Some(projection) = projection {
@@ -244,11 +269,11 @@ pub fn assess_stream(
         adjusted_pid.family_alpha /= axis_count as f64;
         adjusted_pid.validate()?;
         for (axis, channels) in projection.axes.iter().enumerate() {
-            let mut corr_cfg = CorrConfig::default();
-            corr_cfg.family_alpha /= axis_count as f64;
+            let mut adjusted_corr = corr_cfg.clone();
+            adjusted_corr.family_alpha /= axis_count as f64;
             correlations.push(AxisCorrelationReport {
                 axis,
-                report: correlation::analyze(channels, &corr_cfg)?,
+                report: correlation::analyze(channels, &adjusted_corr)?,
             });
             pids.push(AxisPidReport {
                 axis,
@@ -613,5 +638,27 @@ mod tests {
             Err(galadriel_core::GaladrielError::InvalidConfig(ref message))
                 if message.contains("cannot resolve family_alpha")
         ));
+    }
+
+    #[test]
+    fn configurable_stream_assessment_preserves_the_requested_correlation_config() {
+        let stream = generate(&scenario()).unwrap();
+        let corr_cfg = CorrConfig {
+            corr_floor: 1.0,
+            ..CorrConfig::default()
+        };
+        let report = assess_stream_with_correlation(
+            &stream,
+            &MODALITIES,
+            &DetectorConfig::default(),
+            &corr_cfg,
+            &PidConfig::default(),
+        )
+        .unwrap();
+
+        assert!(report
+            .correlations
+            .iter()
+            .all(|axis| matches!(axis.report.verdict, CorrVerdict::InsufficientEvidence)));
     }
 }

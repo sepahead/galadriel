@@ -294,7 +294,7 @@ fn gen_coupled(
     Ok((x, y))
 }
 
-/// ROC-AUC via the Mann–Whitney identity (ties = ½).
+/// ROC-AUC via the Mann–Whitney identity (ties = ½), in `O(n log n)` time.
 pub fn auc(pos: &[f64], neg: &[f64]) -> Result<f64> {
     if pos.is_empty() || neg.is_empty() {
         return Err(GaladrielError::InvalidChannels(
@@ -304,19 +304,35 @@ pub fn auc(pos: &[f64], neg: &[f64]) -> Result<f64> {
     if !pos.iter().chain(neg).all(|value| value.is_finite()) {
         return Err(GaladrielError::NonFinite("AUC score"));
     }
-    let mut s = 0.0;
-    for &p in pos {
-        for &n in neg {
-            s += if p > n {
-                1.0
-            } else if p == n {
-                0.5
-            } else {
-                0.0
-            };
+    let capacity = pos.len().checked_add(neg.len()).ok_or_else(|| {
+        GaladrielError::InvalidChannels("combined AUC class length overflows usize".into())
+    })?;
+    let mut ranked = Vec::new();
+    ranked.try_reserve_exact(capacity).map_err(|_| {
+        GaladrielError::InvalidChannels(format!(
+            "could not reserve {capacity} ranked AUC observations"
+        ))
+    })?;
+    ranked.extend(pos.iter().copied().map(|score| (score, true)));
+    ranked.extend(neg.iter().copied().map(|score| (score, false)));
+    ranked.sort_by(|left, right| left.0.total_cmp(&right.0));
+
+    let (mut index, mut negatives_before, mut wins) = (0usize, 0usize, 0.0_f64);
+    while index < ranked.len() {
+        let mut end = index + 1;
+        while end < ranked.len() && ranked[end].0 == ranked[index].0 {
+            end += 1;
         }
+        let positives = ranked[index..end]
+            .iter()
+            .filter(|(_, positive)| *positive)
+            .count();
+        let negatives = end - index - positives;
+        wins += positives as f64 * (negatives_before as f64 + 0.5 * negatives as f64);
+        negatives_before += negatives;
+        index = end;
     }
-    Ok(s / (pos.len() as f64 * neg.len() as f64))
+    Ok(wins / (pos.len() as f64 * neg.len() as f64))
 }
 
 /// Bootstrap resamples for the CIs.
@@ -1409,7 +1425,221 @@ pub fn format_seq(s: &SeqStudy) -> String {
     o.push_str(
         "\nThese are synthetic experimental comparators, not deployed detector guarantees.\n\
          FAR intervals are Wilson score intervals on the independent clean holdout.\n\
-         False-start and reach remain raw attack-arm proportions without intervals.\n",
+         False-start and reach remain raw attack-arm proportions without intervals.\n\
+         Detectors share a target FAR but their realized holdout FARs differ, so the latency\n\
+         column is not strictly iso-FAR; read it alongside each detector's realized FAR.\n",
+    );
+    o
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Study 4 — the significance floor's i.i.d. assumption, tested on an AR(1) null.
+//
+// The runtime default accepts a positive cross-channel edge only past a family-wise
+// Fisher-z significance floor whose standard error, 1/√(n−3), assumes the windowed
+// residual pairs are i.i.d. bivariate normal. Windowed residual series need not be
+// independent in time. This study measures what positive within-window autocorrelation
+// does to that floor under the NULL: two *independent* AR(1) channels (population
+// cross-correlation exactly zero, lag-1 coefficient φ), scored by the same one-sided
+// construction the detector uses at its default window n = 128.
+//
+// Hypothesis (stated before running): the naive floor is anti-conservative — its
+// realized false-positive rate rises above the nominal α as φ grows — and replacing n
+// with Bartlett's effective sample size n_eff = n(1−φ²)/(1+φ²) improves calibration
+// until the effective sample becomes too small for the asymptotic Fisher approximation.
+// The large-sample theory (M. S. Bartlett, "Some Aspects of the Time-Correlation
+// Problem in Regard to Tests of Significance," J. Royal Statistical Society
+// 98(3):536–543, 1935) gives var(ρ̂) ≈ (1/n)·(1+φ²)/(1−φ²) for this null, which
+// predicts the direction and approximate scale of the realized rates.
+//
+// This quantifies a *disclosed limitation* of the runtime default (PAPER.md §7); it is
+// not a runtime correction. Applying the correction operationally requires estimating
+// φ from data, with its own uncertainty — a registered enhancement decision.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Window length for the AR(1) null study — matches `CorrConfig::default().window`.
+const AR1_WINDOW: usize = 128;
+/// Lag-1 AR coefficients scanned (φ = 0 is the calibration check).
+pub const AR1_PHIS: [f64; 5] = [0.0, 0.3, 0.5, 0.7, 0.9];
+/// One-sided standard-normal quantile at α = 0.05.
+const AR1_Z_05: f64 = 1.644_853_626_951_472_2;
+/// One-sided standard-normal quantile at α = 0.01.
+const AR1_Z_01: f64 = 2.326_347_874_040_841;
+
+/// Bartlett effective sample size for the cross-correlation of two independent
+/// equal-φ AR(1) series: `n · (1−φ²)/(1+φ²)`.
+fn bartlett_n_eff(n: usize, phi: f64) -> f64 {
+    n as f64 * (1.0 - phi * phi) / (1.0 + phi * phi)
+}
+
+/// One stationary AR(1) stream: `x₀ ~ N(0,1)`, `x_t = φ·x_{t−1} + √(1−φ²)·ε_t`.
+fn gen_ar1(n: usize, phi: f64, rng: &mut StdRng) -> Result<Vec<f64>> {
+    let std_normal = Normal::new(0.0, 1.0).map_err(|error| {
+        GaladrielError::InvalidConfig(format!("invalid standard normal: {error}"))
+    })?;
+    let innovation_sd = (1.0 - phi * phi).sqrt();
+    let mut x = Vec::with_capacity(n);
+    let mut previous = std_normal.sample(rng);
+    x.push(previous);
+    for _ in 1..n {
+        previous = phi * previous + innovation_sd * std_normal.sample(rng);
+        x.push(previous);
+    }
+    Ok(x)
+}
+
+/// One φ row of the AR(1) null study.
+#[derive(Debug, Clone)]
+pub struct Ar1NullRow {
+    /// Lag-1 coefficient of both (independent) channels.
+    pub phi: f64,
+    /// Bartlett effective sample size at this φ.
+    pub n_eff: f64,
+    /// Realized FPR of the naive floor at α = 0.05, with its Wilson 95% interval.
+    pub naive_fpr_05: f64,
+    /// Wilson 95% interval for `naive_fpr_05`.
+    pub naive_fpr_05_ci: (f64, f64),
+    /// Realized FPR of the Bartlett-corrected floor at α = 0.05.
+    pub bartlett_fpr_05: f64,
+    /// Wilson 95% interval for `bartlett_fpr_05`.
+    pub bartlett_fpr_05_ci: (f64, f64),
+    /// Realized FPR of the naive floor at α = 0.01.
+    pub naive_fpr_01: f64,
+    /// Wilson 95% interval for `naive_fpr_01`.
+    pub naive_fpr_01_ci: (f64, f64),
+    /// Realized FPR of the Bartlett-corrected floor at α = 0.01.
+    pub bartlett_fpr_01: f64,
+    /// Wilson 95% interval for `bartlett_fpr_01`.
+    pub bartlett_fpr_01_ci: (f64, f64),
+}
+
+/// The AR(1) autocorrelation-null study.
+#[derive(Debug, Clone)]
+pub struct Ar1NullStudy {
+    /// Independent channel pairs per φ.
+    pub trials: usize,
+    /// Window length (matches the runtime default correlation window).
+    pub n: usize,
+    /// Root random seed.
+    pub seed: u64,
+    /// One row per φ in [`AR1_PHIS`].
+    pub rows: Vec<Ar1NullRow>,
+}
+
+/// Run the autocorrelation-null study: per φ, generate `trials` pairs of independent
+/// AR(1) channels and count how often the detector-style one-sided Fisher floor —
+/// naive `1/√(n−3)` versus Bartlett `1/√(n_eff−3)` — falsely declares a significant
+/// positive correlation.
+pub fn run_autocorrelation_null(trials: usize, seed: u64) -> Result<Ar1NullStudy> {
+    validate_study(trials, AR1_WINDOW, None)?;
+    let floor = |z: f64, effective_n: f64| -> Result<f64> {
+        if effective_n <= 4.0 {
+            return Err(GaladrielError::InvalidConfig(
+                "AR(1) effective sample size must exceed 4".into(),
+            ));
+        }
+        Ok((z / (effective_n - 3.0).sqrt()).tanh())
+    };
+    let rows = AR1_PHIS
+        .iter()
+        .enumerate()
+        .map(|(index, &phi)| -> Result<Ar1NullRow> {
+            let n_eff = bartlett_n_eff(AR1_WINDOW, phi);
+            let naive_floor_05 = floor(AR1_Z_05, AR1_WINDOW as f64)?;
+            let naive_floor_01 = floor(AR1_Z_01, AR1_WINDOW as f64)?;
+            let bartlett_floor_05 = floor(AR1_Z_05, n_eff)?;
+            let bartlett_floor_01 = floor(AR1_Z_01, n_eff)?;
+            let mut rng = StdRng::seed_from_u64(
+                seed ^ 0xA21C_0221 ^ (index as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15),
+            );
+            let (mut n05, mut b05, mut n01, mut b01) = (0usize, 0usize, 0usize, 0usize);
+            for _ in 0..trials {
+                let x = gen_ar1(AR1_WINDOW, phi, &mut rng)?;
+                let y = gen_ar1(AR1_WINDOW, phi, &mut rng)?;
+                let rho = pearson(&x, &y)?;
+                if rho >= naive_floor_05 {
+                    n05 += 1;
+                }
+                if rho >= bartlett_floor_05 {
+                    b05 += 1;
+                }
+                if rho >= naive_floor_01 {
+                    n01 += 1;
+                }
+                if rho >= bartlett_floor_01 {
+                    b01 += 1;
+                }
+            }
+            let rate = |count: usize| count as f64 / trials as f64;
+            Ok(Ar1NullRow {
+                phi,
+                n_eff,
+                naive_fpr_05: rate(n05),
+                naive_fpr_05_ci: wilson95(n05, trials)?,
+                bartlett_fpr_05: rate(b05),
+                bartlett_fpr_05_ci: wilson95(b05, trials)?,
+                naive_fpr_01: rate(n01),
+                naive_fpr_01_ci: wilson95(n01, trials)?,
+                bartlett_fpr_01: rate(b01),
+                bartlett_fpr_01_ci: wilson95(b01, trials)?,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    Ok(Ar1NullStudy {
+        trials,
+        n: AR1_WINDOW,
+        seed,
+        rows,
+    })
+}
+
+/// Format the autocorrelation-null study as a plain-text report.
+pub fn format_autocorrelation_null(s: &Ar1NullStudy) -> String {
+    let mut o = String::new();
+    o.push_str(&format!(
+        "\nAutocorrelation null — two INDEPENDENT AR(1) channels · n={} (runtime default window)\n\
+         false-positive rate of the one-sided Fisher significance floor · {} trials/phi · seed={}\n\n",
+        s.n, s.trials, s.seed
+    ));
+    o.push_str(&format!(
+        "{:>4} | {:>6} | {:>21} | {:>21} | {:>21} | {:>21}\n",
+        "phi",
+        "n_eff",
+        "naive FPR@.05 [CI]",
+        "Bartlett FPR@.05",
+        "naive FPR@.01 [CI]",
+        "Bartlett FPR@.01"
+    ));
+    o.push_str(&format!("{}\n", "-".repeat(110)));
+    for r in &s.rows {
+        o.push_str(&format!(
+            "{:>4.1} | {:>6.1} | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}]\n",
+            r.phi,
+            r.n_eff,
+            r.naive_fpr_05,
+            r.naive_fpr_05_ci.0,
+            r.naive_fpr_05_ci.1,
+            r.bartlett_fpr_05,
+            r.bartlett_fpr_05_ci.0,
+            r.bartlett_fpr_05_ci.1,
+            r.naive_fpr_01,
+            r.naive_fpr_01_ci.0,
+            r.naive_fpr_01_ci.1,
+            r.bartlett_fpr_01,
+            r.bartlett_fpr_01_ci.0,
+            r.bartlett_fpr_01_ci.1,
+        ));
+    }
+    o.push_str(
+        "\nThe channels are independent (population rho = 0): every alarm above is a false\n\
+         positive. The naive floor assumes i.i.d. pairs (SE 1/sqrt(n-3)); positive lag-1\n\
+         autocorrelation inflates its realized rate above the nominal alpha, as predicted by\n\
+         Bartlett's (1935) large-sample variance (1+phi^2)/((1-phi^2)n). The Bartlett column\n\
+         replaces n with n_eff = n(1-phi^2)/(1+phi^2): it improves calibration at moderate\n\
+         persistence, but becomes conservative at phi=0.9 where n_eff is only about 13.4 and\n\
+         the asymptotic Fisher approximation is poor. The runtime default intentionally remains\n\
+         naive: an operational correction needs a registered phi-estimation and finite-sample\n\
+         calibration design (PAPER.md §7). The phi=0 row checks this harness. Synthetic evidence only.\n",
     );
     o
 }
@@ -1420,6 +1650,13 @@ mod tests {
 
     fn result(s: &Study, c: Coupling) -> CouplingResult {
         s.results.iter().find(|r| r.coupling == c).cloned().unwrap()
+    }
+
+    #[test]
+    fn ranked_auc_preserves_mann_whitney_ties() {
+        assert_eq!(auc(&[2.0, 3.0], &[0.0, 1.0]).unwrap(), 1.0);
+        assert_eq!(auc(&[1.0], &[1.0]).unwrap(), 0.5);
+        assert_eq!(auc(&[0.0, 2.0], &[1.0]).unwrap(), 0.5);
     }
 
     #[test]
@@ -1680,5 +1917,57 @@ mod tests {
         let constant = vec![1.0; 512];
         let mi = ksg(7, &constant, &constant).expect("finite columns");
         assert!(mi < 0.2, "independent jitter should not fabricate MI: {mi}");
+    }
+
+    #[test]
+    fn autocorrelation_null_exposes_naive_inflation_and_bartlett_finite_sample_limit() {
+        // Hypothesis of Study 4: under the null (independent channels), positive lag-1
+        // autocorrelation makes the naive i.i.d. Fisher floor anti-conservative. Bartlett's
+        // effective sample size improves calibration until high persistence leaves too little
+        // effective data for the asymptotic Fisher approximation.
+        let s = run_autocorrelation_null(1_000, 7).expect("valid AR(1) null study");
+        let row = |phi: f64| {
+            s.rows
+                .iter()
+                .find(|r| (r.phi - phi).abs() < 1e-9)
+                .cloned()
+                .unwrap()
+        };
+        let calibrated = row(0.0);
+        assert!(
+            (0.02..=0.09).contains(&calibrated.naive_fpr_05),
+            "phi=0 must be calibrated near alpha=.05: {}",
+            calibrated.naive_fpr_05
+        );
+        let inflated = row(0.7);
+        assert!(
+            inflated.naive_fpr_05 >= 0.11,
+            "phi=0.7 must inflate the naive FPR well above alpha: {}",
+            inflated.naive_fpr_05
+        );
+        assert!(
+            inflated.naive_fpr_05 > row(0.3).naive_fpr_05,
+            "naive inflation must grow with phi"
+        );
+        for phi in [0.0, 0.3, 0.5, 0.7] {
+            let r = row(phi);
+            assert!(
+                (0.02..=0.09).contains(&r.bartlett_fpr_05),
+                "Bartlett floor should remain near alpha at phi={phi}: {}",
+                r.bartlett_fpr_05
+            );
+        }
+        let high_persistence = row(0.9);
+        assert!(
+            high_persistence.bartlett_fpr_05_ci.1 < 0.05
+                && high_persistence.bartlett_fpr_01_ci.1 < 0.01,
+            "small-n_eff Bartlett/Fisher approximation should be detectably conservative: {high_persistence:?}"
+        );
+    }
+
+    #[test]
+    fn autocorrelation_null_rejects_out_of_range_trials() {
+        assert!(run_autocorrelation_null(MIN_TRIALS - 1, 7).is_err());
+        assert!(run_autocorrelation_null(MAX_TRIALS + 1, 7).is_err());
     }
 }

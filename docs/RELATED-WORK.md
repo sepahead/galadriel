@@ -157,9 +157,8 @@ its evidence while adding a separate signed cross-sensor assessment.
 established instance is **GNSS/INS/odometer coupling**: detect a GNSS spoof by checking the satellite
 solution against a self-contained inertial/odometer solution over an observation window
 ([Broumandan & Lachapelle, *Sensors* 18(5):1305, 2018](https://www.mdpi.com/1424-8220/18/5/1305)).
-At L4, surveys of robotic-vehicle security name *cross-sensor consistency checks and spatio-temporal
-anomaly detection* as the standard defensive toolkit
-([Ren et al., "SoK: Rethinking Sensor Spoofing Attacks," IEEE EuroS&P 2023](https://arxiv.org/abs/2205.04662)),
+At L4, the security literature systematizes these sensor-spoofing attacks
+([Xu et al., "SoK: Rethinking Sensor Spoofing Attacks against Robotic Vehicles from a Systematic View," IEEE EuroS&P 2023](https://arxiv.org/abs/2205.04662)),
 and cross-modal plausibility / temporal-consistency checks are the defenses discussed alongside the
 MSF perception attacks ([Cao et al., IEEE S&P 2021](https://arxiv.org/abs/2106.09249);
 [Hallyburton et al., USENIX Security 2022](https://arxiv.org/abs/2106.07098)).
@@ -167,8 +166,9 @@ MSF perception attacks ([Cao et al., IEEE S&P 2021](https://arxiv.org/abs/2106.0
 **Threat model.** A minority of channels that stop agreeing with the physical world the others see.
 
 **Honest limit.** Defeated by a **statistics-matching false-data injection** that *preserves*
-cross-sensor consistency — the **frustum attack** is exactly this, "stealthy … because it preserves
-consistencies between camera and LiDAR" [Hallyburton2022]. This is galadriel's disclosed honest
+cross-sensor consistency — the **frustum attack** is exactly this, "stealthy to existing defenses
+against LiDAR spoofing as it preserves consistencies between camera and LiDAR semantics"
+[Hallyburton2022]. This is galadriel's disclosed honest
 boundary (`PAPER.md` §2/§7), i.e. its limit includes a current state-of-the-art attack.
 
 **Relation to galadriel.** **This is galadriel's family** — it is the multi-sensor generalization of
@@ -436,9 +436,8 @@ may layer several of them rather than treat this document as a deployment rankin
 
 ## References for this document
 
-Reuses the citation keys of [`PAPER.md` §References](PAPER.md#references) where they overlap
-([Cao2021], [Hallyburton2022], [Ren2022], [Broumandan2018], [BarShalom2001], [Page1954],
-[Barrett2015], [Kraskov2004], [Humphreys2012], [Liu2011], [Mo2010]) and adds:
+Most sources in this document are cited inline. The one shared bracket key, [Hallyburton2022], is
+defined in [`PAPER.md` §References](PAPER.md#references). This document additionally defines:
 
 - **[ParkinsonAxelrad1988]** B. W. Parkinson, P. Axelrad. "Autonomous GPS Integrity Monitoring Using the Pseudorange Residual." *NAVIGATION* **35**(2):255–274, 1988. [ION](https://www.ion.org/publications/abstract.cfm?articleID=100547).
 - **[RAIMsurvey2025]** "A survey of GNSS receiver autonomous integrity monitoring: research status and opportunities." *Frontiers in Physics,* 2025. [link](https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2025.1567301/full).

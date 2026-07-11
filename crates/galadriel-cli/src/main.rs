@@ -20,6 +20,8 @@ use galadriel_sim::scenario::{generate, ScenarioConfig};
 
 const MIN_DEMO_FRAMES: usize = 128;
 const MAX_DEMO_FRAMES: usize = 10_000;
+#[cfg(all(feature = "ncp", feature = "pid"))]
+const MAX_REPLAY_PID_TRACKS: usize = 8;
 
 #[derive(Parser)]
 #[command(
@@ -51,6 +53,10 @@ enum Cmd {
         /// Maximum number of per-track reports to print; all tracks are still assessed.
         #[arg(long, default_value_t = 100)]
         max_report_tracks: usize,
+        /// Maximum tracks receiving the expensive terminal PID analysis (0 disables it).
+        #[cfg(feature = "pid")]
+        #[arg(long, default_value_t = 4)]
+        max_pid_tracks: usize,
     },
 }
 
@@ -61,7 +67,14 @@ fn main() -> anyhow::Result<()> {
         Cmd::Replay {
             path,
             max_report_tracks,
-        } => run_replay(&path, max_report_tracks)?,
+            #[cfg(feature = "pid")]
+            max_pid_tracks,
+        } => {
+            #[cfg(feature = "pid")]
+            run_replay(&path, max_report_tracks, max_pid_tracks)?;
+            #[cfg(not(feature = "pid"))]
+            run_replay(&path, max_report_tracks)?;
+        }
     }
     Ok(())
 }
@@ -569,10 +582,24 @@ fn fused_alarm(verdict: &FusedVerdict) -> bool {
     )
 }
 
+#[cfg(feature = "ncp")]
+fn replay_track_is_verbose(track_index: usize, max_report_tracks: usize) -> bool {
+    track_index < max_report_tracks
+}
+
+#[cfg(all(feature = "ncp", feature = "pid"))]
+fn replay_track_uses_pid(track_index: usize, max_pid_tracks: usize) -> bool {
+    track_index < max_pid_tracks
+}
+
 /// Replay a JSONL capture of `PidObservation`s through the baseline (and the PID
 /// engine when built with `--features pid,ncp`).
 #[cfg(feature = "ncp")]
-fn run_replay(path: &str, max_report_tracks: usize) -> anyhow::Result<()> {
+fn run_replay(
+    path: &str,
+    max_report_tracks: usize,
+    #[cfg(feature = "pid")] max_pid_tracks: usize,
+) -> anyhow::Result<()> {
     use galadriel_core::{
         combine_correlation_axes, consistency_channels_with_temporal_limits, correlation,
         AxisCorrelationReport, CorrConfig, CorrVerdict,
@@ -585,9 +612,14 @@ fn run_replay(path: &str, max_report_tracks: usize) -> anyhow::Result<()> {
         "max-report-tracks must be in 1..={}",
         detector_cfg.max_tracks
     );
+    #[cfg(feature = "pid")]
+    anyhow::ensure!(
+        max_pid_tracks <= MAX_REPLAY_PID_TRACKS,
+        "max-pid-tracks must be in 0..={MAX_REPLAY_PID_TRACKS}"
+    );
     let mut obs = galadriel_ncp::read_jsonl(path)?;
     if obs.is_empty() {
-        anyhow::bail!("no observations parsed from {path}");
+        anyhow::bail!("no observations parsed from {path:?}");
     }
     // One global sort turns the previous per-track rescans/clones into O(n log n)
     // preprocessing plus a single linear replay pass.
@@ -613,7 +645,7 @@ fn run_replay(path: &str, max_report_tracks: usize) -> anyhow::Result<()> {
         "{}",
         cyan(
             &format!(
-                "┌─ REPLAY {path} — {} obs, {} track(s)",
+                "┌─ REPLAY {path:?} — {} obs, {} track(s)",
                 obs.len(),
                 track_count
             ),
@@ -630,6 +662,8 @@ fn run_replay(path: &str, max_report_tracks: usize) -> anyhow::Result<()> {
     let mut suppressed_default_issue_tracks = 0usize;
     let mut suppressed_baseline_history = ReplayHistory::default();
     let mut suppressed_default_history = ReplayHistory::default();
+    #[cfg(feature = "pid")]
+    let mut pid_tracks_analyzed = 0usize;
     while track_start < obs.len() {
         let track_id = obs[track_start].track_id;
         let mut track_end = track_start + 1;
@@ -763,7 +797,7 @@ fn run_replay(path: &str, max_report_tracks: usize) -> anyhow::Result<()> {
             .ok_or_else(|| anyhow::anyhow!("track {track_id} has no assessment frame"))?;
         let (default_verdict, default_note) = default_terminal
             .ok_or_else(|| anyhow::anyhow!("track {track_id} has no fused assessment"))?;
-        let verbose = track_index < max_report_tracks;
+        let verbose = replay_track_is_verbose(track_index, max_report_tracks);
         if verbose {
             let verdict = verdict_str(&baseline.verdict);
             let colored = match baseline.verdict {
@@ -794,11 +828,16 @@ fn run_replay(path: &str, max_report_tracks: usize) -> anyhow::Result<()> {
                 dim(&default_history.summary(), color)
             );
             println!("│             {}", dim(&default_note, color));
+        }
 
-            #[cfg(feature = "pid")]
-            {
-                use galadriel_pid::{assess_stream, PidConfig};
-                match assess_stream(track_obs, &mods, &detector_cfg, &PidConfig::default()) {
+        #[cfg(feature = "pid")]
+        if replay_track_uses_pid(track_index, max_pid_tracks) {
+            use galadriel_pid::{assess_stream, PidConfig};
+
+            pid_tracks_analyzed += 1;
+            let report = assess_stream(track_obs, &mods, &detector_cfg, &PidConfig::default());
+            if verbose {
+                match report {
                     Ok(report) => {
                         println!(
                             "│  PID      · track {track_id}: terminal-only fused {:?}  {}",
@@ -855,6 +894,13 @@ fn run_replay(path: &str, max_report_tracks: usize) -> anyhow::Result<()> {
         println!(
             "│    default history across suppressed tracks: {}",
             dim(&suppressed_default_history.summary(), color)
+        );
+    }
+    #[cfg(feature = "pid")]
+    if track_count > pid_tracks_analyzed {
+        println!(
+            "│  PID terminal analysis skipped for {} track(s); bounded by --max-pid-tracks={max_pid_tracks}",
+            track_count - pid_tracks_analyzed
         );
     }
     println!(
@@ -953,6 +999,15 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
 #[cfg(all(test, feature = "ncp"))]
 mod replay_history_tests {
     use super::*;
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_selection_is_independent_of_report_visibility() {
+        assert_eq!(
+            (replay_track_is_verbose(1, 1), replay_track_uses_pid(1, 4)),
+            (false, true)
+        );
+    }
 
     #[test]
     fn history_preserves_recovered_alarm_and_failure_ranges() {

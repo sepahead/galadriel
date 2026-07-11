@@ -131,9 +131,14 @@ impl ScenarioConfig {
                     "scenario frame index cannot be represented as u64".into(),
                 )
             })?;
-            last_frame.checked_mul(self.dt_ms).ok_or_else(|| {
+            let last_timestamp = last_frame.checked_mul(self.dt_ms).ok_or_else(|| {
                 GaladrielError::InvalidConfig("scenario timestamp arithmetic overflows u64".into())
             })?;
+            if last_timestamp == u64::MAX {
+                return Err(GaladrielError::InvalidConfig(
+                    "scenario terminal timestamp must be less than u64::MAX".into(),
+                ));
+            }
         }
 
         let variance = self.sigma * self.sigma;
@@ -554,6 +559,13 @@ mod tests {
             ..Default::default()
         };
         assert!(generate(&timestamp_overflow).is_err());
+
+        let terminal_timestamp = ScenarioConfig {
+            frames: 2,
+            dt_ms: u64::MAX,
+            ..Default::default()
+        };
+        assert!(generate(&terminal_timestamp).is_err());
 
         let frozen_timestamps = ScenarioConfig {
             frames: 2,

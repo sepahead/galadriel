@@ -258,7 +258,7 @@ fn pid_fit_count(cfg: &PidConfig) -> CoreResult<u128> {
 }
 
 fn pid_analysis_work(cfg: &PidConfig, samples: usize, fit_count: u128) -> CoreResult<u128> {
-    if samples < cfg.min_samples {
+    if samples < cfg.required_samples() {
         return Ok(0);
     }
     let window = samples.min(cfg.window).min(MAX_PID_WINDOW) as u128;

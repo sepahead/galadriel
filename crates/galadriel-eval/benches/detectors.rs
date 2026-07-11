@@ -107,6 +107,10 @@ fn bench_cost_vs_window(c: &mut Criterion) {
         let pid_cfg = PidConfig {
             window: w,
             min_samples: (w / 2).max(PidConfig::default().geom_k + 1),
+            // This benchmark isolates the KSG point-estimate scaling. Bootstrap
+            // confirmation has its own bounded fit count and would make the small
+            // windows invalid when n_boot exceeds the available samples.
+            bootstrap: false,
             ..PidConfig::default()
         };
         g.bench_with_input(BenchmarkId::new("correlation", w), &w, |b, _| {
@@ -119,5 +123,64 @@ fn bench_cost_vs_window(c: &mut Criterion) {
     g.finish();
 }
 
-criterion_group!(benches, bench_detectors, bench_cost_vs_window);
+/// Steady-state streaming cost after the NIS window is full. This catches an
+/// accidental return to rescanning the whole retained window on every assessment.
+fn bench_streaming_baseline(c: &mut Criterion) {
+    let mut group = c.benchmark_group("streaming_baseline_window");
+    for &window_len in &[64usize, 4_096, 65_536] {
+        let cfg = DetectorConfig {
+            window_len,
+            min_samples: window_len,
+            max_tracks: 1,
+            ..DetectorConfig::default()
+        };
+        let mut mirror = Mirror::with_modalities(cfg, &MODS).expect("valid streaming benchmark");
+        for seq in 0..window_len as u64 {
+            for modality in MODS {
+                mirror
+                    .ingest(&PidObservation::scalar(
+                        1,
+                        seq.saturating_mul(100),
+                        seq,
+                        modality,
+                        3.0,
+                        3,
+                    ))
+                    .expect("valid benchmark warmup");
+            }
+        }
+        let mut seq = window_len as u64;
+        group.bench_with_input(
+            BenchmarkId::new("ingest_and_assess", window_len),
+            &window_len,
+            |b, _| {
+                b.iter(|| {
+                    for modality in MODS {
+                        mirror
+                            .ingest(&PidObservation::scalar(
+                                1,
+                                seq.saturating_mul(100),
+                                seq,
+                                modality,
+                                3.0,
+                                3,
+                            ))
+                            .expect("valid benchmark sample");
+                    }
+                    let report = mirror.assess(1, seq).expect("valid benchmark assessment");
+                    seq += 1;
+                    black_box(report)
+                })
+            },
+        );
+    }
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    bench_detectors,
+    bench_cost_vs_window,
+    bench_streaming_baseline
+);
 criterion_main!(benches);

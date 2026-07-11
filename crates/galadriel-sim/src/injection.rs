@@ -87,6 +87,21 @@ fn recompute_nis(innovation: [f64; 3], covariance: [[f64; 3]; 3]) -> Result<f64>
     Ok(nis)
 }
 
+/// Directional injectors can propagate a native innovation delta into the common
+/// projection only for the simulator's explicit identity projection. Producer
+/// projections may otherwise use different units or a nonlinear basis.
+fn require_identity_projection(obs: &PidObservation, innovation: [f64; 3]) -> Result<()> {
+    if let Some(projection) = obs.consistency_projection {
+        if projection.dimensions != 3 || projection.values != innovation {
+            return Err(GaladrielError::InvalidObservation(
+                "directional injection can update consistency_projection only when it is the simulator identity projection"
+                    .into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// A per-observation attack transform.
 pub trait Injection {
     /// A short name for logging/UX.
@@ -171,6 +186,7 @@ impl Injection for PhantomAcousticDoa {
         let mut updated = obs.clone();
         match (updated.innovation, updated.innovation_cov) {
             (Some(mut innovation), Some(covariance)) => {
+                require_identity_projection(&updated, innovation)?;
                 let sigma = covariance[0][0].sqrt();
                 let delta = self.bias * sigma;
                 let biased = innovation[0] + delta;
@@ -393,6 +409,7 @@ impl Injection for Maneuver {
                 "maneuver injection requires signed innovation/covariance fields".into(),
             ));
         };
+        require_identity_projection(obs, innovation)?;
         let delta = add * covariance[0][0].sqrt();
         let perturbed = innovation[0] + delta;
         if !perturbed.is_finite() {
@@ -502,6 +519,38 @@ mod tests {
         .apply(&mut early)
         .expect("valid pre-onset phantom injection");
         assert!((early.nis - 3.0).abs() < 1e-12, "pre-onset untouched");
+    }
+
+    #[test]
+    fn directional_injectors_reject_nonidentity_common_projections() {
+        let mut observation = PidObservation {
+            track_id: 1,
+            timestamp_ms: 100,
+            seq: 1,
+            modality: Modality::Acoustic,
+            nis: 0.0,
+            dof: 3,
+            innovation: Some([0.0; 3]),
+            innovation_cov: Some([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+            consistency_projection: Some(ConsistencyProjection {
+                values: [10.0, 0.0, 0.0],
+                dimensions: 3,
+                frame_id: 1,
+                context_id: 2,
+                prior_id: 1,
+            }),
+        };
+        let original_projection = observation.consistency_projection;
+
+        assert!(PhantomAcousticDoa {
+            target: Modality::Acoustic,
+            start_frame: 0,
+            bias: 2.0,
+        }
+        .apply(&mut observation)
+        .is_err());
+        assert_eq!(observation.consistency_projection, original_projection);
+        assert_eq!(observation.innovation, Some([0.0; 3]));
     }
 
     #[test]

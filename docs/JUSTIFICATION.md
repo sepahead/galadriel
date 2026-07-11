@@ -65,7 +65,46 @@ reference/calibration distribution is defined and its false-alarm behavior is va
 The canonical sequential study motivates future work; it is not the runtime streaming
 algorithm and must not be quoted as current production latency.
 
-## 5. Operational decision rule
+## 5. The significance floor's i.i.d. assumption (autocorrelation null)
+
+The runtime default accepts a positive cross-channel edge only past a family-wise Fisher-z
+significance floor whose standard error, `1/sqrt(n-3)`, assumes the windowed residual pairs
+are i.i.d. bivariate normal. Windowed residual series need not be independent in time, and
+the attested common-frozen-prior consistency residual carries no whiteness guarantee (see
+`PAPER.md` §7).
+
+The canonical autocorrelation-null study measures the consequence under the null: two
+**independent** AR(1) channels (population cross-correlation exactly zero, lag-1
+coefficient `phi`), scored by the detector's own one-sided construction at the default
+window `n = 128`. Bartlett's large-sample variance for this null,
+`var(rho_hat) ~ (1 + phi^2) / ((1 - phi^2) n)` (M. S. Bartlett, "Some Aspects of the
+Time-Correlation Problem in Regard to Tests of Significance," *Journal of the Royal
+Statistical Society* 98(3):536–543, 1935), predicts the following asymptotic rates for the
+same construction:
+
+| phi | predicted FPR at α=.05 | predicted FPR at α=.01 |
+|----:|-----------------------:|-----------------------:|
+| 0.3 | 0.066 | 0.017 |
+| 0.5 | 0.101 | 0.036 |
+| 0.7 | 0.168 | 0.087 |
+| 0.9 | 0.297 | 0.226 |
+
+The predicted direction is anti-conservative and the effect is large: at `phi = 0.9` the
+nominal 1% floor is expected to fire more than twenty times too often. The bounded,
+repository-reproducible study (at most 1,000 trials per `phi`) checks that direction without
+claiming high-precision Monte Carlo estimates. Replacing `n` with Bartlett's effective
+sample size `n_eff = n (1 - phi^2) / (1 + phi^2)` substantially improves calibration for
+moderate persistence. It is not an exact finite-sample correction: at `phi = 0.9`,
+`n_eff` is only about 13.4 and the deterministic 1,000-trial seed-7 study is conservative
+(`FPR@.05 = .023`, Wilson interval `[.015,.034]`; `FPR@.01 = .001`, interval `[0,.006]`).
+The tests assert both the moderate-persistence improvement and this high-persistence
+finite-sample limit instead of claiming universal recalibration.
+
+This quantifies a **disclosed limitation** of the runtime default rather than changing it:
+an operational correction must estimate `phi` from data, whose own uncertainty makes it a
+registered enhancement decision, not a documentation fix.
+
+## 6. Operational decision rule
 
 Use the cheapest statistic that observes the registered estimand:
 
@@ -88,7 +127,7 @@ PID is additive and sign-invariant. It cannot:
 - turn bootstrap failure into a low, optimistic score;
 - convert a signed-correlation contradiction into corroboration.
 
-## 6. Producer evidence required
+## 7. Producer evidence required
 
 Before deciding whether PID is justified for crebain, the producer must emit:
 
@@ -103,7 +142,7 @@ common projection. Galadriel does not fall back to its mixed-frame, sequential-p
 innovations. It proves parsing and baseline smoke behavior only; cross-correlation, PID,
 and fused attribution remain `InsufficientEvidence`.
 
-## 7. Reproduce the canonical studies
+## 8. Reproduce the canonical studies
 
 ```bash
 cargo run -p galadriel-justify --release

@@ -48,7 +48,9 @@ mod engine;
 mod fusion;
 
 pub use engine::{analyze, ChannelPid, PidConfig, PidReport, PidVerdict, MAX_PID_WINDOW};
-pub use fusion::{assess_stream, fuse, fuse_axes, AxisPidReport, FusedReport};
+pub use fusion::{
+    assess_stream, assess_stream_with_correlation, fuse, fuse_axes, AxisPidReport, FusedReport,
+};
 pub use galadriel_core::FusedVerdict;
 
 // The signed-scalar channel extractor lives in galadriel-core (it is shared with the

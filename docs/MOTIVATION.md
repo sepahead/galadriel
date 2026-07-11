@@ -23,14 +23,14 @@ University of Texas at Austin team led by Todd Humphreys — invited by the U.S.
 Homeland Security — commandeered a GPS-guided UAV over the White Sands, New Mexico missile range
 from a half-mile standoff using a purpose-built civil-GPS spoofer, inducing the drone to dive
 toward the ground. The equipment cost on the order of $1,000
-([EurekAlert / UT Austin](https://www.eurekalert.org/pub_releases/2012-06/uota-uot062912.php);
+([EurekAlert / UT Austin](https://www.eurekalert.org/news-releases/524632);
 [GPS World, "Drone Hack"](https://www.gpsworld.com/drone-hack/);
 [Humphreys, congressional testimony](https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf)).
 
 **A decade later, GNSS spoofing and jamming are a theatre-wide reality.** In the war in Ukraine,
-navigation-signal denial and deception have been continuous and area-wide since 2022, and drone
-strike accuracy is reported to fall below 10 % under heavy jamming; Ukraine has fielded networked
-electronic-warfare systems (e.g. *Pokrova*) that spoof incoming drones' satellite navigation to
+navigation-signal denial and deception have been continuous and area-wide since 2022. Ukraine has
+fielded networked electronic-warfare systems (e.g. *Pokrova*) that spoof incoming drones' satellite
+navigation to
 make them deviate or fall
 ([Defense One, 2024](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/);
 [The Record](https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones);
@@ -61,7 +61,8 @@ attacker can **fabricate cross-sensor consistency**:
   [code](https://github.com/ASGuard-UCI/MSF-ADV)).
 - **Hallyburton et al., "Security Analysis of Camera-LiDAR Fusion" (USENIX Security 2022)** —
   introduces the **frustum attack**, which defeats camera-LiDAR fusion and is *"stealthy to
-  existing defenses **because it preserves consistencies** between camera and LiDAR semantics"*
+  existing defenses against LiDAR spoofing as it preserves consistencies between camera and
+  LiDAR semantics"*
   ([USENIX](https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton);
   [arXiv:2106.07098](https://arxiv.org/abs/2106.07098)).
 
@@ -75,16 +76,17 @@ quantifies how much galadriel raises an operational adversary's cost.
 ## 3. Cross-sensor consistency detection is a recognized countermeasure
 
 galadriel's approach — flag the channel that has stopped agreeing with the corroborated consensus
-of the others — is not invented here; it is a named defense in this space. Surveys of MSF and
-robotic-vehicle security list **"sensor fusion consistency checks, redundancy across modalities,
-and anomaly detection leveraging temporal and spatial correlations"** as the defensive toolkit
-([SoK: sensor-spoofing of robotic vehicles, arXiv:2205.04662](https://arxiv.org/abs/2205.04662)).
-In the GNSS setting specifically, spoofing "is detected and rejected by **comparing GPS data to
-visual or inertial position data**" — cross-sensor consistency by another name
-([Defense One, 2024](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/)) —
-and this is a mature academic method: Broumandan & Lachapelle detect spoofing by a **consistency
-check between the GNSS solution and a self-contained INS/odometer** over an observation window
-([*Sensors* 18(5):1305, 2018](https://www.mdpi.com/1424-8220/18/5/1305)).
+of the others — is not invented here; it is a named defense in this space. The security literature
+systematizes these sensor-spoofing attacks against multi-sensor robotic vehicles ([Xu et al.,
+"SoK: Rethinking Sensor Spoofing Attacks against Robotic Vehicles from a Systematic View," IEEE
+EuroS&P 2023, arXiv:2205.04662](https://arxiv.org/abs/2205.04662)). Cross-sensor **consistency
+checking** — flagging a channel that stops agreeing with the corroborated majority — is a
+recognized countermeasure whose canonical academic form is exactly this comparison: Broumandan &
+Lachapelle detect GNSS spoofing by a **consistency check between the GNSS solution and a
+self-contained INS/odometer** over an observation window
+([*Sensors* 18(5):1305, 2018](https://www.mdpi.com/1424-8220/18/5/1305)), and the MSF attack
+papers in §2 discuss cross-modal plausibility and consistency checks as the corresponding
+defenses.
 
 galadriel explores an **N-channel generalization** of that established idea. It is a
 tested research implementation, not a field-validated reference detector. Its current
@@ -152,7 +154,7 @@ The information-theoretic machinery is standard and correctly attributed:
 The observation that on jointly-Gaussian data the *entire* decomposition is fixed by the covariance —
 so PID adds nothing over correlation there — needs no deep theorem: a zero-mean Gaussian is
 completely parameterized by its covariance, so *any* PID functional of it (any measure, the
-the reported `I^sx` included) is a function of the correlations. What **Barrett** proved is the
+reported `I^sx` included) is a function of the correlations. What **Barrett** proved is the
 sharper, measure-collapsing statement: for jointly-Gaussian sources and a *univariate* target,
 every PID whose redundant/unique atoms depend only on the pairwise source–target marginals
 (I_min, BROJA, and the other pre-2015 proposals) reduces to the minimum-mutual-information
@@ -175,11 +177,11 @@ bias is regime-dependent in general
 
 ## Sources
 
-- UT Austin / Humphreys 2012 UAV GPS-spoofing demonstration — [EurekAlert](https://www.eurekalert.org/pub_releases/2012-06/uota-uot062912.php), [GPS World](https://www.gpsworld.com/drone-hack/), [Humphreys testimony (PDF)](https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf)
+- UT Austin / Humphreys 2012 UAV GPS-spoofing demonstration — [EurekAlert](https://www.eurekalert.org/news-releases/524632), [GPS World](https://www.gpsworld.com/drone-hack/), [Humphreys testimony (PDF)](https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf)
 - Ukraine / counter-UAS electronic warfare — [Defense One](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/), [The Record](https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones), [RNTF/New Scientist](https://rntfnd.org/2024/02/03/ukraine-will-spoof-gps-across-the-country-to-stop-russian-drones-new-scientist/), [Jerusalem Post](https://www.jpost.com/defense-and-tech/article-894907)
 - Cao et al., IEEE S&P 2021, *Invisible for both Camera and LiDAR* — [arXiv:2106.09249](https://arxiv.org/abs/2106.09249), [code](https://github.com/ASGuard-UCI/MSF-ADV)
 - Hallyburton et al., USENIX Security 2022, *frustum attack* — [USENIX](https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton), [arXiv:2106.07098](https://arxiv.org/abs/2106.07098)
-- SoK on sensor spoofing of robotic vehicles — [arXiv:2205.04662](https://arxiv.org/abs/2205.04662)
+- Xu et al., "SoK: Rethinking Sensor Spoofing Attacks against Robotic Vehicles from a Systematic View," IEEE EuroS&P 2023 — [arXiv:2205.04662](https://arxiv.org/abs/2205.04662)
 - Kraskov–Stögbauer–Grassberger 2004 — [Phys. Rev. E 69, 066138](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138)
 - Williams–Beer 2010 — [arXiv:1004.2515](https://arxiv.org/abs/1004.2515)
 - Makkeh–Gutknecht–Wibral 2021 — [Phys. Rev. E 103, 032149](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149)

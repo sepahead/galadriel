@@ -25,7 +25,7 @@
 //! ```
 
 use std::cell::Cell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -153,6 +153,9 @@ pub enum RejectionReason {
     DuplicateOrRegressedSequence,
     /// A later sequence advanced farther than [`LiveLimits::max_sequence_advance`].
     ExcessiveForwardSequenceGap,
+    /// A new `(track, modality)` stream arrived after sequence state reached its
+    /// configured capacity. Existing replay high-water marks are retained.
+    SequenceCapacityExceeded,
     /// Internal bounded sequence state could not be reserved or remained inconsistent.
     SequenceStateFailure,
 }
@@ -177,6 +180,8 @@ pub struct RejectionCounts {
     pub duplicate_or_regressed_sequence: u64,
     /// Established streams rejected for an excessive forward sequence gap.
     pub excessive_forward_sequence_gap: u64,
+    /// New streams rejected because sequence state was at capacity.
+    pub sequence_capacity_exceeded: u64,
     /// Internal sequence-state failures.
     pub sequence_state_failure: u64,
 }
@@ -193,6 +198,7 @@ impl RejectionCounts {
             RejectionReason::InvalidObservation => self.invalid_observation,
             RejectionReason::DuplicateOrRegressedSequence => self.duplicate_or_regressed_sequence,
             RejectionReason::ExcessiveForwardSequenceGap => self.excessive_forward_sequence_gap,
+            RejectionReason::SequenceCapacityExceeded => self.sequence_capacity_exceeded,
             RejectionReason::SequenceStateFailure => self.sequence_state_failure,
         }
     }
@@ -207,6 +213,7 @@ impl RejectionCounts {
             .saturating_add(self.invalid_observation)
             .saturating_add(self.duplicate_or_regressed_sequence)
             .saturating_add(self.excessive_forward_sequence_gap)
+            .saturating_add(self.sequence_capacity_exceeded)
             .saturating_add(self.sequence_state_failure)
     }
 }
@@ -253,6 +260,7 @@ struct IngestCounters {
     invalid_observation: AtomicU64,
     duplicate_or_regressed_sequence: AtomicU64,
     excessive_forward_sequence_gap: AtomicU64,
+    sequence_capacity_exceeded: AtomicU64,
     sequence_state_failure: AtomicU64,
     last_accepted: Mutex<Option<LastAcceptedObservation>>,
 }
@@ -274,6 +282,9 @@ impl IngestCounters {
             RejectionReason::ExcessiveForwardSequenceGap => {
                 self.excessive_forward_sequence_gap.load(Ordering::Relaxed)
             }
+            RejectionReason::SequenceCapacityExceeded => {
+                self.sequence_capacity_exceeded.load(Ordering::Relaxed)
+            }
             RejectionReason::SequenceStateFailure => {
                 self.sequence_state_failure.load(Ordering::Relaxed)
             }
@@ -292,6 +303,8 @@ impl IngestCounters {
                 .rejection_count(RejectionReason::DuplicateOrRegressedSequence),
             excessive_forward_sequence_gap: self
                 .rejection_count(RejectionReason::ExcessiveForwardSequenceGap),
+            sequence_capacity_exceeded: self
+                .rejection_count(RejectionReason::SequenceCapacityExceeded),
             sequence_state_failure: self.rejection_count(RejectionReason::SequenceStateFailure),
         }
     }
@@ -448,16 +461,11 @@ impl Drop for CallbackGuard {
 
 type SequenceKey = (u64, Modality);
 
-#[derive(Debug, Clone, Copy)]
-struct LiveSequenceState {
-    last: u64,
-    touched: u64,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SequenceRejection {
     DuplicateOrRegressed,
     ExcessiveForwardGap,
+    CapacityExceeded,
     StateFailure,
 }
 
@@ -466,6 +474,7 @@ impl From<SequenceRejection> for RejectionReason {
         match reason {
             SequenceRejection::DuplicateOrRegressed => Self::DuplicateOrRegressedSequence,
             SequenceRejection::ExcessiveForwardGap => Self::ExcessiveForwardSequenceGap,
+            SequenceRejection::CapacityExceeded => Self::SequenceCapacityExceeded,
             SequenceRejection::StateFailure => Self::SequenceStateFailure,
         }
     }
@@ -473,21 +482,19 @@ impl From<SequenceRejection> for RejectionReason {
 
 #[derive(Debug, Default)]
 struct LiveSequenceTracker {
-    states: HashMap<SequenceKey, LiveSequenceState>,
-    recency: BTreeMap<u64, SequenceKey>,
-    touch_counter: u64,
+    states: HashMap<SequenceKey, u64>,
 }
 
 impl LiveSequenceTracker {
-    /// Accept a live observation under a bounded forward-advance policy. A new
-    /// stream evicts the least-recently-used stream at capacity and reports that
-    /// eviction to the caller, which must surface it operationally.
+    /// Accept a live observation under bounded stream-count and forward-advance
+    /// policies. Capacity fails closed: a new stream is rejected without forgetting
+    /// any retained replay high-water mark.
     fn accept(
         &mut self,
         observation: &PidObservation,
         max_streams: usize,
         max_forward_gap: u64,
-    ) -> Result<bool, SequenceRejection> {
+    ) -> Result<(), SequenceRejection> {
         if max_streams == 0 {
             return Err(SequenceRejection::StateFailure);
         }
@@ -496,86 +503,43 @@ impl LiveSequenceTracker {
         }
 
         let key = (observation.track_id, observation.modality);
-        if let Some(state) = self.states.get(&key).copied() {
-            if observation.seq <= state.last {
+        if let Some(last) = self.states.get(&key).copied() {
+            if observation.seq <= last {
                 return Err(SequenceRejection::DuplicateOrRegressed);
             }
-            let gap = observation.seq - state.last;
+            let gap = observation.seq - last;
             if gap > max_forward_gap {
                 return Err(SequenceRejection::ExcessiveForwardGap);
             }
-            if self.recency.get(&state.touched).copied() != Some(key) {
-                return Err(SequenceRejection::StateFailure);
-            }
-            let touched = self.next_touch()?;
-            self.recency.remove(&state.touched);
-            self.recency.insert(touched, key);
-            self.states.insert(
-                key,
-                LiveSequenceState {
-                    last: observation.seq,
-                    touched,
-                },
-            );
-            return Ok(false);
+            self.states.insert(key, observation.seq);
+            return Ok(());
         }
 
-        let touched = self.next_touch()?;
-        let evicted = if self.states.len() >= max_streams {
-            let (oldest_touch, oldest_key) = self
-                .recency
-                .first_key_value()
-                .map(|(touch, key)| (*touch, *key))
-                .ok_or(SequenceRejection::StateFailure)?;
-            if self.states.get(&oldest_key).map(|state| state.touched) != Some(oldest_touch) {
-                return Err(SequenceRejection::StateFailure);
-            }
-            self.recency.remove(&oldest_touch);
-            self.states.remove(&oldest_key);
-            true
-        } else {
-            self.states
-                .try_reserve(1)
-                .map_err(|_| SequenceRejection::StateFailure)?;
-            false
-        };
-        self.recency.insert(touched, key);
-        self.states.insert(
-            key,
-            LiveSequenceState {
-                last: observation.seq,
-                touched,
-            },
-        );
-        Ok(evicted)
+        if self.states.len() >= max_streams {
+            return Err(SequenceRejection::CapacityExceeded);
+        }
+        self.states
+            .try_reserve(1)
+            .map_err(|_| SequenceRejection::StateFailure)?;
+        self.states.insert(key, observation.seq);
+        Ok(())
     }
 
     fn clear(&mut self) -> usize {
         let removed = self.states.len();
         self.states.clear();
-        self.recency.clear();
-        self.touch_counter = 0;
         removed
     }
 
     fn len(&self) -> usize {
         self.states.len()
     }
-
-    fn next_touch(&mut self) -> Result<u64, SequenceRejection> {
-        self.touch_counter = self
-            .touch_counter
-            .checked_add(1)
-            .ok_or(SequenceRejection::StateFailure)?;
-        Ok(self.touch_counter)
-    }
 }
 
 /// Per-subscription ingest health and explicit sequence-epoch recovery.
 ///
-/// Clones share the same counters and sequence state. Sequence eviction keeps live
-/// state bounded but weakens replay memory for the evicted stream, so any nonzero
-/// [`Self::sequence_evictions`] value should be investigated. The sidecar key must
+/// Clones share the same counters and sequence state. New streams fail closed at
+/// capacity, preserving every retained replay high-water mark. The sidecar key must
 /// still be protected by an authenticated, least-privilege NCP ACL.
 #[derive(Clone, Debug)]
 pub struct SubscriptionHealth {
@@ -623,7 +587,8 @@ impl SubscriptionHealth {
         self.counters.callback_panics.load(Ordering::Relaxed)
     }
 
-    /// Least-recently-used sequence states evicted at the configured capacity.
+    /// Legacy eviction counter, retained for API compatibility. The fail-closed
+    /// capacity policy never evicts sequence state, so this remains zero.
     pub fn sequence_evictions(&self) -> u64 {
         self.counters.sequence_evictions.load(Ordering::Relaxed)
     }
@@ -844,7 +809,8 @@ impl SidecarTap {
         self.counters.observations_accepted.load(Ordering::Relaxed)
     }
 
-    /// Sequence states evicted across all subscriptions to keep memory bounded.
+    /// Legacy aggregate eviction counter. The fail-closed capacity policy never
+    /// evicts sequence state, so this remains zero.
     pub fn sequence_evictions(&self) -> u64 {
         self.counters.sequence_evictions.load(Ordering::Relaxed)
     }
@@ -1020,11 +986,7 @@ where
             context.limits.max_sequence_streams,
             context.limits.max_sequence_advance,
         ) {
-            Ok(true) => increment_pair(
-                &context.tap_counters.sequence_evictions,
-                &context.subscription_counters.sequence_evictions,
-            ),
-            Ok(false) => {}
+            Ok(()) => {}
             Err(reason) => {
                 reject_pair(
                     context.tap_counters,
@@ -1074,6 +1036,7 @@ fn rejection_counter(counters: &IngestCounters, reason: RejectionReason) -> &Ato
         RejectionReason::InvalidObservation => &counters.invalid_observation,
         RejectionReason::DuplicateOrRegressedSequence => &counters.duplicate_or_regressed_sequence,
         RejectionReason::ExcessiveForwardSequenceGap => &counters.excessive_forward_sequence_gap,
+        RejectionReason::SequenceCapacityExceeded => &counters.sequence_capacity_exceeded,
         RejectionReason::SequenceStateFailure => &counters.sequence_state_failure,
     }
 }
@@ -1441,7 +1404,7 @@ mod tests {
     }
 
     #[test]
-    fn process_payload_evicts_lru_sequence_state_at_capacity() {
+    fn process_payload_rejects_new_stream_at_capacity_without_forgetting_replay_state() {
         let limits = LiveLimits::with_sequence_policy(DEFAULT_MAX_LIVE_PAYLOAD_BYTES, 2, 10)
             .expect("valid limits");
         let delivery_boundary = DeliveryBoundary::default();
@@ -1471,9 +1434,18 @@ mod tests {
             );
         }
 
-        assert_eq!(callbacks.load(Ordering::Relaxed), 5);
-        assert_eq!(subscription.sequence_evictions.load(Ordering::Relaxed), 2);
-        assert_eq!(tap.sequence_evictions.load(Ordering::Relaxed), 2);
+        assert_eq!(callbacks.load(Ordering::Relaxed), 3);
+        assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 2);
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::SequenceCapacityExceeded),
+            1
+        );
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::DuplicateOrRegressedSequence),
+            1
+        );
+        assert_eq!(subscription.sequence_evictions.load(Ordering::Relaxed), 0);
+        assert_eq!(tap.sequence_evictions.load(Ordering::Relaxed), 0);
         assert_eq!(sequences.lock().unwrap().len(), 2);
     }
 

@@ -66,8 +66,13 @@ may contain breaking changes.
 - Label Monte Carlo and justification evidence as synthetic. Remove stale exact AUC,
   false-alarm, latency, benchmark, and test-count claims until regenerated against the
   audited implementation.
+- Print a mandatory synthetic-evidence banner (with seed and a provenance reminder) at the
+  top of the `galadriel-eval` and `galadriel-justify` reports, so copied numeric output
+  cannot be read as an operational detection or false-alarm rate.
+- Inherit the workspace `homepage`, `keywords`, and `categories` in every member manifest,
+  and reference `galadriel-sim` through the workspace table in `galadriel-pid` dev-dependencies.
 - Migrate the NCP integration to the 0.7 wire revision and pin `ncp-core`/`ncp-zenoh`
-  to the immutable public `v0.7.1` tag and exact lockfile commit.
+  to the immutable commit corresponding to the public `v0.7.1` tag.
 
 ### Fixed
 
@@ -94,6 +99,12 @@ may contain breaking changes.
   bootstrap intervals target the same alarm-ranked AUC statistic as the main report.
 - Correct the NCP consumer manifest path and make JSONL serialization fallible.
 - Correct rustdoc links that targeted private constants.
+- Abstain with `InsufficientEvidence` when a pathologically small `family_alpha` makes the
+  Fisher significance floor degenerate. The inverse-normal quantile saturates to `+INF` and
+  `tanh` already clamped the floor to exactly `1.0` (no `NaN` is ever produced), but
+  byte-identical replayed channels also clamp to exactly `rho = 1.0`, so the degenerate
+  floor could still admit a fabricated consensus — or an attribution against the one
+  non-identical channel — instead of abstention.
 - Reject duplicate JSON keys on the live sidecar path: payloads now deserialize directly
   into the typed envelope instead of through a `serde_json::Value` intermediate, which
   collapsed repeated keys (last occurrence wins) before `deny_unknown_fields` could reject
@@ -119,6 +130,25 @@ may contain breaking changes.
   all-modal silence requires an external producer/transport heartbeat.
 - Add the producer roadmap: common frozen prior, common frame, explicit miss/rejection
   events, heartbeat, stable session identity, and a versioned schema.
+- Align CONTRIBUTING's `cargo deny` invocation with CI (`--all-features --locked`).
+- Correct citation integrity across `docs/`: remove two misattributed verbatim quotations
+  (a Defense One "visual or inertial position data" line and a fabricated survey
+  "defensive toolkit" quote); correct the SoK author from "Ren et al." to "Xu et al." with
+  its full title and IEEE EuroS&P 2023 venue; drop an unsupported "below 10% under heavy
+  jamming" statistic; restore the exact Hallyburton frustum-attack quotation; and replace a
+  dead EurekAlert URL. Remove phantom `[Liu2011]`/`[Mo2010]` reference keys, correct
+  `RELATED-WORK.md`'s key-provenance note, and cite `[Gao2018]`/`[WilliamsBeer2010]` inline
+  in `PAPER.md`.
+- Disclose that at the fusion core's `dof = 3` with the default symmetric CUSUM slack the
+  below-target arm is inert, so a moment-shrinking channel (over-conservative filter, replay,
+  or frozen sensor) is not flagged by the magnitude layer at that operating point.
+- Sharpen the temporal-calibration limitation: the Fisher-z significance floor assumes
+  i.i.d. bivariate-normal pairs, so positive within-window autocorrelation makes a single
+  assessment anti-conservative — distinct from the separate stream-level repeated-looks
+  caveat.
+- Note that the sequential study's detectors run at different realized false-alarm rates, so
+  its latency column is not strictly iso-FAR, and clarify that `prior_id` non-reuse is a
+  producer attestation enforced within each aligned frame/context window.
 
 ### Added
 
@@ -130,6 +160,14 @@ may contain breaking changes.
 - Supply-chain policy and comprehensive security/review artifacts.
 - A bounded common-projection wire field with physical-frame, projection-context, and
   frozen-prior provenance, plus bounded multi-axis extraction and reporting APIs.
+- A canonical autocorrelation-null study in `galadriel-justify`: two independent AR(1)
+  channels measure how positive within-window autocorrelation inflates the naive Fisher-z
+  significance floor's false-positive rate at the runtime default window, and show that a
+  Bartlett (1935) effective-sample-size correction improves moderate-persistence calibration
+  but becomes conservative when `phi = 0.9` leaves a small effective sample. Tests assert the
+  `phi = 0` calibration check, naive inflation, moderate correction, and finite-sample limit; the
+  runtime floor intentionally remains uncorrected pending a registered phi-estimation
+  design (`docs/JUSTIFICATION.md` §5, `docs/PAPER.md` §7).
 - A regression test proving the live sidecar path rejects duplicate JSON keys as a typed
   `Data` error while a `serde_json::Value` round-trip would have accepted them last-wins —
   the parser differential closed in this release.

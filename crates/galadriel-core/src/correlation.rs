@@ -23,6 +23,11 @@ pub const MAX_CORRELATION_WINDOW: usize = 65_536;
 /// retaining a separate work bound if the modality set grows in the future.
 pub const MAX_CORRELATION_PAIR_SAMPLES: usize = 1_000_000;
 
+/// Maximum family-wise correction performed by the default fused assessment:
+/// every pair among all modalities on every producer-supported projection axis.
+const MAX_FUSED_CORRELATION_TESTS: usize =
+    crate::MAX_CONSISTENCY_PROJECTION_AXES * (Modality::ALL.len() * (Modality::ALL.len() - 1) / 2);
+
 /// Tunables for the correlation consistency check.
 #[derive(Debug, Clone)]
 pub struct CorrConfig {
@@ -87,6 +92,11 @@ impl CorrConfig {
             return Err(InvalidConfig(
                 "correlation family_alpha must be finite and in (0, 1)".into(),
             ));
+        }
+        if self.family_alpha / MAX_FUSED_CORRELATION_TESTS as f64 == 0.0 {
+            return Err(InvalidConfig(format!(
+                "correlation family_alpha is too small to divide across {MAX_FUSED_CORRELATION_TESTS} fused axis/pair tests"
+            )));
         }
         Ok(())
     }
@@ -272,7 +282,7 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
         .map(|(_, values)| &values[values.len() - w..])
         .collect();
 
-    // Pairwise |ρ| matrix.
+    // Pairwise signed ρ matrix (negative edges are never folded to magnitude).
     let mut corr = vec![vec![0.0_f64; c]; c];
     for i in 0..c {
         for j in (i + 1)..c {
@@ -320,7 +330,22 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
         &statrs::distribution::Normal::standard(),
         1.0 - pair_alpha,
     );
+    // A pathologically small `family_alpha` rounds `1 - pair_alpha` to exactly 1.0; the
+    // inverse-normal quantile then saturates to +INF and `tanh` clamps the floor to exactly
+    // 1.0. That is not a usable requirement: byte-identical (replayed) channels also clamp
+    // to exactly rho = 1.0 and would still "clear" it, so a degenerate floor could fabricate
+    // a consensus or an attribution. Abstain instead of scoring.
     let significance_floor = (z / (w as f64 - 3.0).sqrt()).tanh();
+    if !significance_floor.is_finite() || significance_floor >= 1.0 {
+        return Ok(CorrReport {
+            verdict: CorrVerdict::InsufficientEvidence,
+            note: format!(
+                "family_alpha {:e} is too small to yield a usable Fisher significance floor for {pair_count} channel pair(s)",
+                cfg.family_alpha
+            ),
+            channels: reports,
+        });
+    }
     let threshold = cfg
         .corr_floor
         .max(significance_floor)
@@ -610,6 +635,42 @@ mod tests {
             (pearson(&shifted, &shifted).unwrap() - 1.0).abs() < 1e-12,
             "large offsets must not erase representable variation"
         );
+    }
+
+    #[test]
+    fn degenerate_significance_floor_abstains_instead_of_scoring() {
+        // family_alpha so small that `1 - pair_alpha` rounds to exactly 1.0: the Fisher
+        // floor saturates at 1.0. Byte-identical replayed channels clamp to exactly
+        // rho = 1.0 and would still "clear" that floor, so the detector must abstain —
+        // neither clearing the replayed suite as Nominal nor accusing anyone.
+        let cfg = CorrConfig {
+            family_alpha: 1e-300,
+            ..CorrConfig::default()
+        };
+        let n = 128;
+        let replayed = series(n, |i| (i as f64 / 7.0).sin());
+        let channels = vec![
+            (Modality::Visual, replayed.clone()),
+            (Modality::Radar, replayed.clone()),
+            (Modality::Acoustic, replayed),
+        ];
+        let report = analyze(&channels, &cfg).unwrap();
+        assert_eq!(report.verdict, CorrVerdict::InsufficientEvidence);
+        assert!(
+            report.note.contains("too small"),
+            "note should name the degenerate configuration: {}",
+            report.note
+        );
+    }
+
+    #[test]
+    fn configuration_rejects_alpha_that_underflows_during_fused_correction() {
+        let cfg = CorrConfig {
+            family_alpha: f64::from_bits(1),
+            ..CorrConfig::default()
+        };
+
+        assert!(cfg.validate().is_err());
     }
 }
 

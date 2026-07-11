@@ -46,6 +46,15 @@ pub struct DetectorConfig {
     pub nis_alpha: f64,
     /// CUSUM slack `k` in null-standard-deviation units after scaling NIS by
     /// `sqrt(2*dof)`. This keeps one configuration comparable across dimensions.
+    ///
+    /// The slack applies symmetrically to both arms. At the default `k = 3/sqrt(6)`
+    /// and the fusion core's `dof = 3`, the scaled target `dof/sqrt(2*dof)` equals the
+    /// slack, so the below-target (lower) arm can never accumulate: a *below*-target
+    /// NIS shift — an over-conservative filter, or a replay/frozen sensor whose
+    /// innovations match the prediction too closely — is intentionally not flagged at
+    /// `dof <= 3`. The lower arm becomes active for `dof > 3`, or for a configured `k`
+    /// strictly below the scaled target. Treating a below-target shift as an attack is
+    /// a design choice deferred to a study, not an oversight.
     pub cusum_slack: f64,
     /// CUSUM alarm threshold `h` in accumulated null-standard-deviation units.
     pub cusum_threshold: f64,
@@ -135,6 +144,12 @@ impl DetectorConfig {
                 "nis_alpha must be finite and in (0, 1)".into(),
             ));
         }
+        if self.nis_alpha / crate::Modality::ALL.len() as f64 == 0.0 {
+            return Err(InvalidConfig(format!(
+                "nis_alpha is too small to divide across {} supported modalities",
+                crate::Modality::ALL.len()
+            )));
+        }
         if !self.jam_fraction.is_finite() || self.jam_fraction <= 0.0 || self.jam_fraction > 1.0 {
             return Err(InvalidConfig(
                 "jam_fraction must be finite and in (0, 1]".into(),
@@ -189,6 +204,10 @@ mod tests {
         assert!(bad(|c| c.nis_alpha = 1.0), "nis_alpha 1");
         assert!(bad(|c| c.nis_alpha = f64::NAN), "nis_alpha NaN");
         assert!(bad(|c| c.nis_alpha = 1.5), "nis_alpha > 1");
+        assert!(
+            bad(|c| c.nis_alpha = f64::from_bits(1)),
+            "nis_alpha must survive the maximum channel correction"
+        );
         assert!(bad(|c| c.jam_fraction = 0.0), "jam_fraction 0");
         assert!(bad(|c| c.jam_fraction = f64::NAN), "jam_fraction NaN");
         assert!(bad(|c| c.jam_fraction = 1.5), "jam_fraction > 1");

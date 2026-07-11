@@ -47,7 +47,9 @@ for an undisclosed vulnerability. We aim to acknowledge within a few business da
   session/producer-bound envelope, and forces an explicit secure versus unverified
   development transport choice. No production Crebain publisher or receiver-verified
   mTLS test exists yet, and payload provenance is only a claim unless the transport
-  authenticates the publisher. Subscriber silence remains ambiguous until end-to-end
+  authenticates the publisher. The application payload limit runs after `ncp-zenoh`
+  materializes callback bytes, so a broker/transport message-size limit is still required
+  to bound receive-memory pressure. Subscriber silence remains ambiguous until end-to-end
   heartbeat/liveness telemetry exists.
 - Workspace packages are `publish = false`; no crate-release security guarantees
   are made.
