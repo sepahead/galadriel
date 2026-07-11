@@ -85,7 +85,7 @@
     <article class="card"><h3>Security posture</h3><span class="score">B</span><p class="muted">Strong local defensive design; external live authentication and one advisory exception remain.</p></article>
     <article class="card"><h3>Statistical validity</h3><span class="score">B</span><p class="muted">Multiplicity and inferential contracts improved; evidence is still synthetic and conditional.</p></article>
     <article class="card"><h3>Integration readiness</h3><span class="score warn">C+</span><p class="muted">The consumer contract is explicit, but no current producer satisfies it.</p></article>
-    <article class="card"><h3>Operational readiness</h3><span class="score warn">C</span><p class="muted">No authorized live publisher/ACL/heartbeat or field alert pipeline exists.</p></article>
+    <article class="card"><h3>Operational readiness</h3><span class="score warn">C</span><p class="muted">The route/envelope are hardened, but no live Crebain publisher, deployed mTLS proof, heartbeat, or field alert pipeline exists.</p></article>
     <article class="card"><h3>Automatic-control readiness</h3><span class="score risk">No</span><p class="muted">Verdicts remain advisory and are not calibrated posteriors or control vetoes.</p></article>
   </section>
 
@@ -135,7 +135,7 @@
     context_id: PROJECTION_SCHEMA_VERSION,
     prior_id: unique_frozen_prior_id,
 })</code></pre></article>
-    <article class="finding"><div class="severity">Medium · live security</div><h3>The Zenoh sidecar is not an operationally authenticated path</h3><p>Add a supported publisher in NCP/crebain, least-privilege publish/subscribe ACL entries, mTLS identities, a fresh session ID for every process epoch, signed/versioned envelopes, and heartbeats. Test traffic, denial, forged payload, restart, queued bytes, and all-modal silence end to end.</p></article>
+    <article class="finding"><div class="severity">Medium · live security</div><h3>The Zenoh sidecar is not yet an operationally authenticated path</h3><p>The consumer now uses NCP's ACL-covered <code>sensor/galadriel-pid</code> route, a strict versioned session/producer envelope, and an explicit secure transport mode. Add the Crebain publisher, deploy mTLS identities, use a fresh session ID for every process epoch, and add heartbeats. Test traffic, denial, forged payload, restart, queued bytes, and all-modal silence end to end.</p></article>
     <article class="finding"><div class="severity">Medium · supply chain</div><h3><code>RUSTSEC-2026-0041</code> remains transitively present</h3><p>The affected compression feature is disabled and CI-enforced. Upgrade NCP/Zenoh before 2026-10-01, then remove the exception:</p><pre><code># after a compatible upstream release
 ncp-zenoh = { git = "https://github.com/sepahead/NCP", tag = "vNEXT" }
 # delete the RUSTSEC-2026-0041 entry from deny.toml
@@ -149,7 +149,7 @@ cargo audit</code></pre></article>
     <thead><tr><th>Repository</th><th>Observed use</th><th>Implication</th></tr></thead>
     <tbody>
       <tr><td><code>sepahead/crebain</code></td><td>Mirrored JSONL producer struct for NIS and optional native innovation/covariance; successful updates only.</td><td>Baseline-compatible after schema migration; invalid for cross-channel work until common projection, pre-gate events, and heartbeat exist.</td></tr>
-      <tr><td><code>sepahead/NCP</code></td><td>Dependency for the optional read-only Zenoh subscriber.</td><td>Transport compiles, but the Galadriel key has no current production ACL/publisher path.</td></tr>
+      <tr><td><code>sepahead/NCP</code></td><td>Dependency for the optional read-only named-sensor subscriber.</td><td>Wire 0.7's sensor-plane ACL covers the route and the envelope is tested; the Crebain publisher and deployed mTLS path remain absent.</td></tr>
       <tr><td><code>sepahead/pid-rs</code></td><td>Pinned estimator library.</td><td>Used internally by the optional research crate; it is not a Galadriel consumer.</td></tr>
       <tr><td><code>sepahead/haldir</code></td><td>Conceptual security design and critique.</td><td>Useful threat-model input; no executable import or deployment contract.</td></tr>
       <tr><td><code>sepahead/manwe</code></td><td>Documents Galadriel adapter requirements as blocked.</td><td>Confirms the same common-frame/common-prior gap independently.</td></tr>

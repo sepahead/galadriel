@@ -10,16 +10,16 @@
 | Architecture pattern | Validated library core + simulator + CLI + optional PID/NCP adapters |
 | Language/toolchain | Rust 2021, pinned Rust 1.88 |
 | Package manager | Cargo with a committed lockfile |
-| Runtime entry points | `galadriel` CLI (`demo`, bounded `replay`) and optional read-only Zenoh subscriber |
+| Runtime entry points | `galadriel` CLI (`demo`, bounded `replay`) and optional read-only NCP named-sensor subscriber |
 | Data stores | None; caller-owned JSONL captures and bounded in-memory detector state |
-| Authentication | External to this repository; the prototype live tap requires NCP ACL/mTLS integration |
+| Authentication | Explicit strict-mTLS or unverified-development transport mode; production identity/ACL enforcement remains deployment-owned |
 | Deployment | None; packages are `publish = false` |
 | Completed at | 2026-07-10T15:28:34Z |
 
 ### Repositories Reviewed
 
 - `sepahead/crebain` — only executable producer candidate; emits baseline NIS records but not the required common projection.
-- `sepahead/NCP` — optional transport dependency; no authorized Galadriel publisher/ACL path exists yet.
+- `sepahead/NCP` — optional transport dependency; wire 0.7's named-sensor route is covered by the sensor-plane ACL, but no Crebain live publisher exists yet.
 - `sepahead/pid-rs` — optional estimator dependency, pinned at `v0.4.0`.
 - `sepahead/haldir` — conceptual threat/design material, not an executable consumer.
 - `sepahead/manwe` — documents a blocked adapter; it does not emit Galadriel observations.
@@ -49,8 +49,9 @@
 - [x] Bounded JSONL/live ingestion and deadlock-safe reset boundary (2026-07-10)
 - [x] Honest replay histories and inferential evaluation contracts (2026-07-10)
 - [x] CI, dependency, security, and documentation hardening (2026-07-10)
+- [x] Versioned, session/producer-bound NCP named-sensor envelope (2026-07-10)
 - [ ] Crebain common-frame/common-frozen-prior producer contract
-- [ ] Authorized NCP publisher, ACL/mTLS, session heartbeat, and end-to-end live test
+- [ ] Crebain NCP publisher, deployed ACL/mTLS identity, session heartbeat, and end-to-end live test
 - [ ] Recorded pre-gate validation with misses/rejections and benign field data
 
 ## Review
@@ -68,7 +69,7 @@
 | Severity | Category | Description | Fix |
 |----------|----------|-------------|-----|
 | medium | supply chain | Zenoh 1.9 transitively locks vulnerable `lz4_flex 0.10`; the affected compression feature is currently disabled and CI-enforced. | Upgrade NCP/Zenoh, remove the `RUSTSEC-2026-0041` exception, and keep the 2026-10-01 expiry gate. |
-| medium | integration security | The live sidecar has no authorized publisher, least-privilege ACL entry, authenticated epoch contract, or heartbeat. | Add an NCP publisher plus ACL/mTLS, fresh session IDs, heartbeat, and denial/restart end-to-end tests before deployment. |
+| medium | integration security | The live sidecar now uses an ACL-covered route and a versioned epoch/provenance envelope, but has no Crebain publisher, deployed mTLS identity proof, or heartbeat. | Add the Crebain named-sensor publisher, deploy ACL/mTLS identities, use fresh session IDs, add heartbeat, and run denial/restart end-to-end tests before deployment. |
 | medium | data integrity | Projection IDs are validated producer attestations, not cryptographic proof that a truthful common-frame/common-prior projection was computed. | Authenticate the producer and envelope, version the schema, and validate recorded pre-gate output against an independent reference implementation. |
 | low | dependency maintenance | `paste 1.0.15` and `rustls-pemfile 2.2.0` are transitively unmaintained. | Track upstream replacement through Dependabot/NCP upgrades and remove them from the lock graph when feasible. |
 | info | scientific validity | Synthetic tests do not establish field false-alarm/detection rates; colluding-majority and consistency-preserving attacks remain blind spots. | Run a preregistered recorded-data study and retain advisory-only semantics. |

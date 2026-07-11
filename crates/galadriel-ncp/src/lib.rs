@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! # galadriel-ncp
 //!
-//! NCP observation-plane ingest for Galadriel's Mirror (feature `ncp`).
+//! Versioned NCP sidecar ingest for Galadriel's Mirror (feature `ncp`).
 //!
 //! galadriel is a **read-only** consumer of per-measurement records. Native
 //! innovations may be carried for diagnostics, but consistency uses only the
@@ -15,11 +15,11 @@
 //!   which is a first-class NCP flow (`ncp-observe` and the reference UAV loop both
 //!   emit JSONL). [`read_jsonl`] / [`parse_jsonl`] / [`write_jsonl`] cover it with
 //!   independent per-record, record-count, and aggregate-byte limits.
-//! - `PidObservation` is **not** an NCP wire message: it rides a **non-wire sidecar
-//!   key** additively under the session, so it never touches the normative proto or
-//!   `CONTRACT_HASH`. [`sidecar_key`] builds it from the NCP key scheme (`ncp-core`
-//!   [`Keys`]), and [`observation_key`] gives the canonical read-only observation key
-//!   galadriel would subscribe to.
+//! - `PidObservation` is **not** an NCP wire message. Live records ride the named
+//!   perception route `Keys::sensor_named(session_id, "galadriel-pid")` inside a
+//!   versioned [`SidecarEnvelope`]. The sidecar remains outside the normative proto
+//!   and `CONTRACT_HASH`, while its envelope declares both the sidecar schema and the
+//!   NCP contract revision used for transport addressing.
 //! - The live Zenoh tap ([`live::SidecarTap`], `ncp-zenoh`) is a separate, heavier
 //!   concern behind the `zenoh` feature (reached via galadriel's `ncp-live`) — it is not
 //!   pulled by the default JSONL path.
@@ -30,10 +30,216 @@ use std::io::{self, BufRead, BufReader, Cursor, Read, Write};
 use std::path::Path;
 
 use galadriel_core::observation::{Modality, PidObservation};
-use ncp_core::{valid_id_segment, Keys, DEFAULT_REALM};
+use ncp_core::{
+    contract_status, valid_id_segment, ContractStatus, Keys, CONTRACT_HASH, DEFAULT_REALM,
+    JSON_SAFE_INTEGER_MAX, NCP_VERSION,
+};
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "zenoh")]
 pub mod live;
+
+/// Stable named-perception entity carrying Galadriel sidecar envelopes.
+pub const SIDECAR_SENSOR_NAME: &str = "galadriel-pid";
+
+/// Sidecar payload discriminator. This is deliberately not an NCP normative
+/// message kind; the envelope is project-owned and versioned independently.
+pub const SIDECAR_KIND: &str = "galadriel_pid_observation";
+
+/// Current Galadriel sidecar schema. An incompatible shape requires a new value
+/// and coordinated producer/consumer update.
+pub const SIDECAR_SCHEMA_VERSION: &str = "1.0";
+
+/// Machine-readable JSON Schema for [`SIDECAR_SCHEMA_VERSION`]. Semantic checks
+/// that JSON Schema cannot express (paired research fields, covariance positive
+/// definiteness, inactive projection axes, and provenance binding) remain enforced
+/// by [`SidecarEnvelope::validate_for`].
+pub const SIDECAR_SCHEMA_JSON: &str =
+    include_str!("../schemas/galadriel-pid-envelope-v1.schema.json");
+
+/// A validated live-sidecar envelope.
+///
+/// The payload-level `producer_id` is an authenticated *claim* only when the
+/// transport identity/ACL binds the publisher. It is not a signature. A fresh NCP
+/// `session_id` is the producer epoch boundary; producers must not reuse it after a
+/// restart that resets observation sequences.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SidecarEnvelope {
+    /// Stable discriminator, [`SIDECAR_KIND`].
+    pub kind: String,
+    /// Galadriel-owned envelope schema, [`SIDECAR_SCHEMA_VERSION`].
+    pub schema_version: String,
+    /// NCP wire version governing the named-perception route.
+    pub ncp_version: String,
+    /// Advisory identity of the NCP contract revision used by the producer.
+    pub contract_hash: String,
+    /// NCP session/producer epoch. Must equal the subscribed path segment.
+    pub session_id: String,
+    /// Concrete producer identifier, for example `"crebain"`.
+    pub producer_id: String,
+    /// The existing, frozen Crebain/Galadriel observation contract.
+    pub observation: PidObservation,
+}
+
+/// Semantic failure in a decoded [`SidecarEnvelope`].
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SidecarEnvelopeError {
+    /// The payload discriminator does not identify this sidecar.
+    #[error("invalid sidecar kind: got {received:?}, want {SIDECAR_KIND:?}")]
+    InvalidKind { received: String },
+    /// The Galadriel-owned schema is not supported.
+    #[error(
+        "unsupported sidecar schema version: got {received:?}, want {SIDECAR_SCHEMA_VERSION:?}"
+    )]
+    UnsupportedSchemaVersion { received: String },
+    /// The NCP wire version is malformed or incompatible.
+    #[error("incompatible NCP version in sidecar envelope: {0}")]
+    IncompatibleNcpVersion(String),
+    /// The advertised contract hash is not a canonical 64-bit lowercase hex value.
+    #[error("invalid NCP contract hash in sidecar envelope: {0:?}")]
+    InvalidContractHash(String),
+    /// The declared session is unsafe as an NCP key segment.
+    #[error("invalid sidecar session_id: {0:?}")]
+    InvalidSessionId(String),
+    /// The declared producer is unsafe as an NCP key segment.
+    #[error("invalid sidecar producer_id: {0:?}")]
+    InvalidProducerId(String),
+    /// The payload declares different provenance from the subscribed stream.
+    #[error("sidecar {field} mismatch: got {received:?}, expected {expected:?}")]
+    ProvenanceMismatch {
+        field: &'static str,
+        expected: String,
+        received: String,
+    },
+    /// A numeric identity cannot round-trip through every NCP JSON peer.
+    #[error("sidecar {field} exceeds the NCP exact JSON integer range: {value}")]
+    IntegerOutOfRange { field: &'static str, value: u64 },
+    /// The nested observation violates Galadriel's semantic contract.
+    #[error("invalid sidecar observation: {0}")]
+    InvalidObservation(String),
+}
+
+impl SidecarEnvelope {
+    /// Construct and validate an envelope stamped with the local NCP and sidecar
+    /// contract identities.
+    pub fn try_new(
+        session_id: impl Into<String>,
+        producer_id: impl Into<String>,
+        observation: PidObservation,
+    ) -> Result<Self, SidecarEnvelopeError> {
+        let envelope = Self {
+            kind: SIDECAR_KIND.to_string(),
+            schema_version: SIDECAR_SCHEMA_VERSION.to_string(),
+            ncp_version: NCP_VERSION.to_string(),
+            contract_hash: CONTRACT_HASH.to_string(),
+            session_id: session_id.into(),
+            producer_id: producer_id.into(),
+            observation,
+        };
+        envelope.validate()?;
+        Ok(envelope)
+    }
+
+    /// Validate envelope identity, NCP compatibility, concrete provenance
+    /// segments, cross-language integer bounds, and the nested observation.
+    ///
+    /// A well-formed but different `contract_hash` is advisory, matching NCP's
+    /// handshake policy; the returned [`ContractStatus`] lets callers surface it.
+    pub fn validate(&self) -> Result<ContractStatus, SidecarEnvelopeError> {
+        if self.kind != SIDECAR_KIND {
+            return Err(SidecarEnvelopeError::InvalidKind {
+                received: self.kind.clone(),
+            });
+        }
+        if self.schema_version != SIDECAR_SCHEMA_VERSION {
+            return Err(SidecarEnvelopeError::UnsupportedSchemaVersion {
+                received: self.schema_version.clone(),
+            });
+        }
+        ncp_core::check_version(&self.ncp_version, true)
+            .map_err(|error| SidecarEnvelopeError::IncompatibleNcpVersion(error.to_string()))?;
+        if self.contract_hash.len() != CONTRACT_HASH.len()
+            || !self
+                .contract_hash
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        {
+            return Err(SidecarEnvelopeError::InvalidContractHash(
+                self.contract_hash.clone(),
+            ));
+        }
+        if !valid_id_segment(&self.session_id) {
+            return Err(SidecarEnvelopeError::InvalidSessionId(
+                self.session_id.clone(),
+            ));
+        }
+        if !valid_id_segment(&self.producer_id) {
+            return Err(SidecarEnvelopeError::InvalidProducerId(
+                self.producer_id.clone(),
+            ));
+        }
+        self.observation
+            .validate()
+            .map_err(|error| SidecarEnvelopeError::InvalidObservation(error.to_string()))?;
+        self.validate_json_integer("observation.track_id", self.observation.track_id)?;
+        self.validate_json_integer("observation.timestamp_ms", self.observation.timestamp_ms)?;
+        self.validate_json_integer("observation.seq", self.observation.seq)?;
+        if let Some(projection) = self.observation.consistency_projection {
+            self.validate_json_integer(
+                "observation.consistency_projection.frame_id",
+                projection.frame_id,
+            )?;
+            self.validate_json_integer(
+                "observation.consistency_projection.context_id",
+                projection.context_id,
+            )?;
+            self.validate_json_integer(
+                "observation.consistency_projection.prior_id",
+                projection.prior_id,
+            )?;
+        }
+        Ok(contract_status(Some(&self.contract_hash)))
+    }
+
+    /// Validate the envelope and bind its claimed provenance to a concrete
+    /// subscription. This prevents a valid payload for another session/producer
+    /// from being accepted merely because it arrived on this callback.
+    pub fn validate_for(
+        &self,
+        expected_session_id: &str,
+        expected_producer_id: &str,
+    ) -> Result<ContractStatus, SidecarEnvelopeError> {
+        let status = self.validate()?;
+        if self.session_id != expected_session_id {
+            return Err(SidecarEnvelopeError::ProvenanceMismatch {
+                field: "session_id",
+                expected: expected_session_id.to_string(),
+                received: self.session_id.clone(),
+            });
+        }
+        if self.producer_id != expected_producer_id {
+            return Err(SidecarEnvelopeError::ProvenanceMismatch {
+                field: "producer_id",
+                expected: expected_producer_id.to_string(),
+                received: self.producer_id.clone(),
+            });
+        }
+        Ok(status)
+    }
+
+    fn validate_json_integer(
+        &self,
+        field: &'static str,
+        value: u64,
+    ) -> Result<(), SidecarEnvelopeError> {
+        if value > JSON_SAFE_INTEGER_MAX as u64 {
+            return Err(SidecarEnvelopeError::IntegerOutOfRange { field, value });
+        }
+        Ok(())
+    }
+}
 
 /// Maximum encoded bytes in one JSONL record under [`JsonlLimits::default`].
 pub const DEFAULT_MAX_JSONL_LINE_BYTES: usize = 64 * 1024;
@@ -134,9 +340,7 @@ impl Default for JsonlLimits {
 /// must satisfy NCP's single-segment rules. Empty segments, whitespace, and key
 /// expression delimiters are rejected.
 pub fn valid_realm(realm: &str) -> bool {
-    realm
-        .split('/')
-        .all(|segment| valid_id_segment(segment) && !segment.chars().any(char::is_control))
+    ncp_core::keys::valid_realm(realm)
 }
 
 /// The canonical NCP observation-plane key for a session:
@@ -144,17 +348,19 @@ pub fn valid_realm(realm: &str) -> bool {
 /// Returns `None` if the realm is not concrete or `session_id` is not a valid
 /// NCP id segment.
 pub fn observation_key(realm: &str, session_id: &str) -> Option<String> {
-    (valid_realm(realm) && valid_id_segment(session_id))
-        .then(|| Keys::new(realm).observation(session_id))
+    Keys::try_new(realm).ok()?.try_observation(session_id).ok()
 }
 
-/// The non-wire **sidecar key** galadriel's `PidObservation` rides — additive under
-/// the session (`{realm}/session/{id}/galadriel/pid`), so it never touches NCP's
-/// normative wire / `CONTRACT_HASH`. Returns `None` for an invalid realm or id
-/// segment.
+/// The named perception-plane sidecar route:
+/// `{realm}/session/{id}/sensor/galadriel-pid`.
+///
+/// The route is built by NCP's fallible key API, so an invalid realm or session ID
+/// returns `None` rather than panicking or widening a subscription.
 pub fn sidecar_key(realm: &str, session_id: &str) -> Option<String> {
-    (valid_realm(realm) && valid_id_segment(session_id))
-        .then(|| format!("{realm}/session/{session_id}/galadriel/pid"))
+    Keys::try_new(realm)
+        .ok()?
+        .try_sensor_named(session_id, SIDECAR_SENSOR_NAME)
+        .ok()
 }
 
 /// [`sidecar_key`] on the default realm.
@@ -688,10 +894,108 @@ mod tests {
     }
 
     #[test]
+    fn sidecar_envelope_contract_is_frozen_and_bound_to_provenance() {
+        let observation =
+            PidObservation::scalar(42, 1_700_000_000_000, 7, Modality::Radar, 2.75, 3);
+        let envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
+        let expected = concat!(
+            r#"{"kind":"galadriel_pid_observation","schema_version":"1.0","#,
+            r#""ncp_version":"0.7","contract_hash":"f05e328cad20959d","#,
+            r#""session_id":"uav3","producer_id":"crebain","observation":{"#,
+            r#""track_id":42,"timestamp_ms":1700000000000,"seq":7,"#,
+            r#""modality":"radar","nis":2.75,"dof":3}}"#
+        );
+
+        assert_eq!(serde_json::to_string(&envelope).unwrap(), expected);
+        assert_eq!(
+            envelope.validate_for("uav3", "crebain").unwrap(),
+            ContractStatus::Match
+        );
+    }
+
+    #[test]
+    fn sidecar_json_schema_identity_matches_the_runtime_contract() {
+        let schema: serde_json::Value =
+            serde_json::from_str(SIDECAR_SCHEMA_JSON).expect("embedded sidecar schema is JSON");
+
+        assert_eq!(schema["properties"]["kind"]["const"], SIDECAR_KIND);
+        assert_eq!(
+            schema["properties"]["schema_version"]["const"],
+            SIDECAR_SCHEMA_VERSION
+        );
+        assert_eq!(schema["properties"]["ncp_version"]["const"], NCP_VERSION);
+        assert_eq!(
+            schema["$defs"]["safeUnsignedInteger"]["maximum"],
+            JSON_SAFE_INTEGER_MAX
+        );
+        assert_eq!(
+            schema["$defs"]["ncpKeySegment"]["pattern"],
+            r"^[^/\*\$#\?\s\u0000-\u001F\u007F-\u009F\uFEFF]+$"
+        );
+    }
+
+    #[test]
+    fn sidecar_envelope_rejects_unknown_nested_observation_fields() {
+        let observation = PidObservation::scalar(1, 1, 1, Modality::Visual, 1.0, 3);
+        let envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
+        let mut value = serde_json::to_value(envelope).unwrap();
+        value["observation"]["undeclared_future_meaning"] = serde_json::json!(true);
+
+        assert!(serde_json::from_value::<SidecarEnvelope>(value).is_err());
+    }
+
+    #[test]
+    fn sidecar_envelope_rejects_wrong_version_and_provenance() {
+        let observation = PidObservation::scalar(1, 1, 1, Modality::Visual, 1.0, 3);
+        let mut envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
+        envelope.ncp_version = "0.6".to_string();
+        assert!(matches!(
+            envelope.validate(),
+            Err(SidecarEnvelopeError::IncompatibleNcpVersion(_))
+        ));
+
+        envelope.ncp_version = NCP_VERSION.to_string();
+        assert!(matches!(
+            envelope.validate_for("uav4", "crebain"),
+            Err(SidecarEnvelopeError::ProvenanceMismatch {
+                field: "session_id",
+                ..
+            })
+        ));
+        assert!(matches!(
+            envelope.validate_for("uav3", "other-producer"),
+            Err(SidecarEnvelopeError::ProvenanceMismatch {
+                field: "producer_id",
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn sidecar_envelope_surfaces_contract_drift_but_rejects_unsafe_integers() {
+        let observation = PidObservation::scalar(1, 1, 1, Modality::Visual, 1.0, 3);
+        let mut envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
+        envelope.contract_hash = "deadbeefdeadbeef".to_string();
+        assert!(matches!(
+            envelope.validate().unwrap(),
+            ContractStatus::Mismatch { .. }
+        ));
+
+        envelope.observation.track_id = JSON_SAFE_INTEGER_MAX as u64 + 1;
+        assert!(matches!(
+            envelope.validate(),
+            Err(SidecarEnvelopeError::IntegerOutOfRange {
+                field: "observation.track_id",
+                ..
+            })
+        ));
+    }
+
+    #[test]
     fn keys_follow_the_ncp_scheme() {
         assert_eq!(
             sidecar_key("ncp", "uav3").unwrap(),
-            "ncp/session/uav3/galadriel/pid"
+            "ncp/session/uav3/sensor/galadriel-pid"
         );
         assert!(observation_key("ncp", "uav3")
             .unwrap()
@@ -700,12 +1004,57 @@ mod tests {
         assert!(sidecar_key("ncp", "bad id!").is_none());
         assert_eq!(
             sidecar_key("engram/ncp", "uav3").as_deref(),
-            Some("engram/ncp/session/uav3/galadriel/pid")
+            Some("engram/ncp/session/uav3/sensor/galadriel-pid")
         );
         assert!(sidecar_key("ncp/**", "uav3").is_none());
         assert!(sidecar_key("ncp//fleet", "uav3").is_none());
         assert!(sidecar_key("/ncp", "uav3").is_none());
         assert!(sidecar_key("ncp/\0fleet", "uav3").is_none());
         assert!(default_sidecar_key("uav3").is_some());
+    }
+
+    #[test]
+    fn duplicate_json_keys_are_rejected_not_last_wins() {
+        // A `serde_json::Value` intermediate collapses duplicate keys (last occurrence
+        // wins) BEFORE `deny_unknown_fields` can see them, so a payload carrying an
+        // identity field twice could smuggle a first-wins/last-wins parser differential
+        // past the provenance gate. The live tap therefore deserializes payloads
+        // directly into the typed envelope, which rejects duplicates as a Data error
+        // (counted as an invalid envelope, not malformed JSON).
+        let envelope = SidecarEnvelope::try_new(
+            "uav3",
+            "crebain",
+            galadriel_core::PidObservation::scalar(
+                1,
+                100,
+                0,
+                galadriel_core::Modality::Radar,
+                3.2,
+                3,
+            ),
+        )
+        .expect("valid envelope");
+        let json = serde_json::to_string(&envelope).expect("serializable envelope");
+        let duplicated = json.replacen(
+            "\"session_id\":\"uav3\"",
+            "\"session_id\":\"mallory\",\"session_id\":\"uav3\"",
+            1,
+        );
+        assert_ne!(
+            json, duplicated,
+            "the duplicate key must actually be injected"
+        );
+
+        let error = serde_json::from_slice::<SidecarEnvelope>(duplicated.as_bytes())
+            .expect_err("typed parse must reject duplicate keys");
+        assert_eq!(error.classify(), serde_json::error::Category::Data);
+
+        // The differential this guards against: a Value round-trip accepts silently.
+        let value: serde_json::Value =
+            serde_json::from_str(&duplicated).expect("plain JSON parse succeeds");
+        assert!(
+            serde_json::from_value::<SidecarEnvelope>(value).is_ok(),
+            "the Value route would have accepted the duplicated payload (last key wins)"
+        );
     }
 }

@@ -12,7 +12,7 @@
 
 Galadriel's local research implementation is materially hardened: public inputs are validated, state and work are bounded, statistical ambiguity fails closed, unsafe Rust is forbidden, replay retains adverse history, live callback/reset races are contained, and CI dependencies are immutable. No critical or high-severity exploitable defect remains in the audited repository.
 
-It is **not production-integration ready**. The optional live path lacks an authorized/authenticated publisher and heartbeat, crebain does not emit the required common-frame/common-frozen-prior projection, and producer provenance labels are attestations rather than cryptographic proof. One transitive Zenoh compression advisory is temporarily accepted only because the vulnerable feature is disabled and mechanically checked; that exception expires on 2026-10-01.
+It is **not production-integration ready**. The optional live path now uses NCP's ACL-covered named-sensor route and a versioned session/producer-bound envelope, but still lacks a Crebain publisher, deployed mTLS proof, and heartbeat. Crebain does not emit the required common-frame/common-frozen-prior projection, and producer provenance labels remain attestations rather than cryptographic proof. One transitive Zenoh compression advisory is temporarily accepted only because the vulnerable feature is disabled and mechanically checked; that exception expires on 2026-10-01.
 
 ## Phase 0 — Architecture and Stack
 
@@ -57,7 +57,7 @@ No HTTP listener, REST/GraphQL route, database, webhook, shell-execution sink, o
 | `paste 1.0.15` | `RUSTSEC-2024-0436`, unmaintained | Low | Remove through upstream dependency upgrade |
 | `rustls-pemfile 2.2.0` | `RUSTSEC-2025-0134`, unmaintained | Low | Remove through upstream dependency upgrade |
 | `pid-rs v0.4.0` | Public git tag + exact lock commit | Controlled | Continue Dependabot/manual review |
-| `NCP v0.6.0` | Public git tag + exact lock commit | Controlled but large graph | Upgrade when a compatible Zenoh release is available |
+| `NCP v0.7.1` | Public git tag + exact lock commit | Controlled but large graph | Continue Dependabot/manual review |
 
 `cargo deny --all-features --locked check` passed advisories, bans, licenses, and sources under the documented policy. `cargo audit --ignore RUSTSEC-2026-0041` exited successfully with only the two unmaintained warnings above. Duplicate versions are warned rather than denied and remain a maintenance-cost signal.
 
@@ -74,7 +74,7 @@ No HTTP listener, REST/GraphQL route, database, webhook, shell-execution sink, o
 ## Phases 5–7 — Infrastructure, Integrations, and AI
 
 - No cloud/IaC, DNS, database migration, webhook, OAuth, payment callback, or LLM integration was found.
-- The only network integration is the optional read-only Zenoh subscriber. Its sidecar key has no current NCP ACL grant or production publisher, and silence is ambiguous without heartbeat/liveness integration.
+- The only network integration is the optional read-only Zenoh subscriber. Its NCP named-sensor route is covered by the sensor-plane ACL, but it has no production Crebain publisher or receiver-verified mTLS deployment, and silence is ambiguous without heartbeat/liveness integration.
 - There is no deployment signing, SBOM, or artifact provenance because there is no release pipeline. Add those if package publishing begins.
 
 ## Phase 8 — Skill Supply Chain
@@ -103,7 +103,7 @@ Solana-specific signer, PDA, CPI, rent, reinitialization, and arithmetic-account
 | Component | Threat | Risk | Existing mitigation | Required next action |
 |-----------|--------|------|---------------------|----------------------|
 | JSONL replay | Tampering / DoS | Low | Strict parsing, aggregate/line/record/work/track bounds, full adverse history | Sign captures if used as evidence |
-| Zenoh sidecar | Spoofing / Tampering | Medium | Typed validation, sequence monotonicity, fresh session guidance | NCP ACL+mTLS, authenticated publisher, signed/versioned envelope |
+| Zenoh sidecar | Spoofing / Tampering | Medium | Typed versioned envelope, session/producer binding, sequence monotonicity, explicit secure mode, ACL-covered route | Crebain publisher, deployed mTLS identity proof, and end-to-end forged-payload tests |
 | Zenoh sidecar | Denial of service | Medium | Payload/LRU/gap bounds, rejection counters, deadlock-safe reset | Heartbeat, rate policy, operator alerting, end-to-end denial tests |
 | Projection metadata | Spoofing / integrity | Medium | Frame/context/prior equality and global reuse validation | Independent producer/reference validation and authenticated provenance |
 | Detector state | DoS / exceptional conditions | Low | Track/window/observation/estimator bounds and fallible allocation | Operational resource monitoring |
@@ -159,13 +159,13 @@ False-positive classes filtered: test-only `unwrap`/panic sites, documentation/e
 
 **Location:** `crates/galadriel-ncp/src/live.rs:700`, `README.md:150`
 
-**Description:** `SidecarTap` is a read-only prototype. The repository has no production publisher, least-privilege ACL entry, authenticated restart/epoch protocol, or all-modal heartbeat. Current documentation correctly says compilation is not end-to-end evidence.
+**Description:** `SidecarTap` is a read-only prototype. It now uses NCP's least-privilege named-sensor route, requires an explicit secure or unverified-development transport choice, and rejects envelopes whose NCP/sidecar version, session, producer, or observation contract is invalid. The repository still has no production Crebain publisher, receiver-verified mTLS deployment, or all-modal heartbeat.
 
 **Exploit scenario:** If operators deploy the subscriber on a permissive bus, an unauthorized publisher can inject syntactically valid observations or suppress traffic. Silence cannot distinguish attack, ACL denial, key mismatch, or producer failure.
 
-**Evidence:** The sidecar key is constructed and subscribed locally, while NCP policy/publisher changes are absent from this repository and sibling NCP's current hardened ACL does not grant the key.
+**Evidence:** The sidecar route is `Keys::sensor_named(session, "galadriel-pid")`, which the NCP sensor-plane ACL covers, and unit/integration tests exercise the versioned envelope against a real Crebain capture. There is still no executable live publisher or brokered mTLS test.
 
-**Remediation:** Add an authorized producer and explicit subscriber/publisher ACL rules, mTLS identities, fresh session IDs per process epoch, signed/versioned envelopes, heartbeat, and end-to-end traffic/denial/restart tests. Keep the detector advisory.
+**Remediation:** Add the Crebain named-sensor producer, deploy the existing ACL with mTLS identities, use fresh session IDs per process epoch, add heartbeat, and run end-to-end traffic/denial/restart tests. Keep the detector advisory.
 
 **Priority:** P1 — mandatory before live deployment.
 
@@ -241,7 +241,7 @@ The evidence is synthetic. A colluding majority, consistency-preserving attacker
 
 ## Remediation Roadmap
 
-1. **P1 / before live or recorded claims (roughly 1–3 engineering weeks across repositories):** upgrade Zenoh or renew only after review; implement the crebain pre-gate common-prior projection; add NCP publisher/ACL/mTLS/session/heartbeat and end-to-end denial/restart tests.
+1. **P1 / before live or recorded claims (roughly 1–3 engineering weeks across repositories):** upgrade Zenoh or renew only after review; implement the Crebain pre-gate common-prior projection and named-sensor publisher; deploy ACL/mTLS/session/heartbeat and run end-to-end denial/restart tests.
 2. **P2 / dependency cycle (hours to days once upstream releases exist):** remove unmaintained transitives, reduce duplicate graph versions, add SBOM/artifact provenance if publishing begins.
 3. **P3 / research program (multi-week study):** preregister recorded field evaluation, include misses/rejections/benign maneuvers, calibrate operating points, and red-team coordinated attacks.
 

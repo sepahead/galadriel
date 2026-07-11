@@ -22,7 +22,7 @@
 use galadriel_core::{
     assess_default, CorrConfig, DetectorConfig, FusedVerdict, Mirror, Modality, Verdict,
 };
-use galadriel_ncp::read_jsonl;
+use galadriel_ncp::{read_jsonl, SidecarEnvelope};
 
 const FIXTURE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -94,4 +94,24 @@ fn crebain_clean_capture_keeps_insufficient_correlation_fail_closed() {
         FusedVerdict::InsufficientEvidence,
         "fusion must preserve insufficient correlation evidence"
     );
+}
+
+#[test]
+fn current_crebain_record_roundtrips_inside_the_live_v1_envelope() {
+    let stream = read_jsonl(FIXTURE).expect("crebain capture parses");
+    let envelope = SidecarEnvelope::try_new(
+        "crebain-capture-epoch-1",
+        "crebain",
+        stream.first().expect("fixture is nonempty").clone(),
+    )
+    .expect("current Crebain record satisfies the live envelope contract");
+    let bytes = serde_json::to_vec(&envelope).expect("envelope serializes");
+    let decoded: SidecarEnvelope =
+        serde_json::from_slice(&bytes).expect("envelope deserializes identically");
+
+    assert!(decoded
+        .validate_for("crebain-capture-epoch-1", "crebain")
+        .expect("version and provenance match")
+        .is_match());
+    assert!(decoded.observation.consistency_projection.is_none());
 }

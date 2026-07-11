@@ -2,9 +2,9 @@
 //!
 //! This is the streaming counterpart to the JSONL ingest: the *same*
 //! [`PidObservation`] records, delivered live over the NCP bus instead of read from a
-//! file. galadriel subscribes to its **non-wire sidecar key**
-//! `{realm}/session/{id}/galadriel/pid` (see [`crate::sidecar_key`]) — additive under
-//! the session, never a proto/wire message, so it can never touch NCP's `CONTRACT_HASH`.
+//! file. Galadriel subscribes to the named perception route
+//! `{realm}/session/{id}/sensor/galadriel-pid` (see [`crate::sidecar_key`]). Each
+//! payload is a versioned [`crate::SidecarEnvelope`], not an NCP normative message.
 //!
 //! It is a strictly **read-only observer**: [`SidecarTap`] only *subscribes*. It opens
 //! (or shares) a Zenoh transport session, but never opens an NCP control session,
@@ -13,9 +13,9 @@
 //!
 //! ```no_run
 //! # async fn run() -> Result<(), Box<dyn std::error::Error>> {
-//! use galadriel_ncp::live::SidecarTap;
-//! let tap = SidecarTap::open().await?;
-//! let health = tap.subscribe_with_health("uav3", |obs| {
+//! use galadriel_ncp::live::{SidecarTap, TransportMode};
+//! let tap = SidecarTap::open(TransportMode::Secure).await?;
+//! let health = tap.subscribe_with_health("uav3", "crebain", |obs| {
 //!     // hand each observation to a galadriel detector (cheap: decode + enqueue)
 //!     let _ = obs.nis;
 //! })
@@ -31,10 +31,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 
 use galadriel_core::observation::{Modality, PidObservation};
-use ncp_core::{Keys, DEFAULT_REALM};
+use ncp_core::{ContractStatus, Keys, DEFAULT_REALM};
 use ncp_zenoh::{ZenohBus, ZenohError};
 
-use crate::{sidecar_key, valid_realm};
+use crate::{sidecar_key, valid_realm, SidecarEnvelope, SidecarEnvelopeError};
 
 /// Maximum live sidecar payload accepted under [`LiveLimits::default`].
 pub const DEFAULT_MAX_LIVE_PAYLOAD_BYTES: usize = 64 * 1024;
@@ -139,8 +139,14 @@ impl Default for LiveLimits {
 pub enum RejectionReason {
     /// The encoded payload exceeded [`LiveLimits::max_payload_bytes`].
     PayloadTooLarge,
-    /// The payload was not valid JSON for a `PidObservation`.
+    /// The payload was not valid JSON for a [`SidecarEnvelope`].
     MalformedJson,
+    /// The envelope discriminator, schema, hash shape, or identity segments were invalid.
+    InvalidEnvelope,
+    /// The envelope carried an incompatible NCP wire version.
+    IncompatibleNcpVersion,
+    /// The envelope's session or producer did not match the subscription.
+    ProvenanceMismatch,
     /// The decoded observation failed semantic validation.
     InvalidObservation,
     /// The sequence duplicated or regressed within its retained stream.
@@ -159,6 +165,12 @@ pub struct RejectionCounts {
     pub payload_too_large: u64,
     /// Payloads rejected because JSON decoding failed.
     pub malformed_json: u64,
+    /// Decoded envelopes rejected for invalid sidecar metadata.
+    pub invalid_envelope: u64,
+    /// Envelopes rejected for an incompatible NCP wire version.
+    pub incompatible_ncp_version: u64,
+    /// Envelopes rejected because claimed provenance did not match the subscription.
+    pub provenance_mismatch: u64,
     /// Decoded observations rejected by semantic validation.
     pub invalid_observation: u64,
     /// Duplicate or regressed sequences.
@@ -175,6 +187,9 @@ impl RejectionCounts {
         match reason {
             RejectionReason::PayloadTooLarge => self.payload_too_large,
             RejectionReason::MalformedJson => self.malformed_json,
+            RejectionReason::InvalidEnvelope => self.invalid_envelope,
+            RejectionReason::IncompatibleNcpVersion => self.incompatible_ncp_version,
+            RejectionReason::ProvenanceMismatch => self.provenance_mismatch,
             RejectionReason::InvalidObservation => self.invalid_observation,
             RejectionReason::DuplicateOrRegressedSequence => self.duplicate_or_regressed_sequence,
             RejectionReason::ExcessiveForwardSequenceGap => self.excessive_forward_sequence_gap,
@@ -186,6 +201,9 @@ impl RejectionCounts {
     pub fn total(self) -> u64 {
         self.payload_too_large
             .saturating_add(self.malformed_json)
+            .saturating_add(self.invalid_envelope)
+            .saturating_add(self.incompatible_ncp_version)
+            .saturating_add(self.provenance_mismatch)
             .saturating_add(self.invalid_observation)
             .saturating_add(self.duplicate_or_regressed_sequence)
             .saturating_add(self.excessive_forward_sequence_gap)
@@ -226,8 +244,12 @@ struct IngestCounters {
     callback_panics: AtomicU64,
     sequence_evictions: AtomicU64,
     sequence_resets: AtomicU64,
+    contract_hash_mismatches: AtomicU64,
     payload_too_large: AtomicU64,
     malformed_json: AtomicU64,
+    invalid_envelope: AtomicU64,
+    incompatible_ncp_version: AtomicU64,
+    provenance_mismatch: AtomicU64,
     invalid_observation: AtomicU64,
     duplicate_or_regressed_sequence: AtomicU64,
     excessive_forward_sequence_gap: AtomicU64,
@@ -240,6 +262,11 @@ impl IngestCounters {
         match reason {
             RejectionReason::PayloadTooLarge => self.payload_too_large.load(Ordering::Relaxed),
             RejectionReason::MalformedJson => self.malformed_json.load(Ordering::Relaxed),
+            RejectionReason::InvalidEnvelope => self.invalid_envelope.load(Ordering::Relaxed),
+            RejectionReason::IncompatibleNcpVersion => {
+                self.incompatible_ncp_version.load(Ordering::Relaxed)
+            }
+            RejectionReason::ProvenanceMismatch => self.provenance_mismatch.load(Ordering::Relaxed),
             RejectionReason::InvalidObservation => self.invalid_observation.load(Ordering::Relaxed),
             RejectionReason::DuplicateOrRegressedSequence => {
                 self.duplicate_or_regressed_sequence.load(Ordering::Relaxed)
@@ -257,6 +284,9 @@ impl IngestCounters {
         RejectionCounts {
             payload_too_large: self.rejection_count(RejectionReason::PayloadTooLarge),
             malformed_json: self.rejection_count(RejectionReason::MalformedJson),
+            invalid_envelope: self.rejection_count(RejectionReason::InvalidEnvelope),
+            incompatible_ncp_version: self.rejection_count(RejectionReason::IncompatibleNcpVersion),
+            provenance_mismatch: self.rejection_count(RejectionReason::ProvenanceMismatch),
             invalid_observation: self.rejection_count(RejectionReason::InvalidObservation),
             duplicate_or_regressed_sequence: self
                 .rejection_count(RejectionReason::DuplicateOrRegressedSequence),
@@ -603,6 +633,14 @@ impl SubscriptionHealth {
         self.counters.sequence_resets.load(Ordering::Relaxed)
     }
 
+    /// Accepted envelopes whose well-formed advisory NCP contract hash differed
+    /// from this build. NCP version compatibility remains the hard gate.
+    pub fn contract_hash_mismatches(&self) -> u64 {
+        self.counters
+            .contract_hash_mismatches
+            .load(Ordering::Relaxed)
+    }
+
     /// Number of `(track, modality)` sequence streams currently retained.
     pub fn retained_sequence_streams(&self) -> usize {
         self.sequences
@@ -657,7 +695,20 @@ impl SubscriptionHealth {
     }
 }
 
-/// A live, read-only tap on galadriel's sidecar observation key over Zenoh.
+/// Required transport-security intent for opening a live tap.
+///
+/// There is deliberately no default: production must request [`Self::Secure`],
+/// while local work must acknowledge that [`Self::QuietDevelopment`] validates no
+/// TLS identity or ACL policy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransportMode {
+    /// Require NCP's strict mTLS client configuration and fail closed if absent.
+    Secure,
+    /// Disable multicast scouting but do not prove authentication/authorization.
+    QuietDevelopment,
+}
+
+/// A live, read-only tap on Galadriel's named perception route over Zenoh.
 pub struct SidecarTap {
     bus: ZenohBus,
     realm: String,
@@ -666,14 +717,22 @@ pub struct SidecarTap {
 }
 
 impl SidecarTap {
-    /// Open a tap on the default NCP realm with the hardened default Zenoh config.
-    pub async fn open() -> Result<Self, ZenohError> {
-        Self::open_with_limits(LiveLimits::default()).await
+    /// Open a tap on the default NCP realm with explicit transport-security intent.
+    pub async fn open(mode: TransportMode) -> Result<Self, ZenohError> {
+        Self::open_with_limits(mode, LiveLimits::default()).await
     }
 
-    /// Open a default-realm tap with caller-supplied payload limits.
-    pub async fn open_with_limits(limits: LiveLimits) -> Result<Self, ZenohError> {
-        Self::from_parts(ZenohBus::open().await?, DEFAULT_REALM.to_string(), limits)
+    /// Open a default-realm tap with explicit intent and caller-supplied limits.
+    pub async fn open_with_limits(
+        mode: TransportMode,
+        limits: LiveLimits,
+    ) -> Result<Self, ZenohError> {
+        let keys = Keys::default();
+        let bus = match mode {
+            TransportMode::Secure => ZenohBus::open_secure(keys).await?,
+            TransportMode::QuietDevelopment => ZenohBus::open_realm(keys).await?,
+        };
+        Self::from_parts(bus, DEFAULT_REALM.to_string(), limits)
     }
 
     fn from_parts(bus: ZenohBus, realm: String, limits: LiveLimits) -> Result<Self, ZenohError> {
@@ -690,14 +749,18 @@ impl SidecarTap {
         })
     }
 
-    /// Open a tap on an explicit realm.
-    pub async fn open_realm(realm: impl Into<String>) -> Result<Self, ZenohError> {
-        Self::open_realm_with_limits(realm, LiveLimits::default()).await
+    /// Open a tap on an explicit realm with explicit transport-security intent.
+    pub async fn open_realm(
+        realm: impl Into<String>,
+        mode: TransportMode,
+    ) -> Result<Self, ZenohError> {
+        Self::open_realm_with_limits(realm, mode, LiveLimits::default()).await
     }
 
-    /// Open an explicit-realm tap with caller-supplied payload limits.
+    /// Open an explicit-realm tap with explicit intent and caller-supplied limits.
     pub async fn open_realm_with_limits(
         realm: impl Into<String>,
+        mode: TransportMode,
         limits: LiveLimits,
     ) -> Result<Self, ZenohError> {
         let realm = realm.into();
@@ -706,21 +769,28 @@ impl SidecarTap {
                 "invalid NCP realm: expected concrete key segments, got {realm:?}"
             )));
         }
-        let bus = ZenohBus::open_realm(Keys::new(&realm)).await?;
+        let keys = Keys::try_new(&realm)
+            .map_err(|error| ZenohError(format!("invalid NCP realm: {error}")))?;
+        let bus = match mode {
+            TransportMode::Secure => ZenohBus::open_secure(keys).await?,
+            TransportMode::QuietDevelopment => ZenohBus::open_realm(keys).await?,
+        };
         Self::from_parts(bus, realm, limits)
     }
 
     /// Wrap an already-open bus, so a host app can share one Zenoh session across its
     /// own traffic and galadriel's observer tap. The realm is derived from the bus,
     /// eliminating a caller-supplied realm that could silently subscribe to the wrong
-    /// keyspace.
+    /// keyspace. This constructor inherits the host's transport-security choice and
+    /// cannot prove that the existing session used strict mTLS; the host remains
+    /// responsible for that deployment invariant.
     pub fn from_bus(bus: ZenohBus) -> Result<Self, ZenohError> {
         Self::from_bus_with_limits(bus, LiveLimits::default())
     }
 
     /// Wrap an already-open bus with caller-supplied payload limits.
     pub fn from_bus_with_limits(bus: ZenohBus, limits: LiveLimits) -> Result<Self, ZenohError> {
-        let realm = bus.keys().realm.clone();
+        let realm = bus.keys().realm().to_owned();
         Self::from_parts(bus, realm, limits)
     }
 
@@ -784,23 +854,39 @@ impl SidecarTap {
         self.counters.sequence_resets.load(Ordering::Relaxed)
     }
 
+    /// Accepted envelopes with an advisory NCP contract-hash mismatch across all
+    /// subscriptions.
+    pub fn contract_hash_mismatches(&self) -> u64 {
+        self.counters
+            .contract_hash_mismatches
+            .load(Ordering::Relaxed)
+    }
+
     /// The underlying bus (e.g. to close it, or share the session).
     pub fn bus(&self) -> &ZenohBus {
         &self.bus
     }
 
-    /// Subscribe to a session's galadriel sidecar key. `on_obs` runs **inline on Zenoh's
-    /// receive task** for each decoded observation, so keep it cheap (decode + hand off).
-    /// Oversized, malformed, invalid, duplicate, regressed, and excessive-forward-gap
-    /// payloads are dropped and counted by [`Self::decode_failures`]. Callback panics
-    /// are caught and counted by [`Self::callback_panics`] so they cannot unwind
-    /// Zenoh's receive task.
-    /// Errors if `session_id` is not a valid NCP id segment.
-    pub async fn subscribe<F>(&self, session_id: &str, on_obs: F) -> Result<(), ZenohError>
+    /// Subscribe to a session's `sensor/galadriel-pid` route. `on_obs` runs **inline
+    /// on Zenoh's receive task** for each decoded observation, so keep it cheap
+    /// (decode + hand off). Each envelope must declare the same `session_id` and
+    /// `producer_id` supplied here; this is payload provenance, while mTLS/ACL is
+    /// responsible for authenticating the publisher.
+    ///
+    /// Oversized, malformed, invalid, misattributed, duplicate, regressed, and
+    /// excessive-forward-gap payloads are dropped and counted by
+    /// [`Self::decode_failures`]. Callback panics are caught and counted by
+    /// [`Self::callback_panics`] so they cannot unwind Zenoh's receive task.
+    pub async fn subscribe<F>(
+        &self,
+        session_id: &str,
+        producer_id: &str,
+        on_obs: F,
+    ) -> Result<(), ZenohError>
     where
         F: Fn(PidObservation) + Send + Sync + 'static,
     {
-        self.subscribe_with_health(session_id, on_obs)
+        self.subscribe_with_health(session_id, producer_id, on_obs)
             .await
             .map(|_| ())
     }
@@ -813,6 +899,7 @@ impl SidecarTap {
     pub async fn subscribe_with_health<F>(
         &self,
         session_id: &str,
+        producer_id: &str,
         on_obs: F,
     ) -> Result<SubscriptionHealth, ZenohError>
     where
@@ -820,6 +907,13 @@ impl SidecarTap {
     {
         let key = sidecar_key(&self.realm, session_id)
             .ok_or_else(|| ZenohError(format!("invalid NCP session id segment: {session_id:?}")))?;
+        if !ncp_core::valid_id_segment(producer_id) {
+            return Err(ZenohError(format!(
+                "invalid sidecar producer id segment: {producer_id:?}"
+            )));
+        }
+        let expected_session_id = session_id.to_owned();
+        let expected_producer_id = producer_id.to_owned();
         let tap_counters = Arc::clone(&self.counters);
         let subscription_counters = Arc::new(IngestCounters::default());
         let limits = self.limits;
@@ -835,11 +929,15 @@ impl SidecarTap {
             .subscribe(&key, move |_key, bytes| {
                 process_payload(
                     &bytes,
-                    limits,
-                    &delivery_boundary,
-                    &sequences,
-                    &tap_counters,
-                    &subscription_counters,
+                    PayloadContext {
+                        expected_session_id: &expected_session_id,
+                        expected_producer_id: &expected_producer_id,
+                        limits,
+                        delivery_boundary: &delivery_boundary,
+                        sequences: &sequences,
+                        tap_counters: &tap_counters,
+                        subscription_counters: &subscription_counters,
+                    },
                     &on_obs,
                 );
             })
@@ -853,66 +951,101 @@ impl SidecarTap {
     }
 }
 
-fn process_payload<F>(
-    bytes: &[u8],
+#[derive(Clone, Copy)]
+struct PayloadContext<'a> {
+    expected_session_id: &'a str,
+    expected_producer_id: &'a str,
     limits: LiveLimits,
-    delivery_boundary: &DeliveryBoundary,
-    sequences: &Mutex<LiveSequenceTracker>,
-    tap_counters: &IngestCounters,
-    subscription_counters: &IngestCounters,
-    on_obs: &F,
-) where
+    delivery_boundary: &'a DeliveryBoundary,
+    sequences: &'a Mutex<LiveSequenceTracker>,
+    tap_counters: &'a IngestCounters,
+    subscription_counters: &'a IngestCounters,
+}
+
+fn process_payload<F>(bytes: &[u8], context: PayloadContext<'_>, on_obs: &F)
+where
     F: Fn(PidObservation),
 {
     increment_pair(
-        &tap_counters.payloads_received,
-        &subscription_counters.payloads_received,
+        &context.tap_counters.payloads_received,
+        &context.subscription_counters.payloads_received,
     );
-    let _delivery = delivery_boundary.begin_delivery();
-    if bytes.len() > limits.max_payload_bytes {
+    let _delivery = context.delivery_boundary.begin_delivery();
+    if bytes.len() > context.limits.max_payload_bytes {
         reject_pair(
-            tap_counters,
-            subscription_counters,
+            context.tap_counters,
+            context.subscription_counters,
             RejectionReason::PayloadTooLarge,
         );
         return;
     }
 
-    let Ok(observation) = serde_json::from_slice::<PidObservation>(bytes) else {
-        reject_pair(
-            tap_counters,
-            subscription_counters,
-            RejectionReason::MalformedJson,
-        );
-        return;
+    // Parse straight into the typed envelope. A `serde_json::Value` intermediate would
+    // collapse duplicate JSON keys (last occurrence wins) before `deny_unknown_fields`
+    // could reject them — a parser differential with first-wins JSON consumers on a
+    // security boundary. `classify()` preserves the malformed-vs-invalid counter split.
+    let envelope = match serde_json::from_slice::<SidecarEnvelope>(bytes) {
+        Ok(envelope) => envelope,
+        Err(error) => {
+            let reason = if error.classify() == serde_json::error::Category::Data {
+                RejectionReason::InvalidEnvelope
+            } else {
+                RejectionReason::MalformedJson
+            };
+            reject_pair(context.tap_counters, context.subscription_counters, reason);
+            return;
+        }
     };
-    if observation.validate().is_err() {
-        reject_pair(
-            tap_counters,
-            subscription_counters,
-            RejectionReason::InvalidObservation,
-        );
-        return;
-    }
+    let contract_hash_mismatch =
+        match envelope.validate_for(context.expected_session_id, context.expected_producer_id) {
+            Ok(ContractStatus::Mismatch { .. }) => true,
+            Ok(ContractStatus::Match | ContractStatus::NotAdvertised) => false,
+            Err(error) => {
+                reject_pair(
+                    context.tap_counters,
+                    context.subscription_counters,
+                    rejection_reason_for_envelope_error(&error),
+                );
+                return;
+            }
+        };
+    let observation = envelope.observation;
     {
-        let mut sequences = sequences.lock().unwrap_or_else(|error| error.into_inner());
+        let mut sequences = context
+            .sequences
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         match sequences.accept(
             &observation,
-            limits.max_sequence_streams,
-            limits.max_sequence_advance,
+            context.limits.max_sequence_streams,
+            context.limits.max_sequence_advance,
         ) {
             Ok(true) => increment_pair(
-                &tap_counters.sequence_evictions,
-                &subscription_counters.sequence_evictions,
+                &context.tap_counters.sequence_evictions,
+                &context.subscription_counters.sequence_evictions,
             ),
             Ok(false) => {}
             Err(reason) => {
-                reject_pair(tap_counters, subscription_counters, reason.into());
+                reject_pair(
+                    context.tap_counters,
+                    context.subscription_counters,
+                    reason.into(),
+                );
                 return;
             }
         }
     }
-    record_acceptance_pair(tap_counters, subscription_counters, &observation);
+    if contract_hash_mismatch {
+        increment_pair(
+            &context.tap_counters.contract_hash_mismatches,
+            &context.subscription_counters.contract_hash_mismatches,
+        );
+    }
+    record_acceptance_pair(
+        context.tap_counters,
+        context.subscription_counters,
+        &observation,
+    );
 
     let callback_panicked = {
         let _callback = CallbackGuard::enter();
@@ -920,8 +1053,8 @@ fn process_payload<F>(
     };
     if callback_panicked {
         increment_pair(
-            &tap_counters.callback_panics,
-            &subscription_counters.callback_panics,
+            &context.tap_counters.callback_panics,
+            &context.subscription_counters.callback_panics,
         );
     }
 }
@@ -935,10 +1068,23 @@ fn rejection_counter(counters: &IngestCounters, reason: RejectionReason) -> &Ato
     match reason {
         RejectionReason::PayloadTooLarge => &counters.payload_too_large,
         RejectionReason::MalformedJson => &counters.malformed_json,
+        RejectionReason::InvalidEnvelope => &counters.invalid_envelope,
+        RejectionReason::IncompatibleNcpVersion => &counters.incompatible_ncp_version,
+        RejectionReason::ProvenanceMismatch => &counters.provenance_mismatch,
         RejectionReason::InvalidObservation => &counters.invalid_observation,
         RejectionReason::DuplicateOrRegressedSequence => &counters.duplicate_or_regressed_sequence,
         RejectionReason::ExcessiveForwardSequenceGap => &counters.excessive_forward_sequence_gap,
         RejectionReason::SequenceStateFailure => &counters.sequence_state_failure,
+    }
+}
+
+fn rejection_reason_for_envelope_error(error: &SidecarEnvelopeError) -> RejectionReason {
+    match error {
+        SidecarEnvelopeError::IncompatibleNcpVersion(_) => RejectionReason::IncompatibleNcpVersion,
+        SidecarEnvelopeError::ProvenanceMismatch { .. } => RejectionReason::ProvenanceMismatch,
+        SidecarEnvelopeError::InvalidObservation(_)
+        | SidecarEnvelopeError::IntegerOutOfRange { .. } => RejectionReason::InvalidObservation,
+        _ => RejectionReason::InvalidEnvelope,
     }
 }
 
@@ -977,16 +1123,57 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
+    const TEST_SESSION_ID: &str = "session-1";
+    const TEST_PRODUCER_ID: &str = "crebain";
+
+    fn envelope(observation: PidObservation) -> SidecarEnvelope {
+        SidecarEnvelope {
+            kind: crate::SIDECAR_KIND.to_string(),
+            schema_version: crate::SIDECAR_SCHEMA_VERSION.to_string(),
+            ncp_version: ncp_core::NCP_VERSION.to_string(),
+            contract_hash: ncp_core::CONTRACT_HASH.to_string(),
+            session_id: TEST_SESSION_ID.to_string(),
+            producer_id: TEST_PRODUCER_ID.to_string(),
+            observation,
+        }
+    }
+
     fn encoded(track_id: u64, sequence: u64) -> Vec<u8> {
-        serde_json::to_vec(&PidObservation::scalar(
+        serde_json::to_vec(&envelope(PidObservation::scalar(
             track_id,
             sequence,
             sequence,
             Modality::Radar,
             3.0,
             3,
-        ))
+        )))
         .unwrap()
+    }
+
+    fn process_payload<F>(
+        bytes: &[u8],
+        limits: LiveLimits,
+        delivery_boundary: &DeliveryBoundary,
+        sequences: &Mutex<LiveSequenceTracker>,
+        tap_counters: &IngestCounters,
+        subscription_counters: &IngestCounters,
+        on_obs: &F,
+    ) where
+        F: Fn(PidObservation),
+    {
+        super::process_payload(
+            bytes,
+            PayloadContext {
+                expected_session_id: TEST_SESSION_ID,
+                expected_producer_id: TEST_PRODUCER_ID,
+                limits,
+                delivery_boundary,
+                sequences,
+                tap_counters,
+                subscription_counters,
+            },
+            on_obs,
+        );
     }
 
     #[test]
@@ -1052,8 +1239,15 @@ mod tests {
 
     #[test]
     fn process_payload_rejects_invalid_observation_values() {
-        let invalid =
-            serde_json::to_vec(&PidObservation::scalar(1, 0, 1, Modality::Radar, -0.1, 3)).unwrap();
+        let invalid = serde_json::to_vec(&envelope(PidObservation::scalar(
+            1,
+            0,
+            1,
+            Modality::Radar,
+            -0.1,
+            3,
+        )))
+        .unwrap();
         let delivery_boundary = DeliveryBoundary::default();
         let sequences = Mutex::new(LiveSequenceTracker::default());
         let tap = IngestCounters::default();
@@ -1078,6 +1272,99 @@ mod tests {
             1
         );
         assert_eq!(callbacks.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn process_payload_rejects_unversioned_legacy_payload_and_wrong_provenance() {
+        let legacy =
+            serde_json::to_vec(&PidObservation::scalar(1, 0, 1, Modality::Radar, 3.0, 3)).unwrap();
+        let mut wrong_provenance =
+            envelope(PidObservation::scalar(1, 0, 2, Modality::Radar, 3.0, 3));
+        wrong_provenance.session_id = "other-session".to_string();
+        let wrong_provenance = serde_json::to_vec(&wrong_provenance).unwrap();
+        let delivery_boundary = DeliveryBoundary::default();
+        let sequences = Mutex::new(LiveSequenceTracker::default());
+        let tap = IngestCounters::default();
+        let subscription = IngestCounters::default();
+
+        for payload in [legacy, wrong_provenance] {
+            process_payload(
+                &payload,
+                LiveLimits::default(),
+                &delivery_boundary,
+                &sequences,
+                &tap,
+                &subscription,
+                &|_| {},
+            );
+        }
+
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::InvalidEnvelope),
+            1
+        );
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::ProvenanceMismatch),
+            1
+        );
+        assert_eq!(
+            subscription.observations_accepted.load(Ordering::Relaxed),
+            0
+        );
+    }
+
+    #[test]
+    fn process_payload_rejects_incompatible_version_and_surfaces_hash_advisory() {
+        let mut wrong_version = envelope(PidObservation::scalar(1, 0, 1, Modality::Radar, 3.0, 3));
+        wrong_version.ncp_version = "0.6".to_string();
+        let wrong_version = serde_json::to_vec(&wrong_version).unwrap();
+        let mut drifted = envelope(PidObservation::scalar(1, 0, 2, Modality::Radar, 3.0, 3));
+        drifted.contract_hash = "deadbeefdeadbeef".to_string();
+        let drifted = serde_json::to_vec(&drifted).unwrap();
+        let delivery_boundary = DeliveryBoundary::default();
+        let sequences = Mutex::new(LiveSequenceTracker::default());
+        let tap = IngestCounters::default();
+        let subscription = IngestCounters::default();
+
+        for payload in [&wrong_version, &drifted] {
+            process_payload(
+                payload,
+                LiveLimits::default(),
+                &delivery_boundary,
+                &sequences,
+                &tap,
+                &subscription,
+                &|_| {},
+            );
+        }
+        process_payload(
+            &drifted,
+            LiveLimits::default(),
+            &delivery_boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &|_| {},
+        );
+
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::IncompatibleNcpVersion),
+            1
+        );
+        assert_eq!(
+            subscription
+                .contract_hash_mismatches
+                .load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            subscription.observations_accepted.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::DuplicateOrRegressedSequence),
+            1
+        );
     }
 
     #[test]

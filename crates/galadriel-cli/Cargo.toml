@@ -28,7 +28,7 @@ anyhow = { workspace = true }
 default = []
 # The cross-sensor PID engine (pulls pid-core). Demo: `cargo run --features pid -- demo`.
 pid = ["dep:galadriel-pid"]
-# NCP observation-plane ingest (pulls ncp-core). Adds `replay <jsonl>`.
+# NCP sidecar ingest (pulls ncp-core). Adds `replay <jsonl>`.
 ncp = ["dep:galadriel-ncp"]
-# The live Zenoh observation-plane tap (pulls ncp-zenoh + the full Zenoh/tokio stack).
+# The live Zenoh named-perception tap (pulls ncp-zenoh + the full Zenoh/tokio stack).
 ncp-live = ["ncp", "galadriel-ncp/zenoh"]

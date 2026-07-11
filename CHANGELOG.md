@@ -20,6 +20,11 @@ may contain breaking changes.
   from decode failures.
 - Make live sequence resets explicit serialized epoch boundaries with typed rejection of
   callback-context and in-flight-delivery reset attempts, avoiding re-entrant deadlocks.
+- Bind live payloads to the subscribed NCP session and expected producer, reject incompatible
+  NCP/sidecar versions and non-exact JSON integer identities, and expose advisory contract-hash
+  drift without weakening NCP's version gate.
+- Require callers to select strict mTLS `Secure` transport or explicitly unverified
+  `QuietDevelopment` transport; the live tap no longer implies that a quiet default is secure.
 - Carry a time-bounded exception for `RUSTSEC-2026-0041` only while CI proves Zenoh's
   vulnerable transport-compression feature remains disabled.
 
@@ -44,6 +49,8 @@ may contain breaking changes.
   the retained correlation tail.
 - Require the optional producer-attested `ConsistencyProjection` for cross-channel work;
   modality-native innovation vectors are no longer accepted as an implicit common frame.
+- Move the live sidecar from the unrecognized `.../galadriel/pid` key to NCP's ACL-covered
+  named perception route `Keys::sensor_named(session, "galadriel-pid")`.
 - Assess every active common-projection axis, split applicable family-wise error budgets
   across axes, and fail closed on conflicting or partly insufficient axis attribution.
 - Use `statrs` for chi-square/gamma tails instead of the cancellation-prone local
@@ -59,6 +66,8 @@ may contain breaking changes.
 - Label Monte Carlo and justification evidence as synthetic. Remove stale exact AUC,
   false-alarm, latency, benchmark, and test-count claims until regenerated against the
   audited implementation.
+- Migrate the NCP integration to the 0.7 wire revision and pin `ncp-core`/`ncp-zenoh`
+  to the immutable public `v0.7.1` tag and exact lockfile commit.
 
 ### Fixed
 
@@ -85,6 +94,12 @@ may contain breaking changes.
   bootstrap intervals target the same alarm-ranked AUC statistic as the main report.
 - Correct the NCP consumer manifest path and make JSONL serialization fallible.
 - Correct rustdoc links that targeted private constants.
+- Reject duplicate JSON keys on the live sidecar path: payloads now deserialize directly
+  into the typed envelope instead of through a `serde_json::Value` intermediate, which
+  collapsed repeated keys (last occurrence wins) before `deny_unknown_fields` could reject
+  them — a parser differential with first-wins JSON consumers on a security boundary.
+- Print the advisory `calibrated_posterior=false` footer on `replay` output, matching the
+  demo; a real-capture replay previously ended with bare per-track verdicts.
 
 ### Documentation
 
@@ -97,8 +112,9 @@ may contain breaking changes.
 - Reclassify the bundled crebain fixture as bounded parsing and baseline smoke evidence.
   It is not a valid cross-modal correlation/PID validation capture; correlation and fused
   assessment correctly remain `InsufficientEvidence`.
-- Document that the Zenoh live tap is a prototype: its custom sidecar key is not authorized
-  by NCP's current hardened ACL and no production publisher emits to it.
+- Document that the Zenoh live tap now uses NCP's sensor-plane ACL and a versioned envelope,
+  while remaining non-operational until Crebain publishes it and mTLS/heartbeat behavior is
+  verified end to end.
 - Document that per-channel silence requires another channel to advance assessment time and
   all-modal silence requires an external producer/transport heartbeat.
 - Add the producer roadmap: common frozen prior, common frame, explicit miss/rejection
@@ -114,6 +130,14 @@ may contain breaking changes.
 - Supply-chain policy and comprehensive security/review artifacts.
 - A bounded common-projection wire field with physical-frame, projection-context, and
   frozen-prior provenance, plus bounded multi-axis extraction and reporting APIs.
+- A regression test proving the live sidecar path rejects duplicate JSON keys as a typed
+  `Data` error while a `serde_json::Value` round-trip would have accepted them last-wins —
+  the parser differential closed in this release.
+- A strict, machine-readable `galadriel_pid_observation` schema-`1.0` live envelope carrying
+  NCP version/hash, session, producer, and the frozen Crebain-compatible observation payload;
+  undeclared envelope and nested observation fields are rejected. Because `PidObservation`
+  itself now rejects unknown fields, this tightening applies to every ingest path, including
+  bounded JSONL replay.
 
 ### Known limitations
 

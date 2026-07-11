@@ -42,9 +42,12 @@ for an undisclosed vulnerability. We aim to acknowledge within a few business da
   `pid-core`, `ncp-core`, and `ncp-zenoh` integrations remain off by default.
 - GitHub Actions are commit-SHA pinned and run with read-only repository contents
   permission. Dependency updates are proposed through Dependabot.
-- The Zenoh `SidecarTap` is not an operational security boundary. Its custom key
-  is not currently authorized by NCP's hardened ACL and no production publisher
-  emits it. Subscriber silence is ambiguous until end-to-end liveness telemetry
-  exists.
+- The Zenoh `SidecarTap` is not an operational security boundary. It uses the
+  ACL-covered NCP named-sensor route `sensor/galadriel-pid`, validates a versioned
+  session/producer-bound envelope, and forces an explicit secure versus unverified
+  development transport choice. No production Crebain publisher or receiver-verified
+  mTLS test exists yet, and payload provenance is only a claim unless the transport
+  authenticates the publisher. Subscriber silence remains ambiguous until end-to-end
+  heartbeat/liveness telemetry exists.
 - Workspace packages are `publish = false`; no crate-release security guarantees
   are made.

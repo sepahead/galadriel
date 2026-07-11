@@ -42,7 +42,7 @@
     "ncpKeySegment": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^[^/\\*\\$#\\?\\s\\u0000-\\u001F\\u007F]+$"
+      "pattern": "^[^/\\*\\$#\\?\\s\\u0000-\\u001F\\u007F-\\u009F\\uFEFF]+$"
     },
     "safeUnsignedInteger": {
       "type": "integer",

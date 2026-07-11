@@ -857,6 +857,13 @@ fn run_replay(path: &str, max_report_tracks: usize) -> anyhow::Result<()> {
             dim(&suppressed_default_history.summary(), color)
         );
     }
+    println!(
+        "│  {}",
+        dim(
+            "advisory only · calibrated_posterior=false · consistency evidence, not truth or an enforcement command",
+            color
+        )
+    );
     println!("└▷ replay complete");
     Ok(())
 }

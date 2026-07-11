@@ -143,11 +143,10 @@ treated as project-status claims.
 | `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.7 key helpers and versioned sidecar envelope; the CLI `replay` subcommand |
 | `ncp-live` | `ncp-zenoh`, `tokio` | read-only named-perception subscriber with explicit secure/development mode and bounded sequence state |
 
-The public `pid-rs` repository is pinned by tag and lockfile. `ncp-core`/`ncp-zenoh` are
-temporarily consumed as sibling-path dependencies while the NCP 0.7 wire revision is
-finalized: a fresh clone cannot build them, and the tagged, lockfile-pinned source must be
-restored before this tree is pushed or released. No private repository token or global git
-credential rewrite is required.
+The public `pid-rs` repository and NCP's `ncp-core`/`ncp-zenoh` crates are pinned by
+immutable public tags and exact lockfile commits (`v0.4.0` and `v0.7.1`, respectively).
+A fresh clone requires no sibling checkout, private repository token, or global Git
+credential rewrite.
 
 The live subscriber uses NCP's named perception route,
 `{realm}/session/{id}/sensor/galadriel-pid`, built through
