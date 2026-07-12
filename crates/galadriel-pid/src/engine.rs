@@ -831,11 +831,7 @@ fn estimate_mi_reported(
         &provenance,
     )
     .map_err(|error| format!("KSG estimator failed: {error}"))?;
-    if report.method_status != KsgMethodStatus::RestrictedDomain
-        || report.scientific_status != ScientificStatus::ConditionalContinuous
-    {
-        return Err("KSG report returned an unexpected scientific-status classification".into());
-    }
+    validate_ksg_report_status(report.method_status, report.scientific_status)?;
     let value = report.signed_estimate_nats;
     // KSG's finite-sample estimate is signed. pid-rs 1.0 deliberately defaults
     // to NegativeHandling::Allow so a small negative estimate remains an
@@ -874,6 +870,18 @@ fn estimate_mi_reported(
             resource_estimate: report.resource_estimate,
         },
     })
+}
+
+fn validate_ksg_report_status(
+    method_status: KsgMethodStatus,
+    scientific_status: ScientificStatus,
+) -> Result<(), String> {
+    if method_status != KsgMethodStatus::RestrictedDomain
+        || scientific_status != ScientificStatus::ConditionalContinuous
+    {
+        return Err("KSG report returned an unexpected scientific-status classification".into());
+    }
+    Ok(())
 }
 
 /// Inner resample scalar path. The point gate above carries pid-rs's full
@@ -1521,6 +1529,77 @@ mod tests {
     }
 
     #[test]
+    fn observation_noise_rejects_zero_rows_before_matrix_construction() {
+        let empty = Vec::new();
+
+        let error = noised_matrix_and_columns(&[&empty, &empty], 1e-4, 7).unwrap_err();
+
+        assert_eq!(
+            error,
+            "observation-noise columns must be non-empty and equal-length"
+        );
+    }
+
+    #[test]
+    fn ksg_report_status_rejects_unexpected_method_with_expected_scientific_status() {
+        let error = validate_ksg_report_status(
+            KsgMethodStatus::Experimental,
+            ScientificStatus::ConditionalContinuous,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error,
+            "KSG report returned an unexpected scientific-status classification"
+        );
+    }
+
+    #[test]
+    fn ksg_report_status_rejects_unexpected_scientific_status_with_expected_method() {
+        let error = validate_ksg_report_status(
+            KsgMethodStatus::RestrictedDomain,
+            ScientificStatus::ResearchOnly,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error,
+            "KSG report returned an unexpected scientific-status classification"
+        );
+    }
+
+    #[test]
+    fn isx_atoms_reports_deterministic_nontrivial_values() {
+        let first = pseudo_random_series(128, 11);
+        let second = pseudo_random_series(128, 17);
+        let noise = pseudo_random_series(128, 23);
+        let target = first
+            .iter()
+            .zip(&second)
+            .zip(&noise)
+            .map(|((&a, &b), &epsilon)| a + b + 0.2 * epsilon)
+            .collect::<Vec<_>>();
+        let channels = vec![
+            (Modality::Visual, first),
+            (Modality::Radar, second),
+            (Modality::Acoustic, target),
+        ];
+        let columns = channels
+            .iter()
+            .map(|(modality, values)| standardize(values, modality.label()))
+            .collect::<galadriel_core::Result<Vec<_>>>()
+            .unwrap();
+
+        let (redundancy, synergy) =
+            isx_atoms(&PidConfig::default(), &channels, &columns, 0, 128).unwrap();
+
+        assert!(
+            (0.16..0.17).contains(&redundancy) && (0.73..0.74).contains(&synergy),
+            "unexpected deterministic I^sx atoms: ({redundancy}, {synergy})"
+        );
+    }
+
+    #[test]
     fn finite_negative_ksg_estimates_remain_valid_low_edges() {
         for seed in 1..=128 {
             let first = pseudo_random_series(64, seed);
@@ -1732,6 +1811,20 @@ mod tests {
             analyze(&no_channels, &config),
             Err(GaladrielError::InvalidConfig(ref message))
                 if message.contains("cannot resolve family_alpha")
+        ));
+    }
+
+    #[test]
+    fn configuration_rejects_positive_infinite_observation_noise() {
+        let config = PidConfig {
+            observation_noise_std: f64::INFINITY,
+            ..PidConfig::default()
+        };
+
+        assert!(matches!(
+            config.validate(),
+            Err(GaladrielError::InvalidConfig(ref message))
+                if message == "PID observation_noise_std must be finite and > 0"
         ));
     }
 

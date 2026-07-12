@@ -351,6 +351,11 @@ fn channel_evidence_tag(label: ChannelEvidenceLabel, color: bool) -> String {
     }
 }
 
+#[cfg(feature = "pid")]
+fn pid_channel_is_assessable(gate_ok: bool, corroboration: Option<f64>) -> bool {
+    gate_ok && corroboration.is_some()
+}
+
 #[cfg(test)]
 mod verdict_label_tests {
     use super::*;
@@ -396,6 +401,104 @@ mod verdict_label_tests {
             channel_evidence_label(false, false, false,),
             ChannelEvidenceLabel::Insufficient
         );
+    }
+
+    #[test]
+    fn decoupled_channel_tag_has_the_expected_plain_text() {
+        assert_eq!(
+            channel_evidence_tag(ChannelEvidenceLabel::Decoupled, false),
+            "● DECOUPLED"
+        );
+    }
+
+    #[test]
+    fn corroborating_channel_tag_has_the_expected_plain_text() {
+        assert_eq!(
+            channel_evidence_tag(ChannelEvidenceLabel::Corroborates, false),
+            "● corroborates"
+        );
+    }
+
+    #[test]
+    fn insufficient_channel_tag_has_the_expected_plain_text() {
+        assert_eq!(
+            channel_evidence_tag(ChannelEvidenceLabel::Insufficient, false),
+            "● INSUFFICIENT"
+        );
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_channel_with_a_failed_gate_is_not_assessable() {
+        assert!(!pid_channel_is_assessable(false, Some(0.5)));
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_channel_with_a_passing_gate_and_score_is_assessable() {
+        assert!(pid_channel_is_assessable(true, Some(0.5)));
+    }
+}
+
+#[cfg(test)]
+mod demo_output_tests {
+    use std::process::Command;
+
+    use super::*;
+
+    const CHILD_DEMO_ENV: &str = "GALADRIEL_CLI_CHILD_DEMO";
+    const FAST_DEMO_FRAMES: usize = 8;
+
+    fn child_test_stdout(test_name: &str, child_demo: &str) -> String {
+        let output = Command::new(std::env::current_exe().expect("test executable path is known"))
+            .args(["--exact", test_name, "--nocapture"])
+            .env(CHILD_DEMO_ENV, child_demo)
+            .output()
+            .expect("child test process starts");
+        assert!(
+            output.status.success(),
+            "child test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8(output.stdout).expect("test output is UTF-8")
+    }
+
+    #[test]
+    fn stealthy_default_demo_emits_its_semantic_heading() {
+        let stdout = child_test_stdout(
+            "demo_output_tests::stealthy_default_demo_child",
+            "stealthy-default",
+        );
+
+        assert!(stdout.contains("SYNTHETIC MOMENT-MATCHED SPOOF"));
+    }
+
+    #[test]
+    fn stealthy_default_demo_child() {
+        if std::env::var(CHILD_DEMO_ENV).as_deref() != Ok("stealthy-default") {
+            return;
+        }
+
+        run_stealthy_default_demo(FAST_DEMO_FRAMES, 7, false)
+            .expect("fixed-seed default demo succeeds");
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_demo_emits_its_semantic_heading() {
+        let stdout = child_test_stdout("demo_output_tests::pid_demo_child", "pid");
+
+        assert!(stdout.contains("KSG-MI escalation"));
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_demo_child() {
+        if std::env::var(CHILD_DEMO_ENV).as_deref() != Ok("pid") {
+            return;
+        }
+
+        run_pid_demo(FAST_DEMO_FRAMES, 7, false).expect("fixed-seed PID demo succeeds");
     }
 }
 
@@ -1051,7 +1154,7 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
             let tag = channel_evidence_tag(
                 channel_evidence_label(
                     c.decoupled,
-                    c.gate_ok && c.corroboration.is_some(),
+                    pid_channel_is_assessable(c.gate_ok, c.corroboration),
                     axis_insufficient,
                 ),
                 color,

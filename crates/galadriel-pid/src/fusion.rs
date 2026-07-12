@@ -143,15 +143,13 @@ pub fn fuse_axes(
     decoupled.sort_by_key(|modality| *modality as u8);
 
     // PID is an optional additive detector. Partial PID evidence cannot erase a
-    // complete, conflict-free signed-correlation attribution when every positive
-    // PID axis names that same set. Without that independent signed result,
-    // positive PID evidence beside an insufficient PID axis remains conflicted.
-    let signed_default_covers_partial_pid = !correlation_insufficient
+    // complete, conflict-free signed-correlation attribution. Mismatched positive
+    // PID attribution is independently caught by `disagree` below.
+    let signed_default_is_complete = !correlation_insufficient
         && correlation_axis_conflict.is_none()
-        && !correlation_decoupled.is_empty()
-        && pid_decoupled == correlation_decoupled;
+        && !correlation_decoupled.is_empty();
     let incomplete_positive = (correlation_insufficient && !correlation_decoupled.is_empty())
-        || (pid_insufficient && !pid_decoupled.is_empty() && !signed_default_covers_partial_pid);
+        || (pid_insufficient && !pid_decoupled.is_empty() && !signed_default_is_complete);
     // Two assessable consistency detectors naming different channels is positive
     // evidence, but not honest attribution. Preserve the union for investigation
     // and fail closed to an unclassified anomaly.
@@ -485,6 +483,44 @@ mod tests {
             }
         );
         assert!(report.note.contains("insufficient projection axis"));
+    }
+
+    #[test]
+    fn matching_partial_pid_preserves_complete_signed_default() {
+        let correlation = AxisCorrelationReport {
+            axis: 0,
+            report: CorrReport {
+                channels: Vec::new(),
+                verdict: CorrVerdict::Decoupled(vec![Modality::Acoustic]),
+                note: "complete signed attribution".into(),
+            },
+        };
+        let pid = |axis: usize, verdict: PidVerdict| AxisPidReport {
+            axis,
+            report: PidReport {
+                estimator: crate::PidEstimatorEvidence::from_config(&PidConfig::default()),
+                channels: Vec::new(),
+                verdict,
+                note: "partial PID attribution".into(),
+            },
+        };
+
+        let report = fuse_axes(
+            nominal_baseline(),
+            vec![correlation],
+            vec![
+                pid(0, PidVerdict::Decoupled(vec![Modality::Acoustic])),
+                pid(1, PidVerdict::InsufficientEvidence),
+            ],
+        );
+
+        assert_eq!(
+            report.verdict,
+            FusedVerdict::AttributedInconsistency {
+                channels: vec![Modality::Acoustic],
+                magnitude: MagnitudeEvidence::InCovariance,
+            }
+        );
     }
 
     #[test]
