@@ -61,6 +61,9 @@ field performance.
 Run the versioned study with the single locked command in
 [`docs/POST-AUDIT-EVIDENCE.md`](docs/POST-AUDIT-EVIDENCE.md). Publication runs refuse
 a dirty worktree and write a checksummed manifest beside the machine-readable trials.
+The clean-source reference artifact is
+[`evidence/results/post-audit-v1-8a0084f`](evidence/results/post-audit-v1-8a0084f),
+generated from commit `8a0084f` with `dirty=false`.
 
 - The post-audit runner records its Git commit, toolchains, complete configuration,
   fixed seed domains, per-trial outcomes, holdout summaries, and checksums in one command.
@@ -72,6 +75,13 @@ a dirty worktree and write a checksummed manifest beside the machine-readable tr
   stream metrics are explicitly `not_estimable`, never replaced with synthetic numbers.
 - There is no production Crebain common-projection publisher or receiver-verified mTLS
   deployment yet.
+
+The artifact is a diagnostic result, not an acceptance result. In its independent clean
+arm, the current default reports 26.26 alert episodes/hour and a 0.9167 mission probability
+of at least one alert; the `phi=0.5` and `phi=0.85` autocorrelated arms report 102.95 and
+262.57 episodes/hour. Ordinary acoustic missingness drives 99.35% fused monitoring
+abstention. These results expose repeated-look and availability calibration work that must
+be completed before any operational use.
 
 > **Honest scope.** Galadriel detects statistical inconsistency, not truth. It cannot
 > prove that an attributed channel is malicious, cannot detect an attacker that preserves
@@ -158,10 +168,11 @@ evidence may be useful; they do not show that those regimes occur in crebain out
 
 ## Project status
 
-**Version `0.1.0`, pre-1.0, research prototype.** The API is not frozen, there is no
-tagged release, and every workspace package currently sets `publish = false`. Unit,
-property, integration, and synthetic-study tests exercise the implementation, but no
-current evidence supports calling it field-validated or production-ready.
+**Version `0.1.0`, pre-1.0, research prototype.** The API is not frozen. The
+`research-snapshot-v0.1.0` tag is explicitly non-production, and every workspace package
+currently sets `publish = false`. Unit, property, integration, and synthetic-study tests
+exercise the implementation, but no current evidence supports calling it field-validated
+or production-ready.
 
 | Crate | Role | Evidence level |
 |---|---|---|

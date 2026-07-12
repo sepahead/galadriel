@@ -194,6 +194,8 @@ may contain breaking changes.
 - A one-command `galadriel-evidence` runner with explicit versioned configuration,
   commit/toolchain manifest, per-trial JSONL, holdout-only summaries, stream metrics,
   provenance-abstention arms, a human report, and checksums.
+- A clean-source, commit-bound evidence snapshot whose high repeated-look false-alert
+  rates and missingness abstention are retained as non-production calibration findings.
 - Cargo-fuzz targets for NCP/JSONL decoding and stateful detector/projection boundaries,
   plus a strict pull-request mutation diff, an observational scheduled mutation baseline,
   and a current-stable CI lane alongside the pinned MSRV.

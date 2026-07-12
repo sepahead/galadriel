@@ -1,0 +1,39 @@
+{
+  "schema": "galadriel.evidence.manifest.v1",
+  "study_id": "post_audit_v1",
+  "base_seed_hex": "0x5eedc0ffee122601",
+  "git": {
+    "commit": "8a0084f56d41a1e09f1c3959750bbf6dff47a662",
+    "dirty": false,
+    "status_porcelain_v1": ""
+  },
+  "toolchain": {
+    "rustc_verbose": "rustc 1.88.0 (6b00bc388 2025-06-23)\nbinary: rustc\ncommit-hash: 6b00bc3880198600130e1cf62b8f8a93494488cc\ncommit-date: 2025-06-23\nhost: aarch64-apple-darwin\nrelease: 1.88.0\nLLVM version: 20.1.5",
+    "cargo_version": "cargo 1.88.0 (873a06493 2025-05-10)",
+    "package_version": "0.1.0",
+    "build_profile": "release",
+    "target_os": "macos",
+    "target_arch": "aarch64",
+    "available_parallelism": 16
+  },
+  "inputs": {
+    "config_source_path": "evidence/post-audit-v1.json",
+    "config_source_sha256": "98f54cc1aa30c0f6deb0c5607fe33c8ff7a8b625bded970535081a147a1dc662",
+    "canonical_config_sha256": "98f54cc1aa30c0f6deb0c5607fe33c8ff7a8b625bded970535081a147a1dc662",
+    "workspace_manifest_sha256": "715572dc325a551ecdbe97de1a7dc9fa256fa1fb5cf2ec01e78f55794cf031ab",
+    "cargo_lock_sha256": "16727c27d56857292f284a9015b9cb11a7e18fe1c1caf7df5f6e6a0cc5f5b796",
+    "recorded_fixture_path": "crates/galadriel-ncp/tests/fixtures/crebain_clean_capture.jsonl",
+    "recorded_fixture_sha256": "154b2b6534659500bc8ef99b53f482692d01f4b3f65d6d52a1e890796eea643c",
+    "runner_binary_sha256": "719dc9c90824a7017e34ff617d318ab6fb6ac5cd3ca6ca94413cb77772d3dbd0"
+  },
+  "scope": [
+    "streaming NIS baseline",
+    "streaming default signed-correlation fusion over producer-attested projections",
+    "PID excluded because this revision exposes only a terminal replay assessment"
+  ],
+  "trial_records": 626,
+  "synthetic_tracks": 312,
+  "recorded_tracks": 1,
+  "dirty_override_used": false,
+  "deterministic_time_policy": "No wall-clock timestamp is stored; deterministic artifacts depend only on declared inputs and recorded tool/source provenance."
+}

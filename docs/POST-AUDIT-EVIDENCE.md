@@ -15,6 +15,19 @@ mixing with or overwriting earlier evidence. Publication runs also require a cle
 Git worktree. `--allow-dirty` exists only for development smoke runs and is recorded
 in the manifest.
 
+## Published research snapshot
+
+The repository includes a clean-source reference run at
+[`evidence/results/post-audit-v1-8a0084f`](../evidence/results/post-audit-v1-8a0084f).
+Its manifest binds the artifacts to commit `8a0084f`, records `dirty=false`, and hashes
+the configuration, lockfile, recorded fixture, runner binary, and every output file.
+
+This is not a pass/fail acceptance artifact. The independent clean arm reports 26.26
+alert episodes/hour and a 0.9167 mission probability of any alert; positive
+autocorrelation increases the episode rate further, and ordinary acoustic missingness
+produces 99.35% fused monitoring abstention. The result therefore demonstrates that the
+current pointwise defaults are not stream-calibrated for operational use.
+
 ## Artifact contract
 
 One command writes:
