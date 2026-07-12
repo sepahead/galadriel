@@ -54,13 +54,13 @@ jobs:
           workspaces: "fuzz -> target"
 
       - name: Install pinned cargo-fuzz
-        run: cargo install cargo-fuzz --version 0.13.2 --locked
+        run: cargo +nightly install cargo-fuzz --version 0.13.2 --locked
 
       - name: Fuzz typed NCP and JSONL decoding
-        run: cargo fuzz run ncp_decode -- -runs=5000 -max_len=131072
+        run: cargo +nightly fuzz run ncp_decode -- -runs=5000 -max_len=131072
 
       - name: Fuzz detector and provenance boundaries
-        run: cargo fuzz run detector_boundaries -- -runs=5000 -max_len=131072
+        run: cargo +nightly fuzz run detector_boundaries -- -runs=5000 -max_len=131072
 
   mutation-diff:
     name: mutation check for changed Rust
