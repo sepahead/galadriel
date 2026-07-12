@@ -40,6 +40,13 @@ use serde::{Deserialize, Serialize};
 pub mod live;
 
 /// Stable named-perception entity carrying Galadriel sidecar envelopes.
+///
+/// The `-pid` suffix is **historical**: it predates the current layering, in which the
+/// primary cross-sensor signal is NIS/CUSUM plus signed (sign-preserving) correlation and
+/// PID is only an optional additive research diagnostic. The route and payload kind keep
+/// the name because it is a *frozen* on-the-wire contract shared with the Crebain producer
+/// and the JSON Schema; renaming it is a breaking change deliberately deferred to the next
+/// sidecar-schema version bump (see [`SIDECAR_SCHEMA_VERSION`]), never done ad hoc.
 pub const SIDECAR_SENSOR_NAME: &str = "galadriel-pid";
 
 /// Sidecar payload discriminator. This is deliberately not an NCP normative
@@ -900,7 +907,7 @@ mod tests {
         let envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
         let expected = concat!(
             r#"{"kind":"galadriel_pid_observation","schema_version":"1.0","#,
-            r#""ncp_version":"0.7","contract_hash":"f05e328cad20959d","#,
+            r#""ncp_version":"0.8","contract_hash":"d1b50a2d8a265276","#,
             r#""session_id":"uav3","producer_id":"crebain","observation":{"#,
             r#""track_id":42,"timestamp_ms":1700000000000,"seq":7,"#,
             r#""modality":"radar","nis":2.75,"dof":3}}"#

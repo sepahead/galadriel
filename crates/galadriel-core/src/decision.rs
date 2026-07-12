@@ -133,6 +133,15 @@ impl ChannelState {
 
 impl Mirror {
     /// New detector with the given configuration.
+    ///
+    /// This constructor enforces **no expected-modality set**: [`Mirror::assess`]
+    /// classifies only the channels a track has actually produced, so a subset of
+    /// sensors that are individually χ²-consistent can reach [`Verdict::Nominal`].
+    /// That is the intended contract for exploratory or single-stream use, but it is
+    /// **not** the fail-closed cross-sensor guarantee. For a detector that returns
+    /// [`Verdict::InsufficientEvidence`] until every declared modality is present,
+    /// fresh, and sufficiently sampled, construct it with [`Mirror::with_modalities`]
+    /// — that is what the fused `assess_default` entry point and the CLI use.
     pub fn new(cfg: DetectorConfig) -> crate::Result<Self> {
         cfg.validate()?;
         Ok(Self {

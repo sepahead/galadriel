@@ -22,7 +22,7 @@
       "const": "1.0"
     },
     "ncp_version": {
-      "const": "0.7"
+      "const": "0.8"
     },
     "contract_hash": {
       "type": "string",

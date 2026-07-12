@@ -128,8 +128,8 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "ncp-core"
-version = "0.7.1"
-source = "git+https://github.com/sepahead/NCP?rev=e3e5da4de96e8b291b3c582bd31cf41afbfad3cc#e3e5da4de96e8b291b3c582bd31cf41afbfad3cc"
+version = "0.8.0"
+source = "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
 dependencies = [
  "serde",
  "serde_json",

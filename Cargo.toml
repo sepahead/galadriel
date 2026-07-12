@@ -58,8 +58,8 @@ galadriel-ncp = { version = "0.1.0", path = "crates/galadriel-ncp" }
 # Public sibling ecosystem crates, pinned to the exact commits published as the
 # noted tags. A revision pin remains immutable even if a remote tag is retargeted.
 pid-core = { version = "0.4.0", git = "https://github.com/sepahead/pid-rs", rev = "ad489f5bf5e15c164c599d069a6bee0f338c0e48" } # v0.4.0
-ncp-core = { version = "0.7.1", git = "https://github.com/sepahead/NCP", rev = "e3e5da4de96e8b291b3c582bd31cf41afbfad3cc" } # v0.7.1
-ncp-zenoh = { version = "0.7.1", git = "https://github.com/sepahead/NCP", rev = "e3e5da4de96e8b291b3c582bd31cf41afbfad3cc" } # v0.7.1
+ncp-core = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
+ncp-zenoh = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 
 [profile.release]
 lto = "thin"

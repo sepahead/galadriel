@@ -15,8 +15,10 @@
 </p>
 
 Galadriel asks whether several sensors observing one track still agree. It combines
-per-channel Normalized Innovation Squared (NIS) evidence with signed, producer-attested
-cross-channel correlation; optional PID diagnostics explore nonlinear dependence.
+per-channel Normalized Innovation Squared (NIS) evidence with signed (sign-preserving)
+cross-channel correlation over a producer-attested projection; optional PID diagnostics
+explore nonlinear dependence. ("Signed" and "attested" here mean the sign of the
+correlation and a producer provenance claim — not a cryptographic signature.)
 
 ```mermaid
 flowchart LR
@@ -93,6 +95,10 @@ be completed before any operational use.
 > sequential filter updates do not share one frozen prior, and association/gating
 > suppresses rejected measurements. With those preconditions absent, correlation and
 > fused assessment correctly remain `InsufficientEvidence`.
+
+How Galadriel expects to be consumed by a downstream authorization gate — as
+non-authoritative, record-only, never `ALLOW`-widening advisory evidence — is specified in
+[`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md).
 
 The research background and study design are documented in
 [`docs/PAPER.md`](docs/PAPER.md), [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md), and
@@ -193,11 +199,11 @@ treated as project-status claims.
 |---|---|---|
 | default | no sibling integration crates | core, simulator, CLI |
 | `pid` | `pid-core` | KSG-MI/PID research layer |
-| `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.7 key helpers and versioned sidecar envelope; the CLI `replay` subcommand |
+| `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.8 key helpers and versioned sidecar envelope; the CLI `replay` subcommand |
 | `ncp-live` | `ncp-zenoh`, `tokio` | read-only named-perception subscriber with explicit secure/development mode and bounded sequence state |
 
 The public `pid-rs` repository and NCP's `ncp-core`/`ncp-zenoh` crates are pinned by
-exact Git revisions corresponding to public tags `v0.4.0` and `v0.7.1`, respectively.
+exact Git revisions corresponding to public tags `v0.4.0` and `v0.8.0`, respectively.
 A fresh clone requires no sibling checkout, private repository token, or global Git
 credential rewrite.
 
