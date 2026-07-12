@@ -678,10 +678,22 @@ fn generate_stream(
     Ok(stream)
 }
 
+/// Lowercase hex encoding of a byte slice. `sha2` 0.11's finalize output no longer
+/// implements `LowerHex`, so format the digest explicitly; the SHA-256 value is
+/// identical to the previous `{:x}` rendering.
+fn hex_lower(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        let _ = write!(out, "{byte:02x}");
+    }
+    out
+}
+
 fn sha256_bytes(bytes: &[u8]) -> String {
     let mut digest = Sha256::new();
     digest.update(bytes);
-    format!("{:x}", digest.finalize())
+    hex_lower(&digest.finalize())
 }
 
 fn sha256_file(path: &Path) -> AppResult<String> {
@@ -697,7 +709,7 @@ fn sha256_file(path: &Path) -> AppResult<String> {
         }
         digest.update(&buffer[..read]);
     }
-    Ok(format!("{:x}", digest.finalize()))
+    Ok(hex_lower(&digest.finalize()))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
