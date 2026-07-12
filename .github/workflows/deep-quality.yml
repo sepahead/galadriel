@@ -90,7 +90,20 @@ jobs:
         run: git diff "$BASE_SHA"..HEAD -- | tee git.diff
 
       - name: Mutate changed Rust
-        run: cargo mutants --workspace --no-shuffle --in-diff git.diff --timeout 120 --jobs 2 --all-features
+        # The seven named evaluation studies are full synthetic campaigns (about
+        # 12 minutes together on CI) and remain mandatory in both normal CI
+        # toolchain jobs. Running them for every mutant makes even the unmutated
+        # 120-second baseline impossible. Mutation trials still cover changed
+        # code in every workspace package through the fast unit/invariant tests.
+        run: |
+          cargo mutants --workspace --no-shuffle --in-diff git.diff --timeout 120 --jobs 2 --all-features -- -- \
+            --skip adaptive_detection_declines_as_decoupling_weakens \
+            --skip bootstrap_cis_match_alarm_ranked_auc_and_beat_baseline \
+            --skip colluding_majority_inverts_the_detector_onto_the_honest_channel \
+            --skip decoupling_sweep_shows_correlation_dominates_the_boundary \
+            --skip hypothesis_holds \
+            --skip latency_tracks_attack_ownership \
+            --skip synchronized_maneuver_does_not_false_alarm
 
       - name: Archive mutation results
         if: always()

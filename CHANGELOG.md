@@ -184,6 +184,10 @@ may contain breaking changes.
   inner-scan units in one resource budget.
 - Pass the intended Rust 1.89 MSRV and current-stable channels explicitly to the pinned
   toolchain actions, avoiding an unused action-default toolchain installation.
+- Keep pull-request mutation testing bounded without excluding changed evaluation code. The
+  unmodified workspace baseline previously timed out before testing any mutant because seven
+  deliberate Monte Carlo campaigns exceed the per-mutant deadline; normal CI still runs those
+  campaigns, while mutation trials use the fast unit/invariant suite across every package.
 - Preserve a complete conflict-free signed-correlation attribution when partial positive
   PID evidence names the same channels; optional PID insufficiency cannot erase the
   independently assessable signed default, while PID-only partial evidence still fails closed.
