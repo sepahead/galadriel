@@ -39,6 +39,24 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "zenoh")]
 pub mod live;
 
+/// The exact pinned `ncp-core`, re-exported so hosts reuse galadriel's revision
+/// (constants, `Keys`, validators) instead of re-resolving the git dependency and
+/// risking a second, diverging pin in one process.
+pub use ncp_core;
+
+/// The exact pinned `ncp-zenoh` (feature `zenoh`), re-exported so a host that
+/// builds a shared bus for [`live::SidecarTap::from_bus`] uses the same crate
+/// version as the tap itself.
+#[cfg(feature = "zenoh")]
+pub use ncp_zenoh;
+
+/// Maximum bytes accepted for the sidecar `session_id` / `producer_id` segments.
+///
+/// NCP 0.8 bounds a transport-neutral session identifier to 1..=64 bytes
+/// (`ncp-core` `validate_session_id_str`); the sidecar mirrors that ceiling so an
+/// envelope can never carry an identity the NCP control plane itself would reject.
+pub const MAX_ID_SEGMENT_BYTES: usize = 64;
+
 /// Stable named-perception entity carrying Galadriel sidecar envelopes.
 ///
 /// The `-pid` suffix is **historical**: it predates the current layering, in which the
@@ -70,6 +88,13 @@ pub const SIDECAR_SCHEMA_JSON: &str =
 /// transport identity/ACL binds the publisher. It is not a signature. A fresh NCP
 /// `session_id` is the producer epoch boundary; producers must not reuse it after a
 /// restart that resets observation sequences.
+///
+/// This epoch discipline is **sidecar-owned** and deliberately simpler than NCP 0.8's
+/// control-plane sessions, whose server-issued `generation` distinguishes incarnations
+/// of one `session_id`. The sidecar has no session server to issue generations, so a
+/// producer restart must mint a *new* `session_id` (subscribers key on the exact path
+/// segment); carrying a generation field would claim a lifecycle authority this
+/// observation-plane contract does not have.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SidecarEnvelope {
@@ -177,12 +202,12 @@ impl SidecarEnvelope {
                 self.contract_hash.clone(),
             ));
         }
-        if !valid_id_segment(&self.session_id) {
+        if !valid_id_segment(&self.session_id) || self.session_id.len() > MAX_ID_SEGMENT_BYTES {
             return Err(SidecarEnvelopeError::InvalidSessionId(
                 self.session_id.clone(),
             ));
         }
-        if !valid_id_segment(&self.producer_id) {
+        if !valid_id_segment(&self.producer_id) || self.producer_id.len() > MAX_ID_SEGMENT_BYTES {
             return Err(SidecarEnvelopeError::InvalidProducerId(
                 self.producer_id.clone(),
             ));
@@ -936,9 +961,32 @@ mod tests {
             JSON_SAFE_INTEGER_MAX
         );
         assert_eq!(
+            schema["$defs"]["ncpKeySegment"]["maxLength"],
+            MAX_ID_SEGMENT_BYTES
+        );
+        assert_eq!(
             schema["$defs"]["ncpKeySegment"]["pattern"],
             r"^[^/\*\$#\?\s\u0000-\u001F\u007F-\u009F\uFEFF]+$"
         );
+    }
+
+    #[test]
+    fn sidecar_envelope_rejects_oversized_identity_segments() {
+        let observation = PidObservation::scalar(1, 1, 1, Modality::Visual, 1.0, 3);
+        let oversized = "x".repeat(MAX_ID_SEGMENT_BYTES + 1);
+        let at_bound = "x".repeat(MAX_ID_SEGMENT_BYTES);
+
+        // NCP 0.8 bounds session identifiers to 1..=64 bytes; the envelope mirrors it.
+        assert!(matches!(
+            SidecarEnvelope::try_new(oversized.clone(), "crebain", observation.clone()),
+            Err(SidecarEnvelopeError::InvalidSessionId(_))
+        ));
+        assert!(matches!(
+            SidecarEnvelope::try_new("uav3", oversized, observation.clone()),
+            Err(SidecarEnvelopeError::InvalidProducerId(_))
+        ));
+        // Exactly 64 bytes remains valid on both segments.
+        assert!(SidecarEnvelope::try_new(at_bound.clone(), at_bound, observation).is_ok());
     }
 
     #[test]

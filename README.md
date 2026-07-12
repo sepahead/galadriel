@@ -186,7 +186,7 @@ or production-ready.
 | [`galadriel-sim`](crates/galadriel-sim) | synthetic scenarios and injections | Synthetic only |
 | [`galadriel-cli`](crates/galadriel-cli) | `demo` / `replay` driver | Operator prototype |
 | [`galadriel-pid`](crates/galadriel-pid) | KSG-MI / PID evidence | Optional research path |
-| [`galadriel-ncp`](crates/galadriel-ncp) | bounded JSONL ingest; versioned named-sensor envelope; optional Zenoh subscriber | Payload/ingest tested; no live Crebain publisher or deployment evidence |
+| [`galadriel-ncp`](crates/galadriel-ncp) | bounded JSONL ingest; versioned named-sensor envelope; optional Zenoh subscriber | Payload/ingest + in-process Zenoh loopback e2e tested; no live Crebain publisher or deployment evidence |
 | [`galadriel-eval`](crates/galadriel-eval) | Monte Carlo evaluation and cost bench | Synthetic only |
 | [`galadriel-justify`](crates/galadriel-justify) | canonical forced-vs-justified studies | Synthetic/theoretical only |
 

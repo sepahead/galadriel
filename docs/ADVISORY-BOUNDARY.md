@@ -113,9 +113,12 @@ closing it is an upstream Crebain producer milestone, not a Galadriel workaround
 - **Input only.** `galadriel-ncp` provides a bounded JSONL ingest and an optional Zenoh
   named-perception subscriber. Both are read-only; there is no Galadriel→consumer advisory
   *publisher* yet, and verdicts surface only via the CLI / files.
-- **NCP wire: 0.8.** Galadriel pins `ncp-core`/`ncp-zenoh` to the `v0.8.0` tag. The Crebain
-  producer and Prisoma observer are already on NCP 0.8, so the enveloped/live paths
-  interoperate at the version gate again.
+- **NCP wire: 0.8.** Galadriel pins `ncp-core`/`ncp-zenoh` to the `v0.8.0` tag, matching the
+  Crebain producer and Prisoma observer, so the sidecar envelope is wire-version-compatible
+  across the ecosystem again. Galadriel's own live leg is proven by an in-process Zenoh
+  loopback e2e suite (`crates/galadriel-ncp/tests/live_zenoh_e2e.rs`); however, no component
+  publishes live sidecar envelopes yet — Crebain's runtime emits only the JSONL sidecar — so
+  producer-to-consumer live interop remains unexercised end to end.
 - Building the signed advisory envelope, the missing Crebain pre-gate producer, and the
   independent calibration campaign are the ordered prerequisites before *any* restrict-only
   profile in §3.3 is even a candidate.
