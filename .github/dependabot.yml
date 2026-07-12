@@ -10,6 +10,17 @@ updates:
         patterns:
           - rand
           - rand_distr
+    ignore:
+      # rand 0.9+ / rand_distr 0.5+ change RNG range and distribution sampling, which
+      # would shift the bit-deterministic study fixtures and desync the checksummed
+      # evidence artifact (evidence/results/post-audit-v1-8a0084f). That migration is a
+      # validated, scientifically-reviewed change (tracked in a dedicated issue), not a
+      # mechanical Dependabot bump. Patch and security updates on the retained 0.8.x /
+      # 0.4.x lines remain enabled.
+      - dependency-name: "rand"
+        versions: [">=0.9.0"]
+      - dependency-name: "rand_distr"
+        versions: [">=0.5.0"]
 
   - package-ecosystem: github-actions
     directory: /
