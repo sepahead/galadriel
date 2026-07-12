@@ -36,10 +36,17 @@ This is an explicit scientific/API migration, not a dependency-only bump:
 The from-side used Galadriel commit
 `9bd2cb0756009986d1a1a0e429614a1cbbe42ed5` plus the deterministic comparison-control
 patch below and the 0.4 dependency pin. The to-side used the 1.0 migration tree. Both
-ran on the same Apple M4 Max / Darwin 25.5 host and release profile with exact rustup
-toolchain `cargo 1.96.0` / `rustc 1.96.0 (ac68faa20)`. Rust 1.88 and 1.89 are the
+ran on the same Apple M4 Max / Darwin 25.5 host with exact rustup toolchain
+`cargo 1.96.0` / `rustc 1.96.0 (ac68faa20)`. The test command used Cargo's test
+profile; the reproduction executable used the release profile. Rust 1.88 and 1.89 are the
 respective declared MSRVs, not the toolchains used for this reproduction; the final
 migration commit must pass the separate pinned-1.89 CI gate.
+
+The migrated implementation is bound to commit
+`c0f0d45e6ab8d6440ea9ba643929617399e0ee31`, tree
+`b0dda8c7163b81f45023cfd62b6cb36d0335e5e7`, and Cargo.lock SHA-256
+`181a4bdc79478e623e23950c66b5d13fcd5543131507bf219065cc1e22f38161`.
+The follow-up binding commit changes only this record and migration documentation.
 
 The original XOR output was not process-reproducible because local plug-in entropy
 used randomized `HashMap` iteration for a floating-point reduction. Both comparison

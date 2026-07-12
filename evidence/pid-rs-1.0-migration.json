@@ -4,6 +4,12 @@
   "classification": "synthetic_compatibility_only",
   "calibrated_posterior": false,
   "galadriel_base_commit": "9bd2cb0756009986d1a1a0e429614a1cbbe42ed5",
+  "galadriel_migration_implementation": {
+    "commit": "c0f0d45e6ab8d6440ea9ba643929617399e0ee31",
+    "tree": "b0dda8c7163b81f45023cfd62b6cb36d0335e5e7",
+    "cargo_lock_sha256": "181a4bdc79478e623e23950c66b5d13fcd5543131507bf219065cc1e22f38161",
+    "note": "The follow-up evidence-binding commit changes only this evidence record and its migration documentation; implementation source and Cargo.lock remain those of this commit/tree."
+  },
   "from": {
     "pid_core_version": "0.4.0",
     "pid_rs_revision": "ad489f5bf5e15c164c599d069a6bee0f338c0e48",
@@ -26,7 +32,8 @@
     "os": "Darwin 25.5",
     "rustc": "1.96.0 (ac68faa20)",
     "cargo": "1.96.0",
-    "profile": "release",
+    "test_profile": "test",
+    "executable_profile": "release",
     "toolchain_note": "Both reproduction runs used rustup's exact 1.96.0 toolchain. The declared 1.88/1.89 MSRVs were not the execution toolchains; the final migration commit must pass its separate pinned-MSRV CI gate."
   },
   "reproduction": {
