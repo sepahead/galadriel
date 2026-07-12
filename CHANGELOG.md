@@ -189,6 +189,9 @@ may contain breaking changes.
   evaluation and justification harnesses exceed the per-mutant deadline; the evidence publisher
   also correctly rejects cargo-mutants' temporary dirty worktree. Those harnesses remain covered
   by the ordinary all-feature CI matrix and their dedicated assertions.
+- Add mutation-resistant regressions for KSG report classification, observation-noise boundaries,
+  deterministic PID atom diagnostics, partial-PID/signed-default fusion, and CLI evidence labels
+  and demo output; remove an observationally redundant fusion conjunct exposed by the audit.
 - Preserve a complete conflict-free signed-correlation attribution when partial positive
   PID evidence names the same channels; optional PID insufficiency cannot erase the
   independently assessable signed default, while PID-only partial evidence still fails closed.
