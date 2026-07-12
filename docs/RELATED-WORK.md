@@ -316,7 +316,8 @@ built to correct:
    common-frame/common-prior residual contract.
 
 Galadriel's harness includes accuracy, latency, cost, adaptive, non-stationary, and
-attribution experiments. Post-audit results have not yet been regenerated, and the
+attribution experiments. The full post-audit comparative report has not yet been
+regenerated (the published streaming artifact is a narrower vertical slice), and the
 synthetic injected-bias proxy is not downstream state displacement.
 
 ### 4.2 A shared attack ontology
@@ -345,9 +346,9 @@ layer at all.*
 Detectors with different score distributions cannot be compared at a single threshold. The fair
 comparison fixes a **common false-alarm rate** and reads detection (or the adversary's
 evasion ceiling) there. Galadriel's synthetic harness includes a matched-operating-point
-design, but post-audit numeric results have not yet been regenerated. Any cross-approach
-table must pin the operating point the same way, or it is comparing thresholds, not
-detectors.
+design, but its full post-audit comparative results have not yet been regenerated; the
+published streaming artifact does not answer this comparison. Any cross-approach table
+must pin the operating point the same way, or it is comparing thresholds, not detectors.
 
 ### 4.4 Metrics, precisely
 
@@ -364,8 +365,9 @@ detectors.
 
 **Provides (research use, within the L2 family):** shared synthetic scenarios with known
 labels, a matched-operating-point design, paired bootstrap utilities, and
-accuracy/latency/cost experiments as reproducible `cargo` commands. Exact results must be
-regenerated after the audit.
+accuracy/latency/cost experiments as reproducible `cargo` commands. Exact results from
+that broader suite must still be regenerated after the audit; `post-audit-v1` covers a
+separate streaming vertical slice.
 
 **Does not yet provide (what a true cross-approach benchmark still needs):**
 1. **Multi-layer data** — the same scenario emitted at L0 (RF/IQ), L1 (measurements), and L2

@@ -90,7 +90,21 @@ jobs:
         run: git diff "$BASE_SHA"..HEAD -- | tee git.diff
 
       - name: Mutate changed Rust
-        run: cargo mutants --workspace --no-shuffle --in-diff git.diff --timeout 120 --jobs 2 --all-features
+        # The evaluation/justification harnesses contain long Monte Carlo studies,
+        # and the evidence publisher deliberately rejects cargo-mutants' temporary
+        # dirty worktree. Exclude their source before cargo-mutants computes the
+        # baseline package union; all runtime workspace packages, including future
+        # additions, remain in the bounded PR mutation gate.
+        run: >-
+          cargo mutants
+          --workspace
+          --no-shuffle
+          --in-diff git.diff
+          --exclude 'crates/galadriel-eval/**'
+          --exclude 'crates/galadriel-justify/**'
+          --timeout 120
+          --jobs 2
+          --all-features
 
       - name: Archive mutation results
         if: always()

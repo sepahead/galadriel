@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/sepahead/galadriel/actions/workflows/ci.yml"><img src="https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License: MIT OR Apache-2.0">
-  <img src="https://img.shields.io/badge/rust-1.88%2B-orange.svg" alt="Rust 1.88+">
+  <img src="https://img.shields.io/badge/rust-1.89%2B-orange.svg" alt="Rust 1.89+">
   <img src="https://img.shields.io/badge/status-research%20prototype-orange.svg" alt="status: research prototype">
   <img src="https://img.shields.io/badge/unsafe-forbidden-success.svg" alt="unsafe forbidden">
 </p>
@@ -171,6 +171,11 @@ shared-exclusions PID atoms. MI/PID is sign-invariant and therefore **additive**
 cannot repair missing geometry, create a consensus from a dyad, or override
 contradictory signed correlation. Canonical synthetic studies show regimes where this
 evidence may be useful; they do not show that those regimes occur in crebain output.
+The path pins pid-rs 1.0, declares its restricted regular-continuous support model,
+records seeded Gaussian observation noise as an estimand-changing model choice, and
+classifies PID2 atoms as `experimental_restricted_domain`. Point gates use pid-rs's
+report-first KSG API; bounded circular-resample confirmation remains an explicitly
+experimental raw-scalar pipeline. See the [0.4→1.0 migration record](docs/PID_RS_1_0_MIGRATION.md).
 
 ## Project status
 
@@ -190,7 +195,7 @@ or production-ready.
 | [`galadriel-eval`](crates/galadriel-eval) | Monte Carlo evaluation and cost bench | Synthetic only |
 | [`galadriel-justify`](crates/galadriel-justify) | canonical forced-vs-justified studies | Synthetic/theoretical only |
 
-The workspace MSRV is **Rust 1.88**. Mutable test totals and benchmark values are not
+The workspace MSRV is **Rust 1.89**. Mutable test totals and benchmark values are not
 treated as project-status claims.
 
 ## Features and dependencies
@@ -198,12 +203,13 @@ treated as project-status claims.
 | Feature | Pulls | Adds |
 |---|---|---|
 | default | no sibling integration crates | core, simulator, CLI |
-| `pid` | `pid-core` | KSG-MI/PID research layer |
+| `pid` | `pid-core` 1.0 experimental continuous/pipeline surface | KSG-MI/PID research layer |
 | `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.8 key helpers and versioned sidecar envelope; the CLI `replay` subcommand |
 | `ncp-live` | `ncp-zenoh`, `tokio` | read-only named-perception subscriber with explicit secure/development mode and bounded sequence state |
 
 The public `pid-rs` repository and NCP's `ncp-core`/`ncp-zenoh` crates are pinned by
-exact Git revisions corresponding to public tags `v0.4.0` and `v0.8.0`, respectively.
+exact Git revisions. The pid-rs revision declares 1.0.0 (there is currently no v1 tag),
+while the NCP revision corresponds to public tag `v0.8.0`.
 A fresh clone requires no sibling checkout, private repository token, or global Git
 credential rewrite.
 
@@ -257,7 +263,7 @@ cargo build -p galadriel-core --no-default-features --locked
 cargo deny --all-features --locked check
 ```
 
-The workspace MSRV is **1.88**. Crate targets forbid unsafe code.
+The workspace MSRV is **1.89**. Crate targets forbid unsafe code.
 
 ## Honest limitations
 

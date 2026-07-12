@@ -1,0 +1,10 @@
+diff --git a/crates/galadriel-justify/src/lib.rs b/crates/galadriel-justify/src/lib.rs
+index bcd64b7..6c957a2 100644
+--- a/crates/galadriel-justify/src/lib.rs
++++ b/crates/galadriel-justify/src/lib.rs
+@@ -532 +532 @@ use pid_core::discrete_sxpid2;
+-use std::collections::HashMap;
++use std::collections::BTreeMap;
+@@ -541 +541 @@ fn entropy_bits(labels: &[u64]) -> f64 {
+-    let mut counts: HashMap<u64, usize> = HashMap::new();
++    let mut counts: BTreeMap<u64, usize> = BTreeMap::new();

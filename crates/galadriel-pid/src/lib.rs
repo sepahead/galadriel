@@ -39,7 +39,7 @@
 //! Estimator work is explicitly bounded. Direct [`analyze`] handles one aligned
 //! scalar projection; [`assess_stream`] evaluates each producer-attested common
 //! projection axis separately. Geometry gates, bootstrap bounds, and deterministic
-//! modality-keyed jitter are safeguards, not a calibration theorem: the clique and
+//! modality-keyed Gaussian observation-noise model are safeguards, not a calibration theorem: the clique and
 //! reference are selected on the same window, the empirical delete-block interval
 //! is not formal selective inference, thresholds are not fleet-calibrated, and
 //! this remains advisory (`calibrated_posterior = false`).
@@ -47,7 +47,11 @@
 mod engine;
 mod fusion;
 
-pub use engine::{analyze, ChannelPid, PidConfig, PidReport, PidVerdict, MAX_PID_WINDOW};
+pub use engine::{
+    analyze, ChannelPid, PairKsgEvidence, PidConfig, PidEstimatorEvidence, PidReport, PidVerdict,
+    MAX_PID_WINDOW, PID_ATOM_POINT_FIT_UNITS, PID_CONFIRMATION_EDGE_FIT_UNITS,
+    PID_PAIR_POINT_FIT_UNITS, PID_RS_REVISION, PID_RS_VERSION,
+};
 pub use fusion::{
     assess_stream, assess_stream_with_correlation, fuse, fuse_axes, AxisPidReport, FusedReport,
 };

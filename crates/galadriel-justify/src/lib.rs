@@ -24,7 +24,15 @@
 //! verdict is based on pairwise MI and therefore does not detect pure synergy by itself.
 
 use galadriel_core::{correlation::pearson, GaladrielError, Result};
-use pid_core::{ksg_mi, pid2_isx_estimate, Jitter, KsgConfig, MatOwned, Pid2Config};
+use pid_core::experimental::continuous::raw_scalars::ksg_mi;
+use pid_core::{
+    experimental::{
+        continuous::{pid2_isx_estimate, Pid2Config},
+        pipelines::Jitter,
+    },
+    stable::continuous::KsgConfig,
+    DiscreteMatOwned, MatOwned,
+};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -62,7 +70,8 @@ pub fn abs_pearson(x: &[f64], y: &[f64]) -> Result<f64> {
     pearson(x, y).map(f64::abs)
 }
 
-/// KSG mutual information (nats), jittered to break kNN-radius ties.
+/// KSG mutual information (nats) under this synthetic study's declared additive
+/// observation-noise model and regular full-dimensional Gaussian support.
 fn ksg(seed: u64, x: &[f64], y: &[f64]) -> Result<f64> {
     if x.len() != y.len() || x.is_empty() {
         return Err(GaladrielError::InvalidChannels(format!(
@@ -86,7 +95,12 @@ fn ksg(seed: u64, x: &[f64], y: &[f64]) -> Result<f64> {
     };
     let a = build(x, 0x584A_4954_5445_5201)?;
     let b = build(y, 0x594A_4954_5445_5202)?;
-    ksg_mi(a.as_ref(), b.as_ref(), &KsgConfig::default()).map_err(pid_error)
+    ksg_mi(
+        a.as_ref(),
+        b.as_ref(),
+        &KsgConfig::assume_regular_full_dimensional(),
+    )
+    .map_err(pid_error)
 }
 
 fn pid_error(error: pid_core::PidError) -> GaladrielError {
@@ -528,8 +542,8 @@ pub fn format_report(s: &Study) -> String {
 //    a pure-synergy atom into an operational verdict.
 // ─────────────────────────────────────────────────────────────────────────────
 
-use pid_core::discrete_sxpid2;
-use std::collections::HashMap;
+use pid_core::stable::categorical::discrete_sxpid2;
+use std::collections::BTreeMap;
 use std::f64::consts::LN_2;
 
 /// Plug-in Shannon entropy (bits) of a label sequence.
@@ -538,7 +552,10 @@ fn entropy_bits(labels: &[u64]) -> f64 {
     if n == 0.0 {
         return 0.0;
     }
-    let mut counts: HashMap<u64, usize> = HashMap::new();
+    // Fixed-seed evidence also needs a fixed floating-point reduction order.
+    // Randomized HashMap iteration previously changed the last bits of entropy
+    // values and, through ties, the reported AUC across process launches.
+    let mut counts: BTreeMap<u64, usize> = BTreeMap::new();
     for &l in labels {
         *counts.entry(l).or_default() += 1;
     }
@@ -603,9 +620,21 @@ pub struct SynergyResult {
 /// 0/1 data). Returns `(syn, red)` in bits.
 fn sxpid_atoms_bits(s1: &[f64], s2: &[f64], t: &[f64]) -> Result<(f64, f64)> {
     let n = s1.len();
-    let col = |values: &[f64]| MatOwned::new(values.to_vec(), n, 1).map_err(pid_error);
+    let col = |values: &[f64]| {
+        let labels = values
+            .iter()
+            .map(|value| match *value {
+                0.0 => Ok(0),
+                1.0 => Ok(1),
+                _ => Err(GaladrielError::InvalidChannels(
+                    "SxPID binary study received a non-binary value".into(),
+                )),
+            })
+            .collect::<Result<Vec<_>>>()?;
+        DiscreteMatOwned::new(labels, n, 1).map_err(pid_error)
+    };
     let (a, b, tt) = (col(s1)?, col(s2)?, col(t)?);
-    let result = discrete_sxpid2(a.as_ref(), b.as_ref(), tt.as_ref(), 2).map_err(pid_error)?;
+    let result = discrete_sxpid2(a.as_ref(), b.as_ref(), tt.as_ref()).map_err(pid_error)?;
     Ok((result.syn.net / LN_2, result.red.net / LN_2))
 }
 
@@ -804,7 +833,7 @@ struct ContinuousScores {
     joint_mi: f64,
 }
 
-/// Continuous scores of one `(A, B, T)` triple from one `pid2_isx_estimate` call.
+/// Continuous scores of one `(A, B, T)` triple from one PID2 estimate call.
 fn continuous_synergy_scores(a: &[f64], b: &[f64], t: &[f64]) -> Result<ContinuousScores> {
     let n = a.len();
     let col = |values: &[f64]| MatOwned::new(values.to_vec(), n, 1).map_err(pid_error);
@@ -813,7 +842,7 @@ fn continuous_synergy_scores(a: &[f64], b: &[f64], t: &[f64]) -> Result<Continuo
         am.as_ref(),
         bm.as_ref(),
         tm.as_ref(),
-        &Pid2Config::default(),
+        &Pid2Config::assume_regular_full_dimensional(),
     )
     .map_err(pid_error)?;
     let pm = est.mi_s1_t.max(est.mi_s2_t);
@@ -1716,6 +1745,13 @@ mod tests {
             "XOR synergy ~1 bit: {:.3}",
             r.synergy_coupled_mean
         );
+    }
+
+    #[test]
+    fn discrete_synergy_report_is_exactly_reproducible() {
+        let first = run_synergy(20, 600, 7).expect("first fixed-seed synergy study");
+        let second = run_synergy(20, 600, 7).expect("second fixed-seed synergy study");
+        assert_eq!(format_synergy(&first), format_synergy(&second));
     }
 
     #[test]

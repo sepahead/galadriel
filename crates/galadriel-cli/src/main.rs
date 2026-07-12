@@ -322,6 +322,40 @@ fn fused_verdict_str(v: &FusedVerdict) -> String {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ChannelEvidenceLabel {
+    Decoupled,
+    Corroborates,
+    Insufficient,
+}
+
+fn channel_evidence_label(
+    decoupled: bool,
+    assessable: bool,
+    axis_insufficient: bool,
+) -> ChannelEvidenceLabel {
+    if axis_insufficient || !assessable {
+        ChannelEvidenceLabel::Insufficient
+    } else if decoupled {
+        ChannelEvidenceLabel::Decoupled
+    } else {
+        ChannelEvidenceLabel::Corroborates
+    }
+}
+
+fn channel_evidence_tag(label: ChannelEvidenceLabel, color: bool) -> String {
+    match label {
+        ChannelEvidenceLabel::Decoupled => red("● DECOUPLED", color),
+        ChannelEvidenceLabel::Corroborates => green("● corroborates", color),
+        ChannelEvidenceLabel::Insufficient => dim("● INSUFFICIENT", color),
+    }
+}
+
+#[cfg(feature = "pid")]
+fn pid_channel_is_assessable(gate_ok: bool, corroboration: Option<f64>) -> bool {
+    gate_ok && corroboration.is_some()
+}
+
 #[cfg(test)]
 mod verdict_label_tests {
     use super::*;
@@ -356,6 +390,116 @@ mod verdict_label_tests {
         assert!(broad.contains("jam-like evidence; cause unclassified"));
         assert!(!broad.contains("VERDICT: JAM"));
     }
+
+    #[test]
+    fn insufficient_axis_never_renders_a_channel_as_corroborating() {
+        assert_eq!(
+            channel_evidence_label(false, true, true,),
+            ChannelEvidenceLabel::Insufficient
+        );
+        assert_eq!(
+            channel_evidence_label(false, false, false,),
+            ChannelEvidenceLabel::Insufficient
+        );
+    }
+
+    #[test]
+    fn decoupled_channel_tag_has_the_expected_plain_text() {
+        assert_eq!(
+            channel_evidence_tag(ChannelEvidenceLabel::Decoupled, false),
+            "● DECOUPLED"
+        );
+    }
+
+    #[test]
+    fn corroborating_channel_tag_has_the_expected_plain_text() {
+        assert_eq!(
+            channel_evidence_tag(ChannelEvidenceLabel::Corroborates, false),
+            "● corroborates"
+        );
+    }
+
+    #[test]
+    fn insufficient_channel_tag_has_the_expected_plain_text() {
+        assert_eq!(
+            channel_evidence_tag(ChannelEvidenceLabel::Insufficient, false),
+            "● INSUFFICIENT"
+        );
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_channel_with_a_failed_gate_is_not_assessable() {
+        assert!(!pid_channel_is_assessable(false, Some(0.5)));
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_channel_with_a_passing_gate_and_score_is_assessable() {
+        assert!(pid_channel_is_assessable(true, Some(0.5)));
+    }
+}
+
+#[cfg(test)]
+mod demo_output_tests {
+    use std::process::Command;
+
+    use super::*;
+
+    const CHILD_DEMO_ENV: &str = "GALADRIEL_CLI_CHILD_DEMO";
+    const FAST_DEMO_FRAMES: usize = 8;
+
+    fn child_test_stdout(test_name: &str, child_demo: &str) -> String {
+        let output = Command::new(std::env::current_exe().expect("test executable path is known"))
+            .args(["--exact", test_name, "--nocapture"])
+            .env(CHILD_DEMO_ENV, child_demo)
+            .output()
+            .expect("child test process starts");
+        assert!(
+            output.status.success(),
+            "child test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8(output.stdout).expect("test output is UTF-8")
+    }
+
+    #[test]
+    fn stealthy_default_demo_emits_its_semantic_heading() {
+        let stdout = child_test_stdout(
+            "demo_output_tests::stealthy_default_demo_child",
+            "stealthy-default",
+        );
+
+        assert!(stdout.contains("SYNTHETIC MOMENT-MATCHED SPOOF"));
+    }
+
+    #[test]
+    fn stealthy_default_demo_child() {
+        if std::env::var(CHILD_DEMO_ENV).as_deref() != Ok("stealthy-default") {
+            return;
+        }
+
+        run_stealthy_default_demo(FAST_DEMO_FRAMES, 7, false)
+            .expect("fixed-seed default demo succeeds");
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_demo_emits_its_semantic_heading() {
+        let stdout = child_test_stdout("demo_output_tests::pid_demo_child", "pid");
+
+        assert!(stdout.contains("KSG-MI escalation"));
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_demo_child() {
+        if std::env::var(CHILD_DEMO_ENV).as_deref() != Ok("pid") {
+            return;
+        }
+
+        run_pid_demo(FAST_DEMO_FRAMES, 7, false).expect("fixed-seed PID demo succeeds");
+    }
 }
 
 /// The pure stealthy-spoof scene: on a moment-matched spoof the magnitude baseline is
@@ -363,7 +507,7 @@ mod verdict_label_tests {
 /// the modeled decoupling. This synthetic scene needs correlated honest channels
 /// (`ρ = 0.7`) and is not field-performance evidence.
 fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
-    use galadriel_core::{assess_default, CorrConfig};
+    use galadriel_core::{assess_default, CorrConfig, CorrVerdict};
     use galadriel_sim::scenario::{generate_spoofed, StealthySpoof};
 
     let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
@@ -400,12 +544,12 @@ fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::R
         )
     );
     for axis in &report.correlations {
+        let axis_insufficient = matches!(axis.report.verdict, CorrVerdict::InsufficientEvidence);
         for c in &axis.report.channels {
-            let tag = if c.decoupled {
-                red("● DECOUPLED", color)
-            } else {
-                green("● corroborates", color)
-            };
+            let tag = channel_evidence_tag(
+                channel_evidence_label(c.decoupled, c.corroboration.is_some(), axis_insufficient),
+                color,
+            );
             let rho = c
                 .corroboration
                 .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));
@@ -966,7 +1110,7 @@ fn run_replay(
 /// evaluated on the same synthetic decoupling.
 #[cfg(feature = "pid")]
 fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
-    use galadriel_pid::{assess_stream, PidConfig};
+    use galadriel_pid::{assess_stream, PidConfig, PidVerdict};
     use galadriel_sim::scenario::{generate_spoofed, StealthySpoof};
 
     let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
@@ -1005,12 +1149,16 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
         )
     );
     for axis in &report.pids {
+        let axis_insufficient = matches!(axis.report.verdict, PidVerdict::InsufficientEvidence);
         for c in &axis.report.channels {
-            let tag = if c.decoupled {
-                red("● DECOUPLED", color)
-            } else {
-                green("● corroborates", color)
-            };
+            let tag = channel_evidence_tag(
+                channel_evidence_label(
+                    c.decoupled,
+                    pid_channel_is_assessable(c.gate_ok, c.corroboration),
+                    axis_insufficient,
+                ),
+                color,
+            );
             let mi = c
                 .corroboration
                 .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));

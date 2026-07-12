@@ -68,8 +68,14 @@ may contain breaking changes.
 
 ### Changed
 
-- Raise the workspace MSRV to Rust **1.88** and pin that toolchain. The previous Rust 1.80
-  claim was incompatible with the locked dependency graph.
+- Migrate the exact `pid-core` pin from 0.4.0 (`ad489f5…`) to the canonical pid-rs
+  1.0.0 main revision (`1cd2424…`), opt into its explicitly experimental continuous
+  surface, adopt its report-first KSG point gate and caller-declared support contract,
+  and attach exact dependency/scientific-status/noise/seed evidence to PID reports.
+  The fixed-seed 0.4→1.0 reproduction and delta dispositions are recorded in
+  `docs/PID_RS_1_0_MIGRATION.md` and `evidence/pid-rs-1.0-migration.json`.
+- Raise the workspace MSRV to Rust **1.89** and pin that toolchain. pid-rs 1.0 requires
+  Rust 1.89; the previous Rust 1.88 pin cannot build the migrated graph.
 - Mark every package `publish = false`. No crates.io release or production-support promise
   is currently made.
 - Make public detector, simulator, PID, fusion, and serialization paths fail closed with
@@ -167,6 +173,28 @@ may contain breaking changes.
   byte-identical replayed channels also clamp to exactly `rho = 1.0`, so the degenerate
   floor could still admit a fabricated consensus — or an attribution against the one
   non-identical channel — instead of abstention.
+- Preserve finite signed-negative pid-rs 1.0 KSG estimates as valid low-dependence
+  evidence. The upstream default intentionally allows finite-sample negative estimates;
+  rejecting them had converted decoupled edges into false estimator insufficiency.
+- Make the fixed-seed XOR study process-reproducible by replacing randomized `HashMap`
+  entropy reduction with deterministic key order; the corrected 0.4/1.0 compatibility
+  stdout hashes and reported tables are identical.
+- Count raw-scalar bootstrap KSG confirmation work in conservative quadratic scan units
+  in both the engine and evaluation-suite preflights, instead of mixing whole-call and
+  inner-scan units in one resource budget.
+- Pass the intended Rust 1.89 MSRV and current-stable channels explicitly to the pinned
+  toolchain actions, avoiding an unused action-default toolchain installation.
+- Keep pull-request mutation testing bounded to runtime packages. The unmodified workspace
+  baseline previously timed out before testing any mutant because the deliberate Monte Carlo
+  evaluation and justification harnesses exceed the per-mutant deadline; the evidence publisher
+  also correctly rejects cargo-mutants' temporary dirty worktree. Those harnesses remain covered
+  by the ordinary all-feature CI matrix and their dedicated assertions.
+- Add mutation-resistant regressions for KSG report classification, observation-noise boundaries,
+  deterministic PID atom diagnostics, partial-PID/signed-default fusion, and CLI evidence labels
+  and demo output; remove an observationally redundant fusion conjunct exposed by the audit.
+- Preserve a complete conflict-free signed-correlation attribution when partial positive
+  PID evidence names the same channels; optional PID insufficiency cannot erase the
+  independently assessable signed default, while PID-only partial evidence still fails closed.
 - Reject duplicate JSON keys on the live sidecar path: payloads now deserialize directly
   into the typed envelope instead of through a `serde_json::Value` intermediate, which
   collapsed repeated keys (last occurrence wins) before `deny_unknown_fields` could reject
@@ -216,6 +244,9 @@ may contain breaking changes.
   producer attestation enforced within each aligned frame/context window.
 - Reorder the README's opening around the problem, architecture, one verified command,
   representative output, current evidence boundary, and then the full caveats.
+- Distinguish the published post-audit streaming evidence slice from the still-pending
+  full comparative AUC/adaptive/maneuver/collusion/latency/cost report, and clarify that
+  Galadriel reports advisory evidence rather than controlling downstream weights.
 
 ### Added
 

@@ -142,8 +142,14 @@ pub fn fuse_axes(
         .collect();
     decoupled.sort_by_key(|modality| *modality as u8);
 
+    // PID is an optional additive detector. Partial PID evidence cannot erase a
+    // complete, conflict-free signed-correlation attribution. Mismatched positive
+    // PID attribution is independently caught by `disagree` below.
+    let signed_default_is_complete = !correlation_insufficient
+        && correlation_axis_conflict.is_none()
+        && !correlation_decoupled.is_empty();
     let incomplete_positive = (correlation_insufficient && !correlation_decoupled.is_empty())
-        || (pid_insufficient && !pid_decoupled.is_empty());
+        || (pid_insufficient && !pid_decoupled.is_empty() && !signed_default_is_complete);
     // Two assessable consistency detectors naming different channels is positive
     // evidence, but not honest attribution. Preserve the union for investigation
     // and fail closed to an unclassified anomaly.
@@ -384,7 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn stealthy_spoof_with_an_insufficient_axis_fails_closed() {
+    fn partial_pid_evidence_does_not_erase_complete_signed_attribution() {
         let stream = generate_spoofed(
             &scenario(),
             StealthySpoof {
@@ -400,11 +406,29 @@ mod tests {
             &PidConfig::default(),
         )
         .unwrap();
-        assert_eq!(
+        assert!(report
+            .pids
+            .iter()
+            .any(|axis| matches!(axis.report.verdict, PidVerdict::InsufficientEvidence)));
+        assert!(report
+            .pids
+            .iter()
+            .any(|axis| matches!(axis.report.verdict, PidVerdict::Decoupled(_))));
+        assert!(report
+            .correlations
+            .iter()
+            .all(|axis| { !matches!(axis.report.verdict, CorrVerdict::InsufficientEvidence) }));
+        assert!(
+            matches!(
+                report.verdict,
+                FusedVerdict::AttributedInconsistency {
+                    ref channels,
+                    magnitude: MagnitudeEvidence::InCovariance,
+                } if channels == &[Modality::Acoustic]
+            ),
+            "unexpected fused verdict {:?}: {}",
             report.verdict,
-            FusedVerdict::UnclassifiedAnomaly {
-                channels: vec![Modality::Acoustic],
-            }
+            report.note
         );
         let acoustic = report
             .baseline
@@ -413,7 +437,90 @@ mod tests {
             .find(|channel| channel.modality == Modality::Acoustic)
             .unwrap();
         assert!(!acoustic.anomalous());
+        assert!(report.pids.iter().all(|axis| {
+            axis.report.estimator.pid_rs_revision == crate::PID_RS_REVISION
+                && axis.report.estimator.atom_scientific_status == "experimental_restricted_domain"
+        }));
+    }
+
+    #[test]
+    fn positive_pid_axis_alongside_insufficient_pid_axis_fails_closed() {
+        let correlation = AxisCorrelationReport {
+            axis: 0,
+            report: CorrReport {
+                channels: Vec::new(),
+                verdict: CorrVerdict::Nominal,
+                note: "correlation nominal".into(),
+            },
+        };
+        let pid = |axis: usize, verdict: PidVerdict, note: &str| AxisPidReport {
+            axis,
+            report: PidReport {
+                estimator: crate::PidEstimatorEvidence::from_config(&PidConfig::default()),
+                channels: Vec::new(),
+                verdict,
+                note: note.into(),
+            },
+        };
+
+        let report = fuse_axes(
+            nominal_baseline(),
+            vec![correlation],
+            vec![
+                pid(
+                    0,
+                    PidVerdict::Decoupled(vec![Modality::Acoustic]),
+                    "positive PID axis",
+                ),
+                pid(1, PidVerdict::InsufficientEvidence, "insufficient PID axis"),
+            ],
+        );
+
+        assert_eq!(
+            report.verdict,
+            FusedVerdict::UnclassifiedAnomaly {
+                channels: vec![Modality::Acoustic]
+            }
+        );
         assert!(report.note.contains("insufficient projection axis"));
+    }
+
+    #[test]
+    fn matching_partial_pid_preserves_complete_signed_default() {
+        let correlation = AxisCorrelationReport {
+            axis: 0,
+            report: CorrReport {
+                channels: Vec::new(),
+                verdict: CorrVerdict::Decoupled(vec![Modality::Acoustic]),
+                note: "complete signed attribution".into(),
+            },
+        };
+        let pid = |axis: usize, verdict: PidVerdict| AxisPidReport {
+            axis,
+            report: PidReport {
+                estimator: crate::PidEstimatorEvidence::from_config(&PidConfig::default()),
+                channels: Vec::new(),
+                verdict,
+                note: "partial PID attribution".into(),
+            },
+        };
+
+        let report = fuse_axes(
+            nominal_baseline(),
+            vec![correlation],
+            vec![
+                pid(0, PidVerdict::Decoupled(vec![Modality::Acoustic])),
+                pid(1, PidVerdict::InsufficientEvidence),
+            ],
+        );
+
+        assert_eq!(
+            report.verdict,
+            FusedVerdict::AttributedInconsistency {
+                channels: vec![Modality::Acoustic],
+                magnitude: MagnitudeEvidence::InCovariance,
+            }
+        );
     }
 
     #[test]
@@ -508,6 +615,7 @@ mod tests {
             note: "test correlation unavailable".into(),
         };
         let pid = PidReport {
+            estimator: crate::PidEstimatorEvidence::from_config(&PidConfig::default()),
             channels: MODALITIES
                 .iter()
                 .map(|&modality| crate::ChannelPid {
@@ -549,6 +657,7 @@ mod tests {
             note: "test correlation attribution".into(),
         };
         let pid = PidReport {
+            estimator: crate::PidEstimatorEvidence::from_config(&PidConfig::default()),
             channels: MODALITIES
                 .iter()
                 .map(|&modality| crate::ChannelPid {
@@ -585,6 +694,7 @@ mod tests {
                 note: "malformed empty correlation attribution".into(),
             },
             PidReport {
+                estimator: crate::PidEstimatorEvidence::from_config(&PidConfig::default()),
                 channels: Vec::new(),
                 verdict: PidVerdict::Nominal,
                 note: "PID nominal".into(),
@@ -610,6 +720,7 @@ mod tests {
                 note: "correlation nominal".into(),
             },
             PidReport {
+                estimator: crate::PidEstimatorEvidence::from_config(&PidConfig::default()),
                 channels: Vec::new(),
                 verdict: PidVerdict::Decoupled(Vec::new()),
                 note: "malformed empty PID attribution".into(),
@@ -646,6 +757,7 @@ mod tests {
         let nominal_pid = |axis| AxisPidReport {
             axis,
             report: PidReport {
+                estimator: crate::PidEstimatorEvidence::from_config(&PidConfig::default()),
                 channels: Vec::new(),
                 verdict: PidVerdict::Nominal,
                 note: "axis nominal".into(),

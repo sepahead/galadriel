@@ -29,7 +29,7 @@ default-members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.89"
 license = "MIT OR Apache-2.0"
 authors = ["Sepehr Mahmoudian"]
 repository = "https://github.com/sepahead/galadriel"
@@ -55,9 +55,11 @@ galadriel-core = { version = "0.1.0", path = "crates/galadriel-core" }
 galadriel-sim = { version = "0.1.0", path = "crates/galadriel-sim" }
 galadriel-pid = { version = "0.1.0", path = "crates/galadriel-pid" }
 galadriel-ncp = { version = "0.1.0", path = "crates/galadriel-ncp" }
-# Public sibling ecosystem crates, pinned to the exact commits published as the
-# noted tags. A revision pin remains immutable even if a remote tag is retargeted.
-pid-core = { version = "0.4.0", git = "https://github.com/sepahead/pid-rs", rev = "ad489f5bf5e15c164c599d069a6bee0f338c0e48" } # v0.4.0
+# Public sibling ecosystem crates pinned to immutable commits. pid-rs currently
+# declares 1.0.0 on main without a v1 tag; this revision includes the 1.0 release
+# commit plus its same-day correctness/CI follow-ups. Galadriel opts into the
+# explicitly experimental continuous/pipeline surface used by its advisory PID path.
+pid-core = { version = "1.0.0", git = "https://github.com/sepahead/pid-rs", rev = "1cd2424f7967e1752dcc8e53859e8fdad3566f51", features = ["experimental-pipelines"] }
 ncp-core = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 ncp-zenoh = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 

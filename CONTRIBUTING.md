@@ -22,8 +22,10 @@ cross-modal correlation/PID evidence.
 - **Treat missingness as evidence.** Association/gate misses and rejected updates
   are censored observations, not random gaps. All-modal silence requires an
   external heartbeat because a detector cannot infer time from absent calls.
-- **Advisory, not enforced.** galadriel softens (down-weights, recommends); it
-  never vetoes a control path. Keep `calibrated_posterior = false` semantics.
+- **Advisory, not enforced.** galadriel reports evidence only; it does not
+  down-weight, recommend, authorize, or veto a control path. Any downstream
+  restrict-only policy is a separately reviewed consumer concern. Keep
+  `calibrated_posterior = false` semantics.
 - **Pure default build.** The default workspace build has no heavy dependencies.
   `pid` (pid-core) and `ncp` (ncp-core / ncp-zenoh) are additive, off-by-default
   features. Never enable them by default or pull Zenoh/tokio into the default graph.
@@ -40,7 +42,7 @@ cargo build -p galadriel-core --no-default-features --locked
 cargo deny --all-features --locked check
 ```
 
-The pinned workspace MSRV is **Rust 1.88**. All packages currently set
+The pinned workspace MSRV is **Rust 1.89**. All packages currently set
 `publish = false`; changing that is a release decision, not a routine metadata edit.
 
 ## Commit / PR hygiene
