@@ -2590,8 +2590,8 @@ fn detector_text(detector: DetectorId) -> &'static str {
 fn render_report(summary: &EvidenceSummary, manifest: &EvidenceManifest) -> String {
     let mut report = String::new();
     report.push_str("# Galadriel post-audit evidence\n\n");
-    report.push_str(&format!("Study: `{}`  \n", summary.study_id));
-    report.push_str(&format!("Git commit: `{}`  \n", manifest.git.commit));
+    report.push_str(&format!("Study: `{}`\n\n", summary.study_id));
+    report.push_str(&format!("Git commit: `{}`\n\n", manifest.git.commit));
     report.push_str(&format!(
         "Dirty worktree at invocation: `{}`\n\n",
         manifest.git.dirty
@@ -3372,6 +3372,14 @@ mod tests {
         ] {
             assert!(output.join(name).is_file(), "missing {name}");
         }
+        let report = fs::read_to_string(output.join("report.md"))
+            .expect("generated report should be readable");
+        assert!(
+            report
+                .lines()
+                .all(|line| !line.ends_with(' ') && !line.ends_with('\t')),
+            "generated Markdown must not contain trailing whitespace"
+        );
         let checksums = fs::read_to_string(output.join("SHA256SUMS"))
             .expect("checksum file should be readable");
         for line in checksums.lines() {
