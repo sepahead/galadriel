@@ -192,6 +192,8 @@ may contain breaking changes.
 - Add mutation-resistant regressions for KSG report classification, observation-noise boundaries,
   deterministic PID atom diagnostics, partial-PID/signed-default fusion, and CLI evidence labels
   and demo output; remove an observationally redundant fusion conjunct exposed by the audit.
+- Bind the pid-rs migration evidence to PR #16's actual squash-landed `main` commit and tree while
+  retaining the audited source-snapshot identities that produced the paired compatibility run.
 - Preserve a complete conflict-free signed-correlation attribution when partial positive
   PID evidence names the same channels; optional PID insufficiency cannot erase the
   independently assessable signed default, while PID-only partial evidence still fails closed.

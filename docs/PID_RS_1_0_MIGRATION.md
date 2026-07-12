@@ -42,11 +42,15 @@ profile; the reproduction executable used the release profile. Rust 1.88 and 1.8
 respective declared MSRVs, not the toolchains used for this reproduction; the final
 migration commit must pass the separate pinned-1.89 CI gate.
 
-The migrated implementation is bound to commit
-`c0f0d45e6ab8d6440ea9ba643929617399e0ee31`, tree
-`b0dda8c7163b81f45023cfd62b6cb36d0335e5e7`, and Cargo.lock SHA-256
+PR #16 squash-landed the migrated implementation on `main` as commit
+`86577db18b4247662c2a87882a310efaaa5322ca`, tree
+`a7b9fb42ac78b7a7a58735eb7b1f505767f5f6ab`, with Cargo.lock SHA-256
 `181a4bdc79478e623e23950c66b5d13fcd5543131507bf219065cc1e22f38161`.
-The follow-up binding commit changes only this record and migration documentation.
+The paired compatibility run originated from the PR's audited source snapshot commit
+`c0f0d45e6ab8d6440ea9ba643929617399e0ee31`, tree
+`b0dda8c7163b81f45023cfd62b6cb36d0335e5e7`. The landed tree contains that migration
+plus the evidence-binding, CI, and mutation-test hardening follow-ups; its Cargo.lock is
+byte-identical. This post-landing provenance repair changes only evidence/documentation.
 
 The original XOR output was not process-reproducible because local plug-in entropy
 used randomized `HashMap` iteration for a floating-point reduction. Both comparison
