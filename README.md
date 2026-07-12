@@ -15,36 +15,78 @@
 </p>
 
 Galadriel asks whether several sensors observing one track still agree. It combines
-per-channel Normalized Innovation Squared (NIS) evidence with signed cross-channel
-correlation. An optional PID path adds sign-invariant mutual-information evidence for
-research into nonlinear or synergistic dependence.
+per-channel Normalized Innovation Squared (NIS) evidence with signed, producer-attested
+cross-channel correlation; optional PID diagnostics explore nonlinear dependence.
+
+```mermaid
+flowchart LR
+    O[observations] --> P{provenance + temporal gate}
+    P --> M[NIS / CUSUM]
+    P --> C[signed correlation]
+    C -. optional .-> I[PID diagnostics]
+    M --> F[conservative fusion]
+    C --> F
+    I --> F
+    F --> V[nominal / anomaly evidence / insufficient]
+```
+
+## Run the verified demo
+
+```bash
+cargo run --locked --bin galadriel -- demo --frames 128 --seed 7
+```
+
+Representative output from that exact command (traces shortened here):
+
+```text
+═══ GALADRIEL'S MIRROR · cross-sensor consistency monitor ═══
+┌─ CLEAN — corroborated airspace picture
+│  visual    μ=2.93  ● consistent
+└▷ VERDICT: NOMINAL
+┌─ PHANTOM DOA — targeted single-channel spoof (acoustic)
+│  acoustic  μ=66.68 ● ANOMALOUS
+└▷ VERDICT: ATTRIBUTED-INCONSISTENCY (spoof-like evidence; cause unclassified) [acoustic]
+┌─ BROADBAND JAM — correlated all-channel denial
+└▷ VERDICT: BROAD-DEGRADATION (jam-like evidence; cause unclassified)
+┌─ SYNTHETIC MOMENT-MATCHED SPOOF
+│  baseline: NOMINAL — blind (NIS stays in-covariance)
+└▷ correlation: ATTRIBUTED-INCONSISTENCY [acoustic]
+```
+
+The demo uses synthetic, common-frame observations. It demonstrates code paths, not
+field performance.
+
+## Evidence status
+
+Run the versioned study with the single locked command in
+[`docs/POST-AUDIT-EVIDENCE.md`](docs/POST-AUDIT-EVIDENCE.md). Publication runs refuse
+a dirty worktree and write a checksummed manifest beside the machine-readable trials.
+
+- The post-audit runner records its Git commit, toolchains, complete configuration,
+  fixed seed domains, per-trial outcomes, holdout summaries, and checksums in one command.
+- Synthetic stream studies report false-alert episodes/track-hour, mission false-alert
+  probability, run length, conditional delay, abstention, attribution, autocorrelation,
+  covariance-scale sensitivity, and provenance rejection separately.
+- The bundled Crebain fixture proves bounded parsing and baseline replay only. It is
+  roughly 15.8 seconds long and has no attested common projection, so recorded full-detector
+  stream metrics are explicitly `not_estimable`, never replaced with synthetic numbers.
+- There is no production Crebain common-projection publisher or receiver-verified mTLS
+  deployment yet.
 
 > **Honest scope.** Galadriel detects statistical inconsistency, not truth. It cannot
 > prove that an attributed channel is malicious, cannot detect an attacker that preserves
-> cross-channel consistency, and must not silently veto a control path. Its reports are
-> advisory and are not calibrated posteriors.
+> cross-channel consistency, and must not silently veto a control path. Reports are
+> advisory evidence, not calibrated posteriors.
 
-> **Current integration status.** The bundled crebain fixture proves bounded JSONL
-> parsing and exercises the NIS baseline. It does **not** validate production
-> cross-sensor correlation or PID. Normal crebain captures omit the attested common
-> projection; native radar residuals are polar while other residuals are Cartesian, sequential filter
-> updates do not share one frozen prior, and association/gating suppresses rejected
-> measurements. With those preconditions absent, correlation and fused assessment
-> correctly remain `InsufficientEvidence`.
+> **Current integration status.** Normal Crebain captures omit the attested common
+> projection; native radar residuals are polar while other residuals are Cartesian,
+> sequential filter updates do not share one frozen prior, and association/gating
+> suppresses rejected measurements. With those preconditions absent, correlation and
+> fused assessment correctly remain `InsufficientEvidence`.
 
-The research background and synthetic study design are documented in
+The research background and study design are documented in
 [`docs/PAPER.md`](docs/PAPER.md), [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md), and
-[`docs/EVALUATION.md`](docs/EVALUATION.md). Those documents describe synthetic evidence,
-not field validation or production readiness.
-
-## Quickstart
-
-```bash
-cargo run --bin galadriel -- demo
-```
-
-The demo generates synthetic, common-frame observations. It demonstrates behavior; it
-does not show that current crebain residuals satisfy the detector's estimand.
+[`docs/EVALUATION.md`](docs/EVALUATION.md).
 
 ## What the core requires
 
@@ -85,9 +127,9 @@ channel is fresh, ready, and consistent.
 | Evidence | Verdict |
 |---|---|
 | all configured channels ready and consistent | `Nominal` |
-| minority of channels anomalous while peers remain usable | `Spoof { channels }` |
-| most/all channels inflated together | `Jam` |
-| positive but non-attributable or lower-direction evidence | `Anomaly` |
+| minority of channels anomalous while peers remain usable | `AttributedInconsistency { channels }` |
+| most/all channels inflated together | `BroadDegradation` |
+| positive but non-attributable or lower-direction evidence | `UnclassifiedAnomaly { channels }` |
 | too little, stale, missing, or incompatible evidence | `InsufficientEvidence` |
 | invalid input or configuration | `Err(...)` |
 
@@ -100,8 +142,8 @@ with no coherent positive consensus cannot support outlier attribution.
 
 Every producer-declared projection axis is assessed. The significance budget is
 Bonferroni-split across axes and channel pairs. Different positive channel attributions
-across axes, or a positive axis beside an insufficient axis, become `Anomaly` rather
-than a confident `Spoof`.
+across axes, or a positive axis beside an insufficient axis, become
+`UnclassifiedAnomaly` rather than `AttributedInconsistency`.
 
 `galadriel_core::assess_default` fuses magnitude and consistency evidence without
 turning an unavailable consistency assessment into `Nominal`.
@@ -166,7 +208,14 @@ metadata, cross-session/cross-producer payloads, unsafe JSON integers, invalid o
 and replay/sequence violations. Contract-hash drift is accepted per NCP policy but counted
 for operators. Callers must choose `TransportMode::Secure` (strict mTLS client config) or
 explicitly acknowledge `TransportMode::QuietDevelopment`; there is no implicit security
-default. `LiveLimits::max_payload_bytes` bounds decoding after NCP callback delivery, but the
+default. Applications should prefer `SidecarTap::subscribe_channel(HandoffConfig)`: it performs
+one nonblocking bounded enqueue on the receive task, drops the newest accepted observation at
+capacity without reopening replay eligibility, invalidates queued generations on explicit
+reset, and exposes queue depth, oldest sequence, drop reasons, enqueue latency, and consumer
+lag. Callback-duration metrics expose slow inline work and the bounded adapter's internal
+enqueue cost. The inline `subscribe_with_health` callback remains available for advanced
+low-cost work.
+`LiveLimits::max_payload_bytes` bounds decoding after NCP callback delivery, but the
 pinned `ncp-zenoh` callback currently materializes an owned payload first; deployments still
 need a transport/broker message-size ceiling to bound receive-memory pressure. Subscriber
 silence can still mean no traffic, a realm/key mismatch, ACL denial, or producer failure.
@@ -240,6 +289,8 @@ release label:
 - [`docs/PAPER.md`](docs/PAPER.md) — research argument and current evidence boundary.
 - [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) — when MI/PID can add information.
 - [`docs/EVALUATION.md`](docs/EVALUATION.md) — reproducible synthetic methodology.
+- [`docs/POST-AUDIT-EVIDENCE.md`](docs/POST-AUDIT-EVIDENCE.md) — one-command,
+  checksummed streaming evidence artifact.
 - [`docs/RELATED-WORK.md`](docs/RELATED-WORK.md) — competing and complementary methods.
 
 ## License

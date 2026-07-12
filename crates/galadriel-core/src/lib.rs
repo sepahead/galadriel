@@ -8,7 +8,7 @@
 //! This crate ships the **cheap baseline** the more expensive information-theoretic
 //! engine must beat before it is trusted: a per-channel **Normalized Innovation
 //! Squared (NIS) χ² consistency test** plus a **CUSUM** change detector, folded
-//! into a fail-closed **jam-vs-spoof** decision.
+//! into a fail-closed, evidence-neutral magnitude assessment.
 //!
 //! ## What it consumes
 //!
@@ -26,9 +26,9 @@
 //!
 //! | observation | verdict | reasoning |
 //! |---|---|---|
-//! | all channels' NIS consistent with χ²(dof) | [`Verdict::Nominal`] | picture corroborated |
-//! | **one** channel's NIS inflated, others nominal | [`Verdict::Spoof`] | targeted single-channel false-data injection |
-//! | **most/all** channels' NIS inflated together | [`Verdict::Jam`] | correlated denial / degradation |
+//! | all channels' NIS consistent with χ²(dof) | [`Verdict::Nominal`] | individual magnitude checks are consistent |
+//! | **one** channel's NIS inflated, others nominal | [`Verdict::AttributedInconsistency`] | localized magnitude inconsistency; cause unclassified |
+//! | **most/all** channels' NIS inflated together | [`Verdict::BroadDegradation`] | broad magnitude degradation; cause unclassified |
 //! | too few samples / channels | [`Verdict::InsufficientEvidence`] | **fail closed** — never default to Nominal |
 //!
 //! This is an **advisory** detector. It authenticates *statistical consistency*,
@@ -49,14 +49,16 @@ pub mod fusion;
 pub mod observation;
 pub mod window;
 
-pub use config::DetectorConfig;
+pub use config::{
+    DetectorConfig, MAX_ALIGNMENT_SEQ_GAP, MAX_ALIGNMENT_TIMESTAMP_SKEW_MS, MAX_INTER_SAMPLE_GAP_MS,
+};
 pub use correlation::{CorrChannel, CorrConfig, CorrReport, CorrVerdict};
 pub use cusum::Cusum;
 pub use decision::{ChannelReport, Mirror, MirrorReport, Verdict};
 pub use error::{GaladrielError, Result};
 pub use fusion::{
-    assess_default, combine, combine_correlation_axes, AxisCorrelationReport, DefaultReport,
-    FusedVerdict, MagnitudeEvidence,
+    assess_default, combine, combine_correlation_axes, AxisCorrelationReport, ConsistencyEvidence,
+    DefaultReport, FusedVerdict, MagnitudeEvidence, NonEmptyModalities,
 };
 pub use observation::{
     validate_and_symmetrize_covariance, ConsistencyProjection, Modality, PidObservation,
@@ -207,19 +209,11 @@ pub fn consistency_channels_with_temporal_limits(
     use std::collections::{BTreeMap, HashMap, HashSet};
 
     validate_consistency_input_len(stream.len())?;
-    if max_seq_gap == 0 {
-        return Err(GaladrielError::InvalidConfig(
-            "alignment max_seq_gap must be > 0".into(),
-        ));
-    }
-    if max_inter_sample_gap_ms == 0
-        || max_inter_sample_gap_ms > crate::config::MAX_INTER_SAMPLE_GAP_MS
-    {
-        return Err(GaladrielError::InvalidConfig(format!(
-            "alignment max_inter_sample_gap_ms must be in 1..={}",
-            crate::config::MAX_INTER_SAMPLE_GAP_MS
-        )));
-    }
+    crate::config::validate_alignment_limits(
+        max_seq_gap,
+        max_timestamp_skew_ms,
+        max_inter_sample_gap_ms,
+    )?;
     let requested: HashSet<Modality> = modalities.iter().copied().collect();
     if requested.len() != modalities.len() {
         return Err(GaladrielError::InvalidChannels(
@@ -641,6 +635,42 @@ mod scalar_channel_tests {
     fn consistency_input_work_is_explicitly_bounded() {
         assert!(validate_consistency_input_len(MAX_CONSISTENCY_INPUT_OBSERVATIONS).is_ok());
         assert!(validate_consistency_input_len(MAX_CONSISTENCY_INPUT_OBSERVATIONS + 1).is_err());
+    }
+
+    #[test]
+    fn extraction_rejects_disabled_or_unbounded_temporal_limits_even_when_empty() {
+        let modalities = [Modality::Visual, Modality::Radar];
+        for (max_seq_gap, max_timestamp_skew_ms, max_inter_sample_gap_ms) in [
+            (0, DEFAULT_ALIGNMENT_MAX_TIMESTAMP_SKEW_MS, 1),
+            (u64::MAX, DEFAULT_ALIGNMENT_MAX_TIMESTAMP_SKEW_MS, 1),
+            (1, u64::MAX, 1),
+            (1, DEFAULT_ALIGNMENT_MAX_TIMESTAMP_SKEW_MS, 0),
+            (1, DEFAULT_ALIGNMENT_MAX_TIMESTAMP_SKEW_MS, u64::MAX),
+        ] {
+            assert!(consistency_channels_with_temporal_limits(
+                &[],
+                &modalities,
+                max_seq_gap,
+                max_timestamp_skew_ms,
+                max_inter_sample_gap_ms,
+            )
+            .is_err());
+        }
+    }
+
+    #[test]
+    fn extraction_accepts_inclusive_temporal_limit_boundaries() {
+        let modalities = [Modality::Visual, Modality::Radar];
+        for max_timestamp_skew_ms in [0, MAX_ALIGNMENT_TIMESTAMP_SKEW_MS] {
+            assert!(consistency_channels_with_temporal_limits(
+                &[],
+                &modalities,
+                MAX_ALIGNMENT_SEQ_GAP,
+                max_timestamp_skew_ms,
+                MAX_INTER_SAMPLE_GAP_MS,
+            )
+            .is_ok());
+        }
     }
 
     #[test]

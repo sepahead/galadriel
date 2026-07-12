@@ -1363,7 +1363,7 @@ pub fn run_seq(coupling: Coupling, trials: usize, sigma: f64, seed: u64) -> Resu
                 let mut l = latencies[di].clone();
                 l.sort_by(f64::total_cmp);
                 let middle = l.len() / 2;
-                Some(if l.len() % 2 == 0 {
+                Some(if l.len().is_multiple_of(2) {
                     (l[middle - 1] + l[middle]) / 2.0
                 } else {
                     l[middle]

@@ -130,9 +130,11 @@ across channels.
 
 Magnitude evidence distinguishes:
 
-- a minority high-direction anomaly (`Spoof`, advisory attribution);
-- broad high-direction inflation (`Jam`, advisory denial classification);
-- positive but non-attributable/lower-direction evidence (`Anomaly`);
+- a minority high-direction anomaly (`AttributedInconsistency`, spoof-like evidence with
+  cause unclassified);
+- broad high-direction inflation (`BroadDegradation`, jam-like evidence with cause
+  unclassified);
+- positive but non-attributable/lower-direction evidence (`UnclassifiedAnomaly`);
 - insufficient freshness/readiness (`InsufficientEvidence`);
 - fully ready and consistent evidence (`Nominal`).
 
@@ -157,7 +159,8 @@ No unique strict majority means `InsufficientEvidence`.
 The fused entry points analyze every active projection axis. Correlation's family budget
 is split across axes and channel pairs. A coordinate-specific anomaly may leave other axes
 nominal, but different positive channel attributions across axes—or a positive axis beside
-an insufficient axis—remain `Anomaly` rather than a selected, confident `Spoof`.
+an insufficient axis—remain `UnclassifiedAnomaly` rather than a selected
+`AttributedInconsistency`.
 
 ### 4.3 Optional MI/PID evidence
 

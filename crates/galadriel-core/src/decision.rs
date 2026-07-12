@@ -1,4 +1,4 @@
-//! The fail-closed jam-vs-spoof decision and the streaming [`Mirror`] detector.
+//! The fail-closed magnitude-evidence decision and the streaming [`Mirror`] detector.
 
 use std::collections::HashMap;
 
@@ -13,21 +13,24 @@ use crate::window::NisWindow;
 /// The detector's advisory verdict for one track.
 ///
 /// This is **advisory** (`calibrated_posterior = false` in the ecosystem's terms):
-/// a redundancy/consistency anomaly is equally consistent with a spoof, a genuine
-/// unique detection, or an estimator artifact. It softens; it never vetoes.
+/// a magnitude anomaly is equally consistent with an attack, a genuine unique
+/// detection, or an estimator artifact. It softens; it never vetoes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "verdict", rename_all = "snake_case")]
 pub enum Verdict {
     /// Every ready channel's NIS is consistent with χ²(dof).
     Nominal,
-    /// One or a minority of channels' NIS is inflated while the rest corroborate —
-    /// the signature of a targeted single-channel false-data injection.
-    Spoof { channels: Vec<Modality> },
-    /// Most/all channels' NIS is inflated together — correlated denial/degradation.
-    Jam,
+    /// One or a minority of channels has localized NIS inconsistency. This names
+    /// statistical evidence, not an attack cause.
+    #[serde(alias = "spoof")]
+    AttributedInconsistency { channels: Vec<Modality> },
+    /// Most/all channels have broad NIS inflation consistent with degradation.
+    #[serde(alias = "jam")]
+    BroadDegradation,
     /// Positive anomaly evidence exists, but missing/stale peers or a below-target
-    /// shift prevents honest spoof-vs-jam attribution.
-    Anomaly { channels: Vec<Modality> },
+    /// shift prevents a narrower statistical classification.
+    #[serde(alias = "anomaly")]
+    UnclassifiedAnomaly { channels: Vec<Modality> },
     /// Too few ready channels or samples to decide. **Fail closed** — never
     /// silently upgraded to `Nominal`.
     InsufficientEvidence,
@@ -339,11 +342,11 @@ impl Mirror {
                 .collect::<Vec<_>>()
                 .join(", ");
             (
-                Verdict::Anomaly {
+                Verdict::UnclassifiedAnomaly {
                     channels: all_anomalous.clone(),
                 },
                 format!(
-                    "verified anomaly on {names}, but stale/missing peers or a below-target shift prevents spoof-vs-jam attribution"
+                    "verified anomaly on {names}, but stale/missing peers or a below-target shift prevents a narrower statistical classification"
                 ),
             )
         } else if !enough_complete_evidence {
@@ -362,7 +365,7 @@ impl Mirror {
             (
                 Verdict::Nominal,
                 format!(
-                    "{} channels corroborate; NIS consistent with χ²",
+                    "{} ready channels have individually χ²-consistent NIS",
                     ready.len()
                 ),
             )
@@ -370,9 +373,9 @@ impl Mirror {
             && high_anomalous.len() as f64 >= self.cfg.jam_fraction * ready.len() as f64
         {
             (
-                Verdict::Jam,
+                Verdict::BroadDegradation,
                 format!(
-                    "{}/{} channels currently inflated — broad-degradation/jam signature (cause remains advisory)",
+                    "{}/{} channels currently inflated — broad-degradation evidence (jam-like, cause unclassified)",
                     high_anomalous.len(),
                     ready.len()
                 ),
@@ -380,11 +383,11 @@ impl Mirror {
         } else {
             let names: Vec<&str> = high_anomalous.iter().map(|m| m.label()).collect();
             (
-                Verdict::Spoof {
+                Verdict::AttributedInconsistency {
                     channels: high_anomalous.clone(),
                 },
                 format!(
-                    "{} of {} channels decoupled ({}) — targeted injection",
+                    "{} of {} channels show localized NIS inflation ({}) — spoof-like evidence, cause unclassified",
                     high_anomalous.len(),
                     ready.len(),
                     names.join(", ")
@@ -449,22 +452,82 @@ mod tests {
     }
 
     #[test]
-    fn single_channel_inflation_is_spoof() {
+    fn single_channel_inflation_is_attributed_inconsistency() {
         let mut m = Mirror::new(DetectorConfig::default()).unwrap();
         let mods = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         feed(&mut m, 1, &mods, &[3.0, 3.0, 20.0], 64);
         match m.assess(1, 64).unwrap().verdict {
-            Verdict::Spoof { channels } => assert_eq!(channels, vec![Modality::Acoustic]),
-            other => panic!("expected Spoof, got {other:?}"),
+            Verdict::AttributedInconsistency { channels } => {
+                assert_eq!(channels, vec![Modality::Acoustic]);
+            }
+            other => panic!("expected AttributedInconsistency, got {other:?}"),
         }
     }
 
     #[test]
-    fn all_channels_inflation_is_jam() {
+    fn all_channels_inflation_is_broad_degradation() {
         let mut m = Mirror::new(DetectorConfig::default()).unwrap();
         let mods = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         feed(&mut m, 1, &mods, &[20.0, 20.0, 20.0], 64);
-        assert_eq!(m.assess(1, 64).unwrap().verdict, Verdict::Jam);
+        assert_eq!(m.assess(1, 64).unwrap().verdict, Verdict::BroadDegradation);
+    }
+
+    #[test]
+    fn verdict_serialization_uses_evidence_neutral_tags() {
+        let cases = [
+            (
+                Verdict::AttributedInconsistency {
+                    channels: vec![Modality::Acoustic],
+                },
+                serde_json::json!({
+                    "verdict": "attributed_inconsistency",
+                    "channels": ["acoustic"]
+                }),
+            ),
+            (
+                Verdict::BroadDegradation,
+                serde_json::json!({"verdict": "broad_degradation"}),
+            ),
+            (
+                Verdict::UnclassifiedAnomaly {
+                    channels: vec![Modality::Radar],
+                },
+                serde_json::json!({
+                    "verdict": "unclassified_anomaly",
+                    "channels": ["radar"]
+                }),
+            ),
+        ];
+
+        for (verdict, expected) in cases {
+            assert_eq!(serde_json::to_value(verdict).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn verdict_deserialization_accepts_legacy_causal_tags() {
+        let cases = [
+            (
+                serde_json::json!({"verdict": "spoof", "channels": ["acoustic"]}),
+                Verdict::AttributedInconsistency {
+                    channels: vec![Modality::Acoustic],
+                },
+            ),
+            (
+                serde_json::json!({"verdict": "jam"}),
+                Verdict::BroadDegradation,
+            ),
+            (
+                serde_json::json!({"verdict": "anomaly", "channels": ["radar"]}),
+                Verdict::UnclassifiedAnomaly {
+                    channels: vec![Modality::Radar],
+                },
+            ),
+        ];
+
+        for (legacy, expected) in cases {
+            assert_eq!(serde_json::from_value::<Verdict>(legacy).unwrap(), expected);
+        }
     }
 
     #[test]

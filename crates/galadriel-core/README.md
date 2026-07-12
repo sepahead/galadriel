@@ -12,8 +12,8 @@ It provides:
 - NIS/CUSUM magnitude evidence with per-assessment family-wise control;
 - signed Pearson correlation with a unique strict-majority positive-consensus
   clique;
-- fail-closed fusion that preserves `InsufficientEvidence` and `Anomaly` rather
-  than fabricating `Nominal`.
+- fail-closed fusion that preserves `InsufficientEvidence` and
+  `UnclassifiedAnomaly` rather than fabricating `Nominal`.
 
 ```rust
 use galadriel_core::{DetectorConfig, Mirror, Modality, PidObservation};

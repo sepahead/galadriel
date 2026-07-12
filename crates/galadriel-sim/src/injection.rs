@@ -464,7 +464,7 @@ mod tests {
     }
 
     #[test]
-    fn phantom_is_spoof_on_the_targeted_channel() {
+    fn phantom_produces_attributed_inconsistency_on_the_targeted_channel() {
         let cfg = ScenarioConfig::default();
         let mut s = generate(&cfg).expect("valid scenario");
         inject(
@@ -477,13 +477,15 @@ mod tests {
         )
         .expect("valid phantom injection");
         match final_verdict(&s, cfg.modalities.len()) {
-            Verdict::Spoof { channels } => assert!(channels.contains(&Modality::Acoustic)),
-            other => panic!("expected Spoof, got {other:?}"),
+            Verdict::AttributedInconsistency { channels } => {
+                assert!(channels.contains(&Modality::Acoustic))
+            }
+            other => panic!("expected AttributedInconsistency, got {other:?}"),
         }
     }
 
     #[test]
-    fn broadband_jam_is_jam() {
+    fn broadband_jam_produces_broad_degradation_evidence() {
         let cfg = ScenarioConfig::default();
         let mut s = generate(&cfg).expect("valid scenario");
         inject(
@@ -494,7 +496,10 @@ mod tests {
             },
         )
         .expect("valid jam injection");
-        assert_eq!(final_verdict(&s, cfg.modalities.len()), Verdict::Jam);
+        assert_eq!(
+            final_verdict(&s, cfg.modalities.len()),
+            Verdict::BroadDegradation
+        );
     }
 
     #[test]

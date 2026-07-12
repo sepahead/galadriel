@@ -285,8 +285,9 @@ pub struct ChannelPid {
 pub enum PidVerdict {
     /// Every requested channel belongs to one assessable consensus clique.
     Nominal,
-    /// One or a strict minority of channels was attributed as decoupled.
-    Spoof(Vec<Modality>),
+    /// One or a strict minority of channels was attributed as decoupled. This
+    /// identifies information-theoretic structure, not an attack cause.
+    Decoupled(Vec<Modality>),
     /// The estimator or consensus structure was not sufficient for attribution.
     InsufficientEvidence,
 }
@@ -526,7 +527,7 @@ pub fn analyze(
         .join(", ");
     Ok(PidReport {
         channels: reports,
-        verdict: PidVerdict::Spoof(decoupled.clone()),
+        verdict: PidVerdict::Decoupled(decoupled.clone()),
         note: format!(
             "{} channel(s) {} a unique {}/{} MI-consensus clique: {names}",
             decoupled.len(),
@@ -1171,7 +1172,7 @@ mod tests {
     }
 
     #[test]
-    fn default_confirmation_never_overstates_point_spoof_evidence() {
+    fn default_confirmation_never_overstates_point_decoupling_evidence() {
         let mut confirmed = 0;
         for seed in [7, 23] {
             let scenario = scen(seed);
@@ -1195,7 +1196,7 @@ mod tests {
             assert!(
                 matches!(
                     point.verdict,
-                    PidVerdict::Spoof(ref modalities)
+                    PidVerdict::Decoupled(ref modalities)
                         if modalities == &[Modality::Acoustic]
                 ),
                 "seed {seed}: point estimate did not isolate acoustic: {}",
@@ -1204,7 +1205,7 @@ mod tests {
 
             let report = analyze(&channels, &PidConfig::default()).unwrap();
             match &report.verdict {
-                PidVerdict::Spoof(modalities) => {
+                PidVerdict::Decoupled(modalities) => {
                     assert_eq!(modalities, &[Modality::Acoustic]);
                     let acoustic = report
                         .channels
@@ -1224,7 +1225,7 @@ mod tests {
         }
         assert!(
             confirmed > 0,
-            "default confirmation never accepted a clear spoof"
+            "default confirmation never accepted a clear decoupling"
         );
     }
 
@@ -1453,7 +1454,7 @@ mod tests {
             assert!(point_flagged.contains(&channel.modality));
             assert!(channel.ci.is_some());
         }
-        if !matches!(bootstrap.verdict, PidVerdict::Spoof(_)) {
+        if !matches!(bootstrap.verdict, PidVerdict::Decoupled(_)) {
             assert!(bootstrap.channels.iter().all(|channel| !channel.decoupled));
         }
     }

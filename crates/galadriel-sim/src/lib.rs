@@ -8,8 +8,10 @@
 //! whose per-channel `NIS ~ χ²(3)` under the null. The [`injection`] module then
 //! transforms that stream into an attack:
 //!
-//! - [`injection::PhantomAcousticDoa`] — a targeted single-channel bias → **Spoof**.
-//! - [`injection::BroadbandJam`] — a correlated all-channel inflation → **Jam**.
+//! - [`injection::PhantomAcousticDoa`] — a targeted single-channel bias, expected to
+//!   produce **attributed-inconsistency** evidence.
+//! - [`injection::BroadbandJam`] — a correlated all-channel inflation, expected to
+//!   produce **broad-degradation** evidence.
 
 pub mod injection;
 pub mod rng;

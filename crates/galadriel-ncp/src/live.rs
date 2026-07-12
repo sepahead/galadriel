@@ -13,26 +13,31 @@
 //!
 //! ```no_run
 //! # async fn run() -> Result<(), Box<dyn std::error::Error>> {
-//! use galadriel_ncp::live::{SidecarTap, TransportMode};
+//! use galadriel_ncp::live::{HandoffConfig, SidecarTap, TransportMode};
 //! let tap = SidecarTap::open(TransportMode::Secure).await?;
-//! let health = tap.subscribe_with_health("uav3", "crebain", |obs| {
-//!     // hand each observation to a galadriel detector (cheap: decode + enqueue)
-//!     let _ = obs.nis;
-//! })
-//! .await?;
+//! let (health, mut observations) = tap
+//!     .subscribe_channel("uav3", "crebain", HandoffConfig::default())
+//!     .await?;
 //! assert_eq!(health.payloads_received(), 0);
+//! if let Some(obs) = observations.recv().await {
+//!     let _ = obs.nis;
+//! }
 //! # Ok(()) }
 //! ```
 
 use std::cell::Cell;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::future::poll_fn;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
+use std::task::{Context, Poll};
+use std::time::{Duration, Instant};
 
 use galadriel_core::observation::{Modality, PidObservation};
 use ncp_core::{ContractStatus, Keys, DEFAULT_REALM};
 use ncp_zenoh::{ZenohBus, ZenohError};
+use tokio::sync::mpsc;
 
 use crate::{sidecar_key, valid_realm, SidecarEnvelope, SidecarEnvelopeError};
 
@@ -44,6 +49,78 @@ pub const DEFAULT_MAX_LIVE_SEQUENCE_STREAMS: usize = 6 * 1024;
 
 /// Maximum forward sequence advance after a stream's first accepted observation.
 pub const DEFAULT_MAX_LIVE_SEQUENCE_ADVANCE: u64 = 1_000_000;
+
+/// Default number of decoded observations retained by a bounded live handoff.
+pub const DEFAULT_LIVE_HANDOFF_CAPACITY: usize = 1_024;
+
+/// Hard upper bound for a live observation handoff queue.
+pub const MAX_LIVE_HANDOFF_CAPACITY: usize = 4_096;
+
+/// Fixed overflow behavior for bounded live observation handoffs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum HandoffOverflowPolicy {
+    /// Preserve queued observations and discard the newly accepted observation.
+    DropNewest,
+}
+
+/// Validated configuration for a bounded live observation handoff.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandoffConfig {
+    capacity: usize,
+}
+
+impl HandoffConfig {
+    /// Validate a nonzero queue capacity no larger than
+    /// [`MAX_LIVE_HANDOFF_CAPACITY`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HandoffConfigError`] when `capacity` is zero or exceeds the hard
+    /// process-memory bound.
+    pub fn new(capacity: usize) -> Result<Self, HandoffConfigError> {
+        if capacity == 0 {
+            return Err(HandoffConfigError::ZeroCapacity);
+        }
+        if capacity > MAX_LIVE_HANDOFF_CAPACITY {
+            return Err(HandoffConfigError::CapacityTooLarge {
+                capacity,
+                maximum: MAX_LIVE_HANDOFF_CAPACITY,
+            });
+        }
+        Ok(Self { capacity })
+    }
+
+    /// Maximum number of decoded observations waiting for the consumer.
+    pub fn capacity(self) -> usize {
+        self.capacity
+    }
+
+    /// Overflow policy used by this handoff.
+    pub fn overflow_policy(self) -> HandoffOverflowPolicy {
+        HandoffOverflowPolicy::DropNewest
+    }
+}
+
+impl Default for HandoffConfig {
+    fn default() -> Self {
+        Self {
+            capacity: DEFAULT_LIVE_HANDOFF_CAPACITY,
+        }
+    }
+}
+
+/// Invalid bounded-handoff configuration.
+#[derive(Debug, thiserror::Error, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum HandoffConfigError {
+    /// A bounded channel cannot have zero capacity.
+    #[error("live handoff capacity must be greater than zero")]
+    ZeroCapacity,
+    /// The requested capacity exceeded [`MAX_LIVE_HANDOFF_CAPACITY`].
+    #[error("live handoff capacity {capacity} exceeds maximum {maximum}")]
+    CapacityTooLarge { capacity: usize, maximum: usize },
+}
 
 /// Resource limits for live sidecar ingest.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -218,7 +295,10 @@ impl RejectionCounts {
     }
 }
 
-/// Identity and producer timestamp of the last observation accepted for delivery.
+/// Identity and producer timestamp of the last observation accepted by ingest.
+///
+/// Acceptance precedes the inline callback or bounded-handoff attempt, so callback
+/// failure and handoff overflow do not roll back this diagnostic high-water mark.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct LastAcceptedObservation {
@@ -243,6 +323,79 @@ impl From<&PidObservation> for LastAcceptedObservation {
     }
 }
 
+/// Point-in-time metrics for one bounded live observation handoff.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct HandoffMetrics {
+    /// Configured channel capacity.
+    pub capacity: usize,
+    /// Fixed behavior when the channel reaches `capacity`.
+    pub overflow_policy: HandoffOverflowPolicy,
+    /// Current sequence/reset generation attached to new queue entries.
+    pub generation: u64,
+    /// Observations currently occupying queue capacity, including stale-generation
+    /// entries that have not yet been drained by the consumer.
+    pub queue_depth: usize,
+    /// Largest queue depth observed since subscription creation.
+    pub max_queue_depth: usize,
+    /// Identity of the next queued observation, if any.
+    pub oldest_queued: Option<LastAcceptedObservation>,
+    /// Delivery generation attached to the next queued observation.
+    pub oldest_queued_generation: Option<u64>,
+    /// Monotonic age of the next queued observation at snapshot time.
+    pub oldest_enqueue_age: Option<Duration>,
+    /// Successful bounded-channel enqueues.
+    pub enqueued: u64,
+    /// Current-generation observations returned to the consumer.
+    pub delivered: u64,
+    /// Accepted observations dropped because the queue was full.
+    pub full_drops: u64,
+    /// Accepted observations dropped because the receiver was closed.
+    pub closed_drops: u64,
+    /// Queued observations discarded after an explicit sequence reset.
+    pub stale_generation_drops: u64,
+    /// Queued observations discarded when the receiver was dropped.
+    pub abandoned_drops: u64,
+    /// Duration of the most recent metadata-lock plus nonblocking enqueue attempt.
+    pub last_enqueue_latency: Option<Duration>,
+    /// Largest metadata-lock plus nonblocking enqueue duration observed so far.
+    pub max_enqueue_latency: Option<Duration>,
+    /// Enqueue-to-dequeue latency for the most recently drained entry.
+    pub last_dequeue_latency: Option<Duration>,
+    /// Largest enqueue-to-dequeue latency observed so far.
+    pub max_dequeue_latency: Option<Duration>,
+}
+
+impl HandoffMetrics {
+    /// Saturating sum of full, closed, stale-generation, and abandoned drops.
+    pub fn total_drops(self) -> u64 {
+        self.full_drops
+            .saturating_add(self.closed_drops)
+            .saturating_add(self.stale_generation_drops)
+            .saturating_add(self.abandoned_drops)
+    }
+}
+
+/// Monotonic execution-time metrics for accepted observation callbacks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CallbackLatencyMetrics {
+    /// Accepted callbacks whose duration has been recorded.
+    pub samples: u64,
+    /// Duration of the most recently completed callback.
+    pub last: Option<Duration>,
+    /// Largest completed callback duration observed so far.
+    pub maximum: Option<Duration>,
+}
+
+#[derive(Debug, Default)]
+struct CallbackLatencyState {
+    samples: u64,
+    last: Option<Duration>,
+    maximum: Option<Duration>,
+    last_completed_at: Option<Instant>,
+}
+
 #[derive(Debug, Default)]
 struct IngestCounters {
     payloads_received: AtomicU64,
@@ -262,6 +415,13 @@ struct IngestCounters {
     excessive_forward_sequence_gap: AtomicU64,
     sequence_capacity_exceeded: AtomicU64,
     sequence_state_failure: AtomicU64,
+    handoff_enqueued: AtomicU64,
+    handoff_delivered: AtomicU64,
+    handoff_full_drops: AtomicU64,
+    handoff_closed_drops: AtomicU64,
+    handoff_stale_generation_drops: AtomicU64,
+    handoff_abandoned_drops: AtomicU64,
+    callback_latency: Mutex<CallbackLatencyState>,
     last_accepted: Mutex<Option<LastAcceptedObservation>>,
 }
 
@@ -315,6 +475,342 @@ impl IngestCounters {
             .lock()
             .unwrap_or_else(|error| error.into_inner())
     }
+
+    fn callback_latency(&self) -> CallbackLatencyMetrics {
+        let latency = self
+            .callback_latency
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        CallbackLatencyMetrics {
+            samples: latency.samples,
+            last: latency.last,
+            maximum: latency.maximum,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct QueuedObservation {
+    observation: PidObservation,
+    generation: u64,
+    enqueued_at: Instant,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct QueuedObservationMetadata {
+    observation: LastAcceptedObservation,
+    generation: u64,
+    enqueued_at: Instant,
+}
+
+#[derive(Debug)]
+struct HandoffQueueState {
+    entries: VecDeque<QueuedObservationMetadata>,
+    max_queue_depth: usize,
+    last_enqueue_latency: Option<Duration>,
+    max_enqueue_latency: Option<Duration>,
+    last_dequeue_latency: Option<Duration>,
+    max_dequeue_latency: Option<Duration>,
+}
+
+impl HandoffQueueState {
+    fn new(capacity: usize) -> Self {
+        Self {
+            entries: VecDeque::with_capacity(capacity),
+            max_queue_depth: 0,
+            last_enqueue_latency: None,
+            max_enqueue_latency: None,
+            last_dequeue_latency: None,
+            max_dequeue_latency: None,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct HandoffState {
+    config: HandoffConfig,
+    queue: Mutex<HandoffQueueState>,
+}
+
+impl HandoffState {
+    fn new(config: HandoffConfig) -> Self {
+        Self {
+            config,
+            queue: Mutex::new(HandoffQueueState::new(config.capacity())),
+        }
+    }
+
+    fn record_dequeue(
+        queue: &mut HandoffQueueState,
+        queued: &QueuedObservation,
+        dequeued_at: Instant,
+    ) {
+        let latency = dequeued_at.saturating_duration_since(queued.enqueued_at);
+        let metadata = queue.entries.pop_front();
+        debug_assert_eq!(
+            metadata.map(|entry| (entry.observation, entry.generation, entry.enqueued_at)),
+            Some((
+                LastAcceptedObservation::from(&queued.observation),
+                queued.generation,
+                queued.enqueued_at,
+            )),
+            "Tokio handoff and mirror metadata must remain FIFO-aligned"
+        );
+        queue.last_dequeue_latency = Some(latency);
+        queue.max_dequeue_latency = Some(
+            queue
+                .max_dequeue_latency
+                .map_or(latency, |maximum| maximum.max(latency)),
+        );
+    }
+
+    fn poll_dequeue(
+        &self,
+        receiver: &mut mpsc::Receiver<QueuedObservation>,
+        context: &mut Context<'_>,
+    ) -> Poll<Option<QueuedObservation>> {
+        let mut queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
+        match receiver.poll_recv(context) {
+            Poll::Ready(Some(queued)) => {
+                Self::record_dequeue(&mut queue, &queued, Instant::now());
+                Poll::Ready(Some(queued))
+            }
+            other => other,
+        }
+    }
+
+    fn try_dequeue(
+        &self,
+        receiver: &mut mpsc::Receiver<QueuedObservation>,
+    ) -> Result<QueuedObservation, mpsc::error::TryRecvError> {
+        let mut queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
+        let queued = receiver.try_recv()?;
+        Self::record_dequeue(&mut queue, &queued, Instant::now());
+        Ok(queued)
+    }
+
+    fn abandon_all(&self) -> usize {
+        let mut queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
+        let abandoned = queue.entries.len();
+        queue.entries.clear();
+        abandoned
+    }
+
+    fn snapshot(&self, counters: &IngestCounters, generation: u64) -> HandoffMetrics {
+        let now = Instant::now();
+        let queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
+        let oldest_queued = queue.entries.front().map(|entry| entry.observation);
+        let oldest_queued_generation = queue.entries.front().map(|entry| entry.generation);
+        let oldest_enqueue_age = queue
+            .entries
+            .front()
+            .map(|entry| now.saturating_duration_since(entry.enqueued_at));
+        HandoffMetrics {
+            capacity: self.config.capacity(),
+            overflow_policy: self.config.overflow_policy(),
+            generation,
+            queue_depth: queue.entries.len(),
+            max_queue_depth: queue.max_queue_depth,
+            oldest_queued,
+            oldest_queued_generation,
+            oldest_enqueue_age,
+            enqueued: counters.handoff_enqueued.load(Ordering::Relaxed),
+            delivered: counters.handoff_delivered.load(Ordering::Relaxed),
+            full_drops: counters.handoff_full_drops.load(Ordering::Relaxed),
+            closed_drops: counters.handoff_closed_drops.load(Ordering::Relaxed),
+            stale_generation_drops: counters
+                .handoff_stale_generation_drops
+                .load(Ordering::Relaxed),
+            abandoned_drops: counters.handoff_abandoned_drops.load(Ordering::Relaxed),
+            last_enqueue_latency: queue.last_enqueue_latency,
+            max_enqueue_latency: queue.max_enqueue_latency,
+            last_dequeue_latency: queue.last_dequeue_latency,
+            max_dequeue_latency: queue.max_dequeue_latency,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ObservationHandoff {
+    sender: mpsc::Sender<QueuedObservation>,
+    state: Arc<HandoffState>,
+    delivery_boundary: Arc<DeliveryBoundary>,
+    tap_counters: Arc<IngestCounters>,
+    subscription_counters: Arc<IngestCounters>,
+}
+
+impl ObservationHandoff {
+    fn enqueue(&self, observation: PidObservation) {
+        let enqueued_at = Instant::now();
+        let generation = self.delivery_boundary.generation();
+        let metadata = QueuedObservationMetadata {
+            observation: LastAcceptedObservation::from(&observation),
+            generation,
+            enqueued_at,
+        };
+        let queued = QueuedObservation {
+            observation,
+            generation,
+            enqueued_at,
+        };
+        let enqueue_started = Instant::now();
+
+        // Synchronize the mirror metadata with try_send so depth and oldest-entry
+        // snapshots cannot race ahead of, or behind, the actual channel operation.
+        let mut queue = self
+            .state
+            .queue
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        match self.sender.try_send(queued) {
+            Ok(()) => {
+                queue.entries.push_back(metadata);
+                queue.max_queue_depth = queue.max_queue_depth.max(queue.entries.len());
+                increment_pair(
+                    &self.tap_counters.handoff_enqueued,
+                    &self.subscription_counters.handoff_enqueued,
+                );
+            }
+            Err(mpsc::error::TrySendError::Full(_)) => increment_pair(
+                &self.tap_counters.handoff_full_drops,
+                &self.subscription_counters.handoff_full_drops,
+            ),
+            Err(mpsc::error::TrySendError::Closed(_)) => increment_pair(
+                &self.tap_counters.handoff_closed_drops,
+                &self.subscription_counters.handoff_closed_drops,
+            ),
+        }
+        let enqueue_latency = Instant::now().saturating_duration_since(enqueue_started);
+        queue.last_enqueue_latency = Some(enqueue_latency);
+        queue.max_enqueue_latency = Some(
+            queue
+                .max_enqueue_latency
+                .map_or(enqueue_latency, |maximum| maximum.max(enqueue_latency)),
+        );
+    }
+}
+
+/// Consumer for a bounded, FIFO live observation handoff.
+///
+/// The receive side discards observations from sequence generations superseded by
+/// [`SubscriptionHealth::reset_sequence_state`]. Queue-full behavior is always
+/// [`HandoffOverflowPolicy::DropNewest`]; replay high-water state has already
+/// advanced before an observation reaches this channel.
+///
+/// Generation filtering ends when [`Self::recv`] or [`Self::try_recv`] returns.
+/// A later reset cannot revoke an observation already returned to application code
+/// or wait for its detector work to finish. Before resetting, a caller with a
+/// separate consumer task must pause that task, wait for all previously returned
+/// observations to finish, reset the downstream detector and sequence state while
+/// the task remains paused, and only then resume receiving.
+///
+/// Closing or dropping this receiver does not undeclare the upstream NCP
+/// subscriber; later accepted observations are counted as closed drops. Close the
+/// owning [`SidecarTap`] when the subscription should stop at the transport.
+pub struct LiveObservationReceiver {
+    receiver: mpsc::Receiver<QueuedObservation>,
+    state: Arc<HandoffState>,
+    delivery_boundary: Arc<DeliveryBoundary>,
+    tap_counters: Arc<IngestCounters>,
+    subscription_counters: Arc<IngestCounters>,
+}
+
+impl LiveObservationReceiver {
+    /// Wait for the next current-generation observation.
+    ///
+    /// Stale entries left by a reset are drained and counted internally. Returns
+    /// `None` after the channel closes and all queued entries have been drained.
+    pub async fn recv(&mut self) -> Option<PidObservation> {
+        loop {
+            let queued =
+                poll_fn(|context| self.state.poll_dequeue(&mut self.receiver, context)).await?;
+            if let Some(observation) = self.finish_dequeue(queued) {
+                return Some(observation);
+            }
+        }
+    }
+
+    /// Attempt to receive the next current-generation observation without waiting.
+    ///
+    /// Stale entries are drained before returning [`mpsc::error::TryRecvError::Empty`]
+    /// or [`mpsc::error::TryRecvError::Disconnected`].
+    pub fn try_recv(&mut self) -> Result<PidObservation, mpsc::error::TryRecvError> {
+        loop {
+            let queued = self.state.try_dequeue(&mut self.receiver)?;
+            if let Some(observation) = self.finish_dequeue(queued) {
+                return Ok(observation);
+            }
+        }
+    }
+
+    /// Prevent future enqueues while allowing already queued observations to drain.
+    /// The upstream transport subscription remains active until its tap is closed.
+    pub fn close(&mut self) {
+        self.receiver.close();
+    }
+
+    /// Whether the receive half has been closed.
+    pub fn is_closed(&self) -> bool {
+        self.receiver.is_closed()
+    }
+
+    fn finish_dequeue(&self, queued: QueuedObservation) -> Option<PidObservation> {
+        let _delivery = self.delivery_boundary.begin_delivery();
+        if queued.generation != self.delivery_boundary.generation() {
+            increment_pair(
+                &self.tap_counters.handoff_stale_generation_drops,
+                &self.subscription_counters.handoff_stale_generation_drops,
+            );
+            return None;
+        }
+        increment_pair(
+            &self.tap_counters.handoff_delivered,
+            &self.subscription_counters.handoff_delivered,
+        );
+        Some(queued.observation)
+    }
+}
+
+impl Drop for LiveObservationReceiver {
+    fn drop(&mut self) {
+        let _delivery = self.delivery_boundary.begin_delivery();
+        self.receiver.close();
+        let abandoned = self.state.abandon_all() as u64;
+        increment_pair_by(
+            &self.tap_counters.handoff_abandoned_drops,
+            &self.subscription_counters.handoff_abandoned_drops,
+            abandoned,
+        );
+    }
+}
+
+fn bounded_handoff(
+    config: HandoffConfig,
+    delivery_boundary: Arc<DeliveryBoundary>,
+    tap_counters: Arc<IngestCounters>,
+    subscription_counters: Arc<IngestCounters>,
+) -> (
+    ObservationHandoff,
+    LiveObservationReceiver,
+    Arc<HandoffState>,
+) {
+    let state = Arc::new(HandoffState::new(config));
+    let (sender, receiver) = mpsc::channel(config.capacity());
+    let handoff = ObservationHandoff {
+        sender,
+        state: Arc::clone(&state),
+        delivery_boundary: Arc::clone(&delivery_boundary),
+        tap_counters: Arc::clone(&tap_counters),
+        subscription_counters: Arc::clone(&subscription_counters),
+    };
+    let receiver = LiveObservationReceiver {
+        receiver,
+        state: Arc::clone(&state),
+        delivery_boundary,
+        tap_counters,
+        subscription_counters,
+    };
+    (handoff, receiver, state)
 }
 
 /// Failure to establish an explicit live sequence-reset boundary.
@@ -328,6 +824,8 @@ pub enum SequenceResetError {
     DeliveryInProgress,
     /// The pending-reset counter could not represent another concurrent request.
     TooManyPendingResets,
+    /// The monotonic delivery generation cannot represent another reset.
+    GenerationExhausted,
 }
 
 impl std::fmt::Display for SequenceResetError {
@@ -341,6 +839,9 @@ impl std::fmt::Display for SequenceResetError {
             }
             Self::TooManyPendingResets => {
                 formatter.write_str("too many concurrent sequence reset requests")
+            }
+            Self::GenerationExhausted => {
+                formatter.write_str("live delivery generation is exhausted")
             }
         }
     }
@@ -359,6 +860,7 @@ struct DeliveryBoundaryState {
 struct DeliveryBoundary {
     state: Mutex<DeliveryBoundaryState>,
     changed: Condvar,
+    generation: AtomicU64,
 }
 
 impl DeliveryBoundary {
@@ -396,6 +898,19 @@ impl DeliveryBoundary {
         state.pending_resets -= 1;
         state.reset_active = true;
         Ok(ResetGuard { boundary: self })
+    }
+
+    fn generation(&self) -> u64 {
+        self.generation.load(Ordering::Acquire)
+    }
+
+    fn advance_generation(&self) -> Result<u64, SequenceResetError> {
+        self.generation
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |generation| {
+                generation.checked_add(1)
+            })
+            .map(|previous| previous + 1)
+            .map_err(|_| SequenceResetError::GenerationExhausted)
     }
 }
 
@@ -547,6 +1062,7 @@ pub struct SubscriptionHealth {
     tap_counters: Arc<IngestCounters>,
     sequences: Arc<Mutex<LiveSequenceTracker>>,
     delivery_boundary: Arc<DeliveryBoundary>,
+    handoff: Option<Arc<HandoffState>>,
 }
 
 impl SubscriptionHealth {
@@ -576,7 +1092,7 @@ impl SubscriptionHealth {
         self.counters.rejection_count(reason)
     }
 
-    /// Last observation accepted in this subscription's serialized delivery order.
+    /// Last observation accepted in this subscription's serialized ingest order.
     /// Returns `None` before the first acceptance and immediately after a reset.
     pub fn last_accepted(&self) -> Option<LastAcceptedObservation> {
         self.counters.last_accepted()
@@ -585,6 +1101,13 @@ impl SubscriptionHealth {
     /// User callback panics contained at the subscription boundary.
     pub fn callback_panics(&self) -> u64 {
         self.counters.callback_panics.load(Ordering::Relaxed)
+    }
+
+    /// Last and maximum execution time for this subscription's accepted callbacks.
+    /// Inline subscriptions measure user code; bounded handoffs measure the internal
+    /// nonblocking enqueue callback. Decode and validation time are excluded.
+    pub fn callback_latency(&self) -> CallbackLatencyMetrics {
+        self.counters.callback_latency()
     }
 
     /// Legacy eviction counter, retained for API compatibility. The fail-closed
@@ -604,6 +1127,59 @@ impl SubscriptionHealth {
         self.counters
             .contract_hash_mismatches
             .load(Ordering::Relaxed)
+    }
+
+    /// Observations successfully enqueued by this subscription's bounded handoff.
+    /// Inline callback subscriptions always report zero.
+    pub fn handoff_enqueued(&self) -> u64 {
+        self.counters.handoff_enqueued.load(Ordering::Relaxed)
+    }
+
+    /// Current-generation observations returned by the bounded receiver.
+    pub fn handoff_delivered(&self) -> u64 {
+        self.counters.handoff_delivered.load(Ordering::Relaxed)
+    }
+
+    /// Accepted observations discarded under the `DropNewest` full-queue policy.
+    pub fn handoff_full_drops(&self) -> u64 {
+        self.counters.handoff_full_drops.load(Ordering::Relaxed)
+    }
+
+    /// Accepted observations discarded because the bounded receiver was closed.
+    pub fn handoff_closed_drops(&self) -> u64 {
+        self.counters.handoff_closed_drops.load(Ordering::Relaxed)
+    }
+
+    /// Queued observations discarded because a reset superseded their generation.
+    pub fn handoff_stale_generation_drops(&self) -> u64 {
+        self.counters
+            .handoff_stale_generation_drops
+            .load(Ordering::Relaxed)
+    }
+
+    /// Queued observations discarded when the bounded receiver was dropped.
+    pub fn handoff_abandoned_drops(&self) -> u64 {
+        self.counters
+            .handoff_abandoned_drops
+            .load(Ordering::Relaxed)
+    }
+
+    /// Total full, closed, stale-generation, and abandoned handoff drops.
+    pub fn handoff_drops(&self) -> u64 {
+        self.handoff_full_drops()
+            .saturating_add(self.handoff_closed_drops())
+            .saturating_add(self.handoff_stale_generation_drops())
+            .saturating_add(self.handoff_abandoned_drops())
+    }
+
+    /// Queue depth, oldest observation, drop counts, and consumer-lag metrics for
+    /// this subscription's bounded handoff. The snapshot is serialized with enqueue,
+    /// dequeue, and reset, so it may wait briefly for current bounded callback work.
+    /// Returns `None` for inline callbacks.
+    pub fn handoff_metrics(&self) -> Option<HandoffMetrics> {
+        let handoff = self.handoff.as_ref()?;
+        let _delivery = self.delivery_boundary.begin_delivery();
+        Some(handoff.snapshot(&self.counters, self.delivery_boundary.generation()))
     }
 
     /// Number of `(track, modality)` sequence streams currently retained.
@@ -631,15 +1207,23 @@ impl SubscriptionHealth {
     /// This method must not be called directly from **any** live `on_obs` callback,
     /// including a callback for another subscription. Such attempts return
     /// [`SequenceResetError::CalledFromCallback`] without changing state.
+    /// Bounded-handoff entries already queued are tagged with the old generation;
+    /// the receiver drains and counts them without delivery. Until drained, those
+    /// stale entries still occupy bounded capacity and may cause `DropNewest` events.
+    /// An observation already returned by the receiver is no longer inside this
+    /// boundary and cannot be revoked. A separate consumer must therefore be paused
+    /// and acknowledged idle before this method is called, then have its detector
+    /// reset before receiving resumes.
     /// This local boundary cannot label or drain bytes already queued inside the
     /// transport; a fresh session ID remains the only unambiguous wire-level epoch.
     ///
     /// # Errors
     ///
     /// Returns [`SequenceResetError`] for a callback-context reset, an active target
-    /// delivery, or an exhausted pending-reset counter.
+    /// delivery, an exhausted pending-reset counter, or an exhausted generation.
     pub fn reset_sequence_state(&self) -> Result<usize, SequenceResetError> {
         let _reset = self.delivery_boundary.begin_reset()?;
+        self.delivery_boundary.advance_generation()?;
         let removed = self
             .sequences
             .lock()
@@ -777,7 +1361,8 @@ impl SidecarTap {
         self.counters.rejection_count(reason)
     }
 
-    /// Last observation accepted by any subscription on this tap.
+    /// Last observation accepted by any subscription on this tap before callback or
+    /// bounded-handoff outcome.
     /// Concurrent subscriptions have independent delivery order, so this is a
     /// diagnostic snapshot rather than a global causal ordering.
     pub fn last_accepted(&self) -> Option<LastAcceptedObservation> {
@@ -788,6 +1373,13 @@ impl SidecarTap {
     /// dropped, while Zenoh's receive task remains alive for later observations.
     pub fn callback_panics(&self) -> u64 {
         self.counters.callback_panics.load(Ordering::Relaxed)
+    }
+
+    /// Last and maximum callback execution time across this tap's subscriptions.
+    /// The `last` value is the most recently completed callback across independent
+    /// subscriptions; `maximum` is their aggregate high-water mark.
+    pub fn callback_latency(&self) -> CallbackLatencyMetrics {
+        self.counters.callback_latency()
     }
 
     /// Total payloads seen on the sidecar key (decoded **or** dropped), across all
@@ -826,6 +1418,48 @@ impl SidecarTap {
         self.counters
             .contract_hash_mismatches
             .load(Ordering::Relaxed)
+    }
+
+    /// Successful bounded-channel enqueues across all subscriptions on this tap.
+    pub fn handoff_enqueued(&self) -> u64 {
+        self.counters.handoff_enqueued.load(Ordering::Relaxed)
+    }
+
+    /// Current-generation observations returned by bounded receivers on this tap.
+    pub fn handoff_delivered(&self) -> u64 {
+        self.counters.handoff_delivered.load(Ordering::Relaxed)
+    }
+
+    /// Accepted observations dropped because a bounded handoff was full.
+    pub fn handoff_full_drops(&self) -> u64 {
+        self.counters.handoff_full_drops.load(Ordering::Relaxed)
+    }
+
+    /// Accepted observations dropped because a bounded receiver was closed.
+    pub fn handoff_closed_drops(&self) -> u64 {
+        self.counters.handoff_closed_drops.load(Ordering::Relaxed)
+    }
+
+    /// Queued observations discarded after a sequence-generation reset.
+    pub fn handoff_stale_generation_drops(&self) -> u64 {
+        self.counters
+            .handoff_stale_generation_drops
+            .load(Ordering::Relaxed)
+    }
+
+    /// Queued observations discarded when bounded receivers were dropped.
+    pub fn handoff_abandoned_drops(&self) -> u64 {
+        self.counters
+            .handoff_abandoned_drops
+            .load(Ordering::Relaxed)
+    }
+
+    /// Total bounded-handoff drops across all subscriptions on this tap.
+    pub fn handoff_drops(&self) -> u64 {
+        self.handoff_full_drops()
+            .saturating_add(self.handoff_closed_drops())
+            .saturating_add(self.handoff_stale_generation_drops())
+            .saturating_add(self.handoff_abandoned_drops())
     }
 
     /// The underlying bus (e.g. to close it, or share the session).
@@ -890,6 +1524,7 @@ impl SidecarTap {
             tap_counters: Arc::clone(&tap_counters),
             sequences: Arc::clone(&sequences),
             delivery_boundary: Arc::clone(&delivery_boundary),
+            handoff: None,
         };
         self.bus
             .subscribe(&key, move |_key, bytes| {
@@ -909,6 +1544,71 @@ impl SidecarTap {
             })
             .await?;
         Ok(health)
+    }
+
+    /// Subscribe with a bounded FIFO handoff instead of a user callback on Zenoh's
+    /// receive task.
+    ///
+    /// Decode, validation, and sequence admission still execute inline, followed by
+    /// one nonblocking `try_send`. When the queue is full, the newly accepted
+    /// observation is dropped and counted while its replay high-water mark remains
+    /// advanced. This prevents slow detector work from blocking the receive task and
+    /// prevents a queue overflow from reopening replay eligibility.
+    ///
+    /// [`SubscriptionHealth::reset_sequence_state`] advances a delivery generation;
+    /// the receiver drains and counts entries from older generations without exposing
+    /// them to the consumer.
+    pub async fn subscribe_channel(
+        &self,
+        session_id: &str,
+        producer_id: &str,
+        config: HandoffConfig,
+    ) -> Result<(SubscriptionHealth, LiveObservationReceiver), ZenohError> {
+        let key = sidecar_key(&self.realm, session_id)
+            .ok_or_else(|| ZenohError(format!("invalid NCP session id segment: {session_id:?}")))?;
+        if !ncp_core::valid_id_segment(producer_id) {
+            return Err(ZenohError(format!(
+                "invalid sidecar producer id segment: {producer_id:?}"
+            )));
+        }
+        let expected_session_id = session_id.to_owned();
+        let expected_producer_id = producer_id.to_owned();
+        let tap_counters = Arc::clone(&self.counters);
+        let subscription_counters = Arc::new(IngestCounters::default());
+        let limits = self.limits;
+        let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+        let delivery_boundary = Arc::new(DeliveryBoundary::default());
+        let (handoff, receiver, handoff_state) = bounded_handoff(
+            config,
+            Arc::clone(&delivery_boundary),
+            Arc::clone(&tap_counters),
+            Arc::clone(&subscription_counters),
+        );
+        let health = SubscriptionHealth {
+            counters: Arc::clone(&subscription_counters),
+            tap_counters: Arc::clone(&tap_counters),
+            sequences: Arc::clone(&sequences),
+            delivery_boundary: Arc::clone(&delivery_boundary),
+            handoff: Some(handoff_state),
+        };
+        self.bus
+            .subscribe(&key, move |_key, bytes| {
+                process_payload(
+                    &bytes,
+                    PayloadContext {
+                        expected_session_id: &expected_session_id,
+                        expected_producer_id: &expected_producer_id,
+                        limits,
+                        delivery_boundary: &delivery_boundary,
+                        sequences: &sequences,
+                        tap_counters: &tap_counters,
+                        subscription_counters: &subscription_counters,
+                    },
+                    &|observation| handoff.enqueue(observation),
+                );
+            })
+            .await?;
+        Ok((health, receiver))
     }
 
     /// Gracefully close the underlying Zenoh session (undeclare subscribers and flush).
@@ -1009,10 +1709,18 @@ where
         &observation,
     );
 
+    let callback_started = Instant::now();
     let callback_panicked = {
         let _callback = CallbackGuard::enter();
         catch_unwind(AssertUnwindSafe(|| on_obs(observation))).is_err()
     };
+    let callback_completed_at = Instant::now();
+    record_callback_latency_pair(
+        context.tap_counters,
+        context.subscription_counters,
+        callback_completed_at.saturating_duration_since(callback_started),
+        callback_completed_at,
+    );
     if callback_panicked {
         increment_pair(
             &context.tap_counters.callback_panics,
@@ -1022,8 +1730,42 @@ where
 }
 
 fn increment_pair(tap: &AtomicU64, subscription: &AtomicU64) {
-    tap.fetch_add(1, Ordering::Relaxed);
-    subscription.fetch_add(1, Ordering::Relaxed);
+    increment_pair_by(tap, subscription, 1);
+}
+
+fn increment_pair_by(tap: &AtomicU64, subscription: &AtomicU64, amount: u64) {
+    tap.fetch_add(amount, Ordering::Relaxed);
+    subscription.fetch_add(amount, Ordering::Relaxed);
+}
+
+fn record_callback_latency_pair(
+    tap: &IngestCounters,
+    subscription: &IngestCounters,
+    latency: Duration,
+    completed_at: Instant,
+) {
+    record_callback_latency(tap, latency, completed_at);
+    record_callback_latency(subscription, latency, completed_at);
+}
+
+fn record_callback_latency(counters: &IngestCounters, latency: Duration, completed_at: Instant) {
+    let mut state = counters
+        .callback_latency
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    state.samples = state.samples.saturating_add(1);
+    state.maximum = Some(
+        state
+            .maximum
+            .map_or(latency, |maximum| maximum.max(latency)),
+    );
+    if state
+        .last_completed_at
+        .is_none_or(|previous| completed_at >= previous)
+    {
+        state.last = Some(latency);
+        state.last_completed_at = Some(completed_at);
+    }
 }
 
 fn rejection_counter(counters: &IngestCounters, reason: RejectionReason) -> &AtomicU64 {
@@ -1137,6 +1879,276 @@ mod tests {
             },
             on_obs,
         );
+    }
+
+    struct HandoffHarness {
+        delivery_boundary: Arc<DeliveryBoundary>,
+        sequences: Arc<Mutex<LiveSequenceTracker>>,
+        tap_counters: Arc<IngestCounters>,
+        subscription_counters: Arc<IngestCounters>,
+        health: SubscriptionHealth,
+        handoff: ObservationHandoff,
+        receiver: Option<LiveObservationReceiver>,
+    }
+
+    impl HandoffHarness {
+        fn new(capacity: usize) -> Self {
+            let config = HandoffConfig::new(capacity).unwrap();
+            let delivery_boundary = Arc::new(DeliveryBoundary::default());
+            let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+            let tap_counters = Arc::new(IngestCounters::default());
+            let subscription_counters = Arc::new(IngestCounters::default());
+            let (handoff, receiver, state) = bounded_handoff(
+                config,
+                Arc::clone(&delivery_boundary),
+                Arc::clone(&tap_counters),
+                Arc::clone(&subscription_counters),
+            );
+            let health = SubscriptionHealth {
+                counters: Arc::clone(&subscription_counters),
+                tap_counters: Arc::clone(&tap_counters),
+                sequences: Arc::clone(&sequences),
+                delivery_boundary: Arc::clone(&delivery_boundary),
+                handoff: Some(state),
+            };
+            Self {
+                delivery_boundary,
+                sequences,
+                tap_counters,
+                subscription_counters,
+                health,
+                handoff,
+                receiver: Some(receiver),
+            }
+        }
+
+        fn push(&self, track_id: u64, sequence: u64) {
+            process_payload(
+                &encoded(track_id, sequence),
+                LiveLimits::default(),
+                &self.delivery_boundary,
+                &self.sequences,
+                &self.tap_counters,
+                &self.subscription_counters,
+                &|observation| self.handoff.enqueue(observation),
+            );
+        }
+
+        fn receiver(&mut self) -> &mut LiveObservationReceiver {
+            self.receiver.as_mut().unwrap()
+        }
+    }
+
+    #[test]
+    fn handoff_config_rejects_zero_capacity() {
+        assert_eq!(HandoffConfig::new(0), Err(HandoffConfigError::ZeroCapacity));
+    }
+
+    #[test]
+    fn handoff_config_rejects_capacity_above_hard_limit() {
+        assert_eq!(
+            HandoffConfig::new(MAX_LIVE_HANDOFF_CAPACITY + 1),
+            Err(HandoffConfigError::CapacityTooLarge {
+                capacity: MAX_LIVE_HANDOFF_CAPACITY + 1,
+                maximum: MAX_LIVE_HANDOFF_CAPACITY,
+            })
+        );
+    }
+
+    #[test]
+    fn bounded_handoff_drops_newest_at_capacity_and_reports_queue_metrics() {
+        let mut harness = HandoffHarness::new(1);
+
+        harness.push(1, 1);
+        harness.push(1, 2);
+
+        let full = harness.health.handoff_metrics().unwrap();
+        assert_eq!(full.queue_depth, 1);
+        assert_eq!(full.max_queue_depth, 1);
+        assert_eq!(full.enqueued, 1);
+        assert_eq!(full.full_drops, 1);
+        assert_eq!(full.total_drops(), 1);
+        assert_eq!(full.oldest_queued.unwrap().sequence, 1);
+        assert!(full.oldest_enqueue_age.is_some());
+        assert!(full.last_enqueue_latency.is_some());
+        assert!(full.max_enqueue_latency.is_some());
+        let callbacks = harness.health.callback_latency();
+        assert_eq!(callbacks.samples, 2);
+        assert!(callbacks.last.is_some());
+        assert!(callbacks.maximum.is_some());
+        assert!(callbacks.maximum >= callbacks.last);
+        assert_eq!(harness.tap_counters.callback_latency().samples, 2);
+
+        let delivered = harness.receiver().try_recv().unwrap();
+        assert_eq!(delivered.seq, 1);
+        let drained = harness.health.handoff_metrics().unwrap();
+        assert_eq!(drained.queue_depth, 0);
+        assert_eq!(drained.delivered, 1);
+        assert!(drained.last_dequeue_latency.is_some());
+        assert!(drained.max_dequeue_latency.is_some());
+    }
+
+    #[test]
+    fn bounded_handoff_is_fifo_and_full_drop_does_not_reopen_replay() {
+        let mut harness = HandoffHarness::new(2);
+        harness.push(1, 1);
+        harness.push(1, 2);
+        harness.push(1, 3);
+
+        let first = harness.receiver().try_recv().unwrap();
+        let second = harness.receiver().try_recv().unwrap();
+        assert_eq!((first.seq, second.seq), (1, 2));
+
+        harness.push(1, 3);
+
+        assert_eq!(harness.health.observations_accepted(), 3);
+        assert_eq!(harness.health.handoff_full_drops(), 1);
+        assert_eq!(
+            harness
+                .health
+                .rejection_count(RejectionReason::DuplicateOrRegressedSequence),
+            1
+        );
+        assert!(matches!(
+            harness.receiver().try_recv(),
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty)
+        ));
+    }
+
+    #[test]
+    fn concurrent_dequeue_and_enqueue_keep_channel_metadata_capacity_bounded() {
+        let mut harness = HandoffHarness::new(1);
+        harness.push(1, 1);
+
+        // Hold the dequeued item before its generation/delivery accounting. The
+        // actual Tokio removal and mirror pop must already be one atomic queue
+        // operation so a concurrent producer can reuse the slot without leaving
+        // stale metadata or inflating the depth above capacity.
+        let queued = {
+            let receiver = harness.receiver();
+            let state = Arc::clone(&receiver.state);
+            state.try_dequeue(&mut receiver.receiver).unwrap()
+        };
+        let handoff = harness.handoff.clone();
+        let delivery_boundary = Arc::clone(&harness.delivery_boundary);
+        thread::spawn(move || {
+            let _delivery = delivery_boundary.begin_delivery();
+            handoff.enqueue(PidObservation::scalar(1, 2, 2, Modality::Radar, 3.0, 3));
+        })
+        .join()
+        .unwrap();
+
+        let metrics = harness.health.handoff_metrics().unwrap();
+        assert_eq!(metrics.queue_depth, 1);
+        assert_eq!(metrics.max_queue_depth, 1);
+        assert_eq!(metrics.oldest_queued.unwrap().sequence, 2);
+
+        let first = harness.receiver().finish_dequeue(queued).unwrap();
+        let second = harness.receiver().try_recv().unwrap();
+        assert_eq!((first.seq, second.seq), (1, 2));
+    }
+
+    #[test]
+    fn bounded_handoff_counts_delivery_after_receiver_close() {
+        let mut harness = HandoffHarness::new(1);
+        harness.receiver().close();
+
+        harness.push(1, 1);
+
+        assert_eq!(harness.health.handoff_enqueued(), 0);
+        assert_eq!(harness.health.handoff_closed_drops(), 1);
+        assert_eq!(harness.health.handoff_drops(), 1);
+        assert_eq!(harness.health.handoff_metrics().unwrap().queue_depth, 0);
+    }
+
+    #[test]
+    fn bounded_handoff_reset_discards_stale_generation_before_delivery() {
+        let mut harness = HandoffHarness::new(2);
+        harness.push(1, 1);
+        assert_eq!(harness.health.reset_sequence_state().unwrap(), 1);
+        harness.push(1, 1);
+        let reset_metrics = harness.health.handoff_metrics().unwrap();
+        assert_eq!(reset_metrics.generation, 1);
+        assert_eq!(reset_metrics.oldest_queued_generation, Some(0));
+
+        let delivered = harness.receiver().try_recv().unwrap();
+
+        assert_eq!(delivered.seq, 1);
+        assert_eq!(harness.health.handoff_stale_generation_drops(), 1);
+        assert_eq!(harness.health.handoff_delivered(), 1);
+        assert_eq!(harness.health.handoff_metrics().unwrap().generation, 1);
+        assert!(matches!(
+            harness.receiver().try_recv(),
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty)
+        ));
+    }
+
+    #[test]
+    fn reset_cannot_revoke_an_observation_already_returned_to_the_consumer() {
+        let mut harness = HandoffHarness::new(1);
+        harness.push(1, 1);
+        let already_returned = harness.receiver().try_recv().unwrap();
+
+        assert_eq!(harness.health.reset_sequence_state().unwrap(), 1);
+
+        // The caller owns this value now. This is why a cross-task reset must
+        // first pause the consumer and wait for its downstream work to finish.
+        assert_eq!(already_returned.seq, 1);
+        assert_eq!(harness.health.handoff_delivered(), 1);
+        assert_eq!(harness.health.handoff_stale_generation_drops(), 0);
+    }
+
+    #[test]
+    fn concurrent_callback_records_publish_one_coherent_completion_ordered_snapshot() {
+        let counters = Arc::new(IngestCounters::default());
+        let origin = Instant::now();
+        let (newer_recorded_tx, newer_recorded_rx) = mpsc::channel();
+
+        let newer_counters = Arc::clone(&counters);
+        let newer = thread::spawn(move || {
+            record_callback_latency(
+                &newer_counters,
+                Duration::from_millis(7),
+                origin + Duration::from_millis(2),
+            );
+            newer_recorded_tx.send(()).unwrap();
+        });
+        let older_counters = Arc::clone(&counters);
+        let older = thread::spawn(move || {
+            newer_recorded_rx.recv().unwrap();
+            // This longer callback completed first but records second. It must
+            // update the maximum without overwriting the latest completion.
+            record_callback_latency(
+                &older_counters,
+                Duration::from_millis(20),
+                origin + Duration::from_millis(1),
+            );
+        });
+        newer.join().unwrap();
+        older.join().unwrap();
+
+        assert_eq!(
+            counters.callback_latency(),
+            CallbackLatencyMetrics {
+                samples: 2,
+                last: Some(Duration::from_millis(7)),
+                maximum: Some(Duration::from_millis(20)),
+            }
+        );
+    }
+
+    #[test]
+    fn dropping_bounded_receiver_counts_abandoned_entries_and_closes_handoff() {
+        let mut harness = HandoffHarness::new(2);
+        harness.push(1, 1);
+        drop(harness.receiver.take().unwrap());
+
+        assert_eq!(harness.health.handoff_abandoned_drops(), 1);
+        assert_eq!(harness.health.handoff_metrics().unwrap().queue_depth, 0);
+
+        harness.push(1, 2);
+        assert_eq!(harness.health.handoff_closed_drops(), 1);
+        assert_eq!(harness.health.handoff_drops(), 2);
     }
 
     #[test]
@@ -1358,6 +2370,11 @@ mod tests {
         assert_eq!(callbacks.load(Ordering::Relaxed), 2);
         assert_eq!(subscription.callback_panics.load(Ordering::Relaxed), 1);
         assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 0);
+        let callback_latency = subscription.callback_latency();
+        assert_eq!(callback_latency.samples, 2);
+        assert!(callback_latency.last.is_some());
+        assert!(callback_latency.maximum.is_some());
+        assert!(callback_latency.maximum >= callback_latency.last);
     }
 
     #[test]
@@ -1529,6 +2546,7 @@ mod tests {
             tap_counters: Arc::clone(&tap_counters),
             sequences,
             delivery_boundary: Arc::new(DeliveryBoundary::default()),
+            handoff: None,
         };
 
         let removed = health.reset_sequence_state().unwrap();
@@ -1551,6 +2569,7 @@ mod tests {
             tap_counters: Arc::clone(&tap_counters),
             sequences: Arc::clone(&sequences),
             delivery_boundary: Arc::clone(&delivery_boundary),
+            handoff: None,
         };
         let (error_tx, error_rx) = mpsc::channel();
 
@@ -1587,6 +2606,7 @@ mod tests {
             tap_counters: Arc::new(IngestCounters::default()),
             sequences: Arc::new(Mutex::new(LiveSequenceTracker::default())),
             delivery_boundary: Arc::new(DeliveryBoundary::default()),
+            handoff: None,
         };
         let (error_tx, error_rx) = mpsc::channel();
 
@@ -1622,6 +2642,7 @@ mod tests {
             tap_counters: Arc::clone(&tap_counters),
             sequences: Arc::clone(&sequences),
             delivery_boundary: Arc::clone(&delivery_boundary),
+            handoff: None,
         };
         let (error_tx, error_rx) = mpsc::channel();
 
@@ -1659,6 +2680,7 @@ mod tests {
             tap_counters: Arc::clone(&tap_counters),
             sequences: Arc::clone(&sequences),
             delivery_boundary: Arc::clone(&delivery_boundary),
+            handoff: None,
         };
         let callback_release = Arc::new(Barrier::new(2));
         let (entered_tx, entered_rx) = mpsc::channel();

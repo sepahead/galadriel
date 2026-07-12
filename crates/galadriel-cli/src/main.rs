@@ -27,7 +27,7 @@ const MAX_REPLAY_PID_TRACKS: usize = 8;
 #[command(
     name = "galadriel",
     version,
-    about = "Galadriel's Mirror — a cross-sensor spoof/jam detector (pure default: NIS χ² ⊕ signed-ρ consistency)."
+    about = "Galadriel's Mirror — a cross-sensor statistical-consistency monitor (pure default: NIS χ² ⊕ signed-ρ consistency)."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -144,8 +144,9 @@ fn run_demo(frames: usize, seed: u64) -> anyhow::Result<()> {
         )?;
     }
 
-    // The stealthy spoof the magnitude baseline is blind to — caught by the pure
-    // correlation default (no pid-core). This scene needs correlated honest channels.
+    // The magnitude baseline is blind to this synthetic stealthy-spoof scenario;
+    // the pure correlation default flags its modeled decoupling (no pid-core).
+    // This scene needs correlated honest channels.
     run_stealthy_default_demo(frames, seed, color)?;
 
     #[cfg(feature = "pid")]
@@ -184,7 +185,7 @@ fn run_case(
     }
     anyhow::ensure!(!mods.is_empty(), "demo modalities must not be empty");
     anyhow::ensure!(
-        stream.len() % mods.len() == 0,
+        stream.len().is_multiple_of(mods.len()),
         "demo stream has an incomplete fusion frame"
     );
     let mut mirror = Mirror::with_modalities(DetectorConfig::default(), mods)?;
@@ -231,7 +232,9 @@ fn run_case(
     let v = verdict_str(&report.verdict);
     let vc = match report.verdict {
         Verdict::Nominal => green(&v, color),
-        Verdict::Spoof { .. } | Verdict::Jam | Verdict::Anomaly { .. } => red(&v, color),
+        Verdict::AttributedInconsistency { .. }
+        | Verdict::BroadDegradation
+        | Verdict::UnclassifiedAnomaly { .. } => red(&v, color),
         Verdict::InsufficientEvidence => dim(&v, color),
     };
     println!("└▷ {}   {}", vc, dim(&report.note, color));
@@ -261,17 +264,19 @@ fn sparkline(data: &[f64], lo: f64, hi: f64) -> String {
 fn verdict_str(v: &Verdict) -> String {
     match v {
         Verdict::Nominal => "VERDICT: NOMINAL".into(),
-        Verdict::Spoof { channels } => format!(
-            "VERDICT: SPOOF [{}]",
+        Verdict::AttributedInconsistency { channels } => format!(
+            "VERDICT: ATTRIBUTED-INCONSISTENCY (spoof-like evidence; cause unclassified) [{}]",
             channels
                 .iter()
                 .map(|m| m.label())
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        Verdict::Jam => "VERDICT: JAM".into(),
-        Verdict::Anomaly { channels } => format!(
-            "VERDICT: ANOMALY [{}]",
+        Verdict::BroadDegradation => {
+            "VERDICT: BROAD-DEGRADATION (jam-like evidence; cause unclassified)".into()
+        }
+        Verdict::UnclassifiedAnomaly { channels } => format!(
+            "VERDICT: UNCLASSIFIED-ANOMALY [{}]",
             channels
                 .iter()
                 .map(|modality| modality.label())
@@ -285,11 +290,11 @@ fn verdict_str(v: &Verdict) -> String {
 fn fused_verdict_str(v: &FusedVerdict) -> String {
     match v {
         FusedVerdict::Nominal => "VERDICT: NOMINAL".into(),
-        FusedVerdict::Spoof {
+        FusedVerdict::AttributedInconsistency {
             channels,
             magnitude,
         } => format!(
-            "VERDICT: SPOOF ({}) [{}]",
+            "VERDICT: ATTRIBUTED-INCONSISTENCY (spoof-like evidence; cause unclassified; {}) [{}]",
             match magnitude {
                 MagnitudeEvidence::InCovariance => "in-covariance magnitude",
                 MagnitudeEvidence::Elevated => "elevated magnitude",
@@ -302,9 +307,11 @@ fn fused_verdict_str(v: &FusedVerdict) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        FusedVerdict::Jam => "VERDICT: JAM".into(),
-        FusedVerdict::Anomaly { channels } => format!(
-            "VERDICT: ANOMALY [{}]",
+        FusedVerdict::BroadDegradation => {
+            "VERDICT: BROAD-DEGRADATION (jam-like evidence; cause unclassified)".into()
+        }
+        FusedVerdict::UnclassifiedAnomaly { channels } => format!(
+            "VERDICT: UNCLASSIFIED-ANOMALY [{}]",
             channels
                 .iter()
                 .map(|modality| modality.label())
@@ -312,6 +319,42 @@ fn fused_verdict_str(v: &FusedVerdict) -> String {
                 .join(", ")
         ),
         FusedVerdict::InsufficientEvidence => "VERDICT: INSUFFICIENT-EVIDENCE".into(),
+    }
+}
+
+#[cfg(test)]
+mod verdict_label_tests {
+    use super::*;
+
+    #[test]
+    fn baseline_labels_use_neutral_verdict_names() {
+        let attributed = verdict_str(&Verdict::AttributedInconsistency {
+            channels: vec![Modality::Radar],
+        });
+        assert!(attributed.contains("ATTRIBUTED-INCONSISTENCY"));
+        assert!(attributed.contains("spoof-like evidence; cause unclassified"));
+        assert!(!attributed.contains("VERDICT: SPOOF"));
+
+        let broad = verdict_str(&Verdict::BroadDegradation);
+        assert!(broad.contains("BROAD-DEGRADATION"));
+        assert!(broad.contains("jam-like evidence; cause unclassified"));
+        assert!(!broad.contains("VERDICT: JAM"));
+    }
+
+    #[test]
+    fn fused_labels_use_neutral_verdict_names() {
+        let attributed = fused_verdict_str(&FusedVerdict::AttributedInconsistency {
+            channels: vec![Modality::Acoustic],
+            magnitude: MagnitudeEvidence::InCovariance,
+        });
+        assert!(attributed.contains("ATTRIBUTED-INCONSISTENCY"));
+        assert!(attributed.contains("spoof-like evidence; cause unclassified"));
+        assert!(!attributed.contains("VERDICT: SPOOF"));
+
+        let broad = fused_verdict_str(&FusedVerdict::BroadDegradation);
+        assert!(broad.contains("BROAD-DEGRADATION"));
+        assert!(broad.contains("jam-like evidence; cause unclassified"));
+        assert!(!broad.contains("VERDICT: JAM"));
     }
 }
 
@@ -570,7 +613,9 @@ impl ReplayHistory {
 fn baseline_alarm(verdict: &Verdict) -> bool {
     matches!(
         verdict,
-        Verdict::Spoof { .. } | Verdict::Jam | Verdict::Anomaly { .. }
+        Verdict::AttributedInconsistency { .. }
+            | Verdict::BroadDegradation
+            | Verdict::UnclassifiedAnomaly { .. }
     )
 }
 
@@ -578,7 +623,9 @@ fn baseline_alarm(verdict: &Verdict) -> bool {
 fn fused_alarm(verdict: &FusedVerdict) -> bool {
     matches!(
         verdict,
-        FusedVerdict::Spoof { .. } | FusedVerdict::Jam | FusedVerdict::Anomaly { .. }
+        FusedVerdict::AttributedInconsistency { .. }
+            | FusedVerdict::BroadDegradation
+            | FusedVerdict::UnclassifiedAnomaly { .. }
     )
 }
 
@@ -802,9 +849,9 @@ fn run_replay(
             let verdict = verdict_str(&baseline.verdict);
             let colored = match baseline.verdict {
                 Verdict::Nominal => green(&verdict, color),
-                Verdict::Spoof { .. } | Verdict::Jam | Verdict::Anomaly { .. } => {
-                    red(&verdict, color)
-                }
+                Verdict::AttributedInconsistency { .. }
+                | Verdict::BroadDegradation
+                | Verdict::UnclassifiedAnomaly { .. } => red(&verdict, color),
                 Verdict::InsufficientEvidence => dim(&verdict, color),
             };
             println!(
@@ -818,9 +865,9 @@ fn run_replay(
             let colored = match default_verdict {
                 FusedVerdict::Nominal => green(&fused, color),
                 FusedVerdict::InsufficientEvidence => dim(&fused, color),
-                FusedVerdict::Spoof { .. } | FusedVerdict::Jam | FusedVerdict::Anomaly { .. } => {
-                    red(&fused, color)
-                }
+                FusedVerdict::AttributedInconsistency { .. }
+                | FusedVerdict::BroadDegradation
+                | FusedVerdict::UnclassifiedAnomaly { .. } => red(&fused, color),
             };
             println!(
                 "│  default  · track {track_id}: terminal {}  {}",
@@ -980,9 +1027,9 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
     let pv = match report.verdict {
         FusedVerdict::Nominal => green(&fused, color),
         FusedVerdict::InsufficientEvidence => dim(&fused, color),
-        FusedVerdict::Spoof { .. } | FusedVerdict::Jam | FusedVerdict::Anomaly { .. } => {
-            red(&fused, color)
-        }
+        FusedVerdict::AttributedInconsistency { .. }
+        | FusedVerdict::BroadDegradation
+        | FusedVerdict::UnclassifiedAnomaly { .. } => red(&fused, color),
     };
     println!(
         "└▷ multi-axis fused PID: {}   {}   {}",

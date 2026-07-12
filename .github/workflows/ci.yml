@@ -87,6 +87,33 @@ jobs:
             exit 1
           fi
 
+  current-stable:
+    name: current stable · clippy · test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install current stable Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          components: clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Fetch locked dependencies
+        run: cargo fetch --locked
+
+      - name: Clippy (workspace, all targets and features)
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Test (workspace, all features)
+        run: cargo test --workspace --all-features --locked
+
   supply-chain:
     name: advisories · licenses · sources
     runs-on: ubuntu-24.04
@@ -101,4 +128,11 @@ jobs:
         uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2
         with:
           rust-version: "1.88.0"
+          arguments: --all-features --locked
+
+      - name: Check fuzz-workspace dependency policy
+        uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2
+        with:
+          rust-version: "1.88.0"
+          manifest-path: fuzz/Cargo.toml
           arguments: --all-features --locked

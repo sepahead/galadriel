@@ -328,7 +328,7 @@ versa). Galadriel's suite is a reusable starting point:
 | Attack | Layer(s) touched | What it probes |
 |---|---|---|
 | Loud bias spoof | L1/L2 | Magnitude sensitivity (the NIS baseline's home turf) |
-| Broadband jam | L0/L2 | Correlated all-channel denial; jam-vs-spoof disambiguation |
+| Broadband jam | L0/L2 | Correlated all-channel denial; localized-vs-broad degradation evidence |
 | **Moment-matched stealthy spoof** | L2 | The consistency detector's reason to exist |
 | Colluding 2-of-3 majority | L2/L3 | Honest-majority failure (structural, §5.6) |
 | Adaptive threshold-hugging | L2 | Kerckhoffs-aware evasion ceiling at matched FAR (§5.7) |

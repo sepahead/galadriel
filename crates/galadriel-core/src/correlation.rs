@@ -121,8 +121,9 @@ pub enum CorrVerdict {
     /// All ready channels belong to one strict-majority positive-consensus clique.
     Nominal,
     /// One or a minority of channels decoupled (low signed `ρ` with every member
-    /// of the positive-consensus clique).
-    Spoof(Vec<Modality>),
+    /// of the positive-consensus clique). This identifies statistical structure,
+    /// not an attack cause.
+    Decoupled(Vec<Modality>),
     /// Too few channels/samples or no consensus. Fail closed.
     InsufficientEvidence,
 }
@@ -432,7 +433,7 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
     } else {
         let names: Vec<&str> = decoupled.iter().map(|m| m.label()).collect();
         (
-            CorrVerdict::Spoof(decoupled.clone()),
+            CorrVerdict::Decoupled(decoupled.clone()),
             format!(
                 "{} channel(s) linearly decoupled: {}",
                 decoupled.len(),
@@ -467,7 +468,7 @@ mod tests {
     }
 
     #[test]
-    fn correlated_channels_nominal_one_decoupled_is_spoof() {
+    fn correlated_channels_with_one_outsider_are_decoupled() {
         // Three channels: A and B track a shared ramp (correlated); C is decoupled noise.
         let n = 128;
         let a = series(n, |i| (i as f64).sin());
@@ -486,10 +487,10 @@ mod tests {
             CorrVerdict::Nominal
         );
 
-        let spoofed = vec![(mods[0], a), (mods[1], b), (mods[2], c_bad)];
-        match analyze(&spoofed, &CorrConfig::default()).unwrap().verdict {
-            CorrVerdict::Spoof(v) => assert!(v.contains(&Modality::Acoustic)),
-            other => panic!("expected Spoof(acoustic), got {other:?}"),
+        let decoupled = vec![(mods[0], a), (mods[1], b), (mods[2], c_bad)];
+        match analyze(&decoupled, &CorrConfig::default()).unwrap().verdict {
+            CorrVerdict::Decoupled(v) => assert!(v.contains(&Modality::Acoustic)),
+            other => panic!("expected Decoupled(acoustic), got {other:?}"),
         }
     }
 
@@ -509,7 +510,8 @@ mod tests {
     fn no_linear_consensus_fails_closed() {
         use std::f64::consts::PI;
         // Three orthogonal sinusoids (DFT basis over a full period) — pairwise |ρ| ≈ 0, so
-        // there is no coherent consensus to decouple from → fail closed, not a false Spoof.
+        // There is no coherent consensus to decouple from, so fail closed rather
+        // than manufacturing a false decoupling attribution.
         let n = 120;
         let s = |k: f64| series(n, |i| (2.0 * PI * k * i as f64 / n as f64).sin());
         let chans = vec![
@@ -534,12 +536,12 @@ mod tests {
         ];
         assert_eq!(
             analyze(&channels, &CorrConfig::default()).unwrap().verdict,
-            CorrVerdict::Spoof(vec![Modality::Acoustic])
+            CorrVerdict::Decoupled(vec![Modality::Acoustic])
         );
     }
 
     #[test]
-    fn constant_outlier_is_unassessable_not_a_spoof() {
+    fn constant_outlier_is_unassessable_not_decoupled() {
         let n = 128;
         let x = series(n, |i| (i as f64 / 7.0).sin());
         let channels = vec![

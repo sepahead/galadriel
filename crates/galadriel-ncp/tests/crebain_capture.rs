@@ -74,7 +74,10 @@ fn crebain_clean_capture_keeps_insufficient_correlation_fail_closed() {
         .assess(1, last)
         .expect("baseline assessment succeeds");
     assert!(
-        !matches!(report.verdict, Verdict::Spoof { .. } | Verdict::Jam),
+        !matches!(
+            report.verdict,
+            Verdict::AttributedInconsistency { .. } | Verdict::BroadDegradation
+        ),
         "clean crebain capture must not alarm the baseline: {:?}",
         report.verdict
     );

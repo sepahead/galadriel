@@ -6,6 +6,19 @@
 /// than validating each window and track limit in isolation.
 pub const MAX_RETAINED_NIS_SAMPLES: usize = 1_000_000;
 
+/// Largest supported fusion-sequence gap for one contiguous evidence window.
+///
+/// This matches the largest retained correlation window. Larger values would
+/// effectively disable sequence continuity while adding no usable evidence.
+pub const MAX_ALIGNMENT_SEQ_GAP: u64 = crate::correlation::MAX_CORRELATION_WINDOW as u64;
+
+/// Largest supported timestamp span across one aligned cross-modal frame.
+///
+/// A zero value is valid and requests exact timestamp equality; it does not
+/// disable the check. The day-scale ceiling prevents `u64::MAX`-style sentinels
+/// from silently disabling temporal coherence.
+pub const MAX_ALIGNMENT_TIMESTAMP_SKEW_MS: u64 = 86_400_000;
+
 /// Largest supported interval between successive samples of one modality.
 ///
 /// A finite ceiling prevents configurations from effectively disabling temporal
@@ -33,6 +46,7 @@ pub struct DetectorConfig {
     /// Maximum timestamp span across otherwise-ready modalities at assessment.
     /// A larger span means the records do not describe one comparable fusion
     /// instant and therefore cannot support a nominal or attributed verdict.
+    /// Zero requests exact timestamp equality; it never disables the check.
     pub max_timestamp_skew_ms: u64,
     /// Maximum forward timestamp gap between successive observations of one
     /// `(track, modality)`. A larger gap starts a new evidence window.
@@ -58,9 +72,9 @@ pub struct DetectorConfig {
     pub cusum_slack: f64,
     /// CUSUM alarm threshold `h` in accumulated null-standard-deviation units.
     pub cusum_threshold: f64,
-    /// Fraction of ready channels that must be anomalous to call [`crate::Verdict::Jam`]
-    /// (correlated, broad degradation) rather than [`crate::Verdict::Spoof`]
-    /// (isolated, single-channel injection).
+    /// Fraction of ready channels that must be anomalous to call [`crate::Verdict::BroadDegradation`]
+    /// (broad degradation evidence) rather than
+    /// [`crate::Verdict::AttributedInconsistency`] (localized magnitude evidence).
     pub jam_fraction: f64,
 }
 
@@ -112,18 +126,11 @@ impl DetectorConfig {
                 crate::Modality::ALL.len()
             )));
         }
-        if self.max_seq_gap == 0 {
-            return Err(InvalidConfig(
-                "max_seq_gap must be > 0 so consecutive samples can accumulate".into(),
-            ));
-        }
-        if self.max_inter_sample_gap_ms == 0
-            || self.max_inter_sample_gap_ms > MAX_INTER_SAMPLE_GAP_MS
-        {
-            return Err(InvalidConfig(format!(
-                "max_inter_sample_gap_ms must be in 1..={MAX_INTER_SAMPLE_GAP_MS}"
-            )));
-        }
+        validate_alignment_limits(
+            self.max_seq_gap,
+            self.max_timestamp_skew_ms,
+            self.max_inter_sample_gap_ms,
+        )?;
         if self.max_tracks == 0 {
             return Err(InvalidConfig("max_tracks must be > 0".into()));
         }
@@ -167,6 +174,32 @@ impl DetectorConfig {
         }
         Ok(())
     }
+}
+
+/// Validate the raw temporal limits shared by streaming and direct extraction.
+pub(crate) fn validate_alignment_limits(
+    max_seq_gap: u64,
+    max_timestamp_skew_ms: u64,
+    max_inter_sample_gap_ms: u64,
+) -> crate::Result<()> {
+    use crate::GaladrielError::InvalidConfig;
+
+    if !(1..=MAX_ALIGNMENT_SEQ_GAP).contains(&max_seq_gap) {
+        return Err(InvalidConfig(format!(
+            "max_seq_gap must be in 1..={MAX_ALIGNMENT_SEQ_GAP}"
+        )));
+    }
+    if max_timestamp_skew_ms > MAX_ALIGNMENT_TIMESTAMP_SKEW_MS {
+        return Err(InvalidConfig(format!(
+            "max_timestamp_skew_ms must be in 0..={MAX_ALIGNMENT_TIMESTAMP_SKEW_MS}; zero means exact synchrony"
+        )));
+    }
+    if !(1..=MAX_INTER_SAMPLE_GAP_MS).contains(&max_inter_sample_gap_ms) {
+        return Err(InvalidConfig(format!(
+            "max_inter_sample_gap_ms must be in 1..={MAX_INTER_SAMPLE_GAP_MS}"
+        )));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -214,6 +247,14 @@ mod tests {
         assert!(bad(|c| c.min_channels = 1), "min_channels < 2");
         assert!(bad(|c| c.max_seq_gap = 0), "max_seq_gap 0");
         assert!(
+            bad(|c| c.max_seq_gap = MAX_ALIGNMENT_SEQ_GAP + 1),
+            "max_seq_gap above policy bound"
+        );
+        assert!(
+            bad(|c| c.max_timestamp_skew_ms = MAX_ALIGNMENT_TIMESTAMP_SKEW_MS + 1),
+            "max_timestamp_skew_ms above policy bound"
+        );
+        assert!(
             bad(|c| c.max_inter_sample_gap_ms = 0),
             "max_inter_sample_gap_ms 0"
         );
@@ -250,6 +291,19 @@ mod tests {
                 ..Default::default()
             };
             assert!(c.validate().is_ok(), "jam_fraction {jam_fraction}");
+        }
+
+        for max_timestamp_skew_ms in [0, MAX_ALIGNMENT_TIMESTAMP_SKEW_MS] {
+            let c = DetectorConfig {
+                max_seq_gap: MAX_ALIGNMENT_SEQ_GAP,
+                max_timestamp_skew_ms,
+                max_inter_sample_gap_ms: MAX_INTER_SAMPLE_GAP_MS,
+                ..Default::default()
+            };
+            assert!(
+                c.validate().is_ok(),
+                "timestamp skew boundary {max_timestamp_skew_ms}"
+            );
         }
     }
 }

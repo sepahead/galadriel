@@ -27,6 +27,9 @@ may contain breaking changes.
   `QuietDevelopment` transport; the live tap no longer implies that a quiet default is secure.
 - Carry a time-bounded exception for `RUSTSEC-2026-0041` only while CI proves Zenoh's
   vulnerable transport-compression feature remains disabled.
+- Add an easy bounded live-observation handoff with a fixed `DropNewest` policy,
+  reset generations, replay-safe overflow semantics, and queue/drop/latency health
+  metrics; the advanced inline callback API remains available.
 
 ### Changed
 
@@ -73,6 +76,13 @@ may contain breaking changes.
   and reference `galadriel-sim` through the workspace table in `galadriel-pid` dev-dependencies.
 - Migrate the NCP integration to the 0.7 wire revision and pin `ncp-core`/`ncp-zenoh`
   to the immutable commit corresponding to the public `v0.7.1` tag.
+- Rename causal-sounding detector verdicts to evidence-neutral
+  `AttributedInconsistency`, `BroadDegradation`, `UnclassifiedAnomaly`, and `Decoupled`.
+  Baseline-verdict JSON serialization uses the new tags while deserialization accepts the
+  legacy `spoof`, `jam`, and `anomaly` tags for compatibility.
+- Replace the contradictory public fusion slice-plus-boolean input with typed
+  `ConsistencyEvidence`; positive attribution is non-empty by construction and explicit
+  conflicts always fail closed.
 
 ### Fixed
 
@@ -111,6 +121,9 @@ may contain breaking changes.
   them — a parser differential with first-wins JSON consumers on a security boundary.
 - Print the advisory `calibrated_posterior=false` footer on `replay` output, matching the
   demo; a real-capture replay previously ended with bare per-track verdicts.
+- Impose explicit policy ceilings on alignment sequence gaps and timestamp skew (with zero
+  documented as exact timestamp equality) so `u64::MAX` cannot silently disable temporal
+  comparability in streaming or direct extraction APIs.
 
 ### Documentation
 
@@ -149,11 +162,13 @@ may contain breaking changes.
 - Note that the sequential study's detectors run at different realized false-alarm rates, so
   its latency column is not strictly iso-FAR, and clarify that `prior_id` non-reuse is a
   producer attestation enforced within each aligned frame/context window.
+- Reorder the README's opening around the problem, architecture, one verified command,
+  representative output, current evidence boundary, and then the full caveats.
 
 ### Added
 
-- `Anomaly` verdicts for positive evidence that cannot honestly be classified as a targeted
-  spoof or broad jam.
+- `UnclassifiedAnomaly` verdicts for positive evidence that cannot support a localized or
+  broad attribution.
 - Expected-modality registration and freshness reporting.
 - Explicit maximum sequence gap and maximum active-track configuration.
 - Full JSONL/live-ingest limits and sequence validation.
@@ -176,6 +191,13 @@ may contain breaking changes.
   undeclared envelope and nested observation fields are rejected. Because `PidObservation`
   itself now rejects unknown fields, this tightening applies to every ingest path, including
   bounded JSONL replay.
+- A one-command `galadriel-evidence` runner with explicit versioned configuration,
+  commit/toolchain manifest, per-trial JSONL, holdout-only summaries, stream metrics,
+  provenance-abstention arms, a human report, and checksums.
+- Cargo-fuzz targets for NCP/JSONL decoding and stateful detector/projection boundaries,
+  plus a strict pull-request mutation diff, an observational scheduled mutation baseline,
+  and a current-stable CI lane alongside the pinned MSRV.
+- `CITATION.cff` for commit-exact citation of the research prototype.
 
 ### Known limitations
 

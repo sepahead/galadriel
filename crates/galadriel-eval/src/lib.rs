@@ -516,9 +516,9 @@ impl DetectorEvidence {
     }
 }
 
-/// Baseline: streaming NIS χ² Mirror. Alarm = `Spoof`/`Jam`; score = the strongest
-/// per-channel terminal-window surprise `1 − min_c p_right`, ranked above all
-/// non-alarms when a CUSUM-only alarm fires.
+/// Baseline: streaming NIS χ² Mirror. Alarm = attributed, broad, or unclassified
+/// magnitude evidence; score = the strongest per-channel terminal-window surprise
+/// `1 − min_c p_right`, ranked above all non-alarms when a CUSUM-only alarm fires.
 fn baseline_eval(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
     let mut m = Mirror::with_modalities(DetectorConfig::default(), &MODALITIES)?;
     for o in stream {
@@ -528,7 +528,9 @@ fn baseline_eval(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
     let rep = m.assess(1, last)?;
     let alarm = match rep.verdict {
         Verdict::InsufficientEvidence => None,
-        Verdict::Spoof { .. } | Verdict::Jam | Verdict::Anomaly { .. } => Some(true),
+        Verdict::AttributedInconsistency { .. }
+        | Verdict::BroadDegradation
+        | Verdict::UnclassifiedAnomaly { .. } => Some(true),
         Verdict::Nominal => Some(false),
     };
     let minimum_p = rep
@@ -577,13 +579,13 @@ fn alarm_rank_evidence(evidence: DetectorEvidence) -> DetectorEvidence {
     }
 }
 
-/// Registered projection-axis-0 PID component: alarm = `Spoof`; score =
-/// decoupling depth over KSG-MI corroborations.
+/// Registered projection-axis-0 PID component: alarm = `Decoupled`; score = decoupling
+/// depth over KSG-MI corroborations.
 fn pid_evidence(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
     let channels = scalar_channels(stream, &MODALITIES, 0)?;
     let rep = analyze(&channels, &PidConfig::default())?;
     let alarm = match rep.verdict {
-        PidVerdict::Spoof(_) => Some(true),
+        PidVerdict::Decoupled(_) => Some(true),
         PidVerdict::Nominal => Some(false),
         PidVerdict::InsufficientEvidence => None,
     };
@@ -608,7 +610,7 @@ fn corr_evidence(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
     let channels = scalar_channels(stream, &MODALITIES, 0)?;
     let report = correlation::analyze(&channels, &CorrConfig::default())?;
     let alarm = match report.verdict {
-        CorrVerdict::Spoof(_) => Some(true),
+        CorrVerdict::Decoupled(_) => Some(true),
         CorrVerdict::Nominal => Some(false),
         CorrVerdict::InsufficientEvidence => None,
     };
@@ -635,7 +637,8 @@ fn component_evaluations(stream: &[PidObservation]) -> CoreResult<[DetectorEvide
     ])
 }
 
-/// Fused detector: alarm on a `Spoof` or `Jam` fused verdict (NIS ⊕ PID escalation).
+/// Fused detector: alarm on attributed-inconsistency, broad-degradation, or unclassified
+/// evidence (NIS ⊕ PID escalation).
 fn fused_eval(stream: &[PidObservation]) -> CoreResult<Option<bool>> {
     let r = assess_stream(
         stream,
@@ -645,7 +648,9 @@ fn fused_eval(stream: &[PidObservation]) -> CoreResult<Option<bool>> {
     )?;
     Ok(match r.verdict {
         FusedVerdict::InsufficientEvidence => None,
-        FusedVerdict::Spoof { .. } | FusedVerdict::Jam | FusedVerdict::Anomaly { .. } => Some(true),
+        FusedVerdict::AttributedInconsistency { .. }
+        | FusedVerdict::BroadDegradation
+        | FusedVerdict::UnclassifiedAnomaly { .. } => Some(true),
         FusedVerdict::Nominal => Some(false),
     })
 }
@@ -1353,7 +1358,7 @@ pub fn format_adaptive(study: &AdaptiveStudy, tau: f64) -> String {
 // ---------------------------------------------------------------------------
 
 /// One row of the maneuver false-alarm study: the fraction of **honest maneuvering**
-/// trials where the consistency detector flags a decoupling (a false spoof), at a given
+/// trials where the consistency detector flags a decoupling (a false positive), at a given
 /// per-channel lag. Isolated from NIS — this is the pure cross-sensor consistency FAR.
 #[derive(Debug, Clone)]
 pub struct ManeuverRow {
@@ -1369,8 +1374,8 @@ pub struct ManeuverRow {
 /// spoof), sweeping the per-channel lag. A synchronized maneuver (`lag_step = 0`) keeps
 /// channels correlated and should not trip the consistency check; heterogeneous lags
 /// transiently decorrelate the channels — the false-positive source the stationary study
-/// omits. We count a **decoupling** flag (not the NIS/jam alarm a coherent maneuver
-/// legitimately raises), isolating the cross-sensor false positive.
+/// omits. We count a **decoupling** flag (not the broad NIS-degradation evidence a coherent
+/// maneuver legitimately raises), isolating the cross-sensor false positive.
 pub fn maneuver_far(
     cfg: &EvalConfig,
     lag_steps: &[u64],
@@ -1431,7 +1436,7 @@ pub fn format_maneuver(rows: &[ManeuverRow], magnitude: f64, duration: u64) -> S
     let mut s = String::new();
     s.push_str(&format!(
         "Non-stationary FAR — axis 0 · a BENIGN {magnitude:.0}σ maneuver over {duration} frames, per-channel lag\n\
-         consistency false-decoupling rate on honest maneuvering streams (isolated from NIS/jam)\n\n"
+         consistency false-decoupling rate on honest maneuvering streams (isolated from broad NIS degradation)\n\n"
     ));
     s.push_str(&format!(
         "{:>8} | {:>11} | {:>11}\n",

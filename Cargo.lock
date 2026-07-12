@@ -965,9 +965,16 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "galadriel-core",
+ "galadriel-ncp",
  "galadriel-pid",
  "galadriel-sim",
  "proptest",
+ "rand 0.8.6",
+ "rand_distr",
+ "serde",
+ "serde_json",
+ "sha2",
+ "statrs",
 ]
 
 [[package]]
@@ -990,6 +997,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

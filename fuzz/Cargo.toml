@@ -1,0 +1,33 @@
+[package]
+name = "galadriel-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+serde_json = "1"
+galadriel-core = { version = "0.1.0", path = "../crates/galadriel-core" }
+galadriel-ncp = { version = "0.1.0", path = "../crates/galadriel-ncp" }
+
+[[bin]]
+name = "ncp_decode"
+path = "fuzz_targets/ncp_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "detector_boundaries"
+path = "fuzz_targets/detector_boundaries.rs"
+test = false
+doc = false
+bench = false
+
+# Keep fuzz-only dependencies and nightly instrumentation outside the production
+# workspace and its MSRV lockfile policy.
+[workspace]
+members = ["."]

@@ -2,7 +2,7 @@
 //!
 //! Under the null hypothesis each `NIS ~ χ²(dof)` i.i.d., so a window of `n`
 //! samples has sum `~ χ²(n·dof)`. The right-tail p-value flags an improbably
-//! **high** sum — the signature of inflated innovations, i.e. a spoof or jam.
+//! **high** sum: evidence of inflated innovations, without identifying their cause.
 //! This is the statistic the optional PID engine must add value over.
 
 use crate::chi2;

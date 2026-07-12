@@ -8,8 +8,8 @@
 use std::collections::HashSet;
 
 use galadriel_core::{
-    combine, correlation, AxisCorrelationReport, CorrConfig, CorrReport, CorrVerdict,
-    DetectorConfig, FusedVerdict, Mirror, MirrorReport, Modality, PidObservation,
+    combine, correlation, AxisCorrelationReport, ConsistencyEvidence, CorrConfig, CorrReport,
+    CorrVerdict, DetectorConfig, FusedVerdict, Mirror, MirrorReport, Modality, PidObservation,
 };
 
 use crate::{analyze, PidConfig, PidReport};
@@ -40,7 +40,7 @@ pub struct AxisPidReport {
 
 fn correlation_axis_attribution(
     reports: &[AxisCorrelationReport],
-) -> (HashSet<Modality>, bool, bool) {
+) -> (HashSet<Modality>, bool, Option<&'static str>) {
     let insufficient = reports.is_empty()
         || reports
             .iter()
@@ -48,21 +48,32 @@ fn correlation_axis_attribution(
     let positives = reports
         .iter()
         .filter_map(|axis| match &axis.report.verdict {
-            CorrVerdict::Spoof(channels) => Some(channels.iter().copied().collect::<HashSet<_>>()),
+            CorrVerdict::Decoupled(channels) => {
+                Some(channels.iter().copied().collect::<HashSet<_>>())
+            }
             CorrVerdict::Nominal | CorrVerdict::InsufficientEvidence => None,
         })
         .collect::<Vec<_>>();
-    let conflict = positives
+    let disagree = positives
         .first()
         .is_some_and(|first| positives.iter().skip(1).any(|set| set != first));
     let union = positives
         .iter()
         .flat_map(|set| set.iter().copied())
         .collect();
+    let conflict = if positives.iter().any(HashSet::is_empty) {
+        Some("a correlation projection axis supplied an empty positive attribution")
+    } else if disagree {
+        Some("correlation projection axes disagree on channel attribution")
+    } else {
+        None
+    };
     (union, insufficient, conflict)
 }
 
-fn pid_axis_attribution(reports: &[AxisPidReport]) -> (HashSet<Modality>, bool, bool) {
+fn pid_axis_attribution(
+    reports: &[AxisPidReport],
+) -> (HashSet<Modality>, bool, Option<&'static str>) {
     let insufficient = reports.is_empty()
         || reports
             .iter()
@@ -70,37 +81,27 @@ fn pid_axis_attribution(reports: &[AxisPidReport]) -> (HashSet<Modality>, bool, 
     let positives = reports
         .iter()
         .filter_map(|axis| match &axis.report.verdict {
-            crate::PidVerdict::Spoof(channels) => {
+            crate::PidVerdict::Decoupled(channels) => {
                 Some(channels.iter().copied().collect::<HashSet<_>>())
             }
             crate::PidVerdict::Nominal | crate::PidVerdict::InsufficientEvidence => None,
         })
         .collect::<Vec<_>>();
-    let conflict = positives
+    let disagree = positives
         .first()
         .is_some_and(|first| positives.iter().skip(1).any(|set| set != first));
     let union = positives
         .iter()
         .flat_map(|set| set.iter().copied())
         .collect();
+    let conflict = if positives.iter().any(HashSet::is_empty) {
+        Some("a PID projection axis supplied an empty positive attribution")
+    } else if disagree {
+        Some("PID projection axes disagree on channel attribution")
+    } else {
+        None
+    };
     (union, insufficient, conflict)
-}
-
-fn forced_anomaly_channels(
-    baseline: &MirrorReport,
-    consistency: &HashSet<Modality>,
-) -> Vec<Modality> {
-    let mut channels = baseline
-        .channels
-        .iter()
-        .filter(|channel| channel.anomalous())
-        .map(|channel| channel.modality)
-        .chain(consistency.iter().copied())
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>();
-    channels.sort_by_key(|modality| *modality as u8);
-    channels
 }
 
 /// Fuse baseline, signed-correlation, and PID reports.
@@ -141,33 +142,42 @@ pub fn fuse_axes(
         .collect();
     decoupled.sort_by_key(|modality| *modality as u8);
 
-    let consistency_union = decoupled.iter().copied().collect::<HashSet<_>>();
     let incomplete_positive = (correlation_insufficient && !correlation_decoupled.is_empty())
         || (pid_insufficient && !pid_decoupled.is_empty());
-    // Two assessable consistency detectors naming different compromised channels
-    // is positive evidence, but not honest attribution. Preserve the union for
-    // investigation and fail closed to Anomaly instead of manufacturing Spoof.
+    // Two assessable consistency detectors naming different channels is positive
+    // evidence, but not honest attribution. Preserve the union for investigation
+    // and fail closed to an unclassified anomaly.
     let disagree = !correlation_decoupled.is_empty()
         && !pid_decoupled.is_empty()
         && correlation_decoupled != pid_decoupled;
-    let axis_conflict = correlation_axis_conflict || pid_axis_conflict;
-    let (verdict, base_note) = if disagree || axis_conflict || incomplete_positive {
-        let reason = if axis_conflict {
-            "projection axes disagree on channel attribution"
-        } else if incomplete_positive {
+    let axis_conflict = correlation_axis_conflict.or(pid_axis_conflict);
+    let conflict_reason = if let Some(reason) = axis_conflict {
+        Some(reason)
+    } else if disagree || incomplete_positive {
+        Some(if incomplete_positive {
             "positive attribution exists alongside an insufficient projection axis"
         } else {
             "consistency detectors disagree on channel attribution"
-        };
-        (
-            FusedVerdict::Anomaly {
-                channels: forced_anomaly_channels(&baseline, &consistency_union),
-            },
-            format!("{reason}; failing closed"),
-        )
+        })
     } else {
-        combine(&baseline, &decoupled, correlation_insufficient)
+        None
     };
+    let consistency = if conflict_reason.is_some() {
+        ConsistencyEvidence::Conflicted(decoupled.clone())
+    } else if decoupled.is_empty() {
+        if correlation_insufficient {
+            ConsistencyEvidence::Insufficient
+        } else {
+            ConsistencyEvidence::Intact
+        }
+    } else {
+        ConsistencyEvidence::decoupled(&decoupled)
+            .unwrap_or_else(|_| ConsistencyEvidence::Conflicted(decoupled.clone()))
+    };
+    let (verdict, mut base_note) = combine(&baseline, consistency);
+    if let Some(reason) = conflict_reason {
+        base_note = format!("{reason}; {base_note}");
+    }
     let correlation_note = correlations
         .iter()
         .map(|axis| format!("axis {}: {}", axis.axis, axis.report.note))
@@ -392,7 +402,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             report.verdict,
-            FusedVerdict::Anomaly {
+            FusedVerdict::UnclassifiedAnomaly {
                 channels: vec![Modality::Acoustic],
             }
         );
@@ -419,7 +429,7 @@ mod tests {
         )
         .unwrap();
         match fused(&stream) {
-            FusedVerdict::Spoof {
+            FusedVerdict::AttributedInconsistency {
                 channels,
                 magnitude,
             } => {
@@ -429,12 +439,12 @@ mod tests {
                     MagnitudeEvidence::Elevated | MagnitudeEvidence::Mixed
                 ));
             }
-            other => panic!("expected elevated Spoof, got {other:?}"),
+            other => panic!("expected elevated AttributedInconsistency, got {other:?}"),
         }
     }
 
     #[test]
-    fn jam_is_jam() {
+    fn broadband_jam_produces_broad_degradation_evidence() {
         let mut stream = generate(&scenario()).unwrap();
         inject(
             &mut stream,
@@ -444,7 +454,7 @@ mod tests {
             },
         )
         .unwrap();
-        assert_eq!(fused(&stream), FusedVerdict::Jam);
+        assert_eq!(fused(&stream), FusedVerdict::BroadDegradation);
     }
 
     #[test]
@@ -464,14 +474,14 @@ mod tests {
         let correlation = correlation::analyze(&channels, &CorrConfig::default()).unwrap();
         assert!(matches!(
             correlation.verdict,
-            CorrVerdict::Spoof(ref found) if found.contains(&Modality::Acoustic)
+            CorrVerdict::Decoupled(ref found) if found.contains(&Modality::Acoustic)
         ));
 
         let pid = analyze(&channels, &PidConfig::default()).unwrap();
         assert_eq!(pid.verdict, PidVerdict::Nominal, "{}", pid.note);
 
         match fuse(nominal_baseline(), correlation, pid).verdict {
-            FusedVerdict::Spoof {
+            FusedVerdict::AttributedInconsistency {
                 channels,
                 magnitude,
             } => {
@@ -512,19 +522,19 @@ mod tests {
                     ci: None,
                 })
                 .collect(),
-            verdict: PidVerdict::Spoof(vec![Modality::Acoustic]),
+            verdict: PidVerdict::Decoupled(vec![Modality::Acoustic]),
             note: "test PID decoupling".into(),
         };
 
         assert!(matches!(
             fuse(nominal_baseline(), correlation, pid).verdict,
-            FusedVerdict::Spoof { ref channels, .. }
+            FusedVerdict::AttributedInconsistency { ref channels, .. }
                 if channels.contains(&Modality::Acoustic)
         ));
     }
 
     #[test]
-    fn conflicting_positive_attributions_fail_closed_to_anomaly() {
+    fn conflicting_positive_attributions_fail_closed_to_unclassified_anomaly() {
         let correlation = CorrReport {
             channels: MODALITIES
                 .iter()
@@ -535,7 +545,7 @@ mod tests {
                     decoupled: modality == Modality::Radar,
                 })
                 .collect(),
-            verdict: CorrVerdict::Spoof(vec![Modality::Radar]),
+            verdict: CorrVerdict::Decoupled(vec![Modality::Radar]),
             note: "test correlation attribution".into(),
         };
         let pid = PidReport {
@@ -553,20 +563,70 @@ mod tests {
                     ci: None,
                 })
                 .collect(),
-            verdict: PidVerdict::Spoof(vec![Modality::Acoustic]),
+            verdict: PidVerdict::Decoupled(vec![Modality::Acoustic]),
             note: "test PID attribution".into(),
         };
 
         assert_eq!(
             fuse(nominal_baseline(), correlation, pid).verdict,
-            FusedVerdict::Anomaly {
+            FusedVerdict::UnclassifiedAnomaly {
                 channels: vec![Modality::Acoustic, Modality::Radar],
             }
         );
     }
 
     #[test]
-    fn conflicting_projection_axes_fail_closed_to_anomaly() {
+    fn empty_positive_correlation_verdict_fails_closed_instead_of_becoming_intact() {
+        let report = fuse(
+            nominal_baseline(),
+            CorrReport {
+                channels: Vec::new(),
+                verdict: CorrVerdict::Decoupled(Vec::new()),
+                note: "malformed empty correlation attribution".into(),
+            },
+            PidReport {
+                channels: Vec::new(),
+                verdict: PidVerdict::Nominal,
+                note: "PID nominal".into(),
+            },
+        );
+
+        assert_eq!(
+            report.verdict,
+            FusedVerdict::UnclassifiedAnomaly {
+                channels: Vec::new()
+            }
+        );
+        assert!(report.note.contains("empty positive attribution"));
+    }
+
+    #[test]
+    fn empty_positive_pid_verdict_fails_closed_instead_of_becoming_intact() {
+        let report = fuse(
+            nominal_baseline(),
+            CorrReport {
+                channels: Vec::new(),
+                verdict: CorrVerdict::Nominal,
+                note: "correlation nominal".into(),
+            },
+            PidReport {
+                channels: Vec::new(),
+                verdict: PidVerdict::Decoupled(Vec::new()),
+                note: "malformed empty PID attribution".into(),
+            },
+        );
+
+        assert_eq!(
+            report.verdict,
+            FusedVerdict::UnclassifiedAnomaly {
+                channels: Vec::new()
+            }
+        );
+        assert!(report.note.contains("empty positive attribution"));
+    }
+
+    #[test]
+    fn conflicting_projection_axes_fail_closed_to_unclassified_anomaly() {
         let correlation_axis = |axis, modality| AxisCorrelationReport {
             axis,
             report: CorrReport {
@@ -579,7 +639,7 @@ mod tests {
                         decoupled: candidate == modality,
                     })
                     .collect(),
-                verdict: CorrVerdict::Spoof(vec![modality]),
+                verdict: CorrVerdict::Decoupled(vec![modality]),
                 note: "axis attribution".into(),
             },
         };
@@ -603,7 +663,7 @@ mod tests {
 
         assert_eq!(
             report.verdict,
-            FusedVerdict::Anomaly {
+            FusedVerdict::UnclassifiedAnomaly {
                 channels: vec![Modality::Acoustic, Modality::Radar]
             }
         );

@@ -1,5 +1,5 @@
 //! Fusing the NIS magnitude baseline with a cross-sensor **consistency** detector
-//! into one jam-vs-spoof verdict.
+//! into one evidence-neutral advisory verdict.
 //!
 //! The fusion logic is **source-agnostic** ([`combine`]): it takes the baseline's
 //! per-channel elevation and *any* consistency detector's decoupled-channel set —
@@ -11,20 +11,20 @@
 //!
 //! | | correlation intact | consistency decoupling |
 //! |---|---|---|
-//! | **NIS in-covariance** | `Nominal` | `Spoof { magnitude: InCovariance }` |
-//! | **one channel's NIS inflated** | `Spoof { magnitude: Elevated }` | `Spoof` |
-//! | **configured broad fraction of ready channels' NIS inflated** | `Jam` | `Spoof` or fail-closed `Anomaly` |
+//! | **NIS in-covariance** | `Nominal` | `AttributedInconsistency { magnitude: InCovariance }` |
+//! | **one channel's NIS inflated** | `AttributedInconsistency { magnitude: Elevated }` | `AttributedInconsistency` |
+//! | **configured broad fraction of ready channels' NIS inflated** | `BroadDegradation` | `AttributedInconsistency` or fail-closed `UnclassifiedAnomaly` |
 //!
 //! Every active producer-attested projection axis is assessed. The correlation
 //! family budget is split across axes; contradictory or partly unavailable positive
-//! axis attribution is an `Anomaly`, never a confident `Spoof`.
+//! axis attribution is an `UnclassifiedAnomaly`, never a confident attribution.
 
 use std::collections::HashSet;
 
 use crate::correlation::{self, CorrConfig, CorrReport, CorrVerdict};
 use crate::{DetectorConfig, Mirror, MirrorReport, Modality, PidObservation, Verdict};
 
-/// What the NIS magnitude detector established for a fused spoof attribution.
+/// What the NIS magnitude detector established for a fused inconsistency attribution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MagnitudeEvidence {
     /// Every attributed channel stayed in covariance; consistency alone caught it.
@@ -42,32 +42,134 @@ pub enum MagnitudeEvidence {
 pub enum FusedVerdict {
     /// All channels corroborate and NIS is consistent.
     Nominal,
-    /// One or more channels have spoof-like evidence. This remains an advisory
-    /// attribution: genuine target-specific dynamics or estimator artifacts can
-    /// produce the same signature.
-    Spoof {
+    /// One or more channels have attributed statistical inconsistency. This is not
+    /// an attack-cause claim: genuine target-specific dynamics or estimator
+    /// artifacts can produce the same signature.
+    AttributedInconsistency {
         channels: Vec<Modality>,
         magnitude: MagnitudeEvidence,
     },
     /// The configured broad fraction of ready channels has inflated NIS while
-    /// correlation stays intact — denial/degradation.
-    Jam,
+    /// correlation stays intact — broad degradation evidence.
+    BroadDegradation,
     /// Positive evidence exists, but incomplete/mixed-direction magnitude input
-    /// prevents an honest spoof-vs-jam classification.
-    Anomaly { channels: Vec<Modality> },
+    /// prevents a narrower statistical classification.
+    UnclassifiedAnomaly { channels: Vec<Modality> },
     /// Neither detector has enough evidence. Fail closed.
     InsufficientEvidence,
 }
 
-/// Source-agnostic 2×2 fusion: combine the NIS baseline report with a consistency
-/// detector's `decoupled` channel set (from correlation *or* PID) into one verdict.
-/// `consistency_insufficient` is true when the consistency detector itself lacked
-/// evidence.
+/// A validated, non-empty set of uniquely attributed modalities.
+///
+/// The tuple field is private so a [`ConsistencyEvidence::Decoupled`] value cannot
+/// carry an empty attribution. Use [`Self::new`] to normalize caller input.
+///
+/// ```compile_fail
+/// use galadriel_core::fusion::NonEmptyModalities;
+///
+/// let _ = NonEmptyModalities(Vec::new());
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NonEmptyModalities(Vec<Modality>);
+
+impl NonEmptyModalities {
+    /// Validate, sort, and deduplicate a non-empty modality attribution.
+    pub fn new(modalities: &[Modality]) -> crate::Result<Self> {
+        if modalities.is_empty() {
+            return Err(crate::GaladrielError::InvalidChannels(
+                "a positive consistency attribution must name at least one modality".into(),
+            ));
+        }
+        if modalities.len() > Modality::ALL.len() {
+            return Err(crate::GaladrielError::InvalidChannels(format!(
+                "a consistency attribution may contain at most {} modalities",
+                Modality::ALL.len()
+            )));
+        }
+        let mut unique = modalities.to_vec();
+        unique.sort_by_key(|modality| *modality as u8);
+        unique.dedup();
+        Ok(Self(unique))
+    }
+
+    /// Borrow the normalized modalities in stable order.
+    pub fn as_slice(&self) -> &[Modality] {
+        &self.0
+    }
+
+    /// Consume the attribution and return its normalized modalities.
+    pub fn into_vec(self) -> Vec<Modality> {
+        self.0
+    }
+}
+
+/// Cross-sensor evidence presented to source-agnostic fusion.
+///
+/// Each variant is one coherent state. In particular, a positive attribution
+/// cannot coexist with an `insufficient` flag because no such flag exists.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ConsistencyEvidence {
+    /// The consistency detector had enough evidence and found no decoupling.
+    Intact,
+    /// The consistency detector positively attributed one or more modalities.
+    Decoupled(NonEmptyModalities),
+    /// The consistency detector could not make an assessment.
+    Insufficient,
+    /// Positive/incomplete sources conflict. The vector is the bounded union of
+    /// any modalities that were named and may be empty for malformed attribution.
+    Conflicted(Vec<Modality>),
+}
+
+impl ConsistencyEvidence {
+    /// Build positive decoupling evidence with a non-empty normalized attribution.
+    pub fn decoupled(modalities: &[Modality]) -> crate::Result<Self> {
+        NonEmptyModalities::new(modalities).map(Self::Decoupled)
+    }
+
+    /// Build conflicted evidence, normalizing its investigative channel union.
+    pub fn conflicted(modalities: &[Modality]) -> crate::Result<Self> {
+        if modalities.len() > Modality::ALL.len() {
+            return Err(crate::GaladrielError::InvalidChannels(format!(
+                "a consistency conflict may contain at most {} modalities",
+                Modality::ALL.len()
+            )));
+        }
+        let mut unique = modalities.to_vec();
+        unique.sort_by_key(|modality| *modality as u8);
+        unique.dedup();
+        Ok(Self::Conflicted(unique))
+    }
+}
+
+/// Source-agnostic fusion of a NIS baseline report and one coherent consistency state.
+///
+/// The typed [`ConsistencyEvidence`] input makes the formerly contradictory
+/// "positive attribution and insufficient evidence" combination unrepresentable.
 pub fn combine(
     baseline: &MirrorReport,
-    decoupled: &[Modality],
-    consistency_insufficient: bool,
+    consistency: ConsistencyEvidence,
 ) -> (FusedVerdict, String) {
+    let (decoupled, consistency_insufficient) = match consistency {
+        ConsistencyEvidence::Intact => (Vec::new(), false),
+        ConsistencyEvidence::Decoupled(modalities) => (modalities.into_vec(), false),
+        ConsistencyEvidence::Insufficient => (Vec::new(), true),
+        ConsistencyEvidence::Conflicted(mut channels) => {
+            channels.extend(
+                baseline
+                    .channels
+                    .iter()
+                    .filter(|channel| channel.anomalous())
+                    .map(|channel| channel.modality),
+            );
+            channels.sort_by_key(|modality| *modality as u8);
+            channels.dedup();
+            return (
+                FusedVerdict::UnclassifiedAnomaly { channels },
+                "consistency evidence is conflicting or incomplete; failing closed".to_string(),
+            );
+        }
+    };
     let anomalous: HashSet<Modality> = baseline
         .channels
         .iter()
@@ -76,7 +178,7 @@ pub fn combine(
         .collect();
     let baseline_out = matches!(baseline.verdict, Verdict::InsufficientEvidence);
 
-    if matches!(baseline.verdict, Verdict::Anomaly { .. }) {
+    if matches!(baseline.verdict, Verdict::UnclassifiedAnomaly { .. }) {
         let mut channels: Vec<Modality> = anomalous
             .iter()
             .copied()
@@ -86,13 +188,13 @@ pub fn combine(
             .collect();
         channels.sort_by_key(|modality| *modality as u8);
         return (
-            FusedVerdict::Anomaly { channels },
+            FusedVerdict::UnclassifiedAnomaly { channels },
             "positive anomaly evidence exists, but magnitude attribution is incomplete or mixed-direction"
                 .to_string(),
         );
     }
 
-    if baseline_out && consistency_insufficient && decoupled.is_empty() {
+    if baseline_out && consistency_insufficient {
         return (
             FusedVerdict::InsufficientEvidence,
             "both detectors lack evidence — fail closed".to_string(),
@@ -102,9 +204,13 @@ pub fn combine(
     if !decoupled.is_empty() {
         let consistency_attribution: HashSet<Modality> = decoupled.iter().copied().collect();
         let baseline_attribution = match &baseline.verdict {
-            Verdict::Spoof { channels } => Some(channels.iter().copied().collect()),
-            Verdict::Jam => Some(anomalous.clone()),
-            Verdict::Nominal | Verdict::InsufficientEvidence | Verdict::Anomaly { .. } => None,
+            Verdict::AttributedInconsistency { channels } => {
+                Some(channels.iter().copied().collect())
+            }
+            Verdict::BroadDegradation => Some(anomalous.clone()),
+            Verdict::Nominal
+            | Verdict::InsufficientEvidence
+            | Verdict::UnclassifiedAnomaly { .. } => None,
         };
         if let Some(baseline_attribution) =
             baseline_attribution.filter(|attribution| attribution != &consistency_attribution)
@@ -117,7 +223,7 @@ pub fn combine(
             channels.sort_by_key(|modality| *modality as u8);
             channels.dedup();
             return (
-                FusedVerdict::Anomaly { channels },
+                FusedVerdict::UnclassifiedAnomaly { channels },
                 "magnitude and consistency detectors positively attribute different channels; failing closed"
                     .to_string(),
             );
@@ -146,7 +252,7 @@ pub fn combine(
         };
         let names: Vec<&str> = channels.iter().map(|m| m.label()).collect();
         return (
-            FusedVerdict::Spoof {
+            FusedVerdict::AttributedInconsistency {
                 channels,
                 magnitude,
             },
@@ -158,20 +264,20 @@ pub fn combine(
     }
 
     match &baseline.verdict {
-        Verdict::Jam => (
-            FusedVerdict::Jam,
-            "a configured broad fraction of ready channels has inflated NIS while cross-channel structure remains intact — denial/degradation"
+        Verdict::BroadDegradation => (
+            FusedVerdict::BroadDegradation,
+            "a configured broad fraction of ready channels has inflated NIS while cross-channel structure remains intact — broad-degradation evidence, cause unclassified"
                 .to_string(),
         ),
-        Verdict::Spoof { channels } => {
+        Verdict::AttributedInconsistency { channels } => {
             let names: Vec<&str> = channels.iter().map(|m| m.label()).collect();
             (
-                FusedVerdict::Spoof {
+                FusedVerdict::AttributedInconsistency {
                     channels: channels.clone(),
                     magnitude: MagnitudeEvidence::Elevated,
                 },
                 format!(
-                    "baseline NIS spike on {} — magnitude spoof",
+                    "localized baseline NIS inflation on {} — spoof-like evidence, cause unclassified",
                     names.join(", ")
                 ),
             )
@@ -191,8 +297,8 @@ pub fn combine(
             FusedVerdict::InsufficientEvidence,
             "baseline lacks magnitude evidence and no decoupling seen — fail closed".to_string(),
         ),
-        Verdict::Anomaly { channels } => (
-            FusedVerdict::Anomaly {
+        Verdict::UnclassifiedAnomaly { channels } => (
+            FusedVerdict::UnclassifiedAnomaly {
                 channels: channels.clone(),
             },
             "magnitude detector reported an unclassified anomaly".to_string(),
@@ -223,7 +329,9 @@ pub struct AxisCorrelationReport {
     pub report: CorrReport,
 }
 
-fn axis_attribution(reports: &[AxisCorrelationReport]) -> (Vec<Modality>, bool, bool) {
+fn axis_consistency_evidence(
+    reports: &[AxisCorrelationReport],
+) -> (ConsistencyEvidence, Option<&'static str>) {
     let insufficient = reports.is_empty()
         || reports
             .iter()
@@ -231,7 +339,9 @@ fn axis_attribution(reports: &[AxisCorrelationReport]) -> (Vec<Modality>, bool, 
     let positive = reports
         .iter()
         .filter_map(|axis| match &axis.report.verdict {
-            CorrVerdict::Spoof(channels) => Some(channels.iter().copied().collect::<HashSet<_>>()),
+            CorrVerdict::Decoupled(channels) => {
+                Some(channels.iter().copied().collect::<HashSet<_>>())
+            }
             CorrVerdict::Nominal | CorrVerdict::InsufficientEvidence => None,
         })
         .collect::<Vec<_>>();
@@ -245,49 +355,55 @@ fn axis_attribution(reports: &[AxisCorrelationReport]) -> (Vec<Modality>, bool, 
         .into_iter()
         .collect::<Vec<_>>();
     decoupled.sort_by_key(|modality| *modality as u8);
-    (decoupled, insufficient, conflict)
-}
-
-fn anomaly_channels(baseline: &MirrorReport, decoupled: &[Modality]) -> Vec<Modality> {
-    let mut channels = baseline
-        .channels
-        .iter()
-        .filter(|channel| channel.anomalous())
-        .map(|channel| channel.modality)
-        .chain(decoupled.iter().copied())
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>();
-    channels.sort_by_key(|modality| *modality as u8);
-    channels
+    if positive.iter().any(HashSet::is_empty) {
+        return (
+            ConsistencyEvidence::Conflicted(decoupled),
+            Some("a positive projection axis supplied an empty attribution"),
+        );
+    }
+    if conflict {
+        return (
+            ConsistencyEvidence::Conflicted(decoupled),
+            Some("projection axes positively attribute different channels"),
+        );
+    }
+    if insufficient && !decoupled.is_empty() {
+        return (
+            ConsistencyEvidence::Conflicted(decoupled),
+            Some("a projection axis attributes a channel while another axis is insufficient"),
+        );
+    }
+    if insufficient {
+        return (ConsistencyEvidence::Insufficient, None);
+    }
+    if decoupled.is_empty() {
+        return (ConsistencyEvidence::Intact, None);
+    }
+    match NonEmptyModalities::new(&decoupled) {
+        Ok(modalities) => (ConsistencyEvidence::Decoupled(modalities), None),
+        Err(_) => (
+            ConsistencyEvidence::Conflicted(Vec::new()),
+            Some("a positive projection axis supplied an empty or invalid attribution"),
+        ),
+    }
 }
 
 /// Combine a magnitude report with per-axis signed-correlation reports.
 ///
 /// Positive attributions that disagree across axes, or coexist with an
-/// insufficient axis, become [`FusedVerdict::Anomaly`]. An empty slice means the
+/// insufficient axis, become [`FusedVerdict::UnclassifiedAnomaly`]. An empty slice means the
 /// producer supplied no valid common projection and therefore marks consistency
 /// insufficient; the magnitude baseline still contributes normally.
 pub fn combine_correlation_axes(
     baseline: &MirrorReport,
     correlations: &[AxisCorrelationReport],
 ) -> (FusedVerdict, String) {
-    let (decoupled, consistency_insufficient, conflict) = axis_attribution(correlations);
-    let incomplete_positive = consistency_insufficient && !decoupled.is_empty();
-    if conflict || incomplete_positive {
-        let reason = if conflict {
-            "projection axes positively attribute different channels"
-        } else {
-            "a projection axis attributes a channel while another axis is insufficient"
-        };
-        return (
-            FusedVerdict::Anomaly {
-                channels: anomaly_channels(baseline, &decoupled),
-            },
-            format!("{reason}; failing closed instead of reporting Spoof"),
-        );
+    let (consistency, conflict_reason) = axis_consistency_evidence(correlations);
+    let (verdict, note) = combine(baseline, consistency);
+    if let Some(reason) = conflict_reason {
+        return (verdict, format!("{reason}; {note}"));
     }
-    combine(baseline, &decoupled, consistency_insufficient)
+    (verdict, note)
 }
 
 /// The **pure default** cross-sensor detector: run the NIS baseline and the cheap
@@ -376,23 +492,29 @@ mod tests {
         }
     }
 
+    fn decoupled(modalities: &[Modality]) -> ConsistencyEvidence {
+        ConsistencyEvidence::decoupled(modalities).unwrap()
+    }
+
     #[test]
     fn nominal_when_nothing_flagged() {
-        let (v, _) = combine(&baseline(Verdict::Nominal, &[]), &[], false);
+        let (v, _) = combine(
+            &baseline(Verdict::Nominal, &[]),
+            ConsistencyEvidence::Intact,
+        );
         assert_eq!(v, FusedVerdict::Nominal);
     }
 
     #[test]
-    fn decoupling_with_in_covariance_nis_is_stealthy_spoof() {
-        // baseline sees nothing (Nominal), correlation flags acoustic → stealthy.
+    fn decoupling_with_in_covariance_nis_is_attributed_inconsistency() {
+        // The magnitude baseline is nominal while consistency attributes acoustic.
         let (v, _) = combine(
             &baseline(Verdict::Nominal, &[]),
-            &[Modality::Acoustic],
-            false,
+            decoupled(&[Modality::Acoustic]),
         );
         assert_eq!(
             v,
-            FusedVerdict::Spoof {
+            FusedVerdict::AttributedInconsistency {
                 channels: vec![Modality::Acoustic],
                 magnitude: MagnitudeEvidence::InCovariance,
             }
@@ -400,17 +522,17 @@ mod tests {
     }
 
     #[test]
-    fn decoupling_with_elevated_nis_is_loud_spoof() {
+    fn decoupling_with_elevated_nis_is_attributed_inconsistency() {
         let b = baseline(
-            Verdict::Spoof {
+            Verdict::AttributedInconsistency {
                 channels: vec![Modality::Acoustic],
             },
             &[Modality::Acoustic],
         );
-        let (v, _) = combine(&b, &[Modality::Acoustic], false);
+        let (v, _) = combine(&b, decoupled(&[Modality::Acoustic]));
         assert_eq!(
             v,
-            FusedVerdict::Spoof {
+            FusedVerdict::AttributedInconsistency {
                 channels: vec![Modality::Acoustic],
                 magnitude: MagnitudeEvidence::Elevated,
             }
@@ -418,24 +540,27 @@ mod tests {
     }
 
     #[test]
-    fn baseline_jam_no_decoupling_is_jam() {
+    fn baseline_broad_degradation_with_intact_consistency_stays_broad() {
         let all = [Modality::Visual, Modality::Radar, Modality::Acoustic];
-        let (v, _) = combine(&baseline(Verdict::Jam, &all), &[], false);
-        assert_eq!(v, FusedVerdict::Jam);
+        let (v, _) = combine(
+            &baseline(Verdict::BroadDegradation, &all),
+            ConsistencyEvidence::Intact,
+        );
+        assert_eq!(v, FusedVerdict::BroadDegradation);
     }
 
     #[test]
-    fn baseline_spoof_no_decoupling_is_non_stealthy_spoof() {
+    fn baseline_attributed_inconsistency_with_intact_consistency_stays_attributed() {
         let b = baseline(
-            Verdict::Spoof {
+            Verdict::AttributedInconsistency {
                 channels: vec![Modality::Radar],
             },
             &[Modality::Radar],
         );
-        let (v, _) = combine(&b, &[], false);
+        let (v, _) = combine(&b, ConsistencyEvidence::Intact);
         assert_eq!(
             v,
-            FusedVerdict::Spoof {
+            FusedVerdict::AttributedInconsistency {
                 channels: vec![Modality::Radar],
                 magnitude: MagnitudeEvidence::Elevated,
             }
@@ -444,7 +569,10 @@ mod tests {
 
     #[test]
     fn both_insufficient_fails_closed() {
-        let (v, _) = combine(&baseline(Verdict::InsufficientEvidence, &[]), &[], true);
+        let (v, _) = combine(
+            &baseline(Verdict::InsufficientEvidence, &[]),
+            ConsistencyEvidence::Insufficient,
+        );
         assert_eq!(v, FusedVerdict::InsufficientEvidence);
     }
 
@@ -453,21 +581,23 @@ mod tests {
         // Baseline can't assess magnitude; the consistency check HAS evidence and sees no
         // decoupling. We must NOT upgrade to Nominal (we never verified magnitude) — the
         // fail-closed contract of Verdict::InsufficientEvidence.
-        let (v, _) = combine(&baseline(Verdict::InsufficientEvidence, &[]), &[], false);
+        let (v, _) = combine(
+            &baseline(Verdict::InsufficientEvidence, &[]),
+            ConsistencyEvidence::Intact,
+        );
         assert_eq!(v, FusedVerdict::InsufficientEvidence);
     }
 
     #[test]
-    fn insufficient_baseline_with_decoupling_still_escalates_to_spoof() {
-        // A consistency decoupling escalates to Spoof even when the baseline is out.
+    fn insufficient_baseline_with_decoupling_still_attributes_inconsistency() {
+        // Positive consistency evidence remains attributable when magnitude is unavailable.
         let (v, _) = combine(
             &baseline(Verdict::InsufficientEvidence, &[]),
-            &[Modality::Acoustic],
-            false,
+            decoupled(&[Modality::Acoustic]),
         );
         assert_eq!(
             v,
-            FusedVerdict::Spoof {
+            FusedVerdict::AttributedInconsistency {
                 channels: vec![Modality::Acoustic],
                 magnitude: MagnitudeEvidence::Insufficient,
             }
@@ -476,34 +606,40 @@ mod tests {
 
     #[test]
     fn nominal_baseline_cannot_hide_insufficient_consistency_evidence() {
-        let (verdict, _) = combine(&baseline(Verdict::Nominal, &[]), &[], true);
+        let (verdict, _) = combine(
+            &baseline(Verdict::Nominal, &[]),
+            ConsistencyEvidence::Insufficient,
+        );
         assert_eq!(verdict, FusedVerdict::InsufficientEvidence);
     }
 
     #[test]
     fn disagreeing_positive_attributions_fail_closed() {
         let baseline = baseline(
-            Verdict::Spoof {
+            Verdict::AttributedInconsistency {
                 channels: vec![Modality::Radar],
             },
             &[Modality::Radar],
         );
-        let (verdict, _) = combine(&baseline, &[Modality::Acoustic], false);
+        let (verdict, _) = combine(&baseline, decoupled(&[Modality::Acoustic]));
         assert_eq!(
             verdict,
-            FusedVerdict::Anomaly {
+            FusedVerdict::UnclassifiedAnomaly {
                 channels: vec![Modality::Acoustic, Modality::Radar]
             }
         );
     }
 
     #[test]
-    fn jam_and_partial_consistency_attributions_fail_closed() {
+    fn broad_degradation_and_partial_consistency_attributions_fail_closed() {
         let all = [Modality::Visual, Modality::Radar, Modality::Acoustic];
-        let (verdict, _) = combine(&baseline(Verdict::Jam, &all), &[Modality::Acoustic], false);
+        let (verdict, _) = combine(
+            &baseline(Verdict::BroadDegradation, &all),
+            decoupled(&[Modality::Acoustic]),
+        );
         assert_eq!(
             verdict,
-            FusedVerdict::Anomaly {
+            FusedVerdict::UnclassifiedAnomaly {
                 channels: vec![Modality::Visual, Modality::Acoustic, Modality::Radar]
             }
         );
@@ -515,16 +651,61 @@ mod tests {
             axis,
             report: CorrReport {
                 channels: Vec::new(),
-                verdict: CorrVerdict::Spoof(vec![modality]),
+                verdict: CorrVerdict::Decoupled(vec![modality]),
                 note: String::new(),
             },
         };
-        let (channels, insufficient, conflict) =
-            axis_attribution(&[axis(0, Modality::Radar), axis(1, Modality::Acoustic)]);
+        let (evidence, reason) =
+            axis_consistency_evidence(&[axis(0, Modality::Radar), axis(1, Modality::Acoustic)]);
 
-        assert_eq!(channels, vec![Modality::Acoustic, Modality::Radar]);
-        assert!(!insufficient);
-        assert!(conflict);
+        assert_eq!(
+            (evidence, reason),
+            (
+                ConsistencyEvidence::Conflicted(vec![Modality::Acoustic, Modality::Radar]),
+                Some("projection axes positively attribute different channels")
+            )
+        );
+    }
+
+    #[test]
+    fn empty_positive_consistency_attribution_is_rejected() {
+        assert!(NonEmptyModalities::new(&[]).is_err());
+    }
+
+    #[test]
+    fn empty_positive_axis_verdict_fails_closed_instead_of_becoming_intact() {
+        let axis = AxisCorrelationReport {
+            axis: 0,
+            report: CorrReport {
+                channels: Vec::new(),
+                verdict: CorrVerdict::Decoupled(Vec::new()),
+                note: String::new(),
+            },
+        };
+
+        let (evidence, reason) = axis_consistency_evidence(&[axis]);
+
+        assert_eq!(
+            (evidence, reason),
+            (
+                ConsistencyEvidence::Conflicted(Vec::new()),
+                Some("a positive projection axis supplied an empty attribution")
+            )
+        );
+    }
+
+    #[test]
+    fn source_conflict_fails_closed_without_a_contradictory_boolean_state() {
+        let consistency =
+            ConsistencyEvidence::conflicted(&[Modality::Radar, Modality::Acoustic]).unwrap();
+        let (verdict, _) = combine(&baseline(Verdict::Nominal, &[]), consistency);
+
+        assert_eq!(
+            verdict,
+            FusedVerdict::UnclassifiedAnomaly {
+                channels: vec![Modality::Acoustic, Modality::Radar]
+            }
+        );
     }
 
     fn projected_stream() -> Vec<PidObservation> {
@@ -580,7 +761,7 @@ mod tests {
         assert_eq!(report.correlations.len(), 3);
         assert_eq!(
             report.verdict,
-            FusedVerdict::Anomaly {
+            FusedVerdict::UnclassifiedAnomaly {
                 channels: vec![Modality::Acoustic, Modality::Radar]
             }
         );

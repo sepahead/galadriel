@@ -26,8 +26,11 @@ ncp-core = { workspace = true }
 # The live named-perception tap (feature `zenoh`) pulls the full Zenoh + tokio stack;
 # the JSONL ingest path needs none of it, so it is strictly optional.
 ncp-zenoh = { workspace = true, optional = true }
+# Used directly for the bounded observation handoff; do not rely on ncp-zenoh's
+# transitive runtime dependency.
+tokio = { workspace = true, optional = true }
 
 [features]
 default = []
 # The live Zenoh named-perception tap. Off by default — only `ncp-live` enables it.
-zenoh = ["dep:ncp-zenoh"]
+zenoh = ["dep:ncp-zenoh", "dep:tokio"]

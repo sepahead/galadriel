@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: >-
+  If you use this research prototype, cite the repository and the exact Git commit
+  used to produce your results.
+type: software
+title: "Galadriel's Mirror"
+authors:
+  - family-names: Mahmoudian
+    given-names: Sepehr
+repository-code: "https://github.com/sepahead/galadriel"
+license:
+  - MIT
+  - Apache-2.0
+abstract: >-
+  A fail-closed Rust research prototype for cross-sensor statistical-consistency
+  monitoring using NIS/CUSUM, signed common-projection correlation, and an optional
+  information-theoretic PID diagnostic.
+keywords:
+  - sensor fusion
+  - anomaly detection
+  - statistical consistency
+  - counter-UAS
+  - information theory

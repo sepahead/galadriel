@@ -1,0 +1,147 @@
+name: Deep quality
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/**"
+      - "fuzz/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "deny.toml"
+      - ".github/workflows/deep-quality.yml"
+  pull_request:
+    paths:
+      - "crates/**"
+      - "fuzz/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "deny.toml"
+      - ".github/workflows/deep-quality.yml"
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deep-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fuzz-smoke:
+    name: bounded protocol fuzz smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install nightly Rust
+        uses: dtolnay/rust-toolchain@efcb852328a9f50117170cc43094fb6f09eaf1ae # nightly
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: "fuzz -> target"
+
+      - name: Install pinned cargo-fuzz
+        run: cargo install cargo-fuzz --version 0.13.2 --locked
+
+      - name: Fuzz typed NCP and JSONL decoding
+        run: cargo fuzz run ncp_decode -- -runs=5000 -max_len=131072
+
+      - name: Fuzz detector and provenance boundaries
+        run: cargo fuzz run detector_boundaries -- -runs=5000 -max_len=131072
+
+  mutation-diff:
+    name: mutation check for changed Rust
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install current stable Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Install pinned cargo-mutants
+        run: cargo install cargo-mutants --version 27.1.0 --locked
+
+      - name: Capture pull-request diff
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git diff "$BASE_SHA"..HEAD -- | tee git.diff
+
+      - name: Mutate changed Rust
+        run: cargo mutants --workspace --no-shuffle --in-diff git.diff --timeout 120 --jobs 2 --all-features
+
+      - name: Archive mutation results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: mutation-diff-results
+          path: mutants.out
+
+  mutation-baseline:
+    name: observational mutation baseline (misses recorded)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install current stable Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Install pinned cargo-mutants
+        run: cargo install cargo-mutants --version 27.1.0 --locked
+
+      - name: Audit core fusion predicates
+        shell: bash
+        run: |
+          set +e
+          cargo mutants --package galadriel-core --file crates/galadriel-core/src/fusion.rs --timeout 120 --jobs 2 --output mutants-core.out
+          status=$?
+          if [[ $status -ne 0 && $status -ne 2 ]]; then exit "$status"; fi
+          if [[ $status -eq 2 ]]; then echo 'Core missed mutants are recorded for follow-up.'; fi
+
+      - name: Audit NCP live-boundary predicates
+        shell: bash
+        run: |
+          set +e
+          cargo mutants --package galadriel-ncp --file crates/galadriel-ncp/src/live.rs --all-features --timeout 120 --jobs 2 --output mutants-ncp.out
+          status=$?
+          if [[ $status -ne 0 && $status -ne 2 ]]; then exit "$status"; fi
+          if [[ $status -eq 2 ]]; then echo 'NCP missed mutants are recorded for follow-up.'; fi
+
+      - name: Archive mutation baseline
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: mutation-baseline-results
+          path: |
+            mutants-core.out
+            mutants-ncp.out

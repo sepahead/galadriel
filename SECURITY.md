@@ -47,7 +47,9 @@ for an undisclosed vulnerability. We aim to acknowledge within a few business da
   session/producer-bound envelope, and forces an explicit secure versus unverified
   development transport choice. No production Crebain publisher or receiver-verified
   mTLS test exists yet, and payload provenance is only a claim unless the transport
-  authenticates the publisher. The application payload limit runs after `ncp-zenoh`
+  authenticates the publisher. The preferred bounded handoff uses a nonblocking
+  `DropNewest` queue and exposes overflow/lag metrics so detector work cannot stall the
+  receive task. The application payload limit runs after `ncp-zenoh`
   materializes callback bytes, so a broker/transport message-size limit is still required
   to bound receive-memory pressure. Subscriber silence remains ambiguous until end-to-end
   heartbeat/liveness telemetry exists.

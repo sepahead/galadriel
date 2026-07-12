@@ -134,8 +134,9 @@ A regenerated synthetic report is useful only if all of these hold:
     applicable family budgets include both axis and channel-pair multiplicity. A
     standalone axis-0 component experiment is acceptable only when labeled as that
     narrower estimand and never presented as the full detector.
-12. Different positive channel attributions across axes are reported as `Anomaly`, not
-    selected post hoc as the most favorable `Spoof` result.
+12. Different positive channel attributions across axes are reported as
+    `UnclassifiedAnomaly`, not selected post hoc as the most favorable
+    `AttributedInconsistency` result.
 
 ## 6. Recorded-data gate
 
@@ -165,14 +166,19 @@ Even after the producer contract is fixed, a valid recorded study must separate:
 ## 7. Reproduce
 
 ```bash
+# Versioned streaming evidence artifact (recommended publication path)
+cargo run --locked -p galadriel-eval --release --bin galadriel-evidence -- \
+  --config evidence/post-audit-v1.json \
+  --out target/evidence/post-audit-v1
+
 # Minimum-size inferential synthetic suite (still compute-intensive)
-cargo run -p galadriel-eval --release -- 20
+cargo run --locked -p galadriel-eval --release -- 20
 
 # No argument uses the same minimum 20-trial default
-cargo run -p galadriel-eval --release
+cargo run --locked -p galadriel-eval --release
 
 # Larger synthetic study; choose and report the trial count explicitly
-cargo run -p galadriel-eval --release -- 200
+cargo run --locked -p galadriel-eval --release -- 200
 
 # Hypothesis and edge-case tests
 cargo test -p galadriel-eval --locked

@@ -19,6 +19,10 @@ workspace = true
 name = "galadriel-eval"
 path = "src/main.rs"
 
+[[bin]]
+name = "galadriel-evidence"
+path = "src/evidence_main.rs"
+
 [[bench]]
 name = "detectors"
 harness = false
@@ -27,6 +31,13 @@ harness = false
 galadriel-core = { workspace = true }
 galadriel-sim = { workspace = true }
 galadriel-pid = { workspace = true }
+galadriel-ncp = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
+statrs = { workspace = true }
 
 [dev-dependencies]
 # Lean criterion: keep the statistical harness, drop the plotters/rayon extras so

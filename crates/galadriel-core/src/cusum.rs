@@ -3,7 +3,8 @@
 //! The tabular CUSUM accumulates deviations from a configured target beyond a
 //! slack `k`, and alarms when either the upper or lower
 //! cumulative sum exceeds the threshold `h`. It catches a *sustained* mean shift
-//! (a persistent spoof/jam) faster than a single-window test, while a slack band
+//! (which spoofing, jamming, faults, or drift may cause) faster than a single-window test,
+//! while a slack band
 //! rejects transient benign spikes.
 //!
 //! [`crate::Mirror`] scales NIS and its null mean by `sqrt(2*dof)` before
