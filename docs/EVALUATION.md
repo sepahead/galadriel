@@ -7,8 +7,11 @@ current evidence does **not** establish.
 > Numeric tables from the pre-audit detector were removed because the implementation now
 > validates inputs, joins channels by exact sequence, uses signed correlation with a
 > unique strict-majority consensus, controls per-assessment families, and fails closed.
-> Fresh results must be generated from the audited implementation before any exact AUC,
-> false-alarm, latency, or cost value is cited.
+> The published `post-audit-v1` artifact supplies exact stream-level false-alert,
+> delay, abstention, and attribution results for the NIS plus signed-correlation vertical
+> slice. The broader comparative harness still needs a versioned post-audit report before
+> any exact AUC, matched-operating-point, adaptive, maneuver, collusion, latency, or cost
+> value from that suite is cited.
 
 ## 1. Questions the harness can answer
 
@@ -82,6 +85,12 @@ Because MI is sign-invariant, it is additive evidence rather than a substitute f
 signed-consensus gate. PID cannot convert missing geometry, degeneracy, an ambiguous
 clique, or an unassessable channel into a nominal or attributed result. Bootstrap and
 geometry configuration must be valid; otherwise the call fails or remains inconclusive.
+Under pid-rs 1.0, the point gate explicitly declares regular full-dimensional continuous
+support and records a `conditional_continuous/restricted_domain` status. PID2 atoms remain
+`experimental_restricted_domain`. The configured seeded Gaussian perturbation is an
+observation-noise model that changes the estimand, not a generic tie repair; its scale and
+seed are carried in every PID report. The circular delete-block confirmation uses the
+same support declaration but is classified as an experimental raw-scalar pipeline.
 
 ### 3.4 Standalone component experiments
 
@@ -125,7 +134,8 @@ A regenerated synthetic report is useful only if all of these hold:
    failed third channel.
 5. Track IDs are never pooled into one dependence estimate.
 6. Signed-correlation sign flips are not treated as corroboration.
-7. Constant channels cannot acquire dependence from identical jitter streams.
+7. Constant channels are rejected before the configured observation-noise model can
+   manufacture dependence, and noise streams are not restarted identically per column.
 8. Bootstrap failures and zero/invalid resample counts are not replaced with optimistic
    point estimates.
 9. Multiple parameter scans disclose multiplicity.

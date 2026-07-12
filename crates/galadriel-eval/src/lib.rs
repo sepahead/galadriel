@@ -33,8 +33,11 @@ use galadriel_core::{
     correlation, CorrConfig, CorrVerdict, DetectorConfig, GaladrielError, Mirror, Modality,
     PidObservation, Result as CoreResult, Verdict,
 };
-use galadriel_pid::MAX_PID_WINDOW;
 use galadriel_pid::{analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidVerdict};
+use galadriel_pid::{
+    MAX_PID_WINDOW, PID_ATOM_POINT_FIT_UNITS, PID_CONFIRMATION_EDGE_FIT_UNITS,
+    PID_PAIR_POINT_FIT_UNITS,
+};
 use galadriel_sim::injection::{inject, BroadbandJam, Maneuver, PhantomAcousticDoa};
 use galadriel_sim::scenario::{
     generate, generate_collusion, generate_spoofed, generate_spoofed_partial, ScenarioConfig,
@@ -48,9 +51,7 @@ const MAX_GRID_TRIAL_COMBINATIONS: usize = 50_000;
 const MAX_STUDY_OBSERVATIONS: usize = 100_000_000;
 const MAX_LATENCY_PREFIX_OBSERVATIONS: usize = 100_000_000;
 const EVAL_PROJECTION_AXES: usize = 3;
-const PAIR_ESTIMATOR_FITS: usize = 3;
-const ATOM_ESTIMATOR_FITS: usize = 4;
-const MAX_SUITE_PID_QUADRATIC_WORK: u128 = 75_000_000_000;
+const MAX_SUITE_PID_QUADRATIC_WORK: u128 = 300_000_000_000;
 const ADAPTIVE_CALIBRATION_DOMAIN: u64 = 0x4144_4150_5443_414c;
 const ADAPTIVE_HOLDOUT_DOMAIN: u64 = 0x4144_4150_5448_4f4c;
 
@@ -225,8 +226,8 @@ fn pid_fit_count(cfg: &PidConfig) -> CoreResult<u128> {
         .map(|pairs| pairs / 2)
         .ok_or_else(|| GaladrielError::InvalidConfig("PID pair count overflowed".into()))?;
     let point_fits = pair_count
-        .checked_mul(PAIR_ESTIMATOR_FITS)
-        .and_then(|fits| fits.checked_add(channels.saturating_mul(ATOM_ESTIMATOR_FITS)))
+        .checked_mul(PID_PAIR_POINT_FIT_UNITS)
+        .and_then(|fits| fits.checked_add(channels.saturating_mul(PID_ATOM_POINT_FIT_UNITS)))
         .ok_or_else(|| GaladrielError::InvalidConfig("PID point-fit count overflowed".into()))?;
     let confirmation_fits = if cfg.bootstrap {
         let consensus = channels / 2 + 1;
@@ -244,6 +245,7 @@ fn pid_fit_count(cfg: &PidConfig) -> CoreResult<u128> {
             })?;
         consensus_edges
             .checked_add(excluded_edges)
+            .and_then(|edges| edges.checked_mul(PID_CONFIRMATION_EDGE_FIT_UNITS))
             .and_then(|edges| edges.checked_mul(cfg.n_boot))
             .ok_or_else(|| {
                 GaladrielError::InvalidConfig("PID confirmation-fit count overflowed".into())
@@ -1074,6 +1076,10 @@ pub struct CollusionResult {
     pub pid_accuses_honest: f64,
     /// Wilson 95% CI for `pid_accuses_honest`.
     pub pid_ci: (f64, f64),
+    /// Fraction the PID detector flagged any channel.
+    pub pid_fires: f64,
+    /// Fraction the PID detector explicitly returned insufficient evidence.
+    pub pid_insufficient: f64,
     /// Fraction the correlation detector flagged **any** channel (it fires — at the wrong one).
     pub corr_fires: f64,
 }
@@ -1090,7 +1096,8 @@ pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CoreResult<CollusionResult
     let honest = Modality::Visual;
     let colluders = [Modality::Radar, Modality::Acoustic];
     let start = (cfg.frames as u64) / 3;
-    let (mut c_acc, mut p_acc, mut c_fire) = (0usize, 0usize, 0usize);
+    let (mut c_acc, mut p_acc, mut c_fire, mut p_fire, mut p_insufficient) =
+        (0usize, 0usize, 0usize, 0usize, 0usize);
     for t in 0..n {
         let s = scenario(cfg, cfg.base_seed.wrapping_add(t as u64));
         let stream = generate_collusion(&s, &colluders, start)?;
@@ -1109,12 +1116,13 @@ pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CoreResult<CollusionResult
         }
 
         let pr = analyze(&chans, &PidConfig::default())?;
-        if pr
-            .channels
-            .iter()
-            .any(|c| c.modality == honest && c.decoupled)
-        {
-            p_acc += 1;
+        match &pr.verdict {
+            PidVerdict::Decoupled(modalities) => {
+                p_fire += 1;
+                p_acc += usize::from(modalities.contains(&honest));
+            }
+            PidVerdict::InsufficientEvidence => p_insufficient += 1,
+            PidVerdict::Nominal => {}
         }
     }
     let nf = n as f64;
@@ -1124,6 +1132,8 @@ pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CoreResult<CollusionResult
         corr_ci: wilson_ci(c_acc, n),
         pid_accuses_honest: p_acc as f64 / nf,
         pid_ci: wilson_ci(p_acc, n),
+        pid_fires: p_fire as f64 / nf,
+        pid_insufficient: p_insufficient as f64 / nf,
         corr_fires: c_fire as f64 / nf,
     })
 }
@@ -1134,10 +1144,11 @@ pub fn format_collusion(r: &CollusionResult) -> String {
         "Colluding compromise axis 0 (2 of 3) — the honest-majority assumption FAILS ({} trials)\n\
          radar + acoustic share a phantom (mutually corroborate); visual is honest.\n\n\
          correlation flags the HONEST channel: {:.3} [{:.3},{:.3}]   (fires at all: {:.3})\n\
-         PID         flags the HONEST channel: {:.3} [{:.3},{:.3}]\n\n\
+         PID         flags the HONEST channel: {:.3} [{:.3},{:.3}]   (fires: {:.3}; insufficient: {:.3})\n\n\
          With a colluding majority the 'consensus' is the liars' — the honest minority\n\
-         decouples from it and is (mis-)accused. Cross-sensor consistency assumes an honest\n\
-         majority; a 2-of-3 compromise inverts it, and neither correlation nor PID escapes it.\n",
+         decouples from it and is (mis-)accused. Cross-sensor majority attribution assumes an\n\
+         honest majority. PID insufficiency is fail-closed abstention, not evidence that this\n\
+         structural assumption has been escaped.\n",
         r.trials,
         r.corr_accuses_honest,
         r.corr_ci.0,
@@ -1146,6 +1157,8 @@ pub fn format_collusion(r: &CollusionResult) -> String {
         r.pid_accuses_honest,
         r.pid_ci.0,
         r.pid_ci.1,
+        r.pid_fires,
+        r.pid_insufficient,
     )
 }
 
@@ -1372,10 +1385,10 @@ pub struct ManeuverRow {
 
 /// Measure the axis-0 consistency components' **false-alarm rate under a benign maneuver** (no
 /// spoof), sweeping the per-channel lag. A synchronized maneuver (`lag_step = 0`) keeps
-/// channels correlated and should not trip the consistency check; heterogeneous lags
-/// transiently decorrelate the channels — the false-positive source the stationary study
-/// omits. We count a **decoupling** flag (not the broad NIS-degradation evidence a coherent
-/// maneuver legitimately raises), isolating the cross-sensor false positive.
+/// channels correlated and should not trip the consistency check. Heterogeneous lags are
+/// measured as a possible false-positive source rather than assumed to cross a detector
+/// threshold. We count a **decoupling** flag (not the broad NIS-degradation evidence a
+/// coherent maneuver legitimately raises), isolating the cross-sensor false positive.
 pub fn maneuver_far(
     cfg: &EvalConfig,
     lag_steps: &[u64],
@@ -2244,13 +2257,14 @@ mod tests {
         let rows = measure_latency(&cfg, 20, 6).expect("valid latency study");
 
         let st = rows.iter().find(|r| r.attack == Attack::Stealthy).unwrap();
-        // The cross-sensor detectors detect the stealthy spoof, at a finite latency…
+        // The cross-sensor detectors detect the stealthy spoof at a finite latency…
         assert!(
             st.corr_ttd.is_some(),
             "corr should detect the stealthy spoof"
         );
         assert!(st.pid_ttd.is_some(), "PID should detect the stealthy spoof");
         assert!(st.reach.1 > 0.8, "corr reach on stealthy {:.2}", st.reach.1);
+        assert!(st.reach.2 > 0.8, "PID reach on stealthy {:.2}", st.reach.2);
 
         // …while the magnitude baseline owns the loud spoof and never (mostly) the stealthy.
         let loud = rows.iter().find(|r| r.attack == Attack::LoudSpoof).unwrap();
@@ -2342,8 +2356,10 @@ mod tests {
         // PID inherits the same structural failure (it is not a way out).
         assert!(
             r.pid_accuses_honest > 0.5,
-            "PID should also mis-flag the honest channel {:.3}",
-            r.pid_accuses_honest
+            "PID should also mis-flag the honest channel {:.3} (fires {:.3}, insufficient {:.3})",
+            r.pid_accuses_honest,
+            r.pid_fires,
+            r.pid_insufficient,
         );
     }
 

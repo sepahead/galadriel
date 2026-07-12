@@ -1,0 +1,152 @@
+{
+  "schema_version": 3,
+  "captured_at": "2026-07-13",
+  "classification": "synthetic_compatibility_only",
+  "calibrated_posterior": false,
+  "galadriel_base_commit": "9bd2cb0756009986d1a1a0e429614a1cbbe42ed5",
+  "from": {
+    "pid_core_version": "0.4.0",
+    "pid_rs_revision": "ad489f5bf5e15c164c599d069a6bee0f338c0e48",
+    "declared_msrv": "1.88.0"
+  },
+  "to": {
+    "pid_core_version": "1.0.0",
+    "pid_rs_revision": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+    "pid_rs_release_commit": "91cd811a27b15de60c5cdb08d5516bf3471883ce",
+    "declared_msrv": "1.89.0",
+    "cargo_features": ["experimental-pipelines"],
+    "pairwise_point_status": "conditional_continuous/restricted_domain",
+    "bootstrap_status": "experimental_raw_scalar_pipeline",
+    "pid2_atom_status": "experimental_restricted_domain",
+    "support_contract": "caller-declared regular full-dimensional continuous law",
+    "observation_noise_model": "seeded additive Gaussian noise after per-column standardisation"
+  },
+  "execution_environment": {
+    "hardware": "Apple M4 Max",
+    "os": "Darwin 25.5",
+    "rustc": "1.96.0 (ac68faa20)",
+    "cargo": "1.96.0",
+    "profile": "release",
+    "toolchain_note": "Both reproduction runs used rustup's exact 1.96.0 toolchain. The declared 1.88/1.89 MSRVs were not the execution toolchains; the final migration commit must pass its separate pinned-MSRV CI gate."
+  },
+  "reproduction": {
+    "seed": 7,
+    "trials": 20,
+    "pairwise_samples": 400,
+    "synergy_samples": 600,
+    "commands": [
+      "cargo +1.96.0 test --locked -p galadriel-pid -p galadriel-justify",
+      "cargo +1.96.0 run --locked --release -p galadriel-justify -- 20"
+    ],
+    "reported_precision": 3,
+    "comparison_control": "Both dependency sides used the same ordered BTreeMap entropy reduction now in the final Galadriel tree. The base checkout was patched only with that one deterministic-reduction change so randomized HashMap iteration could not masquerade as a pid-rs delta.",
+    "comparison_control_patch": "evidence/pid-rs-0.4-deterministic-control.patch",
+    "comparison_control_patch_sha256": "070d7b61ae773c9fb5d73cab9ba23c642d17110adaf63556e285748cbb20f479",
+    "capture_method": "paired commands rerun after the deterministic reduction fix; structured fields were transcribed and the complete stdout stream was hashed on each side",
+    "stdout_sha256": {
+      "from": "495293442347f13710d6d928e12fdc8c8faf3f1d29bb8d19f06131f5a402fca7",
+      "to": "495293442347f13710d6d928e12fdc8c8faf3f1d29bb8d19f06131f5a402fca7"
+    },
+    "pairwise": {
+      "linear": {
+        "from": {"mean_abs_rho": 0.893, "mean_mi_nats": 0.801, "correlation_auc": 1.0, "mi_auc": 1.0},
+        "to": {"mean_abs_rho": 0.893, "mean_mi_nats": 0.801, "correlation_auc": 1.0, "mi_auc": 1.0}
+      },
+      "nonlinear": {
+        "from": {"mean_abs_rho": 0.063, "mean_mi_nats": 0.410, "correlation_auc": 0.720, "correlation_auc_ci": [0.562, 0.873], "mi_auc": 1.0},
+        "to": {"mean_abs_rho": 0.063, "mean_mi_nats": 0.410, "correlation_auc": 0.720, "correlation_auc_ci": [0.562, 0.873], "mi_auc": 1.0}
+      }
+    },
+    "discrete_xor": {
+      "from": {
+        "correlation_auc": 0.530,
+        "correlation_auc_ci": [0.333, 0.738],
+        "pairwise_mi_auc": 0.531,
+        "pairwise_mi_auc_ci": [0.339, 0.714],
+        "joint_mi_auc": 1.0,
+        "sxpid_synergy_auc": 1.0,
+        "mean_joint_mi_bits": 0.998,
+        "mean_synergy_bits": 0.414,
+        "mean_redundancy_bits": -0.583
+      },
+      "to": {
+        "correlation_auc": 0.530,
+        "correlation_auc_ci": [0.333, 0.738],
+        "pairwise_mi_auc": 0.531,
+        "pairwise_mi_auc_ci": [0.339, 0.714],
+        "joint_mi_auc": 1.0,
+        "sxpid_synergy_auc": 1.0,
+        "mean_joint_mi_bits": 0.998,
+        "mean_synergy_bits": 0.414,
+        "mean_redundancy_bits": -0.583
+      },
+      "pairwise_mi_delta_disposition": "reproduced after replacing randomized HashMap entropy reduction with deterministic key order on both sides; the earlier apparent delta was a Galadriel output-reproducibility defect, not a pid-rs API delta"
+    },
+    "continuous_sign_parity": {
+      "from": {"correlation_auc": 0.365, "correlation_auc_ci": [0.177, 0.568], "pairwise_mi_auc": 0.620, "pairwise_mi_auc_ci": [0.429, 0.780], "joint_mi_auc": 1.0, "sxpid_synergy_auc": 1.0, "mean_joint_mi_nats": 0.499, "mean_synergy_nats": 0.468},
+      "to": {"correlation_auc": 0.365, "correlation_auc_ci": [0.177, 0.568], "pairwise_mi_auc": 0.620, "pairwise_mi_auc_ci": [0.429, 0.780], "joint_mi_auc": 1.0, "sxpid_synergy_auc": 1.0, "mean_joint_mi_nats": 0.499, "mean_synergy_nats": 0.468}
+    },
+    "sequential": {
+      "from": {
+        "linear": [
+          {"detector": "window_rho", "false_alarm_rate": 0.1, "false_start_rate": 0.05, "reachability": 1.0, "latency": 7},
+          {"detector": "window_ksg", "false_alarm_rate": 0.2, "false_start_rate": 0.05, "reachability": 1.0, "latency": 15},
+          {"detector": "product", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 1.0, "latency": 10},
+          {"detector": "gaussian", "false_alarm_rate": 0.1, "false_start_rate": 0.0, "reachability": 1.0, "latency": 2},
+          {"detector": "local_mi", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 1.0, "latency": 7}
+        ],
+        "nonlinear": [
+          {"detector": "window_rho", "false_alarm_rate": 0.1, "false_start_rate": 0.0, "reachability": 0.05, "latency": 99},
+          {"detector": "window_ksg", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 1.0, "latency": 57},
+          {"detector": "product", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 0.0, "latency": null},
+          {"detector": "gaussian", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 0.0, "latency": null},
+          {"detector": "local_mi", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 1.0, "latency": 32}
+        ]
+      },
+      "to": {
+        "linear": [
+          {"detector": "window_rho", "false_alarm_rate": 0.1, "false_start_rate": 0.05, "reachability": 1.0, "latency": 7},
+          {"detector": "window_ksg", "false_alarm_rate": 0.2, "false_start_rate": 0.05, "reachability": 1.0, "latency": 15},
+          {"detector": "product", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 1.0, "latency": 10},
+          {"detector": "gaussian", "false_alarm_rate": 0.1, "false_start_rate": 0.0, "reachability": 1.0, "latency": 2},
+          {"detector": "local_mi", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 1.0, "latency": 7}
+        ],
+        "nonlinear": [
+          {"detector": "window_rho", "false_alarm_rate": 0.1, "false_start_rate": 0.0, "reachability": 0.05, "latency": 99},
+          {"detector": "window_ksg", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 1.0, "latency": 57},
+          {"detector": "product", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 0.0, "latency": null},
+          {"detector": "gaussian", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 0.0, "latency": null},
+          {"detector": "local_mi", "false_alarm_rate": 0.0, "false_start_rate": 0.0, "reachability": 1.0, "latency": 32}
+        ]
+      }
+    },
+    "autocorrelation_null": {
+      "from": [
+        {"phi": 0.0, "effective_n": 128.0, "naive_alpha_0_05": 0.05, "bartlett_alpha_0_05": 0.05, "naive_alpha_0_01": 0.05, "bartlett_alpha_0_01": 0.05},
+        {"phi": 0.3, "effective_n": 106.9, "naive_alpha_0_05": 0.1, "bartlett_alpha_0_05": 0.1, "naive_alpha_0_01": 0.05, "bartlett_alpha_0_01": 0.0},
+        {"phi": 0.5, "effective_n": 76.8, "naive_alpha_0_05": 0.05, "bartlett_alpha_0_05": 0.05, "naive_alpha_0_01": 0.05, "bartlett_alpha_0_01": 0.0},
+        {"phi": 0.7, "effective_n": 43.8, "naive_alpha_0_05": 0.15, "bartlett_alpha_0_05": 0.0, "naive_alpha_0_01": 0.05, "bartlett_alpha_0_01": 0.0},
+        {"phi": 0.9, "effective_n": 13.4, "naive_alpha_0_05": 0.4, "bartlett_alpha_0_05": 0.0, "naive_alpha_0_01": 0.35, "bartlett_alpha_0_01": 0.0}
+      ],
+      "to": [
+        {"phi": 0.0, "effective_n": 128.0, "naive_alpha_0_05": 0.05, "bartlett_alpha_0_05": 0.05, "naive_alpha_0_01": 0.05, "bartlett_alpha_0_01": 0.05},
+        {"phi": 0.3, "effective_n": 106.9, "naive_alpha_0_05": 0.1, "bartlett_alpha_0_05": 0.1, "naive_alpha_0_01": 0.05, "bartlett_alpha_0_01": 0.0},
+        {"phi": 0.5, "effective_n": 76.8, "naive_alpha_0_05": 0.05, "bartlett_alpha_0_05": 0.05, "naive_alpha_0_01": 0.05, "bartlett_alpha_0_01": 0.0},
+        {"phi": 0.7, "effective_n": 43.8, "naive_alpha_0_05": 0.15, "bartlett_alpha_0_05": 0.0, "naive_alpha_0_01": 0.05, "bartlett_alpha_0_01": 0.0},
+        {"phi": 0.9, "effective_n": 13.4, "naive_alpha_0_05": 0.4, "bartlett_alpha_0_05": 0.0, "naive_alpha_0_01": 0.35, "bartlett_alpha_0_01": 0.0}
+      ]
+    }
+  },
+  "runtime_checks": [
+    "finite signed-negative KSG estimates remain valid low-dependence evidence under pid-rs 1.0 NegativeHandling::Allow",
+    "bootstrap confirmation remains a fail-closed subset of point-estimate attribution",
+    "an insufficient PID path cannot erase independently assessable signed-correlation evidence"
+  ],
+  "limitations": [
+    "synthetic compatibility evidence is not deployment calibration",
+    "the population support contract is caller-declared and cannot be proved from samples",
+    "temporal dependence and observation-noise sensitivity require representative evaluation",
+    "raw stdout is not checked in; identical complete-stream SHA-256 values are recorded",
+    "PID remains advisory and cannot be the sole cause of a hazardous action"
+  ]
+}

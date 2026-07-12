@@ -5,10 +5,11 @@ Galadriel includes an optional mutual-information/Partial Information Decomposit
 pre-audit synthetic numbers as current detector evidence.
 
 > **Evidence status (2026-07 audit).** The canonical studies are synthetic/theoretical.
-> Exact results from the previous implementation were removed pending regeneration with
-> validated inputs, domain-separated jitter, complete-channel geometry gates, validated
-> bootstrap settings, and fail-closed fusion. Nothing here establishes that current
-> crebain residuals occupy a PID-justified regime.
+> A fixed-seed pid-rs 0.4→1.0 reproduction is recorded in
+> [`PID_RS_1_0_MIGRATION.md`](PID_RS_1_0_MIGRATION.md), with complete-channel geometry
+> gates, explicit observation-noise modeling, bounded circular delete-block settings,
+> and fail-closed fusion. It is compatibility evidence, not calibration; nothing here
+> establishes that current crebain residuals occupy a PID-justified regime.
 
 ## 1. Linear-Gaussian dependence: PID is forced
 

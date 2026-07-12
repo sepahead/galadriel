@@ -5,28 +5,50 @@
 //! requires a unique strict-majority clique. PID atoms remain advisory diagnostics
 //! and never drive the verdict.
 
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 use galadriel_core::{GaladrielError, Modality};
+use pid_core::experimental::continuous::raw_scalars::ksg_mi;
 use pid_core::{
-    distance_concentration_stats, intrinsic_dimension_levina_bickel, ksg_mi, pid2_isx_estimate,
-    DistanceConcentrationConfig, IntrinsicDimConfig, Jitter, KsgConfig, MatOwned, Metric,
-    Pid2Config,
+    diagnostics::{
+        distance_concentration_stats, intrinsic_dimension_levina_bickel,
+        DistanceConcentrationConfig, IntrinsicDimConfig,
+    },
+    experimental::{
+        continuous::{pid2_isx_estimate, Pid2Config},
+        pipelines::Jitter,
+    },
+    stable::continuous::{
+        ksg_mi_report, AssumptionLedgerEntry, EstimandIdentity, KsgConfig, KsgMethodStatus,
+        KsgProvenance, KsgReportWarning, ProvenanceHashes, ScientificStatus, SupportContract,
+        WarningCode,
+    },
+    MatOwned, Metric, ResourceEstimate,
 };
 
 const MIN_BOOTSTRAP_RESAMPLES: usize = 20;
 const MAX_BOOTSTRAP_RESAMPLES: usize = MAX_PID_WINDOW;
-const MAX_QUADRATIC_FIT_WORK: usize = 50_000_000;
+const MAX_QUADRATIC_FIT_WORK: usize = 200_000_000;
 const MAX_MODALITIES: usize = Modality::ALL.len();
-// pair_mi runs intrinsic-dimension, distance-concentration, and MI estimators.
-const ESTIMATOR_FITS_PER_PAIR: usize = 3;
-const MAX_PAIR_ESTIMATOR_FITS: usize = pair_count(MAX_MODALITIES) * ESTIMATOR_FITS_PER_PAIR;
-// pid2_isx_estimate performs three MI estimates plus one I^sx estimate.
-const ESTIMATOR_FITS_PER_ATOM: usize = 4;
-const MAX_ATOM_ESTIMATOR_FITS: usize = MAX_MODALITIES * ESTIMATOR_FITS_PER_ATOM;
+/// Conservative quadratic fit units for one point-gate pair: intrinsic dimension,
+/// distance concentration, and four report-first KSG distance/count scans.
+pub const PID_PAIR_POINT_FIT_UNITS: usize = 6;
+const MAX_PAIR_ESTIMATOR_FITS: usize = pair_count(MAX_MODALITIES) * PID_PAIR_POINT_FIT_UNITS;
+/// Conservative quadratic fit units for one PID2 atom calculation: three mutual
+/// information estimates plus one shared-exclusions estimate.
+pub const PID_ATOM_POINT_FIT_UNITS: usize = 4;
+const MAX_ATOM_ESTIMATOR_FITS: usize = MAX_MODALITIES * PID_ATOM_POINT_FIT_UNITS;
+/// Conservative quadratic scan units for one raw-scalar KSG confirmation edge:
+/// one joint-neighbor-radius scan, two marginal-count scans, plus one overhead unit.
+pub const PID_CONFIRMATION_EDGE_FIT_UNITS: usize = 4;
 const MAX_EXCLUDED_CANDIDATES: usize = (MAX_MODALITIES - 1) / 2;
 const MAX_CONFIRMATION_EDGE_FITS: usize = max_confirmation_edge_fits(MAX_MODALITIES);
 const CONFIRMATION_BOUND_GROUPS: usize = 2;
+
+/// Exact upstream dependency identity used for every report from this crate.
+pub const PID_RS_VERSION: &str = "1.0.0";
+/// Immutable pid-rs revision selected by the workspace manifest.
+pub const PID_RS_REVISION: &str = "1cd2424f7967e1752dcc8e53859e8fdad3566f51";
 
 /// Maximum PID analysis window. The mandatory geometry and kNN estimators are
 /// quadratic in the number of samples, so the much larger scalar-window bound
@@ -69,9 +91,11 @@ pub struct PidConfig {
     /// With bootstrap confirmation enabled, [`Self::required_samples`] also requires
     /// enough samples to construct every distinct circular resample.
     pub min_samples: usize,
-    /// Seeded jitter magnitude after per-column standardisation.
-    pub jitter_std: f64,
-    /// Jitter/estimator seed for reproducibility.
+    /// Standard deviation of the seeded additive Gaussian observation-noise model
+    /// after per-column standardisation. This changes the estimand; it is not a
+    /// generic repair for tied samples. Keep it in sensitivity/evidence records.
+    pub observation_noise_std: f64,
+    /// Observation-noise/estimator seed for reproducibility.
     pub seed: u64,
     /// k for the Levina-Bickel intrinsic-dimension estimator (needs `k >= 3`).
     pub geom_k: usize,
@@ -105,7 +129,7 @@ impl Default for PidConfig {
         Self {
             window: 128,
             min_samples: 64,
-            jitter_std: 1e-4,
+            observation_noise_std: 1e-4,
             seed: 1,
             geom_k: 5,
             id_max: 10.0,
@@ -154,9 +178,9 @@ impl PidConfig {
                 "PID min_samples must be greater than geom_k and <= window".into(),
             ));
         }
-        if !self.jitter_std.is_finite() || self.jitter_std <= 0.0 {
+        if !self.observation_noise_std.is_finite() || self.observation_noise_std <= 0.0 {
             return Err(InvalidConfig(
-                "PID jitter_std must be finite and > 0".into(),
+                "PID observation_noise_std must be finite and > 0".into(),
             ));
         }
         if !self.id_max.is_finite() || self.id_max <= 0.0 {
@@ -219,7 +243,8 @@ impl PidConfig {
             .ok_or_else(|| InvalidConfig("PID mandatory fit count overflowed".into()))?;
         let bootstrap_fits = if self.bootstrap {
             MAX_CONFIRMATION_EDGE_FITS
-                .checked_mul(self.n_boot)
+                .checked_mul(PID_CONFIRMATION_EDGE_FIT_UNITS)
+                .and_then(|fits| fits.checked_mul(self.n_boot))
                 .ok_or_else(|| InvalidConfig("PID bootstrap fit count overflowed".into()))?
         } else {
             0
@@ -234,7 +259,7 @@ impl PidConfig {
             .ok_or_else(|| InvalidConfig("PID quadratic work estimate overflowed".into()))?;
         if quadratic_work > MAX_QUADRATIC_FIT_WORK {
             return Err(InvalidConfig(format!(
-                "PID requests {quadratic_work} quadratic fit-units (including up to {MAX_PAIR_ESTIMATOR_FITS} mandatory pair-estimator, {MAX_ATOM_ESTIMATOR_FITS} atom-estimator, and {MAX_CONFIRMATION_EDGE_FITS} confirmation-edge fits per resample across as many as {MAX_EXCLUDED_CANDIDATES} excluded candidates); maximum is {MAX_QUADRATIC_FIT_WORK}"
+                "PID requests {quadratic_work} quadratic scan-equivalent fit-units (including up to {MAX_PAIR_ESTIMATOR_FITS} mandatory pair-estimator units, {MAX_ATOM_ESTIMATOR_FITS} atom-estimator units, and {MAX_CONFIRMATION_EDGE_FITS} confirmation edges × {PID_CONFIRMATION_EDGE_FIT_UNITS} units per resample across as many as {MAX_EXCLUDED_CANDIDATES} excluded candidates); maximum is {MAX_QUADRATIC_FIT_WORK}"
             )));
         }
         Ok(())
@@ -251,6 +276,79 @@ impl PidConfig {
         }
         Ok(tail_rank)
     }
+}
+
+/// Machine-readable estimator/dependency evidence attached to every PID result.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PidEstimatorEvidence {
+    pub pid_rs_version: &'static str,
+    pub pid_rs_revision: &'static str,
+    pub pairwise_estimator: &'static str,
+    pub pairwise_scientific_status: &'static str,
+    pub atom_estimator: &'static str,
+    pub atom_scientific_status: &'static str,
+    pub support_contract: &'static str,
+    pub observation_noise_model: &'static str,
+    pub observation_noise_std: f64,
+    pub seed: u64,
+    pub geom_k: usize,
+    /// Typed summaries of every successful report-first pairwise estimate used
+    /// by the point gate. Bootstrap scalar fits are intentionally excluded.
+    pub pairwise_reports: Vec<PairKsgEvidence>,
+}
+
+impl PidEstimatorEvidence {
+    pub fn from_config(config: &PidConfig) -> Self {
+        Self {
+            pid_rs_version: PID_RS_VERSION,
+            pid_rs_revision: PID_RS_REVISION,
+            pairwise_estimator:
+                "KSG MI (report-first point gate; raw-scalar circular-resample confirmation)",
+            pairwise_scientific_status:
+                "conditional_continuous/restricted_domain point; experimental bootstrap pipeline",
+            atom_estimator: "continuous shared-exclusions PID2 (Ehrlich KSG)",
+            atom_scientific_status: "experimental_restricted_domain",
+            support_contract: "caller-declared regular full-dimensional continuous law",
+            observation_noise_model:
+                "seeded additive Gaussian noise after per-column standardisation",
+            observation_noise_std: config.observation_noise_std,
+            seed: config.seed,
+            geom_k: config.geom_k,
+            pairwise_reports: Vec::new(),
+        }
+    }
+}
+
+/// Report-first KSG evidence retained for one canonical modality pair.
+///
+/// The upstream report owns additional high-volume diagnostics. Galadriel keeps
+/// the typed scientific status, assumptions, warnings, hashes, estimand, support
+/// contract, and resource preflight that a downstream audit needs to interpret
+/// the scalar used by the clique gate.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PairKsgEvidence {
+    pub first: Modality,
+    pub second: Modality,
+    pub estimate_nats: f64,
+    pub n_samples: usize,
+    pub k: usize,
+    pub support_contract: SupportContract,
+    pub method_status: KsgMethodStatus,
+    pub scientific_status: ScientificStatus,
+    pub estimand: EstimandIdentity,
+    pub assumption_ledger: Vec<AssumptionLedgerEntry>,
+    pub warnings: Vec<KsgReportWarning>,
+    pub report_warnings: Vec<WarningCode>,
+    pub provenance_hashes: Arc<ProvenanceHashes>,
+    pub preprocessing_description: String,
+    pub observation_model_description: String,
+    pub sampling_model_description: Option<String>,
+    pub resource_estimate: ResourceEstimate,
+}
+
+struct PairMiEstimate {
+    value: f64,
+    evidence: PairKsgEvidence,
 }
 
 /// Per-channel analysis detail.
@@ -295,6 +393,8 @@ pub enum PidVerdict {
 /// Full PID consistency report.
 #[derive(Debug, Clone)]
 pub struct PidReport {
+    /// Exact dependency, estimator, support, noise, and seed classification.
+    pub estimator: PidEstimatorEvidence,
     /// Per-channel detail, in input order.
     pub channels: Vec<ChannelPid>,
     /// Advisory verdict.
@@ -318,6 +418,7 @@ pub fn analyze(
     cfg: &PidConfig,
 ) -> galadriel_core::Result<PidReport> {
     cfg.validate()?;
+    let mut estimator = PidEstimatorEvidence::from_config(cfg);
     let c = channels.len();
 
     let unique: HashSet<Modality> = channels.iter().map(|(modality, _)| *modality).collect();
@@ -347,6 +448,7 @@ pub fn analyze(
     let required_samples = cfg.required_samples();
     if c < 3 || w < required_samples {
         return Ok(PidReport {
+            estimator,
             channels: Vec::new(),
             verdict: PidVerdict::InsufficientEvidence,
             note: format!(
@@ -354,8 +456,8 @@ pub fn analyze(
             ),
         });
     }
-    // KSG distances are not scale invariant when one fixed jitter amplitude is
-    // added. Validate and standardise every verdict-eligible raw column.
+    // KSG distances are not scale invariant when one fixed observation-noise
+    // amplitude is added. Validate and standardise every verdict-eligible column.
     let mut cols = Vec::with_capacity(c);
     for (modality, values) in channels {
         cols.push(standardize(&values[values.len() - w..], modality.label())?);
@@ -366,9 +468,10 @@ pub fn analyze(
     for i in 0..c {
         for j in (i + 1)..c {
             match pair_mi(cfg, channels[i].0, &cols[i], channels[j].0, &cols[j]) {
-                Ok(value) => {
-                    mi[i][j] = Some(value);
-                    mi[j][i] = Some(value);
+                Ok(estimate) => {
+                    mi[i][j] = Some(estimate.value);
+                    mi[j][i] = Some(estimate.value);
+                    estimator.pairwise_reports.push(estimate.evidence);
                 }
                 Err(reason) => {
                     pair_failures[i].push(format!("{}: {reason}", channels[j].0.label()));
@@ -423,6 +526,7 @@ pub fn analyze(
             .collect::<Vec<_>>()
             .join(", ");
         return Ok(PidReport {
+            estimator,
             channels: reports,
             verdict: PidVerdict::InsufficientEvidence,
             note: format!("requested channel(s) not assessable: {missing}"),
@@ -431,6 +535,7 @@ pub fn analyze(
     let failed_pairs = pair_failures.iter().map(Vec::len).sum::<usize>() / 2;
     if failed_pairs > 0 {
         return Ok(PidReport {
+            estimator,
             channels: reports,
             verdict: PidVerdict::InsufficientEvidence,
             note: format!(
@@ -445,6 +550,7 @@ pub fn analyze(
         .fold(0.0_f64, f64::max);
     if reference < cfg.mi_floor {
         return Ok(PidReport {
+            estimator,
             channels: reports,
             verdict: PidVerdict::InsufficientEvidence,
             note: format!(
@@ -458,6 +564,7 @@ pub fn analyze(
     let (largest_size, largest_cliques) = largest_consensus_cliques(&mi, threshold);
     if largest_size * 2 <= c || largest_cliques.len() != 1 {
         return Ok(PidReport {
+            estimator,
             channels: reports,
             verdict: PidVerdict::InsufficientEvidence,
             note: format!(
@@ -482,6 +589,7 @@ pub fn analyze(
             .all(|&peer| mi[candidate][peer].is_some_and(|value| value < threshold));
         if !fully_assessed_low {
             return Ok(PidReport {
+                estimator,
                 channels: reports,
                 verdict: PidVerdict::InsufficientEvidence,
                 note: format!(
@@ -494,6 +602,7 @@ pub fn analyze(
 
     if candidates.is_empty() {
         return Ok(PidReport {
+            estimator,
             channels: reports,
             verdict: PidVerdict::Nominal,
             note: format!(
@@ -507,6 +616,7 @@ pub fn analyze(
             confirm_attribution(cfg, channels, &cols, consensus, &candidates, &mut reports)
         {
             return Ok(PidReport {
+                estimator,
                 channels: reports,
                 verdict: PidVerdict::InsufficientEvidence,
                 note: format!("bootstrap did not confirm the selected attribution: {reason}"),
@@ -526,6 +636,7 @@ pub fn analyze(
         .collect::<Vec<_>>()
         .join(", ");
     Ok(PidReport {
+        estimator,
         channels: reports,
         verdict: PidVerdict::Decoupled(decoupled.clone()),
         note: format!(
@@ -623,7 +734,7 @@ fn pair_mi(
     a: &[f64],
     b_modality: Modality,
     b: &[f64],
-) -> Result<f64, String> {
+) -> Result<PairMiEstimate, String> {
     let (first_modality, first, second_modality, second) =
         canonical_pair(a_modality, a, b_modality, b);
     let seed = domain_seed(
@@ -632,13 +743,13 @@ fn pair_mi(
         modality_key(first_modality),
         modality_key(second_modality),
     );
-    let (joint, columns) = jittered_matrix_and_columns(&[first, second], cfg.jitter_std, seed)?;
+    let (joint, columns) =
+        noised_matrix_and_columns(&[first, second], cfg.observation_noise_std, seed)?;
     let id = intrinsic_dimension_levina_bickel(
         joint.as_ref(),
-        &IntrinsicDimConfig {
-            k: cfg.geom_k,
-            metric: Metric::Chebyshev,
-        },
+        &IntrinsicDimConfig::default()
+            .with_k(cfg.geom_k)
+            .with_metric(Metric::Chebyshev),
     )
     .map_err(|error| format!("intrinsic-dimension estimator failed: {error}"))?;
     if !id.is_finite() || id > cfg.id_max {
@@ -649,9 +760,7 @@ fn pair_mi(
     }
     let concentration = distance_concentration_stats(
         joint.as_ref(),
-        &DistanceConcentrationConfig {
-            metric: Metric::Chebyshev,
-        },
+        &DistanceConcentrationConfig::default().with_metric(Metric::Chebyshev),
     )
     .map_err(|error| format!("distance-concentration estimator failed: {error}"))?;
     if !concentration.pairwise_cv.is_finite()
@@ -664,7 +773,14 @@ fn pair_mi(
             concentration.pairwise_cv, concentration.nn_over_pairwise_mean
         ));
     }
-    estimate_mi(&columns[0], &columns[1])
+    estimate_mi_reported(
+        cfg,
+        first_modality,
+        second_modality,
+        seed,
+        &columns[0],
+        &columns[1],
+    )
 }
 
 fn canonical_pair<'a>(
@@ -680,29 +796,118 @@ fn canonical_pair<'a>(
     }
 }
 
+fn estimate_mi_reported(
+    cfg: &PidConfig,
+    first: Modality,
+    second: Modality,
+    derived_seed: u64,
+    a: &MatOwned,
+    b: &MatOwned,
+) -> Result<PairMiEstimate, String> {
+    let provenance = KsgProvenance::new(
+        format!(
+            "Galadriel overflow-resistant per-column standardisation (midrange/range preconditioning, then mean centering and population-RMS scaling) of the canonical {}-{} modality pair",
+            first.label(),
+            second.label()
+        ),
+        format!(
+            "seeded additive Gaussian observation noise after standardisation (std={:.17e}, root_seed={}, derived_pair_seed={derived_seed}); population support is declared separately by KsgConfig",
+            cfg.observation_noise_std, cfg.seed
+        ),
+        None,
+    )
+    .and_then(|provenance| {
+        provenance.with_sampling_model_and_splits(
+            "one temporally ordered sequence-aligned analysis window; temporal dependence is not diagnosed by the point report, and circular delete-block confirmation is a separate experimental pipeline",
+            None,
+            None,
+        )
+    })
+    .map_err(|error| format!("KSG provenance rejected: {error}"))?;
+    let report = ksg_mi_report(
+        a.as_ref(),
+        b.as_ref(),
+        &KsgConfig::assume_regular_full_dimensional(),
+        &provenance,
+    )
+    .map_err(|error| format!("KSG estimator failed: {error}"))?;
+    if report.method_status != KsgMethodStatus::RestrictedDomain
+        || report.scientific_status != ScientificStatus::ConditionalContinuous
+    {
+        return Err("KSG report returned an unexpected scientific-status classification".into());
+    }
+    let value = report.signed_estimate_nats;
+    // KSG's finite-sample estimate is signed. pid-rs 1.0 deliberately defaults
+    // to NegativeHandling::Allow so a small negative estimate remains an
+    // auditable low-dependence result rather than a numerical failure. The
+    // clique threshold is positive, so retaining the sign cannot create a
+    // corroborating edge.
+    if !value.is_finite() {
+        return Err("KSG estimator returned a non-finite MI".into());
+    }
+    let preprocessing_description = report.provenance.preprocessing_description().to_owned();
+    let observation_model_description =
+        report.provenance.observation_model_description().to_owned();
+    let sampling_model_description = report
+        .provenance
+        .sampling_model_description()
+        .map(str::to_owned);
+    Ok(PairMiEstimate {
+        value,
+        evidence: PairKsgEvidence {
+            first,
+            second,
+            estimate_nats: value,
+            n_samples: report.n_samples,
+            k: report.k,
+            support_contract: report.support_contract,
+            method_status: report.method_status,
+            scientific_status: report.scientific_status,
+            estimand: report.estimand,
+            assumption_ledger: report.assumption_ledger,
+            warnings: report.warnings,
+            report_warnings: report.report_warnings,
+            provenance_hashes: Arc::new(report.provenance_hashes),
+            preprocessing_description,
+            observation_model_description,
+            sampling_model_description,
+            resource_estimate: report.resource_estimate,
+        },
+    })
+}
+
+/// Inner resample scalar path. The point gate above carries pid-rs's full
+/// report/status/diagnostics; bootstrap replicates reuse the same explicit
+/// support contract but avoid multiplying report materialization by every
+/// edge×resample. The enclosing [`PidEstimatorEvidence`] classifies this part of
+/// the pipeline as experimental.
 fn estimate_mi(a: &MatOwned, b: &MatOwned) -> Result<f64, String> {
-    let value = ksg_mi(a.as_ref(), b.as_ref(), &KsgConfig::default())
-        .map_err(|error| format!("KSG estimator failed: {error}"))?;
-    if !value.is_finite() || value < 0.0 {
-        return Err("KSG estimator returned an invalid MI".into());
+    let value = ksg_mi(
+        a.as_ref(),
+        b.as_ref(),
+        &KsgConfig::assume_regular_full_dimensional(),
+    )
+    .map_err(|error| format!("KSG bootstrap estimator failed: {error}"))?;
+    if !value.is_finite() {
+        return Err("KSG bootstrap estimator returned a non-finite MI".into());
     }
     Ok(value)
 }
 
-/// Build and jitter a joint matrix once, then split its columns. Jitter is i.i.d.
-/// across the row-major joint matrix; no two columns can receive the identical
-/// restarted PRNG sequence.
-fn jittered_matrix_and_columns(
+/// Apply the configured observation-noise model to one joint matrix, then split
+/// its columns. Noise is i.i.d. across the row-major joint matrix; no two columns
+/// can receive the identical restarted PRNG sequence.
+fn noised_matrix_and_columns(
     columns: &[&[f64]],
-    jitter_std: f64,
+    observation_noise_std: f64,
     seed: u64,
 ) -> Result<(MatOwned, Vec<MatOwned>), String> {
     let Some(first) = columns.first() else {
-        return Err("cannot jitter an empty column set".into());
+        return Err("cannot apply observation noise to an empty column set".into());
     };
     let n = first.len();
     if n == 0 || columns.iter().any(|column| column.len() != n) {
-        return Err("jitter columns must be non-empty and equal-length".into());
+        return Err("observation-noise columns must be non-empty and equal-length".into());
     }
     let dimensions = columns.len();
     let mut flat = Vec::with_capacity(n.saturating_mul(dimensions));
@@ -713,11 +918,11 @@ fn jittered_matrix_and_columns(
     }
     let raw = MatOwned::new(flat, n, dimensions)
         .map_err(|error| format!("joint matrix construction failed: {error}"))?;
-    let jitter = Jitter::new(jitter_std, seed)
-        .map_err(|error| format!("jitter construction failed: {error}"))?;
+    let jitter = Jitter::new(observation_noise_std, seed)
+        .map_err(|error| format!("observation-noise construction failed: {error}"))?;
     let joint = jitter
         .apply(raw.as_ref())
-        .map_err(|error| format!("joint jitter failed: {error}"))?;
+        .map_err(|error| format!("joint observation-noise application failed: {error}"))?;
 
     let view = joint.as_ref();
     let mut split = Vec::with_capacity(dimensions);
@@ -725,7 +930,7 @@ fn jittered_matrix_and_columns(
         let data: Vec<f64> = (0..n).map(|row| view.row(row)[dimension]).collect();
         split.push(
             MatOwned::new(data, n, 1)
-                .map_err(|error| format!("jittered column construction failed: {error}"))?,
+                .map_err(|error| format!("noised column construction failed: {error}"))?,
         );
     }
     Ok((joint, split))
@@ -751,14 +956,17 @@ fn isx_atoms(
         modality_key(channels[i].0),
         modality_key(channels[others[0]].0),
     );
-    let (_, columns) =
-        jittered_matrix_and_columns(&[&cols[i], &cols[others[0]], &target], cfg.jitter_std, seed)
-            .ok()?;
+    let (_, columns) = noised_matrix_and_columns(
+        &[&cols[i], &cols[others[0]], &target],
+        cfg.observation_noise_std,
+        seed,
+    )
+    .ok()?;
     let estimate = pid2_isx_estimate(
         columns[0].as_ref(),
         columns[1].as_ref(),
         columns[2].as_ref(),
-        &Pid2Config::default(),
+        &Pid2Config::assume_regular_full_dimensional(),
     )
     .ok()?;
     let redundancy = estimate.redundancy_isx;
@@ -989,8 +1197,11 @@ fn bootstrap_mi_series(
         let resampled_b: Vec<f64> = plan.iter().map(|&index| second[index]).collect();
 
         let seed = domain_seed(cfg.seed, ROLE_BOOT_JITTER, pair_tag, replicate as u64);
-        let (_, columns) =
-            jittered_matrix_and_columns(&[&resampled_a, &resampled_b], cfg.jitter_std, seed)?;
+        let (_, columns) = noised_matrix_and_columns(
+            &[&resampled_a, &resampled_b],
+            cfg.observation_noise_std,
+            seed,
+        )?;
         estimates.push(estimate_mi(&columns[0], &columns[1])?);
     }
     Ok(estimates)
@@ -1193,6 +1404,7 @@ mod tests {
                 },
             )
             .unwrap();
+            let report = analyze(&channels, &PidConfig::default()).unwrap();
             assert!(
                 matches!(
                     point.verdict,
@@ -1202,8 +1414,6 @@ mod tests {
                 "seed {seed}: point estimate did not isolate acoustic: {}",
                 point.note
             );
-
-            let report = analyze(&channels, &PidConfig::default()).unwrap();
             match &report.verdict {
                 PidVerdict::Decoupled(modalities) => {
                     assert_eq!(modalities, &[Modality::Acoustic]);
@@ -1230,7 +1440,56 @@ mod tests {
     }
 
     #[test]
-    fn rejects_constant_columns_before_jitter_can_create_false_information() {
+    fn default_bootstrap_confirms_a_strong_deterministic_decoupling() {
+        let shared = pseudo_random_series(128, 0x51);
+        let honest_noise = pseudo_random_series(128, 0x52);
+        let weak_noise = pseudo_random_series(128, 0x53);
+        let radar = shared
+            .iter()
+            .zip(&honest_noise)
+            .map(|(&signal, &noise)| signal + 0.03 * noise)
+            .collect::<Vec<_>>();
+        let acoustic = shared
+            .iter()
+            .zip(&weak_noise)
+            .map(|(&signal, &noise)| 0.5 * signal + noise)
+            .collect::<Vec<_>>();
+        let channels = vec![
+            (Modality::Visual, shared),
+            (Modality::Radar, radar),
+            (Modality::Acoustic, acoustic),
+        ];
+
+        let report = analyze(&channels, &PidConfig::default()).unwrap();
+        assert_eq!(
+            report.verdict,
+            PidVerdict::Decoupled(vec![Modality::Acoustic]),
+            "{}",
+            report.note
+        );
+        let acoustic = report
+            .channels
+            .iter()
+            .find(|channel| channel.modality == Modality::Acoustic)
+            .unwrap();
+        assert!(acoustic.decoupled);
+        assert!(acoustic.ci.is_some_and(|(_, upper)| upper < 0.0));
+
+        let evidence = &report.estimator.pairwise_reports;
+        assert_eq!(evidence.len(), 3);
+        assert!(evidence.iter().all(|pair| {
+            pair.method_status == KsgMethodStatus::RestrictedDomain
+                && pair.scientific_status == ScientificStatus::ConditionalContinuous
+                && !pair.assumption_ledger.is_empty()
+                && !pair.warnings.is_empty()
+                && pair.provenance_hashes.input_hashes_sha256.len() == 2
+                && pair.sampling_model_description.is_some()
+                && pair.observation_model_description.contains("root_seed=1")
+        }));
+    }
+
+    #[test]
+    fn rejects_constant_columns_before_noise_can_create_false_information() {
         let channels = vec![
             (Modality::Visual, vec![0.0; 128]),
             (Modality::Radar, vec![10.0; 128]),
@@ -1253,12 +1512,116 @@ mod tests {
     }
 
     #[test]
-    fn joint_jitter_does_not_reuse_one_noise_sequence_across_columns() {
+    fn joint_observation_noise_does_not_reuse_one_sequence_across_columns() {
         let zeros = vec![0.0; 128];
-        let (_, columns) = jittered_matrix_and_columns(&[&zeros, &zeros], 1e-4, 7).unwrap();
+        let (_, columns) = noised_matrix_and_columns(&[&zeros, &zeros], 1e-4, 7).unwrap();
         assert!(
             (0..128).all(|row| columns[0].as_ref().row(row)[0] != columns[1].as_ref().row(row)[0])
         );
+    }
+
+    #[test]
+    fn finite_negative_ksg_estimates_remain_valid_low_edges() {
+        for seed in 1..=128 {
+            let first = pseudo_random_series(64, seed);
+            let second = pseudo_random_series(64, seed.wrapping_add(10_000));
+            let (_, columns) = noised_matrix_and_columns(&[&first, &second], 1e-4, seed).unwrap();
+            let raw = ksg_mi(
+                columns[0].as_ref(),
+                columns[1].as_ref(),
+                &KsgConfig::assume_regular_full_dimensional(),
+            )
+            .unwrap();
+            if raw < 0.0 {
+                assert_eq!(estimate_mi(&columns[0], &columns[1]).unwrap(), raw);
+                let reported = estimate_mi_reported(
+                    &PidConfig::default(),
+                    Modality::Visual,
+                    Modality::Radar,
+                    seed,
+                    &columns[0],
+                    &columns[1],
+                )
+                .unwrap();
+                assert_eq!(reported.value, raw);
+                return;
+            }
+        }
+        panic!("fixed seed scan did not produce a signed negative KSG estimate");
+    }
+
+    #[test]
+    fn pid_rs_1_0_evidence_and_upstream_status_are_locked() {
+        use pid_core::experimental::continuous::{
+            pid2_isx_report, Pid2Config, Pid2MethodStatus, Pid2Provenance,
+        };
+
+        let evidence: serde_json::Value =
+            serde_json::from_str(include_str!("../../../evidence/pid-rs-1.0-migration.json"))
+                .unwrap();
+        assert_eq!(evidence["schema_version"], 3);
+        assert_eq!(evidence["to"]["pid_core_version"], PID_RS_VERSION);
+        assert_eq!(evidence["to"]["pid_rs_revision"], PID_RS_REVISION);
+        let lock = include_str!("../../../Cargo.lock");
+        let locked_identity = format!(
+            "name = \"pid-core\"\nversion = \"{PID_RS_VERSION}\"\nsource = \"git+https://github.com/sepahead/pid-rs?rev={PID_RS_REVISION}#{PID_RS_REVISION}\""
+        );
+        assert!(
+            lock.contains(&locked_identity),
+            "PID report identity constants must match the resolved Cargo.lock pin"
+        );
+        assert_eq!(
+            evidence["execution_environment"]["rustc"],
+            "1.96.0 (ac68faa20)"
+        );
+        assert_eq!(
+            evidence["reproduction"]["discrete_xor"]["from"],
+            evidence["reproduction"]["discrete_xor"]["to"]
+        );
+        assert_eq!(
+            evidence["reproduction"]["stdout_sha256"]["from"],
+            evidence["reproduction"]["stdout_sha256"]["to"]
+        );
+        assert_eq!(
+            evidence["reproduction"]["sequential"]["from"],
+            evidence["reproduction"]["sequential"]["to"]
+        );
+        assert_eq!(
+            evidence["reproduction"]["autocorrelation_null"]["from"],
+            evidence["reproduction"]["autocorrelation_null"]["to"]
+        );
+
+        let first = pseudo_random_series(128, 11);
+        let second = pseudo_random_series(128, 17);
+        let noise = pseudo_random_series(128, 23);
+        let target = first
+            .iter()
+            .zip(&second)
+            .zip(&noise)
+            .map(|((&a, &b), &epsilon)| a + b + 0.2 * epsilon)
+            .collect::<Vec<_>>();
+        let (_, columns) =
+            noised_matrix_and_columns(&[&first, &second, &target], 1e-4, 29).unwrap();
+        let provenance = Pid2Provenance::new(
+            "locked synthetic source-1 preprocessing",
+            "locked synthetic source-2 preprocessing",
+            "locked synthetic target preprocessing",
+            "locked regular full-dimensional synthetic observation model",
+        )
+        .unwrap();
+        let report = pid2_isx_report(
+            columns[0].as_ref(),
+            columns[1].as_ref(),
+            columns[2].as_ref(),
+            &Pid2Config::assume_regular_full_dimensional(),
+            &provenance,
+        )
+        .unwrap();
+        assert_eq!(
+            report.method_status,
+            Pid2MethodStatus::ExperimentalRestrictedDomain
+        );
+        assert!(!report.warnings.is_empty());
     }
 
     #[test]
@@ -1369,6 +1732,29 @@ mod tests {
             analyze(&no_channels, &config),
             Err(GaladrielError::InvalidConfig(ref message))
                 if message.contains("cannot resolve family_alpha")
+        ));
+    }
+
+    #[test]
+    fn quadratic_preflight_counts_full_report_first_pair_work() {
+        let mut config = PidConfig {
+            window: 180,
+            min_samples: 100,
+            ..Default::default()
+        };
+        let fits = MAX_PAIR_ESTIMATOR_FITS
+            + MAX_ATOM_ESTIMATOR_FITS
+            + MAX_CONFIRMATION_EDGE_FITS * PID_CONFIRMATION_EDGE_FIT_UNITS * config.n_boot;
+        assert_eq!(PID_PAIR_POINT_FIT_UNITS, 6);
+        assert_eq!(PID_CONFIRMATION_EDGE_FIT_UNITS, 4);
+        assert_eq!(config.window * config.window * fits, 198_093_600);
+        assert!(config.validate().is_ok());
+
+        config.window = 181;
+        assert!(matches!(
+            config.validate(),
+            Err(GaladrielError::InvalidConfig(ref message))
+                if message.contains("maximum is 200000000")
         ));
     }
 

@@ -172,9 +172,10 @@ I(X;Y)=-\tfrac{1}{2}\log(1-\rho^2).
 
 MI and correlation magnitude therefore encode the same population ranking in that model.
 KSG [Kraskov2004] is justified only when validated data contain dependence that signed
-linear correlation cannot represent. Its geometry, sample size, jitter, and bootstrap
-configuration must be validated — its finite-sample and dimension-dependent bias are
-characterized by [Gao2018] — and failure is not replaced by an optimistic point estimate.
+linear correlation cannot represent. Its geometry, sample size, declared additive
+observation-noise model, and bootstrap configuration must be validated — its finite-sample
+and dimension-dependent bias are characterized by [Gao2018] — and failure is not replaced
+by an optimistic point estimate.
 
 Partial information decomposition [WilliamsBeer2010], in its shared-exclusions form
 [Makkeh2021, Ehrlich2024], can describe redundant, unique, and synergistic information for
@@ -217,7 +218,7 @@ stream-level false-alarm calibration; it is not the current runtime streaming mo
 The harness evaluates explicit synthetic models along accuracy, latency, and cost axes.
 After the correctness audit, exact pre-audit values were removed. They must not be cited as
 current results because sequence alignment, signed consensus, family-wise thresholds,
-validation, PID jitter, bootstrap handling, and fusion semantics changed.
+validation, PID observation-noise modeling, bootstrap handling, and fusion semantics changed.
 
 A regenerated report must disclose:
 
@@ -280,7 +281,8 @@ possible. See [`EVALUATION.md`](EVALUATION.md).
 2. Emit `consistency_projection` from a common frozen prior and frame, with explicit
    frame/context/prior identifiers.
 3. Emit association misses, gate rejections, and producer heartbeats.
-4. Add an authorized NCP publisher and least-privilege ACL rule.
+4. Add the authorized Crebain NCP publisher on the existing least-privilege
+   named-sensor ACL route, then prove the deployed producer/observer identities.
 5. Collect pre-gate recordings and characterize selection effects.
 6. Pre-register operating points and evaluate maneuvers, lifecycle changes, and attacks.
 7. Review the API and evidence before changing `publish = false` or applying a release tag.

@@ -33,6 +33,6 @@ producer-attested common projection, evaluates every active axis with a shared
 multiple-testing budget, and never falls back to native innovations. Direct
 extraction scans at most 400,000 observations and retains at most 65,536 frames.
 
-This crate is a pre-1.0 research component, uses workspace MSRV Rust 1.88, and
+This crate is a pre-1.0 research component, uses workspace MSRV Rust 1.89, and
 sets `publish = false`. It is not a field-validated safety or enforcement layer.
 Licensed under MIT OR Apache-2.0.

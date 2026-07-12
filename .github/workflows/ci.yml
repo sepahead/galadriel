@@ -29,8 +29,9 @@ jobs:
           persist-credentials: false
 
       - name: Install pinned workspace toolchain
-        uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4 # 1.88.0
+        uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4 # pinned action revision
         with:
+          toolchain: "1.89.0"
           components: rustfmt, clippy
 
       - name: Restore Cargo cache
@@ -103,6 +104,7 @@ jobs:
       - name: Install current stable Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
         with:
+          toolchain: stable
           components: clippy
 
       - name: Restore Cargo cache
@@ -130,12 +132,12 @@ jobs:
       - name: Check dependency policy
         uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2
         with:
-          rust-version: "1.88.0"
+          rust-version: "1.89.0"
           arguments: --all-features --locked
 
       - name: Check fuzz-workspace dependency policy
         uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2
         with:
-          rust-version: "1.88.0"
+          rust-version: "1.89.0"
           manifest-path: fuzz/Cargo.toml
           arguments: --all-features --locked

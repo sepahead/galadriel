@@ -1,4 +1,4 @@
 [toolchain]
 # One exact workspace MSRV keeps local, CI, and optional-feature builds reproducible.
-channel = "1.88.0"
+channel = "1.89.0"
 components = ["rustfmt", "clippy"]

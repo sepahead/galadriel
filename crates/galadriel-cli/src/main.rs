@@ -322,6 +322,35 @@ fn fused_verdict_str(v: &FusedVerdict) -> String {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ChannelEvidenceLabel {
+    Decoupled,
+    Corroborates,
+    Insufficient,
+}
+
+fn channel_evidence_label(
+    decoupled: bool,
+    assessable: bool,
+    axis_insufficient: bool,
+) -> ChannelEvidenceLabel {
+    if axis_insufficient || !assessable {
+        ChannelEvidenceLabel::Insufficient
+    } else if decoupled {
+        ChannelEvidenceLabel::Decoupled
+    } else {
+        ChannelEvidenceLabel::Corroborates
+    }
+}
+
+fn channel_evidence_tag(label: ChannelEvidenceLabel, color: bool) -> String {
+    match label {
+        ChannelEvidenceLabel::Decoupled => red("● DECOUPLED", color),
+        ChannelEvidenceLabel::Corroborates => green("● corroborates", color),
+        ChannelEvidenceLabel::Insufficient => dim("● INSUFFICIENT", color),
+    }
+}
+
 #[cfg(test)]
 mod verdict_label_tests {
     use super::*;
@@ -356,6 +385,18 @@ mod verdict_label_tests {
         assert!(broad.contains("jam-like evidence; cause unclassified"));
         assert!(!broad.contains("VERDICT: JAM"));
     }
+
+    #[test]
+    fn insufficient_axis_never_renders_a_channel_as_corroborating() {
+        assert_eq!(
+            channel_evidence_label(false, true, true,),
+            ChannelEvidenceLabel::Insufficient
+        );
+        assert_eq!(
+            channel_evidence_label(false, false, false,),
+            ChannelEvidenceLabel::Insufficient
+        );
+    }
 }
 
 /// The pure stealthy-spoof scene: on a moment-matched spoof the magnitude baseline is
@@ -363,7 +404,7 @@ mod verdict_label_tests {
 /// the modeled decoupling. This synthetic scene needs correlated honest channels
 /// (`ρ = 0.7`) and is not field-performance evidence.
 fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
-    use galadriel_core::{assess_default, CorrConfig};
+    use galadriel_core::{assess_default, CorrConfig, CorrVerdict};
     use galadriel_sim::scenario::{generate_spoofed, StealthySpoof};
 
     let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
@@ -400,12 +441,12 @@ fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::R
         )
     );
     for axis in &report.correlations {
+        let axis_insufficient = matches!(axis.report.verdict, CorrVerdict::InsufficientEvidence);
         for c in &axis.report.channels {
-            let tag = if c.decoupled {
-                red("● DECOUPLED", color)
-            } else {
-                green("● corroborates", color)
-            };
+            let tag = channel_evidence_tag(
+                channel_evidence_label(c.decoupled, c.corroboration.is_some(), axis_insufficient),
+                color,
+            );
             let rho = c
                 .corroboration
                 .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));
@@ -966,7 +1007,7 @@ fn run_replay(
 /// evaluated on the same synthetic decoupling.
 #[cfg(feature = "pid")]
 fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
-    use galadriel_pid::{assess_stream, PidConfig};
+    use galadriel_pid::{assess_stream, PidConfig, PidVerdict};
     use galadriel_sim::scenario::{generate_spoofed, StealthySpoof};
 
     let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
@@ -1005,12 +1046,16 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
         )
     );
     for axis in &report.pids {
+        let axis_insufficient = matches!(axis.report.verdict, PidVerdict::InsufficientEvidence);
         for c in &axis.report.channels {
-            let tag = if c.decoupled {
-                red("● DECOUPLED", color)
-            } else {
-                green("● corroborates", color)
-            };
+            let tag = channel_evidence_tag(
+                channel_evidence_label(
+                    c.decoupled,
+                    c.gate_ok && c.corroboration.is_some(),
+                    axis_insufficient,
+                ),
+                color,
+            );
             let mi = c
                 .corroboration
                 .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));
