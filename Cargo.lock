@@ -1012,7 +1012,7 @@ dependencies = [
  "galadriel-pid",
  "galadriel-sim",
  "proptest",
- "rand 0.8.6",
+ "rand 0.8.7",
  "rand_distr",
  "serde",
  "serde_json",
@@ -1026,7 +1026,7 @@ version = "0.1.0"
 dependencies = [
  "galadriel-core",
  "pid-core",
- "rand 0.8.6",
+ "rand 0.8.7",
  "rand_distr",
 ]
 
@@ -1057,7 +1057,7 @@ name = "galadriel-sim"
 version = "0.1.0"
 dependencies = [
  "galadriel-core",
- "rand 0.8.6",
+ "rand 0.8.7",
  "rand_distr",
 ]
 
@@ -2151,9 +2151,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rand"
-version = "0.8.6"
+version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
+checksum = "22f6172bdec972074665ed81ed53b71da00bfc44b65a753cfde883ec4c702a1a"
 dependencies = [
  "libc",
  "rand_chacha 0.3.1",
@@ -2232,7 +2232,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
 dependencies = [
  "num-traits",
- "rand 0.8.6",
+ "rand 0.8.7",
 ]
 
 [[package]]
@@ -3340,7 +3340,7 @@ dependencies = [
  "humantime",
  "lazy_static",
  "log",
- "rand 0.8.6",
+ "rand 0.8.7",
  "serde",
  "spin 0.10.0",
 ]
@@ -3840,7 +3840,7 @@ dependencies = [
  "once_cell",
  "petgraph",
  "phf",
- "rand 0.8.6",
+ "rand 0.8.7",
  "rustc_version",
  "serde",
  "serde_json",
@@ -3946,7 +3946,7 @@ checksum = "44b80a042fc71419fc4952a90c9cbcfb323c0ced048125d8b44fd362f184045f"
 dependencies = [
  "aes",
  "hmac",
- "rand 0.8.6",
+ "rand 0.8.7",
  "rand_chacha 0.3.1",
  "sha3",
  "zenoh-result",
@@ -3961,7 +3961,7 @@ dependencies = [
  "getrandom 0.2.17",
  "hashbrown 0.16.1",
  "keyed-set",
- "rand 0.8.6",
+ "rand 0.8.7",
  "schemars 1.2.1",
  "serde",
  "token-cell",
@@ -4145,7 +4145,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eeab45020bbecc077f14f06ee8f5aee65ce760af72481e663cac58b5dbfa66dd"
 dependencies = [
  "const_format",
- "rand 0.8.6",
+ "rand 0.8.7",
  "serde",
  "uhlc",
  "zenoh-buffers",
@@ -4192,7 +4192,7 @@ dependencies = [
  "crossbeam-queue",
  "nix",
  "num-traits",
- "rand 0.8.6",
+ "rand 0.8.7",
  "stabby",
  "static_assertions",
  "static_init",
@@ -4263,7 +4263,7 @@ dependencies = [
  "futures",
  "lazy_static",
  "lz4_flex",
- "rand 0.8.6",
+ "rand 0.8.7",
  "ringbuffer-spsc",
  "serde",
  "sha3",
