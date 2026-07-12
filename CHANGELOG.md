@@ -74,8 +74,25 @@ may contain breaking changes.
   cannot be read as an operational detection or false-alarm rate.
 - Inherit the workspace `homepage`, `keywords`, and `categories` in every member manifest,
   and reference `galadriel-sim` through the workspace table in `galadriel-pid` dev-dependencies.
-- Migrate the NCP integration to the 0.7 wire revision and pin `ncp-core`/`ncp-zenoh`
-  to the immutable commit corresponding to the public `v0.7.1` tag.
+- Track the NCP wire through its pre-1.0 churn, ending at the **0.8 wire revision**: pin
+  `ncp-core`/`ncp-zenoh` to the immutable commit for the public `v0.8.0` tag (`2f5bd58`,
+  contract hash `d1b50a2d8a265276`; an earlier `v0.7.1` pin in this cycle was superseded).
+  The sidecar now stamps `ncp_version` `"0.8"`; the `PidObservation` payload shape is
+  unchanged, so this is a wire-addressing/version bump, not a payload re-versioning. It
+  keeps interoperability with the Crebain producer and Prisoma observer, which are already
+  on NCP 0.8 — NCP's `check_version` is an exact major.minor fail-closed gate, so a
+  0.7-stamped sidecar would be hard-rejected by 0.8 peers.
+- Document Galadriel's downstream advisory boundary from its own side in
+  [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md): the contract any consumer (a
+  Haldir-style authorization gate) must honour — non-authoritative, record-only until
+  independently calibrated, never `ALLOW`-widening, monotonic restrict-only afterward, no
+  synchronous feedback loop, and no self-asserted calibration or `StateUnusable` verdict.
+- Clarify that "signed" (the sign of the correlation) and "producer-attested" (a provenance
+  claim on the projection input) are not cryptographic signatures (README intro).
+- Document that `Mirror::new` enforces no expected-modality set — a sensor subset can reach
+  `Nominal`; `Mirror::with_modalities` is the fail-closed cross-sensor constructor.
+- Record that the `galadriel-pid` sidecar route/kind name is historical (PID is now
+  optional); a rename is deferred to the next sidecar-schema version bump.
 - Rename causal-sounding detector verdicts to evidence-neutral
   `AttributedInconsistency`, `BroadDegradation`, `UnclassifiedAnomaly`, and `Decoupled`.
   Baseline-verdict JSON serialization uses the new tags while deserialization accepts the
