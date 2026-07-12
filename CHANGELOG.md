@@ -9,6 +9,41 @@ may contain breaking changes.
 
 ### Security
 
+- Refuse `SidecarTap::close()` on a tap created with `from_bus`: `ZenohBus` clones share
+  one Zenoh session and one retained-subscriber registry, so closing from the tap would
+  have silently torn down the **host's** entire transport (all of its subscriptions, not
+  just galadriel's). A shared tap now returns a typed error and the host closes its own
+  session; taps opened by the `open*` constructors still close normally.
+- Bound sidecar `session_id`/`producer_id` to 64 bytes, mirroring NCP 0.8's 1..=64-byte
+  transport-neutral session-identifier rule, so an envelope can never carry an identity
+  the NCP control plane itself would reject (JSON Schema updated to `maxLength: 64`).
+- Widen the CI compression guard for the `RUSTSEC-2026-0041` exception from
+  `-p galadriel-ncp` to `--workspace --all-features --locked`, so no workspace member's
+  feature unification can re-enable `zenoh-transport/transport_compression` unseen; the
+  vulnerable lz4_flex decompression path is `cfg`-gated behind that feature and compiled
+  out entirely while the guard holds.
+- Document that `LiveLimits::max_payload_bytes` bounds decode work only — the transport
+  copies a received message before the gate, and Zenoh's own `max_message_size` defaults
+  to 1 GiB — so deployments bound peak receive memory in the Zenoh config.
+- Document that `TransportMode::QuietDevelopment`'s scouting-off property holds for NCP's
+  hardened default config and is superseded when `NCP_ZENOH_CONFIG` names another config.
+
+### Added
+
+- An in-process Zenoh loopback end-to-end suite for the live leg
+  (`crates/galadriel-ncp/tests/live_zenoh_e2e.rs`, feature `zenoh`): a real `ZenohBus`
+  round trip through `SidecarTap` on the multi-segment `engram/ncp` realm proving decoded
+  delivery with full field fidelity, wrong-session provenance rejection, duplicate-JSON-key
+  rejection at the typed parse, size-gate-before-parse, `from_bus` realm derivation, the
+  shared-bus close refusal, and health-counter semantics — the first runtime proof of the
+  NCP live leg (previously covered only by synthetic payload-delivery unit tests).
+- Re-export the exact pinned `ncp_core` (and `ncp_zenoh` under feature `zenoh`) from
+  `galadriel-ncp`, so hosts building a shared bus for `SidecarTap::from_bus` cannot
+  accidentally resolve a second, diverging NCP revision in the same process.
+- Document the sidecar's session-epoch discipline relative to NCP 0.8: control-plane
+  sessions carry server-issued generations, the sidecar deliberately does not — a producer
+  restart mints a new `session_id` instead.
+
 - Pin CI actions by commit SHA, grant read-only repository contents permission, disable
   persisted checkout credentials, and cancel superseded runs.
 - Add Dependabot and `cargo-deny` policy for advisories, licenses, and sources.

@@ -30,7 +30,19 @@ ncp-zenoh = { workspace = true, optional = true }
 # transitive runtime dependency.
 tokio = { workspace = true, optional = true }
 
+[dev-dependencies]
+# tests/live_zenoh_e2e.rs (feature `zenoh`) drives a real in-process Zenoh round
+# trip and needs a test runtime; the library itself keeps only tokio `sync`.
+# Dev-only: the published/normal dependency tree is unchanged.
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
 [features]
 default = []
 # The live Zenoh named-perception tap. Off by default — only `ncp-live` enables it.
 zenoh = ["dep:ncp-zenoh", "dep:tokio"]
+
+# The live-leg e2e test compiles only when the `zenoh` feature is enabled
+# (it needs ncp-zenoh and the optional tokio dependency in the lib itself).
+[[test]]
+name = "live_zenoh_e2e"
+required-features = ["zenoh"]

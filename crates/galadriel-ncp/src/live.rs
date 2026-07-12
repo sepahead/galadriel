@@ -42,6 +42,11 @@ use tokio::sync::mpsc;
 use crate::{sidecar_key, valid_realm, SidecarEnvelope, SidecarEnvelopeError};
 
 /// Maximum live sidecar payload accepted under [`LiveLimits::default`].
+///
+/// This bounds galadriel's **decode** work only. The transport copies the full
+/// received message before this gate runs, and Zenoh's own `max_message_size`
+/// defaults to 1 GiB — a deployment that must bound peak receive memory sets
+/// `transport/link/rx/max_message_size` in its Zenoh config as well.
 pub const DEFAULT_MAX_LIVE_PAYLOAD_BYTES: usize = 64 * 1024;
 
 /// Maximum `(track, modality)` sequence streams retained by a live subscription.
@@ -706,7 +711,9 @@ impl ObservationHandoff {
 ///
 /// Closing or dropping this receiver does not undeclare the upstream NCP
 /// subscriber; later accepted observations are counted as closed drops. Close the
-/// owning [`SidecarTap`] when the subscription should stop at the transport.
+/// owning [`SidecarTap`] when the subscription should stop at the transport —
+/// unless the tap wraps a host-owned bus ([`SidecarTap::from_bus`]), in which case
+/// only the host can stop it by closing its own session.
 pub struct LiveObservationReceiver {
     receiver: mpsc::Receiver<QueuedObservation>,
     state: Arc<HandoffState>,
@@ -1253,7 +1260,10 @@ impl SubscriptionHealth {
 pub enum TransportMode {
     /// Require NCP's strict mTLS client configuration and fail closed if absent.
     Secure,
-    /// Disable multicast scouting but do not prove authentication/authorization.
+    /// NCP's hardened default config — multicast scouting disabled — without proving
+    /// authentication/authorization. If the `NCP_ZENOH_CONFIG` environment variable is
+    /// set, ncp-zenoh loads that file **instead** of the hardened default, so the
+    /// scouting-off property then depends entirely on the named config.
     QuietDevelopment,
 }
 
@@ -1263,6 +1273,11 @@ pub struct SidecarTap {
     realm: String,
     limits: LiveLimits,
     counters: Arc<IngestCounters>,
+    /// Whether this tap opened (and therefore owns) its Zenoh session. `from_bus`
+    /// taps wrap a host-owned bus and must never close it: `ZenohBus` clones share
+    /// one session and one retained-subscriber registry, so closing from the tap
+    /// would tear down the host's entire transport.
+    owns_bus: bool,
 }
 
 impl SidecarTap {
@@ -1281,10 +1296,15 @@ impl SidecarTap {
             TransportMode::Secure => ZenohBus::open_secure(keys).await?,
             TransportMode::QuietDevelopment => ZenohBus::open_realm(keys).await?,
         };
-        Self::from_parts(bus, DEFAULT_REALM.to_string(), limits)
+        Self::from_parts(bus, DEFAULT_REALM.to_string(), limits, true)
     }
 
-    fn from_parts(bus: ZenohBus, realm: String, limits: LiveLimits) -> Result<Self, ZenohError> {
+    fn from_parts(
+        bus: ZenohBus,
+        realm: String,
+        limits: LiveLimits,
+        owns_bus: bool,
+    ) -> Result<Self, ZenohError> {
         if !valid_realm(&realm) {
             return Err(ZenohError(format!(
                 "invalid NCP realm: expected concrete key segments, got {realm:?}"
@@ -1295,6 +1315,7 @@ impl SidecarTap {
             realm,
             limits,
             counters: Arc::new(IngestCounters::default()),
+            owns_bus,
         })
     }
 
@@ -1324,7 +1345,7 @@ impl SidecarTap {
             TransportMode::Secure => ZenohBus::open_secure(keys).await?,
             TransportMode::QuietDevelopment => ZenohBus::open_realm(keys).await?,
         };
-        Self::from_parts(bus, realm, limits)
+        Self::from_parts(bus, realm, limits, true)
     }
 
     /// Wrap an already-open bus, so a host app can share one Zenoh session across its
@@ -1333,14 +1354,19 @@ impl SidecarTap {
     /// keyspace. This constructor inherits the host's transport-security choice and
     /// cannot prove that the existing session used strict mTLS; the host remains
     /// responsible for that deployment invariant.
+    ///
+    /// A shared tap does **not** own the session: [`Self::close`] refuses with a typed
+    /// error, and the tap's subscriptions remain declared on the host session until
+    /// the host closes its own `ZenohBus`. The host owns the transport lifecycle.
     pub fn from_bus(bus: ZenohBus) -> Result<Self, ZenohError> {
         Self::from_bus_with_limits(bus, LiveLimits::default())
     }
 
     /// Wrap an already-open bus with caller-supplied payload limits.
+    /// See [`Self::from_bus`] for the shared-session close semantics.
     pub fn from_bus_with_limits(bus: ZenohBus, limits: LiveLimits) -> Result<Self, ZenohError> {
         let realm = bus.keys().realm().to_owned();
-        Self::from_parts(bus, realm, limits)
+        Self::from_parts(bus, realm, limits, false)
     }
 
     /// Payloads rejected for excessive size, malformed JSON, invalid observation
@@ -1364,7 +1390,9 @@ impl SidecarTap {
     /// Last observation accepted by any subscription on this tap before callback or
     /// bounded-handoff outcome.
     /// Concurrent subscriptions have independent delivery order, so this is a
-    /// diagnostic snapshot rather than a global causal ordering.
+    /// diagnostic snapshot rather than a global causal ordering. A per-subscription
+    /// sequence reset does **not** clear this tap-level snapshot, so it may still
+    /// report an observation from before the reset.
     pub fn last_accepted(&self) -> Option<LastAcceptedObservation> {
         self.counters.last_accepted()
     }
@@ -1612,7 +1640,22 @@ impl SidecarTap {
     }
 
     /// Gracefully close the underlying Zenoh session (undeclare subscribers and flush).
+    ///
+    /// Only a tap that opened its own session (the `open*` constructors) may close it.
+    /// A tap created with [`Self::from_bus`] wraps a **host-owned** bus whose clones
+    /// share one Zenoh session and one retained-subscriber registry; closing from the
+    /// tap would silently tear down the host's entire transport — every subscription,
+    /// not just galadriel's. That call therefore fails with a typed error and changes
+    /// nothing; the host closes the session through its own `ZenohBus` handle.
     pub async fn close(&self) -> Result<(), ZenohError> {
+        if !self.owns_bus {
+            return Err(ZenohError(
+                "refusing to close a host-owned bus: this tap was created with \
+                 from_bus, and closing would tear down the host's shared Zenoh \
+                 session; the host application owns that lifecycle"
+                    .to_string(),
+            ));
+        }
         self.bus.close().await
     }
 }

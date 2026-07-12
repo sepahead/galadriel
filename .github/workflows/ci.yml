@@ -81,7 +81,10 @@ jobs:
             echo 'RUSTSEC-2026-0041 exception expired; upgrade NCP/Zenoh or renew with review' >&2
             exit 1
           fi
-          feature_tree="$(cargo tree -p galadriel-ncp --all-features -e features)"
+          # Workspace-wide so no member's feature unification can smuggle the
+          # vulnerable path in, and --locked so the assertion binds to the audited
+          # dependency graph.
+          feature_tree="$(cargo tree --workspace --all-features -e features --locked)"
           if [[ "$feature_tree" == *'zenoh-transport feature "transport_compression"'* ]]; then
             echo 'RUSTSEC-2026-0041 mitigation invalid: transport_compression is enabled' >&2
             exit 1
