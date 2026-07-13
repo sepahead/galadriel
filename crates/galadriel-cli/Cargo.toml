@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Command-line demo and driver for Galadriel's Mirror."
+description = "Demo, replay, and secure observer for Galadriel's Mirror."
 publish = false
 
 [lints]
@@ -24,6 +24,7 @@ galadriel-core = { workspace = true }
 galadriel-sim = { workspace = true }
 galadriel-pid = { workspace = true, optional = true }
 galadriel-ncp = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["rt-multi-thread", "signal", "time"] }
 clap = { workspace = true }
 anyhow = { workspace = true }
 
@@ -33,5 +34,5 @@ default = []
 pid = ["dep:galadriel-pid"]
 # NCP sidecar ingest (pulls ncp-core). Adds `replay <jsonl>`.
 ncp = ["dep:galadriel-ncp"]
-# The live Zenoh named-perception tap (pulls ncp-zenoh + the full Zenoh/tokio stack).
-ncp-live = ["ncp", "galadriel-ncp/zenoh"]
+# The operational two-route Zenoh receiver and process runtime.
+ncp-live = ["ncp", "galadriel-ncp/zenoh", "dep:tokio"]

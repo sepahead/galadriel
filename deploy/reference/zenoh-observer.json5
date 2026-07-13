@@ -1,0 +1,35 @@
+{
+  "connect": {
+    "endpoints": [
+      "tls/router.example.invalid:7447"
+    ],
+    "exit_on_failure": true
+  },
+  "listen": {
+    "endpoints": []
+  },
+  "mode": "client",
+  "scouting": {
+    "gossip": {
+      "enabled": false
+    },
+    "multicast": {
+      "enabled": false
+    }
+  },
+  "transport": {
+    "link": {
+      "rx": {
+        "max_message_size": 131072
+      },
+      "tls": {
+        "close_link_on_expiration": true,
+        "connect_certificate": "deploy/certs/observer.pem",
+        "connect_private_key": "deploy/certs/observer-key.pem",
+        "enable_mtls": true,
+        "root_ca_certificate": "deploy/certs/ca.pem",
+        "verify_name_on_connect": true
+      }
+    }
+  }
+}

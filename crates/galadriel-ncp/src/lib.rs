@@ -26,6 +26,9 @@
 //! - The live Zenoh tap ([`live::SidecarTap`], `ncp-zenoh`) is a separate, heavier
 //!   concern behind the `zenoh` feature (reached via galadriel's `ncp-live`) — it is not
 //!   pulled by the default JSONL path.
+//! - The same feature exposes [`operational_live::OperationalLiveReceiver`], which
+//!   joins the observation and monitor routes through one serialized, bounded,
+//!   deadline-driven ingress before [`lifecycle::LifecycleDetector`] admits evidence.
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -39,9 +42,18 @@ use ncp_core::{
 };
 use serde::{Deserialize, Serialize};
 
+pub mod assembler;
+pub mod lifecycle;
 #[cfg(feature = "zenoh")]
 pub mod live;
 pub mod monitor;
+#[cfg(feature = "zenoh")]
+pub mod monitor_live;
+#[cfg(feature = "zenoh")]
+pub mod operational_live;
+pub mod registry;
+#[cfg(feature = "zenoh")]
+pub mod secure_live;
 
 /// The exact pinned `ncp-core`, re-exported so hosts reuse galadriel's revision
 /// (constants, `Keys`, validators) instead of re-resolving the git dependency and

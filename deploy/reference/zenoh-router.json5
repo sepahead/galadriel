@@ -1,0 +1,115 @@
+{
+  "access_control": {
+    "default_permission": "deny",
+    "enabled": true,
+    "policies": [
+      {
+        "rules": [
+          "galadriel-producer-put-ingress"
+        ],
+        "subjects": [
+          "galadriel-producer"
+        ]
+      },
+      {
+        "rules": [
+          "galadriel-observer-put-egress",
+          "galadriel-observer-subscribe-ingress"
+        ],
+        "subjects": [
+          "galadriel-observer"
+        ]
+      }
+    ],
+    "rules": [
+      {
+        "flows": [
+          "ingress"
+        ],
+        "id": "galadriel-producer-put-ingress",
+        "key_exprs": [
+          "engram/ncp/session/galadriel-example-20260713-001/sensor/galadriel-pid",
+          "engram/ncp/session/galadriel-example-20260713-001/sensor/galadriel-monitor"
+        ],
+        "messages": [
+          "put"
+        ],
+        "permission": "allow"
+      },
+      {
+        "flows": [
+          "egress"
+        ],
+        "id": "galadriel-observer-put-egress",
+        "key_exprs": [
+          "engram/ncp/session/galadriel-example-20260713-001/sensor/galadriel-pid",
+          "engram/ncp/session/galadriel-example-20260713-001/sensor/galadriel-monitor"
+        ],
+        "messages": [
+          "put"
+        ],
+        "permission": "allow"
+      },
+      {
+        "flows": [
+          "ingress"
+        ],
+        "id": "galadriel-observer-subscribe-ingress",
+        "key_exprs": [
+          "engram/ncp/session/galadriel-example-20260713-001/sensor/galadriel-pid",
+          "engram/ncp/session/galadriel-example-20260713-001/sensor/galadriel-monitor"
+        ],
+        "messages": [
+          "declare_subscriber"
+        ],
+        "permission": "allow"
+      }
+    ],
+    "subjects": [
+      {
+        "cert_common_names": [
+          "crebain-galadriel-producer.example.invalid"
+        ],
+        "id": "galadriel-producer"
+      },
+      {
+        "cert_common_names": [
+          "galadriel-observer.example.invalid"
+        ],
+        "id": "galadriel-observer"
+      }
+    ]
+  },
+  "connect": {
+    "endpoints": []
+  },
+  "listen": {
+    "endpoints": [
+      "tls/0.0.0.0:7447"
+    ],
+    "exit_on_failure": true
+  },
+  "mode": "router",
+  "scouting": {
+    "gossip": {
+      "enabled": false
+    },
+    "multicast": {
+      "enabled": false
+    }
+  },
+  "transport": {
+    "link": {
+      "rx": {
+        "max_message_size": 131072
+      },
+      "tls": {
+        "close_link_on_expiration": true,
+        "enable_mtls": true,
+        "listen_certificate": "deploy/certs/router.pem",
+        "listen_private_key": "deploy/certs/router-key.pem",
+        "root_ca_certificate": "deploy/certs/ca.pem"
+      }
+    }
+  }
+}

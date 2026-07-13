@@ -693,6 +693,11 @@ impl ModalityOutcome {
                 "only an updated or incomparable-projection outcome may require v1",
             ));
         }
+        if self.outcome == ModalityOutcomeKind::Updated && !self.v1_expected {
+            return Err(MonitorError::EventCoherence(
+                "updated outcomes must require their matching v1 observation",
+            ));
+        }
 
         match self.outcome {
             ModalityOutcomeKind::Updated | ModalityOutcomeKind::UpdateRejected => {
@@ -1549,6 +1554,15 @@ mod tests {
 
     #[test]
     fn outcome_requires_fields_specific_to_update_birth_and_unsupported_filter() {
+        let mut censored_update = outcome(ModalityOutcomeKind::Updated);
+        censored_update.v1_expected = false;
+        assert_eq!(
+            censored_update.validate(),
+            Err(MonitorError::EventCoherence(
+                "updated outcomes must require their matching v1 observation"
+            ))
+        );
+
         let mut updated = outcome(ModalityOutcomeKind::Updated);
         updated.measurement_index = None;
         assert!(matches!(

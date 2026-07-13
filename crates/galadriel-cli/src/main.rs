@@ -1,22 +1,29 @@
 #![forbid(unsafe_code)]
-//! `galadriel` — command-line demo and driver for Galadriel's Mirror.
+//! `galadriel` — demo, replay, and secure observer for Galadriel's Mirror.
 //!
 //! `galadriel demo` runs four synthetic scenarios — clean, a targeted acoustic spoof, a
 //! broadband jam, and a moment-matched stealthy spoof — through the pure default detector
 //! (NIS χ² magnitude ⊕ signed `ρ` cross-sensor consistency) and prints the per-channel traces
 //! and the fused verdict for each. With `--features pid` it adds the KSG-MI escalation view.
+//! `galadriel observe` (feature `ncp-live`) runs the bounded, fail-stop two-route receiver.
 
 use std::collections::HashMap;
 #[cfg(feature = "ncp")]
 use std::collections::VecDeque;
 use std::io::IsTerminal;
+#[cfg(feature = "ncp-live")]
+use std::path::PathBuf;
 
+#[cfg(feature = "ncp-live")]
+use anyhow::Context as _;
 use clap::{Parser, Subcommand};
 use galadriel_core::{
     DetectorConfig, FusedVerdict, MagnitudeEvidence, Mirror, Modality, PidObservation, Verdict,
 };
 use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
 use galadriel_sim::scenario::{generate, ScenarioConfig};
+#[cfg(feature = "ncp-live")]
+use std::io::Read as _;
 
 const MIN_DEMO_FRAMES: usize = 128;
 const MAX_DEMO_FRAMES: usize = 10_000;
@@ -58,6 +65,25 @@ enum Cmd {
         #[arg(long, default_value_t = 4)]
         max_pid_tracks: usize,
     },
+    /// Observe one exact producer epoch over the secure two-route Zenoh profile.
+    #[cfg(feature = "ncp-live")]
+    Observe {
+        /// Exact NCP realm configured in the secure Zenoh profile.
+        #[arg(long)]
+        realm: String,
+        /// Deployment-supplied, never-reused producer process epoch.
+        #[arg(long)]
+        epoch: String,
+        /// Producer identity required inside both strict envelopes.
+        #[arg(long)]
+        producer_id: String,
+        /// Deployment registry JSON shared with the producer.
+        #[arg(long)]
+        registry: PathBuf,
+        /// Externally pinned lowercase SHA-256 of canonical registry JSON.
+        #[arg(long)]
+        registry_sha256: String,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -75,8 +101,257 @@ fn main() -> anyhow::Result<()> {
             #[cfg(not(feature = "pid"))]
             run_replay(&path, max_report_tracks)?;
         }
+        #[cfg(feature = "ncp-live")]
+        Cmd::Observe {
+            realm,
+            epoch,
+            producer_id,
+            registry,
+            registry_sha256,
+        } => run_observe(&realm, &epoch, &producer_id, &registry, &registry_sha256)?,
     }
     Ok(())
+}
+
+#[cfg(feature = "ncp-live")]
+fn run_observe(
+    realm: &str,
+    epoch: &str,
+    producer_id: &str,
+    registry_path: &std::path::Path,
+    registry_sha256: &str,
+) -> anyhow::Result<()> {
+    // Read through the registry's wire ceiling instead of allocating according
+    // to an untrusted file length before the strict parser can enforce it.
+    let registry_file = std::fs::File::open(registry_path)
+        .with_context(|| format!("cannot open registry {}", registry_path.display()))?;
+    let mut registry_bytes = Vec::with_capacity(galadriel_ncp::registry::MAX_REGISTRY_BYTES + 1);
+    registry_file
+        .take((galadriel_ncp::registry::MAX_REGISTRY_BYTES as u64) + 1)
+        .read_to_end(&mut registry_bytes)
+        .with_context(|| format!("cannot read registry {}", registry_path.display()))?;
+    let registry = galadriel_ncp::registry::DeploymentRegistry::from_json_pinned(
+        &registry_bytes,
+        registry_sha256,
+    )
+    .context("deployment registry or external digest pin is invalid")?;
+    let keys = galadriel_ncp::ncp_core::Keys::try_new(realm)
+        .map_err(|error| anyhow::anyhow!("invalid NCP realm {realm:?}: {error}"))?;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .context("cannot start the live receiver runtime")?;
+
+    runtime.block_on(observe_epoch(keys, epoch, producer_id, registry))
+}
+
+#[cfg(feature = "ncp-live")]
+async fn observe_epoch(
+    keys: galadriel_ncp::ncp_core::Keys,
+    epoch: &str,
+    producer_id: &str,
+    registry: galadriel_ncp::registry::DeploymentRegistry,
+) -> anyhow::Result<()> {
+    use galadriel_ncp::assembler::{AssemblerLimits, AssemblyEvent};
+    use galadriel_ncp::lifecycle::{LifecycleAssessment, LifecycleDetector};
+    use galadriel_ncp::operational_live::OperationalLiveReceiver;
+
+    // Validate the immutable statistical policy before acquiring transport
+    // resources. A configuration failure must not leave a live subscription
+    // waiting for drop-based cleanup.
+    let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
+        .context("default lifecycle detector policy is invalid")?;
+    let mut receiver = OperationalLiveReceiver::open_secure(
+        keys,
+        epoch,
+        producer_id,
+        registry,
+        AssemblerLimits::default(),
+    )
+    .await
+    .context("cannot open the strict two-route receiver; verify NCP_ZENOH_CONFIG")?;
+    let mut interrupt = std::pin::pin!(tokio::signal::ctrl_c());
+
+    eprintln!(
+        "observing realm={} epoch={} producer={} · advisory evidence · calibrated_posterior=false",
+        receiver.realm(),
+        receiver.session_id(),
+        receiver.producer_id()
+    );
+
+    let loop_result = 'events: loop {
+        let event = tokio::select! {
+            biased;
+            signal = &mut interrupt => {
+                match signal {
+                    Ok(()) => break Ok(()),
+                    Err(error) => break Err(anyhow::Error::new(error).context("Ctrl-C listener failed")),
+                }
+            }
+            result = receiver.recv() => result.map_err(anyhow::Error::new),
+        };
+        let event = match event {
+            Ok(event) => event,
+            Err(error) => break Err(error.context("operational receiver terminated")),
+        };
+
+        match event {
+            AssemblyEvent::FrameReady(frame) => {
+                let assessments = match detector.assess_frame(&frame) {
+                    Ok(assessments) => assessments,
+                    Err(error) => {
+                        break 'events Err(anyhow::Error::new(error)
+                            .context("lifecycle-complete frame violated detector invariants"));
+                    }
+                };
+                for assessment in assessments {
+                    match assessment {
+                        LifecycleAssessment::Evaluated {
+                            track_id,
+                            fusion_seq,
+                            history_reset,
+                            report,
+                        } => println!(
+                            "frame={fusion_seq} track={track_id} history_reset={history_reset} evidence={:?} calibrated_posterior=false",
+                            report.verdict
+                        ),
+                        LifecycleAssessment::Abstained {
+                            track_id,
+                            fusion_seq,
+                            unavailable_modalities,
+                        } => println!(
+                            "frame={fusion_seq} track={track_id} evidence=InsufficientEvidence lifecycle_complete=true assessable=false unavailable={unavailable_modalities:?} calibrated_posterior=false"
+                        ),
+                        _ => {}
+                    }
+                }
+            }
+            AssemblyEvent::HeartbeatAccepted { event_seq, .. } => {
+                let assembler = receiver.assembler();
+                let limits = assembler.limits();
+                eprintln!(
+                    "heartbeat event_seq={event_seq} prior_identities={}/{} observation_streams={}/{} open_frames={}/{} buffered_bytes={}/{}",
+                    assembler.prior_identities(),
+                    limits.max_prior_identities,
+                    assembler.observation_streams(),
+                    limits.max_observation_streams,
+                    assembler.open_frames(),
+                    limits.max_open_frames,
+                    assembler.buffered_bytes(),
+                    limits.max_buffered_bytes,
+                );
+            }
+            AssemblyEvent::ContractHashMismatch { route } => {
+                eprintln!("advisory contract-hash mismatch on {route:?} route");
+            }
+            AssemblyEvent::Fault(fault) => {
+                break 'events Err(anyhow::anyhow!(
+                    "operational receiver unexpectedly returned assembly fault: {fault:?}"
+                ));
+            }
+            _ => {}
+        }
+    };
+
+    // Always tear down both exact selectors. On Ctrl-C, a fault that won the
+    // callback race but not the select race remains visible in health and must
+    // not be converted into a successful exit.
+    let close_result = receiver
+        .close()
+        .await
+        .context("receiver stopped but exact subscription cleanup failed");
+    let health = receiver.health().snapshot();
+    let assembler = receiver.assembler();
+    let limits = assembler.limits();
+    eprintln!(
+        "receiver stopped: frames={} heartbeats={} processed={} rejected={} post_fault={} terminal_faults={} queued_discarded={} events_staged={} events_delivered={} events_discarded={} ingress_queue={}/{} open_frames={}/{} buffered_bytes={}/{} pending_monitor={}/{} prior_identities={}/{} observation_streams={}/{} next_event_seq={} last_heartbeat_receipt={:?}",
+        health.frames_delivered,
+        health.heartbeats_delivered,
+        health.payloads_processed,
+        health.payloads_rejected,
+        health.post_fault_payloads,
+        health.terminal_faults,
+        health.queued_payloads_discarded,
+        health.assembly_events_staged,
+        health.assembly_events_delivered,
+        health.assembly_events_discarded,
+        health.ingress_queue_depth,
+        health.ingress_capacity,
+        assembler.open_frames(),
+        limits.max_open_frames,
+        assembler.buffered_bytes(),
+        limits.max_buffered_bytes,
+        assembler.pending_monitor_events(),
+        limits.max_reorder_events,
+        assembler.prior_identities(),
+        limits.max_prior_identities,
+        assembler.observation_streams(),
+        limits.max_observation_streams,
+        assembler.next_expected_monitor_event_seq(),
+        assembler.last_heartbeat_receipt(),
+    );
+    let loop_result = match (loop_result, health.first_fault) {
+        (Ok(()), Some(fault)) => Err(anyhow::Error::new(fault)
+            .context("operational receiver faulted concurrently with shutdown")),
+        (result, _) => result,
+    };
+    loop_result?;
+    close_result?;
+    Ok(())
+}
+
+#[cfg(all(test, feature = "ncp-live"))]
+mod observe_cli_tests {
+    use super::*;
+
+    #[test]
+    fn observe_requires_every_epoch_and_registry_pin() {
+        let result = Cli::try_parse_from([
+            "galadriel",
+            "observe",
+            "--realm",
+            "engram/ncp",
+            "--epoch",
+            "epoch-1",
+        ]);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn observe_parses_explicit_secure_handoff() {
+        let cli = Cli::try_parse_from([
+            "galadriel",
+            "observe",
+            "--realm",
+            "engram/ncp",
+            "--epoch",
+            "epoch-1",
+            "--producer-id",
+            "crebain",
+            "--registry",
+            "registry.json",
+            "--registry-sha256",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ])
+        .expect("complete observe handoff parses");
+
+        let Cmd::Observe {
+            realm,
+            epoch,
+            producer_id,
+            registry,
+            registry_sha256,
+        } = cli.cmd
+        else {
+            panic!("observe command must select the live variant")
+        };
+        assert_eq!(realm, "engram/ncp");
+        assert_eq!(epoch, "epoch-1");
+        assert_eq!(producer_id, "crebain");
+        assert_eq!(registry, PathBuf::from("registry.json"));
+        assert_eq!(registry_sha256.len(), 64);
+    }
 }
 
 fn run_demo(frames: usize, seed: u64) -> anyhow::Result<()> {

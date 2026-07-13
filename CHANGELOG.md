@@ -9,6 +9,20 @@ may contain breaking changes.
 
 ### Security
 
+- Add a deterministic exact-epoch Zenoh profile renderer/checker: mTLS-only clients,
+  default-deny router ACL, exact producer/observer certificate CNs, directional
+  producer-put and observer-subscribe/delivery rules on only the two evidence keys,
+  bounded transport messages, a hashed application/registry handoff, preflighted and
+  individually atomic owner-only output, duplicate-key and credential-path rejection,
+  digest manifest, absolute production credential paths, atomic no-replace publication,
+  alias-safe credential identity, owner-only private-key modes, and 37 security regression
+  checks. The runbook explicitly keeps real-router wrong/no-certificate and allow/deny
+  results as an external evidence gate.
+- Add a secure-only operational observer constructor and CLI. All Galadriel-owned secure
+  live paths single-load the configuration, require connector-side client-certificate
+  presentation plus the complete local strict profile, and open that same parsed value.
+  Caller-supplied buses are separately labeled inherited/unverified; local validation is
+  never presented as proof of a remote router's active ACL.
 - Refuse `SidecarTap::close()` on a tap created with `from_bus`: `ZenohBus` clones share
   one Zenoh session and one retained-subscriber registry, so closing from the tap would
   have silently torn down the **host's** entire transport (all of its subscriptions, not
@@ -30,6 +44,33 @@ may contain breaking changes.
 
 ### Added
 
+- Add an immutable, strict, deployment-pinned frame/projection registry with canonical
+  JSON SHA-256, applicability and source-frame bindings, global content-identifier
+  consistency, versioned projection-algorithm identity, deterministic opportunity caps,
+  and a frozen Galadriel-side fixture prepared for reciprocal Crebain verification.
+- Add `CrossRouteAssembler`: bounded observation/monitor joining, canonical byte
+  accounting, global prior-reuse rejection, contiguous event sequencing, registry and
+  gate-accounting verification, transactional frame closure, and exact frame/reorder/
+  heartbeat deadlines. The initial heartbeat has a separate finite startup grace;
+  immutable summary ledgers are cached for constant-time later joins; lifetime replay
+  capacity is exposed for coordinated pre-exhaustion epoch rollover.
+- Add `LifecycleDetector`, which evaluates only lifecycle-complete frozen tracks and
+  immediately abstains/clears a track suffix on an explicit miss, rejection, or
+  incomparable projection. Its aggregate retained-observation state is capped across
+  detector/correlation configurations.
+- Add the `ncp-live` `galadriel observe` service and `OperationalLiveReceiver`: one shared
+  Zenoh session, two exact subscriptions, one serialized bounded nonblocking ingress,
+  first-fault delivery boundary, coherent health counters, and in-process valid/silence/
+  saturation/provenance/decode/deadline tests.
+- Retain exact raw Zenoh subscriber guards in the monitor and operational receivers so
+  close/drop undeclares only their selectors, partial startup rolls back, timer state is
+  cancelled, and a host-owned shared session remains open.
+- Integrate the matching opt-in Crebain normal-runtime producer baseline: one immutable
+  pre-association prior, registered Cartesian residuals, explicit lifecycle records,
+  bounded ordered publisher lanes, frame summaries, independent heartbeat, and strict
+  registry/configuration/executable pins. Its deployment-supplied epoch, committed shared
+  fixture, and immutable Galadriel revision pin remain a reciprocal post-merge closeout.
+  Historical JSONL captures remain baseline-only.
 - Add the separate strict `galadriel_producer_event` monitor wire contract on
   `sensor/galadriel-monitor`: bounded encode/decode, heartbeat health, typed modality
   outcomes and misses, frozen-prior/frame/context provenance, strict gate-method
@@ -79,6 +120,10 @@ may contain breaking changes.
 
 ### Changed
 
+- Replace the stale producer/runtime roadmap with explicit Galadriel component milestones,
+  a reciprocal Crebain epoch/golden/pin closeout, two operational evidence gates (a retained
+  real multi-process mTLS/ACL campaign and an independent recorded stream-calibration study),
+  plus the separate API/release gate.
 - Migrate the exact `pid-core` pin from 0.4.0 (`ad489f5…`) to the canonical pid-rs
   1.0.0 main revision (`1cd2424…`), opt into its explicitly experimental continuous
   surface, adopt its report-first KSG point gate and caller-declared support contract,
@@ -131,9 +176,10 @@ may contain breaking changes.
   contract hash `d1b50a2d8a265276`; an earlier `v0.7.1` pin in this cycle was superseded).
   The sidecar now stamps `ncp_version` `"0.8"`; the `PidObservation` payload shape is
   unchanged, so this is a wire-addressing/version bump, not a payload re-versioning. It
-  keeps interoperability with the Crebain producer and Prisoma observer, which are already
-  on NCP 0.8 — NCP's `check_version` is an exact major.minor fail-closed gate, so a
-  0.7-stamped sidecar would be hard-rejected by 0.8 peers.
+  keeps the underlying NCP dependency aligned with Crebain and Prisoma, which are already
+  on NCP 0.8. Only Crebain publishes the Galadriel sidecar; Prisoma consumes normative NCP
+  sensor frames. NCP's `check_version` is an exact major.minor fail-closed gate, so a
+  0.7-stamped payload would be hard-rejected by 0.8 peers.
 - Document Galadriel's downstream advisory boundary from its own side in
   [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md): the contract any consumer (a
   Haldir-style authorization gate) must honour — non-authoritative, record-only until
@@ -155,6 +201,12 @@ may contain breaking changes.
 
 ### Fixed
 
+- Make monitor gaps expire after a positive bounded receipt-time deadline even if no
+  later sample arrives; preserve raw receipt time while exposing a nondecreasing ordered
+  time for direct assembler composition, and serialize fault/handoff state so queued or
+  concurrent work cannot cross the first terminal boundary.
+- Prevent a lifecycle-complete frame carrying an explicit per-modality absence from
+  inheriting the previous frame's fresh detector window and appearing nominal.
 - Reject non-finite/negative NIS, invalid degrees of freedom, malformed innovation/covariance
   pairs, non-positive-definite covariance, duplicate/out-of-order sequences, changed DoF,
   mixed tracks, invalid axes, and degenerate channel series.
@@ -301,8 +353,9 @@ may contain breaking changes.
 ### Known limitations
 
 - Current evidence is synthetic; there is no field-validated detection or false-alarm rate.
-- Current crebain output does not satisfy the common-frame/common-prior estimand required for
-  cross-channel correlation or PID.
+- The bundled historical Crebain capture does not satisfy the common-frame/common-prior
+  estimand required for cross-channel correlation or PID; the new producer has no accepted
+  recorded calibration artifact yet.
 - Association and chi-square gating make the observed accepted-update stream selection-biased;
   a strong attack may appear as missingness.
 - A consistency-preserving adversary and a colluding majority remain fundamental blind spots.

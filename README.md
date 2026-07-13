@@ -22,9 +22,16 @@ correlation and a producer provenance claim — not a cryptographic signature.)
 
 ```mermaid
 flowchart LR
-    O[observations] --> P{provenance + temporal gate}
-    P --> M[NIS / CUSUM]
-    P --> C[signed correlation]
+    P[Crebain frozen prior] --> O[accepted observations]
+    P --> L[misses / outcomes / summaries / heartbeat]
+    O --> R[exact observation route]
+    L --> T[exact monitor route]
+    R --> A[bounded cross-route assembler]
+    T --> A
+    A --> G{lifecycle complete?}
+    G -->|yes| M[NIS / CUSUM]
+    G -->|yes| C[signed correlation]
+    G -->|no| X[abstain / terminal fault]
     C -. optional .-> I[PID diagnostics]
     M --> F[conservative fusion]
     C --> F
@@ -75,8 +82,11 @@ generated from commit `8a0084f` with `dirty=false`.
 - The bundled Crebain fixture proves bounded parsing and baseline replay only. It is
   roughly 15.8 seconds long and has no attested common projection, so recorded full-detector
   stream metrics are explicitly `not_estimable`, never replaced with synthetic numbers.
-- There is no production Crebain common-projection publisher or receiver-verified mTLS
-  deployment yet.
+- Crebain now has a normal-runtime, opt-in producer baseline for the common projection and
+  lifecycle route, and Galadriel has a bounded operational receiver. The reciprocal Crebain
+  refresh that consumes the deployment epoch, commits the shared registry fixture, and pins
+  this Galadriel implementation remains pending until this revision lands. In-process tests
+  are component evidence, not a receiver-verified external mTLS/ACL deployment or field study.
 
 The artifact is a diagnostic result, not an acceptance result. In its independent clean
 arm, the current default reports 26.26 alert episodes/hour and a 0.9167 mission probability
@@ -90,11 +100,13 @@ be completed before any operational use.
 > cross-channel consistency, and must not silently veto a control path. Reports are
 > advisory evidence, not calibrated posteriors.
 
-> **Current integration status.** Normal Crebain captures omit the attested common
-> projection; native radar residuals are polar while other residuals are Cartesian,
-> sequential filter updates do not share one frozen prior, and association/gating
-> suppresses rejected measurements. With those preconditions absent, correlation and
-> fused assessment correctly remain `InsufficientEvidence`.
+> **Current integration status.** The opt-in Crebain producer baseline snapshots one immutable
+> pre-association prior, maps supported measurements into the pinned Cartesian context,
+> emits explicit lifecycle outcomes/misses and heartbeats, and publishes both strict
+> routes through bounded lanes. At this Galadriel revision, its exact deployment-supplied
+> epoch, committed shared registry golden, and immutable Galadriel pin are still a named
+> cross-repository closeout task. Historical captures remain `not_estimable`; no real-router
+> certificate/ACL campaign or recorded stream calibration has been accepted.
 
 How Galadriel expects to be consumed by a downstream authorization gate — as
 non-authoritative, record-only, never `ALLOW`-widening advisory evidence — is specified in
@@ -121,15 +133,11 @@ used as a cross-modal fallback. The detector requires:
 - enough fresh observations from all configured modalities.
 
 Invalid configuration or input returns `Err(...)`; it is not converted into a verdict.
-Missing, stale, geometrically incomparable, or statistically insufficient evidence
-returns `InsufficientEvidence`, not `Nominal`.
-
-Crebain can emit JSONL when `CREBAIN_PID_JSONL` is set, but its normal runtime path only
-enables the basic emitter. It does not emit the producer-attested common projection
-needed for correlation/PID. Its successful-update-only stream is also downstream of
-association and a chi-square gate, so missing or rejected measurements are censored
-rather than represented. The current seam is suitable for contract and baseline smoke
-testing, not for estimating production cross-modal dependence.
+Missing, stale, geometrically incomparable, lifecycle-incomplete, or statistically
+insufficient evidence returns `InsufficientEvidence`/an explicit abstention, not `Nominal`.
+The legacy `CREBAIN_PID_JSONL` capture remains a baseline-only path. Operational evidence
+uses Crebain's separately gated two-route producer and Galadriel's assembler; it never
+infers a successful lifecycle stage from a missing record.
 
 ## Detector layers
 
@@ -189,9 +197,9 @@ or production-ready.
 |---|---|---|
 | [`galadriel-core`](crates/galadriel-core) | NIS/CUSUM, signed correlation, fused assessment | Tested research core |
 | [`galadriel-sim`](crates/galadriel-sim) | synthetic scenarios and injections | Synthetic only |
-| [`galadriel-cli`](crates/galadriel-cli) | `demo` / `replay` driver | Operator prototype |
+| [`galadriel-cli`](crates/galadriel-cli) | `demo`, `replay`, and secure `observe` driver | Operator prototype; live path component-tested |
 | [`galadriel-pid`](crates/galadriel-pid) | KSG-MI / PID evidence | Optional research path |
-| [`galadriel-ncp`](crates/galadriel-ncp) | bounded JSONL ingest; versioned named-sensor envelope; optional Zenoh subscriber | Payload/ingest + in-process Zenoh loopback e2e tested; no live Crebain publisher or deployment evidence |
+| [`galadriel-ncp`](crates/galadriel-ncp) | strict codecs, pinned registry, monitor tap, assembler, lifecycle gate, operational Zenoh receiver | Unit/golden/in-process Zenoh tested; no external deployment evidence |
 | [`galadriel-eval`](crates/galadriel-eval) | Monte Carlo evaluation and cost bench | Synthetic only |
 | [`galadriel-justify`](crates/galadriel-justify) | canonical forced-vs-justified studies | Synthetic/theoretical only |
 
@@ -205,7 +213,7 @@ treated as project-status claims.
 | default | no sibling integration crates | core, simulator, CLI |
 | `pid` | `pid-core` 1.0 experimental continuous/pipeline surface | KSG-MI/PID research layer |
 | `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.8 key helpers; strict observation and producer-monitor envelopes; the CLI `replay` subcommand |
-| `ncp-live` | `ncp-zenoh`, `tokio` | read-only named-perception subscriber with explicit secure/development mode and bounded sequence state |
+| `ncp-live` | `ncp-zenoh`, exact `zenoh` 1.9 guard types, `tokio` | secure `observe` command plus bounded two-route receiver, deadlines, lifecycle gate, and health state |
 
 The public `pid-rs` repository and NCP's `ncp-core`/`ncp-zenoh` crates are pinned by
 exact Git revisions. The pid-rs revision declares 1.0.0 (there is currently no v1 tag),
@@ -213,48 +221,72 @@ while the NCP revision corresponds to public tag `v0.8.0`.
 A fresh clone requires no sibling checkout, private repository token, or global Git
 credential rewrite.
 
-The live subscriber uses NCP's named perception route,
-`{realm}/session/{id}/sensor/galadriel-pid`, built through
-`Keys::try_sensor_named(id, "galadriel-pid")`. NCP's hardened ACL already covers that route
-with its least-privilege sensor-plane rules: an authenticated plant/producer may publish
-and an authenticated observer may subscribe. Galadriel does not yet have a production
-Crebain publisher or an end-to-end mTLS deployment test, so compilation is still not live
-integration evidence.
+Run the operational observer only with the rendered observer config and the same exact
+epoch/registry pin supplied to Crebain:
+
+```bash
+export NCP_ZENOH_CONFIG=/secure/config/galadriel-epoch/zenoh-observer.json5
+cargo run --locked --features ncp-live --bin galadriel -- observe \
+  --realm engram/ncp \
+  --epoch "$CREBAIN_GALADRIEL_EPOCH" \
+  --producer-id crebain-galadriel-producer \
+  --registry /secure/config/crebain-registry.json \
+  --registry-sha256 "$CREBAIN_GALADRIEL_REGISTRY_DIGEST"
+```
+
+The renderer's checksummed `galadriel-handoff.json` binds that realm/epoch/producer/
+registry tuple to the two authorized certificate CNs. Verify the complete digest manifest
+and use the handoff as the deployment record before starting either process.
+
+The command reports lifecycle abstentions as evidence insufficiency, labels every evaluated
+result `calibrated_posterior=false`, exposes terminal health on exit, and stops on the first
+ingress/assembly/liveness fault. Configuration generation and external authorization drills
+are in [`docs/SECURE-DEPLOYMENT.md`](docs/SECURE-DEPLOYMENT.md).
+
+The operational receiver subscribes one shared Zenoh session to the two exact keys
+`{realm}/session/{epoch}/sensor/galadriel-{pid,monitor}`. Both callbacks serialize through
+one bounded nonblocking ingress; the assembler enforces route provenance, contiguous
+monitor sequencing, observation replay limits, registry/context/prior identity, producer
+accounting, frame/reorder deadlines, and heartbeat silence. Its first terminal fault
+invalidates queued events, so no later `FrameReady` crosses the boundary.
+The fixed defaults allow 30 seconds for the first heartbeat after transport activation,
+then require the declared one-second cadence within a three-second receipt deadline.
+Replay high-water state never evicts within an epoch: operators must watch the CLI's
+prior-identity and observation-stream utilization and coordinate a new epoch before a cap.
+Live library callers must use a Tokio runtime with its time driver enabled.
 
 Every live payload is a strict `galadriel_pid_observation` schema `1.0` envelope carrying
 `ncp_version`, advisory `contract_hash`, `session_id`, `producer_id`, and the existing
 Crebain-compatible `observation`; the exact independent-producer contract is
 [`galadriel-pid-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json)
 (a descriptive snapshot — the runtime `SidecarEnvelope` validation gate is normative).
-The tap rejects incompatible versions, undeclared fields, malformed
+The observation tap and assembler reject incompatible versions, undeclared fields, malformed
 metadata, cross-session/cross-producer payloads, unsafe JSON integers, invalid observations,
-and replay/sequence violations. Contract-hash drift is accepted per NCP policy but counted
-for operators. Callers must choose `TransportMode::Secure` (strict mTLS client config) or
-explicitly acknowledge `TransportMode::QuietDevelopment`; there is no implicit security
-default. Applications should prefer `SidecarTap::subscribe_channel(HandoffConfig)`: it performs
-one nonblocking bounded enqueue on the receive task, drops the newest accepted observation at
-capacity without reopening replay eligibility, invalidates queued generations on explicit
-reset, and exposes queue depth, oldest sequence, drop reasons, enqueue latency, and consumer
-lag. Callback-duration metrics expose slow inline work and the bounded adapter's internal
-enqueue cost. The inline `subscribe_with_health` callback remains available for advanced
-low-cost work.
+and replay/sequence violations. Contract-hash drift is advisory and counted. The standalone
+observation tap still exposes explicit secure/development modes and bounded handoff APIs;
+the `observe` command instead always calls the strict secure constructor and requires an
+externally pinned registry digest.
 `LiveLimits::max_payload_bytes` bounds decoding after NCP callback delivery, but the
 pinned `ncp-zenoh` callback currently materializes an owned payload first; deployments still
 need a transport/broker message-size ceiling to bound receive-memory pressure. Subscriber
 silence can still mean no traffic, a realm/key mismatch, ACL denial, or producer failure.
-Producers must use a fresh session ID for every process epoch, and all-modal silence still
-requires a heartbeat.
+Producers must use a fresh, deployment-supplied session ID for every process epoch. Monitor
+heartbeats make all-modal silence visible after the finite initial grace or configured
+steady monotonic deadline.
 
 Producer lifecycle and liveness use a separate strict
 `galadriel_producer_event` schema `1.0` on
 `{realm}/session/{id}/sensor/galadriel-monitor`. Its bounded codec and adjacent-tagged
 heartbeat, outcome, miss, and frame-summary types are frozen in
 [`galadriel-monitor-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json).
-The wire contract exists; a live monitor publisher/tap and fail-closed cross-route
-assembler do not yet. See [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md).
+The monitor tap, pinned registry, fail-closed assembler, lifecycle adapter, and operational
+receiver implement the consumer boundary described in
+[`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md). Crebain contains the matching
+opt-in publisher baseline; its reciprocal exact-epoch/golden/pin refresh is still pending at
+this revision. None of this attests a remote router's active ACL or calibrates the detector.
 
-These are project-owned sidecar payloads, not normative NCP `SensorFrame`s. A future
-Crebain producer therefore builds the two exact named-sensor keys and publishes the
+These are project-owned sidecar payloads, not normative NCP `SensorFrame`s. The
+Crebain producer builds the two exact named-sensor keys and publishes the
 serialized envelopes through `ZenohBus::put(..., Plane::Perception)`. It must not call
 `put_sensor_named`, whose publisher gate correctly accepts only a complete NCP
 `sensor_frame`.
@@ -279,39 +311,37 @@ The workspace MSRV is **1.89**. Crate targets forbid unsafe code.
   is a concrete example of an attack that preserves camera/LiDAR consistency.
 - **Consistency is not truth.** A decoupled channel can represent a spoof, a true
   channel-specific event, a coordinate mismatch, or an estimator artifact.
-- **Current crebain output has no consistency projection.** Radar's native innovation is
-  polar while visual/acoustic innovations are Cartesian; sequential updates use
-  different priors. Galadriel therefore ignores those native vectors for consistency.
+- **Historical Crebain captures have no consistency projection.** The opt-in producer now
+  computes a registered Cartesian projection from one frozen prior; older JSONL fixtures
+  remain baseline-only and Galadriel never falls back to their native mixed-frame vectors.
 - **Gating censors evidence.** Association and chi-square rejection can turn the largest
   attacks into missing observations. Missingness is informative, not random.
-- **No input means no detector call.** Per-channel silence can be noticed when another
-  channel advances assessment time. All-modal silence requires an external producer or
-  transport heartbeat.
+- **Lifecycle absence is not health.** Explicit misses/rejections immediately break the
+  affected statistical suffix. All-modal silence becomes a heartbeat fault in the
+  operational receiver, but transport authentication still cannot prove physical truth.
 - **Advisory attribution is not enforcement.** Authentication, ACLs, mTLS, a safety
   governor, and an independently reviewed control policy remain separate requirements.
 
 ## Producer and integration roadmap
 
-The wire contract is now fixed. The next milestone is its honest producer/runtime
-implementation and recorded evaluation, not a release label:
+The Galadriel implementation is complete at component level; cross-repository closeout is
+kept explicit until the reciprocal Crebain change is merged and immutably pinned:
 
-1. Emit `consistency_projection` for all modalities from a **common frozen prior**, in
-   one documented **common coordinate frame**, with stable frame/context IDs and a
-   unique shared prior ID per sequence.
-2. Populate the frozen monitor events for association/gate misses and rejected updates
-   so selection bias and liveness are observable.
-3. Add producer **heartbeats** and use a fresh NCP **session identifier** for every
-   process epoch. The live schema and restart identity are now explicit; the producer
-   implementation is still absent.
-4. Provide a supported normal-runtime option for the common projection (and optional
-   native innovation/covariance diagnostics); `CREBAIN_PID_JSONL` alone does not.
-5. Evaluate recorded, pre-gate data and report producer selection effects separately
-   from detector errors.
-6. Add the Crebain NCP named-sensor publisher under the existing least-privilege
-   sensor-plane ACL, then test traffic, denial, restart, decode-failure, and
-   all-modal-silence behavior end to end over mTLS.
-7. Keep packages `publish = false` until the producer contract, recorded evidence, and
-   API stability receive an explicit release review.
+- [x] frozen-prior Cartesian producer projection and explicit gate/lifecycle evidence;
+- [ ] refresh the Crebain publisher to require the exact deployment-supplied epoch and pin
+  the merged Galadriel implementation;
+- [ ] commit and verify the byte/hash-identical registry golden in Crebain;
+- [x] bounded live monitor, cross-route assembler, lifecycle abstention boundary, secure
+  observer CLI, and exact-epoch least-privilege configuration generator;
+- [x] CI, current-stable, fuzz, mutation, supply-chain, and reproducible synthetic evidence
+  paths;
+- [ ] real multi-process mTLS/ACL allow-and-deny campaign with retained router/certificate
+  evidence;
+- [ ] recorded pre-gate stream study and independent stream-level threshold calibration;
+- [ ] explicit API/release review before removing `publish = false` or the research label.
+
+The unchecked items are evidence gates, not missing code silently treated as success. See
+the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md) for the exact external drills.
 
 ## Documentation
 
@@ -321,6 +351,8 @@ implementation and recorded evaluation, not a release label:
 - [`docs/EVALUATION.md`](docs/EVALUATION.md) — reproducible synthetic methodology.
 - [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) — frozen observation and
   lifecycle/liveness wire contract plus operational acceptance boundary.
+- [`docs/SECURE-DEPLOYMENT.md`](docs/SECURE-DEPLOYMENT.md) — exact-epoch mTLS/ACL profile,
+  runnable observer, health sequence, and external acceptance drills.
 - [`docs/POST-AUDIT-EVIDENCE.md`](docs/POST-AUDIT-EVIDENCE.md) — one-command,
   checksummed streaming evidence artifact.
 - [`docs/RELATED-WORK.md`](docs/RELATED-WORK.md) — competing and complementary methods.

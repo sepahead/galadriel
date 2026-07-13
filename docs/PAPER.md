@@ -17,11 +17,12 @@ sign-invariant KSG-MI and shared-exclusions PID evidence. Invalid input returns 
 missing or geometrically insufficient evidence remains inconclusive.
 
 The implementation has synthetic tests and studies, not field validation. A 2026-07 audit
-found that current crebain captures do not support the cross-modal estimand: normal output
-omits the producer-attested common projection, native radar residuals use a different coordinate frame, sequential
-updates do not share a frozen prior, and association/gating censors rejected
-measurements. The bundled fixture therefore proves parsing and baseline smoke behavior;
-its cross-channel and fused result is correctly `InsufficientEvidence`.
+found that the available historical Crebain captures do not support the cross-modal
+estimand: they omit the producer-attested common projection, mix native coordinate frames,
+use sequential priors, and censor rejected measurements. The bundled fixture therefore
+proves parsing and baseline smoke behavior; its cross-channel and fused result is correctly
+`InsufficientEvidence`. A later opt-in Crebain runtime implements the required frozen-prior,
+Cartesian, lifecycle-complete producer contract, but no accepted recorded study exists yet.
 
 ## 1. Problem statement
 
@@ -47,14 +48,18 @@ Cross-channel dependence is not computed from `y` directly. The producer must al
 a common signed projection
 
 \[
-r_{c,t}=P_{f,k}\!\left(z_{c,t}-h_c(\hat{x}^{-}_{p,t})\right),
+r_{c,t}=g_{c,f,k}(z_{c,t})-\pi_{f,k}(\hat{x}^{-}_{p,t}),
 \]
 
-where every modality at sequence `t` shares physical-frame identifier `f`, projection /
-calibration-context identifier `k`, and frozen-prior identifier `p`. The wire field is a
-fixed three-value buffer with an explicit active dimension. Galadriel rejects contradictory
-provenance, rejects reuse of one prior identifier at another sequence, and never substitutes
-modality-native innovations when this projection is absent.
+where `g` maps that modality's measurement into the registered common Cartesian frame and
+`π` maps the frozen predicted track state into the same frame, axes, and units. This ordering
+is material for nonlinear sensors: a polar radar measurement is Cartesianized before the
+common-frame subtraction; Galadriel does not subtract mixed-unit native coordinates and then
+project the result. Every modality at sequence `t` shares physical-frame identifier `f`,
+projection/calibration-context identifier `k`, and frozen-prior identifier `p`. The wire
+field is a fixed three-value buffer with an explicit active dimension. Galadriel rejects
+contradictory provenance, rejects reuse of one prior identifier at another sequence, and
+never substitutes modality-native innovations when this projection is absent.
 
 The defender's question is not merely "can dependence be measured?" It is:
 
@@ -103,19 +108,18 @@ Cross-channel residual comparison is meaningful only when all samples refer to:
 - an explicit observation lifecycle, including misses and rejections;
 - a stable session and schema version.
 
-Current crebain output violates several of these requirements. Radar's EKF innovation is
-polar while visual/acoustic residuals are Cartesian. Updates occur sequentially, so later
-modalities observe a state already updated by earlier modalities rather than a shared
-frozen prior. The normal `CREBAIN_PID_JSONL` path does not enable innovation/covariance
-research fields. Finally, the stream contains associated, accepted, successfully applied
-updates; association and chi-square rejection censor the observations most likely to be
-large attacks.
+Historical/default `CREBAIN_PID_JSONL` output violates several of these requirements.
+Radar's EKF innovation is polar while visual/acoustic residuals are Cartesian. Updates
+occur sequentially, and the stream contains only associated, accepted, successfully
+applied updates. The separately gated operational producer fixes the evidence boundary by
+snapshotting the immutable predicted state before association, computing registered
+Cartesian projections, and reporting misses/rejections on the monitor route.
 
-`PidObservation::consistency_projection` now represents the consumer-side contract, but
-current crebain captures do not populate it. Their native innovation fields therefore
+`PidObservation::consistency_projection` represents the consumer-side contract, but the
+available historical Crebain captures do not populate it. Their native innovation fields therefore
 remain baseline diagnostics only and produce no cross-channel columns.
 
-Consequently, current crebain data may be used for bounded parsing and cautious NIS smoke
+Consequently, the bundled Crebain data may be used for bounded parsing and cautious NIS smoke
 checks, but not as evidence that production cross-modal correlation or PID works.
 
 ## 4. Method
@@ -264,28 +268,38 @@ possible. See [`EVALUATION.md`](EVALUATION.md).
   therefore not flagged by the magnitude layer at that operating point.
 - **Synthetic evidence.** Current studies do not represent field prevalence, base rates,
   maneuvers, or operator outcomes.
-- **Liveness.** All-modal silence requires an external heartbeat.
-- **Transport prototype.** The Zenoh sidecar now uses NCP's ACL-covered named-sensor
-  route and a versioned session/producer-bound envelope, but has no current live Crebain
-  publisher or receiver-verified mTLS deployment. Payload and sequence-state bounds limit
-  decode and retained-state work, but the pinned `ncp-zenoh` callback materializes payload
-  bytes before Galadriel's size gate, so a transport/broker message ceiling is still needed
-  for receive-memory bounds. New sequence streams fail closed at capacity instead of
-  evicting replay high-water marks; authenticated ACLs, a fresh session ID per producer
-  epoch, and heartbeat remain deployment requirements rather than detector features.
+- **Liveness.** The opt-in producer emits an independent heartbeat and the operational
+  receiver fails closed on silence. Historical replay files have no live-liveness claim,
+  and no retained external deployment campaign yet shows the heartbeat across the real
+  router and certificate boundary.
+- **Transport prototype.** Crebain now has a gated two-route publisher baseline and Galadriel a
+  strict, bounded two-route receiver. The generated profile fixes mTLS, exact-epoch ACLs,
+  and a 128 KiB transport receive ceiling, but component and in-process tests do not prove
+  that a remote router loaded or enforced those files. The pinned `ncp-zenoh` callback
+  materializes payload bytes before Galadriel's application size gate, so the transport
+  ceiling remains mandatory. New sequence streams fail closed at capacity instead of
+  evicting replay high-water marks; authenticated ACLs and a fresh deployment-supplied
+  epoch remain operational requirements rather than detector features.
 - **Advisory only.** The verdict is not a calibrated posterior or enforcement command.
 
 ## 8. Roadmap to a defensible claim
 
-1. Add a versioned producer schema with stable session/restart semantics.
-2. Emit `consistency_projection` from a common frozen prior and frame, with explicit
-   frame/context/prior identifiers.
-3. Emit association misses, gate rejections, and producer heartbeats.
-4. Add the authorized Crebain NCP publisher on the existing least-privilege
-   named-sensor ACL route, then prove the deployed producer/observer identities.
-5. Collect pre-gate recordings and characterize selection effects.
-6. Pre-register operating points and evaluate maneuvers, lifecycle changes, and attacks.
-7. Review the API and evidence before changing `publish = false` or applying a release tag.
+1. **Galadriel complete; reciprocal producer refresh pending:** versioned schemas and
+   stable restart semantics; Crebain must still consume the deployment-supplied never-reused
+   epoch and pin the merged consumer revision.
+2. **Complete at component level:** registered `consistency_projection` values from one
+   common frozen prior with explicit frame/context/prior identities.
+3. **Complete at component level:** association misses, gate rejections, summaries, and
+   an independent producer heartbeat.
+4. **Galadriel complete; reciprocal producer refresh pending:** bounded Crebain publisher
+   baseline, Galadriel receiver, and an exact-epoch mTLS/default-deny profile. Crebain's
+   shared golden/epoch/pin closeout and the real multi-process allow/deny and wrong/no-
+   certificate campaign remain open.
+5. **Open evidence gate:** collect pre-gate recordings and characterize selection effects.
+6. **Open evidence gate:** pre-register operating points and evaluate maneuvers, lifecycle
+   changes, and attacks independently of threshold fitting.
+7. **Open release gate:** review the API and evidence before changing `publish = false` or
+   applying a release tag.
 
 ## 9. Conclusion
 
@@ -295,8 +309,9 @@ correlation for a valid positive linear consensus; add MI/PID only where recorde
 demonstrates a nonlinear or synergistic question. When geometry or evidence is absent,
 remain inconclusive.
 
-Galadriel currently implements and tests that discipline as a research prototype. It does
-not yet have a producer stream capable of validating its cross-modal detector.
+Galadriel currently implements and tests that discipline as a research prototype. A gated
+producer can now emit the required stream, but no accepted recorded study validates the
+cross-modal detector on field data.
 
 ## Reproducibility
 
