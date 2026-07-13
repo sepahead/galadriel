@@ -97,8 +97,9 @@ fn validate_consistency_input_len(length: usize) -> Result<()> {
 ///
 /// `axes[axis]` contains one signed series per requested modality. `frame_id` and
 /// `context_id` identify the shared physical frame and projection definition for
-/// the retained suffix. Prior identifiers are checked frame-by-frame but are not
-/// retained because each sequence must use a different frozen snapshot.
+/// the retained suffix. Prior identifiers are checked across the full bounded input,
+/// including frame/context changes, but are not retained because each sequence must
+/// use a different frozen snapshot.
 #[derive(Debug, Clone)]
 pub struct ConsistencyChannels {
     /// Common physical coordinate-frame identifier.
@@ -228,7 +229,7 @@ pub fn consistency_channels_with_temporal_limits(
     let mut last_seq = None;
     let mut last_timestamp = HashMap::<Modality, u64>::new();
     let mut temporal_breaks = HashSet::<u64>::new();
-    let mut prior_sequences = HashMap::<(u64, u64, u64), u64>::new();
+    let mut prior_sequences = HashMap::<u64, u64>::new();
     prior_sequences.try_reserve(stream.len()).map_err(|_| {
         GaladrielError::InvalidChannels(format!(
             "could not reserve provenance tracking for {} observations",
@@ -254,6 +255,19 @@ pub fn consistency_channels_with_temporal_limits(
         }
         last_seq = Some(observation.seq);
 
+        if let Some(projection) = observation.consistency_projection {
+            if let Some(previous_sequence) =
+                prior_sequences.insert(projection.prior_id, observation.seq)
+            {
+                if previous_sequence != observation.seq {
+                    return Err(GaladrielError::InvalidChannels(format!(
+                        "frozen prior {} was reused at sequences {previous_sequence} and {}",
+                        projection.prior_id, observation.seq
+                    )));
+                }
+            }
+        }
+
         if !requested.contains(&observation.modality) {
             continue;
         }
@@ -270,21 +284,6 @@ pub fn consistency_channels_with_temporal_limits(
             }
         }
         last_timestamp.insert(observation.modality, observation.timestamp_ms);
-        if let Some(projection) = observation.consistency_projection {
-            let prior_key = (
-                projection.frame_id,
-                projection.context_id,
-                projection.prior_id,
-            );
-            if let Some(previous_sequence) = prior_sequences.insert(prior_key, observation.seq) {
-                if previous_sequence != observation.seq {
-                    return Err(GaladrielError::InvalidChannels(format!(
-                        "frozen prior {} was reused at sequences {previous_sequence} and {}",
-                        projection.prior_id, observation.seq
-                    )));
-                }
-            }
-        }
         let frame = frames.entry(observation.seq).or_default();
         if frame
             .insert(
@@ -608,6 +607,51 @@ mod scalar_channel_tests {
         }
 
         assert!(scalar_channels(&stream, &modalities, 0).is_err());
+    }
+
+    #[test]
+    fn extraction_rejects_prior_reuse_after_frame_and_context_change() {
+        let modalities = [Modality::Visual, Modality::Radar];
+        let mut stream = vec![
+            research(0, Modality::Visual, 1.0),
+            research(0, Modality::Radar, 2.0),
+            research(1, Modality::Visual, 3.0),
+            research(1, Modality::Radar, 4.0),
+        ];
+        for observation in stream.iter_mut().filter(|observation| observation.seq == 1) {
+            let projection = observation.consistency_projection.as_mut().unwrap();
+            projection.frame_id = 2;
+            projection.context_id = 2;
+            projection.prior_id = 1;
+        }
+
+        let error = scalar_channels(&stream, &modalities, 0).unwrap_err();
+
+        assert_eq!(
+            error,
+            GaladrielError::InvalidChannels(
+                "frozen prior 1 was reused at sequences 0 and 1".into()
+            )
+        );
+    }
+
+    #[test]
+    fn extraction_rejects_prior_reuse_on_unrequested_modalities() {
+        let modalities = [Modality::Visual, Modality::Radar];
+        let mut stream = vec![
+            research(0, Modality::Thermal, 1.0),
+            research(1, Modality::Thermal, 2.0),
+        ];
+        stream[1].consistency_projection.as_mut().unwrap().prior_id = 1;
+
+        let error = scalar_channels(&stream, &modalities, 0).unwrap_err();
+
+        assert_eq!(
+            error,
+            GaladrielError::InvalidChannels(
+                "frozen prior 1 was reused at sequences 0 and 1".into()
+            )
+        );
     }
 
     #[test]

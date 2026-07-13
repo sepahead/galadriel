@@ -1,0 +1,784 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sepahead/galadriel/blob/main/crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
+  "title": "Galadriel producer monitor envelope v1",
+  "description": "Project-owned producer lifecycle and liveness event carried on the NCP named perception route sensor/galadriel-monitor. Transport authentication is external; producer_id is a claim bound by the receiver to its expected publisher. Schema validation is necessary but not sufficient: application validation additionally enforces UTF-8 byte lengths, canonical lexical JSON integer spelling without a fraction or exponent, and cross-field coherence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "schema_version",
+    "ncp_version",
+    "contract_hash",
+    "session_id",
+    "producer_id",
+    "event_seq",
+    "event"
+  ],
+  "properties": {
+    "kind": {
+      "const": "galadriel_producer_event"
+    },
+    "schema_version": {
+      "const": "1.0"
+    },
+    "ncp_version": {
+      "const": "0.8"
+    },
+    "contract_hash": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 16,
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "session_id": {
+      "$ref": "#/$defs/ncpKeySegment"
+    },
+    "producer_id": {
+      "$ref": "#/$defs/ncpKeySegment"
+    },
+    "event_seq": {
+      "$ref": "#/$defs/positiveSafeUnsignedInteger"
+    },
+    "event": {
+      "$ref": "#/$defs/producerEvent"
+    }
+  },
+  "$defs": {
+    "ncpKeySegment": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^/\\*\\$#\\?\\s\\u0000-\\u001F\\u007F-\\u009F\\uFEFF]+$",
+      "not": {
+        "pattern": "[\\r\\n]"
+      }
+    },
+    "safeUnsignedInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "positiveSafeUnsignedInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "heartbeatDuration": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300000
+    },
+    "boundedQueueCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8192
+    },
+    "activeTrackCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1024
+    },
+    "frameItemCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8192
+    },
+    "measurementIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8191
+    },
+    "registryDigest": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "modality": {
+      "enum": [
+        "visual",
+        "thermal",
+        "acoustic",
+        "radar",
+        "lidar",
+        "radiofrequency"
+      ]
+    },
+    "vec3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    },
+    "consistencyProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "values",
+        "dimensions",
+        "frame_id",
+        "context_id",
+        "prior_id"
+      ],
+      "properties": {
+        "values": {
+          "$ref": "#/$defs/vec3"
+        },
+        "dimensions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "frame_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "context_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "prior_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        }
+      }
+    },
+    "gateEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "d2",
+        "threshold"
+      ],
+      "properties": {
+        "method": {
+          "enum": [
+            "mahalanobis",
+            "normalized_euclidean_fallback"
+          ]
+        },
+        "d2": {
+          "type": "number",
+          "minimum": 0
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "queueHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capacity",
+        "depth",
+        "dropped_event_count",
+        "published_event_count"
+      ],
+      "properties": {
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "depth": {
+          "$ref": "#/$defs/boundedQueueCount"
+        },
+        "dropped_event_count": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "published_event_count": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        }
+      }
+    },
+    "heartbeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer_timestamp_ms",
+        "uptime_ms",
+        "declared_interval_ms",
+        "declared_deadline_ms",
+        "active_track_count",
+        "degraded",
+        "queue_health"
+      ],
+      "properties": {
+        "producer_timestamp_ms": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "uptime_ms": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "declared_interval_ms": {
+          "$ref": "#/$defs/heartbeatDuration"
+        },
+        "declared_deadline_ms": {
+          "$ref": "#/$defs/heartbeatDuration"
+        },
+        "last_fusion_seq": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/safeUnsignedInteger"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active_track_count": {
+          "$ref": "#/$defs/activeTrackCount"
+        },
+        "degraded": {
+          "type": "boolean"
+        },
+        "queue_health": {
+          "$ref": "#/$defs/queueHealth"
+        }
+      }
+    },
+    "modalityOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fusion_seq",
+        "fusion_timestamp_ms",
+        "frame_id",
+        "context_id",
+        "prior_id",
+        "track_id",
+        "modality",
+        "attempt_index",
+        "outcome",
+        "v1_expected",
+        "candidate_count",
+        "in_gate_count"
+      ],
+      "properties": {
+        "fusion_seq": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "fusion_timestamp_ms": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "frame_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "context_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "prior_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "track_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "modality": {
+          "$ref": "#/$defs/modality"
+        },
+        "attempt_index": {
+          "$ref": "#/$defs/measurementIndex"
+        },
+        "measurement_index": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/measurementIndex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "updated",
+            "gate_rejected",
+            "assignment_rejected",
+            "update_rejected",
+            "track_birth",
+            "unsupported_filter",
+            "incomparable_projection"
+          ]
+        },
+        "v1_expected": {
+          "type": "boolean"
+        },
+        "candidate_count": {
+          "$ref": "#/$defs/frameItemCount"
+        },
+        "in_gate_count": {
+          "$ref": "#/$defs/frameItemCount"
+        },
+        "gate_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/gateEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "consistency_projection": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/consistencyProjection"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "updated",
+                  "update_rejected"
+                ]
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "measurement_index",
+              "gate_evidence"
+            ],
+            "properties": {
+              "measurement_index": {
+                "$ref": "#/$defs/measurementIndex"
+              },
+              "candidate_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "in_gate_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "gate_evidence": {
+                "$ref": "#/$defs/gateEvidence"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "updated"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "consistency_projection"
+            ],
+            "properties": {
+              "consistency_projection": {
+                "$ref": "#/$defs/consistencyProjection"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "gate_rejected"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "gate_evidence"
+            ],
+            "properties": {
+              "candidate_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "in_gate_count": {
+                "const": 0
+              },
+              "gate_evidence": {
+                "$ref": "#/$defs/gateEvidence"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "assignment_rejected"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "gate_evidence"
+            ],
+            "properties": {
+              "candidate_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "in_gate_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "gate_evidence": {
+                "$ref": "#/$defs/gateEvidence"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "track_birth"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "measurement_index"
+            ],
+            "properties": {
+              "measurement_index": {
+                "$ref": "#/$defs/measurementIndex"
+              },
+              "candidate_count": {
+                "const": 0
+              },
+              "in_gate_count": {
+                "const": 0
+              },
+              "gate_evidence": {
+                "type": "null"
+              },
+              "consistency_projection": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "unsupported_filter"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "measurement_index"
+            ],
+            "properties": {
+              "measurement_index": {
+                "$ref": "#/$defs/measurementIndex"
+              },
+              "gate_evidence": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "incomparable_projection"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "measurement_index",
+              "gate_evidence"
+            ],
+            "properties": {
+              "measurement_index": {
+                "$ref": "#/$defs/measurementIndex"
+              },
+              "candidate_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "in_gate_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "gate_evidence": {
+                "$ref": "#/$defs/gateEvidence"
+              },
+              "consistency_projection": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "v1_expected": {
+                "const": true
+              }
+            },
+            "required": [
+              "v1_expected"
+            ]
+          },
+          "then": {
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "updated",
+                  "incomparable_projection"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "modalityMiss": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fusion_seq",
+        "fusion_timestamp_ms",
+        "frame_id",
+        "context_id",
+        "prior_id",
+        "track_id",
+        "modality",
+        "reason"
+      ],
+      "properties": {
+        "fusion_seq": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "fusion_timestamp_ms": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "frame_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "context_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "prior_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "track_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "modality": {
+          "$ref": "#/$defs/modality"
+        },
+        "reason": {
+          "enum": [
+            "no_measurement",
+            "no_candidate",
+            "no_in_gate_candidate",
+            "not_assigned",
+            "track_not_eligible"
+          ]
+        }
+      }
+    },
+    "frameSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fusion_seq",
+        "fusion_timestamp_ms",
+        "frame_id",
+        "context_id",
+        "prior_id",
+        "registry_digest",
+        "expected_modalities",
+        "active_track_count",
+        "input_count",
+        "outcome_count",
+        "v1_expected_count",
+        "degraded",
+        "truncated"
+      ],
+      "properties": {
+        "fusion_seq": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "fusion_timestamp_ms": {
+          "$ref": "#/$defs/safeUnsignedInteger"
+        },
+        "frame_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "context_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "prior_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+        },
+        "registry_digest": {
+          "$ref": "#/$defs/registryDigest"
+        },
+        "expected_modalities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/modality"
+          }
+        },
+        "active_track_count": {
+          "$ref": "#/$defs/activeTrackCount"
+        },
+        "input_count": {
+          "$ref": "#/$defs/frameItemCount"
+        },
+        "outcome_count": {
+          "$ref": "#/$defs/frameItemCount"
+        },
+        "v1_expected_count": {
+          "$ref": "#/$defs/frameItemCount"
+        },
+        "degraded": {
+          "type": "boolean"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "truncated": {
+                "const": true
+              }
+            },
+            "required": [
+              "truncated"
+            ]
+          },
+          "then": {
+            "properties": {
+              "degraded": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "producerEvent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "data"
+          ],
+          "properties": {
+            "type": {
+              "const": "heartbeat"
+            },
+            "data": {
+              "$ref": "#/$defs/heartbeat"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "data"
+          ],
+          "properties": {
+            "type": {
+              "const": "modality_outcome"
+            },
+            "data": {
+              "$ref": "#/$defs/modalityOutcome"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "data"
+          ],
+          "properties": {
+            "type": {
+              "const": "modality_miss"
+            },
+            "data": {
+              "$ref": "#/$defs/modalityMiss"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "data"
+          ],
+          "properties": {
+            "type": {
+              "const": "frame_summary"
+            },
+            "data": {
+              "$ref": "#/$defs/frameSummary"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
