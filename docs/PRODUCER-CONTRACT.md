@@ -246,8 +246,10 @@ values.
 
 The outcome carries `fusion_seq`, `fusion_timestamp_ms`, `frame_id`, `context_id`,
 `prior_id`, `track_id`, modality, a bounded deterministic `attempt_index`, an
-optional bounded `measurement_index`, candidate/in-gate counts, and the typed
-disposition. Every outcome that claims candidate gating (`updated`,
+optional bounded `measurement_index`, pair-level candidate/in-gate counts repeated
+on every attempt outcome, and the typed disposition. Consequently, one
+`gate_rejected` attempt may report a nonzero `in_gate_count` when another candidate
+for that track/modality pair passed the gate. Every outcome that claims candidate gating (`updated`,
 `gate_rejected`, `assignment_rejected`, `update_rejected`, or
 `incomparable_projection`) MUST carry finite gate evidence computed from the
 contractually correct inputs. `updated` MUST also carry its valid common-frame
