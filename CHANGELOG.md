@@ -30,6 +30,17 @@ may contain breaking changes.
 
 ### Added
 
+- Add the separate strict `galadriel_producer_event` monitor wire contract on
+  `sensor/galadriel-monitor`: bounded encode/decode, heartbeat health, typed modality
+  outcomes and misses, frozen-prior/frame/context provenance, strict gate-method
+  evidence, frame closure counts, registry digest binding, JSON-safe identities,
+  contiguous operational sequencing, a matching JSON Schema, and golden/negative tests.
+- Require canonical NCP version spelling, common-frame evidence on every `updated`
+  outcome, gate evidence on every gate-dependent disposition, and global prior-reuse
+  detection even for modalities excluded from a requested analysis.
+- Record the normative two-route producer and lifecycle contract, including common-frame
+  frozen-prior semantics, fresh process epochs, fail-closed cross-route assembly,
+  backpressure/loss behavior, mTLS/ACL identity binding, and five-lens acceptance evidence.
 - An in-process Zenoh loopback end-to-end suite for the live leg
   (`crates/galadriel-ncp/tests/live_zenoh_e2e.rs`, feature `zenoh`): a real `ZenohBus`
   round trip through `SidecarTap` on the multi-segment `engram/ncp` realm proving decoded

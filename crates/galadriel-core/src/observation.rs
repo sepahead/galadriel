@@ -25,10 +25,9 @@ pub const MAX_CONSISTENCY_PROJECTION_AXES: usize = 3;
 ///   pre-update state snapshot (`prior_id`); and
 /// - `prior_id` identifies only that snapshot and is not reused at another sequence.
 ///
-/// The producer attests global `prior_id` uniqueness; galadriel enforces non-reuse
-/// within each aligned `(frame_id, context_id)` window (sequences under a different
-/// frame or context never share one correlation window, so a stale prior there cannot
-/// corrupt an assessment).
+/// The producer attests global `prior_id` uniqueness; galadriel rejects reuse at
+/// another sequence anywhere in each bounded consistency extraction, including across
+/// physical-frame and projection-context changes.
 ///
 /// The identifiers are provenance labels, not authentication. The transport must
 /// still authenticate and authorize the producer.

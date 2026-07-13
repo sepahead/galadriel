@@ -8,6 +8,9 @@
 //! optional producer-attested `consistency_projection` field.
 //! In the ecosystem those ride the NCP observation plane; this crate is the seam
 //! that turns them into [`galadriel_core::PidObservation`]s.
+//! Producer lifecycle, frame closure, and liveness use the separate strict
+//! [`monitor::MonitorEnvelope`] contract on `sensor/galadriel-monitor`; they are
+//! never fabricated as observations on the frozen `galadriel-pid` route.
 //!
 //! ## Transport, honestly scoped
 //!
@@ -38,6 +41,7 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "zenoh")]
 pub mod live;
+pub mod monitor;
 
 /// The exact pinned `ncp-core`, re-exported so hosts reuse galadriel's revision
 /// (constants, `Keys`, validators) instead of re-resolving the git dependency and
@@ -189,6 +193,12 @@ impl SidecarEnvelope {
             return Err(SidecarEnvelopeError::UnsupportedSchemaVersion {
                 received: self.schema_version.clone(),
             });
+        }
+        if self.ncp_version != NCP_VERSION {
+            return Err(SidecarEnvelopeError::IncompatibleNcpVersion(format!(
+                "noncanonical ncp_version {:?}; expected {NCP_VERSION:?}",
+                self.ncp_version
+            )));
         }
         ncp_core::check_version(&self.ncp_version, true)
             .map_err(|error| SidecarEnvelopeError::IncompatibleNcpVersion(error.to_string()))?;
@@ -1004,6 +1014,12 @@ mod tests {
         let observation = PidObservation::scalar(1, 1, 1, Modality::Visual, 1.0, 3);
         let mut envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
         envelope.ncp_version = "0.6".to_string();
+        assert!(matches!(
+            envelope.validate(),
+            Err(SidecarEnvelopeError::IncompatibleNcpVersion(_))
+        ));
+
+        envelope.ncp_version = "00.08".to_string();
         assert!(matches!(
             envelope.validate(),
             Err(SidecarEnvelopeError::IncompatibleNcpVersion(_))

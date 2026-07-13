@@ -204,7 +204,7 @@ treated as project-status claims.
 |---|---|---|
 | default | no sibling integration crates | core, simulator, CLI |
 | `pid` | `pid-core` 1.0 experimental continuous/pipeline surface | KSG-MI/PID research layer |
-| `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.8 key helpers and versioned sidecar envelope; the CLI `replay` subcommand |
+| `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.8 key helpers; strict observation and producer-monitor envelopes; the CLI `replay` subcommand |
 | `ncp-live` | `ncp-zenoh`, `tokio` | read-only named-perception subscriber with explicit secure/development mode and bounded sequence state |
 
 The public `pid-rs` repository and NCP's `ncp-core`/`ncp-zenoh` crates are pinned by
@@ -245,10 +245,17 @@ silence can still mean no traffic, a realm/key mismatch, ACL denial, or producer
 Producers must use a fresh session ID for every process epoch, and all-modal silence still
 requires a heartbeat.
 
-This is a project-owned sidecar payload, not a normative NCP `SensorFrame`. A future
-Crebain producer therefore builds the key with
-`bus.keys().try_sensor_named(session_id, "galadriel-pid")` and publishes the serialized
-envelope through `ZenohBus::put(..., Plane::Perception)`. It must not call
+Producer lifecycle and liveness use a separate strict
+`galadriel_producer_event` schema `1.0` on
+`{realm}/session/{id}/sensor/galadriel-monitor`. Its bounded codec and adjacent-tagged
+heartbeat, outcome, miss, and frame-summary types are frozen in
+[`galadriel-monitor-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json).
+The wire contract exists; a live monitor publisher/tap and fail-closed cross-route
+assembler do not yet. See [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md).
+
+These are project-owned sidecar payloads, not normative NCP `SensorFrame`s. A future
+Crebain producer therefore builds the two exact named-sensor keys and publishes the
+serialized envelopes through `ZenohBus::put(..., Plane::Perception)`. It must not call
 `put_sensor_named`, whose publisher gate correctly accepts only a complete NCP
 `sensor_frame`.
 
@@ -285,14 +292,14 @@ The workspace MSRV is **1.89**. Crate targets forbid unsafe code.
 
 ## Producer and integration roadmap
 
-The next milestone is an honest producer contract and recorded evaluation, not a
-release label:
+The wire contract is now fixed. The next milestone is its honest producer/runtime
+implementation and recorded evaluation, not a release label:
 
 1. Emit `consistency_projection` for all modalities from a **common frozen prior**, in
    one documented **common coordinate frame**, with stable frame/context IDs and a
    unique shared prior ID per sequence.
-2. Emit association/gate misses and rejected updates so selection bias and liveness are
-   observable.
+2. Populate the frozen monitor events for association/gate misses and rejected updates
+   so selection bias and liveness are observable.
 3. Add producer **heartbeats** and use a fresh NCP **session identifier** for every
    process epoch. The live schema and restart identity are now explicit; the producer
    implementation is still absent.
@@ -312,6 +319,8 @@ release label:
 - [`docs/PAPER.md`](docs/PAPER.md) — research argument and current evidence boundary.
 - [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) — when MI/PID can add information.
 - [`docs/EVALUATION.md`](docs/EVALUATION.md) — reproducible synthetic methodology.
+- [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) — frozen observation and
+  lifecycle/liveness wire contract plus operational acceptance boundary.
 - [`docs/POST-AUDIT-EVIDENCE.md`](docs/POST-AUDIT-EVIDENCE.md) — one-command,
   checksummed streaming evidence artifact.
 - [`docs/RELATED-WORK.md`](docs/RELATED-WORK.md) — competing and complementary methods.
