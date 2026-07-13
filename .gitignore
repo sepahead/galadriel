@@ -4,6 +4,10 @@
 **/*.rs.bk
 *.pdb
 
+# Python tooling
+__pycache__/
+*.py[cod]
+
 # Editors / OS
 .DS_Store
 *.swp

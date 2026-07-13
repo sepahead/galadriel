@@ -100,28 +100,31 @@ Galadriel's cross-sensor layers require **pre-association** evidence for one tra
 sequence, in a common coordinate projection derived from a common frozen pre-update prior:
 accepted observations, **rejected** observations, misses, and a producer heartbeat.
 
-Today's normal Crebain captures omit the attested common projection, and its
+Historical/default Crebain captures omit the attested common projection, and their
 successful-update-only stream is downstream of association and a chi-square gate, so
 rejected and missed measurements are censored rather than represented. A consumer must not
 read that gap as safety: with those preconditions absent, Galadriel's correlation and
-fused assessment correctly return `InsufficientEvidence`. This selection-bias limitation is
-a **disclosed structural property** of the current data seam, not a hidden detector defect;
-closing it is an upstream Crebain producer milestone, not a Galadriel workaround.
+fused assessment correctly return `InsufficientEvidence`. The opt-in operational producer
+now supplies frozen-prior projections plus explicit misses/rejections, but no accepted
+recorded study has yet measured the resulting selection effects or calibrated the stream.
 
 ## 5. Current implementation status
 
-- **Input only.** `galadriel-ncp` provides a bounded JSONL ingest and an optional Zenoh
-  named-perception subscriber. Both are read-only; there is no Galadriel→consumer advisory
-  *publisher* yet, and verdicts surface only via the CLI / files.
+- **Input only.** `galadriel-ncp` provides bounded JSONL ingest and a strict two-route
+  operational Zenoh receiver. It remains read-only with respect to downstream policy:
+  there is no Galadriel→consumer signed advisory *publisher* yet, and verdicts surface
+  only via the CLI / files.
 - **NCP wire: 0.8.** Galadriel pins `ncp-core`/`ncp-zenoh` to the `v0.8.0` tag, matching the
-  Crebain producer and Prisoma observer, so the sidecar envelope is wire-version-compatible
-  across the ecosystem again. Galadriel's own live leg is proven by an in-process Zenoh
-  loopback e2e suite (`crates/galadriel-ncp/tests/live_zenoh_e2e.rs`); however, no component
-  publishes live sidecar envelopes yet — Crebain's runtime emits only the JSONL sidecar — so
-  producer-to-consumer live interop remains unexercised end to end.
-- Building the signed advisory envelope, the missing Crebain pre-gate producer, and the
-  independent calibration campaign are the ordered prerequisites before *any* restrict-only
-  profile in §3.3 is even a candidate.
+  underlying NCP version used by both Crebain and Prisoma. Crebain has the matching opt-in
+  Galadriel sidecar publisher baseline; its exact deployment epoch, committed shared golden,
+  and Galadriel revision pin still require the reciprocal closeout. Prisoma observes
+  normative NCP sensor frames and is not a Galadriel sidecar consumer. Galadriel's live taps
+  and operational join have in-process Zenoh loopback coverage. A retained external
+  multi-process mTLS/ACL run between the actual binaries is still absent, so component
+  compatibility is not deployment evidence.
+- Building the signed advisory envelope, retaining the external secured interop campaign,
+  and completing an independent recorded calibration study are the ordered prerequisites
+  before *any* restrict-only profile in §3.3 is even a candidate.
 
 ## 6. Prohibited connections
 
@@ -138,5 +141,6 @@ closing it is an upstream Crebain producer milestone, not a Galadriel workaround
 ---
 
 *This boundary is the advisory-evidence complement to the cryptographic ACL/mTLS
-enforcement and plant-side safety governor. Galadriel authenticates consistency, not
-truth; treat every verdict here accordingly.*
+enforcement and plant-side safety governor. Galadriel reports consistency evidence from an
+authenticated producer; it does not authenticate physical truth. Treat every verdict here
+accordingly.*

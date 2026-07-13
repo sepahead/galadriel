@@ -1,0 +1,21 @@
+{
+  "profile_version": "1",
+  "realm": "engram/ncp",
+  "epoch": "galadriel-example-20260713-001",
+  "producer_id": "crebain-galadriel-producer",
+  "registry_canonical_sha256": "7644ec2bbf0e400303aaad62c647eea36bd919913f1a28a81c52c13e00dd45ba",
+  "producer_cert_common_name": "crebain-galadriel-producer.example.invalid",
+  "observer_cert_common_name": "galadriel-observer.example.invalid",
+  "router_listen_endpoint": "tls/0.0.0.0:7447",
+  "router_connect_endpoint": "tls/router.example.invalid:7447",
+  "transport_max_message_bytes": 131072,
+  "certificates": {
+    "root_ca_certificate": "deploy/certs/ca.pem",
+    "router_private_key": "deploy/certs/router-key.pem",
+    "router_certificate": "deploy/certs/router.pem",
+    "producer_private_key": "deploy/certs/producer-key.pem",
+    "producer_certificate": "deploy/certs/producer.pem",
+    "observer_private_key": "deploy/certs/observer-key.pem",
+    "observer_certificate": "deploy/certs/observer.pem"
+  }
+}

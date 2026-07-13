@@ -9,7 +9,7 @@ pre-audit synthetic numbers as current detector evidence.
 > [`PID_RS_1_0_MIGRATION.md`](PID_RS_1_0_MIGRATION.md), with complete-channel geometry
 > gates, explicit observation-noise modeling, bounded circular delete-block settings,
 > and fail-closed fusion. It is compatibility evidence, not calibration; nothing here
-> establishes that current crebain residuals occupy a PID-justified regime.
+> establishes that recorded Crebain residuals occupy a PID-justified regime.
 
 ## 1. Linear-Gaussian dependence: PID is forced
 

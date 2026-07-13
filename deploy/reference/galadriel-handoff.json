@@ -1,0 +1,9 @@
+{
+  "epoch": "galadriel-example-20260713-001",
+  "observer_cert_common_name": "galadriel-observer.example.invalid",
+  "producer_cert_common_name": "crebain-galadriel-producer.example.invalid",
+  "producer_id": "crebain-galadriel-producer",
+  "profile_version": "1",
+  "realm": "engram/ncp",
+  "registry_canonical_sha256": "7644ec2bbf0e400303aaad62c647eea36bd919913f1a28a81c52c13e00dd45ba"
+}

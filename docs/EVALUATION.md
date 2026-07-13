@@ -150,8 +150,10 @@ A regenerated synthetic report is useful only if all of these hold:
 
 ## 6. Recorded-data gate
 
-No synthetic result can validate current crebain integration. A recorded evaluation must
-wait for a producer contract with:
+No synthetic result can validate the Crebain integration. The producer contract has a
+gated Crebain implementation baseline, but its deployment-epoch/shared-golden/revision-pin
+closeout is still pending at this Galadriel revision. After that closeout, a recorded
+evaluation must capture and verify all of the following:
 
 - `consistency_projection` enabled for every requested modality in the normal runtime path;
 - matching physical-frame/projection-context IDs and dimensions across modalities;
@@ -160,12 +162,12 @@ wait for a producer contract with:
 - heartbeats for all-modal silence;
 - stable session IDs and a versioned schema with restart rules.
 
-The current bundled fixture was emitted with native research fields enabled specifically
+The bundled historical fixture was emitted with native research fields enabled specifically
 for the fixture, but it contains no common projection attestation. Its mixed native frames
 and sequential priors are never substituted. It proves bounded parsing and baseline smoke
 behavior; correlation and fused assessment correctly remain `InsufficientEvidence`.
 
-Even after the producer contract is fixed, a valid recorded study must separate:
+A valid recorded study must separate:
 
 - pre-gate detector performance;
 - selection/censoring introduced by association and gating;

@@ -19,6 +19,7 @@ workspace = true
 galadriel-core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 thiserror = { workspace = true }
 # ncp-core is light (serde + serde_json only); the workspace root pins the released
 # NCP 0.8 crates by the exact public v0.8.0 commit.
@@ -26,23 +27,39 @@ ncp-core = { workspace = true }
 # The live named-perception tap (feature `zenoh`) pulls the full Zenoh + tokio stack;
 # the JSONL ingest path needs none of it, so it is strictly optional.
 ncp-zenoh = { workspace = true, optional = true }
-# Used directly for the bounded observation handoff; do not rely on ncp-zenoh's
-# transitive runtime dependency.
-tokio = { workspace = true, optional = true }
+# Retain exact raw subscriber guards so each live receiver can undeclare only its
+# own selector without broad-closing a host-owned NCP session.
+zenoh = { workspace = true, optional = true }
+# Used directly for bounded live handoffs and the fail-stop monitor receiver;
+# do not rely on ncp-zenoh's transitive runtime dependency. The live monitor gap
+# deadline owns one cancellation-aware timer task per exact epoch subscription.
+tokio = { workspace = true, optional = true, features = ["macros", "rt", "time"] }
 
 [dev-dependencies]
-# tests/live_zenoh_e2e.rs (feature `zenoh`) drives a real in-process Zenoh round
-# trip and needs a test runtime; the library itself keeps only tokio `sync`.
-# Dev-only: the published/normal dependency tree is unchanged.
+# Live integration tests drive real in-process Zenoh round trips and need a
+# multi-thread runtime; the feature-gated library needs only sync, timers, macros,
+# and the current-thread runtime for its cancellation-aware gap worker.
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 
 [features]
 default = []
 # The live Zenoh named-perception tap. Off by default — only `ncp-live` enables it.
-zenoh = ["dep:ncp-zenoh", "dep:tokio"]
+zenoh = ["dep:ncp-zenoh", "dep:tokio", "dep:zenoh"]
 
 # The live-leg e2e test compiles only when the `zenoh` feature is enabled
 # (it needs ncp-zenoh and the optional tokio dependency in the lib itself).
 [[test]]
 name = "live_zenoh_e2e"
+required-features = ["zenoh"]
+
+[[test]]
+name = "monitor_live_zenoh_e2e"
+required-features = ["zenoh"]
+
+[[test]]
+name = "operational_live_zenoh_e2e"
+required-features = ["zenoh"]
+
+[[test]]
+name = "secure_deployment_configs"
 required-features = ["zenoh"]

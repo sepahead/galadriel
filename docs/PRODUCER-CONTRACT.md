@@ -1,9 +1,12 @@
 # Producer Observation and Lifecycle Contract
 
-Status: Accepted, implementation-blocking ADR. The frozen v1 observation contract,
-strict monitor Rust/JSON wire contract, and both key constructors exist in code;
-this is not evidence of a live deployment. The monitor publisher, consumer
-assembler, and end-to-end operational profile are not implemented or deployed.
+Status: Accepted ADR; Galadriel component implementation complete, reciprocal producer
+closeout and deployment evidence blocking. The frozen contracts, Crebain producer baseline,
+pinned registry, Galadriel assembler/lifecycle receiver, and exact-epoch configuration
+profile exist and are tested. Crebain must still consume the deployment-supplied epoch,
+commit the shared fixture, and pin the merged Galadriel revision. This is not evidence that
+a remote router loaded the ACL, certificates were authorized correctly, or detector
+thresholds are operationally calibrated.
 
 ## Decision
 
@@ -46,21 +49,24 @@ it is not a producer measurement-lifecycle vocabulary and MUST NOT be overloaded
 for that purpose. Likewise, a `payloads_received` counter proves only that some
 traffic arrived; it is not producer liveness.
 
-The current command-line application provides demo and replay flows, not a live
-operational service. Strict monitor envelope types, semantic validation, a bounded
-codec, and the matching v1 schema now exist, but there is no monitor publisher or
-consumer assembler, no independent heartbeat task, and no Crebain live publisher
-in this repository.
-The current producer integration emits only successful associated/applied records
-after sequential updates and does not emit the common `consistency_projection`
-required below. The current core validates optional projection shape and rejects
-cross-sequence prior reuse within a bounded consistency extraction, but it does not
-provide the epoch-wide monitor assembler defined here. Existing evidence is
-synthetic or component-level; it is not evidence of a deployed, receiver-verified
-mTLS/ACL installation.
+The command-line application now provides `observe` behind `ncp-live`. It loads an
+externally digest-pinned registry, opens the strict secure Zenoh client, joins both
+exact routes through one serialized bounded ingress, advances all declared
+deadlines, and passes only lifecycle-complete frames into the detector adapter.
+Explicit misses/rejections immediately abstain and clear the affected suffix.
 
-This ADR therefore defines the contract that implementation and deployment
-evidence MUST satisfy. It does not claim those gaps are closed.
+The matching opt-in Crebain runtime baseline snapshots the predicted track set before
+association/update, calculates registered Cartesian projections from that one
+prior, records bounded opportunity outcomes, publishes summaries through ordered
+queues, and runs an independent heartbeat. At this revision it still mints its epoch
+internally; the reciprocal refresh must require the deployment value, commit the shared
+registry fixture, and pin the merged consumer implementation. Historical JSONL captures
+remain successful-update-only and are not upgraded by this implementation.
+
+Existing evidence is synthetic, golden, unit/property, or in-process transport
+evidence. The real multi-process allow/deny, wrong/no-certificate, restart, loss,
+and all-silence campaign remains an external acceptance gate. This ADR defines
+both the implemented contract and that still-open deployment evidence boundary.
 
 ## Route and publication rules
 
@@ -290,9 +296,16 @@ passed, and `assignment_rejected` outcomes are followed by one aggregate
 `unsupported_filter`, or `incomparable_projection` terminal outcome suppresses
 the miss for that pair. A producer MUST NOT emit any other outcome/miss
 combination for the pair. `FrameSummary.outcome_count` counts both event types.
+`no_candidate` requires at least one frame input; when `input_count` is zero, a
+non-eligibility miss MUST be `no_measurement`. Frozen pair ledgers are emitted in
+strict `(track_id, registered modality order)` order, with attempt and measurement
+indices increasing inside a pair and its optional aggregate miss last.
 `track_birth` is a measurement-level outcome outside that pre-association Cartesian
-ledger: a track born during the frame neither creates nor suppresses a miss until it
-belongs to the next frame's frozen active-track set.
+ledger. Births follow all frozen-pair records in strict
+`(measurement_index, track_id, registered modality order)` order; birth track IDs
+and measurement indices are unique within the frame. A track born during the frame
+neither creates nor suppresses a miss until it belongs to the next frame's frozen
+active-track set.
 
 ### Frame summary
 
@@ -372,7 +385,11 @@ MUST be invalidated/reset. Such a fault yields `Insufficient` or `Rejected`, nev
 Replay high-water marks MUST survive ordinary per-frame eviction for the epoch.
 Consumer eviction MUST NOT make an otherwise incomplete frame eligible. On epoch
 retirement, state may be discarded only under a documented retention policy after
-the old subscription can no longer contribute accepted evidence.
+the old subscription can no longer contribute accepted evidence. Because bounded
+prior-identity and `(track, modality)` replay maps cannot safely evict while the epoch
+remains admissible, deployments MUST expose their utilization and coordinate a new,
+never-reused epoch before either limit is exhausted. Capacity exhaustion is terminal,
+not an automatic rollover signal that may be repaired in place.
 
 ## Producer queues and backpressure
 
@@ -490,21 +507,23 @@ negative measurement evidence becomes auditable, idle liveness is distinguishabl
 from observations, and transport loss cannot silently masquerade as a statistically
 healthy frame.
 
-Implementation SHOULD proceed in this order:
+Implementation proceeded in this order:
 
-1. freeze monitor Rust/JSON types, limits, typed reason taxonomy, registry format,
-   and cross-repository golden/negative corpus (the wire/type portion is complete;
-   the registry and cross-repository corpus remain);
-2. change the producer to snapshot the immutable predicted prior, compute registered
-   ENU/world residuals before sequential updates, and record every bounded outcome;
-3. add bounded publisher lanes, pre-enqueue sequencing, frame summaries, and the
-   independent heartbeat task;
-4. add the live consumer monitor tap and bounded fail-closed cross-route assembler;
-5. integrate fresh epoch lifecycle, discovery/subscription handover, metrics, alerts,
-   and runbooks into normal runtime; and
-6. execute and retain all five acceptance-lens evidence suites on a real secured
-   multi-process deployment.
+1. **Galadriel complete; reciprocal pin pending:** monitor Rust/JSON types, limits, typed
+   reason taxonomy, canonical registry, opportunity policy, and Galadriel-side golden.
+2. **Complete:** immutable predicted-prior snapshot, registered Cartesian residuals
+   before sequential updates, and bounded opportunity outcomes in Crebain.
+3. **Producer baseline complete; reciprocal refresh pending:** bounded publisher lanes,
+   pre-enqueue sequencing, summaries, and independent heartbeat; replace its internal epoch
+   mint with the exact deployment-supplied value and pin this merged Galadriel revision.
+4. **Complete:** live monitor tap, fail-closed assembler, lifecycle adapter, and
+   two-route operational receiver/CLI.
+5. **Complete at component level:** exact-epoch secure configuration generator,
+   health counters, static mutation checks, runbook, and in-process fault tests.
+6. **Open external gate:** execute and retain all five acceptance-lens suites on a
+   real secured multi-process deployment, then run a recorded pre-gate calibration
+   study independent of threshold fitting.
 
-Until these steps and the matrix are satisfied, only the monitor wire contract is
-implemented; the operational profile is unavailable, and no deployment or
-end-to-end security claim is justified.
+Until step 6 and the acceptance matrix are satisfied, the operational components
+remain a research prototype. No deployment, remote ACL, field-performance, or
+calibrated-posterior claim is justified.

@@ -10,9 +10,10 @@ sources, then states honestly where galadriel does and does not help.
 > **Evidence status (2026-07 audit).** The threat and literature citations below motivate
 > the research question; they do not validate this implementation. Galadriel's current
 > detector evidence is synthetic. The bundled crebain capture proves parsing and baseline
-> smoke behavior only: normal captures omit research fields, modalities use mixed residual
-> frames, sequential updates do not share a frozen prior, and gating censors misses. The
-> cross-channel result for that fixture is therefore `InsufficientEvidence`.
+> smoke behavior only: it contains native research fields but no attested common projection,
+> modalities use mixed residual frames, sequential updates do not share a frozen prior, and
+> gating censors misses. The cross-channel result for that fixture is therefore
+> `InsufficientEvidence`. The opt-in producer implementation has no accepted recorded study.
 
 ---
 
@@ -89,8 +90,9 @@ papers in §2 discuss cross-modal plausibility and consistency checks as the cor
 defenses.
 
 galadriel explores an **N-channel generalization** of that established idea. It is a
-tested research implementation, not a field-validated reference detector. Its current
-producer integration does not yet provide comparable cross-modal residuals.
+tested research implementation, not a field-validated reference detector. Its opt-in
+producer integration now provides registered comparable cross-modal projections, but no
+accepted recorded field study establishes their calibration or detection performance.
 
 ## 4. Where galadriel fits — and the sharper contribution
 
@@ -105,7 +107,7 @@ joint, or adversarially structured. Whether either regime describes field data i
 - **An ideal linear-Gaussian tracker model** makes MI a monotone transform of correlation.
   In that model, MI/PID adds no population-level discrimination and correlation is the
   appropriate cheaper statistic. Whether recorded counter-UAS innovations fit that model
-  is an open empirical question, not an established property of current crebain output.
+  is an open empirical question, not an established property of recorded Crebain data.
 - **Learned-perception MSF attacks** (`MSF-ADV`, the frustum attack) act on a nonlinear
   neural fusion stack — the kind of regime §4.2 motivates studying, where a
   joint-information measure *could in principle* see structure a correlation check on that feature

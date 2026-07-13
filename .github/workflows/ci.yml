@@ -39,6 +39,9 @@ jobs:
       - name: Fetch locked dependencies
         run: cargo fetch --locked
 
+      - name: Verify exact-epoch secure deployment profile
+        run: python3 scripts/secure_deployment.py check
+
       - name: Format
         run: cargo fmt --all --check
 
@@ -54,10 +57,26 @@ jobs:
           cargo check -p galadriel-cli --no-default-features --features ncp --locked
           cargo check -p galadriel-cli --no-default-features --features ncp-live --locked
 
-          default_tree="$(cargo tree -p galadriel-cli --no-default-features -e normal)"
+          default_tree="$(cargo tree -p galadriel-cli --no-default-features -e normal --locked)"
           for forbidden in pid-core ncp-core ncp-zenoh zenoh tokio; do
             if [[ "$default_tree" == *"$forbidden v"* ]]; then
               echo "default CLI dependency graph unexpectedly contains $forbidden" >&2
+              exit 1
+            fi
+          done
+
+          pid_tree="$(cargo tree -p galadriel-cli --no-default-features --features pid -e normal --locked)"
+          for forbidden in ncp-core ncp-zenoh zenoh tokio; do
+            if [[ "$pid_tree" == *"$forbidden v"* ]]; then
+              echo "pid-only CLI dependency graph unexpectedly contains $forbidden" >&2
+              exit 1
+            fi
+          done
+
+          ncp_tree="$(cargo tree -p galadriel-cli --no-default-features --features ncp -e normal --locked)"
+          for forbidden in pid-core ncp-zenoh zenoh tokio; do
+            if [[ "$ncp_tree" == *"$forbidden v"* ]]; then
+              echo "ncp-only CLI dependency graph unexpectedly contains $forbidden" >&2
               exit 1
             fi
           done

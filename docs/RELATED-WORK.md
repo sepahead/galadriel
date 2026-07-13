@@ -21,11 +21,11 @@ This complements the research argument in [`PAPER.md`](PAPER.md) and the real-wo
 threat grounding in [`MOTIVATION.md`](MOTIVATION.md).
 
 > **Evidence status (2026-07 audit).** This is a taxonomy and comparison proposal, not a
-> deployment ranking. Galadriel's current evidence is synthetic. Current crebain output
-> does not provide common-frame, common-frozen-prior cross-modal residuals, and its
-> successful-update-only stream is selection-biased by association/gating. The bundled
-> fixture proves parsing and baseline smoke behavior; cross-channel assessment remains
-> `InsufficientEvidence`.
+> deployment ranking. Galadriel's current performance evidence is synthetic. The bundled
+> historical Crebain output does not provide common-frame, common-frozen-prior cross-modal
+> residuals and is selection-biased by association/gating; it proves parsing and baseline
+> smoke behavior only. An opt-in producer now implements the contract, but no recorded
+> field/calibration result has been accepted.
 
 ---
 

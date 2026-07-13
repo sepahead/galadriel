@@ -1258,7 +1258,8 @@ impl SubscriptionHealth {
 /// TLS identity or ACL policy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportMode {
-    /// Require NCP's strict mTLS client configuration and fail closed if absent.
+    /// Require Galadriel's single-load strict mTLS client configuration and fail
+    /// closed if any local security invariant is absent.
     Secure,
     /// NCP's hardened default config — multicast scouting disabled — without proving
     /// authentication/authorization. If the `NCP_ZENOH_CONFIG` environment variable is
@@ -1293,7 +1294,7 @@ impl SidecarTap {
     ) -> Result<Self, ZenohError> {
         let keys = Keys::default();
         let bus = match mode {
-            TransportMode::Secure => ZenohBus::open_secure(keys).await?,
+            TransportMode::Secure => crate::secure_live::open_secure_bus(keys).await?,
             TransportMode::QuietDevelopment => ZenohBus::open_realm(keys).await?,
         };
         Self::from_parts(bus, DEFAULT_REALM.to_string(), limits, true)
@@ -1342,7 +1343,7 @@ impl SidecarTap {
         let keys = Keys::try_new(&realm)
             .map_err(|error| ZenohError(format!("invalid NCP realm: {error}")))?;
         let bus = match mode {
-            TransportMode::Secure => ZenohBus::open_secure(keys).await?,
+            TransportMode::Secure => crate::secure_live::open_secure_bus(keys).await?,
             TransportMode::QuietDevelopment => ZenohBus::open_realm(keys).await?,
         };
         Self::from_parts(bus, realm, limits, true)
