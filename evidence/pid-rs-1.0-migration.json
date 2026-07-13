@@ -5,10 +5,12 @@
   "calibrated_posterior": false,
   "galadriel_base_commit": "9bd2cb0756009986d1a1a0e429614a1cbbe42ed5",
   "galadriel_migration_implementation": {
-    "commit": "c0f0d45e6ab8d6440ea9ba643929617399e0ee31",
-    "tree": "b0dda8c7163b81f45023cfd62b6cb36d0335e5e7",
+    "landed_commit": "86577db18b4247662c2a87882a310efaaa5322ca",
+    "landed_tree": "a7b9fb42ac78b7a7a58735eb7b1f505767f5f6ab",
+    "audited_source_snapshot_commit": "c0f0d45e6ab8d6440ea9ba643929617399e0ee31",
+    "audited_source_snapshot_tree": "b0dda8c7163b81f45023cfd62b6cb36d0335e5e7",
     "cargo_lock_sha256": "181a4bdc79478e623e23950c66b5d13fcd5543131507bf219065cc1e22f38161",
-    "note": "The follow-up evidence-binding commit changes only this evidence record and its migration documentation; implementation source and Cargo.lock remain those of this commit/tree."
+    "note": "PR #16 was squash-merged. The landed commit/tree is the immutable main-branch implementation and contains the audited source snapshot plus evidence-binding, CI, and mutation-test hardening. The source snapshot IDs remain the origin of the paired compatibility run; Cargo.lock is byte-identical in both trees. This provenance repair changes only evidence/documentation after the landed commit."
   },
   "from": {
     "pid_core_version": "0.4.0",
