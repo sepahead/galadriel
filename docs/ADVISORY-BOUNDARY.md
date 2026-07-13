@@ -116,12 +116,14 @@ recorded study has yet measured the resulting selection effects or calibrated th
   only via the CLI / files.
 - **NCP wire: 0.8.** Galadriel pins `ncp-core`/`ncp-zenoh` to the `v0.8.0` tag, matching the
   underlying NCP version used by both Crebain and Prisoma. Crebain has the matching opt-in
-  Galadriel sidecar publisher baseline; its exact deployment epoch, committed shared golden,
-  and Galadriel revision pin still require the reciprocal closeout. Prisoma observes
-  normative NCP sensor frames and is not a Galadriel sidecar consumer. Galadriel's live taps
-  and operational join have in-process Zenoh loopback coverage. A retained external
-  multi-process mTLS/ACL run between the actual binaries is still absent, so component
-  compatibility is not deployment evidence.
+  Galadriel sidecar publisher baseline. Crebain
+  `4c311900ade5668200a48d56fb191be1916b884a` requires the deployment epoch, contains
+  the byte-identical shared golden, and pins Galadriel
+  `81437d807ca83b66b45c8353968948e540072d97`. Prisoma observes normative NCP sensor
+  frames and is not a Galadriel sidecar consumer. Galadriel's live taps and operational join
+  have in-process Zenoh loopback coverage. A retained external multi-process mTLS/ACL run
+  between the actual binaries is still absent, so component compatibility is not deployment
+  evidence.
 - Building the signed advisory envelope, retaining the external secured interop campaign,
   and completing an independent recorded calibration study are the ordered prerequisites
   before *any* restrict-only profile in §3.3 is even a candidate.

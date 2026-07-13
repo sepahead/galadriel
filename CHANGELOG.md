@@ -54,7 +54,8 @@ may contain breaking changes.
 - Add an immutable, strict, deployment-pinned frame/projection registry with canonical
   JSON SHA-256, applicability and source-frame bindings, global content-identifier
   consistency, versioned projection-algorithm identity, deterministic opportunity caps,
-  and a frozen Galadriel-side fixture prepared for reciprocal Crebain verification.
+  and a frozen Galadriel-side fixture verified byte/hash-identical in Crebain
+  `4c311900ade5668200a48d56fb191be1916b884a`.
 - Add `CrossRouteAssembler`: bounded observation/monitor joining, canonical byte
   accounting, global prior-reuse rejection, contiguous event sequencing, registry and
   gate-accounting verification, transactional frame closure, and exact frame/reorder/
@@ -75,9 +76,11 @@ may contain breaking changes.
 - Integrate the matching opt-in Crebain normal-runtime producer baseline: one immutable
   pre-association prior, registered Cartesian residuals, explicit lifecycle records,
   bounded ordered publisher lanes, frame summaries, independent heartbeat, and strict
-  registry/configuration/executable pins. Its deployment-supplied epoch, committed shared
-  fixture, and immutable Galadriel revision pin remain a reciprocal post-merge closeout.
-  Historical JSONL captures remain baseline-only.
+  registry/configuration/executable pins. Crebain
+  `4c311900ade5668200a48d56fb191be1916b884a` requires the deployment-supplied epoch,
+  commits the shared fixture, and immutably pins Galadriel
+  `81437d807ca83b66b45c8353968948e540072d97`. Historical JSONL captures remain
+  baseline-only.
 - Add the separate strict `galadriel_producer_event` monitor wire contract on
   `sensor/galadriel-monitor`: bounded encode/decode, heartbeat health, typed modality
   outcomes and misses, frozen-prior/frame/context provenance, strict gate-method
@@ -127,9 +130,11 @@ may contain breaking changes.
 
 ### Changed
 
-- Replace the stale producer/runtime roadmap with explicit Galadriel component milestones,
-  a reciprocal Crebain epoch/golden/pin closeout, two operational evidence gates (a retained
-  real multi-process mTLS/ACL campaign and an independent recorded stream-calibration study),
+- Replace the stale producer/runtime roadmap with completed Galadriel and reciprocal Crebain
+  epoch/golden/pin component milestones, pinned by Crebain
+  `4c311900ade5668200a48d56fb191be1916b884a` to Galadriel
+  `81437d807ca83b66b45c8353968948e540072d97`; retain two operational evidence gates (a
+  real multi-process mTLS/ACL campaign and an independent recorded stream-calibration study)
   plus the separate API/release gate.
 - Split the unchanged strict changed-Rust mutation set into four deterministic CI shards so
   feature-sized diffs complete within the bounded job window. Add exact lifecycle identity,
@@ -298,8 +303,8 @@ may contain breaking changes.
   It is not a valid cross-modal correlation/PID validation capture; correlation and fused
   assessment correctly remain `InsufficientEvidence`.
 - Document that the Zenoh live tap now uses NCP's sensor-plane ACL and a versioned envelope,
-  while remaining non-operational until Crebain publishes it and mTLS/heartbeat behavior is
-  verified end to end.
+  while producer/consumer component coverage remains non-operational until a real
+  multi-process mTLS/ACL campaign verifies delivery and heartbeat behavior end to end.
 - Document that per-channel silence requires another channel to advance assessment time and
   all-modal silence requires an external producer/transport heartbeat.
 - Add the producer roadmap: common frozen prior, common frame, explicit miss/rejection

@@ -3,9 +3,10 @@
 Thanks for your interest. galadriel is **Galadriel's Mirror** — an
 information-theoretic cross-sensor consistency / spoof detector for multi-sensor
 fusion. It is part of the [`sepahead`](https://github.com/sepahead) ecosystem and
-consumes per-measurement innovation records (`PidObservation`). The current
-crebain seam is a contract/baseline smoke test; it is not yet a valid source of
-cross-modal correlation/PID evidence.
+consumes per-measurement innovation records (`PidObservation`). The bundled historical
+Crebain fixture is a contract/baseline smoke test, not a valid source of cross-modal
+correlation/PID evidence. The operational producer/receiver seam is component-complete, but
+no accepted recorded study establishes field performance, calibration, or deployed validity.
 
 ## Ground rules
 
