@@ -284,17 +284,18 @@ possible. See [`EVALUATION.md`](EVALUATION.md).
 
 ## 8. Roadmap to a defensible claim
 
-1. **Galadriel complete; reciprocal producer refresh pending:** versioned schemas and
-   stable restart semantics; Crebain must still consume the deployment-supplied never-reused
-   epoch and pin the merged consumer revision.
+1. **Complete at component level:** versioned schemas and stable restart semantics; Crebain
+   `4c311900ade5668200a48d56fb191be1916b884a` requires an operator-provisioned epoch
+   and pins Galadriel `81437d807ca83b66b45c8353968948e540072d97`; deployment
+   orchestration remains responsible for epoch freshness and non-reuse.
 2. **Complete at component level:** registered `consistency_projection` values from one
    common frozen prior with explicit frame/context/prior identities.
 3. **Complete at component level:** association misses, gate rejections, summaries, and
    an independent producer heartbeat.
-4. **Galadriel complete; reciprocal producer refresh pending:** bounded Crebain publisher
-   baseline, Galadriel receiver, and an exact-epoch mTLS/default-deny profile. Crebain's
-   shared golden/epoch/pin closeout and the real multi-process allow/deny and wrong/no-
-   certificate campaign remain open.
+4. **Complete at component level:** bounded Crebain publisher baseline, Galadriel receiver,
+   exact-epoch mTLS/default-deny profile, and byte-identical shared golden/epoch/pin
+   closeout. The real multi-process allow/deny and wrong/no-certificate campaign remains
+   open.
 5. **Open evidence gate:** collect pre-gate recordings and characterize selection effects.
 6. **Open evidence gate:** pre-register operating points and evaluate maneuvers, lifecycle
    changes, and attacks independently of threshold fitting.

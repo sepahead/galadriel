@@ -83,10 +83,11 @@ generated from commit `8a0084f` with `dirty=false`.
   roughly 15.8 seconds long and has no attested common projection, so recorded full-detector
   stream metrics are explicitly `not_estimable`, never replaced with synthetic numbers.
 - Crebain now has a normal-runtime, opt-in producer baseline for the common projection and
-  lifecycle route, and Galadriel has a bounded operational receiver. The reciprocal Crebain
-  refresh that consumes the deployment epoch, commits the shared registry fixture, and pins
-  this Galadriel implementation remains pending until this revision lands. In-process tests
-  are component evidence, not a receiver-verified external mTLS/ACL deployment or field study.
+  lifecycle route, and Galadriel has a bounded operational receiver. Cross-repository
+  component closeout is complete: Crebain `4c311900ade5668200a48d56fb191be1916b884a`
+  requires the deployment epoch, contains the byte-identical shared registry fixture, and
+  pins Galadriel `81437d807ca83b66b45c8353968948e540072d97`. In-process tests are component
+  evidence, not a receiver-verified external mTLS/ACL deployment or field study.
 
 The artifact is a diagnostic result, not an acceptance result. In its independent clean
 arm, the current default reports 26.26 alert episodes/hour and a 0.9167 mission probability
@@ -103,10 +104,12 @@ be completed before any operational use.
 > **Current integration status.** The opt-in Crebain producer baseline snapshots one immutable
 > pre-association prior, maps supported measurements into the pinned Cartesian context,
 > emits explicit lifecycle outcomes/misses and heartbeats, and publishes both strict
-> routes through bounded lanes. At this Galadriel revision, its exact deployment-supplied
-> epoch, committed shared registry golden, and immutable Galadriel pin are still a named
-> cross-repository closeout task. Historical captures remain `not_estimable`; no real-router
-> certificate/ACL campaign or recorded stream calibration has been accepted.
+> routes through bounded lanes. Crebain `4c311900ade5668200a48d56fb191be1916b884a`
+> requires an operator-provisioned epoch, contains the byte-identical shared
+> registry golden, and pins Galadriel `81437d807ca83b66b45c8353968948e540072d97`.
+> Deployment remains responsible for epoch freshness and non-reuse. This closes the
+> epoch/golden/revision-pin task. Historical captures remain `not_estimable`; no
+> real-router certificate/ACL campaign or recorded stream calibration has been accepted.
 
 How Galadriel expects to be consumed by a downstream authorization gate — as
 non-authoritative, record-only, never `ALLOW`-widening advisory evidence — is specified in
@@ -282,8 +285,10 @@ heartbeat, outcome, miss, and frame-summary types are frozen in
 The monitor tap, pinned registry, fail-closed assembler, lifecycle adapter, and operational
 receiver implement the consumer boundary described in
 [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md). Crebain contains the matching
-opt-in publisher baseline; its reciprocal exact-epoch/golden/pin refresh is still pending at
-this revision. None of this attests a remote router's active ACL or calibrates the detector.
+opt-in publisher baseline. Crebain `4c311900ade5668200a48d56fb191be1916b884a`
+requires the deployment epoch, contains the shared registry golden, and pins the Galadriel
+implementation at `81437d807ca83b66b45c8353968948e540072d97`. None of this attests a
+remote router's active ACL or calibrates the detector.
 
 These are project-owned sidecar payloads, not normative NCP `SensorFrame`s. The
 Crebain producer builds the two exact named-sensor keys and publishes the
@@ -324,13 +329,14 @@ The workspace MSRV is **1.89**. Crate targets forbid unsafe code.
 
 ## Producer and integration roadmap
 
-The Galadriel implementation is complete at component level; cross-repository closeout is
-kept explicit until the reciprocal Crebain change is merged and immutably pinned:
+The Galadriel implementation and reciprocal producer closeout are complete at component
+level. Crebain `4c311900ade5668200a48d56fb191be1916b884a` immutably pins the Galadriel
+implementation at `81437d807ca83b66b45c8353968948e540072d97`:
 
 - [x] frozen-prior Cartesian producer projection and explicit gate/lifecycle evidence;
-- [ ] refresh the Crebain publisher to require the exact deployment-supplied epoch and pin
+- [x] refresh the Crebain publisher to require the exact deployment-supplied epoch and pin
   the merged Galadriel implementation;
-- [ ] commit and verify the byte/hash-identical registry golden in Crebain;
+- [x] commit and verify the byte/hash-identical registry golden in Crebain;
 - [x] bounded live monitor, cross-route assembler, lifecycle abstention boundary, secure
   observer CLI, and exact-epoch least-privilege configuration generator;
 - [x] CI, current-stable, fuzz, mutation, supply-chain, and reproducible synthetic evidence

@@ -1,12 +1,13 @@
 # Producer Observation and Lifecycle Contract
 
-Status: Accepted ADR; Galadriel component implementation complete, reciprocal producer
-closeout and deployment evidence blocking. The frozen contracts, Crebain producer baseline,
-pinned registry, Galadriel assembler/lifecycle receiver, and exact-epoch configuration
-profile exist and are tested. Crebain must still consume the deployment-supplied epoch,
-commit the shared fixture, and pin the merged Galadriel revision. This is not evidence that
-a remote router loaded the ACL, certificates were authorized correctly, or detector
-thresholds are operationally calibrated.
+Status: Accepted ADR; component and reciprocal producer closeout complete, deployment
+evidence blocking. The frozen contracts, Crebain producer baseline, pinned registry,
+Galadriel assembler/lifecycle receiver, and exact-epoch configuration profile exist and are
+tested. Crebain `4c311900ade5668200a48d56fb191be1916b884a` requires the
+deployment-supplied epoch, contains the byte-identical shared fixture, and pins Galadriel
+`81437d807ca83b66b45c8353968948e540072d97`. This is not evidence that a remote router
+loaded the ACL, certificates were authorized correctly, or detector thresholds are
+operationally calibrated.
 
 ## Decision
 
@@ -58,10 +59,11 @@ Explicit misses/rejections immediately abstain and clear the affected suffix.
 The matching opt-in Crebain runtime baseline snapshots the predicted track set before
 association/update, calculates registered Cartesian projections from that one
 prior, records bounded opportunity outcomes, publishes summaries through ordered
-queues, and runs an independent heartbeat. At this revision it still mints its epoch
-internally; the reciprocal refresh must require the deployment value, commit the shared
-registry fixture, and pin the merged consumer implementation. Historical JSONL captures
-remain successful-update-only and are not upgraded by this implementation.
+queues, and runs an independent heartbeat. Crebain
+`4c311900ade5668200a48d56fb191be1916b884a` requires the deployment-supplied epoch,
+contains the byte-identical shared registry fixture, and pins the merged Galadriel consumer
+implementation at `81437d807ca83b66b45c8353968948e540072d97`. Historical JSONL
+captures remain successful-update-only and are not upgraded by this implementation.
 
 Existing evidence is synthetic, golden, unit/property, or in-process transport
 evidence. The real multi-process allow/deny, wrong/no-certificate, restart, loss,
@@ -509,13 +511,14 @@ healthy frame.
 
 Implementation proceeded in this order:
 
-1. **Galadriel complete; reciprocal pin pending:** monitor Rust/JSON types, limits, typed
-   reason taxonomy, canonical registry, opportunity policy, and Galadriel-side golden.
+1. **Complete:** monitor Rust/JSON types, limits, typed reason taxonomy, canonical registry,
+   opportunity policy, and a byte-identical cross-repository golden pinned by Crebain
+   `4c311900ade5668200a48d56fb191be1916b884a`.
 2. **Complete:** immutable predicted-prior snapshot, registered Cartesian residuals
    before sequential updates, and bounded opportunity outcomes in Crebain.
-3. **Producer baseline complete; reciprocal refresh pending:** bounded publisher lanes,
-   pre-enqueue sequencing, summaries, and independent heartbeat; replace its internal epoch
-   mint with the exact deployment-supplied value and pin this merged Galadriel revision.
+3. **Complete:** bounded publisher lanes, pre-enqueue sequencing, summaries, independent
+   heartbeat, exact deployment-supplied epoch, shared golden, and immutable Galadriel
+   implementation pin `81437d807ca83b66b45c8353968948e540072d97`.
 4. **Complete:** live monitor tap, fail-closed assembler, lifecycle adapter, and
    two-route operational receiver/CLI.
 5. **Complete at component level:** exact-epoch secure configuration generator,

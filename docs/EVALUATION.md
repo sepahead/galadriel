@@ -150,10 +150,12 @@ A regenerated synthetic report is useful only if all of these hold:
 
 ## 6. Recorded-data gate
 
-No synthetic result can validate the Crebain integration. The producer contract has a
-gated Crebain implementation baseline, but its deployment-epoch/shared-golden/revision-pin
-closeout is still pending at this Galadriel revision. After that closeout, a recorded
-evaluation must capture and verify all of the following:
+No synthetic or component result can validate the deployed Crebain integration. The
+reciprocal epoch/golden/revision-pin closeout is complete: Crebain
+`4c311900ade5668200a48d56fb191be1916b884a` requires the deployment epoch, contains
+the byte-identical shared golden, and pins Galadriel
+`81437d807ca83b66b45c8353968948e540072d97`. A recorded evaluation must still capture
+and verify all of the following:
 
 - `consistency_projection` enabled for every requested modality in the normal runtime path;
 - matching physical-frame/projection-context IDs and dimensions across modalities;
