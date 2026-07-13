@@ -1,0 +1,10 @@
+{"track_id":30,"timestamp_ms":100,"seq":1,"modality":"radar","nis":3.0,"dof":3}
+{"track_id":10,"timestamp_ms":100,"seq":1,"modality":"visual","nis":3.0,"dof":3}
+{"track_id":20,"timestamp_ms":100,"seq":1,"modality":"radar","nis":3.0,"dof":3}
+{"track_id":30,"timestamp_ms":100,"seq":1,"modality":"visual","nis":3.0,"dof":3}
+{"track_id":20,"timestamp_ms":100,"seq":1,"modality":"visual","nis":3.0,"dof":3}
+{"track_id":10,"timestamp_ms":200,"seq":2,"modality":"visual","nis":3.0,"dof":3}
+{"track_id":30,"timestamp_ms":200,"seq":2,"modality":"visual","nis":3.0,"dof":3}
+{"track_id":20,"timestamp_ms":200,"seq":2,"modality":"visual","nis":3.0,"dof":3}
+{"track_id":30,"timestamp_ms":200,"seq":2,"modality":"radar","nis":3.0,"dof":3}
+{"track_id":20,"timestamp_ms":200,"seq":2,"modality":"radar","nis":3.0,"dof":3}

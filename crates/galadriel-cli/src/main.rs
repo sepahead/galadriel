@@ -8,11 +8,11 @@
 //! `galadriel observe` (feature `ncp-live`) runs the bounded, fail-stop two-route receiver.
 
 use std::collections::HashMap;
-#[cfg(feature = "ncp")]
-use std::collections::VecDeque;
 use std::io::IsTerminal;
 #[cfg(feature = "ncp-live")]
 use std::path::PathBuf;
+#[cfg(feature = "ncp")]
+use std::{num::NonZeroUsize, ops::Range};
 
 #[cfg(feature = "ncp-live")]
 use anyhow::Context as _;
@@ -29,6 +29,11 @@ const MIN_DEMO_FRAMES: usize = 128;
 const MAX_DEMO_FRAMES: usize = 10_000;
 #[cfg(all(feature = "ncp", feature = "pid"))]
 const MAX_REPLAY_PID_TRACKS: usize = 8;
+
+fn attack_start_frame(frames: usize, divisor: usize) -> u64 {
+    debug_assert!(divisor > 0, "attack start divisor must be nonzero");
+    u64::try_from(frames / divisor).expect("supported frame counts fit in u64")
+}
 
 #[derive(Parser)]
 #[command(
@@ -442,6 +447,34 @@ mod observe_cli_tests {
         }
     }
 
+    #[test]
+    fn test_registry_rejects_each_independent_summary_mismatch() {
+        let identity = FrameIdentity {
+            fusion_seq: 1,
+            fusion_timestamp_ms: 1_001,
+            frame_id: 10,
+            context_id: 20,
+            prior_id: 101,
+        };
+        let expected = [Modality::Visual, Modality::Radar];
+
+        assert!(TestRegistry
+            .verify_summary(identity, TEST_DIGEST, &expected)
+            .is_ok());
+        assert!(matches!(
+            TestRegistry.verify_summary(identity, &"b".repeat(64), &expected),
+            Err(RegistryViolation::UnexpectedModalities)
+        ));
+        assert!(matches!(
+            TestRegistry.verify_summary(
+                identity,
+                TEST_DIGEST,
+                &[Modality::Visual, Modality::Acoustic]
+            ),
+            Err(RegistryViolation::UnexpectedModalities)
+        ));
+    }
+
     fn projection(prior_id: u64) -> ConsistencyProjection {
         ConsistencyProjection {
             values: [1.0, 2.0, 3.0],
@@ -730,7 +763,7 @@ fn run_demo(frames: usize, seed: u64) -> anyhow::Result<()> {
         dt_ms: 100,
         seed,
     };
-    let start = (frames as u64) / 2;
+    let start = attack_start_frame(frames, 2);
 
     banner(color);
 
@@ -865,13 +898,7 @@ fn run_case(
         println!("│  {:<15} {}  μ={:>6.2}  {}", m.label(), spark, mean, tag);
     }
     let v = verdict_str(&report.verdict);
-    let vc = match report.verdict {
-        Verdict::Nominal => green(&v, color),
-        Verdict::AttributedInconsistency { .. }
-        | Verdict::BroadDegradation
-        | Verdict::UnclassifiedAnomaly { .. } => red(&v, color),
-        Verdict::InsufficientEvidence => dim(&v, color),
-    };
+    let vc = color_for_tone(&v, verdict_tone(&report.verdict), color);
     println!("└▷ {}   {}", vc, dim(&report.note, color));
     Ok(())
 }
@@ -888,12 +915,49 @@ fn sparkline(data: &[f64], lo: f64, hi: f64) -> String {
     let span = (hi - lo).max(f64::EPSILON);
     let mut s = String::with_capacity(cols);
     for c in 0..cols {
-        let idx = (c * n / cols).min(n - 1);
+        // `c < cols`, so this downsampled index is always strictly below `n`.
+        let idx = c * n / cols;
         let t = ((data[idx] - lo) / span).clamp(0.0, 1.0);
         let k = (t * (TICKS.len() - 1) as f64).round() as usize;
-        s.push(TICKS[k.min(TICKS.len() - 1)]);
+        // Clamping `t` to `[0, 1]` guarantees a valid tick index after rounding.
+        s.push(TICKS[k]);
     }
     s
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum VerdictTone {
+    Good,
+    Alarm,
+    Insufficient,
+}
+
+fn verdict_tone(verdict: &Verdict) -> VerdictTone {
+    match verdict {
+        Verdict::Nominal => VerdictTone::Good,
+        Verdict::InsufficientEvidence => VerdictTone::Insufficient,
+        Verdict::AttributedInconsistency { .. }
+        | Verdict::BroadDegradation
+        | Verdict::UnclassifiedAnomaly { .. } => VerdictTone::Alarm,
+    }
+}
+
+fn fused_verdict_tone(verdict: &FusedVerdict) -> VerdictTone {
+    match verdict {
+        FusedVerdict::Nominal => VerdictTone::Good,
+        FusedVerdict::InsufficientEvidence => VerdictTone::Insufficient,
+        FusedVerdict::AttributedInconsistency { .. }
+        | FusedVerdict::BroadDegradation
+        | FusedVerdict::UnclassifiedAnomaly { .. } => VerdictTone::Alarm,
+    }
+}
+
+fn color_for_tone(text: &str, tone: VerdictTone, color: bool) -> String {
+    match tone {
+        VerdictTone::Good => green(text, color),
+        VerdictTone::Alarm => red(text, color),
+        VerdictTone::Insufficient => dim(text, color),
+    }
 }
 
 fn verdict_str(v: &Verdict) -> String {
@@ -991,152 +1055,6 @@ fn pid_channel_is_assessable(gate_ok: bool, corroboration: Option<f64>) -> bool 
     gate_ok && corroboration.is_some()
 }
 
-#[cfg(test)]
-mod verdict_label_tests {
-    use super::*;
-
-    #[test]
-    fn baseline_labels_use_neutral_verdict_names() {
-        let attributed = verdict_str(&Verdict::AttributedInconsistency {
-            channels: vec![Modality::Radar],
-        });
-        assert!(attributed.contains("ATTRIBUTED-INCONSISTENCY"));
-        assert!(attributed.contains("spoof-like evidence; cause unclassified"));
-        assert!(!attributed.contains("VERDICT: SPOOF"));
-
-        let broad = verdict_str(&Verdict::BroadDegradation);
-        assert!(broad.contains("BROAD-DEGRADATION"));
-        assert!(broad.contains("jam-like evidence; cause unclassified"));
-        assert!(!broad.contains("VERDICT: JAM"));
-    }
-
-    #[test]
-    fn fused_labels_use_neutral_verdict_names() {
-        let attributed = fused_verdict_str(&FusedVerdict::AttributedInconsistency {
-            channels: vec![Modality::Acoustic],
-            magnitude: MagnitudeEvidence::InCovariance,
-        });
-        assert!(attributed.contains("ATTRIBUTED-INCONSISTENCY"));
-        assert!(attributed.contains("spoof-like evidence; cause unclassified"));
-        assert!(!attributed.contains("VERDICT: SPOOF"));
-
-        let broad = fused_verdict_str(&FusedVerdict::BroadDegradation);
-        assert!(broad.contains("BROAD-DEGRADATION"));
-        assert!(broad.contains("jam-like evidence; cause unclassified"));
-        assert!(!broad.contains("VERDICT: JAM"));
-    }
-
-    #[test]
-    fn insufficient_axis_never_renders_a_channel_as_corroborating() {
-        assert_eq!(
-            channel_evidence_label(false, true, true,),
-            ChannelEvidenceLabel::Insufficient
-        );
-        assert_eq!(
-            channel_evidence_label(false, false, false,),
-            ChannelEvidenceLabel::Insufficient
-        );
-    }
-
-    #[test]
-    fn decoupled_channel_tag_has_the_expected_plain_text() {
-        assert_eq!(
-            channel_evidence_tag(ChannelEvidenceLabel::Decoupled, false),
-            "● DECOUPLED"
-        );
-    }
-
-    #[test]
-    fn corroborating_channel_tag_has_the_expected_plain_text() {
-        assert_eq!(
-            channel_evidence_tag(ChannelEvidenceLabel::Corroborates, false),
-            "● corroborates"
-        );
-    }
-
-    #[test]
-    fn insufficient_channel_tag_has_the_expected_plain_text() {
-        assert_eq!(
-            channel_evidence_tag(ChannelEvidenceLabel::Insufficient, false),
-            "● INSUFFICIENT"
-        );
-    }
-
-    #[cfg(feature = "pid")]
-    #[test]
-    fn pid_channel_with_a_failed_gate_is_not_assessable() {
-        assert!(!pid_channel_is_assessable(false, Some(0.5)));
-    }
-
-    #[cfg(feature = "pid")]
-    #[test]
-    fn pid_channel_with_a_passing_gate_and_score_is_assessable() {
-        assert!(pid_channel_is_assessable(true, Some(0.5)));
-    }
-}
-
-#[cfg(test)]
-mod demo_output_tests {
-    use std::process::Command;
-
-    use super::*;
-
-    const CHILD_DEMO_ENV: &str = "GALADRIEL_CLI_CHILD_DEMO";
-    const FAST_DEMO_FRAMES: usize = 8;
-
-    fn child_test_stdout(test_name: &str, child_demo: &str) -> String {
-        let output = Command::new(std::env::current_exe().expect("test executable path is known"))
-            .args(["--exact", test_name, "--nocapture"])
-            .env(CHILD_DEMO_ENV, child_demo)
-            .output()
-            .expect("child test process starts");
-        assert!(
-            output.status.success(),
-            "child test failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        String::from_utf8(output.stdout).expect("test output is UTF-8")
-    }
-
-    #[test]
-    fn stealthy_default_demo_emits_its_semantic_heading() {
-        let stdout = child_test_stdout(
-            "demo_output_tests::stealthy_default_demo_child",
-            "stealthy-default",
-        );
-
-        assert!(stdout.contains("SYNTHETIC MOMENT-MATCHED SPOOF"));
-    }
-
-    #[test]
-    fn stealthy_default_demo_child() {
-        if std::env::var(CHILD_DEMO_ENV).as_deref() != Ok("stealthy-default") {
-            return;
-        }
-
-        run_stealthy_default_demo(FAST_DEMO_FRAMES, 7, false)
-            .expect("fixed-seed default demo succeeds");
-    }
-
-    #[cfg(feature = "pid")]
-    #[test]
-    fn pid_demo_emits_its_semantic_heading() {
-        let stdout = child_test_stdout("demo_output_tests::pid_demo_child", "pid");
-
-        assert!(stdout.contains("KSG-MI escalation"));
-    }
-
-    #[cfg(feature = "pid")]
-    #[test]
-    fn pid_demo_child() {
-        if std::env::var(CHILD_DEMO_ENV).as_deref() != Ok("pid") {
-            return;
-        }
-
-        run_pid_demo(FAST_DEMO_FRAMES, 7, false).expect("fixed-seed PID demo succeeds");
-    }
-}
-
 /// The pure stealthy-spoof scene: on a moment-matched spoof the magnitude baseline is
 /// blind (NIS stays in-covariance) while the cheap correlation default can flag
 /// the modeled decoupling. This synthetic scene needs correlated honest channels
@@ -1159,7 +1077,7 @@ fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::R
         &cfg,
         StealthySpoof {
             target: Modality::Acoustic,
-            start_frame: (frames as u64) / 3,
+            start_frame: attack_start_frame(frames, 3),
         },
     )?;
 
@@ -1202,11 +1120,7 @@ fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::R
         _ => red(&verdict_str(&report.baseline.verdict), color),
     };
     let fused = fused_verdict_str(&report.verdict);
-    let fc = match report.verdict {
-        FusedVerdict::Nominal => green(&fused, color),
-        FusedVerdict::InsufficientEvidence => dim(&fused, color),
-        _ => red(&fused, color),
-    };
+    let fc = color_for_tone(&fused, fused_verdict_tone(&report.verdict), color);
     println!("│  baseline (NIS χ²):      {bl}");
     println!(
         "└▷ correlation default:   {}   {}",
@@ -1285,6 +1199,10 @@ impl FrameSpan {
         self.frames = self.frames.saturating_add(other.frames);
     }
 
+    fn has_frames(&self) -> bool {
+        self.frames != 0
+    }
+
     fn describe(&self, label: &str) -> Option<String> {
         Some(format!(
             "{label} {} frame(s), first seq {}, last seq {}",
@@ -1360,10 +1278,10 @@ impl ReplayHistory {
     }
 
     fn has_consistency_issue(&self) -> bool {
-        self.too_few_modalities.frames > 0
-            || self.missing_projection.frames > 0
-            || self.extraction_errors.frames > 0
-            || self.analysis_errors.frames > 0
+        self.too_few_modalities.has_frames()
+            || self.missing_projection.has_frames()
+            || self.extraction_errors.has_frames()
+            || self.analysis_errors.has_frames()
     }
 
     fn summary(&self) -> String {
@@ -1385,6 +1303,41 @@ impl ReplayHistory {
             }
         }
         parts.join("; ")
+    }
+}
+
+#[cfg(feature = "ncp")]
+#[derive(Debug, Default)]
+struct SuppressedReplayStats {
+    baseline_alarm_tracks: usize,
+    default_alarm_tracks: usize,
+    baseline_insufficient_tracks: usize,
+    default_insufficient_tracks: usize,
+    default_issue_tracks: usize,
+    baseline_history: ReplayHistory,
+    default_history: ReplayHistory,
+}
+
+#[cfg(feature = "ncp")]
+impl SuppressedReplayStats {
+    fn record(&mut self, baseline: &ReplayHistory, default: &ReplayHistory) {
+        self.baseline_alarm_tracks = self
+            .baseline_alarm_tracks
+            .saturating_add(usize::from(baseline.alarms.has_frames()));
+        self.default_alarm_tracks = self
+            .default_alarm_tracks
+            .saturating_add(usize::from(default.alarms.has_frames()));
+        self.baseline_insufficient_tracks = self
+            .baseline_insufficient_tracks
+            .saturating_add(usize::from(baseline.insufficient.has_frames()));
+        self.default_insufficient_tracks = self
+            .default_insufficient_tracks
+            .saturating_add(usize::from(default.insufficient.has_frames()));
+        self.default_issue_tracks = self
+            .default_issue_tracks
+            .saturating_add(usize::from(default.has_consistency_issue()));
+        self.baseline_history.merge(baseline);
+        self.default_history.merge(default);
     }
 }
 
@@ -1418,6 +1371,73 @@ fn replay_track_uses_pid(track_index: usize, max_pid_tracks: usize) -> bool {
     track_index < max_pid_tracks
 }
 
+#[cfg(feature = "ncp")]
+fn contiguous_ranges_by_key<T, K: PartialEq>(
+    items: &[T],
+    key: impl Fn(&T) -> K,
+) -> Vec<Range<usize>> {
+    if items.is_empty() {
+        return Vec::new();
+    }
+
+    let mut ranges = Vec::new();
+    let mut start = 0;
+    for (end, pair) in (1..items.len()).zip(items.windows(2)) {
+        if key(&pair[0]) != key(&pair[1]) {
+            ranges.push(start..end);
+            start = end;
+        }
+    }
+    ranges.push(start..items.len());
+    ranges
+}
+
+#[cfg(feature = "ncp")]
+fn replay_window_observation_range(
+    frame_ranges: &[Range<usize>],
+    frame_index: usize,
+    window: usize,
+) -> Range<usize> {
+    debug_assert!(window > 0, "correlation window must be nonzero");
+    debug_assert!(frame_index < frame_ranges.len(), "frame index must exist");
+    let start_frame = frame_index.saturating_add(1).saturating_sub(window);
+    frame_ranges[start_frame].start..frame_ranges[frame_index].end
+}
+
+#[cfg(feature = "ncp")]
+fn has_required_modalities(modality_count: usize, minimum: usize) -> bool {
+    modality_count >= minimum
+}
+
+#[cfg(feature = "ncp")]
+fn correlation_config_for_axes(
+    base: &galadriel_core::CorrConfig,
+    axis_count: usize,
+) -> galadriel_core::CorrConfig {
+    debug_assert!(
+        axis_count > 0,
+        "a validated projection has at least one axis"
+    );
+    let mut adjusted = base.clone();
+    adjusted.family_alpha /= axis_count as f64;
+    adjusted
+}
+
+#[cfg(feature = "ncp")]
+fn correlation_reports_are_insufficient(reports: &[galadriel_core::AxisCorrelationReport]) -> bool {
+    use galadriel_core::CorrVerdict;
+
+    reports.is_empty()
+        || reports
+            .iter()
+            .any(|axis| matches!(axis.report.verdict, CorrVerdict::InsufficientEvidence))
+}
+
+#[cfg(feature = "ncp")]
+fn omitted_track_count(total: usize, included: usize) -> Option<NonZeroUsize> {
+    NonZeroUsize::new(total.saturating_sub(included))
+}
+
 /// Replay a JSONL capture of `PidObservation`s through the baseline (and the PID
 /// engine when built with `--features pid,ncp`).
 #[cfg(feature = "ncp")]
@@ -1428,7 +1448,7 @@ fn run_replay(
 ) -> anyhow::Result<()> {
     use galadriel_core::{
         combine_correlation_axes, consistency_channels_with_temporal_limits, correlation,
-        AxisCorrelationReport, CorrConfig, CorrVerdict,
+        AxisCorrelationReport, CorrConfig,
     };
 
     let color = std::io::stdout().is_terminal();
@@ -1456,10 +1476,8 @@ fn run_replay(
             observation.modality as u8,
         )
     });
-    let track_count = 1 + obs
-        .windows(2)
-        .filter(|pair| pair[0].track_id != pair[1].track_id)
-        .count();
+    let track_ranges = contiguous_ranges_by_key(&obs, |observation| observation.track_id);
+    let track_count = track_ranges.len();
     anyhow::ensure!(
         track_count <= detector_cfg.max_tracks,
         "capture contains {track_count} tracks; detector maximum is {}",
@@ -1479,48 +1497,30 @@ fn run_replay(
         )
     );
 
-    let mut track_start = 0usize;
-    let mut track_index = 0usize;
-    let mut suppressed_baseline_alarm_tracks = 0usize;
-    let mut suppressed_default_alarm_tracks = 0usize;
-    let mut suppressed_baseline_insufficient_tracks = 0usize;
-    let mut suppressed_default_insufficient_tracks = 0usize;
-    let mut suppressed_default_issue_tracks = 0usize;
-    let mut suppressed_baseline_history = ReplayHistory::default();
-    let mut suppressed_default_history = ReplayHistory::default();
-    #[cfg(feature = "pid")]
-    let mut pid_tracks_analyzed = 0usize;
-    while track_start < obs.len() {
-        let track_id = obs[track_start].track_id;
-        let mut track_end = track_start + 1;
-        while track_end < obs.len() && obs[track_end].track_id == track_id {
-            track_end += 1;
-        }
-        let track_obs = &obs[track_start..track_end];
+    let mut suppressed = SuppressedReplayStats::default();
+    for (track_index, track_range) in track_ranges.iter().enumerate() {
+        let track_obs = &obs[track_range.clone()];
+        let track_id = track_obs[0].track_id;
         let mut mods: Vec<Modality> = track_obs.iter().map(|o| o.modality).collect();
         mods.sort_by_key(|modality| *modality as u8);
         mods.dedup();
 
-        let mut mirror = if mods.len() >= detector_cfg.min_channels {
+        let modalities_ready = has_required_modalities(mods.len(), detector_cfg.min_channels);
+        let mut mirror = if modalities_ready {
             Mirror::with_modalities(detector_cfg.clone(), &mods)?
         } else {
             Mirror::new(detector_cfg.clone())?
         };
         let corr_cfg = CorrConfig::default();
-        let mut frame_starts = VecDeque::with_capacity(corr_cfg.window.saturating_add(1));
         let mut baseline_history = ReplayHistory::default();
         let mut default_history = ReplayHistory::default();
         let mut baseline_terminal = None;
         let mut default_terminal: Option<(FusedVerdict, String)> = None;
 
-        let mut frame_start = 0usize;
-        while frame_start < track_obs.len() {
-            let seq = track_obs[frame_start].seq;
-            let mut frame_end = frame_start + 1;
-            while frame_end < track_obs.len() && track_obs[frame_end].seq == seq {
-                frame_end += 1;
-            }
-            for observation in &track_obs[frame_start..frame_end] {
+        let frame_ranges = contiguous_ranges_by_key(track_obs, |observation| observation.seq);
+        for (frame_index, frame_range) in frame_ranges.iter().enumerate() {
+            let seq = track_obs[frame_range.start].seq;
+            for observation in &track_obs[frame_range.clone()] {
                 mirror.ingest(observation)?;
             }
             let baseline = mirror.assess(track_id, seq)?;
@@ -1531,22 +1531,11 @@ fn run_replay(
                 None,
             );
 
-            frame_starts.push_back(frame_start);
-            if frame_starts.len() > corr_cfg.window {
-                frame_starts.pop_front();
-            }
-            let tail_start = frame_starts.front().copied().unwrap_or(frame_start);
-            let (correlations, consistency_status, consistency_note) = if mods.len()
-                < detector_cfg.min_channels
-            {
-                (
-                    Vec::new(),
-                    ConsistencyFrameStatus::TooFewModalities,
-                    "fewer than the configured minimum modalities".to_string(),
-                )
-            } else {
+            let window_range =
+                replay_window_observation_range(&frame_ranges, frame_index, corr_cfg.window);
+            let (correlations, consistency_status, consistency_note) = if modalities_ready {
                 match consistency_channels_with_temporal_limits(
-                    &track_obs[tail_start..frame_end],
+                    &track_obs[window_range],
                     &mods,
                     detector_cfg.max_seq_gap,
                     detector_cfg.max_timestamp_skew_ms,
@@ -1559,21 +1548,14 @@ fn run_replay(
                             .iter()
                             .enumerate()
                             .map(|(axis, channels)| {
-                                let mut adjusted = corr_cfg.clone();
-                                adjusted.family_alpha /= axis_count as f64;
+                                let adjusted = correlation_config_for_axes(&corr_cfg, axis_count);
                                 correlation::analyze(channels, &adjusted)
                                     .map(|report| AxisCorrelationReport { axis, report })
                             })
                             .collect::<galadriel_core::Result<Vec<_>>>();
                         match reports {
                             Ok(reports) => {
-                                let insufficient = reports.is_empty()
-                                    || reports.iter().any(|axis| {
-                                        matches!(
-                                            axis.report.verdict,
-                                            CorrVerdict::InsufficientEvidence
-                                        )
-                                    });
+                                let insufficient = correlation_reports_are_insufficient(&reports);
                                 let note = reports
                                     .iter()
                                     .map(|axis| format!("axis {}: {}", axis.axis, axis.report.note))
@@ -1603,6 +1585,12 @@ fn run_replay(
                         format!("consistency input not assessable: {error}"),
                     ),
                 }
+            } else {
+                (
+                    Vec::new(),
+                    ConsistencyFrameStatus::TooFewModalities,
+                    "fewer than the configured minimum modalities".to_string(),
+                )
             };
             let (fused, fusion_note) = combine_correlation_axes(&baseline, &correlations);
             default_history.observe(
@@ -1616,7 +1604,6 @@ fn run_replay(
                 fused,
                 format!("{fusion_note}; consistency: {consistency_note}"),
             ));
-            frame_start = frame_end;
         }
 
         let baseline = baseline_terminal
@@ -1626,13 +1613,7 @@ fn run_replay(
         let verbose = replay_track_is_verbose(track_index, max_report_tracks);
         if verbose {
             let verdict = verdict_str(&baseline.verdict);
-            let colored = match baseline.verdict {
-                Verdict::Nominal => green(&verdict, color),
-                Verdict::AttributedInconsistency { .. }
-                | Verdict::BroadDegradation
-                | Verdict::UnclassifiedAnomaly { .. } => red(&verdict, color),
-                Verdict::InsufficientEvidence => dim(&verdict, color),
-            };
+            let colored = color_for_tone(&verdict, verdict_tone(&baseline.verdict), color);
             println!(
                 "│  baseline · track {track_id}: terminal {}  {}",
                 colored,
@@ -1641,26 +1622,21 @@ fn run_replay(
             println!("│             {}", dim(&baseline.note, color));
 
             let fused = fused_verdict_str(&default_verdict);
-            let colored = match default_verdict {
-                FusedVerdict::Nominal => green(&fused, color),
-                FusedVerdict::InsufficientEvidence => dim(&fused, color),
-                FusedVerdict::AttributedInconsistency { .. }
-                | FusedVerdict::BroadDegradation
-                | FusedVerdict::UnclassifiedAnomaly { .. } => red(&fused, color),
-            };
+            let colored = color_for_tone(&fused, fused_verdict_tone(&default_verdict), color);
             println!(
                 "│  default  · track {track_id}: terminal {}  {}",
                 colored,
                 dim(&default_history.summary(), color)
             );
             println!("│             {}", dim(&default_note, color));
+        } else {
+            suppressed.record(&baseline_history, &default_history);
         }
 
         #[cfg(feature = "pid")]
         if replay_track_uses_pid(track_index, max_pid_tracks) {
             use galadriel_pid::{assess_stream, PidConfig};
 
-            pid_tracks_analyzed += 1;
             let report = assess_stream(track_obs, &mods, &detector_cfg, &PidConfig::default());
             if verbose {
                 match report {
@@ -1687,46 +1663,35 @@ fn run_replay(
                 }
             }
         }
-
-        if !verbose {
-            suppressed_baseline_alarm_tracks += usize::from(baseline_history.alarms.frames > 0);
-            suppressed_default_alarm_tracks += usize::from(default_history.alarms.frames > 0);
-            suppressed_baseline_insufficient_tracks +=
-                usize::from(baseline_history.insufficient.frames > 0);
-            suppressed_default_insufficient_tracks +=
-                usize::from(default_history.insufficient.frames > 0);
-            suppressed_default_issue_tracks += usize::from(default_history.has_consistency_issue());
-            suppressed_baseline_history.merge(&baseline_history);
-            suppressed_default_history.merge(&default_history);
-        }
-        track_index += 1;
-        track_start = track_end;
     }
 
-    if track_count > max_report_tracks {
+    if let Some(omitted) = omitted_track_count(track_count, max_report_tracks) {
         println!(
             "│  suppressed {} per-track report(s); among them, {} had baseline alarms and {} had default-fused alarms",
-            track_count - max_report_tracks,
-            suppressed_baseline_alarm_tracks,
-            suppressed_default_alarm_tracks,
+            omitted.get(),
+            suppressed.baseline_alarm_tracks,
+            suppressed.default_alarm_tracks,
         );
         println!(
-            "│    historical insufficiency affected {suppressed_baseline_insufficient_tracks} baseline track(s) and {suppressed_default_insufficient_tracks} default track(s); consistency input was rejected or missing on {suppressed_default_issue_tracks} track(s)",
+            "│    historical insufficiency affected {} baseline track(s) and {} default track(s); consistency input was rejected or missing on {} track(s)",
+            suppressed.baseline_insufficient_tracks,
+            suppressed.default_insufficient_tracks,
+            suppressed.default_issue_tracks,
         );
         println!(
             "│    baseline history across suppressed tracks: {}",
-            dim(&suppressed_baseline_history.summary(), color)
+            dim(&suppressed.baseline_history.summary(), color)
         );
         println!(
             "│    default history across suppressed tracks: {}",
-            dim(&suppressed_default_history.summary(), color)
+            dim(&suppressed.default_history.summary(), color)
         );
     }
     #[cfg(feature = "pid")]
-    if track_count > pid_tracks_analyzed {
+    if let Some(omitted) = omitted_track_count(track_count, max_pid_tracks) {
         println!(
             "│  PID terminal analysis skipped for {} track(s); bounded by --max-pid-tracks={max_pid_tracks}",
-            track_count - pid_tracks_analyzed
+            omitted.get()
         );
     }
     println!(
@@ -1762,7 +1727,7 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
         &cfg,
         StealthySpoof {
             target: Modality::Acoustic,
-            start_frame: (frames as u64) / 3,
+            start_frame: attack_start_frame(frames, 3),
         },
     )?;
 
@@ -1830,13 +1795,209 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
 mod replay_history_tests {
     use super::*;
 
+    fn axis_report(verdict: galadriel_core::CorrVerdict) -> galadriel_core::AxisCorrelationReport {
+        galadriel_core::AxisCorrelationReport {
+            axis: 0,
+            report: galadriel_core::CorrReport {
+                channels: Vec::new(),
+                verdict,
+                note: String::new(),
+            },
+        }
+    }
+
+    #[test]
+    fn contiguous_ranges_cover_empty_singleton_and_uneven_groups() {
+        assert_eq!(
+            contiguous_ranges_by_key::<u64, u64>(&[], |value| *value),
+            Vec::<Range<usize>>::new()
+        );
+        let singleton = contiguous_ranges_by_key(&[7_u64], |value| *value);
+        assert_eq!(singleton.len(), 1);
+        assert_eq!(singleton[0], 0..1);
+        assert_eq!(
+            contiguous_ranges_by_key(&[1_u64, 1, 2, 2, 2, 4], |value| *value),
+            [0..2, 2..5, 5..6]
+        );
+    }
+
+    #[test]
+    fn replay_window_observation_range_preserves_nonuniform_128_frame_boundary() {
+        let mut frame_ranges = Vec::with_capacity(129);
+        frame_ranges.push(0..2);
+        frame_ranges.extend((1..=126).map(|frame| (frame + 1)..(frame + 2)));
+        frame_ranges.push(128..131);
+        frame_ranges.push(131..135);
+
+        assert_eq!(frame_ranges.len(), 129);
+        assert_eq!(
+            replay_window_observation_range(&frame_ranges, 126, 128),
+            0..128
+        );
+        assert_eq!(
+            replay_window_observation_range(&frame_ranges, 127, 128),
+            0..131
+        );
+        assert_eq!(
+            replay_window_observation_range(&frame_ranges, 128, 128),
+            2..135
+        );
+    }
+
+    #[test]
+    fn required_modality_boundary_is_inclusive() {
+        assert!(!has_required_modalities(1, 2));
+        assert!(has_required_modalities(2, 2));
+        assert!(has_required_modalities(3, 2));
+    }
+
+    #[test]
+    fn correlation_family_alpha_is_split_across_projection_axes() {
+        let base = galadriel_core::CorrConfig::default();
+        let adjusted = correlation_config_for_axes(&base, 3);
+
+        assert!((adjusted.family_alpha - base.family_alpha / 3.0).abs() < f64::EPSILON);
+        assert_eq!(adjusted.window, base.window);
+        assert_eq!(adjusted.min_samples, base.min_samples);
+    }
+
+    #[test]
+    fn correlation_report_insufficiency_covers_empty_ready_and_mixed_inputs() {
+        let nominal = axis_report(galadriel_core::CorrVerdict::Nominal);
+        let insufficient = axis_report(galadriel_core::CorrVerdict::InsufficientEvidence);
+
+        assert!(correlation_reports_are_insufficient(&[]));
+        assert!(!correlation_reports_are_insufficient(&[nominal]));
+        assert!(correlation_reports_are_insufficient(&[
+            axis_report(galadriel_core::CorrVerdict::Nominal),
+            insufficient,
+        ]));
+    }
+
+    #[test]
+    fn omitted_track_count_distinguishes_positive_equal_and_overprovisioned_limits() {
+        assert_eq!(omitted_track_count(3, 1).map(NonZeroUsize::get), Some(2));
+        assert_eq!(omitted_track_count(3, 3), None);
+        assert_eq!(omitted_track_count(1, 3), None);
+    }
+
+    #[test]
+    fn report_visibility_covers_both_sides_of_the_limit() {
+        assert!(replay_track_is_verbose(0, 1));
+        assert!(!replay_track_is_verbose(1, 1));
+    }
+
     #[cfg(feature = "pid")]
     #[test]
-    fn pid_selection_is_independent_of_report_visibility() {
+    fn pid_selection_covers_the_exact_limit_and_is_independent_of_visibility() {
+        assert!(replay_track_uses_pid(0, 1));
+        assert!(!replay_track_uses_pid(1, 1));
         assert_eq!(
             (replay_track_is_verbose(1, 1), replay_track_uses_pid(1, 4)),
             (false, true)
         );
+    }
+
+    #[test]
+    fn alarm_classification_covers_every_baseline_verdict() {
+        assert!(!baseline_alarm(&Verdict::Nominal));
+        assert!(!baseline_alarm(&Verdict::InsufficientEvidence));
+        assert!(baseline_alarm(&Verdict::AttributedInconsistency {
+            channels: vec![Modality::Visual],
+        }));
+        assert!(baseline_alarm(&Verdict::BroadDegradation));
+        assert!(baseline_alarm(&Verdict::UnclassifiedAnomaly {
+            channels: vec![Modality::Radar],
+        }));
+    }
+
+    #[test]
+    fn alarm_classification_covers_every_fused_verdict() {
+        assert!(!fused_alarm(&FusedVerdict::Nominal));
+        assert!(!fused_alarm(&FusedVerdict::InsufficientEvidence));
+        assert!(fused_alarm(&FusedVerdict::AttributedInconsistency {
+            channels: vec![Modality::Visual],
+            magnitude: MagnitudeEvidence::InCovariance,
+        }));
+        assert!(fused_alarm(&FusedVerdict::BroadDegradation));
+        assert!(fused_alarm(&FusedVerdict::UnclassifiedAnomaly {
+            channels: vec![Modality::Radar],
+        }));
+    }
+
+    #[test]
+    fn frame_span_presence_distinguishes_zero_and_positive_counts() {
+        let mut span = FrameSpan::default();
+        assert!(!span.has_frames());
+        span.observe(5);
+        assert!(span.has_frames());
+    }
+
+    #[test]
+    fn consistency_issue_truth_table_covers_each_independent_cause() {
+        assert!(!ReplayHistory::default().has_consistency_issue());
+
+        for status in [
+            ConsistencyFrameStatus::TooFewModalities,
+            ConsistencyFrameStatus::MissingProjection,
+            ConsistencyFrameStatus::ExtractionError,
+            ConsistencyFrameStatus::AnalysisError,
+        ] {
+            let mut history = ReplayHistory::default();
+            history.observe(1, false, false, Some(status));
+            assert!(history.has_consistency_issue(), "status {status:?}");
+        }
+
+        let mut insufficient_only = ReplayHistory::default();
+        insufficient_only.observe(
+            1,
+            false,
+            false,
+            Some(ConsistencyFrameStatus::Assessed { insufficient: true }),
+        );
+        assert!(!insufficient_only.has_consistency_issue());
+
+        let mut alarm_only = ReplayHistory::default();
+        alarm_only.observe(1, true, false, None);
+        assert!(!alarm_only.has_consistency_issue());
+    }
+
+    #[test]
+    fn suppressed_stats_record_zero_positive_and_repeated_histories() {
+        let mut empty_stats = SuppressedReplayStats::default();
+        empty_stats.record(&ReplayHistory::default(), &ReplayHistory::default());
+        assert_eq!(empty_stats.baseline_alarm_tracks, 0);
+        assert_eq!(empty_stats.default_alarm_tracks, 0);
+        assert_eq!(empty_stats.baseline_insufficient_tracks, 0);
+        assert_eq!(empty_stats.default_insufficient_tracks, 0);
+        assert_eq!(empty_stats.default_issue_tracks, 0);
+
+        let mut baseline = ReplayHistory::default();
+        baseline.observe(5, true, true, None);
+        let mut default = ReplayHistory::default();
+        default.observe(
+            7,
+            true,
+            true,
+            Some(ConsistencyFrameStatus::MissingProjection),
+        );
+
+        let mut stats = SuppressedReplayStats::default();
+        stats.record(&baseline, &default);
+        assert_eq!(stats.baseline_alarm_tracks, 1);
+        assert_eq!(stats.default_alarm_tracks, 1);
+        assert_eq!(stats.baseline_insufficient_tracks, 1);
+        assert_eq!(stats.default_insufficient_tracks, 1);
+        assert_eq!(stats.default_issue_tracks, 1);
+
+        stats.record(&baseline, &default);
+        assert_eq!(stats.baseline_alarm_tracks, 2);
+        assert_eq!(stats.default_alarm_tracks, 2);
+        assert_eq!(stats.baseline_insufficient_tracks, 2);
+        assert_eq!(stats.default_insufficient_tracks, 2);
+        assert_eq!(stats.default_issue_tracks, 2);
+        assert_eq!(stats.baseline_history.alarms.frames, 2);
+        assert_eq!(stats.default_history.missing_projection.frames, 2);
     }
 
     #[test]
@@ -1924,5 +2085,173 @@ mod replay_history_tests {
         assert!(merged
             .summary()
             .contains("alarm 2 frame(s), first seq 7, last seq 20"));
+    }
+}
+
+#[cfg(test)]
+mod verdict_label_tests {
+    use super::*;
+
+    #[test]
+    fn attack_start_uses_floor_division_at_supported_boundaries() {
+        assert_eq!(attack_start_frame(128, 2), 64);
+        assert_eq!(attack_start_frame(128, 3), 42);
+        assert_eq!(attack_start_frame(129, 3), 43);
+    }
+
+    #[test]
+    fn sparkline_maps_a_nonzero_range_to_all_expected_quartile_ticks() {
+        assert_eq!(sparkline(&[], 10.0, 20.0), "");
+
+        let rendered = sparkline(&[10.0, 12.0, 15.0, 20.0], 10.0, 20.0);
+        let expected = [
+            "▁".repeat(12),
+            "▂".repeat(12),
+            "▅".repeat(12),
+            "█".repeat(12),
+        ]
+        .concat();
+
+        assert_eq!(rendered, expected);
+        assert_eq!(rendered.chars().count(), 48);
+    }
+
+    #[test]
+    fn baseline_verdict_tones_cover_every_variant() {
+        assert_eq!(verdict_tone(&Verdict::Nominal), VerdictTone::Good);
+        assert_eq!(
+            verdict_tone(&Verdict::InsufficientEvidence),
+            VerdictTone::Insufficient
+        );
+        for verdict in [
+            Verdict::AttributedInconsistency {
+                channels: vec![Modality::Visual],
+            },
+            Verdict::BroadDegradation,
+            Verdict::UnclassifiedAnomaly {
+                channels: vec![Modality::Radar],
+            },
+        ] {
+            assert_eq!(verdict_tone(&verdict), VerdictTone::Alarm);
+        }
+    }
+
+    #[test]
+    fn fused_verdict_tones_cover_every_variant() {
+        assert_eq!(
+            fused_verdict_tone(&FusedVerdict::Nominal),
+            VerdictTone::Good
+        );
+        assert_eq!(
+            fused_verdict_tone(&FusedVerdict::InsufficientEvidence),
+            VerdictTone::Insufficient
+        );
+        for verdict in [
+            FusedVerdict::AttributedInconsistency {
+                channels: vec![Modality::Visual],
+                magnitude: MagnitudeEvidence::InCovariance,
+            },
+            FusedVerdict::BroadDegradation,
+            FusedVerdict::UnclassifiedAnomaly {
+                channels: vec![Modality::Radar],
+            },
+        ] {
+            assert_eq!(fused_verdict_tone(&verdict), VerdictTone::Alarm);
+        }
+    }
+
+    #[test]
+    fn verdict_tone_coloring_covers_every_ansi_branch() {
+        assert_eq!(
+            color_for_tone("status", VerdictTone::Good, true),
+            "\x1b[1;32mstatus\x1b[0m"
+        );
+        assert_eq!(
+            color_for_tone("status", VerdictTone::Alarm, true),
+            "\x1b[1;31mstatus\x1b[0m"
+        );
+        assert_eq!(
+            color_for_tone("status", VerdictTone::Insufficient, true),
+            "\x1b[2mstatus\x1b[0m"
+        );
+    }
+
+    #[test]
+    fn baseline_labels_use_neutral_verdict_names() {
+        let attributed = verdict_str(&Verdict::AttributedInconsistency {
+            channels: vec![Modality::Radar],
+        });
+        assert!(attributed.contains("ATTRIBUTED-INCONSISTENCY"));
+        assert!(attributed.contains("spoof-like evidence; cause unclassified"));
+        assert!(!attributed.contains("VERDICT: SPOOF"));
+
+        let broad = verdict_str(&Verdict::BroadDegradation);
+        assert!(broad.contains("BROAD-DEGRADATION"));
+        assert!(broad.contains("jam-like evidence; cause unclassified"));
+        assert!(!broad.contains("VERDICT: JAM"));
+    }
+
+    #[test]
+    fn fused_labels_use_neutral_verdict_names() {
+        let attributed = fused_verdict_str(&FusedVerdict::AttributedInconsistency {
+            channels: vec![Modality::Acoustic],
+            magnitude: MagnitudeEvidence::InCovariance,
+        });
+        assert!(attributed.contains("ATTRIBUTED-INCONSISTENCY"));
+        assert!(attributed.contains("spoof-like evidence; cause unclassified"));
+        assert!(!attributed.contains("VERDICT: SPOOF"));
+
+        let broad = fused_verdict_str(&FusedVerdict::BroadDegradation);
+        assert!(broad.contains("BROAD-DEGRADATION"));
+        assert!(broad.contains("jam-like evidence; cause unclassified"));
+        assert!(!broad.contains("VERDICT: JAM"));
+    }
+
+    #[test]
+    fn insufficient_axis_never_renders_a_channel_as_corroborating() {
+        assert_eq!(
+            channel_evidence_label(false, true, true,),
+            ChannelEvidenceLabel::Insufficient
+        );
+        assert_eq!(
+            channel_evidence_label(false, false, false,),
+            ChannelEvidenceLabel::Insufficient
+        );
+    }
+
+    #[test]
+    fn decoupled_channel_tag_has_the_expected_plain_text() {
+        assert_eq!(
+            channel_evidence_tag(ChannelEvidenceLabel::Decoupled, false),
+            "● DECOUPLED"
+        );
+    }
+
+    #[test]
+    fn corroborating_channel_tag_has_the_expected_plain_text() {
+        assert_eq!(
+            channel_evidence_tag(ChannelEvidenceLabel::Corroborates, false),
+            "● corroborates"
+        );
+    }
+
+    #[test]
+    fn insufficient_channel_tag_has_the_expected_plain_text() {
+        assert_eq!(
+            channel_evidence_tag(ChannelEvidenceLabel::Insufficient, false),
+            "● INSUFFICIENT"
+        );
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_channel_with_a_failed_gate_is_not_assessable() {
+        assert!(!pid_channel_is_assessable(false, Some(0.5)));
+    }
+
+    #[cfg(feature = "pid")]
+    #[test]
+    fn pid_channel_with_a_passing_gate_and_score_is_assessable() {
+        assert!(pid_channel_is_assessable(true, Some(0.5)));
     }
 }

@@ -3136,6 +3136,54 @@ mod tests {
     }
 
     #[test]
+    fn frame_ledger_rejects_no_measurement_when_candidates_exist() {
+        let monitor_events = vec![
+            ledger_outcome(
+                7,
+                0,
+                0,
+                ModalityOutcomeKind::GateRejected,
+                1,
+                0,
+                Some((9.0, 7.815)),
+            ),
+            ledger_miss(7, ModalityMissReason::NoMeasurement),
+        ];
+
+        let error = validate_test_ledger(monitor_events, &ledger_summary(1, 1))
+            .expect_err("NoMeasurement must not close a ledger with candidates");
+
+        assert_eq!(
+            error,
+            AssemblyFaultKind::InvalidFrameLedger { fusion_seq: 1 }
+        );
+    }
+
+    #[test]
+    fn frame_ledger_rejects_track_not_eligible_when_candidates_exist() {
+        let monitor_events = vec![
+            ledger_outcome(
+                7,
+                0,
+                0,
+                ModalityOutcomeKind::GateRejected,
+                1,
+                0,
+                Some((9.0, 7.815)),
+            ),
+            ledger_miss(7, ModalityMissReason::TrackNotEligible),
+        ];
+
+        let error = validate_test_ledger(monitor_events, &ledger_summary(1, 1))
+            .expect_err("TrackNotEligible must not close a ledger with candidates");
+
+        assert_eq!(
+            error,
+            AssemblyFaultKind::InvalidFrameLedger { fusion_seq: 1 }
+        );
+    }
+
+    #[test]
     fn frame_ledger_reconciles_candidate_gate_and_terminal_totals_independently() {
         let valid_terminal = vec![ledger_outcome(
             7,
