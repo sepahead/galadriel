@@ -297,7 +297,9 @@ impl LifecycleDetector {
             history.last_fusion_seq = frame.identity.fusion_seq;
             history.last_fusion_timestamp_ms = frame.identity.fusion_timestamp_ms;
             history.frames.push_back(observations);
-            while history.frames.len() > self.history_frames {
+            // Each admission appends exactly one frame to a previously bounded
+            // queue, so at most one oldest frame can overflow this ceiling.
+            if history.frames.len() > self.history_frames {
                 history.frames.pop_front();
             }
             let observation_count = history
@@ -753,13 +755,52 @@ mod tests {
         wrong_timestamp.observations[0].timestamp_ms += 1;
         assert_invalid_frame(wrong_timestamp, "sequence or timestamp differs");
 
-        let mut wrong_projection = complete_frame(1, 11);
-        wrong_projection.observations[0]
+        let mut wrong_projection_frame = complete_frame(1, 11);
+        wrong_projection_frame.observations[0]
+            .consistency_projection
+            .as_mut()
+            .expect("complete fixture has projection")
+            .frame_id += 1;
+        assert_invalid_frame(wrong_projection_frame, "projection provenance differs");
+
+        let mut wrong_projection_context = complete_frame(1, 11);
+        wrong_projection_context.observations[0]
+            .consistency_projection
+            .as_mut()
+            .expect("complete fixture has projection")
+            .context_id += 1;
+        assert_invalid_frame(wrong_projection_context, "projection provenance differs");
+
+        let mut wrong_projection_prior = complete_frame(1, 11);
+        wrong_projection_prior.observations[0]
             .consistency_projection
             .as_mut()
             .expect("complete fixture has projection")
             .prior_id += 1;
-        assert_invalid_frame(wrong_projection, "projection provenance differs");
+        assert_invalid_frame(wrong_projection_prior, "projection provenance differs");
+    }
+
+    #[test]
+    fn every_summary_identity_field_must_match_the_assembled_identity() {
+        let mut wrong_sequence = complete_frame(1, 11);
+        wrong_sequence.summary.fusion_seq += 1;
+        assert_invalid_frame(wrong_sequence, "summary identity differs");
+
+        let mut wrong_timestamp = complete_frame(1, 11);
+        wrong_timestamp.summary.fusion_timestamp_ms += 1;
+        assert_invalid_frame(wrong_timestamp, "summary identity differs");
+
+        let mut wrong_frame = complete_frame(1, 11);
+        wrong_frame.summary.frame_id += 1;
+        assert_invalid_frame(wrong_frame, "summary identity differs");
+
+        let mut wrong_context = complete_frame(1, 11);
+        wrong_context.summary.context_id += 1;
+        assert_invalid_frame(wrong_context, "summary identity differs");
+
+        let mut wrong_prior = complete_frame(1, 11);
+        wrong_prior.summary.prior_id += 1;
+        assert_invalid_frame(wrong_prior, "summary identity differs");
     }
 
     #[test]
@@ -791,6 +832,97 @@ mod tests {
             }
         }
         assert_eq!(detector.retained_tracks(), 1);
+    }
+
+    #[test]
+    fn explicit_history_clear_discards_the_suffix_without_clearing_health() {
+        let mut detector = detector();
+        for fusion_seq in 1..=3 {
+            detector
+                .assess_frame(&complete_frame(fusion_seq, 11))
+                .expect("warm-up frame evaluates");
+        }
+        assert_eq!(detector.retained_tracks(), 1);
+
+        detector.clear_histories();
+
+        assert_eq!(detector.retained_tracks(), 0);
+        assert_eq!(detector.fault(), None);
+        let assessment = detector
+            .assess_frame(&complete_frame(4, 11))
+            .expect("post-clear frame starts a new suffix");
+        assert!(matches!(
+            &assessment[0],
+            LifecycleAssessment::Evaluated {
+                history_reset: true,
+                report,
+                ..
+            } if report.verdict == FusedVerdict::InsufficientEvidence
+        ));
+    }
+
+    #[test]
+    fn expected_modalities_below_the_detector_minimum_are_terminal() {
+        let mut detector = LifecycleDetector::new(
+            DetectorConfig {
+                window_len: 4,
+                min_samples: 4,
+                min_channels: 3,
+                ..DetectorConfig::default()
+            },
+            CorrConfig {
+                window: 4,
+                min_samples: 4,
+                ..CorrConfig::default()
+            },
+        )
+        .expect("three-channel detector config validates");
+
+        let error = detector
+            .assess_frame(&complete_frame(1, 11))
+            .expect_err("a two-modality frame cannot satisfy a three-channel detector");
+
+        assert!(matches!(
+            &error,
+            LifecycleDetectorError::InvalidFrame(reason)
+                if reason.contains("cannot satisfy detector min_channels 3")
+        ));
+        assert_eq!(detector.fault(), Some(&error));
+        assert_eq!(detector.retained_tracks(), 0);
+    }
+
+    #[test]
+    fn track_capacity_boundary_is_inclusive() {
+        let mut detector = LifecycleDetector::new(
+            DetectorConfig {
+                window_len: 4,
+                min_samples: 4,
+                min_channels: 2,
+                max_tracks: 1,
+                ..DetectorConfig::default()
+            },
+            CorrConfig {
+                window: 4,
+                min_samples: 4,
+                ..CorrConfig::default()
+            },
+        )
+        .expect("one-track detector config validates");
+
+        let assessment = detector
+            .assess_frame(&complete_frame(1, 11))
+            .expect("exactly max_tracks frozen tracks remain admissible");
+
+        assert!(matches!(
+            assessment.as_slice(),
+            [LifecycleAssessment::Evaluated {
+                track_id: 1,
+                history_reset: true,
+                ..
+            }]
+        ));
+        assert_eq!(detector.retained_tracks(), 1);
+        assert_eq!(detector.fault(), None);
     }
 
     #[test]

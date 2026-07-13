@@ -124,6 +124,10 @@ may contain breaking changes.
   a reciprocal Crebain epoch/golden/pin closeout, two operational evidence gates (a retained
   real multi-process mTLS/ACL campaign and an independent recorded stream-calibration study),
   plus the separate API/release gate.
+- Split the unchanged strict changed-Rust mutation set into four deterministic CI shards so
+  feature-sized diffs complete within the bounded job window. Add exact lifecycle identity,
+  inclusive capacity/channel, history-clear, nested-endpoint, whitespace-path, and Unix
+  private-key-mode regressions for every survivor found by the pre-merge mutation audit.
 - Migrate the exact `pid-core` pin from 0.4.0 (`ad489f5…`) to the canonical pid-rs
   1.0.0 main revision (`1cd2424…`), opt into its explicitly experimental continuous
   surface, adopt its report-first KSG point gate and caller-declared support contract,

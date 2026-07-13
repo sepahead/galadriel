@@ -226,3 +226,31 @@ pub async fn open_secure_bus(keys: Keys) -> Result<ZenohBus, ZenohError> {
     validate_secure_client_config(&config)?;
     ZenohBus::with_config(config, keys).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn endpoint_collection_traverses_nested_config_objects() {
+        let value = serde_json::json!({
+            "primary": "tls/router.example.invalid:7447",
+            "fallbacks": [
+                { "endpoint": "tls/router2.example.invalid:7447" },
+                null,
+            ],
+        });
+        let mut endpoints = Vec::new();
+
+        collect_endpoints(&value, &mut endpoints);
+        endpoints.sort_unstable();
+
+        assert_eq!(
+            endpoints,
+            [
+                "tls/router.example.invalid:7447",
+                "tls/router2.example.invalid:7447",
+            ]
+        );
+    }
+}

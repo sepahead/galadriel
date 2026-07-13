@@ -125,6 +125,7 @@ fn live_startup_rejects_each_strict_profile_regression() {
             r#"["tls/router.example.invalid:7447", "tls/router2.example.invalid:7447"]"#,
         ),
         ("listen/endpoints", r#"["tls/0.0.0.0:7448"]"#),
+        ("listen/endpoints", r#"{ client: ["tls/0.0.0.0:7448"] }"#),
         ("transport/link/tls/root_ca_certificate", "null"),
         ("transport/link/tls/connect_certificate", "null"),
         ("transport/link/tls/connect_private_key", "null"),
@@ -144,6 +145,17 @@ fn live_startup_rejects_each_strict_profile_regression() {
             "startup gate accepted {setting}={value}"
         );
     }
+
+    let mut whitespace_path = config.clone();
+    whitespace_path
+        .insert_json5("transport/link/tls/connect_private_key", r#""   ""#)
+        .expect("whitespace credential-path mutation parses");
+    let error = validate_secure_client_config(&whitespace_path)
+        .expect_err("whitespace-only credential paths must fail the non-empty gate");
+    assert!(
+        error.to_string().contains("requires a non-empty"),
+        "whitespace path reached a later validation stage: {error}"
+    );
 }
 
 #[test]
@@ -201,6 +213,19 @@ fn live_startup_rejects_unsafe_credential_filesystem_boundaries() {
         fs::set_permissions(&credentials.private_key, fs::Permissions::from_mode(0o644))
             .expect("private-key fixture becomes group/world readable");
         assert!(validate_secure_client_config(&config).is_err());
+
+        for (mode, description) in [(0o200, "not owner-readable"), (0o700, "owner-executable")] {
+            fs::set_permissions(&credentials.private_key, fs::Permissions::from_mode(mode))
+                .unwrap_or_else(|error| {
+                    panic!("private-key fixture cannot become {description}: {error}")
+                });
+            let error = validate_secure_client_config(&config)
+                .expect_err("unsafe private-key mode must fail startup");
+            assert!(
+                error.to_string().contains("owner-readable, non-executable"),
+                "{description} private key failed for the wrong reason: {error}"
+            );
+        }
     }
 }
 
