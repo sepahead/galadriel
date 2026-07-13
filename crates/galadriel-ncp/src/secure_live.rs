@@ -125,9 +125,10 @@ fn collect_endpoints<'a>(value: &'a serde_json::Value, output: &mut Vec<&'a str>
 /// `enable_mtls` is true, so that flag is part of the startup gate alongside
 /// TLS-only endpoints, no listeners/discovery, hostname verification,
 /// expiration closure, fail-on-connect, the fixed receive allocation bound, and
-/// canonical absolute credential files. Credential roles must resolve to distinct
-/// regular files; on Unix the private key must deny group/world permissions. It
-/// does not attest which configuration a remote router loaded.
+/// canonical absolute credential files. Credential roles must use distinct
+/// canonical paths; Unix builds additionally compare device/inode identity and
+/// require the private key to deny group/world permissions. It does not attest
+/// which configuration a remote router loaded.
 ///
 /// # Errors
 ///

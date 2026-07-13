@@ -65,10 +65,11 @@ The renderer requires existing regular files at absolute production paths, rejec
 or inline PEM/base64 material and duplicate JSON keys at any nesting depth, canonicalizes
 those paths, and refuses textual, symlink, case-folded, or hard-link aliases. On POSIX it
 also requires every private key to be owner-readable, non-executable, and inaccessible to
-group/other; the runtime observer repeats these credential-file checks before opening
-Zenoh. Keep the profile/configs outside broadly readable locations. The committed references
-are strict JSON (and therefore valid JSON5) so review and digest calculation do not depend
-on a permissive parser.
+group/other; on Unix the runtime observer repeats the device/inode alias and private-mode
+checks before opening Zenoh, while every platform still requires absolute canonical paths
+to existing regular files. Keep the profile/configs outside broadly readable locations.
+The committed references are strict JSON (and therefore valid JSON5) so review and digest
+calculation do not depend on a permissive parser.
 
 ## Startup and health sequence
 
