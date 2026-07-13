@@ -156,9 +156,12 @@ pub struct ModalityOutcome {
     pub outcome: ModalityOutcomeKind,
     /// Whether exactly one matching frozen-v1 observation must be published.
     pub v1_expected: bool,
-    /// Candidate measurements considered for this track and modality.
+    /// Aggregate candidate measurements considered for this track and modality.
+    /// This pair-level count is repeated on every attempt outcome.
     pub candidate_count: u32,
-    /// Candidate measurements that passed the producer's gate.
+    /// Aggregate candidates for this track and modality that passed the producer's
+    /// gate. This may be nonzero on one `gate_rejected` attempt when a different
+    /// candidate in the same pair passed.
     pub in_gate_count: u32,
     /// Gate score for the selected or nearest candidate. Required whenever the
     /// typed outcome claims that candidate gating was performed.
@@ -705,9 +708,9 @@ impl ModalityOutcome {
                 }
             }
             ModalityOutcomeKind::GateRejected => {
-                if self.candidate_count == 0 || self.in_gate_count != 0 {
+                if self.candidate_count == 0 {
                     return Err(MonitorError::EventCoherence(
-                        "gate_rejected requires candidates and zero in-gate candidates",
+                        "gate_rejected requires at least one pair-level candidate",
                     ));
                 }
                 let evidence = self.gate_evidence.ok_or(MonitorError::EventCoherence(
@@ -1508,10 +1511,13 @@ mod tests {
         assert_eq!(
             no_candidates.validate(),
             Err(MonitorError::EventCoherence(
-                "gate_rejected requires candidates and zero in-gate candidates"
+                "gate_rejected requires at least one pair-level candidate"
             ))
         );
 
+        // Counts describe the whole track/modality pair, while gate_evidence
+        // describes this attempt. A sibling candidate may be in-gate even when
+        // this candidate is correctly rejected.
         let mut in_gate_rejection = outcome(ModalityOutcomeKind::GateRejected);
         in_gate_rejection.in_gate_count = 1;
         in_gate_rejection.gate_evidence = Some(GateEvidence {
@@ -1519,12 +1525,7 @@ mod tests {
             threshold: 3.0,
             ..gate_evidence()
         });
-        assert_eq!(
-            in_gate_rejection.validate(),
-            Err(MonitorError::EventCoherence(
-                "gate_rejected requires candidates and zero in-gate candidates"
-            ))
-        );
+        assert!(in_gate_rejection.validate().is_ok());
 
         let mut impossible_counts = outcome(ModalityOutcomeKind::AssignmentRejected);
         impossible_counts.candidate_count = 0;
