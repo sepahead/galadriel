@@ -296,9 +296,16 @@ passed, and `assignment_rejected` outcomes are followed by one aggregate
 `unsupported_filter`, or `incomparable_projection` terminal outcome suppresses
 the miss for that pair. A producer MUST NOT emit any other outcome/miss
 combination for the pair. `FrameSummary.outcome_count` counts both event types.
+`no_candidate` requires at least one frame input; when `input_count` is zero, a
+non-eligibility miss MUST be `no_measurement`. Frozen pair ledgers are emitted in
+strict `(track_id, registered modality order)` order, with attempt and measurement
+indices increasing inside a pair and its optional aggregate miss last.
 `track_birth` is a measurement-level outcome outside that pre-association Cartesian
-ledger: a track born during the frame neither creates nor suppresses a miss until it
-belongs to the next frame's frozen active-track set.
+ledger. Births follow all frozen-pair records in strict
+`(measurement_index, track_id, registered modality order)` order; birth track IDs
+and measurement indices are unique within the frame. A track born during the frame
+neither creates nor suppresses a miss until it belongs to the next frame's frozen
+active-track set.
 
 ### Frame summary
 

@@ -1399,7 +1399,6 @@ pub enum ProjectionIdentityError {
 fn validate_token(field: &str, value: &str) -> Result<(), RegistryError> {
     if value.is_empty()
         || value.len() > MAX_REGISTRY_TOKEN_BYTES
-        || !value.is_ascii()
         || value.bytes().any(|byte| {
             !(byte.is_ascii_alphanumeric()
                 || matches!(byte, b'-' | b'_' | b'.' | b'/' | b':' | b'+'))
@@ -1680,6 +1679,23 @@ mod tests {
             .expect("calculated deployment pin validates")
     }
 
+    fn add_valid_second_frame_and_context(value: &mut Value) {
+        let mut frame = value["frames"][0].clone();
+        frame["frame_id"] = Value::from(FRAME_ID + 1);
+        value["frames"]
+            .as_array_mut()
+            .expect("frame array")
+            .push(frame);
+
+        let mut context = value["contexts"][0].clone();
+        context["context_id"] = Value::from(CONTEXT_ID + 1);
+        context["frame_id"] = Value::from(FRAME_ID + 1);
+        value["contexts"]
+            .as_array_mut()
+            .expect("context array")
+            .push(context);
+    }
+
     #[test]
     fn canonical_digest_is_stable_across_set_order_and_json_whitespace() {
         let first = registry_value();
@@ -1789,6 +1805,74 @@ mod tests {
     }
 
     #[test]
+    fn registry_exposes_exact_document_identity_and_frame_table() {
+        let registry = decode(&registry_value()).expect("registry validates");
+        let frame = registry.frame(FRAME_ID).expect("registered frame exists");
+        let source = frame
+            .source_frame("camera_optical")
+            .expect("registered camera source exists");
+        let transform = &source.transform_chain()[0];
+        let context = registry
+            .context(CONTEXT_ID)
+            .expect("registered context exists");
+        let visual = context
+            .modality(Modality::Visual)
+            .expect("registered visual modality exists");
+        let algorithm = context.projection_algorithm();
+
+        assert_eq!(registry.schema_version(), REGISTRY_SCHEMA_VERSION);
+        assert_eq!(registry.registry_version(), "deployment-2026.07.13");
+        assert_eq!(
+            registry
+                .frames()
+                .iter()
+                .map(FrameDefinition::frame_id)
+                .collect::<Vec<_>>(),
+            vec![FRAME_ID]
+        );
+        assert_eq!(frame.frame_id(), FRAME_ID);
+        assert_eq!(
+            frame
+                .source_frames()
+                .iter()
+                .map(SourceFrameDefinition::canonical_source_frame)
+                .collect::<Vec<_>>(),
+            vec!["camera_optical", "radar_front"]
+        );
+        assert_eq!(source.canonical_source_frame(), "camera_optical");
+        assert_eq!(source.transform_authority(), "tf2_static");
+        assert_eq!(source.transform_chain().len(), 1);
+        assert_eq!(transform.from_frame(), "camera_optical");
+        assert_eq!(transform.to_frame(), "map_enu");
+        assert_eq!(context.context_id(), CONTEXT_ID);
+        assert_eq!(
+            context
+                .expected_modalities()
+                .iter()
+                .map(ModalityProjection::modality)
+                .collect::<Vec<_>>(),
+            vec![Modality::Visual, Modality::Radar]
+        );
+        assert_eq!(context.producer_software_digest(), digest('8'));
+        assert_eq!(context.producer_configuration_digest(), digest('9'));
+        assert_eq!(visual.canonical_source_frame(), "camera_optical");
+        assert_eq!(visual.calibration().content_digest(), digest('6'));
+        assert_eq!(algorithm.identifier(), "common_enu_residual");
+        assert_eq!(algorithm.version(), "1.0.0");
+        assert_eq!(algorithm.content_digest(), digest('5'));
+        assert_eq!(frame.applicability().valid_from_timestamp_ms(), 1_000);
+        assert_eq!(
+            frame.applicability().valid_until_timestamp_ms(),
+            Some(VALID_UNTIL_MS)
+        );
+        assert_eq!(context.applicability().valid_from_timestamp_ms(), 1_100);
+        assert_eq!(
+            context.applicability().valid_until_timestamp_ms(),
+            Some(1_900)
+        );
+    }
+
+    #[test]
     fn pinned_constructor_rejects_content_mismatch() {
         let bytes = serde_json::to_vec(&registry_value()).expect("fixture encodes");
         let error = DeploymentRegistry::from_json_pinned(&bytes, &digest('a'))
@@ -1839,6 +1923,71 @@ mod tests {
     }
 
     #[test]
+    fn multiple_distinct_frames_and_contexts_remain_valid_after_sorting() {
+        let mut value = registry_value();
+        add_valid_second_frame_and_context(&mut value);
+
+        let registry = decode(&value).expect("distinct frame and context identities validate");
+
+        assert_eq!(
+            registry
+                .frames()
+                .iter()
+                .map(FrameDefinition::frame_id)
+                .collect::<Vec<_>>(),
+            vec![FRAME_ID, FRAME_ID + 1]
+        );
+        assert_eq!(
+            registry
+                .contexts()
+                .iter()
+                .map(ProjectionContext::context_id)
+                .collect::<Vec<_>>(),
+            vec![CONTEXT_ID, CONTEXT_ID + 1]
+        );
+    }
+
+    #[test]
+    fn duplicate_frame_identifier_is_rejected() {
+        let mut value = registry_value();
+        let duplicate = value["frames"][0].clone();
+        value["frames"]
+            .as_array_mut()
+            .expect("frame array")
+            .push(duplicate);
+
+        let error = decode(&value).expect_err("duplicate frame identifiers must fail");
+
+        assert_eq!(
+            error,
+            RegistryError::DuplicateIdentifier {
+                kind: "frame_id",
+                value: FRAME_ID,
+            }
+        );
+    }
+
+    #[test]
+    fn duplicate_context_identifier_is_rejected() {
+        let mut value = registry_value();
+        let duplicate = value["contexts"][0].clone();
+        value["contexts"]
+            .as_array_mut()
+            .expect("context array")
+            .push(duplicate);
+
+        let error = decode(&value).expect_err("duplicate context identifiers must fail");
+
+        assert_eq!(
+            error,
+            RegistryError::DuplicateIdentifier {
+                kind: "context_id",
+                value: CONTEXT_ID,
+            }
+        );
+    }
+
+    #[test]
     fn duplicate_expected_modality_is_rejected() {
         let mut value = registry_value();
         let duplicate = value["contexts"][0]["expected_modalities"][0].clone();
@@ -1848,6 +1997,20 @@ mod tests {
             .push(duplicate);
 
         let error = decode(&value).expect_err("duplicate expected modality must fail");
+
+        assert!(matches!(error, RegistryError::InvalidField { .. }));
+    }
+
+    #[test]
+    fn duplicate_source_frame_is_rejected() {
+        let mut value = registry_value();
+        let duplicate = value["frames"][0]["source_frames"][0].clone();
+        value["frames"][0]["source_frames"]
+            .as_array_mut()
+            .expect("source frame array")
+            .push(duplicate);
+
+        let error = decode(&value).expect_err("duplicate source-frame identities must fail");
 
         assert!(matches!(error, RegistryError::InvalidField { .. }));
     }
@@ -1884,6 +2047,111 @@ mod tests {
     }
 
     #[test]
+    fn non_target_source_frame_requires_at_least_one_transform() {
+        let mut value = registry_value();
+        value["frames"][0]["source_frames"][0]["transform_chain"] = json!([]);
+
+        let error = decode(&value).expect_err("non-target source needs a transform path");
+
+        assert!(matches!(error, RegistryError::InvalidField { .. }));
+    }
+
+    #[test]
+    fn target_source_frame_accepts_an_empty_transform_chain() {
+        let mut value = registry_value();
+        value["frames"][0]["source_frames"]
+            .as_array_mut()
+            .expect("source frame array")
+            .push(json!({
+                "canonical_source_frame": "map_enu",
+                "transform_authority": "identity",
+                "aggregate_extrinsic": content("map_identity", 'a'),
+                "transform_chain": [],
+            }));
+
+        let registry = decode(&value).expect("target-frame identity transform is valid");
+
+        assert!(registry
+            .frame(FRAME_ID)
+            .expect("frame exists")
+            .source_frame("map_enu")
+            .expect("identity source exists")
+            .transform_chain()
+            .is_empty());
+    }
+
+    #[test]
+    fn valid_two_step_transform_chain_preserves_direction_and_order() {
+        let mut value = registry_value();
+        value["frames"][0]["source_frames"][0]["transform_chain"] = json!([
+            {
+                "from_frame": "radar_front",
+                "to_frame": "vehicle_body",
+                "transform": content("radar_to_body", 'a'),
+            },
+            {
+                "from_frame": "vehicle_body",
+                "to_frame": "map_enu",
+                "transform": content("body_to_map", 'b'),
+            }
+        ]);
+
+        let registry = decode(&value).expect("continuous two-step transform validates");
+        let chain = registry
+            .frame(FRAME_ID)
+            .expect("frame exists")
+            .source_frame("radar_front")
+            .expect("radar source exists")
+            .transform_chain();
+
+        assert_eq!(chain.len(), 2);
+        assert_eq!(chain[0].to_frame(), "vehicle_body");
+        assert_eq!(chain[1].from_frame(), "vehicle_body");
+    }
+
+    #[test]
+    fn disconnected_second_transform_step_is_rejected() {
+        let mut value = registry_value();
+        value["frames"][0]["source_frames"][0]["transform_chain"] = json!([
+            {
+                "from_frame": "radar_front",
+                "to_frame": "vehicle_body",
+                "transform": content("radar_to_body", 'a'),
+            },
+            {
+                "from_frame": "wrong_body",
+                "to_frame": "map_enu",
+                "transform": content("body_to_map", 'b'),
+            }
+        ]);
+
+        let error = decode(&value).expect_err("transform steps must be continuous");
+
+        assert!(matches!(error, RegistryError::InvalidField { .. }));
+    }
+
+    #[test]
+    fn self_looping_transform_step_is_rejected_even_in_a_continuous_chain() {
+        let mut value = registry_value();
+        value["frames"][0]["source_frames"][0]["transform_chain"] = json!([
+            {
+                "from_frame": "radar_front",
+                "to_frame": "radar_front",
+                "transform": content("radar_identity", 'a'),
+            },
+            {
+                "from_frame": "radar_front",
+                "to_frame": "map_enu",
+                "transform": content("radar_to_map", 'b'),
+            }
+        ]);
+
+        let error = decode(&value).expect_err("directed transform endpoints must differ");
+
+        assert!(matches!(error, RegistryError::InvalidField { .. }));
+    }
+
+    #[test]
     fn unbounded_context_inside_bounded_frame_is_rejected() {
         let mut value = registry_value();
         value["contexts"][0]["applicability"]
@@ -1892,6 +2160,71 @@ mod tests {
             .remove("valid_until_timestamp_ms");
 
         let error = decode(&value).expect_err("context must not outlive its frame");
+
+        assert!(matches!(error, RegistryError::InvalidField { .. }));
+    }
+
+    #[test]
+    fn context_end_equal_to_frame_end_is_accepted() {
+        let mut value = registry_value();
+        value["contexts"][0]["applicability"]["valid_until_timestamp_ms"] =
+            Value::from(VALID_UNTIL_MS);
+
+        let registry = decode(&value).expect("inclusive frame end contains equal context end");
+
+        assert_eq!(
+            registry
+                .context(CONTEXT_ID)
+                .expect("context exists")
+                .applicability()
+                .valid_until_timestamp_ms(),
+            Some(VALID_UNTIL_MS)
+        );
+    }
+
+    #[test]
+    fn reversed_context_applicability_interval_is_rejected() {
+        let mut value = registry_value();
+        value["contexts"][0]["applicability"]["valid_from_timestamp_ms"] = Value::from(1_500);
+        value["contexts"][0]["applicability"]["valid_until_timestamp_ms"] = Value::from(1_499);
+
+        let error = decode(&value).expect_err("applicability end cannot precede its start");
+
+        assert!(matches!(error, RegistryError::InvalidField { .. }));
+    }
+
+    #[test]
+    fn single_timestamp_context_applicability_is_accepted() {
+        let mut value = registry_value();
+        value["contexts"][0]["applicability"]["valid_from_timestamp_ms"] = Value::from(1_500);
+        value["contexts"][0]["applicability"]["valid_until_timestamp_ms"] = Value::from(1_500);
+
+        let registry = decode(&value).expect("inclusive interval may contain one timestamp");
+
+        assert!(registry
+            .context(CONTEXT_ID)
+            .expect("context exists")
+            .applicability()
+            .contains(1_500));
+    }
+
+    #[test]
+    fn invalid_modality_calibration_identity_is_rejected() {
+        let mut value = registry_value();
+        value["contexts"][0]["expected_modalities"][0]["calibration"]["identifier"] =
+            Value::String("*".to_owned());
+
+        let error = decode(&value).expect_err("modality calibration identity must validate");
+
+        assert!(matches!(error, RegistryError::InvalidField { .. }));
+    }
+
+    #[test]
+    fn invalid_projection_algorithm_version_is_rejected() {
+        let mut value = registry_value();
+        value["contexts"][0]["projection_algorithm"]["version"] = Value::String("*".to_owned());
+
+        let error = decode(&value).expect_err("algorithm version must be a registry token");
 
         assert!(matches!(error, RegistryError::InvalidField { .. }));
     }
@@ -1967,6 +2300,28 @@ mod tests {
             registry.verify_projection(identity, Modality::Visual, &projection),
             Ok(())
         );
+
+        let mut wrong_frame = projection;
+        wrong_frame.frame_id = FRAME_ID + 1;
+        assert!(matches!(
+            registry.verify_projection(identity, Modality::Visual, &wrong_frame),
+            Err(RegistryViolation::ProjectionIdentityMismatch {
+                expected_frame_id: FRAME_ID,
+                received_frame_id,
+                ..
+            }) if received_frame_id == FRAME_ID + 1
+        ));
+
+        let mut wrong_context = projection;
+        wrong_context.context_id = CONTEXT_ID + 1;
+        assert!(matches!(
+            registry.verify_projection(identity, Modality::Visual, &wrong_context),
+            Err(RegistryViolation::ProjectionIdentityMismatch {
+                expected_context_id: CONTEXT_ID,
+                received_context_id,
+                ..
+            }) if received_context_id == CONTEXT_ID + 1
+        ));
 
         let mut wrong_dimensions = projection;
         wrong_dimensions.values = [1.0, 0.0, 0.0];
@@ -2168,6 +2523,66 @@ mod tests {
             error,
             ProjectionIdentityError::TimestampOutOfRange(JSON_SAFE_UNSIGNED_INTEGER_MAX + 1)
         );
+    }
+
+    #[test]
+    fn projection_identity_accepts_exact_json_safe_timestamp_boundary() {
+        let registry = decode(&registry_value()).expect("registry validates");
+
+        let error = registry
+            .projection_binding(ProjectionIdentity {
+                frame_id: FRAME_ID,
+                context_id: CONTEXT_ID,
+                modality: Modality::Visual,
+                source_frame: "camera_optical",
+                timestamp_ms: JSON_SAFE_UNSIGNED_INTEGER_MAX,
+            })
+            .expect_err("JSON-safe maximum proceeds to applicability validation");
+
+        assert_eq!(
+            error,
+            ProjectionIdentityError::FrameNotApplicable {
+                frame_id: FRAME_ID,
+                timestamp_ms: JSON_SAFE_UNSIGNED_INTEGER_MAX,
+            }
+        );
+    }
+
+    #[test]
+    fn registry_token_validation_covers_each_independent_boundary() {
+        let exact = "a".repeat(MAX_REGISTRY_TOKEN_BYTES);
+        let oversized = "a".repeat(MAX_REGISTRY_TOKEN_BYTES + 1);
+
+        assert!(validate_token("token", &exact).is_ok());
+        assert!(validate_token("token", "").is_err());
+        assert!(validate_token("token", &oversized).is_err());
+        assert!(validate_token("token", "bad*").is_err());
+        assert!(validate_token("token", "münchen").is_err());
+    }
+
+    #[test]
+    fn json_integer_validation_accepts_only_the_exact_safe_range() {
+        assert!(validate_json_integer("timestamp", JSON_SAFE_UNSIGNED_INTEGER_MAX).is_ok());
+        assert!(validate_json_integer("timestamp", JSON_SAFE_UNSIGNED_INTEGER_MAX + 1).is_err());
+    }
+
+    #[test]
+    fn collection_length_validation_enforces_both_inclusive_bounds() {
+        assert!(validate_collection_len("items", 2, 2, 3).is_ok());
+        assert!(validate_collection_len("items", 3, 2, 3).is_ok());
+        assert!(validate_collection_len("items", 1, 2, 3).is_err());
+        assert!(validate_collection_len("items", 4, 2, 3).is_err());
+    }
+
+    #[test]
+    fn exact_registry_document_size_is_accepted() {
+        let mut exact = serde_json::to_vec(&registry_value()).expect("fixture encodes");
+        exact.resize(MAX_REGISTRY_BYTES, b' ');
+
+        let registry = DeploymentRegistry::from_json(&exact)
+            .expect("the documented maximum registry size must be accepted");
+
+        assert_eq!(registry.schema_version(), REGISTRY_SCHEMA_VERSION);
     }
 
     #[test]

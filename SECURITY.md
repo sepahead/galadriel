@@ -14,15 +14,19 @@ does not authorize a control action.
   some dependence changes, but coordinated consistency-preserving attacks remain
   outside the threat boundary.
 - Cross-channel evidence is valid only for one track, exact sequence alignment,
-  a common coordinate frame, and a common frozen pre-update prior. Current
-  crebain output does not yet satisfy that contract: normal captures omit the
-  research fields, radar residuals are polar while other residuals are Cartesian,
-  and sequential updates use different priors.
+  a common coordinate frame, and a common frozen pre-update prior. Historical and
+  default Crebain captures do not satisfy that contract: they omit the research
+  fields, radar residuals are polar while other residuals are Cartesian, and
+  sequential updates use different priors. Crebain's separately gated operational
+  producer baseline implements the required frozen-prior Cartesian projection.
 - Crebain's association and chi-square gates censor rejected measurements. A
   successful-update-only stream is selection-biased; a large attack may appear as
-  missingness. Producers must emit misses/rejections explicitly.
+  missingness. Historical captures remain subject to that limit; the operational
+  producer emits explicit bounded misses/rejections.
 - Per-channel silence is detectable only while another channel advances assessment
-  time. All-modal silence requires a producer or transport heartbeat.
+  time. The operational profile includes an independent producer heartbeat and a
+  receiver deadline for all-modal silence; real deployment behavior remains an
+  external evidence gate.
 - The real remedies for the underlying bus are cryptographic (per-plane ACL +
   mTLS on NCP) and the safety governor (`mode` / `ttl_ms` / geofence). galadriel
   is instrumentation layered on top, not a replacement for them.
@@ -45,13 +49,15 @@ for an undisclosed vulnerability. We aim to acknowledge within a few business da
 - The Zenoh `SidecarTap` is not an operational security boundary. It uses the
   ACL-covered NCP named-sensor route `sensor/galadriel-pid`, validates a versioned
   session/producer-bound envelope, and forces an explicit secure versus unverified
-  development transport choice. No production Crebain publisher or receiver-verified
-  mTLS test exists yet, and payload provenance is only a claim unless the transport
-  authenticates the publisher. The preferred bounded handoff uses a nonblocking
-  `DropNewest` queue and exposes overflow/lag metrics so detector work cannot stall the
-  receive task. The application payload limit runs after `ncp-zenoh`
+  development transport choice. Crebain has an opt-in two-route publisher baseline and
+  Galadriel has a bounded operational receiver with lifecycle and heartbeat handling,
+  but no retained external actual-binary mTLS/ACL allow-and-deny campaign exists yet.
+  Payload provenance is only a claim unless the transport authenticates the publisher.
+  The standalone tap's preferred bounded handoff uses a nonblocking `DropNewest` queue
+  and exposes overflow/lag metrics so detector work cannot stall the receive task. The
+  application payload limit runs after `ncp-zenoh`
   materializes callback bytes, so a broker/transport message-size limit is still required
-  to bound receive-memory pressure. Subscriber silence remains ambiguous until end-to-end
-  heartbeat/liveness telemetry exists.
+  to bound receive-memory pressure. Standalone tap silence remains ambiguous; use the
+  operational two-route receiver for heartbeat/liveness semantics.
 - Workspace packages are `publish = false`; no crate-release security guarantees
   are made.

@@ -766,6 +766,10 @@ async fn subscriptions_use_only_the_two_exact_named_sensor_keys() {
         (
             receiver.observation_key(),
             receiver.monitor_key(),
+            receiver.realm(),
+            receiver.session_id(),
+            receiver.producer_id(),
+            receiver.config().ingress_capacity(),
             receiver.transport_security(),
             snapshot.observation_payloads_received,
             snapshot.monitor_payloads_received,
@@ -773,6 +777,10 @@ async fn subscriptions_use_only_the_two_exact_named_sensor_keys() {
         (
             format!("{REALM}/session/{SESSION_ID}/sensor/{SIDECAR_SENSOR_NAME}").as_str(),
             format!("{REALM}/session/{SESSION_ID}/sensor/{MONITOR_SENSOR_NAME}").as_str(),
+            REALM,
+            SESSION_ID,
+            PRODUCER_ID,
+            4,
             OperationalTransportSecurity::InheritedUnverified,
             0,
             0,
@@ -813,7 +821,19 @@ async fn dropping_receiver_undeclares_only_its_scoped_subscriptions() {
     let health = receiver.health();
     let observation_key = receiver.observation_key().to_owned();
     let monitor_key = receiver.monitor_key().to_owned();
+    publish(&publisher, &observation_key, b"{}").await;
+    wait_for_observation_enqueued(&health, 1).await;
     drop(receiver);
+
+    let dropped = health.snapshot();
+    assert_eq!(
+        (
+            dropped.observation_payloads_received,
+            dropped.ingress_queue_depth,
+            dropped.queued_payloads_discarded,
+        ),
+        (1, 0, 1)
+    );
 
     publish(&publisher, &observation_key, b"{}").await;
     publish(&publisher, &monitor_key, b"{}").await;
@@ -825,8 +845,9 @@ async fn dropping_receiver_undeclares_only_its_scoped_subscriptions() {
             snapshot.observation_payloads_received,
             snapshot.monitor_payloads_received,
             snapshot.ingress_queue_depth,
+            snapshot.queued_payloads_discarded,
         ),
-        (0, 0, 0)
+        (1, 0, 0, 1)
     );
 
     publisher.close().await.expect("close quiet test session");

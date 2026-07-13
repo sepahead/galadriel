@@ -121,6 +121,22 @@ fn run_observe(
     registry_path: &std::path::Path,
     registry_sha256: &str,
 ) -> anyhow::Result<()> {
+    let registry = load_deployment_registry(registry_path, registry_sha256)?;
+    let keys = galadriel_ncp::ncp_core::Keys::try_new(realm)
+        .map_err(|error| anyhow::anyhow!("invalid NCP realm {realm:?}: {error}"))?;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .context("cannot start the live receiver runtime")?;
+
+    runtime.block_on(observe_epoch(keys, epoch, producer_id, registry))
+}
+
+#[cfg(feature = "ncp-live")]
+fn load_deployment_registry(
+    registry_path: &std::path::Path,
+    registry_sha256: &str,
+) -> anyhow::Result<galadriel_ncp::registry::DeploymentRegistry> {
     // Read through the registry's wire ceiling instead of allocating according
     // to an untrusted file length before the strict parser can enforce it.
     let registry_file = std::fs::File::open(registry_path)
@@ -135,14 +151,126 @@ fn run_observe(
         registry_sha256,
     )
     .context("deployment registry or external digest pin is invalid")?;
-    let keys = galadriel_ncp::ncp_core::Keys::try_new(realm)
-        .map_err(|error| anyhow::anyhow!("invalid NCP realm {realm:?}: {error}"))?;
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .context("cannot start the live receiver runtime")?;
+    Ok(registry)
+}
 
-    runtime.block_on(observe_epoch(keys, epoch, producer_id, registry))
+#[cfg(feature = "ncp-live")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ObserveTelemetry {
+    prior_identities: usize,
+    max_prior_identities: usize,
+    observation_streams: usize,
+    max_observation_streams: usize,
+    open_frames: usize,
+    max_open_frames: usize,
+    buffered_bytes: usize,
+    max_buffered_bytes: usize,
+}
+
+#[cfg(feature = "ncp-live")]
+impl ObserveTelemetry {
+    fn from_assembler<R: galadriel_ncp::assembler::RegistryVerifier>(
+        assembler: &galadriel_ncp::assembler::CrossRouteAssembler<R>,
+    ) -> Self {
+        let limits = assembler.limits();
+        Self {
+            prior_identities: assembler.prior_identities(),
+            max_prior_identities: limits.max_prior_identities,
+            observation_streams: assembler.observation_streams(),
+            max_observation_streams: limits.max_observation_streams,
+            open_frames: assembler.open_frames(),
+            max_open_frames: limits.max_open_frames,
+            buffered_bytes: assembler.buffered_bytes(),
+            max_buffered_bytes: limits.max_buffered_bytes,
+        }
+    }
+}
+
+#[cfg(feature = "ncp-live")]
+#[derive(Debug, Default, PartialEq, Eq)]
+struct ObserveOutput {
+    stdout: Vec<String>,
+    stderr: Vec<String>,
+}
+
+#[cfg(feature = "ncp-live")]
+fn render_lifecycle_assessment(
+    assessment: galadriel_ncp::lifecycle::LifecycleAssessment,
+) -> anyhow::Result<String> {
+    use galadriel_ncp::lifecycle::LifecycleAssessment;
+
+    match assessment {
+        LifecycleAssessment::Evaluated {
+            track_id,
+            fusion_seq,
+            history_reset,
+            report,
+        } => Ok(format!(
+            "frame={fusion_seq} track={track_id} history_reset={history_reset} evidence={:?} calibrated_posterior=false",
+            report.verdict
+        )),
+        LifecycleAssessment::Abstained {
+            track_id,
+            fusion_seq,
+            unavailable_modalities,
+        } => Ok(format!(
+            "frame={fusion_seq} track={track_id} evidence=InsufficientEvidence lifecycle_complete=true assessable=false unavailable={unavailable_modalities:?} calibrated_posterior=false"
+        )),
+        other => Err(anyhow::anyhow!(
+            "unsupported lifecycle assessment variant: {other:?}"
+        )),
+    }
+}
+
+#[cfg(feature = "ncp-live")]
+fn handle_observe_event(
+    event: galadriel_ncp::assembler::AssemblyEvent,
+    detector: &mut galadriel_ncp::lifecycle::LifecycleDetector,
+    telemetry: ObserveTelemetry,
+) -> anyhow::Result<ObserveOutput> {
+    use galadriel_ncp::assembler::AssemblyEvent;
+
+    let mut output = ObserveOutput::default();
+    match event {
+        AssemblyEvent::FrameReady(frame) => {
+            let assessments = detector.assess_frame(&frame).map_err(|error| {
+                anyhow::Error::new(error)
+                    .context("lifecycle-complete frame violated detector invariants")
+            })?;
+            for assessment in assessments {
+                output.stdout.push(render_lifecycle_assessment(assessment)?);
+            }
+        }
+        AssemblyEvent::HeartbeatAccepted { event_seq, .. } => {
+            output.stderr.push(format!(
+                "heartbeat event_seq={event_seq} prior_identities={}/{} observation_streams={}/{} open_frames={}/{} buffered_bytes={}/{}",
+                telemetry.prior_identities,
+                telemetry.max_prior_identities,
+                telemetry.observation_streams,
+                telemetry.max_observation_streams,
+                telemetry.open_frames,
+                telemetry.max_open_frames,
+                telemetry.buffered_bytes,
+                telemetry.max_buffered_bytes,
+            ));
+        }
+        AssemblyEvent::ContractHashMismatch { route } => {
+            output.stderr.push(format!(
+                "advisory contract-hash mismatch on {route:?} route"
+            ));
+        }
+        AssemblyEvent::Fault(fault) => {
+            return Err(anyhow::anyhow!(
+                "operational receiver unexpectedly returned assembly fault: {fault:?}"
+            ));
+        }
+        other => {
+            return Err(anyhow::anyhow!(
+                "unsupported assembly event variant: {other:?}"
+            ));
+        }
+    }
+    Ok(output)
 }
 
 #[cfg(feature = "ncp-live")]
@@ -152,8 +280,8 @@ async fn observe_epoch(
     producer_id: &str,
     registry: galadriel_ncp::registry::DeploymentRegistry,
 ) -> anyhow::Result<()> {
-    use galadriel_ncp::assembler::{AssemblerLimits, AssemblyEvent};
-    use galadriel_ncp::lifecycle::{LifecycleAssessment, LifecycleDetector};
+    use galadriel_ncp::assembler::AssemblerLimits;
+    use galadriel_ncp::lifecycle::LifecycleDetector;
     use galadriel_ncp::operational_live::OperationalLiveReceiver;
 
     // Validate the immutable statistical policy before acquiring transport
@@ -195,61 +323,16 @@ async fn observe_epoch(
             Err(error) => break Err(error.context("operational receiver terminated")),
         };
 
-        match event {
-            AssemblyEvent::FrameReady(frame) => {
-                let assessments = match detector.assess_frame(&frame) {
-                    Ok(assessments) => assessments,
-                    Err(error) => {
-                        break 'events Err(anyhow::Error::new(error)
-                            .context("lifecycle-complete frame violated detector invariants"));
-                    }
-                };
-                for assessment in assessments {
-                    match assessment {
-                        LifecycleAssessment::Evaluated {
-                            track_id,
-                            fusion_seq,
-                            history_reset,
-                            report,
-                        } => println!(
-                            "frame={fusion_seq} track={track_id} history_reset={history_reset} evidence={:?} calibrated_posterior=false",
-                            report.verdict
-                        ),
-                        LifecycleAssessment::Abstained {
-                            track_id,
-                            fusion_seq,
-                            unavailable_modalities,
-                        } => println!(
-                            "frame={fusion_seq} track={track_id} evidence=InsufficientEvidence lifecycle_complete=true assessable=false unavailable={unavailable_modalities:?} calibrated_posterior=false"
-                        ),
-                        _ => {}
-                    }
-                }
-            }
-            AssemblyEvent::HeartbeatAccepted { event_seq, .. } => {
-                let assembler = receiver.assembler();
-                let limits = assembler.limits();
-                eprintln!(
-                    "heartbeat event_seq={event_seq} prior_identities={}/{} observation_streams={}/{} open_frames={}/{} buffered_bytes={}/{}",
-                    assembler.prior_identities(),
-                    limits.max_prior_identities,
-                    assembler.observation_streams(),
-                    limits.max_observation_streams,
-                    assembler.open_frames(),
-                    limits.max_open_frames,
-                    assembler.buffered_bytes(),
-                    limits.max_buffered_bytes,
-                );
-            }
-            AssemblyEvent::ContractHashMismatch { route } => {
-                eprintln!("advisory contract-hash mismatch on {route:?} route");
-            }
-            AssemblyEvent::Fault(fault) => {
-                break 'events Err(anyhow::anyhow!(
-                    "operational receiver unexpectedly returned assembly fault: {fault:?}"
-                ));
-            }
-            _ => {}
+        let telemetry = ObserveTelemetry::from_assembler(receiver.assembler());
+        let output = match handle_observe_event(event, &mut detector, telemetry) {
+            Ok(output) => output,
+            Err(error) => break 'events Err(error),
+        };
+        for line in output.stdout {
+            println!("{line}");
+        }
+        for line in output.stderr {
+            eprintln!("{line}");
         }
     };
 
@@ -303,6 +386,180 @@ async fn observe_epoch(
 #[cfg(all(test, feature = "ncp-live"))]
 mod observe_cli_tests {
     use super::*;
+    use std::time::{Instant, SystemTime, UNIX_EPOCH};
+
+    use galadriel_core::ConsistencyProjection;
+    use galadriel_ncp::assembler::{
+        AssemblerLimits, AssemblyEvent, AssemblyFault, AssemblyFaultKind, CrossRouteAssembler,
+        EvidenceRoute, FrameIdentity, RegistryOpportunityPolicy, RegistryVerifier,
+        RegistryViolation,
+    };
+    use galadriel_ncp::lifecycle::{LifecycleAssessment, LifecycleDetector};
+    use galadriel_ncp::monitor::{
+        FrameSummary, GateEvidence, GateMethod, ModalityOutcome, ModalityOutcomeKind,
+        MonitorEnvelope, ProducerEvent,
+    };
+    use galadriel_ncp::SidecarEnvelope;
+
+    const TEST_DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    #[derive(Clone, Copy)]
+    struct TestRegistry;
+
+    impl RegistryVerifier for TestRegistry {
+        fn opportunity_policy(&self) -> Result<RegistryOpportunityPolicy, RegistryViolation> {
+            Ok(RegistryOpportunityPolicy {
+                max_active_tracks: 32,
+                max_frame_inputs: 128,
+                max_attempts_per_track_modality: 128,
+                max_outcomes_per_frame: 128,
+                max_monitor_queue_events: 128,
+            })
+        }
+
+        fn verify_summary(
+            &self,
+            _identity: FrameIdentity,
+            registry_digest: &str,
+            expected_modalities: &[Modality],
+        ) -> Result<(), RegistryViolation> {
+            if registry_digest == TEST_DIGEST
+                && expected_modalities == [Modality::Visual, Modality::Radar]
+            {
+                Ok(())
+            } else {
+                Err(RegistryViolation::UnexpectedModalities)
+            }
+        }
+
+        fn verify_projection(
+            &self,
+            _identity: FrameIdentity,
+            _modality: Modality,
+            _projection: &ConsistencyProjection,
+        ) -> Result<(), RegistryViolation> {
+            Ok(())
+        }
+    }
+
+    fn projection(prior_id: u64) -> ConsistencyProjection {
+        ConsistencyProjection {
+            values: [1.0, 2.0, 3.0],
+            dimensions: 3,
+            frame_id: 10,
+            context_id: 20,
+            prior_id,
+        }
+    }
+
+    fn observation(modality: Modality) -> PidObservation {
+        PidObservation {
+            track_id: 7,
+            timestamp_ms: 1_001,
+            seq: 1,
+            modality,
+            nis: 1.0,
+            dof: 3,
+            innovation: None,
+            innovation_cov: None,
+            consistency_projection: Some(projection(101)),
+        }
+    }
+
+    fn outcome(modality: Modality, measurement_index: u32) -> ModalityOutcome {
+        ModalityOutcome {
+            fusion_seq: 1,
+            fusion_timestamp_ms: 1_001,
+            frame_id: 10,
+            context_id: 20,
+            prior_id: 101,
+            track_id: 7,
+            modality,
+            attempt_index: 0,
+            measurement_index: Some(measurement_index),
+            outcome: ModalityOutcomeKind::Updated,
+            v1_expected: true,
+            candidate_count: 1,
+            in_gate_count: 1,
+            gate_evidence: Some(GateEvidence {
+                method: GateMethod::Mahalanobis,
+                d2: 1.0,
+                threshold: 7.815,
+            }),
+            consistency_projection: Some(projection(101)),
+        }
+    }
+
+    fn assembled_frame_event() -> AssemblyEvent {
+        let now = Instant::now();
+        let mut assembler = CrossRouteAssembler::new(
+            "epoch-1",
+            "crebain",
+            TestRegistry,
+            AssemblerLimits::default(),
+            now,
+        )
+        .expect("CLI handler fixture assembler is valid");
+        for modality in [Modality::Visual, Modality::Radar] {
+            let envelope = SidecarEnvelope::try_new("epoch-1", "crebain", observation(modality))
+                .expect("CLI handler fixture observation is valid");
+            assert!(assembler
+                .ingest_observation_envelope(envelope, now)
+                .is_empty());
+        }
+        for (event_seq, (modality, measurement_index)) in
+            [(1, (Modality::Visual, 0)), (2, (Modality::Radar, 1))]
+        {
+            let envelope = MonitorEnvelope::try_new(
+                "epoch-1",
+                "crebain",
+                event_seq,
+                ProducerEvent::ModalityOutcome(outcome(modality, measurement_index)),
+            )
+            .expect("CLI handler fixture outcome is valid");
+            assert!(assembler.ingest_monitor_envelope(envelope, now).is_empty());
+        }
+        let closure = FrameSummary {
+            fusion_seq: 1,
+            fusion_timestamp_ms: 1_001,
+            frame_id: 10,
+            context_id: 20,
+            prior_id: 101,
+            registry_digest: TEST_DIGEST.to_owned(),
+            expected_modalities: vec![Modality::Visual, Modality::Radar],
+            active_track_count: 1,
+            input_count: 2,
+            outcome_count: 2,
+            v1_expected_count: 2,
+            degraded: false,
+            truncated: false,
+        };
+        let envelope = MonitorEnvelope::try_new(
+            "epoch-1",
+            "crebain",
+            3,
+            ProducerEvent::FrameSummary(closure),
+        )
+        .expect("CLI handler fixture summary is valid");
+        assembler
+            .ingest_monitor_envelope(envelope, now)
+            .into_iter()
+            .find(|event| matches!(event, AssemblyEvent::FrameReady(_)))
+            .expect("CLI handler fixture completes one frame")
+    }
+
+    fn telemetry() -> ObserveTelemetry {
+        ObserveTelemetry {
+            prior_identities: 2,
+            max_prior_identities: 3,
+            observation_streams: 4,
+            max_observation_streams: 5,
+            open_frames: 6,
+            max_open_frames: 7,
+            buffered_bytes: 8,
+            max_buffered_bytes: 9,
+        }
+    }
 
     #[test]
     fn observe_requires_every_epoch_and_registry_pin() {
@@ -351,6 +608,109 @@ mod observe_cli_tests {
         assert_eq!(producer_id, "crebain");
         assert_eq!(registry, PathBuf::from("registry.json"));
         assert_eq!(registry_sha256.len(), 64);
+    }
+
+    #[test]
+    fn bounded_registry_loader_reports_the_exact_overflow_byte() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock is after Unix epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "galadriel-oversized-registry-{}-{unique}.json",
+            std::process::id()
+        ));
+        let file = std::fs::File::create(&path).expect("create sparse oversized registry");
+        file.set_len((galadriel_ncp::registry::MAX_REGISTRY_BYTES as u64) + 1)
+            .expect("size sparse oversized registry");
+        drop(file);
+
+        let error = load_deployment_registry(&path, TEST_DIGEST)
+            .expect_err("one byte beyond the registry ceiling is rejected");
+        std::fs::remove_file(&path).expect("remove oversized registry fixture");
+        assert!(matches!(
+            error.downcast_ref::<galadriel_ncp::registry::RegistryError>(),
+            Some(galadriel_ncp::registry::RegistryError::DocumentSize {
+                actual,
+                maximum,
+            }) if *actual == galadriel_ncp::registry::MAX_REGISTRY_BYTES + 1
+                && *maximum == galadriel_ncp::registry::MAX_REGISTRY_BYTES
+        ));
+    }
+
+    #[test]
+    fn observe_event_handler_renders_frame_and_both_assessment_shapes() {
+        let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
+            .expect("default lifecycle detector is valid");
+        let output = handle_observe_event(assembled_frame_event(), &mut detector, telemetry())
+            .expect("complete frame is assessed");
+        assert_eq!(output.stderr, Vec::<String>::new());
+        assert_eq!(output.stdout.len(), 1);
+        assert!(output.stdout[0].contains("frame=1 track=7 history_reset=true evidence="));
+        assert!(output.stdout[0].ends_with("calibrated_posterior=false"));
+
+        let abstained = render_lifecycle_assessment(LifecycleAssessment::Abstained {
+            track_id: 9,
+            fusion_seq: 12,
+            unavailable_modalities: vec![Modality::Radar],
+        })
+        .expect("abstention has one CLI record");
+        assert_eq!(
+            abstained,
+            "frame=12 track=9 evidence=InsufficientEvidence lifecycle_complete=true assessable=false unavailable=[Radar] calibrated_posterior=false"
+        );
+    }
+
+    #[test]
+    fn observe_event_handler_reports_exact_heartbeat_and_contract_advisory() {
+        let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
+            .expect("default lifecycle detector is valid");
+        let heartbeat = handle_observe_event(
+            AssemblyEvent::HeartbeatAccepted {
+                event_seq: 11,
+                received_at: Instant::now(),
+            },
+            &mut detector,
+            telemetry(),
+        )
+        .expect("heartbeat is advisory");
+        assert_eq!(heartbeat.stdout, Vec::<String>::new());
+        assert_eq!(
+            heartbeat.stderr,
+            ["heartbeat event_seq=11 prior_identities=2/3 observation_streams=4/5 open_frames=6/7 buffered_bytes=8/9"]
+        );
+
+        let mismatch = handle_observe_event(
+            AssemblyEvent::ContractHashMismatch {
+                route: EvidenceRoute::Monitor,
+            },
+            &mut detector,
+            telemetry(),
+        )
+        .expect("contract mismatch remains advisory");
+        assert_eq!(
+            mismatch.stderr,
+            ["advisory contract-hash mismatch on Monitor route"]
+        );
+    }
+
+    #[test]
+    fn observe_event_handler_fails_closed_if_receiver_fault_lifting_regresses() {
+        let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
+            .expect("default lifecycle detector is valid");
+        let error = handle_observe_event(
+            AssemblyEvent::Fault(AssemblyFault {
+                kind: AssemblyFaultKind::HeartbeatDeadlineExpired,
+                invalidate_from_fusion_seq: None,
+                detected_at: Instant::now(),
+            }),
+            &mut detector,
+            telemetry(),
+        )
+        .expect_err("an unexpectedly delivered terminal fault cannot be ignored");
+        assert!(error
+            .to_string()
+            .contains("operational receiver unexpectedly returned assembly fault"));
     }
 }
 

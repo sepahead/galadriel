@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use galadriel_ncp::live::TransportMode;
 use galadriel_ncp::monitor::{Heartbeat, MonitorEnvelope, ProducerEvent, QueueHealth};
 use galadriel_ncp::monitor_live::{
     MonitorIngressFault, MonitorIngressFaultKind, MonitorLiveConfig, MonitorSubscriptionHealth,
@@ -132,11 +133,47 @@ async fn live_monitor_tap_reorders_and_delivers_ordered_receipts() {
     assert_eq!(health.events_delivered(), 2);
     assert_eq!(health.last_contiguous_event_seq(), Some(2));
     assert!(health.first_fault().is_none());
+    assert_eq!(
+        (
+            tap.payloads_received(),
+            tap.events_validated(),
+            tap.events_enqueued(),
+            tap.events_delivered(),
+        ),
+        (2, 2, 2, 2)
+    );
 
     tap.close()
         .await
         .expect_err("shared tap must not close its host bus");
     publisher.close().await.expect("host closes shared session");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn owned_tap_refuses_close_until_every_receiver_is_cancelled() {
+    let tap = MonitorTap::open_realm(REALM, TransportMode::QuietDevelopment)
+        .await
+        .expect("open owned quiet monitor tap");
+    let (_health, mut receiver) = tap
+        .subscribe_channel(SESSION_ID, PRODUCER_ID)
+        .await
+        .expect("subscribe owned monitor receiver");
+
+    let error = timeout(DEADLINE, tap.close())
+        .await
+        .expect("active-receiver refusal is synchronous")
+        .expect_err("owned tap cannot strand an active receiver");
+    assert!(error
+        .to_string()
+        .contains("refusing to close monitor tap with 1 active receiver"));
+    assert!(!receiver.is_closed());
+
+    receiver.close();
+    assert_eq!(receiver.recv().await, Ok(None));
+    tap.close()
+        .await
+        .expect("owned tap closes after receiver cancellation");
+    tap.close().await.expect("owned tap close is idempotent");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -170,6 +207,7 @@ async fn provenance_mismatch_faults_the_epoch_and_delivers_nothing() {
         Err(MonitorIngressFault::ProvenanceMismatch)
     );
     assert_eq!(health.events_delivered(), 0);
+    assert_eq!(tap.fault_counts().provenance_mismatch, 1);
 
     publisher.close().await.expect("host closes shared session");
 }
@@ -319,19 +357,42 @@ async fn advisory_contract_hash_mismatch_is_counted_and_delivered() {
         .subscribe_channel(SESSION_ID, PRODUCER_ID)
         .await
         .expect("subscribe monitor channel");
-    let mut drifted = envelope(1);
-    drifted.contract_hash = "deadbeefdeadbeef".to_string();
-    let bytes = drifted.encode().expect("advisory mismatch remains valid");
+    let mut first_drifted = envelope(1);
+    first_drifted.contract_hash = "deadbeefdeadbeef".to_string();
+    let mut second_drifted = envelope(2);
+    second_drifted.contract_hash = "deadbeefdeadbeef".to_string();
 
-    publish(&publisher, &bytes).await;
+    publish(
+        &publisher,
+        &first_drifted
+            .encode()
+            .expect("first advisory mismatch remains valid"),
+    )
+    .await;
+    publish(
+        &publisher,
+        &second_drifted
+            .encode()
+            .expect("second advisory mismatch remains valid"),
+    )
+    .await;
 
-    let receipt = timeout(DEADLINE, receiver.recv())
+    let first = timeout(DEADLINE, receiver.recv())
         .await
-        .expect("receipt before deadline")
+        .expect("first receipt before deadline")
         .expect("advisory drift does not fault")
-        .expect("receipt exists");
-    assert_eq!(receipt.envelope.event_seq, 1);
-    assert_eq!(health.contract_hash_mismatches(), 1);
+        .expect("first receipt exists");
+    let second = timeout(DEADLINE, receiver.recv())
+        .await
+        .expect("second receipt before deadline")
+        .expect("advisory drift does not fault")
+        .expect("second receipt exists");
+    assert_eq!(
+        (first.envelope.event_seq, second.envelope.event_seq),
+        (1, 2)
+    );
+    assert_eq!(health.contract_hash_mismatches(), 2);
+    assert_eq!(tap.contract_hash_mismatches(), 2);
     assert!(health.first_fault().is_none());
 
     publisher.close().await.expect("host closes shared session");

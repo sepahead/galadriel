@@ -395,8 +395,43 @@ fn receipt_precedes_deadline(received_at: Instant, deadline: Instant) -> bool {
     received_at < deadline
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CallbackPhase {
+    Starting,
+    Activating,
+    Settled,
+}
+
+fn classify_callback_phase(phase: u8) -> CallbackPhase {
+    match phase {
+        INGRESS_STARTING => CallbackPhase::Starting,
+        INGRESS_ACTIVATING => CallbackPhase::Activating,
+        _ => CallbackPhase::Settled,
+    }
+}
+
+fn startup_callbacks_drained(shared: &SharedIngress) -> bool {
+    shared.startup_inflight.load(Ordering::Acquire) == 0
+}
+
 struct StartupCallbackPermit<'a> {
     shared: &'a SharedIngress,
+}
+
+struct IngressCloseGuard {
+    shared: Arc<SharedIngress>,
+}
+
+impl IngressCloseGuard {
+    fn new(shared: Arc<SharedIngress>) -> Self {
+        Self { shared }
+    }
+}
+
+impl Drop for IngressCloseGuard {
+    fn drop(&mut self) {
+        close_ingress(&self.shared);
+    }
 }
 
 struct StartupActivationGuard {
@@ -420,7 +455,7 @@ impl StartupActivationGuard {
 impl Drop for StartupActivationGuard {
     fn drop(&mut self) {
         if self.armed {
-            self.shared.phase.store(INGRESS_CLOSED, Ordering::Release);
+            close_ingress(&self.shared);
             self.shared.startup_notify.notify_waiters();
         }
     }
@@ -435,19 +470,94 @@ impl Drop for StartupCallbackPermit<'_> {
 
 fn enter_callback(shared: &SharedIngress) -> (u8, Option<StartupCallbackPermit<'_>>) {
     loop {
+        // Registration and the STARTING -> ACTIVATING transition use the same
+        // mutex. Once activation publishes its phase, every callback that
+        // observed STARTING has already incremented `startup_inflight`.
+        let state = lock_state(shared);
         let phase = shared.phase.load(Ordering::Acquire);
-        match phase {
-            INGRESS_STARTING => {
+        match classify_callback_phase(phase) {
+            CallbackPhase::Starting => {
                 shared.startup_inflight.fetch_add(1, Ordering::AcqRel);
-                if shared.phase.load(Ordering::Acquire) == INGRESS_STARTING {
-                    return (phase, Some(StartupCallbackPermit { shared }));
-                }
-                shared.startup_inflight.fetch_sub(1, Ordering::AcqRel);
-                shared.startup_notify.notify_one();
+                drop(state);
+                return (phase, Some(StartupCallbackPermit { shared }));
             }
-            INGRESS_ACTIVATING => std::thread::yield_now(),
-            _ => return (phase, None),
+            CallbackPhase::Activating => drop(state),
+            CallbackPhase::Settled => {
+                drop(state);
+                return (phase, None);
+            }
         }
+        std::thread::yield_now();
+    }
+}
+
+fn begin_startup_activation(shared: &SharedIngress) {
+    let _state = lock_state(shared);
+    shared.phase.store(INGRESS_ACTIVATING, Ordering::Release);
+}
+
+fn close_ingress(shared: &SharedIngress) {
+    // Publish CLOSED before waiting so callbacks that have not entered the
+    // critical section fail their second phase check. Acquiring the same mutex
+    // then fences any callback that had already passed that check, so none can
+    // still materialize or enqueue after this function returns.
+    shared.phase.store(INGRESS_CLOSED, Ordering::Release);
+    drop(lock_state(shared));
+}
+
+fn discard_buffered_on_boundary(
+    shared: &SharedIngress,
+    receiver: &mut mpsc::Receiver<RawIngress>,
+    pending_events: &mut VecDeque<AssemblyEvent>,
+) {
+    // Serialize with any callback that crossed the phase check just before the
+    // boundary. Once this lock is held after CLOSED, the drain is complete.
+    let mut state = lock_state(shared);
+    let pending = pending_events.len();
+    pending_events.clear();
+    let mut queued = 0_u64;
+    while receiver.try_recv().is_ok() {
+        queued = queued.saturating_add(1);
+    }
+    state.health.queued_payloads_discarded = state
+        .health
+        .queued_payloads_discarded
+        .saturating_add(queued);
+    state.health.assembly_events_discarded = state
+        .health
+        .assembly_events_discarded
+        .saturating_add(usize_to_u64(pending));
+}
+
+struct PriorityIngressBudget(usize);
+
+impl PriorityIngressBudget {
+    fn new(remaining: usize) -> Self {
+        Self(remaining)
+    }
+
+    fn take(&mut self) -> bool {
+        let Some(remaining) = self.0.checked_sub(1) else {
+            return false;
+        };
+        self.0 = remaining;
+        true
+    }
+
+    fn clear(&mut self) {
+        self.0 = 0;
+    }
+}
+
+fn latch_fault_and_notify(
+    shared: &SharedIngress,
+    mut state: MutexGuard<'_, IngressState>,
+    fault: OperationalLiveFault,
+) {
+    let latched = state.latch_first(fault);
+    drop(state);
+    if latched {
+        shared.terminal_notify.notify_one();
     }
 }
 
@@ -496,17 +606,15 @@ fn accept_payload<F>(
 
     if entered_phase != INGRESS_ACTIVE {
         increment(&mut state.health.payloads_rejected);
-        let latched = state.latch_first(
+        latch_fault_and_notify(
+            shared,
+            state,
             OperationalIngressFault::EvidenceBeforeReady {
                 route,
                 detected_at: received_at,
             }
             .into(),
         );
-        drop(state);
-        if latched {
-            shared.terminal_notify.notify_one();
-        }
         return;
     }
 
@@ -529,11 +637,7 @@ fn accept_payload<F>(
 
     if let Some(fault) = fault {
         increment(&mut state.health.payloads_rejected);
-        let latched = state.latch_first(fault.into());
-        drop(state);
-        if latched {
-            shared.terminal_notify.notify_one();
-        }
+        latch_fault_and_notify(shared, state, fault.into());
         return;
     }
 
@@ -552,7 +656,9 @@ fn accept_payload<F>(
         Err(mpsc::error::TrySendError::Full(_)) => {
             increment(&mut state.health.payloads_rejected);
             let capacity = state.capacity;
-            let latched = state.latch_first(
+            latch_fault_and_notify(
+                shared,
+                state,
                 OperationalIngressFault::HandoffFull {
                     route,
                     capacity,
@@ -560,24 +666,48 @@ fn accept_payload<F>(
                 }
                 .into(),
             );
-            drop(state);
-            if latched {
-                shared.terminal_notify.notify_one();
-            }
         }
         Err(mpsc::error::TrySendError::Closed(_)) => {
             increment(&mut state.health.payloads_rejected);
-            let latched = state.latch_first(
+            latch_fault_and_notify(
+                shared,
+                state,
                 OperationalIngressFault::HandoffClosed {
                     route,
                     detected_at: received_at,
                 }
                 .into(),
             );
-            drop(state);
-            if latched {
-                shared.terminal_notify.notify_one();
-            }
+        }
+    }
+}
+
+fn take_deadline_ingress(
+    receiver: &mut mpsc::Receiver<RawIngress>,
+    shared: &SharedIngress,
+    deadline: Instant,
+) -> Option<RawIngress> {
+    let mut state = lock_state(shared);
+    if state.health.first_fault.is_some() {
+        return None;
+    }
+    match receiver.try_recv() {
+        Ok(ingress) if receipt_precedes_deadline(ingress.received_at, deadline) => Some(ingress),
+        Ok(_) => {
+            increment(&mut state.health.queued_payloads_discarded);
+            None
+        }
+        Err(mpsc::error::TryRecvError::Empty) => None,
+        Err(mpsc::error::TryRecvError::Disconnected) => {
+            latch_fault_and_notify(
+                shared,
+                state,
+                OperationalIngressFault::IngressClosed {
+                    detected_at: Instant::now(),
+                }
+                .into(),
+            );
+            None
         }
     }
 }
@@ -617,6 +747,10 @@ async fn subscribe_exact(
 
 /// Live, fail-stop receiver joining one exact observation/monitor producer epoch.
 pub struct OperationalLiveReceiver<R> {
+    // Rust drops fields in declaration order. Closing ingress first prevents a
+    // callback already in flight from crossing the completed receiver-drop fence
+    // while either scoped subscriber is being torn down.
+    _ingress_close_guard: IngressCloseGuard,
     observation_subscription: Option<Subscriber<()>>,
     monitor_subscription: Option<Subscriber<()>>,
     bus: ZenohBus,
@@ -632,6 +766,7 @@ pub struct OperationalLiveReceiver<R> {
     monitor_key: String,
     transport_security: OperationalTransportSecurity,
     closed_at: Option<Instant>,
+    cleanup_complete: bool,
 }
 
 struct PreparedOperational<R> {
@@ -855,10 +990,10 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
             subscribe_exact(&bus, &monitor_key, EvidenceRoute::Monitor, shared.clone()).await?;
         let mut activation_guard = StartupActivationGuard::new(shared.clone());
 
-        shared.phase.store(INGRESS_ACTIVATING, Ordering::Release);
+        begin_startup_activation(&shared);
         loop {
             let notified = shared.startup_notify.notified();
-            if shared.startup_inflight.load(Ordering::Acquire) == 0 {
+            if startup_callbacks_drained(&shared) {
                 break;
             }
             notified.await;
@@ -882,6 +1017,7 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
         activation_guard.disarm();
 
         Ok(Self {
+            _ingress_close_guard: IngressCloseGuard::new(shared.clone()),
             observation_subscription: Some(observation_subscription),
             monitor_subscription: Some(monitor_subscription),
             bus,
@@ -897,6 +1033,7 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
             monitor_key,
             transport_security,
             closed_at: None,
+            cleanup_complete: false,
         })
     }
 
@@ -914,12 +1051,12 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
         // Give the bounded queue snapshot that existed at call entry priority
         // over already staged events. New arrivals cannot extend this budget, so
         // an authenticated producer cannot starve delivery indefinitely.
-        let mut priority_ingress = {
+        let mut priority_ingress = PriorityIngressBudget::new({
             // Serialize the snapshot with callback admission. Payloads accepted
             // after this lock boundary belong to a later receive call.
             let _state = lock_state(&self.shared);
             self.receiver.len()
-        };
+        });
         loop {
             if let Some(fault) = self.terminal_fault_and_discard() {
                 return Err(fault);
@@ -933,7 +1070,10 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
                 // Drain every receipt captured strictly before an already-due
                 // boundary before expiring it. Staged events remain provisional
                 // until this exact liveness boundary is resolved.
-                if let Some(ingress) = self.ingress_at_deadline_boundary(deadline) {
+                if let Some(ingress) =
+                    take_deadline_ingress(&mut self.receiver, &self.shared, deadline)
+                {
+                    let _ = priority_ingress.take();
                     self.process_ingress(ingress);
                 } else {
                     let events = self.assembler.advance_time(deadline);
@@ -942,16 +1082,17 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
                 continue;
             }
 
-            if priority_ingress > 0 {
+            if priority_ingress.take() {
                 match self.receiver.try_recv() {
                     Ok(ingress) => {
-                        priority_ingress -= 1;
                         self.process_ingress_or_expire(ingress, deadline);
                         continue;
                     }
-                    Err(mpsc::error::TryRecvError::Empty) => priority_ingress = 0,
+                    Err(mpsc::error::TryRecvError::Empty) => priority_ingress.clear(),
                     Err(mpsc::error::TryRecvError::Disconnected) => {
-                        self.latch_receiver_fault(
+                        latch_fault_and_notify(
+                            &self.shared,
+                            lock_state(&self.shared),
                             OperationalIngressFault::IngressClosed {
                                 detected_at: Instant::now(),
                             }
@@ -998,7 +1139,9 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
                     ingress: Some(ingress),
                     deadline,
                 } => self.process_ingress_or_expire(ingress, deadline),
-                ReceiverWake::Ingress { ingress: None, .. } => self.latch_receiver_fault(
+                ReceiverWake::Ingress { ingress: None, .. } => latch_fault_and_notify(
+                    &self.shared,
+                    lock_state(&self.shared),
                     OperationalIngressFault::IngressClosed {
                         detected_at: Instant::now(),
                     }
@@ -1008,7 +1151,10 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
                     // Establish a boundary with both callbacks before expiring the
                     // exact assembler deadline. Only evidence captured strictly
                     // before the deadline is processed first; equality expires.
-                    if let Some(ingress) = self.ingress_at_deadline_boundary(deadline) {
+                    if let Some(ingress) =
+                        take_deadline_ingress(&mut self.receiver, &self.shared, deadline)
+                    {
+                        let _ = priority_ingress.take();
                         self.process_ingress(ingress);
                     } else {
                         let events = self.assembler.advance_time(deadline);
@@ -1038,47 +1184,13 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
     fn process_ingress_or_expire(&mut self, ingress: RawIngress, deadline: Option<Instant>) {
         if let Some(deadline) = deadline {
             if !receipt_precedes_deadline(ingress.received_at, deadline) {
-                self.note_dequeued_payload_discarded();
+                increment(&mut lock_state(&self.shared).health.queued_payloads_discarded);
                 let events = self.assembler.advance_time(deadline);
                 self.stage_assembly_events(events);
                 return;
             }
         }
         self.process_ingress(ingress);
-    }
-
-    fn ingress_at_deadline_boundary(&mut self, deadline: Instant) -> Option<RawIngress> {
-        let mut state = lock_state(&self.shared);
-        if state.health.first_fault.is_some() {
-            return None;
-        }
-        match self.receiver.try_recv() {
-            Ok(ingress) if receipt_precedes_deadline(ingress.received_at, deadline) => {
-                Some(ingress)
-            }
-            Ok(_) => {
-                increment(&mut state.health.queued_payloads_discarded);
-                None
-            }
-            Err(mpsc::error::TryRecvError::Empty) => None,
-            Err(mpsc::error::TryRecvError::Disconnected) => {
-                let latched = state.latch_first(
-                    OperationalIngressFault::IngressClosed {
-                        detected_at: Instant::now(),
-                    }
-                    .into(),
-                );
-                drop(state);
-                if latched {
-                    self.shared.terminal_notify.notify_one();
-                }
-                None
-            }
-        }
-    }
-
-    fn note_dequeued_payload_discarded(&self) {
-        increment(&mut lock_state(&self.shared).health.queued_payloads_discarded);
     }
 
     fn stage_assembly_events(&mut self, events: Vec<AssemblyEvent>) {
@@ -1166,33 +1278,7 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
     }
 
     fn discard_buffered_for_close(&mut self) {
-        // Serialize with any callback that crossed the phase check just before
-        // close. Once this lock is held, CLOSED prevents every later callback from
-        // enqueueing, so the drain is a complete lifecycle boundary.
-        let mut state = lock_state(&self.shared);
-        let pending = self.pending_events.len();
-        self.pending_events.clear();
-        let mut queued = 0_u64;
-        while self.receiver.try_recv().is_ok() {
-            queued = queued.saturating_add(1);
-        }
-        state.health.queued_payloads_discarded = state
-            .health
-            .queued_payloads_discarded
-            .saturating_add(queued);
-        state.health.assembly_events_discarded = state
-            .health
-            .assembly_events_discarded
-            .saturating_add(usize_to_u64(pending));
-    }
-
-    fn latch_receiver_fault(&self, fault: OperationalLiveFault) {
-        let mut state = lock_state(&self.shared);
-        let latched = state.latch_first(fault);
-        drop(state);
-        if latched {
-            self.shared.terminal_notify.notify_one();
-        }
+        discard_buffered_on_boundary(&self.shared, &mut self.receiver, &mut self.pending_events);
     }
 
     /// Clone a read-only health handle.
@@ -1247,18 +1333,25 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
     /// A bus supplied through [`Self::from_bus`] remains open for its host. A bus
     /// opened through [`Self::open_secure`] is also closed after both selectors are
     /// undeclared. Dropping the receiver without calling this method still drops the
-    /// two scoped subscriber guards, but cannot report undeclaration errors.
+    /// two scoped subscriber guards, but cannot report undeclaration errors. Cleanup
+    /// starts before the first await; if the close future is cancelled, calling this
+    /// method again resumes any remaining subscription or owned-session cleanup.
     ///
     /// # Errors
     ///
     /// Returns the first Zenoh undeclaration or owned-session close error after
     /// attempting all lifecycle cleanup.
     pub async fn close(&mut self) -> Result<(), ZenohError> {
-        if self.closed_at.is_some() {
+        if self.cleanup_complete {
             return Ok(());
         }
-        self.closed_at = Some(Instant::now());
-        self.shared.phase.store(INGRESS_CLOSED, Ordering::Release);
+        if self.closed_at.is_none() {
+            self.closed_at = Some(Instant::now());
+            close_ingress(&self.shared);
+        }
+        // Account and release bounded work before the first cancellation point.
+        // A cancelled close can be retried to finish the remaining async cleanup.
+        self.discard_buffered_for_close();
         let mut first_error = None;
 
         if let Some(subscription) = self.observation_subscription.take() {
@@ -1275,12 +1368,22 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
                 });
             }
         }
-        if self.transport_security == OperationalTransportSecurity::OwnedSecureConfigValidated {
-            if let Err(error) = self.bus.close().await {
-                first_error.get_or_insert(error);
+        let bus_cleanup_complete = if self.transport_security
+            == OperationalTransportSecurity::OwnedSecureConfigValidated
+        {
+            match self.bus.close().await {
+                Ok(()) => true,
+                Err(error) => {
+                    first_error.get_or_insert(error);
+                    false
+                }
             }
-        }
-        self.discard_buffered_for_close();
+        } else {
+            true
+        };
+        self.cleanup_complete = self.observation_subscription.is_none()
+            && self.monitor_subscription.is_none()
+            && bus_cleanup_complete;
 
         first_error.map_or(Ok(()), Err)
     }
@@ -1296,7 +1399,8 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
 
 impl<R> Drop for OperationalLiveReceiver<R> {
     fn drop(&mut self) {
-        self.shared.phase.store(INGRESS_CLOSED, Ordering::Release);
+        close_ingress(&self.shared);
+        discard_buffered_on_boundary(&self.shared, &mut self.receiver, &mut self.pending_events);
     }
 }
 
@@ -1318,11 +1422,118 @@ mod tests {
     use tokio::sync::{mpsc, Notify};
 
     use super::{
-        accept_payload, lock_state, receipt_precedes_deadline, CallbackPayload, IngressState,
-        OperationalLiveConfig, OperationalLiveHealthSnapshot, OperationalTransportSecurity,
-        SharedIngress, INGRESS_ACTIVE, INGRESS_CLOSED,
+        accept_payload, begin_startup_activation, classify_callback_phase, enter_callback,
+        lock_state, receipt_precedes_deadline, startup_callbacks_drained, take_deadline_ingress,
+        CallbackPayload, CallbackPhase, IngressCloseGuard, IngressState, OperationalLiveConfig,
+        OperationalLiveHealthSnapshot, OperationalTransportSecurity, PriorityIngressBudget,
+        RawIngress, SharedIngress, StartupActivationGuard, INGRESS_ACTIVATING, INGRESS_ACTIVE,
+        INGRESS_CLOSED, INGRESS_STARTING,
     };
     use crate::assembler::EvidenceRoute;
+
+    fn shared_ingress(
+        capacity: usize,
+        phase: u8,
+        startup_inflight: usize,
+    ) -> (Arc<SharedIngress>, mpsc::Receiver<RawIngress>) {
+        let (sender, receiver) = mpsc::channel(capacity);
+        let shared = Arc::new(SharedIngress {
+            state: Mutex::new(IngressState {
+                sender,
+                health: OperationalLiveHealthSnapshot::new(
+                    OperationalTransportSecurity::InheritedUnverified,
+                    capacity,
+                ),
+                capacity,
+            }),
+            terminal_notify: Notify::new(),
+            startup_notify: Notify::new(),
+            startup_inflight: AtomicUsize::new(startup_inflight),
+            phase: AtomicU8::new(phase),
+        });
+        (shared, receiver)
+    }
+
+    #[test]
+    fn config_accessor_preserves_nondefault_capacity() {
+        let config = OperationalLiveConfig::new(7).expect("test capacity is valid");
+        assert_eq!(config.ingress_capacity(), 7);
+    }
+
+    #[test]
+    fn callback_phase_classification_covers_every_lifecycle_state() {
+        assert_eq!(
+            classify_callback_phase(INGRESS_STARTING),
+            CallbackPhase::Starting
+        );
+        assert_eq!(
+            classify_callback_phase(INGRESS_ACTIVATING),
+            CallbackPhase::Activating
+        );
+        assert_eq!(
+            classify_callback_phase(INGRESS_ACTIVE),
+            CallbackPhase::Settled
+        );
+        assert_eq!(
+            classify_callback_phase(INGRESS_CLOSED),
+            CallbackPhase::Settled
+        );
+    }
+
+    #[test]
+    fn startup_drain_requires_zero_inflight_callbacks() {
+        let (shared, _receiver) = shared_ingress(1, INGRESS_STARTING, 0);
+        assert!(startup_callbacks_drained(&shared));
+        shared.startup_inflight.store(1, Ordering::Release);
+        assert!(!startup_callbacks_drained(&shared));
+        shared.startup_inflight.store(usize::MAX, Ordering::Release);
+        assert!(!startup_callbacks_drained(&shared));
+    }
+
+    #[test]
+    fn starting_callback_holds_a_permit_until_completion() {
+        let (shared, _receiver) = shared_ingress(1, INGRESS_STARTING, 0);
+        let (phase, permit) = enter_callback(&shared);
+        assert_eq!(phase, INGRESS_STARTING);
+        assert!(permit.is_some());
+        assert_eq!(shared.startup_inflight.load(Ordering::Acquire), 1);
+        drop(permit);
+        assert_eq!(shared.startup_inflight.load(Ordering::Acquire), 0);
+    }
+
+    #[test]
+    fn activation_snapshot_includes_every_registered_starting_callback() {
+        let (shared, _receiver) = shared_ingress(1, INGRESS_STARTING, 0);
+        let (phase, permit) = enter_callback(&shared);
+
+        begin_startup_activation(&shared);
+
+        assert_eq!(phase, INGRESS_STARTING);
+        assert_eq!(shared.phase.load(Ordering::Acquire), INGRESS_ACTIVATING);
+        assert!(!startup_callbacks_drained(&shared));
+        drop(permit);
+        assert!(startup_callbacks_drained(&shared));
+    }
+
+    #[test]
+    fn armed_startup_activation_guard_closes_the_phase() {
+        let (shared, _receiver) = shared_ingress(1, INGRESS_ACTIVATING, 0);
+        drop(StartupActivationGuard::new(shared.clone()));
+        assert_eq!(shared.phase.load(Ordering::Acquire), INGRESS_CLOSED);
+    }
+
+    #[test]
+    fn priority_budget_consumes_only_its_initial_snapshot() {
+        let mut budget = PriorityIngressBudget::new(2);
+        assert!(budget.take());
+        assert!(budget.take());
+        assert!(!budget.take());
+        assert!(!budget.take());
+
+        let mut cleared = PriorityIngressBudget::new(2);
+        cleared.clear();
+        assert!(!cleared.take());
+    }
 
     #[test]
     fn receipt_strictly_before_deadline_is_admissible() {
@@ -1350,22 +1561,7 @@ mod tests {
 
     #[test]
     fn callback_waiting_for_ingress_lock_cannot_enqueue_after_close() {
-        let config = OperationalLiveConfig::new(1).expect("test capacity is valid");
-        let (sender, mut receiver) = mpsc::channel(config.ingress_capacity());
-        let shared = Arc::new(SharedIngress {
-            state: Mutex::new(IngressState {
-                sender,
-                health: OperationalLiveHealthSnapshot::new(
-                    OperationalTransportSecurity::InheritedUnverified,
-                    config.ingress_capacity(),
-                ),
-                capacity: config.ingress_capacity(),
-            }),
-            terminal_notify: Notify::new(),
-            startup_notify: Notify::new(),
-            startup_inflight: AtomicUsize::new(0),
-            phase: AtomicU8::new(INGRESS_ACTIVE),
-        });
+        let (shared, mut receiver) = shared_ingress(1, INGRESS_ACTIVE, 0);
         let state_guard = lock_state(&shared);
         let (started_sender, started_receiver) = std::sync::mpsc::channel();
         let callback_shared = shared.clone();
@@ -1385,9 +1581,18 @@ mod tests {
             );
         });
         started_receiver.recv().expect("callback began");
-        shared.phase.store(INGRESS_CLOSED, Ordering::Release);
+        let close_guard = IngressCloseGuard::new(shared.clone());
+        let closer = std::thread::spawn(move || drop(close_guard));
+        let closed_by = std::time::Instant::now() + Duration::from_secs(1);
+        while shared.phase.load(Ordering::Acquire) != INGRESS_CLOSED
+            && std::time::Instant::now() < closed_by
+        {
+            std::thread::yield_now();
+        }
+        assert_eq!(shared.phase.load(Ordering::Acquire), INGRESS_CLOSED);
         drop(state_guard);
         callback.join().expect("callback exits after close");
+        closer.join().expect("close fence exits after callback");
 
         assert!(matches!(
             receiver.try_recv(),
@@ -1397,23 +1602,90 @@ mod tests {
     }
 
     #[test]
-    fn oversized_callback_faults_before_materializing_an_application_copy() {
-        let config = OperationalLiveConfig::new(1).expect("test capacity is valid");
-        let (sender, _receiver) = mpsc::channel(config.ingress_capacity());
-        let shared = Arc::new(SharedIngress {
-            state: Mutex::new(IngressState {
-                sender,
-                health: OperationalLiveHealthSnapshot::new(
-                    OperationalTransportSecurity::InheritedUnverified,
-                    config.ingress_capacity(),
-                ),
-                capacity: config.ingress_capacity(),
-            }),
-            terminal_notify: Notify::new(),
-            startup_notify: Notify::new(),
-            startup_inflight: AtomicUsize::new(0),
-            phase: AtomicU8::new(INGRESS_ACTIVE),
+    fn close_fence_waits_for_callback_already_materializing_payload() {
+        let (shared, mut receiver) = shared_ingress(2, INGRESS_ACTIVE, 0);
+        let (materializing_sender, materializing_receiver) = std::sync::mpsc::channel();
+        let (release_sender, release_receiver) = std::sync::mpsc::channel();
+        let callback_shared = shared.clone();
+        let callback = std::thread::spawn(move || {
+            accept_payload(
+                &callback_shared,
+                CallbackPayload {
+                    route: EvidenceRoute::Observation,
+                    expected_key: "expected/key",
+                    received_key: "expected/key".to_owned(),
+                    payload_len: 2,
+                    materialize: || {
+                        materializing_sender
+                            .send(())
+                            .expect("signal materialization entry");
+                        release_receiver.recv().expect("release materialization");
+                        b"{}".to_vec()
+                    },
+                },
+                INGRESS_ACTIVE,
+                None,
+            );
         });
+        materializing_receiver
+            .recv()
+            .expect("callback reached materialization while holding ingress lock");
+
+        let close_guard = IngressCloseGuard::new(shared.clone());
+        let (closed_sender, closed_receiver) = std::sync::mpsc::channel();
+        let closer = std::thread::spawn(move || {
+            drop(close_guard);
+            closed_sender
+                .send(())
+                .expect("signal completed close fence");
+        });
+        let closed_by = std::time::Instant::now() + Duration::from_secs(1);
+        while shared.phase.load(Ordering::Acquire) != INGRESS_CLOSED
+            && std::time::Instant::now() < closed_by
+        {
+            std::thread::yield_now();
+        }
+        assert_eq!(shared.phase.load(Ordering::Acquire), INGRESS_CLOSED);
+        assert!(matches!(
+            closed_receiver.recv_timeout(Duration::from_millis(25)),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+        ));
+
+        release_sender.send(()).expect("release callback");
+        callback.join().expect("callback exits");
+        closed_receiver
+            .recv_timeout(Duration::from_secs(1))
+            .expect("close fence completes after callback");
+        closer.join().expect("closer exits");
+
+        assert_eq!(
+            receiver
+                .try_recv()
+                .expect("callback admitted before the completed close fence")
+                .payload,
+            b"{}"
+        );
+        accept_payload(
+            &shared,
+            CallbackPayload {
+                route: EvidenceRoute::Observation,
+                expected_key: "expected/key",
+                received_key: "expected/key".to_owned(),
+                payload_len: 2,
+                materialize: || b"{}".to_vec(),
+            },
+            INGRESS_ACTIVE,
+            None,
+        );
+        assert!(matches!(
+            receiver.try_recv(),
+            Err(mpsc::error::TryRecvError::Empty)
+        ));
+    }
+
+    #[test]
+    fn oversized_callback_faults_before_materializing_an_application_copy() {
+        let (shared, _receiver) = shared_ingress(1, INGRESS_ACTIVE, 0);
         let materialized = Arc::new(AtomicBool::new(false));
         let materialized_by_callback = materialized.clone();
 
@@ -1438,6 +1710,84 @@ mod tests {
             lock_state(&shared).health.first_fault,
             Some(super::OperationalLiveFault::Ingress(
                 super::OperationalIngressFault::PayloadTooLarge { .. }
+            ))
+        ));
+    }
+
+    #[test]
+    fn payload_at_the_route_limit_is_materialized_and_enqueued() {
+        let (shared, mut receiver) = shared_ingress(1, INGRESS_ACTIVE, 0);
+        let materialized = Arc::new(AtomicBool::new(false));
+        let materialized_by_callback = materialized.clone();
+        let maximum = crate::monitor::MAX_MONITOR_EVENT_BYTES;
+
+        accept_payload(
+            &shared,
+            CallbackPayload {
+                route: EvidenceRoute::Monitor,
+                expected_key: "expected/key",
+                received_key: "expected/key".to_owned(),
+                payload_len: maximum,
+                materialize: move || {
+                    materialized_by_callback.store(true, Ordering::Relaxed);
+                    vec![b'x'; maximum]
+                },
+            },
+            INGRESS_ACTIVE,
+            None,
+        );
+
+        let admitted = receiver.try_recv().expect("maximum payload is admitted");
+        assert!(materialized.load(Ordering::Relaxed));
+        assert_eq!(admitted.payload.len(), maximum);
+        let health = &lock_state(&shared).health;
+        assert_eq!(health.monitor_payloads_enqueued, 1);
+        assert!(health.first_fault.is_none());
+    }
+
+    #[test]
+    fn deadline_boundary_drains_only_strictly_earlier_receipts() {
+        let (shared, mut receiver) = shared_ingress(2, INGRESS_ACTIVE, 0);
+        let deadline = std::time::Instant::now() + Duration::from_millis(10);
+        let earlier = deadline - Duration::from_millis(1);
+        {
+            let state = lock_state(&shared);
+            state
+                .sender
+                .try_send(RawIngress {
+                    route: EvidenceRoute::Observation,
+                    payload: b"earlier".to_vec(),
+                    received_at: earlier,
+                })
+                .expect("queue earlier receipt");
+            state
+                .sender
+                .try_send(RawIngress {
+                    route: EvidenceRoute::Monitor,
+                    payload: b"equal".to_vec(),
+                    received_at: deadline,
+                })
+                .expect("queue equal receipt");
+        }
+
+        let admitted = take_deadline_ingress(&mut receiver, &shared, deadline)
+            .expect("strictly earlier receipt is drained first");
+        assert_eq!(admitted.received_at, earlier);
+        assert_eq!(admitted.payload, b"earlier");
+        assert!(take_deadline_ingress(&mut receiver, &shared, deadline).is_none());
+        assert_eq!(lock_state(&shared).health.queued_payloads_discarded, 1);
+    }
+
+    #[test]
+    fn disconnected_deadline_handoff_latches_and_notifies_the_first_fault() {
+        let (shared, mut receiver) = shared_ingress(1, INGRESS_ACTIVE, 0);
+        receiver.close();
+
+        assert!(take_deadline_ingress(&mut receiver, &shared, std::time::Instant::now()).is_none());
+        assert!(matches!(
+            lock_state(&shared).health.first_fault,
+            Some(super::OperationalLiveFault::Ingress(
+                super::OperationalIngressFault::IngressClosed { .. }
             ))
         ));
     }

@@ -566,8 +566,6 @@ impl PartialFrame {
 #[derive(Debug, Clone, Copy)]
 struct HeartbeatSnapshot {
     uptime_ms: u64,
-    last_fusion_seq: Option<u64>,
-    dropped_event_count: u64,
     published_event_count: u64,
 }
 
@@ -741,16 +739,6 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
     ) -> Vec<AssemblyEvent> {
         let mut events = self.begin_call(received_at);
         if self.fault.is_some() {
-            return events;
-        }
-        if encoded.len() > MAX_MONITOR_EVENT_BYTES {
-            events.push(self.fail(
-                AssemblyFaultKind::PayloadTooLarge {
-                    route: EvidenceRoute::Monitor,
-                },
-                None,
-                received_at,
-            ));
             return events;
         }
         let envelope = match MonitorEnvelope::decode(encoded) {
@@ -1030,7 +1018,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
         }
         if self
             .last_finalized_fusion_seq
-            .is_some_and(|last| fusion_seq <= last && !self.frames.contains_key(&fusion_seq))
+            .is_some_and(|last| fusion_seq <= last)
         {
             events.push(self.fail(
                 AssemblyFaultKind::ObservationForFinalizedFrame { fusion_seq },
@@ -1183,14 +1171,13 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             )];
         }
         self.last_now = now;
-        if self.deadline_anchor_overflowed()
-            || [
-                self.limits.frame_deadline,
-                self.limits.reorder_deadline,
-                self.limits.heartbeat_deadline,
-            ]
-            .into_iter()
-            .any(|duration| now.checked_add(duration).is_none())
+        if [
+            self.limits.frame_deadline,
+            self.limits.reorder_deadline,
+            self.limits.heartbeat_deadline,
+        ]
+        .into_iter()
+        .any(|duration| now.checked_add(duration).is_none())
         {
             return vec![self.fail(
                 AssemblyFaultKind::MonotonicDeadlineOverflow,
@@ -1259,20 +1246,6 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             (self.started_at, self.limits.initial_heartbeat_deadline),
             |receipt| (receipt, self.limits.heartbeat_deadline),
         )
-    }
-
-    fn deadline_anchor_overflowed(&self) -> bool {
-        let (heartbeat_base, heartbeat_window) = self.heartbeat_deadline_base_and_window();
-        heartbeat_base.checked_add(heartbeat_window).is_none()
-            || self
-                .monitor_gap_started_at
-                .is_some_and(|started| started.checked_add(self.limits.reorder_deadline).is_none())
-            || self.frames.values().any(|frame| {
-                frame
-                    .first_seen_at
-                    .checked_add(self.limits.frame_deadline)
-                    .is_none()
-            })
     }
 
     fn drain_monitor(&mut self, now: Instant) -> Vec<AssemblyEvent> {
@@ -1486,7 +1459,9 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             self.registry_policy.max_outcomes_per_frame,
             summary.outcome_count,
         )?;
-        if summary.degraded || summary.truncated {
+        // FrameSummary::validate guarantees truncated => degraded, so one
+        // validated flag is the complete downstream rejection predicate.
+        if summary.degraded {
             return Err(AssemblyFaultKind::ProducerDegradedFrame {
                 fusion_seq: summary.fusion_seq,
                 truncated: summary.truncated,
@@ -1664,7 +1639,8 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             self.registry_policy.max_active_tracks,
             heartbeat.active_track_count,
         )?;
-        if heartbeat.degraded || heartbeat.queue_health.dropped_event_count > 0 {
+        // Heartbeat::validate guarantees dropped_event_count > 0 => degraded.
+        if heartbeat.degraded {
             return Err(AssemblyFaultKind::ProducerDeclaredLoss);
         }
         if heartbeat.last_fusion_seq != self.last_summary_fusion_seq {
@@ -1674,24 +1650,14 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             });
         }
         if let Some(previous) = self.heartbeat {
-            let last_fusion_regressed = match (previous.last_fusion_seq, heartbeat.last_fusion_seq)
-            {
-                (Some(_), None) => true,
-                (Some(left), Some(right)) => right < left,
-                _ => false,
-            };
             if heartbeat.uptime_ms <= previous.uptime_ms
-                || heartbeat.queue_health.dropped_event_count < previous.dropped_event_count
                 || heartbeat.queue_health.published_event_count < previous.published_event_count
-                || last_fusion_regressed
             {
                 return Err(AssemblyFaultKind::HeartbeatStateRegressed);
             }
         }
         self.heartbeat = Some(HeartbeatSnapshot {
             uptime_ms: heartbeat.uptime_ms,
-            last_fusion_seq: heartbeat.last_fusion_seq,
-            dropped_event_count: heartbeat.queue_health.dropped_event_count,
             published_event_count: heartbeat.queue_health.published_event_count,
         });
         Ok(())
@@ -2007,24 +1973,17 @@ fn validate_frame_ledger(
         let candidates = ledger.candidate_count.unwrap_or(0);
         let in_gate = ledger.in_gate_count.unwrap_or(0);
         if candidates != ledger.next_attempt
-            || ledger.terminal_count > 1
             || (!ledger.in_gate_count_unverifiable && in_gate != ledger.observed_in_gate_count)
         {
             return Err(invalid());
         }
         match (ledger.terminal_count, ledger.miss) {
             (1, None) => {}
-            (0, Some(reason)) if candidates == 0 => {
-                if !matches!(
-                    reason,
-                    ModalityMissReason::NoMeasurement
-                        | ModalityMissReason::NoCandidate
-                        | ModalityMissReason::TrackNotEligible
-                ) {
-                    return Err(invalid());
-                }
-            }
-            (0, Some(ModalityMissReason::NoInGateCandidate)) if in_gate == 0 => {}
+            (0, Some(ModalityMissReason::NoMeasurement | ModalityMissReason::TrackNotEligible))
+                if candidates == 0 => {}
+            (0, Some(ModalityMissReason::NoCandidate))
+                if candidates == 0 && summary.input_count > 0 => {}
+            (0, Some(ModalityMissReason::NoInGateCandidate)) if candidates > 0 && in_gate == 0 => {}
             (0, Some(ModalityMissReason::NotAssigned)) if in_gate > 0 => {}
             _ => return Err(invalid()),
         }
@@ -2465,6 +2424,106 @@ mod tests {
         value
     }
 
+    fn ledger_summary(active_track_count: u32, input_count: u32) -> FrameSummary {
+        let mut value = summary(1, 101);
+        value.active_track_count = active_track_count;
+        value.input_count = input_count;
+        value.outcome_count = 0;
+        value.v1_expected_count = 0;
+        value
+    }
+
+    fn ledger_outcome(
+        track_id: u64,
+        attempt_index: u32,
+        measurement_index: u32,
+        outcome_kind: ModalityOutcomeKind,
+        candidate_count: u32,
+        in_gate_count: u32,
+        gate_score: Option<(f64, f64)>,
+    ) -> FrameMonitorEvent {
+        let mut value = outcome(1, 101);
+        value.track_id = track_id;
+        value.attempt_index = attempt_index;
+        value.measurement_index = Some(measurement_index);
+        value.outcome = outcome_kind;
+        value.v1_expected = false;
+        value.candidate_count = candidate_count;
+        value.in_gate_count = in_gate_count;
+        value.gate_evidence = gate_score.map(|(d2, threshold)| GateEvidence {
+            method: GateMethod::Mahalanobis,
+            d2,
+            threshold,
+        });
+        value.consistency_projection = None;
+        FrameMonitorEvent::Outcome(value)
+    }
+
+    fn ledger_miss(track_id: u64, reason: ModalityMissReason) -> FrameMonitorEvent {
+        FrameMonitorEvent::Miss(ModalityMiss {
+            fusion_seq: 1,
+            fusion_timestamp_ms: 1_001,
+            frame_id: 10,
+            context_id: 20,
+            prior_id: 101,
+            track_id,
+            modality: Modality::Visual,
+            reason,
+        })
+    }
+
+    fn validate_test_ledger(
+        monitor_events: Vec<FrameMonitorEvent>,
+        summary: &FrameSummary,
+    ) -> Result<HashMap<(u64, Modality), Option<ConsistencyProjection>>, AssemblyFaultKind> {
+        for event in &monitor_events {
+            let result = match event {
+                FrameMonitorEvent::Outcome(outcome) => outcome.validate(),
+                FrameMonitorEvent::Miss(miss) => miss.validate(),
+            };
+            result.expect("ledger fixture must satisfy the public monitor wire invariants");
+        }
+        let mut summary = summary.clone();
+        summary.outcome_count = u32::try_from(monitor_events.len()).expect("small ledger fixture");
+        summary.v1_expected_count = monitor_events
+            .iter()
+            .filter(
+                |event| matches!(event, FrameMonitorEvent::Outcome(outcome) if outcome.v1_expected),
+            )
+            .count()
+            .try_into()
+            .expect("small ledger fixture");
+        summary
+            .validate()
+            .expect("ledger closure fixture must satisfy the public monitor wire invariants");
+        let mut frame = PartialFrame::new(Instant::now());
+        frame.monitor_events = monitor_events;
+        validate_frame_ledger(&frame, &summary, wire_policy())
+    }
+
+    fn valid_two_attempt_ledger() -> Vec<FrameMonitorEvent> {
+        vec![
+            ledger_outcome(
+                7,
+                0,
+                0,
+                ModalityOutcomeKind::GateRejected,
+                2,
+                1,
+                Some((9.0, 7.815)),
+            ),
+            ledger_outcome(
+                7,
+                1,
+                1,
+                ModalityOutcomeKind::UpdateRejected,
+                2,
+                1,
+                Some((1.0, 7.815)),
+            ),
+        ]
+    }
+
     fn heartbeat(last_fusion_seq: Option<u64>, uptime_ms: u64, capacity: u32) -> Heartbeat {
         Heartbeat {
             producer_timestamp_ms: 1,
@@ -2674,6 +2733,483 @@ mod tests {
             AssemblerLimits::default().max_observation_streams,
             MAX_ASSEMBLER_OBSERVATION_STREAMS
         );
+    }
+
+    #[test]
+    fn hard_bounds_and_state_accessors_preserve_exact_values() {
+        assert_eq!(MAX_ASSEMBLER_SIDECAR_BYTES, 65_536);
+        assert_eq!(MAX_ASSEMBLER_OBSERVATION_STREAMS, 65_536);
+
+        let start = Instant::now();
+        let limits = AssemblerLimits {
+            max_open_frames: 7,
+            heartbeat_deadline: Duration::from_secs(30),
+            ..AssemblerLimits::default()
+        };
+        let mut assembler =
+            CrossRouteAssembler::new("epoch-1", "crebain", TestRegistry, limits, start)
+                .expect("nondefault test limits validate");
+        assembler.frames.insert(1, PartialFrame::new(start));
+        assembler.frames.insert(2, PartialFrame::new(start));
+        assembler.buffered_bytes = 7;
+        assembler.prior_sequences.insert(11, 1);
+        assembler.prior_sequences.insert(12, 2);
+        assembler
+            .observation_high_water
+            .insert((11, Modality::Visual), 1);
+        assembler
+            .observation_high_water
+            .insert((12, Modality::Radar), 2);
+
+        assert_eq!(
+            (
+                assembler.open_frames(),
+                assembler.buffered_bytes(),
+                assembler.prior_identities(),
+                assembler.observation_streams(),
+                assembler.limits(),
+            ),
+            (2, 7, 2, 2, limits)
+        );
+    }
+
+    #[test]
+    fn identity_validation_covers_character_and_byte_boundaries() {
+        let exact = "a".repeat(MAX_ID_SEGMENT_BYTES);
+        let oversized = "a".repeat(MAX_ID_SEGMENT_BYTES + 1);
+
+        assert!(validate_identity("producer_id", &exact).is_ok());
+        assert!(validate_identity("producer_id", "").is_err());
+        assert!(validate_identity("producer_id", "bad*").is_err());
+        assert!(validate_identity("producer_id", &oversized).is_err());
+    }
+
+    #[test]
+    fn resource_and_duration_validation_isolation_covers_each_predicate() {
+        let start = Instant::now();
+        let defaults = AssemblerLimits::default();
+
+        for invalid in [
+            AssemblerLimits {
+                max_open_frames: 0,
+                ..defaults
+            },
+            AssemblerLimits {
+                max_open_frames: MAX_ASSEMBLER_OPEN_FRAMES + 1,
+                ..defaults
+            },
+        ] {
+            assert!(matches!(
+                validate_limits(invalid, start),
+                Err(AssemblerConfigError::InvalidLimit { .. })
+            ));
+        }
+        for invalid in [
+            AssemblerLimits {
+                max_reorder_distance: 0,
+                ..defaults
+            },
+            AssemblerLimits {
+                max_observation_advance: 0,
+                ..defaults
+            },
+        ] {
+            assert_eq!(
+                validate_limits(invalid, start),
+                Err(AssemblerConfigError::InvalidDuration(
+                    "sequence distances must be positive"
+                ))
+            );
+        }
+
+        let zero = AssemblerLimits {
+            frame_deadline: Duration::ZERO,
+            ..defaults
+        };
+        let fractional = AssemblerLimits {
+            frame_deadline: Duration::from_nanos(1),
+            ..defaults
+        };
+        for invalid in [zero, fractional] {
+            assert_eq!(
+                validate_limits(invalid, start),
+                Err(AssemblerConfigError::InvalidDuration(
+                    "all deadlines must be positive exact u64-millisecond durations"
+                ))
+            );
+        }
+
+        let unrepresentable = AssemblerLimits {
+            frame_deadline: Duration::from_millis(u64::MAX),
+            ..defaults
+        };
+        let mut near_monotonic_limit = start;
+        while let Some(next) = near_monotonic_limit.checked_add(unrepresentable.frame_deadline) {
+            assert!(next > near_monotonic_limit);
+            near_monotonic_limit = next;
+        }
+        assert_eq!(
+            validate_limits(unrepresentable, near_monotonic_limit),
+            Err(AssemblerConfigError::InvalidDuration(
+                "deadline cannot be represented at the monotonic clock anchor"
+            ))
+        );
+    }
+
+    #[test]
+    fn decode_fault_fusion_sequence_and_modality_rank_are_exact() {
+        assert_eq!(
+            monitor_decode_fault(&MonitorError::EncodedEventTooLarge {
+                actual: MAX_MONITOR_EVENT_BYTES + 1,
+                maximum: MAX_MONITOR_EVENT_BYTES,
+            }),
+            AssemblyFaultKind::PayloadTooLarge {
+                route: EvidenceRoute::Monitor,
+            }
+        );
+        assert_eq!(
+            monitor_decode_fault(&MonitorError::Json("malformed".to_owned())),
+            AssemblyFaultKind::MalformedPayload {
+                route: EvidenceRoute::Monitor,
+            }
+        );
+        let FrameMonitorEvent::Miss(miss) = ledger_miss(7, ModalityMissReason::NoMeasurement)
+        else {
+            unreachable!();
+        };
+        assert_eq!(
+            [
+                event_fusion_seq(&ProducerEvent::Heartbeat(heartbeat(None, 1, 1))),
+                event_fusion_seq(&ProducerEvent::ModalityOutcome(outcome(7, 107))),
+                event_fusion_seq(&ProducerEvent::ModalityMiss(miss)),
+                event_fusion_seq(&ProducerEvent::FrameSummary(summary(7, 107))),
+            ],
+            [None, Some(7), Some(1), Some(7)]
+        );
+        assert_eq!(
+            [
+                Modality::Visual,
+                Modality::Thermal,
+                Modality::Acoustic,
+                Modality::Radar,
+                Modality::Lidar,
+                Modality::RadioFrequency,
+            ]
+            .map(modality_rank),
+            [0, 1, 2, 3, 4, 5]
+        );
+    }
+
+    #[test]
+    fn frame_ledger_repeated_attempts_enforce_sequence_measurements_counts_and_gate_boundary() {
+        let closure = ledger_summary(1, 2);
+        let valid = valid_two_attempt_ledger();
+        assert!(validate_test_ledger(valid.clone(), &closure).is_ok());
+
+        let mut skipped_attempt = valid.clone();
+        let FrameMonitorEvent::Outcome(value) = &mut skipped_attempt[0] else {
+            unreachable!();
+        };
+        value.attempt_index = 1;
+        assert!(validate_test_ledger(skipped_attempt, &closure).is_err());
+
+        let mut out_of_range = valid.clone();
+        let FrameMonitorEvent::Outcome(value) = &mut out_of_range[0] else {
+            unreachable!();
+        };
+        value.measurement_index = Some(closure.input_count);
+        assert!(validate_test_ledger(out_of_range, &closure).is_err());
+
+        let mut duplicate_measurement = valid.clone();
+        let FrameMonitorEvent::Outcome(value) = &mut duplicate_measurement[1] else {
+            unreachable!();
+        };
+        value.measurement_index = Some(0);
+        assert!(validate_test_ledger(duplicate_measurement, &closure).is_err());
+
+        let mut candidate_drift = valid.clone();
+        let FrameMonitorEvent::Outcome(value) = &mut candidate_drift[1] else {
+            unreachable!();
+        };
+        value.candidate_count = 3;
+        assert!(validate_test_ledger(candidate_drift, &closure).is_err());
+
+        let mut in_gate_drift = valid;
+        let FrameMonitorEvent::Outcome(value) = &mut in_gate_drift[1] else {
+            unreachable!();
+        };
+        value.in_gate_count = 2;
+        assert!(validate_test_ledger(in_gate_drift, &closure).is_err());
+
+        let boundary = vec![
+            ledger_outcome(
+                7,
+                0,
+                0,
+                ModalityOutcomeKind::GateRejected,
+                1,
+                0,
+                Some((7.815, 7.815)),
+            ),
+            ledger_miss(7, ModalityMissReason::NoInGateCandidate),
+        ];
+        assert!(validate_test_ledger(boundary, &ledger_summary(1, 1)).is_ok());
+    }
+
+    #[test]
+    fn frame_ledger_enforces_pair_ordering_and_attempt_miss_exclusion() {
+        let ordered_outcomes = vec![
+            ledger_outcome(
+                7,
+                0,
+                0,
+                ModalityOutcomeKind::UpdateRejected,
+                1,
+                1,
+                Some((1.0, 7.815)),
+            ),
+            ledger_outcome(
+                8,
+                0,
+                0,
+                ModalityOutcomeKind::UpdateRejected,
+                1,
+                1,
+                Some((1.0, 7.815)),
+            ),
+        ];
+        assert!(validate_test_ledger(ordered_outcomes.clone(), &ledger_summary(2, 1)).is_ok());
+
+        let mut reversed_outcomes = ordered_outcomes;
+        reversed_outcomes.reverse();
+        assert!(validate_test_ledger(reversed_outcomes, &ledger_summary(2, 1)).is_err());
+
+        let ordered_misses = vec![
+            ledger_miss(7, ModalityMissReason::NoMeasurement),
+            ledger_miss(8, ModalityMissReason::NoMeasurement),
+        ];
+        assert!(validate_test_ledger(ordered_misses.clone(), &ledger_summary(2, 0)).is_ok());
+
+        let mut reversed_misses = ordered_misses;
+        reversed_misses.reverse();
+        assert!(validate_test_ledger(reversed_misses, &ledger_summary(2, 0)).is_err());
+
+        let attempt_after_miss = vec![
+            ledger_miss(7, ModalityMissReason::NoMeasurement),
+            ledger_outcome(
+                7,
+                0,
+                0,
+                ModalityOutcomeKind::UpdateRejected,
+                1,
+                1,
+                Some((1.0, 7.815)),
+            ),
+        ];
+        assert!(validate_test_ledger(attempt_after_miss, &ledger_summary(1, 1)).is_err());
+
+        let miss_after_attempt = vec![
+            ledger_outcome(
+                7,
+                0,
+                0,
+                ModalityOutcomeKind::AssignmentRejected,
+                1,
+                1,
+                Some((1.0, 7.815)),
+            ),
+            ledger_miss(7, ModalityMissReason::NotAssigned),
+        ];
+        assert!(validate_test_ledger(miss_after_attempt, &ledger_summary(1, 1)).is_ok());
+    }
+
+    #[test]
+    fn frame_ledger_births_require_unique_ordered_tracks_and_measurements() {
+        let ordered = vec![
+            ledger_outcome(7, 0, 0, ModalityOutcomeKind::TrackBirth, 0, 0, None),
+            ledger_outcome(8, 0, 1, ModalityOutcomeKind::TrackBirth, 0, 0, None),
+        ];
+        assert!(validate_test_ledger(ordered.clone(), &ledger_summary(2, 2)).is_ok());
+
+        let mut nonzero_attempt = vec![ordered[0].clone()];
+        let FrameMonitorEvent::Outcome(value) = &mut nonzero_attempt[0] else {
+            unreachable!();
+        };
+        value.attempt_index = 1;
+        assert!(validate_test_ledger(nonzero_attempt, &ledger_summary(1, 1)).is_err());
+
+        let duplicate_track = vec![
+            ordered[0].clone(),
+            ledger_outcome(7, 0, 1, ModalityOutcomeKind::TrackBirth, 0, 0, None),
+        ];
+        assert!(validate_test_ledger(duplicate_track, &ledger_summary(2, 2)).is_err());
+
+        let duplicate_measurement = vec![
+            ordered[0].clone(),
+            ledger_outcome(8, 0, 0, ModalityOutcomeKind::TrackBirth, 0, 0, None),
+        ];
+        assert!(validate_test_ledger(duplicate_measurement, &ledger_summary(2, 2)).is_err());
+
+        let mut reversed = ordered.clone();
+        reversed.reverse();
+        assert!(validate_test_ledger(reversed, &ledger_summary(2, 2)).is_err());
+
+        let out_of_range = vec![ledger_outcome(
+            7,
+            0,
+            1,
+            ModalityOutcomeKind::TrackBirth,
+            0,
+            0,
+            None,
+        )];
+        assert!(validate_test_ledger(out_of_range, &ledger_summary(1, 1)).is_err());
+    }
+
+    #[test]
+    fn frame_ledger_miss_reasons_follow_candidate_and_gate_truth_table() {
+        for (reason, input_count) in [
+            (ModalityMissReason::NoMeasurement, 0),
+            (ModalityMissReason::NoCandidate, 1),
+            (ModalityMissReason::TrackNotEligible, 0),
+        ] {
+            assert!(validate_test_ledger(
+                vec![ledger_miss(7, reason)],
+                &ledger_summary(1, input_count),
+            )
+            .is_ok());
+        }
+        assert!(validate_test_ledger(
+            vec![ledger_miss(7, ModalityMissReason::NoCandidate)],
+            &ledger_summary(1, 0),
+        )
+        .is_err());
+
+        assert!(validate_test_ledger(
+            vec![ledger_miss(7, ModalityMissReason::NotAssigned)],
+            &ledger_summary(1, 0),
+        )
+        .is_err());
+        assert!(validate_test_ledger(
+            vec![ledger_miss(7, ModalityMissReason::NoInGateCandidate)],
+            &ledger_summary(1, 0),
+        )
+        .is_err());
+
+        let pair = |in_gate_count, d2, reason| {
+            let outcome_kind = if in_gate_count == 0 {
+                ModalityOutcomeKind::GateRejected
+            } else {
+                ModalityOutcomeKind::AssignmentRejected
+            };
+            vec![
+                ledger_outcome(7, 0, 0, outcome_kind, 1, in_gate_count, Some((d2, 7.815))),
+                ledger_miss(7, reason),
+            ]
+        };
+
+        assert!(validate_test_ledger(
+            pair(0, 9.0, ModalityMissReason::NoCandidate),
+            &ledger_summary(1, 1),
+        )
+        .is_err());
+        assert!(validate_test_ledger(
+            pair(0, 9.0, ModalityMissReason::NoInGateCandidate),
+            &ledger_summary(1, 1),
+        )
+        .is_ok());
+        assert!(validate_test_ledger(
+            pair(1, 1.0, ModalityMissReason::NoInGateCandidate),
+            &ledger_summary(1, 1),
+        )
+        .is_err());
+        assert!(validate_test_ledger(
+            pair(1, 1.0, ModalityMissReason::NotAssigned),
+            &ledger_summary(1, 1),
+        )
+        .is_ok());
+        assert!(validate_test_ledger(
+            pair(0, 9.0, ModalityMissReason::NotAssigned),
+            &ledger_summary(1, 1),
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn frame_ledger_reconciles_candidate_gate_and_terminal_totals_independently() {
+        let valid_terminal = vec![ledger_outcome(
+            7,
+            0,
+            0,
+            ModalityOutcomeKind::UpdateRejected,
+            1,
+            1,
+            Some((1.0, 7.815)),
+        )];
+        assert!(validate_test_ledger(valid_terminal.clone(), &ledger_summary(1, 1)).is_ok());
+
+        let mut candidate_mismatch = valid_terminal.clone();
+        let FrameMonitorEvent::Outcome(value) = &mut candidate_mismatch[0] else {
+            unreachable!();
+        };
+        value.candidate_count = 2;
+        assert!(validate_test_ledger(candidate_mismatch, &ledger_summary(1, 1)).is_err());
+
+        let gate_mismatch = vec![
+            ledger_outcome(
+                7,
+                0,
+                0,
+                ModalityOutcomeKind::GateRejected,
+                2,
+                2,
+                Some((9.0, 7.815)),
+            ),
+            ledger_outcome(
+                7,
+                1,
+                1,
+                ModalityOutcomeKind::AssignmentRejected,
+                2,
+                2,
+                Some((1.0, 7.815)),
+            ),
+            ledger_miss(7, ModalityMissReason::NotAssigned),
+        ];
+        assert!(validate_test_ledger(gate_mismatch, &ledger_summary(1, 2)).is_err());
+
+        let two_terminals = vec![
+            ledger_outcome(
+                7,
+                0,
+                0,
+                ModalityOutcomeKind::UpdateRejected,
+                2,
+                2,
+                Some((1.0, 7.815)),
+            ),
+            ledger_outcome(
+                7,
+                1,
+                1,
+                ModalityOutcomeKind::UpdateRejected,
+                2,
+                2,
+                Some((1.0, 7.815)),
+            ),
+        ];
+        assert!(validate_test_ledger(two_terminals, &ledger_summary(1, 2)).is_err());
+
+        let unterminated = vec![ledger_outcome(
+            7,
+            0,
+            0,
+            ModalityOutcomeKind::GateRejected,
+            1,
+            0,
+            Some((9.0, 7.815)),
+        )];
+        assert!(validate_test_ledger(unterminated, &ledger_summary(1, 1)).is_err());
     }
 
     #[test]
@@ -3279,6 +3815,352 @@ mod tests {
                 capacity: AssemblyCapacity::BufferedBytes
             })
         ));
+    }
+
+    #[test]
+    fn exact_route_payload_ceilings_are_accepted_before_semantic_processing() {
+        let start = Instant::now();
+
+        let mut raw_monitor = monitor_bytes(1, ProducerEvent::Heartbeat(heartbeat(None, 1, 1)));
+        raw_monitor.resize(MAX_MONITOR_EVENT_BYTES, b' ');
+        let mut monitor_assembler = assembler(start);
+        let events = monitor_assembler.ingest_monitor_bytes(&raw_monitor, start);
+        assert!(events
+            .iter()
+            .any(|event| matches!(event, AssemblyEvent::HeartbeatAccepted { event_seq: 1, .. })));
+        assert!(fault_kind(&events).is_none());
+
+        let monitor_envelope = MonitorEnvelope::try_new(
+            "epoch-1",
+            "crebain",
+            1,
+            ProducerEvent::Heartbeat(heartbeat(None, 1, 1)),
+        )
+        .expect("test monitor envelope validates");
+        let mut monitor_assembler = assembler(start);
+        let events = monitor_assembler.ingest_monitor_envelope_sized(
+            monitor_envelope,
+            MAX_MONITOR_EVENT_BYTES,
+            start,
+        );
+        assert!(events
+            .iter()
+            .any(|event| matches!(event, AssemblyEvent::HeartbeatAccepted { event_seq: 1, .. })));
+        assert!(fault_kind(&events).is_none());
+
+        let mut raw_observation = observation_bytes(observation(1, 101));
+        raw_observation.resize(MAX_ASSEMBLER_SIDECAR_BYTES, b' ');
+        let mut observation_assembler = assembler(start);
+        let events = observation_assembler.ingest_observation_bytes(&raw_observation, start);
+        assert!(fault_kind(&events).is_none());
+        assert_eq!(observation_assembler.open_frames(), 1);
+
+        let observation_envelope =
+            SidecarEnvelope::try_new("epoch-1", "crebain", observation(1, 101))
+                .expect("test observation envelope validates");
+        let mut observation_assembler = assembler(start);
+        let events = observation_assembler.ingest_observation_envelope_sized(
+            observation_envelope,
+            MAX_ASSEMBLER_SIDECAR_BYTES,
+            start,
+        );
+        assert!(fault_kind(&events).is_none());
+        assert_eq!(observation_assembler.open_frames(), 1);
+    }
+
+    #[test]
+    fn oversized_and_malformed_route_payloads_keep_distinct_fault_taxonomy() {
+        let start = Instant::now();
+
+        let mut monitor = assembler(start);
+        let events = monitor.ingest_monitor_bytes(&vec![b' '; MAX_MONITOR_EVENT_BYTES + 1], start);
+        assert_eq!(
+            fault_kind(&events),
+            Some(&AssemblyFaultKind::PayloadTooLarge {
+                route: EvidenceRoute::Monitor,
+            })
+        );
+
+        let mut monitor = assembler(start);
+        let events = monitor.ingest_monitor_bytes(b"{", start);
+        assert_eq!(
+            fault_kind(&events),
+            Some(&AssemblyFaultKind::MalformedPayload {
+                route: EvidenceRoute::Monitor,
+            })
+        );
+
+        let monitor_envelope = MonitorEnvelope::try_new(
+            "epoch-1",
+            "crebain",
+            1,
+            ProducerEvent::Heartbeat(heartbeat(None, 1, 1)),
+        )
+        .expect("test monitor envelope validates");
+        let mut monitor = assembler(start);
+        let events = monitor.ingest_monitor_envelope_sized(
+            monitor_envelope,
+            MAX_MONITOR_EVENT_BYTES + 1,
+            start,
+        );
+        assert_eq!(
+            fault_kind(&events),
+            Some(&AssemblyFaultKind::PayloadTooLarge {
+                route: EvidenceRoute::Monitor,
+            })
+        );
+
+        let observation_envelope =
+            SidecarEnvelope::try_new("epoch-1", "crebain", observation(1, 101))
+                .expect("test observation envelope validates");
+        let mut observation_assembler = assembler(start);
+        let events = observation_assembler.ingest_observation_envelope_sized(
+            observation_envelope,
+            MAX_ASSEMBLER_SIDECAR_BYTES + 1,
+            start,
+        );
+        assert_eq!(
+            fault_kind(&events),
+            Some(&AssemblyFaultKind::PayloadTooLarge {
+                route: EvidenceRoute::Observation,
+            })
+        );
+    }
+
+    #[test]
+    fn exact_sequence_advance_boundaries_are_accepted() {
+        let start = Instant::now();
+        let limits = AssemblerLimits {
+            max_reorder_distance: 2,
+            max_observation_advance: 2,
+            heartbeat_deadline: Duration::from_secs(30),
+            ..AssemblerLimits::default()
+        };
+
+        let mut monitor_assembler =
+            CrossRouteAssembler::new("epoch-1", "crebain", TestRegistry, limits, start)
+                .expect("test limits validate");
+        let pending = MonitorEnvelope::try_new(
+            "epoch-1",
+            "crebain",
+            3,
+            ProducerEvent::Heartbeat(heartbeat(None, 1, 1)),
+        )
+        .expect("test monitor envelope validates");
+        let events = monitor_assembler.ingest_monitor_envelope_sized(pending, 1, start);
+        assert!(fault_kind(&events).is_none());
+        assert_eq!(monitor_assembler.pending_monitor_events(), 1);
+
+        let mut observation_assembler =
+            CrossRouteAssembler::new("epoch-1", "crebain", TestRegistry, limits, start)
+                .expect("test limits validate");
+        observation_assembler
+            .observation_high_water
+            .insert((7, Modality::Visual), 1);
+        let envelope = SidecarEnvelope::try_new("epoch-1", "crebain", observation(3, 103))
+            .expect("test observation envelope validates");
+        let events = observation_assembler.ingest_observation_envelope_sized(envelope, 1, start);
+        assert!(fault_kind(&events).is_none());
+        assert_eq!(
+            observation_assembler
+                .observation_high_water
+                .get(&(7, Modality::Visual)),
+            Some(&3)
+        );
+    }
+
+    #[test]
+    fn a_new_track_fails_at_capacity_while_an_existing_track_remains_admissible() {
+        let start = Instant::now();
+        let limits = AssemblerLimits {
+            max_tracks_per_frame: 1,
+            heartbeat_deadline: Duration::from_secs(30),
+            ..AssemblerLimits::default()
+        };
+        let mut assembler =
+            CrossRouteAssembler::new("epoch-1", "crebain", TestRegistry, limits, start)
+                .expect("test limits validate");
+        let identity = FrameIdentity::from_outcome(&outcome(1, 101));
+
+        assembler
+            .process_frame_event(
+                identity,
+                FrameMonitorEvent::Outcome(outcome(1, 101)),
+                1,
+                start,
+            )
+            .expect("first track is admitted");
+        assembler
+            .process_frame_event(
+                identity,
+                FrameMonitorEvent::Outcome(outcome(1, 101)),
+                1,
+                start,
+            )
+            .expect("existing track remains admissible at capacity");
+        let mut second_track = outcome(1, 101);
+        second_track.track_id = 8;
+
+        assert_eq!(
+            assembler.process_frame_event(
+                identity,
+                FrameMonitorEvent::Outcome(second_track),
+                1,
+                start,
+            ),
+            Err(AssemblyFaultKind::CapacityExceeded {
+                capacity: AssemblyCapacity::FrameTracks,
+            })
+        );
+    }
+
+    #[test]
+    fn observation_route_rejects_a_new_track_at_exact_capacity() {
+        let start = Instant::now();
+        let limits = AssemblerLimits {
+            max_tracks_per_frame: 1,
+            heartbeat_deadline: Duration::from_secs(30),
+            ..AssemblerLimits::default()
+        };
+        let mut assembler =
+            CrossRouteAssembler::new("epoch-1", "crebain", TestRegistry, limits, start)
+                .expect("test limits validate");
+        assert!(fault_kind(
+            &assembler.ingest_observation_bytes(&observation_bytes(observation(1, 101)), start,)
+        )
+        .is_none());
+        let mut second_track = observation(1, 101);
+        second_track.track_id = 8;
+
+        let events = assembler.ingest_observation_bytes(&observation_bytes(second_track), start);
+
+        assert_eq!(
+            fault_kind(&events),
+            Some(&AssemblyFaultKind::CapacityExceeded {
+                capacity: AssemblyCapacity::FrameTracks,
+            })
+        );
+    }
+
+    #[test]
+    fn finalized_frame_rejects_equal_sequence_observation_replay() {
+        let start = Instant::now();
+        let mut assembler = assembler(start);
+        let events = assembler.ingest_monitor_bytes(
+            &monitor_bytes(1, ProducerEvent::FrameSummary(empty_summary(1, 101))),
+            start,
+        );
+        assert!(ready(&events).is_some());
+        let replay = observation(1, 202);
+
+        let events = assembler.ingest_observation_bytes(&observation_bytes(replay), start);
+
+        assert_eq!(
+            fault_kind(&events),
+            Some(&AssemblyFaultKind::ObservationForFinalizedFrame { fusion_seq: 1 })
+        );
+    }
+
+    #[test]
+    fn summary_flags_and_monitor_order_fail_independently() {
+        let start = Instant::now();
+
+        for truncated in [false, true] {
+            let mut assembler = assembler(start);
+            let mut closure = empty_summary(1, 101);
+            closure.degraded = true;
+            closure.truncated = truncated;
+            closure
+                .validate()
+                .expect("degraded summary fixture satisfies wire invariants");
+            assert_eq!(
+                fault_kind(&assembler.ingest_monitor_bytes(
+                    &monitor_bytes(1, ProducerEvent::FrameSummary(closure)),
+                    start,
+                )),
+                Some(&AssemblyFaultKind::ProducerDegradedFrame {
+                    fusion_seq: 1,
+                    truncated,
+                })
+            );
+        }
+
+        let mut assembler = assembler(start);
+        assembler.last_monitor_fusion_seq = Some(2);
+        assert_eq!(
+            assembler.check_monitor_frame_order(1),
+            Err(AssemblyFaultKind::FusionSequenceRegressed {
+                previous: 2,
+                received: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn heartbeat_profile_loss_and_regression_boundaries_are_reachable() {
+        let start = Instant::now();
+
+        let mut wrong_interval = heartbeat(None, 1, 1);
+        wrong_interval.declared_interval_ms += 1;
+        assert_eq!(
+            assembler(start).process_heartbeat(&wrong_interval),
+            Err(AssemblyFaultKind::HeartbeatProfileMismatch)
+        );
+        let mut wrong_deadline = heartbeat(None, 1, 1);
+        wrong_deadline.declared_deadline_ms += 1;
+        assert_eq!(
+            assembler(start).process_heartbeat(&wrong_deadline),
+            Err(AssemblyFaultKind::HeartbeatProfileMismatch)
+        );
+
+        let mut degraded = heartbeat(None, 1, 1);
+        degraded.degraded = true;
+        assert_eq!(
+            assembler(start).process_heartbeat(&degraded),
+            Err(AssemblyFaultKind::ProducerDeclaredLoss)
+        );
+        let mut dropped = heartbeat(None, 1, 1);
+        dropped.degraded = true;
+        dropped.queue_health.dropped_event_count = 1;
+        dropped
+            .validate()
+            .expect("degraded loss declaration satisfies wire invariants");
+        assert_eq!(
+            assembler(start).process_heartbeat(&dropped),
+            Err(AssemblyFaultKind::ProducerDeclaredLoss)
+        );
+
+        let mut uptime_regressed = assembler(start);
+        let mut first = heartbeat(None, 2, 1);
+        first.queue_health.published_event_count = 5;
+        uptime_regressed
+            .process_heartbeat(&first)
+            .expect("first heartbeat establishes snapshot");
+        let mut second = heartbeat(None, 2, 1);
+        second.queue_health.published_event_count = 5;
+        assert_eq!(
+            uptime_regressed.process_heartbeat(&second),
+            Err(AssemblyFaultKind::HeartbeatStateRegressed)
+        );
+
+        let mut published_regressed = assembler(start);
+        published_regressed
+            .process_heartbeat(&first)
+            .expect("first heartbeat establishes snapshot");
+        let mut second = heartbeat(None, 3, 1);
+        second.queue_health.published_event_count = 4;
+        assert_eq!(
+            published_regressed.process_heartbeat(&second),
+            Err(AssemblyFaultKind::HeartbeatStateRegressed)
+        );
+
+        let mut unchanged_published = assembler(start);
+        unchanged_published
+            .process_heartbeat(&first)
+            .expect("first heartbeat establishes snapshot");
+        let mut second = heartbeat(None, 3, 1);
+        second.queue_health.published_event_count = 5;
+        assert_eq!(unchanged_published.process_heartbeat(&second), Ok(()));
     }
 
     #[test]

@@ -41,6 +41,13 @@ may contain breaking changes.
   to 1 GiB — so deployments bound peak receive memory in the Zenoh config.
 - Document that `TransportMode::QuietDevelopment`'s scouting-off property holds for NCP's
   hardened default config and is superseded when `NCP_ZENOH_CONFIG` names another config.
+- Fence operational callback entry, startup activation, and shutdown with one ingress-state
+  lock; drain registered startup callbacks before activation; and retain the first terminal
+  fault while discarding already-materializing post-close payloads. Async close can resume
+  cleanup after cancellation, implicit Drop accounts buffered discards, and an owned monitor
+  tap refuses transport close while a scoped receiver is active. Deterministic race/lifecycle
+  tests cover callbacks paused before classification, inside materialization, at the close
+  fence, and receiver-before-tap cleanup ordering.
 
 ### Added
 
@@ -128,6 +135,10 @@ may contain breaking changes.
   feature-sized diffs complete within the bounded job window. Add exact lifecycle identity,
   inclusive capacity/channel, history-clear, nested-endpoint, whitespace-path, and Unix
   private-key-mode regressions for every survivor found by the pre-merge mutation audit.
+- Close the receiver, registry, assembler, and observer-CLI mutation gaps with exact size and
+  sequence boundaries, distinct malformed/oversized fault taxonomy, state-accessor and
+  heartbeat telemetry assertions, frame-ledger birth/attempt/miss truth tables, deep registry
+  projection snapshots, and a real process-exit test that proves observe errors reach `main`.
 - Migrate the exact `pid-core` pin from 0.4.0 (`ad489f5…`) to the canonical pid-rs
   1.0.0 main revision (`1cd2424…`), opt into its explicitly experimental continuous
   surface, adopt its report-first KSG point gate and caller-declared support contract,
