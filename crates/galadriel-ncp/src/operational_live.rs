@@ -505,6 +505,14 @@ fn close_ingress(shared: &SharedIngress) {
     drop(lock_state(shared));
 }
 
+fn lifecycle_cleanup_complete(
+    observation_detached: bool,
+    monitor_detached: bool,
+    bus_cleanup_complete: bool,
+) -> bool {
+    observation_detached && monitor_detached && bus_cleanup_complete
+}
+
 fn discard_buffered_on_boundary(
     shared: &SharedIngress,
     receiver: &mut mpsc::Receiver<RawIngress>,
@@ -1381,9 +1389,11 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
         } else {
             true
         };
-        self.cleanup_complete = self.observation_subscription.is_none()
-            && self.monitor_subscription.is_none()
-            && bus_cleanup_complete;
+        self.cleanup_complete = lifecycle_cleanup_complete(
+            self.observation_subscription.is_none(),
+            self.monitor_subscription.is_none(),
+            bus_cleanup_complete,
+        );
 
         first_error.map_or(Ok(()), Err)
     }
@@ -1423,11 +1433,12 @@ mod tests {
 
     use super::{
         accept_payload, begin_startup_activation, classify_callback_phase, enter_callback,
-        lock_state, receipt_precedes_deadline, startup_callbacks_drained, take_deadline_ingress,
-        CallbackPayload, CallbackPhase, IngressCloseGuard, IngressState, OperationalLiveConfig,
-        OperationalLiveHealthSnapshot, OperationalTransportSecurity, PriorityIngressBudget,
-        RawIngress, SharedIngress, StartupActivationGuard, INGRESS_ACTIVATING, INGRESS_ACTIVE,
-        INGRESS_CLOSED, INGRESS_STARTING,
+        lifecycle_cleanup_complete, lock_state, receipt_precedes_deadline,
+        startup_callbacks_drained, take_deadline_ingress, CallbackPayload, CallbackPhase,
+        IngressCloseGuard, IngressState, OperationalLiveConfig, OperationalLiveHealthSnapshot,
+        OperationalTransportSecurity, PriorityIngressBudget, RawIngress, SharedIngress,
+        StartupActivationGuard, INGRESS_ACTIVATING, INGRESS_ACTIVE, INGRESS_CLOSED,
+        INGRESS_STARTING,
     };
     use crate::assembler::EvidenceRoute;
 
@@ -1458,6 +1469,30 @@ mod tests {
     fn config_accessor_preserves_nondefault_capacity() {
         let config = OperationalLiveConfig::new(7).expect("test capacity is valid");
         assert_eq!(config.ingress_capacity(), 7);
+    }
+
+    #[test]
+    fn cleanup_completion_requires_every_resource_to_finish() {
+        for (observation_detached, monitor_detached, bus_cleanup_complete, expected) in [
+            (false, false, false, false),
+            (false, false, true, false),
+            (false, true, false, false),
+            (false, true, true, false),
+            (true, false, false, false),
+            (true, false, true, false),
+            (true, true, false, false),
+            (true, true, true, true),
+        ] {
+            assert_eq!(
+                lifecycle_cleanup_complete(
+                    observation_detached,
+                    monitor_detached,
+                    bus_cleanup_complete,
+                ),
+                expected,
+                "observation_detached={observation_detached}, monitor_detached={monitor_detached}, bus_cleanup_complete={bus_cleanup_complete}",
+            );
+        }
     }
 
     #[test]
