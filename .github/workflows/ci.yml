@@ -29,9 +29,8 @@ jobs:
           persist-credentials: false
 
       - name: Install pinned workspace toolchain
-        uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4 # pinned action revision
+        uses: dtolnay/rust-toolchain@c1709d61444fb708e6ed87924f95626398d8d115 # 1.89.0
         with:
-          toolchain: "1.89.0"
           components: rustfmt, clippy
 
       - name: Restore Cargo cache

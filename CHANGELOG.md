@@ -182,8 +182,9 @@ may contain breaking changes.
 - Count raw-scalar bootstrap KSG confirmation work in conservative quadratic scan units
   in both the engine and evaluation-suite preflights, instead of mixing whole-call and
   inner-scan units in one resource budget.
-- Pass the intended Rust 1.89 MSRV and current-stable channels explicitly to the pinned
-  toolchain actions, avoiding an unused action-default toolchain installation.
+- Pin the generated Rust 1.89 MSRV action revision and select current stable explicitly. The
+  version-specific action encodes 1.89 itself and therefore receives only its supported component
+  inputs, avoiding both an ignored `toolchain` warning and installation of the former 1.88 MSRV.
 - Keep pull-request mutation testing bounded to runtime packages. The unmodified workspace
   baseline previously timed out before testing any mutant because the deliberate Monte Carlo
   evaluation and justification harnesses exceed the per-mutant deadline; the evidence publisher
