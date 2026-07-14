@@ -74,6 +74,9 @@ contains only the public key needed to reproduce signature verification; the
 `--signing-key` handle may itself be that public key when its private half is
 available through `ssh-agent`.
 
+Public-API verification invokes `cargo-public-api` through the exact
+`nightly-2026-06-16` rustdoc toolchain and rejects a different rustc commit.
+
 After all four `mutation-diff` jobs pass for the exact candidate, download and
 inspect their four artifact directories. Assemble them without rewriting the
 candidate or trusting a candidate-provided key:

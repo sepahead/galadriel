@@ -43,8 +43,8 @@
     {
       "path": ".github/workflows/ci.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "fe62d1dbd838d744f117a3cd742f1cf1f0e76d17d7bf5306de2119eb3ef3817a",
-      "size_bytes": 6879
+      "sha256": "4eeeb242cbfdec392ecc9bc8df30b10b4b6c72a0a7858ab26a877849d3b9abf1",
+      "size_bytes": 7080
     },
     {
       "path": ".github/workflows/deep-quality.yml",
@@ -877,8 +877,8 @@
     {
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "bbfdd75bbd9ab210d21ad4f93b9e28898b849ab44231a5a3ff92e207a9bcac1f",
-      "size_bytes": 10168
+      "sha256": "6103068f6e7f25dd54af57eb77e4d7aa589babbc8e67b0f46b033a1021ef5653",
+      "size_bytes": 10203
     },
     {
       "path": "release/0.9.0/audit/ALLOWED_SIGNERS",
@@ -889,13 +889,13 @@
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "46b80f710ae8fea9b59504db0739f18aea36b4a1117e8f2352970a4b08642a02",
+      "sha256": "890a7b33d164990060f1a54a3476be3e9d9d1be06725130fa5c22c2a06815d9c",
       "size_bytes": 55524
     },
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "2a7391d8d5993d5b077fc2ca601582a89eb2edfdd1618012f04a18977cf35e75",
+      "sha256": "67834bf5e16e6b6c83c50b639770ff689676eb176a137c77beda27f3e6503137",
       "size_bytes": 322
     },
     {
@@ -1021,8 +1021,8 @@
     {
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7bb817d072d05bbbf2666c1ac9aeac9814ed739e5d5d5ac4be03c10fa6f61acc",
-      "size_bytes": 8010
+      "sha256": "3c8800930996338b9b4c20cde234074f9c2328f0678a5ed8291618eb55342400",
+      "size_bytes": 8157
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1051,8 +1051,8 @@
     {
       "path": "repo_work/check_public_api.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "652f96eaa8a1e27a3630699da6ab6c0b7f17129455f43332ce5e3568c3139112",
-      "size_bytes": 6502
+      "sha256": "37af346e682720dd0f1995d4e9a391fb0175ce3379aa27e6a9c5d50d3afd127f",
+      "size_bytes": 7222
     },
     {
       "path": "repo_work/check_vulnerable_features.py",
@@ -1852,7 +1852,7 @@
       "action": "dtolnay/rust-toolchain",
       "commit": "efcb852328a9f50117170cc43094fb6f09eaf1ae",
       "repository": "https://github.com/dtolnay/rust-toolchain",
-      "role": "date-pinned nightly toolchain installation",
+      "role": "date-pinned public-API and fuzz toolchain installation",
       "source_ref": "refs/heads/nightly",
       "source_ref_kind": "branch_snapshot",
       "version": "nightly"
@@ -2056,7 +2056,7 @@
     {
       "identity": "rustc 1.98.0-nightly 01dfd79246f1b2d5f146616deff08223a840a9ae; aarch64-apple-darwin; LLVM 22.1.7",
       "name": "rustc-nightly",
-      "role": "bounded fuzz and hostile-input campaigns",
+      "role": "public-API inventory, bounded fuzz, and hostile-input campaigns",
       "version": "nightly-2026-06-16"
     },
     {

@@ -93,7 +93,7 @@
       "name": "rustc-nightly",
       "version": "nightly-2026-06-16",
       "identity": "rustc 1.98.0-nightly 01dfd79246f1b2d5f146616deff08223a840a9ae; aarch64-apple-darwin; LLVM 22.1.7",
-      "role": "bounded fuzz and hostile-input campaigns"
+      "role": "public-API inventory, bounded fuzz, and hostile-input campaigns"
     },
     {
       "name": "cargo-fuzz",
@@ -179,7 +179,7 @@
       "source_ref": "refs/heads/nightly",
       "source_ref_kind": "branch_snapshot",
       "version": "nightly",
-      "role": "date-pinned nightly toolchain installation"
+      "role": "date-pinned public-API and fuzz toolchain installation"
     },
     {
       "action": "Swatinem/rust-cache",

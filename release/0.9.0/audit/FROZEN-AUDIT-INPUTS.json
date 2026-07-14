@@ -1071,8 +1071,8 @@
   "release_input_files": [
     {
       "path": ".github/workflows/ci.yml",
-      "sha256": "fe62d1dbd838d744f117a3cd742f1cf1f0e76d17d7bf5306de2119eb3ef3817a",
-      "size_bytes": 6879
+      "sha256": "4eeeb242cbfdec392ecc9bc8df30b10b4b6c72a0a7858ab26a877849d3b9abf1",
+      "size_bytes": 7080
     },
     {
       "path": ".github/workflows/deep-quality.yml",
@@ -1116,8 +1116,8 @@
     },
     {
       "path": "release/0.9.0/audit-inputs.json",
-      "sha256": "bbfdd75bbd9ab210d21ad4f93b9e28898b849ab44231a5a3ff92e207a9bcac1f",
-      "size_bytes": 10168
+      "sha256": "6103068f6e7f25dd54af57eb77e4d7aa589babbc8e67b0f46b033a1021ef5653",
+      "size_bytes": 10203
     },
     {
       "path": "release/0.9.0/handoff-source.json",
@@ -1141,8 +1141,8 @@
     },
     {
       "path": "release/0.9.0/requirements-ledger.json",
-      "sha256": "79c82eedfb026485e6cb3661d71614d2dff7cf04838767082700e2c0d3e5367d",
-      "size_bytes": 1378651
+      "sha256": "f9f49acb4a737a74ac09bf5a59bc96e78bccefb44827f2ce10f653a4a45a13c7",
+      "size_bytes": 1713977
     },
     {
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
@@ -1276,8 +1276,8 @@
     },
     {
       "path": "repo_work/README.md",
-      "sha256": "7bb817d072d05bbbf2666c1ac9aeac9814ed739e5d5d5ac4be03c10fa6f61acc",
-      "size_bytes": 8010
+      "sha256": "3c8800930996338b9b4c20cde234074f9c2328f0678a5ed8291618eb55342400",
+      "size_bytes": 8157
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1301,8 +1301,8 @@
     },
     {
       "path": "repo_work/check_public_api.py",
-      "sha256": "652f96eaa8a1e27a3630699da6ab6c0b7f17129455f43332ce5e3568c3139112",
-      "size_bytes": 6502
+      "sha256": "37af346e682720dd0f1995d4e9a391fb0175ce3379aa27e6a9c5d50d3afd127f",
+      "size_bytes": 7222
     },
     {
       "path": "repo_work/check_vulnerable_features.py",
