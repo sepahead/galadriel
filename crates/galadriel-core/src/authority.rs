@@ -172,6 +172,18 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_getters_preserve_every_constructor_field() {
+        let snapshot = AuthoritySnapshot::new(Authorization::Deny, 2, 3, 4, 5, 6, DIGEST);
+        assert_eq!(snapshot.authorization(), Authorization::Deny);
+        assert_eq!(snapshot.velocity_limit_units(), 2);
+        assert_eq!(snapshot.slew_limit_units(), 3);
+        assert_eq!(snapshot.command_ttl_ms(), 4);
+        assert_eq!(snapshot.lease_expiry_ms(), 5);
+        assert_eq!(snapshot.watchdog_epoch(), 6);
+        assert_eq!(snapshot.capability_digest(), &DIGEST);
+    }
+
+    #[test]
     fn record_only_accepts_exactly_unchanged_policy() {
         let before = snapshot(Authorization::Allow, 10);
         assert_eq!(
@@ -198,6 +210,17 @@ mod tests {
             validate_advisory_effect(AdvisoryPolicy::RestrictOnly, &before, &after),
             Ok(())
         );
+    }
+
+    #[test]
+    fn restrict_only_accepts_equality_for_both_authorization_states() {
+        for authorization in [Authorization::Deny, Authorization::Allow] {
+            let snapshot = AuthoritySnapshot::new(authorization, 2, 3, 4, 5, 6, DIGEST);
+            assert_eq!(
+                validate_advisory_effect(AdvisoryPolicy::RestrictOnly, &snapshot, &snapshot,),
+                Ok(())
+            );
+        }
     }
 
     #[test]
