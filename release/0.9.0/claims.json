@@ -1,0 +1,114 @@
+{
+  "schema": "galadriel.claims-matrix.v1",
+  "release": "0.9.0",
+  "tier_definitions": {
+    "IMPLEMENTED": "The named behavior exists in the source tree and has direct component tests; this tier does not claim scientific or deployment validity.",
+    "VALIDATED": "Retained evidence exercises the named behavior under the explicitly stated synthetic, fixture, or in-process conditions; validity does not extend beyond those conditions.",
+    "DEPLOYMENT_QUALIFIED": "Independent retained evidence from the target deployment establishes the claim. Galadriel 0.9.0 intentionally has no claims in this tier.",
+    "NOT_CLAIMED": "The release makes no affirmative claim. The limitations field states the missing evidence or excluded scope."
+  },
+  "claims": [
+    {
+      "id": "CLM-001",
+      "claim": "The pure core validates finite per-observation NIS inputs and produces evidence-neutral magnitude verdicts with typed invalid-input failures.",
+      "tier": "IMPLEMENTED",
+      "scope": "galadriel-core source behavior under its validated configuration and bounded inputs",
+      "evidence": [
+        "crates/galadriel-core/src/decision.rs",
+        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+      ],
+      "limitations": "Implementation does not authenticate physical truth, identify attack cause, or establish a calibrated false-alert rate."
+    },
+    {
+      "id": "CLM-002",
+      "claim": "Cross-channel correlation uses only sequence-aligned producer-declared common projections with matching frame, context, and frozen-prior provenance.",
+      "tier": "IMPLEMENTED",
+      "scope": "galadriel-core projection extraction and default correlation path",
+      "evidence": [
+        "crates/galadriel-core/src/lib.rs",
+        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+      ],
+      "limitations": "Producer-attested means a provenance claim; cryptographic authenticity exists only when an independently configured transport binds publisher identity."
+    },
+    {
+      "id": "CLM-003",
+      "claim": "The NCP adapters bound JSONL/live state, validate versioned producer and lifecycle envelopes, and retain explicit typed terminal faults.",
+      "tier": "IMPLEMENTED",
+      "scope": "galadriel-ncp component and in-process receiver behavior at the exact NCP 0.8 pin",
+      "evidence": [
+        "crates/galadriel-ncp/src",
+        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+      ],
+      "limitations": "No external actual-binary mTLS/ACL campaign or NCP 1.0 conformance is claimed."
+    },
+    {
+      "id": "CLM-004",
+      "claim": "The checked-in synthetic and fixture test suites pass on the recorded Rust 1.89 macOS arm64 baseline.",
+      "tier": "VALIDATED",
+      "scope": "exact baseline commit, lockfile, toolchain, commands, seeds, fixtures and in-process transports recorded by the audit manifest",
+      "evidence": [
+        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+      ],
+      "limitations": "A passing component suite is not independent field validation, a performance guarantee, or evidence for untested platforms."
+    },
+    {
+      "id": "CLM-005",
+      "claim": "Galadriel output is advisory evidence that cannot grant or widen authority under the machine-testable consumer-effect contract.",
+      "tier": "IMPLEMENTED",
+      "scope": "galadriel-core advisory authority model and documented consumer contract",
+      "evidence": [
+        "crates/galadriel-core/src/authority.rs",
+        "docs/ADVISORY-BOUNDARY.md"
+      ],
+      "limitations": "No downstream consumer adapter is included or qualified in 0.9.0."
+    },
+    {
+      "id": "CLM-006",
+      "claim": "Galadriel establishes sensor truth, attack intent, or a calibrated posterior probability.",
+      "tier": "NOT_CLAIMED",
+      "scope": "all detectors, reports and integrations",
+      "evidence": [],
+      "limitations": "Consistency can be preserved by coordinated or moment-matched compromise; every release output remains calibrated_posterior=false."
+    },
+    {
+      "id": "CLM-007",
+      "claim": "The default profile meets a deployment false-alert, detection, latency, or availability acceptance threshold.",
+      "tier": "NOT_CLAIMED",
+      "scope": "operational, field, mission and safety performance",
+      "evidence": [],
+      "limitations": "Existing retained evidence is diagnostic and includes unacceptable repeated-look false alerts and missingness abstention."
+    },
+    {
+      "id": "CLM-008",
+      "claim": "Galadriel 0.9.0 is qualified on NCP 1.0 or on a released pid-rs 1.x artifact.",
+      "tier": "NOT_CLAIMED",
+      "scope": "optional ecosystem dependencies",
+      "evidence": [],
+      "limitations": "The selected NCP dependency is immutable v0.8.0; the pid-rs revision is immutable but lacks an upstream v1 release tag/artifact."
+    },
+    {
+      "id": "CLM-009",
+      "claim": "Crebain, Haldir, Prisoma or Paper2Brain provides a deployment-qualified Galadriel 0.9.0 integration.",
+      "tier": "NOT_CLAIMED",
+      "scope": "cross-repository ecosystem composition",
+      "evidence": [],
+      "limitations": "Only the Crebain reciprocal component fixture exists; no accepted recorded projected stream, downstream adapter, or secured deployment campaign exists."
+    },
+    {
+      "id": "CLM-010",
+      "claim": "Galadriel 0.9.0 crates are published on crates.io or carry a production-support promise.",
+      "tier": "NOT_CLAIMED",
+      "scope": "package publication and operational support",
+      "evidence": [],
+      "limitations": "All workspace packages remain publish=false; 0.9.0 is a GitHub source release for supervisor review."
+    },
+    {
+      "id": "CLM-011",
+      "claim": "Galadriel 0.9.0 has a project DOI or Zenodo record.",
+      "tier": "NOT_CLAIMED",
+      "scope": "citation and archival identity",
+      "evidence": [],
+      "limitations": "The author will add DOI/Zenodo metadata only after this supervisor-review release."
+    }
+  ]
+}

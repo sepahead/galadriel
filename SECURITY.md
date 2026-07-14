@@ -36,8 +36,9 @@ does not authorize a control action.
 ## Reporting a vulnerability
 
 Please report suspected vulnerabilities privately via GitHub Security Advisories
-on this repository, or by contacting the maintainer. Do not open a public issue
-for an undisclosed vulnerability. We aim to acknowledge within a few business days.
+on this repository, or email Sepehr Mahmoudian at `sepmhn@gmail.com`. Do not open a
+public issue for an undisclosed vulnerability. We aim to acknowledge receipt within
+three business days; this research release makes no remediation-time SLA.
 
 ## Supply chain
 

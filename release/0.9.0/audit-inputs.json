@@ -1,0 +1,143 @@
+{
+  "schema": "galadriel.release-audit-inputs.v1",
+  "release": {
+    "name": "Galadriel's Mirror",
+    "version": "0.9.0",
+    "author": "Sepehr Mahmoudian",
+    "doi": null,
+    "zenodo": null,
+    "publication_channel": "GitHub source release"
+  },
+  "audit_date": "2026-07-14",
+  "baseline_repository": {
+    "url": "https://github.com/sepahead/galadriel",
+    "commit": "017c615e3976eae69c3115aeeb74e9fdb50ec15d",
+    "tree": "bc47c9b1053ade871095e5529136145432683c82"
+  },
+  "repositories": [
+    {
+      "name": "pid-rs",
+      "url": "https://github.com/sepahead/pid-rs",
+      "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "role": "optional PID research dependency selected by Cargo.lock",
+      "qualification": "PINNED_COMPONENT"
+    },
+    {
+      "name": "NCP",
+      "url": "https://github.com/sepahead/NCP",
+      "commit": "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+      "role": "optional NCP 0.8 transport dependency selected by Cargo.lock",
+      "qualification": "PINNED_COMPONENT"
+    },
+    {
+      "name": "Crebain",
+      "url": "https://github.com/sepahead/crebain",
+      "commit": "4c311900ade5668200a48d56fb191be1916b884a",
+      "role": "reciprocal producer-contract fixture and source pin",
+      "qualification": "RECIPROCAL_FIXTURE"
+    },
+    {
+      "name": "Haldir",
+      "url": "https://github.com/sepahead/haldir",
+      "commit": "5f7d183625a982741c51958e2d10bc12bb628ca0",
+      "role": "prospective downstream advisory consumer",
+      "qualification": "NOT_CLAIMED"
+    },
+    {
+      "name": "Prisoma",
+      "url": "https://github.com/sepahead/prisoma",
+      "commit": "0968128062f30da5c04f3f31c23f6ce8e0d95d36",
+      "role": "ecosystem inventory; not a Galadriel consumer",
+      "qualification": "NOT_CLAIMED"
+    },
+    {
+      "name": "Paper2Brain",
+      "url": "https://github.com/sepahead/Paper2Brain",
+      "commit": "9845c31bc5bae4746120858037b27f9c9ed2f445",
+      "role": "active Engram application inventory; no Galadriel integration evidence",
+      "qualification": "NOT_CLAIMED"
+    }
+  ],
+  "toolchains": [
+    {
+      "name": "rustc",
+      "version": "1.89.0",
+      "identity": "29483883eed69d5fb4db01964cdf2af4d86e9cb2; aarch64-apple-darwin; LLVM 20.1.7",
+      "role": "pinned build and test compiler"
+    },
+    {
+      "name": "cargo",
+      "version": "1.89.0",
+      "identity": "c24e10642 2025-06-23",
+      "role": "pinned workspace package manager"
+    },
+    {
+      "name": "python",
+      "version": "3.14.6",
+      "identity": "CPython 3.14.6",
+      "role": "standard-library release audit and secure-deployment tooling"
+    },
+    {
+      "name": "host",
+      "version": "Darwin 25.5.0",
+      "identity": "arm64",
+      "role": "local baseline evidence environment"
+    },
+    {
+      "name": "cargo-public-api",
+      "version": "0.52.0",
+      "identity": "cargo-public-api 0.52.0",
+      "role": "stable-source-API inventory"
+    }
+  ],
+  "artifact_sets": [
+    {
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "patterns": [
+        "release/0.9.0/handoff/*"
+      ]
+    },
+    {
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "patterns": [
+        "evidence/**/*",
+        "release/0.9.0/evidence/baseline-workspace-all-features.log",
+        "release/0.9.0/evidence/galadriel-core-api.diff",
+        "release/0.9.0/api/*"
+      ]
+    },
+    {
+      "purpose": "test and interoperability input fixtures",
+      "patterns": [
+        "crates/*/tests/fixtures/*",
+        "deploy/reference/*"
+      ]
+    },
+    {
+      "purpose": "locked software/toolchain input",
+      "patterns": [
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "deny.toml"
+      ]
+    }
+  ],
+  "external_sources": {
+    "scan_patterns": [
+      "README.md",
+      "SECURITY.md",
+      "CONTRIBUTING.md",
+      "docs/**/*.md",
+      "crates/*/README.md"
+    ],
+    "declared": [
+      {
+        "kind": "requirements_handoff",
+        "title": "Galadriel standalone implementation handoff",
+        "url": "local:release/0.9.0/handoff/PACKAGE_INDEX.md",
+        "purpose": "normative implementation and release review source"
+      }
+    ]
+  },
+  "adaptation_decision": "release/0.9.0/VERSION-ADAPTATION.md"
+}

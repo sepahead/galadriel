@@ -27,7 +27,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.9.0"
 edition = "2021"
 rust-version = "1.89"
 license = "MIT OR Apache-2.0"
@@ -53,10 +53,10 @@ clap = { version = "4", features = ["derive"] }
 anyhow = "1"
 tokio = { version = "1", default-features = false, features = ["sync"] }
 zenoh = { version = "=1.9.0", default-features = false }
-galadriel-core = { version = "0.1.0", path = "crates/galadriel-core" }
-galadriel-sim = { version = "0.1.0", path = "crates/galadriel-sim" }
-galadriel-pid = { version = "0.1.0", path = "crates/galadriel-pid" }
-galadriel-ncp = { version = "0.1.0", path = "crates/galadriel-ncp" }
+galadriel-core = { version = "0.9.0", path = "crates/galadriel-core" }
+galadriel-sim = { version = "0.9.0", path = "crates/galadriel-sim" }
+galadriel-pid = { version = "0.9.0", path = "crates/galadriel-pid" }
+galadriel-ncp = { version = "0.9.0", path = "crates/galadriel-ncp" }
 # Public sibling ecosystem crates pinned to immutable commits. pid-rs currently
 # declares 1.0.0 on main without a v1 tag; this revision includes the 1.0 release
 # commit plus its same-day correctness/CI follow-ups. Galadriel opts into the

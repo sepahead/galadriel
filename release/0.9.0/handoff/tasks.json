@@ -1,0 +1,1207 @@
+{
+  "schema": "galadriel.handoff-task-inventory.v1",
+  "source": "release/0.9.0/handoff/GALADRIEL_V1_0_AGENT_TASK_LEDGER.yaml",
+  "source_sha256": "f654ec83d2da6b3761f9922dd7ea130a6e1dd011012e72a7e113d52af1c37e58",
+  "tasks": [
+    {
+      "id": "T000",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Create an immutable audit manifest for every repository, toolchain, dataset and external paper used.",
+      "priority": "release_blocker",
+      "dependencies": [
+
+      ]
+    },
+    {
+      "id": "T001",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Write a normative 1.0 claims matrix separating implemented, validated, deployment-qualified and explicitly unclaimed behavior.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T000"
+      ]
+    },
+    {
+      "id": "T002",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Define the exact statistical estimands for every report field and verdict.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T001"
+      ]
+    },
+    {
+      "id": "T003",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Write a threat model covering spoofing, correlated compromise, missingness, timing faults, route confusion and denial of service.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T002"
+      ]
+    },
+    {
+      "id": "T004",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Define advisory-only authority invariants and machine-testable non-widening rules.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T003"
+      ]
+    },
+    {
+      "id": "T005",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Choose the stable crate and feature surface; remove accidental public APIs.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T004"
+      ]
+    },
+    {
+      "id": "T006",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Resolve licensing, citation, authorship, support and security-contact metadata.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T005"
+      ]
+    },
+    {
+      "id": "T007",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Replace mutable-version dependencies with immutable release or revision pins for qualification.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T006"
+      ]
+    },
+    {
+      "id": "T008",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Create a requirement-to-evidence ledger with no prose-only closure.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T007"
+      ]
+    },
+    {
+      "id": "T009",
+      "phase": 1,
+      "phase_title": "Freeze claims, estimands, threat model and release identity",
+      "title": "Declare the 1.0 release candidate branch, freeze window and change-control rules.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T008"
+      ]
+    },
+    {
+      "id": "T010",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Introduce domain types for track, modality, projection context, frozen prior, epoch, session and stream position.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T009"
+      ]
+    },
+    {
+      "id": "T011",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Separate invalid input, insufficient evidence, anomaly evidence and internal fault in the public result model.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T010"
+      ]
+    },
+    {
+      "id": "T012",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Make every detector configuration validated at construction and immutable thereafter.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T011"
+      ]
+    },
+    {
+      "id": "T013",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Eliminate Boolean configuration where a closed enum or capability type is required.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T012"
+      ]
+    },
+    {
+      "id": "T014",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Define deterministic state-transition tables for observation, miss, rejection, heartbeat, timeout and reset events.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T013"
+      ]
+    },
+    {
+      "id": "T015",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Make reset and epoch rollover explicit, auditable operations rather than implicit state clearing.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T014"
+      ]
+    },
+    {
+      "id": "T016",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Version all serialized reports and reject unknown required semantics.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T015"
+      ]
+    },
+    {
+      "id": "T017",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Implement canonical serialization and domain-separated report digests.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T016"
+      ]
+    },
+    {
+      "id": "T018",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Audit numerical conversions, timestamps, integer widths and unsafe JSON number handling.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T017"
+      ]
+    },
+    {
+      "id": "T019",
+      "phase": 2,
+      "phase_title": "Refactor core types, errors, state machines and stable API",
+      "title": "Freeze a minimal stable Rust API and document all panic, allocation and complexity behavior.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T018"
+      ]
+    },
+    {
+      "id": "T020",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Derive and document the exact NIS reference distribution and assumptions for each supported observation model.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T019"
+      ]
+    },
+    {
+      "id": "T021",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Specify behavior for rank-deficient, ill-conditioned and estimated innovation covariance.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T020"
+      ]
+    },
+    {
+      "id": "T022",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Implement robust covariance validation and stable factorization with explicit tolerances.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T021"
+      ]
+    },
+    {
+      "id": "T023",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Define the sequential statistic, reset rule, head-start, sidedness and alarm episode semantics.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T022"
+      ]
+    },
+    {
+      "id": "T024",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Replace repeated-look ambiguity with an explicit alpha-spending, anytime-valid or calibrated sequential procedure.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T023"
+      ]
+    },
+    {
+      "id": "T025",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Control multiplicity across channels, directions, axes and repeated assessments.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T024"
+      ]
+    },
+    {
+      "id": "T026",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Add analytic and simulation tests against chi-square quantiles and known noncentral alternatives.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T025"
+      ]
+    },
+    {
+      "id": "T027",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Measure calibration sensitivity to covariance-scale error, heavy tails and serial dependence.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T026"
+      ]
+    },
+    {
+      "id": "T028",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Define lower-tail anomalies separately from high-magnitude anomalies.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T027"
+      ]
+    },
+    {
+      "id": "T029",
+      "phase": 3,
+      "phase_title": "Prove NIS and sequential-test mathematics and multiplicity control",
+      "title": "Produce machine-readable operating curves with uncertainty intervals for every supported configuration.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T028"
+      ]
+    },
+    {
+      "id": "T030",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "State the exact signed-correlation estimand, sample window and missing-data rule.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T029"
+      ]
+    },
+    {
+      "id": "T031",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "Prove or replace the strict-majority positive-consensus attribution algorithm.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T030"
+      ]
+    },
+    {
+      "id": "T032",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "Define dyad, tie, no-clique, contradictory-axis and partial-readiness behavior.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T031"
+      ]
+    },
+    {
+      "id": "T033",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "Control pairwise and axis-wise multiplicity under the actual decision rule.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T032"
+      ]
+    },
+    {
+      "id": "T034",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "Add robust alternatives or explicitly reject non-Gaussian/outlier-sensitive use cases.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T033"
+      ]
+    },
+    {
+      "id": "T035",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "Make producer-attested geometry validation mandatory before cross-modal comparison.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T034"
+      ]
+    },
+    {
+      "id": "T036",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "Prohibit native mixed-frame innovation vectors from being used as silent fallbacks.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T035"
+      ]
+    },
+    {
+      "id": "T037",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "Test sign inversions, axis swaps, unit mismatches, frame mismatches and stale context identifiers.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T036"
+      ]
+    },
+    {
+      "id": "T038",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "Quantify power and false attribution under correlated channels and common-mode errors.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T037"
+      ]
+    },
+    {
+      "id": "T039",
+      "phase": 4,
+      "phase_title": "Prove signed-correlation, geometry and attribution semantics",
+      "title": "Publish attribution as bounded inconsistency evidence, never causal or maliciousness classification.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T038"
+      ]
+    },
+    {
+      "id": "T040",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Write a complete fusion truth table for every magnitude, correlation, PID and availability state.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T039"
+      ]
+    },
+    {
+      "id": "T041",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Prove that unavailable evidence cannot become Nominal.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T040"
+      ]
+    },
+    {
+      "id": "T042",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Prove that contradictory positive evidence cannot be erased by another layer.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T041"
+      ]
+    },
+    {
+      "id": "T043",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Separate anomaly severity, channel attribution, availability and confidence in the report.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T042"
+      ]
+    },
+    {
+      "id": "T044",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Model ordinary missingness explicitly and stop treating it as an incidental edge case.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T043"
+      ]
+    },
+    {
+      "id": "T045",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Design availability budgets and readiness metrics independent of anomaly statistics.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T044"
+      ]
+    },
+    {
+      "id": "T046",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Add bounded hysteresis or episode semantics without hiding repeated alerts.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T045"
+      ]
+    },
+    {
+      "id": "T047",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Define exact downgrade behavior when a configured modality becomes stale.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T046"
+      ]
+    },
+    {
+      "id": "T048",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Create metamorphic tests for monotonic conservatism of fusion.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T047"
+      ]
+    },
+    {
+      "id": "T049",
+      "phase": 5,
+      "phase_title": "Redesign conservative fusion, abstention and availability behavior",
+      "title": "Require calibration acceptance criteria for every default threshold and window.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T048"
+      ]
+    },
+    {
+      "id": "T050",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Pin a released pid-rs 1.x version and record its algorithm and schema identities.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T049"
+      ]
+    },
+    {
+      "id": "T051",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Define which pid-rs estimators and support assumptions are permitted.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T050"
+      ]
+    },
+    {
+      "id": "T052",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Keep PID diagnostics feature-gated and absent from the default authority-neutral core.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T051"
+      ]
+    },
+    {
+      "id": "T053",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Require report-first APIs and prohibit raw scalar-only decisions.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T052"
+      ]
+    },
+    {
+      "id": "T054",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Record preprocessing, quantization, jitter/noise and seed choices as estimand-changing provenance.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T053"
+      ]
+    },
+    {
+      "id": "T055",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Prove PID cannot repair failed geometry, lifecycle or signed-consensus prerequisites.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T054"
+      ]
+    },
+    {
+      "id": "T056",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Design nested validation to prevent tuning PID gates on evaluation streams.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T055"
+      ]
+    },
+    {
+      "id": "T057",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Add synthetic regimes where PID helps, does not help and actively misleads.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T056"
+      ]
+    },
+    {
+      "id": "T058",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Mark unsupported high-dimensional or mixed-support cases as not estimable.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T057"
+      ]
+    },
+    {
+      "id": "T059",
+      "phase": 6,
+      "phase_title": "Qualify optional pid-rs evidence without contaminating core claims",
+      "title": "Create cross-repository conformance tests against pid-rs golden reports.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T058"
+      ]
+    },
+    {
+      "id": "T060",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Freeze strict sidecar envelope schemas and distinguish them from normative NCP SensorFrame messages.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T059"
+      ]
+    },
+    {
+      "id": "T061",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Adopt NCP 1.0 session, generation, epoch and stream-position semantics where applicable.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T060"
+      ]
+    },
+    {
+      "id": "T062",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Enforce exact route derivation and producer, registry, context and prior identity binding.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T061"
+      ]
+    },
+    {
+      "id": "T063",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Bound payload bytes before or at transport ingress; document any lower-layer allocation gap.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T062"
+      ]
+    },
+    {
+      "id": "T064",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Implement replay high-water marks with explicit capacity and epoch rollover policy.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T063"
+      ]
+    },
+    {
+      "id": "T065",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Make lifecycle completeness and heartbeat liveness independently observable.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T064"
+      ]
+    },
+    {
+      "id": "T066",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Prove the first terminal ingress fault prevents later FrameReady emission.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T065"
+      ]
+    },
+    {
+      "id": "T067",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Reject duplicate, reordered, cross-session, cross-producer and unsafe-number payloads.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T066"
+      ]
+    },
+    {
+      "id": "T068",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Build two-process and real-router allow/deny tests with retained mTLS and ACL evidence.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T067"
+      ]
+    },
+    {
+      "id": "T069",
+      "phase": 7,
+      "phase_title": "Harden NCP ingestion, lifecycle assembly and replay boundaries",
+      "title": "Specify compatibility and migration behavior when NCP wire revisions change.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T068"
+      ]
+    },
+    {
+      "id": "T070",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Replace demonstration-only studies with preregistered calibration protocols.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T069"
+      ]
+    },
+    {
+      "id": "T071",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Separate threshold-development, validation and final holdout seeds and streams.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T070"
+      ]
+    },
+    {
+      "id": "T072",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Estimate false-alert episodes per track-hour and mission-level alarm probability.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T071"
+      ]
+    },
+    {
+      "id": "T073",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Estimate conditional delay, miss probability, attribution error and abstention separately.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T072"
+      ]
+    },
+    {
+      "id": "T074",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Use block/bootstrap or model-based uncertainty appropriate for serially dependent streams.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T073"
+      ]
+    },
+    {
+      "id": "T075",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Run broad grids over autocorrelation, covariance error, missingness and attack duration.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T074"
+      ]
+    },
+    {
+      "id": "T076",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Add recorded pre-gate Crebain streams with attested projection and lifecycle evidence.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T075"
+      ]
+    },
+    {
+      "id": "T077",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Require external datasets or independently authored generators for at least one validation arm.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T076"
+      ]
+    },
+    {
+      "id": "T078",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Publish negative results and failure regions, not only favorable scenarios.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T077"
+      ]
+    },
+    {
+      "id": "T079",
+      "phase": 8,
+      "phase_title": "Calibrate synthetic and recorded-stream operating characteristics",
+      "title": "Set explicit acceptance thresholds or keep the affected operational claim unclaimed.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T078"
+      ]
+    },
+    {
+      "id": "T080",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Complete a security review of parsers, route construction, configuration and cryptographic handoff assumptions.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T079"
+      ]
+    },
+    {
+      "id": "T081",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Fuzz every public decoder and state-machine event boundary with persistent corpora.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T080"
+      ]
+    },
+    {
+      "id": "T082",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Run mutation testing on validation, replay, abstention and non-widening logic.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T081"
+      ]
+    },
+    {
+      "id": "T083",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Prove bounded memory for tracks, modalities, windows, reordering, prior identities and payloads.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T082"
+      ]
+    },
+    {
+      "id": "T084",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Benchmark worst-case latency and allocation at configured maxima.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T083"
+      ]
+    },
+    {
+      "id": "T085",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Test clock jumps, delayed heartbeats, duplicate callbacks, cancellation and shutdown races.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T084"
+      ]
+    },
+    {
+      "id": "T086",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Remove secrets and private keys from logs, reports, examples and retained evidence.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T085"
+      ]
+    },
+    {
+      "id": "T087",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Generate SBOM, license, vulnerability and provenance attestations.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T086"
+      ]
+    },
+    {
+      "id": "T088",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Test under Miri, sanitizers and supported platforms where applicable.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T087"
+      ]
+    },
+    {
+      "id": "T089",
+      "phase": 9,
+      "phase_title": "Harden security, resource limits, fuzzing and fault injection",
+      "title": "Create a vulnerability-response and schema-revocation procedure.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T088"
+      ]
+    },
+    {
+      "id": "T090",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Keep Galadriel optional in all ecosystem profiles.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T089"
+      ]
+    },
+    {
+      "id": "T091",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Define a generic advisory evidence contract not coupled to Haldir implementation types.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T090"
+      ]
+    },
+    {
+      "id": "T092",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Make record-only the only initially qualified downstream policy effect.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T091"
+      ]
+    },
+    {
+      "id": "T093",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Test Galadriel absence, startup failure and runtime loss without changing baseline authorization.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T092"
+      ]
+    },
+    {
+      "id": "T094",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Test Haldir consumption without importing Galadriel into the authorization kernel.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T093"
+      ]
+    },
+    {
+      "id": "T095",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Update Crebain producer adapters only where needed for truthful contract compatibility.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T094"
+      ]
+    },
+    {
+      "id": "T096",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Do not redesign Crebain internal communication or make NCP mandatory for its internals.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T095"
+      ]
+    },
+    {
+      "id": "T097",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Document Engram/NCP relationships without making Galadriel an Engram prerequisite.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T096"
+      ]
+    },
+    {
+      "id": "T098",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Add compatibility fixtures for NCP, Crebain, Haldir and pid-rs exact claimed versions.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T097"
+      ]
+    },
+    {
+      "id": "T099",
+      "phase": 10,
+      "phase_title": "Complete ecosystem adapters and downstream conformance",
+      "title": "Remove ecosystem claims that lack a retained cross-repository qualification run.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T098"
+      ]
+    },
+    {
+      "id": "T100",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Rewrite README around honest 1.0 scope, quick start, evidence status and limitations.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T099"
+      ]
+    },
+    {
+      "id": "T101",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Add ARCHITECTURE, STATISTICAL-CONTRACT, THREAT-MODEL and ADVISORY-BOUNDARY documents.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T100"
+      ]
+    },
+    {
+      "id": "T102",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Write a complete 0.x-to-1.0 migration guide with compile and semantic breaks.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T101"
+      ]
+    },
+    {
+      "id": "T103",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Publish schemas, examples and golden vectors as versioned artifacts.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T102"
+      ]
+    },
+    {
+      "id": "T104",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Add operator runbooks for offline replay, calibration and secure observation.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T103"
+      ]
+    },
+    {
+      "id": "T105",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Make every default and threshold discoverable and justified.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T104"
+      ]
+    },
+    {
+      "id": "T106",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Update GitHub description, topics, release notes, citation and package metadata.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T105"
+      ]
+    },
+    {
+      "id": "T107",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Define SemVer policy for API, report schema, detector algorithm and calibration profiles.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T106"
+      ]
+    },
+    {
+      "id": "T108",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Create support tiers and an end-of-life policy for old schemas.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T107"
+      ]
+    },
+    {
+      "id": "T109",
+      "phase": 11,
+      "phase_title": "Finish documentation, packaging, migration and governance",
+      "title": "Ensure documentation examples execute in CI from clean checkouts.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T108"
+      ]
+    },
+    {
+      "id": "T110",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Run the complete locked CI matrix on the exact release commit.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T109"
+      ]
+    },
+    {
+      "id": "T111",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Commission an independent clean-room build and numerical reproduction.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T110"
+      ]
+    },
+    {
+      "id": "T112",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Re-run calibration from immutable inputs and compare checksums.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T111"
+      ]
+    },
+    {
+      "id": "T113",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Verify every requirement ledger entry has acceptable evidence or is explicitly not claimed.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T112"
+      ]
+    },
+    {
+      "id": "T114",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Create signed source archives, SBOMs, checksums and provenance attestations.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T113"
+      ]
+    },
+    {
+      "id": "T115",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Rehearse publish and rollback without changing the candidate.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T114"
+      ]
+    },
+    {
+      "id": "T116",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Tag only after all evidence is bound to the exact commit.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T115"
+      ]
+    },
+    {
+      "id": "T117",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Publish crates and release assets in a controlled order and verify registry contents.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T116"
+      ]
+    },
+    {
+      "id": "T118",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Run post-publication install, demo, replay and schema verification.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T117"
+      ]
+    },
+    {
+      "id": "T119",
+      "phase": 12,
+      "phase_title": "Run independent reproduction and release ceremony",
+      "title": "Record final go/no-go decision, residual risks and post-1.0 monitoring plan.",
+      "priority": "release_blocker",
+      "dependencies": [
+        "T118"
+      ]
+    }
+  ]
+}

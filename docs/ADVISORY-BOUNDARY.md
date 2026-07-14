@@ -11,6 +11,17 @@ Haldir-style inline authorization gate, but the contract is written to be
 consumer-agnostic. It is **normative for how Galadriel expects to be consumed**; it does
 not describe an implemented advisory publisher, because none exists yet (see §5).
 
+**GLD-090-AUTH-001:** Galadriel output **SHALL** remain advisory and **SHALL NOT**
+create `ALLOW`, change `DENY` to `ALLOW`, add a capability, relax a velocity/slew
+limit, extend a command TTL or lease, refresh a watchdog, or erase an independent
+fault.
+
+**GLD-090-AUTH-002:** Record-only handling **SHALL** leave the complete consumer
+policy snapshot unchanged. A future independently admitted restrict-only handler
+**SHALL** be monotonically non-widening and **SHALL** preserve capability and
+watchdog identities. `validate_advisory_effect` is the machine-testable reference
+for these transitions.
+
 ## 1. What Galadriel is, and is not
 
 - It detects **statistical inconsistency, not truth.** It cannot prove an attributed

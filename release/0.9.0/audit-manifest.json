@@ -1,0 +1,987 @@
+{
+  "adaptation_decision": "release/0.9.0/VERSION-ADAPTATION.md",
+  "artifacts": [
+    {
+      "path": "Cargo.lock",
+      "purpose": "locked software/toolchain input",
+      "sha256": "c3f792764004ad2b2cd4c9aa6d49dfb557b58b716c038c722944d39e3074bf7d",
+      "size_bytes": 107949
+    },
+    {
+      "path": "crates/galadriel-cli/tests/fixtures/replay_three_tracks.jsonl",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "fc28e93567928e27b5511a3c503caf2675e697fc61c806d56bf2491d1ce87866",
+      "size_bytes": 806
+    },
+    {
+      "path": "crates/galadriel-ncp/tests/fixtures/crebain_clean_capture.jsonl",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "154b2b6534659500bc8ef99b53f482692d01f4b3f65d6d52a1e890796eea643c",
+      "size_bytes": 184195
+    },
+    {
+      "path": "crates/galadriel-ncp/tests/fixtures/crebain_registry_v1.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "506ce1437acc20ee5d36fd1e3551dd020095cc4d30d22d959c5df3cca81715a6",
+      "size_bytes": 3053
+    },
+    {
+      "path": "deny.toml",
+      "purpose": "locked software/toolchain input",
+      "sha256": "f9cd0fe7280fbee0c080884f68099e62121740dc39e787392bed11c123f4a498",
+      "size_bytes": 900
+    },
+    {
+      "path": "deploy/reference/SHA256SUMS",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "9522b9dd92e58dc53ddf103d529a64287ce117dc82b59457bc5fc35159d5eef9",
+      "size_bytes": 348
+    },
+    {
+      "path": "deploy/reference/galadriel-handoff.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "c63ad7d1dc5daf00e7545d9169ad30bf8fe69622ca2d4fdd6730b92409de5f6c",
+      "size_bytes": 391
+    },
+    {
+      "path": "deploy/reference/zenoh-observer.json5",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "042e7d7efdfce2fbc5c191858896cfa820455649768f7cf9f902ef0290df28a0",
+      "size_bytes": 702
+    },
+    {
+      "path": "deploy/reference/zenoh-producer.json5",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "4216b40585daed513fda4743fb5b3d91de3518a4ba1a044cba5fd81c1858ba66",
+      "size_bytes": 702
+    },
+    {
+      "path": "deploy/reference/zenoh-router.json5",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "356c40698c18709a240eca7b07007e3cc09806fc6c8b02eeb6d69ce32096c7f4",
+      "size_bytes": 2652
+    },
+    {
+      "path": "evidence/pid-rs-0.4-deterministic-control.patch",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "070d7b61ae773c9fb5d73cab9ba23c642d17110adaf63556e285748cbb20f479",
+      "size_bytes": 490
+    },
+    {
+      "path": "evidence/pid-rs-1.0-migration.json",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "53fc6c9443ca4ad7c855fbe0d60bc46d5b26929dc2995640b4674d110837ff72",
+      "size_bytes": 10561
+    },
+    {
+      "path": "evidence/post-audit-v1.json",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "98f54cc1aa30c0f6deb0c5607fe33c8ff7a8b625bded970535081a147a1dc662",
+      "size_bytes": 1293
+    },
+    {
+      "path": "evidence/results/post-audit-v1-8a0084f/SHA256SUMS",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "fffe25ac3e5135bafab734c41629dec9a8b26e78fb62998098204df3cc2481ad",
+      "size_bytes": 392
+    },
+    {
+      "path": "evidence/results/post-audit-v1-8a0084f/config.json",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "98f54cc1aa30c0f6deb0c5607fe33c8ff7a8b625bded970535081a147a1dc662",
+      "size_bytes": 1293
+    },
+    {
+      "path": "evidence/results/post-audit-v1-8a0084f/manifest.json",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "feaf0414024406c8e8f83c8c7aae7099661bcc10acca07b36a5ab35de550e1de",
+      "size_bytes": 1941
+    },
+    {
+      "path": "evidence/results/post-audit-v1-8a0084f/report.md",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "8e1863d46ad775985de349a8a2ca0dea7051ea63ef6cef0a1b10297068807131",
+      "size_bytes": 8729
+    },
+    {
+      "path": "evidence/results/post-audit-v1-8a0084f/summary.json",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "abc9bba68851caeabddae1ca601cbc8cb0fa115139f4a64ca1fd8a1019707282",
+      "size_bytes": 205049
+    },
+    {
+      "path": "evidence/results/post-audit-v1-8a0084f/trials.jsonl",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "693a2d4d0eeedabb2b2e857d16a52be20cde0dce96a6c0c9e6aa5299193f34c0",
+      "size_bytes": 3847421
+    },
+    {
+      "path": "release/0.9.0/api/galadriel-core.0.9.0.txt",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "cae95242175c43e8f1360dfebaf006fbdd0f0d36635bf1fb10ee0735126216af",
+      "size_bytes": 94437
+    },
+    {
+      "path": "release/0.9.0/api/galadriel-core.baseline.txt",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "c36ee97ac474d13182f018dc90bb80e09714181743a1e89f11f1fe430327b033",
+      "size_bytes": 83785
+    },
+    {
+      "path": "release/0.9.0/evidence/baseline-workspace-all-features.log",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "8f4715c68cb38e851d069573f5b840c455237c343758d27c6f879bb5c23dc509",
+      "size_bytes": 49908
+    },
+    {
+      "path": "release/0.9.0/evidence/galadriel-core-api.diff",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "3d5776ba6201c7244f301f6b2173e94656fe29e2733e4dc861f91a817a7a5c47",
+      "size_bytes": 14998
+    },
+    {
+      "path": "release/0.9.0/handoff/GALADRIEL_V1_0_AGENT_TASK_LEDGER.yaml",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "f654ec83d2da6b3761f9922dd7ea130a6e1dd011012e72a7e113d52af1c37e58",
+      "size_bytes": 340624
+    },
+    {
+      "path": "release/0.9.0/handoff/GALADRIEL_V1_0_ARCHITECTURE.md",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "0d67cbe5e569de836ad0a5ee88f892ea777ad89708cbc01b98e078c6d934f132",
+      "size_bytes": 6455
+    },
+    {
+      "path": "release/0.9.0/handoff/GALADRIEL_V1_0_ARTIFACT_SHA256SUMS.txt",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "5f44ac6712ba7c8ad427ae32dd8454dfc3e2edd5b1b85f749c98e1becad2d0e3",
+      "size_bytes": 927
+    },
+    {
+      "path": "release/0.9.0/handoff/GALADRIEL_V1_0_ARTIFACT_VALIDATION_REPORT.md",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "8c6898fa1c8c8443b3e07d04dcf1052e54d0f7c9a303f543def7aa79f6d67fed",
+      "size_bytes": 1679
+    },
+    {
+      "path": "release/0.9.0/handoff/GALADRIEL_V1_0_CORE_CONTRACT_SCHEMA.json",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "af44825c6a80d9da96774986527905bd62df324ada136c4e23c3cbc2490ee587",
+      "size_bytes": 6690
+    },
+    {
+      "path": "release/0.9.0/handoff/GALADRIEL_V1_0_GO_NO_GO_CHECKLIST.md",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "886e036f78f963996791df5c8c731774acb8de52286d875de9745cb581f9a587",
+      "size_bytes": 2294
+    },
+    {
+      "path": "release/0.9.0/handoff/GALADRIEL_V1_0_MIGRATION_AND_ECOSYSTEM.md",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "0166feeb9b71cfa0aa22d23546fcb023b0375e9c15e4dd7b67f4ad856517c28a",
+      "size_bytes": 4534
+    },
+    {
+      "path": "release/0.9.0/handoff/GALADRIEL_V1_0_RELEASE_BLUEPRINT.md",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "ebe895c6cb5d83ad4cb16b6a7cf0b7e831b2a520577649294e7a6ec5e8b0a7c1",
+      "size_bytes": 349957
+    },
+    {
+      "path": "release/0.9.0/handoff/GALADRIEL_V1_0_RELEASE_MANIFEST_TEMPLATE.json",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "9b00a0f3f8d3980e997bc4d68f11ea4c03dffc42ee3228c551d80305352c6ec3",
+      "size_bytes": 980
+    },
+    {
+      "path": "release/0.9.0/handoff/PACKAGE_INDEX.md",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "93d79149a3df42698f6ef9f1c0e2e2aa6749816e991c1bd7afa0d5da98b84fc9",
+      "size_bytes": 1488
+    },
+    {
+      "path": "release/0.9.0/handoff/tasks.json",
+      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "sha256": "d01f1e8980bc9023766c947730147276c8e5bc6cdf6c2a3525def5f02666c51a",
+      "size_bytes": 38902
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "purpose": "locked software/toolchain input",
+      "sha256": "3e3727651b8a0c0d727b68740cc5769fb40d548dc05a5ea07277fec27765c79d",
+      "size_bytes": 152
+    }
+  ],
+  "audit_date": "2026-07-14",
+  "baseline_repository": {
+    "commit": "017c615e3976eae69c3115aeeb74e9fdb50ec15d",
+    "tree": "bc47c9b1053ade871095e5529136145432683c82",
+    "url": "https://github.com/sepahead/galadriel"
+  },
+  "claims": [
+    {
+      "claim": "The pure core validates finite per-observation NIS inputs and produces evidence-neutral magnitude verdicts with typed invalid-input failures.",
+      "evidence": [
+        "crates/galadriel-core/src/decision.rs",
+        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+      ],
+      "id": "CLM-001",
+      "limitations": "Implementation does not authenticate physical truth, identify attack cause, or establish a calibrated false-alert rate.",
+      "scope": "galadriel-core source behavior under its validated configuration and bounded inputs",
+      "tier": "IMPLEMENTED"
+    },
+    {
+      "claim": "Cross-channel correlation uses only sequence-aligned producer-declared common projections with matching frame, context, and frozen-prior provenance.",
+      "evidence": [
+        "crates/galadriel-core/src/lib.rs",
+        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+      ],
+      "id": "CLM-002",
+      "limitations": "Producer-attested means a provenance claim; cryptographic authenticity exists only when an independently configured transport binds publisher identity.",
+      "scope": "galadriel-core projection extraction and default correlation path",
+      "tier": "IMPLEMENTED"
+    },
+    {
+      "claim": "The NCP adapters bound JSONL/live state, validate versioned producer and lifecycle envelopes, and retain explicit typed terminal faults.",
+      "evidence": [
+        "crates/galadriel-ncp/src",
+        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+      ],
+      "id": "CLM-003",
+      "limitations": "No external actual-binary mTLS/ACL campaign or NCP 1.0 conformance is claimed.",
+      "scope": "galadriel-ncp component and in-process receiver behavior at the exact NCP 0.8 pin",
+      "tier": "IMPLEMENTED"
+    },
+    {
+      "claim": "The checked-in synthetic and fixture test suites pass on the recorded Rust 1.89 macOS arm64 baseline.",
+      "evidence": [
+        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+      ],
+      "id": "CLM-004",
+      "limitations": "A passing component suite is not independent field validation, a performance guarantee, or evidence for untested platforms.",
+      "scope": "exact baseline commit, lockfile, toolchain, commands, seeds, fixtures and in-process transports recorded by the audit manifest",
+      "tier": "VALIDATED"
+    },
+    {
+      "claim": "Galadriel output is advisory evidence that cannot grant or widen authority under the machine-testable consumer-effect contract.",
+      "evidence": [
+        "crates/galadriel-core/src/authority.rs",
+        "docs/ADVISORY-BOUNDARY.md"
+      ],
+      "id": "CLM-005",
+      "limitations": "No downstream consumer adapter is included or qualified in 0.9.0.",
+      "scope": "galadriel-core advisory authority model and documented consumer contract",
+      "tier": "IMPLEMENTED"
+    },
+    {
+      "claim": "Galadriel establishes sensor truth, attack intent, or a calibrated posterior probability.",
+      "evidence": [],
+      "id": "CLM-006",
+      "limitations": "Consistency can be preserved by coordinated or moment-matched compromise; every release output remains calibrated_posterior=false.",
+      "scope": "all detectors, reports and integrations",
+      "tier": "NOT_CLAIMED"
+    },
+    {
+      "claim": "The default profile meets a deployment false-alert, detection, latency, or availability acceptance threshold.",
+      "evidence": [],
+      "id": "CLM-007",
+      "limitations": "Existing retained evidence is diagnostic and includes unacceptable repeated-look false alerts and missingness abstention.",
+      "scope": "operational, field, mission and safety performance",
+      "tier": "NOT_CLAIMED"
+    },
+    {
+      "claim": "Galadriel 0.9.0 is qualified on NCP 1.0 or on a released pid-rs 1.x artifact.",
+      "evidence": [],
+      "id": "CLM-008",
+      "limitations": "The selected NCP dependency is immutable v0.8.0; the pid-rs revision is immutable but lacks an upstream v1 release tag/artifact.",
+      "scope": "optional ecosystem dependencies",
+      "tier": "NOT_CLAIMED"
+    },
+    {
+      "claim": "Crebain, Haldir, Prisoma or Paper2Brain provides a deployment-qualified Galadriel 0.9.0 integration.",
+      "evidence": [],
+      "id": "CLM-009",
+      "limitations": "Only the Crebain reciprocal component fixture exists; no accepted recorded projected stream, downstream adapter, or secured deployment campaign exists.",
+      "scope": "cross-repository ecosystem composition",
+      "tier": "NOT_CLAIMED"
+    },
+    {
+      "claim": "Galadriel 0.9.0 crates are published on crates.io or carry a production-support promise.",
+      "evidence": [],
+      "id": "CLM-010",
+      "limitations": "All workspace packages remain publish=false; 0.9.0 is a GitHub source release for supervisor review.",
+      "scope": "package publication and operational support",
+      "tier": "NOT_CLAIMED"
+    },
+    {
+      "claim": "Galadriel 0.9.0 has a project DOI or Zenodo record.",
+      "evidence": [],
+      "id": "CLM-011",
+      "limitations": "The author will add DOI/Zenodo metadata only after this supervisor-review release.",
+      "scope": "citation and archival identity",
+      "tier": "NOT_CLAIMED"
+    }
+  ],
+  "external_sources": [
+    {
+      "kind": "requirements_handoff",
+      "purpose": "normative implementation and release review source",
+      "title": "Galadriel standalone implementation handoff",
+      "url": "local:release/0.9.0/handoff/PACKAGE_INDEX.md"
+    },
+    {
+      "kind": "external_reference",
+      "line": 5,
+      "path": "CONTRIBUTING.md",
+      "url": "https://github.com/sepahead"
+    },
+    {
+      "kind": "external_reference",
+      "line": 10,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/galadriel/actions/workflows/ci.yml"
+    },
+    {
+      "kind": "external_reference",
+      "line": 10,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg"
+    },
+    {
+      "kind": "external_reference",
+      "line": 11,
+      "path": "README.md",
+      "url": "https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg"
+    },
+    {
+      "kind": "external_reference",
+      "line": 12,
+      "path": "README.md",
+      "url": "https://img.shields.io/badge/rust-1.89%2B-orange.svg"
+    },
+    {
+      "kind": "external_reference",
+      "line": 13,
+      "path": "README.md",
+      "url": "https://img.shields.io/badge/release-0.9.0-blue.svg"
+    },
+    {
+      "kind": "external_reference",
+      "line": 14,
+      "path": "README.md",
+      "url": "https://img.shields.io/badge/status-supervisor%20review-orange.svg"
+    },
+    {
+      "kind": "external_reference",
+      "line": 15,
+      "path": "README.md",
+      "url": "https://img.shields.io/badge/unsafe-forbidden-success.svg"
+    },
+    {
+      "kind": "external_reference",
+      "line": 320,
+      "path": "README.md",
+      "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
+    },
+    {
+      "kind": "external_reference",
+      "line": 384,
+      "path": "README.md",
+      "url": "https://github.com/sepahead"
+    },
+    {
+      "kind": "external_reference",
+      "line": 141,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138"
+    },
+    {
+      "kind": "external_reference",
+      "line": 143,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/1004.2515"
+    },
+    {
+      "kind": "external_reference",
+      "line": 146,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149"
+    },
+    {
+      "kind": "external_reference",
+      "line": 152,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2311.06373"
+    },
+    {
+      "kind": "external_reference",
+      "line": 154,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2008.09535"
+    },
+    {
+      "kind": "external_reference",
+      "line": 164,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/1411.2832"
+    },
+    {
+      "kind": "external_reference",
+      "line": 166,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2105.00769"
+    },
+    {
+      "kind": "external_reference",
+      "line": 172,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/1604.03006"
+    },
+    {
+      "kind": "external_reference",
+      "line": 174,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/1411.2003"
+    },
+    {
+      "kind": "external_reference",
+      "line": 176,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/1903.09280"
+    },
+    {
+      "kind": "external_reference",
+      "line": 182,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf"
+    },
+    {
+      "kind": "external_reference",
+      "line": 182,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.eurekalert.org/news-releases/524632"
+    },
+    {
+      "kind": "external_reference",
+      "line": 182,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.gpsworld.com/drone-hack/"
+    },
+    {
+      "kind": "external_reference",
+      "line": 183,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://rntfnd.org/2024/02/03/ukraine-will-spoof-gps-across-the-country-to-stop-russian-drones-new-scientist/"
+    },
+    {
+      "kind": "external_reference",
+      "line": 183,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones"
+    },
+    {
+      "kind": "external_reference",
+      "line": 183,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/"
+    },
+    {
+      "kind": "external_reference",
+      "line": 183,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.jpost.com/defense-and-tech/article-894907"
+    },
+    {
+      "kind": "external_reference",
+      "line": 184,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2106.09249"
+    },
+    {
+      "kind": "external_reference",
+      "line": 184,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://github.com/ASGuard-UCI/MSF-ADV"
+    },
+    {
+      "kind": "external_reference",
+      "line": 185,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2106.07098"
+    },
+    {
+      "kind": "external_reference",
+      "line": 185,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
+    },
+    {
+      "kind": "external_reference",
+      "line": 186,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2205.04662"
+    },
+    {
+      "kind": "external_reference",
+      "line": 187,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138"
+    },
+    {
+      "kind": "external_reference",
+      "line": 188,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/1004.2515"
+    },
+    {
+      "kind": "external_reference",
+      "line": 189,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149"
+    },
+    {
+      "kind": "external_reference",
+      "line": 27,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.eurekalert.org/news-releases/524632"
+    },
+    {
+      "kind": "external_reference",
+      "line": 28,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.gpsworld.com/drone-hack/"
+    },
+    {
+      "kind": "external_reference",
+      "line": 29,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf"
+    },
+    {
+      "kind": "external_reference",
+      "line": 36,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/"
+    },
+    {
+      "kind": "external_reference",
+      "line": 37,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones"
+    },
+    {
+      "kind": "external_reference",
+      "line": 38,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://rntfnd.org/2024/02/03/ukraine-will-spoof-gps-across-the-country-to-stop-russian-drones-new-scientist/"
+    },
+    {
+      "kind": "external_reference",
+      "line": 42,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.jpost.com/defense-and-tech/article-894907"
+    },
+    {
+      "kind": "external_reference",
+      "line": 61,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2106.09249"
+    },
+    {
+      "kind": "external_reference",
+      "line": 62,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://github.com/ASGuard-UCI/MSF-ADV"
+    },
+    {
+      "kind": "external_reference",
+      "line": 67,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
+    },
+    {
+      "kind": "external_reference",
+      "line": 68,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2106.07098"
+    },
+    {
+      "kind": "external_reference",
+      "line": 83,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2205.04662"
+    },
+    {
+      "kind": "external_reference",
+      "line": 88,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.mdpi.com/1424-8220/18/5/1305"
+    },
+    {
+      "kind": "external_reference",
+      "line": 334,
+      "path": "docs/PAPER.md",
+      "url": "https://arxiv.org/abs/2311.06373"
+    },
+    {
+      "kind": "external_reference",
+      "line": 335,
+      "path": "docs/PAPER.md",
+      "url": "https://arxiv.org/abs/1604.03006"
+    },
+    {
+      "kind": "external_reference",
+      "line": 336,
+      "path": "docs/PAPER.md",
+      "url": "https://arxiv.org/abs/2106.07098"
+    },
+    {
+      "kind": "external_reference",
+      "line": 338,
+      "path": "docs/PAPER.md",
+      "url": "https://arxiv.org/abs/2002.03356"
+    },
+    {
+      "kind": "external_reference",
+      "line": 341,
+      "path": "docs/PAPER.md",
+      "url": "https://arxiv.org/abs/1004.2515"
+    },
+    {
+      "kind": "paper",
+      "line": 117,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.ion.org/publications/abstract.cfm?articleID=100547"
+    },
+    {
+      "kind": "paper",
+      "line": 118,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2025.1567301/full"
+    },
+    {
+      "kind": "paper",
+      "line": 119,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7570696/"
+    },
+    {
+      "kind": "paper",
+      "line": 141,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.wiley.com/en-us/Estimation+with+Applications+to+Tracking+and+Navigation-p-9780471221272"
+    },
+    {
+      "kind": "paper",
+      "line": 142,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://doi.org/10.1093/biomet/41.1-2.100"
+    },
+    {
+      "kind": "paper",
+      "line": 159,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.mdpi.com/1424-8220/18/5/1305"
+    },
+    {
+      "kind": "paper",
+      "line": 161,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/2205.04662"
+    },
+    {
+      "kind": "paper",
+      "line": 163,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/2106.09249"
+    },
+    {
+      "kind": "paper",
+      "line": 164,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/2106.07098"
+    },
+    {
+      "kind": "paper",
+      "line": 185,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/1205.5073"
+    },
+    {
+      "kind": "paper",
+      "line": 187,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/1802.09651"
+    },
+    {
+      "kind": "paper",
+      "line": 207,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/2103.00883"
+    },
+    {
+      "kind": "paper",
+      "line": 224,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://anavs.com/wp-content/uploads/2025/10/Detection_and_Mitigation_of_Jamming_Meaconing_and_Spoofing_based_on_Machine_Learning_and_Multi_Sensor_Data.pdf"
+    },
+    {
+      "kind": "paper",
+      "line": 241,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://dl.acm.org/doi/10.1145/2810103.2813679"
+    },
+    {
+      "kind": "paper",
+      "line": 444,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.ion.org/publications/abstract.cfm?articleID=100547"
+    },
+    {
+      "kind": "paper",
+      "line": 445,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2025.1567301/full"
+    },
+    {
+      "kind": "paper",
+      "line": 446,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.mdpi.com/2072-4292/14/19/4826"
+    },
+    {
+      "kind": "paper",
+      "line": 447,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://navi.ion.org/content/68/2/243"
+    },
+    {
+      "kind": "paper",
+      "line": 448,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/1205.5073"
+    },
+    {
+      "kind": "paper",
+      "line": 450,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/1802.09651"
+    },
+    {
+      "kind": "paper",
+      "line": 451,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/2103.00883"
+    },
+    {
+      "kind": "paper",
+      "line": 452,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://dl.acm.org/doi/10.1145/2810103.2813679"
+    },
+    {
+      "kind": "paper",
+      "line": 453,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://anavs.com/wp-content/uploads/2025/10/Detection_and_Mitigation_of_Jamming_Meaconing_and_Spoofing_based_on_Machine_Learning_and_Multi_Sensor_Data.pdf"
+    },
+    {
+      "kind": "paper",
+      "line": 74,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.mdpi.com/2072-4292/14/19/4826"
+    },
+    {
+      "kind": "paper",
+      "line": 75,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://navi.ion.org/content/68/2/243"
+    },
+    {
+      "kind": "paper",
+      "line": 96,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.mdpi.com/2072-4292/14/19/4826"
+    }
+  ],
+  "git_dependencies": [
+    {
+      "commit": "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+      "name": "ncp-core",
+      "source": "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+      "version": "0.8.0"
+    },
+    {
+      "commit": "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+      "name": "ncp-zenoh",
+      "source": "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+      "version": "0.8.0"
+    },
+    {
+      "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "name": "pid-core",
+      "source": "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "version": "1.0.0"
+    },
+    {
+      "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "name": "pid-runlog",
+      "source": "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "version": "1.0.0"
+    }
+  ],
+  "normative_documents": [
+    {
+      "path": "release/0.9.0/README.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "2211d5cd62e0f9395273d1679caafc65e46a2c542e46b37f4b3d1586e3cc64e9",
+      "size_bytes": 2313
+    },
+    {
+      "path": "release/0.9.0/VERSION-ADAPTATION.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "44256e7113dbd4c9114dfb2a42dcebec38c79c24aaa860c423b67a938ab47791",
+      "size_bytes": 2236
+    },
+    {
+      "path": "docs/CLAIMS.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "fd8c949d7cd6e30420d7d7f5ee5d2cf809e32fd7ea4d9b48d992ef7e3ffd5d43",
+      "size_bytes": 1539
+    },
+    {
+      "path": "docs/STATISTICAL-CONTRACT.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "f8b1a74cb4b38ca38e7cf1e955e4f75457608f94756059e5ee7528f20e8116fb",
+      "size_bytes": 8448
+    },
+    {
+      "path": "docs/THREAT-MODEL.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "e6c050facda72d60ce49f480e146c171b5f6ac4b4fa750cd7b2ebeb06be6b137",
+      "size_bytes": 7624
+    },
+    {
+      "path": "docs/ADVISORY-BOUNDARY.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "4430c396b1a273d769055c5dc6857c1eaae0e57a3430252aba1ce52d0c6e9156",
+      "size_bytes": 11155
+    },
+    {
+      "path": "docs/API-SURFACE.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "00bf3627610554ff9213b9bb2f976807a822969a15644e9181564722fe8040b0",
+      "size_bytes": 1936
+    },
+    {
+      "path": "SUPPORT.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "9929b9e47a3ce2ed22272105f927bd1f0a8ea93a961fd7658bd3f7d34ef80ccb",
+      "size_bytes": 986
+    },
+    {
+      "path": "docs/DEPENDENCY-POLICY.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "68d17a5e8a8925048bd5c65a5b30c092ab28b4280981e51d335d77a44da9ac4d",
+      "size_bytes": 1519
+    },
+    {
+      "path": "RELEASE-POLICY.md",
+      "purpose": "normative 0.9.0 release contract",
+      "sha256": "ef281a7c7a0e96c6bfd627997b1b98dd97f7b7bf42ba004b6d41d214825c995b",
+      "size_bytes": 2383
+    }
+  ],
+  "release": {
+    "authors": [
+      "Sepehr Mahmoudian"
+    ],
+    "license": "MIT OR Apache-2.0",
+    "project_doi": null,
+    "publication_channel": "GitHub source release",
+    "version": "0.9.0",
+    "zenodo_record": null
+  },
+  "repositories": [
+    {
+      "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "name": "pid-rs",
+      "qualification": "PINNED_COMPONENT",
+      "role": "optional PID research dependency selected by Cargo.lock",
+      "url": "https://github.com/sepahead/pid-rs"
+    },
+    {
+      "commit": "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+      "name": "NCP",
+      "qualification": "PINNED_COMPONENT",
+      "role": "optional NCP 0.8 transport dependency selected by Cargo.lock",
+      "url": "https://github.com/sepahead/NCP"
+    },
+    {
+      "commit": "4c311900ade5668200a48d56fb191be1916b884a",
+      "name": "Crebain",
+      "qualification": "RECIPROCAL_FIXTURE",
+      "role": "reciprocal producer-contract fixture and source pin",
+      "url": "https://github.com/sepahead/crebain"
+    },
+    {
+      "commit": "5f7d183625a982741c51958e2d10bc12bb628ca0",
+      "name": "Haldir",
+      "qualification": "NOT_CLAIMED",
+      "role": "prospective downstream advisory consumer",
+      "url": "https://github.com/sepahead/haldir"
+    },
+    {
+      "commit": "0968128062f30da5c04f3f31c23f6ce8e0d95d36",
+      "name": "Prisoma",
+      "qualification": "NOT_CLAIMED",
+      "role": "ecosystem inventory; not a Galadriel consumer",
+      "url": "https://github.com/sepahead/prisoma"
+    },
+    {
+      "commit": "9845c31bc5bae4746120858037b27f9c9ed2f445",
+      "name": "Paper2Brain",
+      "qualification": "NOT_CLAIMED",
+      "role": "active Engram application inventory; no Galadriel integration evidence",
+      "url": "https://github.com/sepahead/Paper2Brain"
+    }
+  ],
+  "requirements": {
+    "COMPLETE": 10,
+    "NOT_CLAIMED": 0,
+    "OPEN": 110
+  },
+  "schema": "galadriel.release-audit-manifest.v1",
+  "toolchains": [
+    {
+      "identity": "29483883eed69d5fb4db01964cdf2af4d86e9cb2; aarch64-apple-darwin; LLVM 20.1.7",
+      "name": "rustc",
+      "role": "pinned build and test compiler",
+      "version": "1.89.0"
+    },
+    {
+      "identity": "c24e10642 2025-06-23",
+      "name": "cargo",
+      "role": "pinned workspace package manager",
+      "version": "1.89.0"
+    },
+    {
+      "identity": "CPython 3.14.6",
+      "name": "python",
+      "role": "standard-library release audit and secure-deployment tooling",
+      "version": "3.14.6"
+    },
+    {
+      "identity": "arm64",
+      "name": "host",
+      "role": "local baseline evidence environment",
+      "version": "Darwin 25.5.0"
+    },
+    {
+      "identity": "cargo-public-api 0.52.0",
+      "name": "cargo-public-api",
+      "role": "stable-source-API inventory",
+      "version": "0.52.0"
+    }
+  ]
+}

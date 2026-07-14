@@ -10,7 +10,8 @@
   <a href="https://github.com/sepahead/galadriel/actions/workflows/ci.yml"><img src="https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License: MIT OR Apache-2.0">
   <img src="https://img.shields.io/badge/rust-1.89%2B-orange.svg" alt="Rust 1.89+">
-  <img src="https://img.shields.io/badge/status-research%20prototype-orange.svg" alt="status: research prototype">
+  <img src="https://img.shields.io/badge/release-0.9.0-blue.svg" alt="release: 0.9.0">
+  <img src="https://img.shields.io/badge/status-supervisor%20review-orange.svg" alt="status: supervisor review">
   <img src="https://img.shields.io/badge/unsafe-forbidden-success.svg" alt="unsafe forbidden">
 </p>
 
@@ -190,11 +191,15 @@ experimental raw-scalar pipeline. See the [0.4→1.0 migration record](docs/PID_
 
 ## Project status
 
-**Version `0.1.0`, pre-1.0, research prototype.** The API is not frozen. The
-`research-snapshot-v0.1.0` tag is explicitly non-production, and every workspace package
-currently sets `publish = false`. Unit, property, integration, and synthetic-study tests
-exercise the implementation, but no current evidence supports calling it field-validated
-or production-ready.
+**Version `0.9.0`, pre-1.0 supervisor-review release.** The `galadriel-core` source
+surface is frozen for the 0.9.x line; supporting crates and wire adapters remain
+experimental. Every workspace package sets `publish = false`, so this is a GitHub source
+release rather than a crates.io publication. Unit, property, integration, and synthetic
+study tests exercise the implementation, but no current evidence supports calling it
+field-validated or production-ready. The normative [claims matrix](docs/CLAIMS.md),
+[statistical contract](docs/STATISTICAL-CONTRACT.md), [threat model](docs/THREAT-MODEL.md),
+and [API policy](docs/API-SURFACE.md) state the exact boundary. No project DOI or Zenodo
+record is claimed yet.
 
 | Crate | Role | Evidence level |
 |---|---|---|
@@ -351,6 +356,14 @@ the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md) for the exact externa
 
 ## Documentation
 
+- [`docs/CLAIMS.md`](docs/CLAIMS.md) — normative 0.9.0 claim tiers and non-claims.
+- [`docs/STATISTICAL-CONTRACT.md`](docs/STATISTICAL-CONTRACT.md) — exact report-field
+  estimands, verdict functionals, and repeated-look boundary.
+- [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) — adversaries, trust boundaries,
+  required safe failures, and residual risks.
+- [`docs/API-SURFACE.md`](docs/API-SURFACE.md) — stable core and experimental surfaces.
+- [`docs/DEPENDENCY-POLICY.md`](docs/DEPENDENCY-POLICY.md) — immutable qualification
+  pins, locked registry graph, and upstream release-claim boundary.
 - [`docs/MOTIVATION.md`](docs/MOTIVATION.md) — threat grounding and scope.
 - [`docs/PAPER.md`](docs/PAPER.md) — research argument and current evidence boundary.
 - [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) — when MI/PID can add information.
@@ -362,6 +375,8 @@ the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md) for the exact externa
 - [`docs/POST-AUDIT-EVIDENCE.md`](docs/POST-AUDIT-EVIDENCE.md) — one-command,
   checksummed streaming evidence artifact.
 - [`docs/RELATED-WORK.md`](docs/RELATED-WORK.md) — competing and complementary methods.
+- [`release/0.9.0/README.md`](release/0.9.0/README.md) — auditable handoff, ledger,
+  claims, evidence, and version-adaptation record.
 
 ## License
 

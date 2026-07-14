@@ -1,0 +1,719 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling zenoh-runtime v1.9.0
+   Compiling quinn v0.11.11
+   Compiling galadriel-sim v0.1.0 (/Users/torusprime/Development/sepahead-github/galadriel/crates/galadriel-sim)
+   Compiling rustix v1.1.4
+   Compiling galadriel-justify v0.1.0 (/Users/torusprime/Development/sepahead-github/galadriel/crates/galadriel-justify)
+   Compiling tempfile v3.27.0
+   Compiling rusty-fork v0.3.1
+   Compiling proptest v1.11.0
+   Compiling galadriel-pid v0.1.0 (/Users/torusprime/Development/sepahead-github/galadriel/crates/galadriel-pid)
+   Compiling galadriel-core v0.1.0 (/Users/torusprime/Development/sepahead-github/galadriel/crates/galadriel-core)
+   Compiling zenoh-core v1.9.0
+   Compiling zenoh-util v1.9.0
+   Compiling zenoh-shm v1.9.0
+   Compiling zenoh-sync v1.9.0
+   Compiling zenoh-task v1.9.0
+   Compiling zenoh-codec v1.9.0
+   Compiling zenoh-config v1.9.0
+   Compiling zenoh-link-commons v1.9.0
+   Compiling zenoh-plugin-trait v1.9.0
+   Compiling zenoh-link-quic_datagram v1.9.0
+   Compiling zenoh-link-tcp v1.9.0
+   Compiling zenoh-link-tls v1.9.0
+   Compiling zenoh-link-udp v1.9.0
+   Compiling zenoh-link v1.9.0
+   Compiling zenoh-transport v1.9.0
+   Compiling zenoh v1.9.0
+   Compiling ncp-zenoh v0.8.0 (https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586)
+   Compiling galadriel-ncp v0.1.0 (/Users/torusprime/Development/sepahead-github/galadriel/crates/galadriel-ncp)
+   Compiling galadriel-eval v0.1.0 (/Users/torusprime/Development/sepahead-github/galadriel/crates/galadriel-eval)
+   Compiling galadriel-cli v0.1.0 (/Users/torusprime/Development/sepahead-github/galadriel/crates/galadriel-cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 43s
+     Running unittests src/main.rs (target/debug/deps/galadriel-c38182648f1f5914)
+
+running 36 tests
+test replay_history_tests::consistency_issue_truth_table_covers_each_independent_cause ... ok
+test replay_history_tests::alarm_classification_covers_every_baseline_verdict ... ok
+test replay_history_tests::frame_span_presence_distinguishes_zero_and_positive_counts ... ok
+test replay_history_tests::history_distinguishes_every_consistency_failure_cause ... ok
+test replay_history_tests::pid_selection_covers_the_exact_limit_and_is_independent_of_visibility ... ok
+test replay_history_tests::alarm_classification_covers_every_fused_verdict ... ok
+test replay_history_tests::report_visibility_covers_both_sides_of_the_limit ... ok
+test replay_history_tests::correlation_family_alpha_is_split_across_projection_axes ... ok
+test replay_history_tests::contiguous_ranges_cover_empty_singleton_and_uneven_groups ... ok
+test replay_history_tests::required_modality_boundary_is_inclusive ... ok
+test replay_history_tests::replay_window_observation_range_preserves_nonuniform_128_frame_boundary ... ok
+test replay_history_tests::correlation_report_insufficiency_covers_empty_ready_and_mixed_inputs ... ok
+test replay_history_tests::suppressed_stats_record_zero_positive_and_repeated_histories ... ok
+test verdict_label_tests::baseline_verdict_tones_cover_every_variant ... ok
+test verdict_label_tests::attack_start_uses_floor_division_at_supported_boundaries ... ok
+test verdict_label_tests::corroborating_channel_tag_has_the_expected_plain_text ... ok
+test replay_history_tests::omitted_track_count_distinguishes_positive_equal_and_overprovisioned_limits ... ok
+test observe_cli_tests::observe_event_handler_reports_exact_heartbeat_and_contract_advisory ... ok
+test verdict_label_tests::decoupled_channel_tag_has_the_expected_plain_text ... ok
+test observe_cli_tests::test_registry_rejects_each_independent_summary_mismatch ... ok
+test verdict_label_tests::fused_verdict_tones_cover_every_variant ... ok
+test verdict_label_tests::insufficient_axis_never_renders_a_channel_as_corroborating ... ok
+test verdict_label_tests::insufficient_channel_tag_has_the_expected_plain_text ... ok
+test replay_history_tests::merged_suppressed_history_retains_counts_and_outer_sequence_range ... ok
+test verdict_label_tests::pid_channel_with_a_failed_gate_is_not_assessable ... ok
+test replay_history_tests::history_preserves_recovered_alarm_and_failure_ranges ... ok
+test verdict_label_tests::sparkline_maps_a_nonzero_range_to_all_expected_quartile_ticks ... ok
+test observe_cli_tests::observe_event_handler_fails_closed_if_receiver_fault_lifting_regresses ... ok
+test verdict_label_tests::verdict_tone_coloring_covers_every_ansi_branch ... ok
+test verdict_label_tests::pid_channel_with_a_passing_gate_and_score_is_assessable ... ok
+test verdict_label_tests::baseline_labels_use_neutral_verdict_names ... ok
+test verdict_label_tests::fused_labels_use_neutral_verdict_names ... ok
+test observe_cli_tests::bounded_registry_loader_reports_the_exact_overflow_byte ... ok
+test observe_cli_tests::observe_parses_explicit_secure_handoff ... ok
+test observe_cli_tests::observe_requires_every_epoch_and_registry_pin ... ok
+test observe_cli_tests::observe_event_handler_renders_frame_and_both_assessment_shapes ... ok
+
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/demo_output.rs (target/debug/deps/demo_output-c1ac6bf0d1d25e18)
+
+running 1 test
+test fixed_seed_demo_exercises_the_real_cli_and_semantic_scenarios ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.74s
+
+     Running tests/observe_exit.rs (target/debug/deps/observe_exit-fcc070d836d33928)
+
+running 1 test
+test invalid_epoch_propagates_through_observe_and_process_main ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/replay_output.rs (target/debug/deps/replay_output-843afbf2ffe90859)
+
+running 1 test
+test replay_reports_suppressed_histories_and_exact_limit_boundaries ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (target/debug/deps/galadriel_core-1695a6dec1f747fc)
+
+running 95 tests
+test chi2::tests::distribution_boundaries_are_defined ... ok
+test chi2::tests::ln_gamma_known_values ... ok
+test chi2::tests::chi2_critical_values ... ok
+test config::tests::default_config_validates ... ok
+test chi2::tests::survival_function_preserves_small_upper_tail_probabilities ... ok
+test baseline::tests::consistent_nis_is_not_elevated ... ok
+test config::tests::accepts_the_inclusive_boundaries ... ok
+test baseline::tests::inflated_nis_is_elevated ... ok
+test correlation::tests::configuration_rejects_alpha_that_underflows_during_fused_correction ... ok
+test baseline::tests::finite_extreme_nis_is_an_anomaly_not_a_numeric_error ... ok
+test baseline::tests::rejects_invalid_alpha ... ok
+test chi2::tests::remains_calibrated_at_large_degrees_of_freedom ... ok
+test config::tests::rejects_out_of_range_fields ... ok
+test correlation::tests::finite_scaling_is_stable_and_nonfinite_input_errors ... ok
+test correlation::tests::fewer_than_three_channels_is_insufficient_evidence ... ok
+test correlation::tests::constant_outlier_is_unassessable_not_decoupled ... ok
+test correlation::tests::pearson_basics ... ok
+test correlation::tests::no_linear_consensus_fails_closed ... ok
+test correlation::tests::sign_flip_is_a_decoupling_not_corroboration ... ok
+test cusum::tests::finite_extreme_updates_saturate_into_alarm_instead_of_erroring ... ok
+test correlation::tests::outsider_bridged_to_one_consensus_member_is_ambiguous ... ok
+test correlation::tests::correlated_channels_with_one_outsider_are_decoupled ... ok
+test correlation::tests::disconnected_equal_dyads_are_ambiguous ... ok
+test cusum::tests::fires_on_sustained_step_down_via_the_lower_arm ... ok
+test correlation::tests::degenerate_significance_floor_abstains_instead_of_scoring ... ok
+test cusum::tests::fires_quickly_on_step_up ... ok
+test cusum::tests::invalid_values_do_not_poison_state ... ok
+test cusum::tests::reset_clears_both_arms ... ok
+test decision::tests::cross_modal_timestamp_skew_fails_closed ... ok
+test decision::tests::cusum_operating_point_is_comparable_across_degrees_of_freedom ... ok
+test decision::tests::frozen_timestamps_are_rejected_without_mutating_state ... ok
+test decision::tests::duplicate_out_of_order_and_dof_changes_are_rejected_without_mutation ... ok
+test decision::tests::all_channels_inflation_is_broad_degradation ... ok
+test decision::tests::large_forward_timestamp_holes_reset_contiguous_evidence ... ok
+test decision::tests::all_consistent_is_nominal ... ok
+test decision::tests::large_sequence_holes_reset_contiguous_evidence ... ok
+test decision::tests::retained_tracks_are_bounded_and_explicitly_reclaimable ... ok
+test decision::tests::stale_or_missing_expected_channels_fail_closed ... ok
+test decision::tests::too_few_samples_fails_closed ... ok
+test cusum::tests::stays_quiet_on_target ... ok
+test fusion::tests::baseline_attributed_inconsistency_with_intact_consistency_stays_attributed ... ok
+test fusion::tests::baseline_broad_degradation_with_intact_consistency_stays_broad ... ok
+test fusion::tests::both_insufficient_fails_closed ... ok
+test fusion::tests::broad_degradation_and_partial_consistency_attributions_fail_closed ... ok
+test fusion::tests::decoupling_with_elevated_nis_is_attributed_inconsistency ... ok
+test fusion::tests::decoupling_with_in_covariance_nis_is_attributed_inconsistency ... ok
+test decision::tests::single_channel_inflation_is_attributed_inconsistency ... ok
+test decision::tests::verdict_serialization_uses_evidence_neutral_tags ... ok
+test fusion::tests::default_assessment_rejects_invalid_correlation_config_without_projection ... ok
+test fusion::tests::disagreeing_positive_attributions_fail_closed ... ok
+test fusion::tests::empty_positive_axis_verdict_fails_closed_instead_of_becoming_intact ... ok
+test decision::tests::verdict_deserialization_accepts_legacy_causal_tags ... ok
+test fusion::tests::empty_positive_consistency_attribution_is_rejected ... ok
+test fusion::tests::insufficient_baseline_with_decoupling_still_attributes_inconsistency ... ok
+test fusion::tests::insufficient_baseline_without_decoupling_fails_closed_not_nominal ... ok
+test fusion::tests::nominal_baseline_cannot_hide_insufficient_consistency_evidence ... ok
+test fusion::tests::nominal_when_nothing_flagged ... ok
+test fusion::tests::projection_axes_with_different_positive_attributions_conflict ... ok
+test fusion::tests::source_conflict_fails_closed_without_a_contradictory_boolean_state ... ok
+test observation::tests::consistency_projection_requires_bounded_active_axes_and_provenance ... ok
+test observation::tests::covariance_validation_accepts_roundoff_and_returns_a_symmetric_matrix ... ok
+test observation::tests::covariance_validation_rejects_material_asymmetry_at_tiny_scale ... ok
+test observation::tests::modality_serde_tags_match_crebain ... ok
+test observation::tests::scalar_observation_omits_research_fields ... ok
+test observation::tests::validation_rejects_terminal_sequence_and_timestamp_values ... ok
+test observation::tests::validation_rejects_values_that_can_poison_numeric_state ... ok
+test scalar_channel_tests::alignment_does_not_reuse_stale_research_after_fields_disappear ... ok
+test scalar_channel_tests::alignment_rejects_frozen_timestamps ... ok
+test scalar_channel_tests::consistency_input_work_is_explicitly_bounded ... ok
+test scalar_channel_tests::alignment_rejects_timestamp_regression_and_resets_on_skew ... ok
+test scalar_channel_tests::alignment_resets_after_a_dropped_sequence ... ok
+test scalar_channel_tests::alignment_resets_after_a_large_forward_timestamp_gap ... ok
+test scalar_channel_tests::extraction_accepts_inclusive_temporal_limit_boundaries ... ok
+test scalar_channel_tests::extraction_rejects_different_frozen_priors_within_one_sequence ... ok
+test scalar_channel_tests::extraction_rejects_disabled_or_unbounded_temporal_limits_even_when_empty ... ok
+test scalar_channel_tests::extraction_rejects_prior_reuse_across_sequences ... ok
+test scalar_channel_tests::extraction_rejects_prior_reuse_after_frame_and_context_change ... ok
+test scalar_channel_tests::extraction_rejects_prior_reuse_on_unrequested_modalities ... ok
+test scalar_channel_tests::extraction_returns_every_attested_axis ... ok
+test scalar_channel_tests::legacy_native_innovations_are_not_used_as_consistency_projections ... ok
+test window::tests::evicts_oldest_at_capacity ... ok
+test scalar_channel_tests::rejects_ambiguous_track_order_and_axis_inputs ... ok
+test window::tests::rejects_invalid_samples_and_allocations ... ok
+test window::tests::rolling_summary_recovers_small_values_after_a_dominant_eviction ... ok
+test window::tests::finite_extreme_samples_have_a_saturated_sum_and_finite_mean ... ok
+test window::tests::rolling_summary_stays_close_to_the_retained_values ... ok
+test fusion::tests::default_assessment_does_not_fall_back_to_native_innovations ... ok
+test fusion::tests::default_assessment_checks_all_axes_and_rejects_conflicting_attribution ... ok
+test chi2::tests::survival_complements_cdf ... ok
+test chi2::tests::cdf_is_a_probability ... ok
+test chi2::tests::cdf_is_monotone_in_x ... ok
+test correlation::prop_tests::abs_pearson_self_correlation_is_one ... ok
+test correlation::prop_tests::abs_pearson_is_a_unit_symmetric_magnitude ... ok
+test correlation::tests::configuration_and_actual_pair_work_are_bounded ... ok
+test scalar_channel_tests::prior_reuse_is_rejected_after_the_original_frame_leaves_the_tail ... ok
+
+test result: ok. 95 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running unittests src/lib.rs (target/debug/deps/galadriel_eval-e1f27b5f982ce414)
+
+running 21 tests
+test tests::component_auc_ranking_places_alarms_above_non_alarms ... ok
+test tests::inferential_intervals_reject_degenerate_sample_counts ... ok
+test tests::adaptive_formatter_discloses_independent_holdout_far_intervals ... ok
+test tests::auc_basics ... ok
+test tests::command_report_suite_preflights_before_work ... ok
+test tests::wilson_ci_is_sane_at_the_boundaries ... ok
+test tests::command_preflight_rejects_pid_estimator_work_before_observation_limits ... ok
+test tests::adaptive_clean_calibration_and_holdout_seed_domains_are_disjoint ... ok
+test tests::ttd_probes_non_aligned_final_capture_frame_once ... ok
+test tests::auc_ci_brackets_a_cleanly_separable_case ... ok
+test prop_tests::wilson_ci_brackets_the_estimate ... ok
+test prop_tests::auc_is_a_unit_antisymmetric_probability ... ok
+test prop_tests::auc_ci_is_ordered_within_unit ... ok
+test tests::modeled_perturbation_grows_with_decoupling ... ok
+test tests::adaptive_detection_declines_as_decoupling_weakens has been running for over 60 seconds
+test tests::bootstrap_cis_match_alarm_ranked_auc_and_beat_baseline has been running for over 60 seconds
+test tests::colluding_majority_inverts_the_detector_onto_the_honest_channel has been running for over 60 seconds
+test tests::decoupling_sweep_shows_correlation_dominates_the_boundary has been running for over 60 seconds
+test tests::hypothesis_holds has been running for over 60 seconds
+test tests::latency_tracks_attack_ownership has been running for over 60 seconds
+test tests::synchronized_maneuver_does_not_false_alarm has been running for over 60 seconds
+test tests::synchronized_maneuver_does_not_false_alarm ... ok
+test tests::colluding_majority_inverts_the_detector_onto_the_honest_channel ... ok
+test tests::bootstrap_cis_match_alarm_ranked_auc_and_beat_baseline ... ok
+test tests::adaptive_detection_declines_as_decoupling_weakens ... ok
+test tests::decoupling_sweep_shows_correlation_dominates_the_boundary ... ok
+test tests::latency_tracks_attack_ownership ... ok
+test tests::hypothesis_holds ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 524.54s
+
+     Running unittests src/main.rs (target/debug/deps/galadriel_eval-15f45def5a029aa2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/evidence_main.rs (target/debug/deps/galadriel_evidence-638a8bf044abe0ec)
+
+running 9 tests
+test tests::abstention_does_not_split_an_active_alert_episode ... ok
+test tests::float_arms_use_exact_ids_and_normalize_signed_zero ... ok
+test tests::published_config_is_valid_and_has_declared_long_holdout_exposure ... ok
+test tests::validation_bounds_study_shape_and_repeated_work ... ok
+test tests::recorded_fixture_is_explicitly_not_estimable ... ok
+test tests::dirty_publication_requires_an_explicit_development_override ... ok
+test tests::artifact_set_is_complete_checksummed_and_never_overwritten ... ok
+test tests::zero_event_intervals_retain_nonzero_upper_uncertainty ... ok
+test tests::synthetic_records_are_deterministic_and_partitions_are_disjoint ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running unittests src/lib.rs (target/debug/deps/galadriel_justify-fa05b60a1661463f)
+
+running 16 tests
+test tests::autocorrelation_null_rejects_out_of_range_trials ... ok
+test tests::public_studies_reject_degenerate_or_unbounded_inputs ... ok
+test tests::ranked_auc_preserves_mann_whitney_ties ... ok
+test tests::wilson_interval_exposes_small_holdout_uncertainty ... ok
+test tests::bootstrap_and_cli_preflight_enforce_pairing_and_work_budgets ... ok
+test tests::domain_separated_jitter_does_not_create_constant_channel_dependence ... ok
+test tests::xor_generator_resamples_degenerate_bernoulli_columns ... ok
+test tests::autocorrelation_null_exposes_naive_inflation_and_bartlett_finite_sample_limit ... ok
+test tests::discrete_synergy_report_is_exactly_reproducible ... ok
+test tests::synergy_only_the_joint_measure_sees_xor ... ok
+test tests::sxpid_synergy_atom_sees_xor_and_matches_closed_form ... ok
+test tests::nonlinear_coupling_mi_beats_correlation ... ok
+test tests::linear_coupling_correlation_matches_mi ... ok
+test tests::seq_linear_pointwise_detectors_reach_and_beat_window_latency ... ok
+test tests::seq_nonlinear_only_model_free_pointwise_detector_survives ... ok
+test tests::continuous_synergy_only_joint_measures_see_sign_parity ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.12s
+
+     Running unittests src/main.rs (target/debug/deps/galadriel_justify-303091e28f47dc38)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/galadriel_ncp-f513cb5ffbbd800a)
+
+running 243 tests
+test assembler::tests::assembler_heartbeat_silence_is_terminal_and_late_input_cannot_repair_it ... ok
+test assembler::tests::assembler_heartbeat_uses_local_receipt_deadline ... ok
+test assembler::tests::assembler_enforces_registry_summary_and_queue_limits ... ok
+test assembler::tests::assembler_fails_closed_when_monitor_gap_deadline_expires ... ok
+test assembler::tests::assembler_monitor_gap_before_heartbeat_invalidates_the_oldest_open_frame ... ok
+test assembler::tests::assembler_missing_summary_invalidates_from_the_unclosed_frame ... ok
+test assembler::tests::assembler_establishes_observation_projection_identity_before_monitor ... ok
+test assembler::tests::assembler_enforces_registry_attempt_limit_before_closure ... ok
+test assembler::tests::assembler_monitor_gap_invalidates_from_the_oldest_open_frame ... ok
+test assembler::tests::assembler_enforces_registry_active_track_and_outcome_limits ... ok
+test assembler::tests::a_new_track_fails_at_capacity_while_an_existing_track_remains_admissible ... ok
+test assembler::tests::assembler_open_frame_capacity_fails_without_eviction ... ok
+test assembler::tests::assembler_rejects_active_tracks_absent_from_the_visible_lifecycle_ledger ... ok
+test assembler::tests::assembler_expires_frame_missing_v1_observation ... ok
+test assembler::tests::assembler_rejects_an_updated_outcome_that_censors_its_v1_join ... ok
+test assembler::tests::assembler_next_deadline_is_earliest_fixed_boundary_and_none_after_fault ... ok
+test assembler::tests::assembler_completes_when_observation_arrives_before_monitor_closure ... ok
+test assembler::tests::assembler_discards_staged_ready_when_buffered_event_invalidates_frame ... ok
+test assembler::tests::assembler_enforces_registry_cap_on_transient_track_births ... ok
+test assembler::tests::assembler_heartbeat_cursor_must_equal_last_observable_summary ... ok
+test assembler::tests::assembler_preserves_unverifiable_gate_count_for_unsupported_filter ... ok
+test assembler::tests::assembler_rejects_duplicate_global_monitor_sequence ... ok
+test assembler::tests::assembler_rejects_observation_prior_reuse_at_the_earliest_sequence ... ok
+test assembler::tests::assembler_reconciles_declared_and_observed_in_gate_counts ... ok
+test assembler::tests::assembler_rejects_unpinned_registry_at_construction ... ok
+test assembler::tests::assembler_enforces_registry_cap_on_reconstructed_frozen_tracks ... ok
+test assembler::tests::assembler_rejects_noncanonical_registry_modality_order ... ok
+test assembler::tests::decode_fault_fusion_sequence_and_modality_rank_are_exact ... ok
+test assembler::tests::assembler_rejects_summary_outcome_count_disagreement ... ok
+test assembler::tests::default_track_capacity_covers_full_frozen_set_replacement_by_births ... ok
+test assembler::tests::decoded_envelopes_use_canonical_size_for_buffer_budget ... ok
+test assembler::tests::exact_sequence_advance_boundaries_are_accepted ... ok
+test assembler::tests::assembler_reorders_monitor_events_within_bounded_window ... ok
+test assembler::tests::assembler_rejects_observation_without_v1_expected_key ... ok
+test assembler::tests::frame_ledger_births_require_unique_ordered_tracks_and_measurements ... ok
+test assembler::tests::frame_ledger_enforces_pair_ordering_and_attempt_miss_exclusion ... ok
+test assembler::tests::finalized_frame_rejects_equal_sequence_observation_replay ... ok
+test assembler::tests::assembler_retains_prior_identity_after_completed_frame ... ok
+test assembler::tests::frame_ledger_rejects_no_measurement_when_candidates_exist ... ok
+test assembler::tests::frame_ledger_reconciles_candidate_gate_and_terminal_totals_independently ... ok
+test assembler::tests::frame_ledger_miss_reasons_follow_candidate_and_gate_truth_table ... ok
+test assembler::tests::frame_ledger_rejects_track_not_eligible_when_candidates_exist ... ok
+test assembler::tests::hard_bounds_and_state_accessors_preserve_exact_values ... ok
+test assembler::tests::frame_ledger_repeated_attempts_enforce_sequence_measurements_counts_and_gate_boundary ... ok
+test assembler::tests::heartbeat_configuration_matches_the_monitor_wire_duration_domain ... ok
+test assembler::tests::heartbeat_profile_loss_and_regression_boundaries_are_reachable ... ok
+test assembler::tests::identity_validation_covers_character_and_byte_boundaries ... ok
+test assembler::tests::initial_heartbeat_grace_expires_exactly_and_then_uses_steady_deadline ... ok
+test assembler::tests::oversized_and_malformed_route_payloads_keep_distinct_fault_taxonomy ... ok
+test assembler::tests::observation_route_rejects_a_new_track_at_exact_capacity ... ok
+test assembler::tests::pristine_reanchor_starts_heartbeat_deadline_at_transport_activation ... ok
+test assembler::tests::resource_and_duration_validation_isolation_covers_each_predicate ... ok
+test lifecycle::tests::aggregate_history_bound_rejects_cross_config_state_explosion ... ok
+test assembler::tests::summary_flags_and_monitor_order_fail_independently ... ok
+test assembler::tests::summary_caches_immutable_join_ledger_and_post_summary_join_is_constant_time ... ok
+test lifecycle::tests::duplicate_or_unexpected_observation_modality_is_terminal ... ok
+test lifecycle::tests::every_summary_identity_field_must_match_the_assembled_identity ... ok
+test lifecycle::tests::expected_modalities_below_the_detector_minimum_are_terminal ... ok
+test lifecycle::tests::context_change_and_sequence_gap_reset_history ... ok
+test lifecycle::tests::observation_count_above_frozen_cartesian_bound_is_terminal ... ok
+test lifecycle::tests::individually_invalid_observation_is_terminal_before_assessment ... ok
+test lifecycle::tests::observation_for_track_outside_frozen_ledger_is_terminal ... ok
+test lifecycle::tests::complete_suffix_is_bounded_and_eventually_evaluated ... ok
+test lifecycle::tests::observation_identity_or_projection_provenance_mismatch_is_terminal ... ok
+test lifecycle::tests::explicit_history_clear_discards_the_suffix_without_clearing_health ... ok
+test lifecycle::tests::explicit_miss_abstains_immediately_and_breaks_the_suffix ... ok
+test assembler::tests::pinned_registry_rejects_one_dimensional_projection_on_observation_first_ingress ... ok
+test lifecycle::tests::regressing_timestamp_remains_a_terminal_detector_error ... ok
+test lifecycle::tests::structural_fault_latches_and_clears_history ... ok
+test assembler::tests::pinned_registry_rejects_one_dimensional_projection_on_monitor_first_ingress ... ok
+test lifecycle::tests::forward_timestamp_gap_resets_only_above_the_configured_boundary ... ok
+test lifecycle::tests::terminal_timestamp_value_remains_a_terminal_adapter_error ... ok
+test lifecycle::tests::track_capacity_boundary_is_inclusive ... ok
+test lifecycle::tests::zero_track_frame_retires_absent_history ... ok
+test lifecycle::tests::session_or_producer_change_cannot_share_a_consecutive_history_suffix ... ok
+test lifecycle::tests::track_birth_is_excluded_and_clears_any_reused_track_suffix ... ok
+test live::tests::handoff_config_rejects_capacity_above_hard_limit ... ok
+test live::tests::handoff_config_rejects_zero_capacity ... ok
+test live::tests::live_limits_reject_zero_sequence_advance ... ok
+test live::tests::process_payload_allows_late_baseline_but_rejects_later_forward_poisoning ... ok
+test live::tests::callback_cannot_reset_a_different_idle_subscription ... ok
+test live::tests::callback_spawn_and_join_reset_fails_fast_without_deadlock ... ok
+test live::tests::process_payload_rejects_incompatible_version_and_surfaces_hash_advisory ... ok
+test live::tests::process_payload_rejects_invalid_observation_values ... ok
+test live::tests::bounded_handoff_drops_newest_at_capacity_and_reports_queue_metrics ... ok
+test live::tests::bounded_handoff_is_fifo_and_full_drop_does_not_reopen_replay ... ok
+test live::tests::bounded_handoff_reset_discards_stale_generation_before_delivery ... ok
+test live::tests::bounded_handoff_counts_delivery_after_receiver_close ... ok
+test live::tests::process_payload_rejects_oversize_and_duplicate_input ... ok
+test live::tests::dropping_bounded_receiver_counts_abandoned_entries_and_closes_handoff ... ok
+test live::tests::concurrent_callback_records_publish_one_coherent_completion_ordered_snapshot ... ok
+test live::tests::process_payload_rejects_new_stream_at_capacity_without_forgetting_replay_state ... ok
+test live::tests::concurrent_dequeue_and_enqueue_keep_channel_metadata_capacity_bounded ... ok
+test live::tests::reset_cannot_revoke_an_observation_already_returned_to_the_consumer ... ok
+test live::tests::subscription_health_reset_clears_sequence_epoch_and_counts_it ... ok
+test live::tests::process_payload_rejects_unversioned_legacy_payload_and_wrong_provenance ... ok
+test live::tests::reset_from_callback_returns_typed_error_without_deadlocking ... ok
+test live::tests::reset_fails_fast_during_delivery_then_succeeds_after_callback ... ok
+test live::tests::subscription_counters_are_isolated_while_tap_counter_aggregates ... ok
+test monitor::tests::compound_wire_guards_reject_each_invalid_arm ... ok
+test monitor::tests::bounded_decoder_rejects_oversized_input_before_json_parsing ... ok
+test assembler::tests::exact_route_payload_ceilings_are_accepted_before_semantic_processing ... ok
+test monitor::tests::event_sequence_must_be_json_safe_and_globally_newer ... ok
+test monitor::tests::frame_summary_requires_nonempty_unique_modalities_and_bounded_counts ... ok
+test monitor::tests::gate_evidence_requires_finite_nonnegative_values ... ok
+test live::tests::process_payload_catches_callback_panic_and_accepts_later_input ... ok
+test monitor::tests::heartbeat_rejects_incoherent_queue_and_unsafe_counters ... ok
+test monitor::tests::heartbeat_requires_bounded_ordered_durations ... ok
+test monitor::tests::all_event_variants_roundtrip ... ok
+test monitor::tests::identities_use_utf8_byte_ceiling_and_provenance_binding ... ok
+test monitor::tests::inclusive_wire_limits_remain_valid ... ok
+test monitor::tests::modality_miss_validates_frame_and_track_identity ... ok
+test monitor::tests::monitor_envelope_golden_contract_is_frozen ... ok
+test monitor::tests::monitor_key_follows_named_sensor_scheme ... ok
+test monitor::tests::ncp_version_spelling_must_match_the_frozen_schema ... ok
+test monitor::tests::outcome_rejects_counts_and_gate_evidence_that_disagree ... ok
+test monitor::tests::outcome_rejects_invalid_or_unsafe_projection ... ok
+test monitor::tests::outcome_requires_fields_specific_to_update_birth_and_unsupported_filter ... ok
+test monitor::tests::every_outcome_conditional_has_a_valid_canonical_roundtrip ... ok
+test monitor::tests::unknown_envelope_and_event_fields_are_rejected ... ok
+test monitor_live::tests::config_preserves_nondefault_values_and_accepts_exact_ceilings ... ok
+test monitor_live::tests::closing_receiver_cancels_without_fault_and_clears_pending_state ... ok
+test monitor_live::tests::config_rejects_zero_and_excessive_bounds ... ok
+test monitor_live::tests::default_reorder_state_has_no_contiguous_sequence ... ok
+test monitor_live::tests::dropping_receiver_cancels_owned_ingress_and_clears_pending_state ... ok
+test monitor_live::tests::duplicate_json_key_latches_invalid_envelope_fault ... ok
+test monitor_live::tests::close_records_a_gap_timer_that_already_failed ... ok
+test monitor_live::tests::duplicate_sequence_latches_terminal_fault ... ok
+test monitor_live::tests::fault_count_snapshot_maps_every_category_and_total ... ok
+test monitor_live::tests::exact_gap_deadline_expires_but_earlier_and_stale_timer_wakes_do_not ... ok
+test monitor_live::tests::monitor_producer_id_validation_covers_character_and_byte_boundaries ... ok
+test monitor::tests::monitor_schema_identity_and_enums_match_runtime_contract ... ok
+test monitor_live::tests::malformed_json_remains_the_first_fault ... ok
+test monitor_live::tests::full_reorder_burst_fits_an_empty_validated_handoff ... ok
+test monitor_live::tests::handoff_capacity_fault_cannot_hide_behind_full_queue ... ok
+test monitor_live::tests::incompatible_ncp_version_latches_typed_fault ... ok
+test monitor_live::tests::callbacks_after_terminal_fault_cannot_mutate_ingress_state ... ok
+test monitor_live::tests::payload_size_gate_runs_before_json_decode ... ok
+test monitor_live::tests::overdue_gap_locked_expires_at_the_exact_boundary ... ok
+test monitor_live::tests::timestamp_and_size_conversion_helpers_preserve_exact_values ... ok
+test monitor_live::tests::subscription_health_reports_distinct_counter_values ... ok
+test monitor_live::tests::reorder_distance_latches_terminal_fault ... ok
+test operational_live::tests::activation_snapshot_includes_every_registered_starting_callback ... ok
+test monitor_live::tests::reorder_capacity_latches_terminal_fault ... ok
+test monitor_live::tests::unexpected_gap_timer_termination_faults_the_subscription ... ok
+test monitor_live::tests::wrong_producer_latches_provenance_fault ... ok
+test operational_live::tests::armed_startup_activation_guard_closes_the_phase ... ok
+test operational_live::tests::callback_phase_classification_covers_every_lifecycle_state ... ok
+test operational_live::tests::cleanup_completion_requires_every_resource_to_finish ... ok
+test operational_live::tests::config_accessor_preserves_nondefault_capacity ... ok
+test operational_live::tests::deadline_boundary_drains_only_strictly_earlier_receipts ... ok
+test operational_live::tests::disconnected_deadline_handoff_latches_and_notifies_the_first_fault ... ok
+test operational_live::tests::oversized_callback_faults_before_materializing_an_application_copy ... ok
+test operational_live::tests::payload_at_the_route_limit_is_materialized_and_enqueued ... ok
+test operational_live::tests::callback_waiting_for_ingress_lock_cannot_enqueue_after_close ... ok
+test operational_live::tests::priority_budget_consumes_only_its_initial_snapshot ... ok
+test monitor_live::tests::payload_at_the_exact_wire_ceiling_reaches_json_decode ... ok
+test operational_live::tests::receipt_after_deadline_is_not_admissible ... ok
+test operational_live::tests::receipt_equal_to_deadline_is_not_admissible ... ok
+test operational_live::tests::receipt_strictly_before_deadline_is_admissible ... ok
+test operational_live::tests::starting_callback_holds_a_permit_until_completion ... ok
+test operational_live::tests::startup_drain_requires_zero_inflight_callbacks ... ok
+test registry::tests::collection_length_validation_enforces_both_inclusive_bounds ... ok
+test registry::tests::conflicting_digest_for_one_content_identifier_is_rejected ... ok
+test monitor_live::tests::concurrent_callbacks_emit_one_contiguous_sequence ... ok
+test registry::tests::disconnected_second_transform_step_is_rejected ... ok
+test registry::tests::conflicting_digest_for_one_projection_algorithm_version_is_rejected ... ok
+test registry::tests::context_end_equal_to_frame_end_is_accepted ... ok
+test registry::tests::disconnected_transform_chain_is_rejected ... ok
+test registry::tests::duplicate_expected_modality_is_rejected ... ok
+test registry::tests::duplicate_context_identifier_is_rejected ... ok
+test registry::tests::canonical_digest_is_stable_across_set_order_and_json_whitespace ... ok
+test registry::tests::duplicate_source_frame_is_rejected ... ok
+test registry::tests::duplicate_frame_identifier_is_rejected ... ok
+test registry::tests::json_integer_validation_accepts_only_the_exact_safe_range ... ok
+test registry::tests::exact_projection_identity_returns_registered_binding ... ok
+test monitor_live::tests::bounded_reorder_emits_only_contiguous_sequence ... ok
+test registry::tests::identifier_above_json_safe_boundary_is_rejected ... ok
+test registry::tests::invalid_modality_calibration_identity_is_rejected ... ok
+test registry::tests::invalid_projection_algorithm_version_is_rejected ... ok
+test registry::tests::non_target_source_frame_requires_at_least_one_transform ... ok
+test registry::tests::opportunity_cap_above_monitor_wire_limit_is_rejected ... ok
+test registry::tests::multiple_distinct_frames_and_contexts_remain_valid_after_sorting ... ok
+test registry::tests::pinned_constructor_rejects_content_mismatch ... ok
+test monitor_live::tests::ordered_receipts_compose_directly_with_the_assembler_clock ... ok
+test registry::tests::new_projection_algorithm_version_may_use_a_new_digest ... ok
+test registry::tests::positive_json_safe_identifier_boundary_is_accepted ... ok
+test registry::tests::pinned_constructor_accepts_exact_canonical_digest ... ok
+test registry::tests::projection_identity_accepts_exact_json_safe_timestamp_boundary ... ok
+test registry::tests::registry_document_size_boundary_fails_before_decode ... ok
+test registry::tests::registry_token_validation_covers_each_independent_boundary ... ok
+test registry::tests::projection_identity_accepts_inclusive_context_end_boundary ... ok
+test monitor_live::tests::receiver_delivery_and_fault_are_linearizable ... ok
+test registry::tests::projection_identity_rejects_expired_context ... ok
+test registry::tests::projection_identity_rejects_source_frame_alias ... ok
+test registry::tests::registry_exposes_exact_document_identity_and_frame_table ... ok
+test registry::tests::reversed_context_applicability_interval_is_rejected ... ok
+test registry::tests::projection_identity_rejects_timestamp_above_json_safe_boundary ... ok
+test registry::tests::registry_verifier_rejects_tooling_only_unpinned_content ... ok
+test registry::tests::self_looping_transform_step_is_rejected_even_in_a_continuous_chain ... ok
+test registry::tests::registry_verifier_requires_the_canonical_modality_order ... ok
+test registry::tests::registry_verifier_rejects_digest_and_applicability_mismatches ... ok
+test registry::tests::strict_decoder_rejects_unknown_fields ... ok
+test registry::tests::unbounded_context_inside_bounded_frame_is_rejected ... ok
+test registry::tests::target_source_frame_accepts_an_empty_transform_chain ... ok
+test secure_live::tests::endpoint_collection_traverses_nested_config_objects ... ok
+test registry::tests::registry_verifier_binds_each_projection_to_pinned_context_identity ... ok
+test registry::tests::registry_verifier_exposes_only_externally_pinned_opportunity_policy ... ok
+test registry::tests::semantic_content_change_changes_canonical_digest ... ok
+test registry::tests::uppercase_content_digest_is_rejected ... ok
+test tests::aggregate_byte_limit_is_inclusive ... ok
+test registry::tests::single_timestamp_context_applicability_is_accepted ... ok
+test tests::jsonl_limits_reject_zero_or_overflowing_aggregate_limit ... ok
+test tests::keys_follow_the_ncp_scheme ... ok
+test tests::duplicate_json_keys_are_rejected_not_last_wins ... ok
+test tests::parse_jsonl_enforces_aggregate_byte_limit_including_blank_lines ... ok
+test tests::jsonl_roundtrips ... ok
+test tests::parse_jsonl_enforces_line_and_record_limits ... ok
+test monitor_live::tests::advancing_the_expected_sequence_reanchors_the_remaining_gap ... ok
+test tests::parse_jsonl_rejects_duplicate_sequences ... ok
+test tests::parse_jsonl_rejects_invalid_observation_values ... ok
+test monitor_live::tests::advancing_a_gap_keeps_the_oldest_pending_arrival_as_its_bound ... ok
+test registry::tests::zero_registry_identifier_is_rejected ... ok
+test tests::parse_jsonl_rejects_regressed_sequences ... ok
+test tests::aggregate_serialization_failure_does_not_truncate_destination ... ok
+test tests::parse_jsonl_skips_blanks_and_reports_bad_lines ... ok
+test tests::serialization_enforces_aggregate_byte_limit ... ok
+test tests::serialization_is_fallible_and_validated ... ok
+test tests::serialization_rejects_out_of_order_records ... ok
+test tests::sidecar_envelope_contract_is_frozen_and_bound_to_provenance ... ok
+test tests::sidecar_envelope_rejects_oversized_identity_segments ... ok
+test tests::sidecar_envelope_rejects_wrong_version_and_provenance ... ok
+test registry::tests::valid_two_step_transform_chain_preserves_direction_and_order ... ok
+test tests::sidecar_envelope_surfaces_contract_drift_but_rejects_unsafe_integers ... ok
+test tests::sidecar_envelope_rejects_unknown_nested_observation_fields ... ok
+test tests::sidecar_payload_contract_is_frozen ... ok
+test tests::sidecar_json_schema_identity_matches_the_runtime_contract ... ok
+test registry::tests::exact_registry_document_size_is_accepted ... ok
+test monitor_live::tests::persistent_small_gap_faults_without_another_payload ... ok
+test operational_live::tests::close_fence_waits_for_callback_already_materializing_payload ... ok
+test live::tests::acquired_reset_boundary_prevents_later_delivery_barging ... ok
+test monitor_live::tests::serialized_admission_timestamp_excludes_callback_mutex_wait ... ok
+test monitor_live::tests::closing_a_gap_cancels_its_deadline ... ok
+
+test result: ok. 243 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/crebain_capture.rs (target/debug/deps/crebain_capture-651b2c2d265973c3)
+
+running 3 tests
+test crebain_capture_parses_with_full_modality_coverage_and_sane_nis ... ok
+test current_crebain_record_roundtrips_inside_the_live_v1_envelope ... ok
+test crebain_clean_capture_keeps_insufficient_correlation_fail_closed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/live_zenoh_e2e.rs (target/debug/deps/live_zenoh_e2e-f9c84f3a357c00e3)
+
+running 5 tests
+test duplicate_json_key_payload_is_counted_invalid_envelope ... ok
+test oversized_payload_is_rejected_before_parse ... ok
+test wrong_session_envelope_is_rejected_counted_and_not_delivered ... ok
+test from_bus_live_leg_delivers_valid_envelope_end_to_end ... ok
+test quiet_development_open_realm_round_trip ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/monitor_live_zenoh_e2e.rs (target/debug/deps/monitor_live_zenoh_e2e-26345989f5a3566e)
+
+running 7 tests
+test advisory_contract_hash_mismatch_is_counted_and_delivered ... ok
+test provenance_mismatch_faults_the_epoch_and_delivers_nothing ... ok
+test full_handoff_surfaces_terminal_fault_out_of_band ... ok
+test owned_tap_refuses_close_until_every_receiver_is_cancelled ... ok
+test live_monitor_tap_reorders_and_delivers_ordered_receipts ... ok
+test persistent_small_gap_faults_without_a_followup_sample ... ok
+test receiver_close_undeclares_only_its_selector_and_stops_its_gap_timer ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/operational_live_zenoh_e2e.rs (target/debug/deps/operational_live_zenoh_e2e-744604290a228bff)
+
+running 15 tests
+test malformed_raw_payload_latches_the_assembler_decode_fault ... ok
+test health_reports_configured_capacity_and_current_queue_depth ... ok
+test wrong_epoch_is_rejected_by_the_cross_route_assembler ... ok
+test wrong_producer_is_rejected_by_the_cross_route_assembler ... ok
+test oversized_payload_faults_before_the_bounded_handoff ... ok
+test saturated_queue_latches_first_fault_and_blocks_previously_queued_delivery ... ok
+test observation_and_monitor_routes_assemble_one_ready_frame ... ok
+test queued_decode_fault_preempts_a_pending_frame_ready ... ok
+test pending_frame_ready_is_discarded_when_ingress_faults ... ok
+test all_silence_expires_the_exact_assembler_heartbeat_deadline ... ok
+test subscriptions_use_only_the_two_exact_named_sensor_keys ... ok
+test explicit_close_undeclares_receivers_but_keeps_inherited_bus_open ... ok
+test dropping_receiver_undeclares_only_its_scoped_subscriptions ... ok
+test post_deadline_ingress_expires_at_exact_deadline_before_decode ... ok
+test due_heartbeat_deadline_preempts_a_pending_frame_ready ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/registry_golden.rs (target/debug/deps/registry_golden-2d336c92b42fdf86)
+
+running 4 tests
+test raw_fixture_file_hash_is_distinct_from_the_canonical_registry_digest ... ok
+test crebain_registry_accepts_the_exact_deployment_pin ... ok
+test crebain_registry_canonical_bytes_and_digest_are_frozen ... ok
+test crebain_registry_exposes_the_expected_projection_binding ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/secure_deployment_configs.rs (target/debug/deps/secure_deployment_configs-c2910c7a15b650ea)
+
+running 4 tests
+test handoff_binds_application_and_transport_identity ... ok
+test live_startup_rejects_unsafe_credential_filesystem_boundaries ... ok
+test live_startup_rejects_each_strict_profile_regression ... ok
+test exact_epoch_reference_configs_parse_with_pinned_zenoh ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/galadriel_pid-8451cd52da162b7a)
+
+running 37 tests
+test engine::tests::configuration_rejects_positive_infinite_observation_noise ... ok
+test engine::tests::default_resolves_six_modalities_across_three_projection_axes ... ok
+test engine::tests::ksg_report_status_rejects_unexpected_method_with_expected_scientific_status ... ok
+test engine::tests::ksg_report_status_rejects_unexpected_scientific_status_with_expected_method ... ok
+test engine::tests::invalid_bootstrap_configuration_is_rejected ... ok
+test engine::tests::quadratic_preflight_counts_full_report_first_pair_work ... ok
+test engine::tests::observation_noise_rejects_zero_rows_before_matrix_construction ... ok
+test engine::tests::rejects_non_finite_and_ambiguous_channel_inputs ... ok
+test engine::tests::rejects_constant_columns_before_noise_can_create_false_information ... ok
+test engine::tests::joint_observation_noise_does_not_reuse_one_sequence_across_columns ... ok
+test engine::tests::bootstrap_readiness_precedes_nominal_or_positive_verdicts ... ok
+test fusion::tests::conflicting_positive_attributions_fail_closed_to_unclassified_anomaly ... ok
+test fusion::tests::conflicting_projection_axes_fail_closed_to_unclassified_anomaly ... ok
+test fusion::tests::empty_positive_correlation_verdict_fails_closed_instead_of_becoming_intact ... ok
+test fusion::tests::empty_positive_pid_verdict_fails_closed_instead_of_becoming_intact ... ok
+test fusion::tests::matching_partial_pid_preserves_complete_signed_default ... ok
+test engine::tests::fewer_than_three_channels_is_insufficient_evidence ... ok
+test engine::tests::isx_atoms_reports_deterministic_nontrivial_values ... ok
+test engine::tests::finite_negative_ksg_estimates_remain_valid_low_edges ... ok
+test fusion::tests::pid_adds_evidence_when_signed_correlation_is_insufficient ... ok
+test fusion::tests::positive_pid_axis_alongside_insufficient_pid_axis_fails_closed ... ok
+test fusion::tests::multi_axis_confirmation_resolution_is_rejected_before_pid_estimation ... ok
+test fusion::tests::stream_assessment_never_falls_back_to_native_innovations ... ok
+test engine::tests::pid_rs_1_0_evidence_and_upstream_status_are_locked ... ok
+test fusion::tests::signed_correlation_sign_flip_survives_pid_nominal_result ... ok
+test engine::tests::equal_disconnected_dyads_are_insufficient_not_nominal ... ok
+test fusion::tests::configurable_stream_assessment_preserves_the_requested_correlation_config ... ok
+test fusion::tests::broadband_jam_produces_broad_degradation_evidence ... ok
+test fusion::tests::clean_is_nominal ... ok
+test fusion::tests::loud_bias_spoof_has_elevated_magnitude_evidence ... ok
+test engine::tests::bootstrap_never_flags_a_clean_stream ... ok
+test engine::tests::clean_corroborated_stream_is_nominal ... ok
+test engine::tests::modality_permutation_preserves_point_atoms_and_bootstrap_intervals ... ok
+test engine::tests::bootstrap_is_a_fail_closed_subset_of_point_estimates ... ok
+test engine::tests::default_bootstrap_confirms_a_strong_deterministic_decoupling ... ok
+test engine::tests::default_confirmation_never_overstates_point_decoupling_evidence ... ok
+test fusion::tests::partial_pid_evidence_does_not_erase_complete_signed_attribution ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.57s
+
+     Running unittests src/lib.rs (target/debug/deps/galadriel_sim-76e1817268a172e5)
+
+running 29 tests
+test injection::tests::invalid_injection_parameters_do_not_mutate_observations ... ok
+test injection::tests::directional_phantom_rejects_scalar_only_observations ... ok
+test injection::tests::jam_scalar_fallback_scales_nis_by_inflation_squared ... ok
+test injection::tests::recompute_nis_rejects_non_spd_covariance ... ok
+test injection::tests::maneuver_rejects_overflow_before_mutating_the_stream ... ok
+test injection::tests::maneuver_magnitude_is_in_axis_standard_deviations ... ok
+test injection::tests::failed_research_update_is_transactional ... ok
+test injection::tests::recompute_nis_uses_the_full_covariance ... ok
+test injection::tests::directional_injectors_reject_nonidentity_common_projections ... ok
+test injection::tests::recompute_nis_accepts_fixture_scale_covariance_roundoff ... ok
+test injection::tests::phantom_bias_scales_by_axis_standard_deviation ... ok
+test injection::tests::stream_injection_is_transactional_on_late_failure ... ok
+test scenario::tests::config_guards_capacity_and_timestamp_arithmetic ... ok
+test scenario::tests::config_rejects_nonfinite_or_out_of_range_statistics ... ok
+test scenario::tests::config_requires_nonempty_unique_modalities ... ok
+test scenario::tests::partial_spoof_rejects_invalid_decoupling_instead_of_clamping ... ok
+test scenario::tests::spoof_targets_must_be_present_and_unique ... ok
+test scenario::tests::generated_common_projection_has_shared_per_frame_provenance ... ok
+test scenario::tests::zero_frame_scenario_is_valid_and_empty ... ok
+test scenario::tests::zero_interval_is_valid_for_at_most_one_frame ... ok
+test scenario::tests::large_supported_sigma_still_produces_finite_nis ... ok
+test scenario::tests::attack_generators_reject_no_consensus_or_out_of_capture_onsets ... ok
+test injection::tests::maneuver_perturbs_the_innovation_inside_its_window ... ok
+test injection::tests::clean_is_nominal ... ok
+test injection::tests::phantom_produces_attributed_inconsistency_on_the_targeted_channel ... ok
+test injection::tests::broadband_jam_produces_broad_degradation_evidence ... ok
+test scenario::tests::clean_stream_is_chi2_3_on_average ... ok
+test scenario::tests::correlated_stream_stays_chi2_3_per_channel ... ok
+test scenario::tests::stealthy_spoof_is_moment_matched_so_the_baseline_is_blind ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests galadriel_core
+
+running 1 test
+test crates/galadriel-core/src/fusion.rs - fusion::NonEmptyModalities (line 67) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.10s
+
+   Doc-tests galadriel_eval
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests galadriel_justify
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests galadriel_ncp
+
+running 1 test
+test crates/galadriel-ncp/src/live.rs - live (line 14) - compile ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.10s
+
+   Doc-tests galadriel_pid
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests galadriel_sim
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
