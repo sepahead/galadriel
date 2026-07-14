@@ -9,8 +9,9 @@ use std::time::Duration;
 
 use galadriel_core::observation::{ConsistencyProjection, Modality, PidObservation};
 use galadriel_ncp::assembler::{
-    AssemblerLimits, AssemblyEvent, AssemblyFaultKind, EvidenceRoute, FrameIdentity,
-    RegistryOpportunityPolicy, RegistryVerifier, RegistryViolation,
+    AssemblerLimits, AssemblerProfile, AssemblyEvent, AssemblyFaultKind, EvidenceRoute,
+    FrameIdentity, RegistryOpportunityParams, RegistryOpportunityPolicy, RegistryVerifier,
+    RegistryViolation,
 };
 use galadriel_ncp::monitor::{
     FrameSummary, GateEvidence, GateMethod, ModalityOutcome, ModalityOutcomeKind, MonitorEnvelope,
@@ -37,13 +38,14 @@ struct TestRegistry;
 
 impl RegistryVerifier for TestRegistry {
     fn opportunity_policy(&self) -> Result<RegistryOpportunityPolicy, RegistryViolation> {
-        Ok(RegistryOpportunityPolicy {
+        RegistryOpportunityPolicy::try_new(RegistryOpportunityParams {
             max_active_tracks: 32,
             max_frame_inputs: 128,
             max_attempts_per_track_modality: 128,
             max_outcomes_per_frame: 128,
             max_monitor_queue_events: 128,
         })
+        .map_err(|_| RegistryViolation::InvalidOpportunityPolicy)
     }
 
     fn verify_summary(
@@ -77,17 +79,21 @@ impl RegistryVerifier for TestRegistry {
         modality: Modality,
         projection: &ConsistencyProjection,
     ) -> Result<(), RegistryViolation> {
-        if projection.frame_id != identity.frame_id
-            || projection.context_id != identity.context_id
-            || projection.prior_id != identity.prior_id
+        let projection_identity = projection.identity();
+        let frame_id = projection_identity.frame_id().get();
+        let context_id = projection_identity.context_id().get();
+        let prior_id = projection_identity.frozen_prior_id().get();
+        if frame_id != identity.frame_id
+            || context_id != identity.context_id
+            || prior_id != identity.prior_id
         {
             return Err(RegistryViolation::ProjectionIdentityMismatch {
                 expected_frame_id: identity.frame_id,
-                received_frame_id: projection.frame_id,
+                received_frame_id: frame_id,
                 expected_context_id: identity.context_id,
-                received_context_id: projection.context_id,
+                received_context_id: context_id,
                 expected_prior_id: identity.prior_id,
-                received_prior_id: projection.prior_id,
+                received_prior_id: prior_id,
             });
         }
         if modality != Modality::Visual {
@@ -96,11 +102,11 @@ impl RegistryVerifier for TestRegistry {
                 modality,
             });
         }
-        if projection.dimensions != 3 {
+        if projection.dimensions() != 3 {
             return Err(RegistryViolation::ProjectionDimensionMismatch {
                 context_id: identity.context_id,
                 expected: 3,
-                received: projection.dimensions,
+                received: projection.dimensions(),
             });
         }
         Ok(())
@@ -129,14 +135,13 @@ async fn quiet_loopback_bus_for_tests() -> ZenohBus {
 }
 
 fn limits(heartbeat_interval: Duration, heartbeat_deadline: Duration) -> AssemblerLimits {
-    AssemblerLimits {
-        frame_deadline: Duration::from_secs(2),
-        reorder_deadline: Duration::from_millis(250),
-        heartbeat_interval,
-        heartbeat_deadline,
-        initial_heartbeat_deadline: heartbeat_deadline,
-        ..AssemblerLimits::default()
-    }
+    let mut params = AssemblerProfile::BoundedV0_9.params();
+    params.frame_deadline = Duration::from_secs(2);
+    params.reorder_deadline = Duration::from_millis(250);
+    params.heartbeat_interval = heartbeat_interval;
+    params.heartbeat_deadline = heartbeat_deadline;
+    params.initial_heartbeat_deadline = heartbeat_deadline;
+    AssemblerLimits::try_from(params).expect("test assembler policy is valid")
 }
 
 async fn receiver_with(
@@ -160,27 +165,14 @@ async fn receiver_with(
 }
 
 fn projection(prior_id: u64) -> ConsistencyProjection {
-    ConsistencyProjection {
-        values: [1.0, 2.0, 3.0],
-        dimensions: 3,
-        frame_id: 10,
-        context_id: 20,
-        prior_id,
-    }
+    ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, 10, 20, prior_id)
+        .expect("test projection is valid")
 }
 
 fn observation(fusion_seq: u64, prior_id: u64) -> PidObservation {
-    PidObservation {
-        track_id: 7,
-        timestamp_ms: 1_000 + fusion_seq,
-        seq: fusion_seq,
-        modality: Modality::Visual,
-        nis: 1.0,
-        dof: 3,
-        innovation: None,
-        innovation_cov: None,
-        consistency_projection: Some(projection(prior_id)),
-    }
+    PidObservation::try_scalar_raw(7, 1_000 + fusion_seq, fusion_seq, Modality::Visual, 1.0, 3)
+        .expect("test observation is valid")
+        .with_consistency_projection(projection(prior_id))
 }
 
 fn outcome(fusion_seq: u64, prior_id: u64) -> ModalityOutcome {
@@ -240,12 +232,11 @@ fn monitor_bytes(event_seq: u64, event: ProducerEvent) -> Vec<u8> {
 }
 
 fn monitor_contract_mismatch_bytes(event_seq: u64, event: ProducerEvent) -> Vec<u8> {
-    let mut envelope = MonitorEnvelope::try_new(SESSION_ID, PRODUCER_ID, event_seq, event)
+    let envelope = MonitorEnvelope::try_new(SESSION_ID, PRODUCER_ID, event_seq, event)
         .expect("test monitor envelope is valid");
-    envelope.contract_hash = "deadbeefdeadbeef".to_owned();
-    envelope
-        .encode()
-        .expect("contract mismatch is an advisory, not an encoding failure")
+    let mut raw = serde_json::to_value(envelope).expect("test monitor envelope becomes JSON");
+    raw["contract_hash"] = serde_json::json!("deadbeefdeadbeef");
+    serde_json::to_vec(&raw).expect("contract mismatch remains valid wire JSON")
 }
 
 async fn publish(bus: &ZenohBus, key: &str, payload: &[u8]) {

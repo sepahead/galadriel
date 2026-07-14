@@ -130,7 +130,8 @@ PID is additive and sign-invariant. It cannot:
 
 ## 7. Producer evidence required
 
-Before deciding whether PID is justified for crebain, the producer must emit:
+Before deciding whether PID is justified for a conforming producer, the selected
+producer must emit:
 
 - `consistency_projection` in the normal runtime path for every requested modality;
 - matching non-zero physical-frame and projection-context IDs;
@@ -138,8 +139,8 @@ Before deciding whether PID is justified for crebain, the producer must emit:
 - explicit association misses and gate rejections;
 - heartbeat, stable session identity, and a versioned schema.
 
-The current fixture intentionally enables native research fields but has no attested
-common projection. Galadriel does not fall back to its mixed-frame, sequential-prior
+The checked-in historical fixture intentionally enables native research fields but has no
+attested common projection. Galadriel does not fall back to its mixed-frame, sequential-prior
 innovations. It proves parsing and baseline smoke behavior only; cross-correlation, PID,
 and fused attribution remain `InsufficientEvidence`.
 

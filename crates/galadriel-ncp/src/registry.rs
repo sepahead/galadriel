@@ -4,17 +4,22 @@
 //! unknown-field rejection, canonicalized, semantically validated, and assigned
 //! a deterministic SHA-256 digest over its compact canonical JSON representation.
 //! Operational producers and consumers should construct it with
-//! [`DeploymentRegistry::from_json_pinned`].
+//! [`PinnedDeploymentRegistry::from_json`].
 
 use std::collections::BTreeMap;
+use std::ops::Deref;
 
 use galadriel_core::{ConsistencyProjection, Modality};
 use ncp_core::JSON_SAFE_INTEGER_MAX;
+use serde::de::{Error as _, IgnoredAny, SeqAccess, Visitor};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::fmt;
+use std::marker::PhantomData;
 
 use crate::assembler::{
-    FrameIdentity, RegistryOpportunityPolicy, RegistryVerifier, RegistryViolation,
+    FrameIdentity, RegistryOpportunityParams, RegistryOpportunityPolicy, RegistryVerifier,
+    RegistryViolation,
 };
 use crate::monitor::{
     MAX_ACTIVE_TRACKS, MAX_FRAME_ITEMS, MAX_MONITOR_QUEUE_EVENTS, REGISTRY_DIGEST_HEX_LEN,
@@ -41,20 +46,98 @@ pub const MAX_TRANSFORM_STEPS: usize = 32;
 const JSON_SAFE_UNSIGNED_INTEGER_MAX: u64 = JSON_SAFE_INTEGER_MAX as u64;
 const MODALITY_COUNT: usize = Modality::ALL.len();
 
+struct BoundedVecVisitor<T, const MAXIMUM: usize>(PhantomData<T>);
+
+impl<'de, T, const MAXIMUM: usize> Visitor<'de> for BoundedVecVisitor<T, MAXIMUM>
+where
+    T: Deserialize<'de>,
+{
+    type Value = Vec<T>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "an array containing at most {MAXIMUM} entries")
+    }
+
+    fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        if sequence.size_hint().is_some_and(|hint| hint > MAXIMUM) {
+            return Err(A::Error::custom(format_args!(
+                "array length exceeds maximum {MAXIMUM}"
+            )));
+        }
+        let mut values = Vec::with_capacity(sequence.size_hint().unwrap_or(0).min(MAXIMUM));
+        while values.len() < MAXIMUM {
+            let Some(value) = sequence.next_element()? else {
+                return Ok(values);
+            };
+            values.push(value);
+        }
+        if sequence.next_element::<IgnoredAny>()?.is_some() {
+            return Err(A::Error::custom(format_args!(
+                "array length exceeds maximum {MAXIMUM}"
+            )));
+        }
+        Ok(values)
+    }
+}
+
+fn deserialize_bounded_vec<'de, D, T, const MAXIMUM: usize>(
+    deserializer: D,
+) -> Result<Vec<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    deserializer.deserialize_seq(BoundedVecVisitor::<T, MAXIMUM>(PhantomData))
+}
+
+fn deserialize_registry_entries<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    deserialize_bounded_vec::<D, T, MAX_REGISTRY_ENTRIES>(deserializer)
+}
+
+fn deserialize_source_frames<'de, D>(
+    deserializer: D,
+) -> Result<Vec<SourceFrameDefinition>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    deserialize_bounded_vec::<D, SourceFrameDefinition, MAX_SOURCE_FRAMES_PER_FRAME>(deserializer)
+}
+
+fn deserialize_transform_steps<'de, D>(deserializer: D) -> Result<Vec<TransformStep>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    deserialize_bounded_vec::<D, TransformStep, MAX_TRANSFORM_STEPS>(deserializer)
+}
+
+fn deserialize_modalities<'de, D>(deserializer: D) -> Result<Vec<ModalityProjection>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    deserialize_bounded_vec::<D, ModalityProjection, MODALITY_COUNT>(deserializer)
+}
+
 /// A validated, canonical, deployment registry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeploymentRegistry {
     document: RegistryDocument,
     canonical_json: Vec<u8>,
     digest: String,
-    deployment_pin_verified: bool,
 }
 
 impl DeploymentRegistry {
     /// Decode, canonicalize, and validate an unpinned registry document.
     ///
     /// This constructor is useful for tooling that computes a digest to pin.
-    /// Operational producer and consumer startup should use [`Self::from_json_pinned`].
+    /// Operational producer and consumer startup should use
+    /// [`PinnedDeploymentRegistry::from_json`].
     ///
     /// # Errors
     ///
@@ -81,28 +164,22 @@ impl DeploymentRegistry {
             document,
             canonical_json,
             digest,
-            deployment_pin_verified: false,
         })
     }
 
-    /// Decode a registry and require its canonical digest to match a deployment pin.
+    /// Decode a registry and return a distinct capability only when its canonical
+    /// digest matches an external deployment pin.
     ///
     /// # Errors
     ///
     /// Returns [`RegistryError::InvalidDigest`] when `expected_digest` is not a
     /// lowercase SHA-256 digest and [`RegistryError::DigestMismatch`] when the
     /// validated canonical content does not match the pin.
-    pub fn from_json_pinned(bytes: &[u8], expected_digest: &str) -> Result<Self, RegistryError> {
-        validate_sha256("expected_registry_digest", expected_digest)?;
-        let mut registry = Self::from_json(bytes)?;
-        if registry.digest != expected_digest {
-            return Err(RegistryError::DigestMismatch {
-                expected: expected_digest.to_owned(),
-                actual: registry.digest,
-            });
-        }
-        registry.deployment_pin_verified = true;
-        Ok(registry)
+    pub fn from_json_pinned(
+        bytes: &[u8],
+        expected_digest: &str,
+    ) -> Result<PinnedDeploymentRegistry, RegistryError> {
+        PinnedDeploymentRegistry::from_json(bytes, expected_digest)
     }
 
     /// Canonical registry version fixed by the deployment document.
@@ -118,14 +195,6 @@ impl DeploymentRegistry {
     /// Lowercase SHA-256 of [`Self::canonical_json`].
     pub fn digest(&self) -> &str {
         &self.digest
-    }
-
-    /// Whether construction verified this content against an external deployment pin.
-    ///
-    /// The unpinned tooling constructor can calculate a digest, but it is not an
-    /// operational trust decision and cannot satisfy [`RegistryVerifier`].
-    pub fn deployment_pin_verified(&self) -> bool {
-        self.deployment_pin_verified
     }
 
     /// Compact canonical JSON bytes used to calculate [`Self::digest`].
@@ -240,22 +309,75 @@ impl DeploymentRegistry {
     }
 }
 
-impl RegistryVerifier for DeploymentRegistry {
-    fn opportunity_policy(&self) -> Result<RegistryOpportunityPolicy, RegistryViolation> {
-        if !self.deployment_pin_verified() {
-            return Err(RegistryViolation::RegistryNotPinned);
+/// Deployment registry whose canonical content matched an external SHA-256 pin.
+///
+/// Only this typestate implements [`RegistryVerifier`]; an unpinned
+/// [`DeploymentRegistry`] can compute tooling output but cannot enter the
+/// operational assembler boundary.
+///
+/// ```compile_fail
+/// use galadriel_ncp::assembler::{AssemblerProfile, CrossRouteAssembler};
+/// use galadriel_ncp::registry::DeploymentRegistry;
+/// use std::time::Instant;
+/// let raw = br#"{}"#;
+/// let registry = DeploymentRegistry::from_json(raw).unwrap();
+/// let limits = AssemblerProfile::BoundedV0_9.try_limits().unwrap();
+/// let _ = CrossRouteAssembler::new("session", "producer", registry, limits, Instant::now());
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PinnedDeploymentRegistry {
+    registry: DeploymentRegistry,
+}
+
+impl PinnedDeploymentRegistry {
+    /// Decode, validate, canonicalize, and compare a registry to an external pin.
+    pub fn from_json(bytes: &[u8], expected_digest: &str) -> Result<Self, RegistryError> {
+        validate_sha256("expected_registry_digest", expected_digest)?;
+        let registry = DeploymentRegistry::from_json(bytes)?;
+        if registry.digest != expected_digest {
+            return Err(RegistryError::DigestMismatch {
+                expected: expected_digest.to_owned(),
+                actual: registry.digest,
+            });
         }
-        let policy = DeploymentRegistry::opportunity_policy(self);
+        Ok(Self { registry })
+    }
+
+    /// Borrow the validated tooling representation underlying this capability.
+    #[must_use]
+    pub const fn registry(&self) -> &DeploymentRegistry {
+        &self.registry
+    }
+
+    /// Consume the pin capability and recover the tooling representation.
+    #[must_use]
+    pub fn into_registry(self) -> DeploymentRegistry {
+        self.registry
+    }
+}
+
+impl Deref for PinnedDeploymentRegistry {
+    type Target = DeploymentRegistry;
+
+    fn deref(&self) -> &Self::Target {
+        &self.registry
+    }
+}
+
+impl RegistryVerifier for PinnedDeploymentRegistry {
+    fn opportunity_policy(&self) -> Result<RegistryOpportunityPolicy, RegistryViolation> {
+        let policy = self.registry.opportunity_policy();
         match policy.rule() {
             OpportunityRule::FrozenActiveTrackModalityInputOrderV1 => {}
         }
-        Ok(RegistryOpportunityPolicy {
+        RegistryOpportunityPolicy::try_new(RegistryOpportunityParams {
             max_active_tracks: policy.max_active_tracks(),
             max_frame_inputs: policy.max_frame_inputs(),
             max_attempts_per_track_modality: policy.max_attempts_per_track_modality(),
             max_outcomes_per_frame: policy.max_outcomes_per_frame(),
             max_monitor_queue_events: policy.max_monitor_queue_events(),
         })
+        .map_err(|_| RegistryViolation::InvalidOpportunityPolicy)
     }
 
     fn verify_summary(
@@ -264,9 +386,6 @@ impl RegistryVerifier for DeploymentRegistry {
         registry_digest: &str,
         expected_modalities: &[Modality],
     ) -> Result<(), RegistryViolation> {
-        if !self.deployment_pin_verified() {
-            return Err(RegistryViolation::RegistryNotPinned);
-        }
         if registry_digest != self.digest() {
             return Err(RegistryViolation::DigestMismatch);
         }
@@ -312,20 +431,21 @@ impl RegistryVerifier for DeploymentRegistry {
         modality: Modality,
         projection: &ConsistencyProjection,
     ) -> Result<(), RegistryViolation> {
-        if !self.deployment_pin_verified() {
-            return Err(RegistryViolation::RegistryNotPinned);
-        }
-        if projection.frame_id != identity.frame_id
-            || projection.context_id != identity.context_id
-            || projection.prior_id != identity.prior_id
+        let projection_identity = projection.identity();
+        let frame_id = projection_identity.frame_id().get();
+        let context_id = projection_identity.context_id().get();
+        let prior_id = projection_identity.frozen_prior_id().get();
+        if frame_id != identity.frame_id
+            || context_id != identity.context_id
+            || prior_id != identity.prior_id
         {
             return Err(RegistryViolation::ProjectionIdentityMismatch {
                 expected_frame_id: identity.frame_id,
-                received_frame_id: projection.frame_id,
+                received_frame_id: frame_id,
                 expected_context_id: identity.context_id,
-                received_context_id: projection.context_id,
+                received_context_id: context_id,
                 expected_prior_id: identity.prior_id,
-                received_prior_id: projection.prior_id,
+                received_prior_id: prior_id,
             });
         }
 
@@ -362,11 +482,11 @@ impl RegistryVerifier for DeploymentRegistry {
         }
 
         let expected = context.output_dimensions();
-        if projection.dimensions != expected {
+        if projection.dimensions() != expected {
             return Err(RegistryViolation::ProjectionDimensionMismatch {
                 context_id: identity.context_id,
                 expected,
-                received: projection.dimensions,
+                received: projection.dimensions(),
             });
         }
 
@@ -427,7 +547,9 @@ pub struct RegistryDocument {
     schema_version: String,
     registry_version: String,
     opportunity_policy: OpportunityPolicy,
+    #[serde(deserialize_with = "deserialize_registry_entries")]
     frames: Vec<FrameDefinition>,
+    #[serde(deserialize_with = "deserialize_registry_entries")]
     contexts: Vec<ProjectionContext>,
 }
 
@@ -537,6 +659,7 @@ pub struct FrameDefinition {
     handedness: Handedness,
     linear_unit: LinearUnit,
     applicability: ApplicabilityInterval,
+    #[serde(deserialize_with = "deserialize_source_frames")]
     source_frames: Vec<SourceFrameDefinition>,
 }
 
@@ -667,6 +790,7 @@ pub struct SourceFrameDefinition {
     canonical_source_frame: String,
     transform_authority: String,
     aggregate_extrinsic: ContentReference,
+    #[serde(deserialize_with = "deserialize_transform_steps")]
     transform_chain: Vec<TransformStep>,
 }
 
@@ -791,6 +915,7 @@ pub struct ProjectionContext {
     axis_order: [EnuAxis; 3],
     covariance_semantics: CovarianceSemantics,
     linearization_semantics: LinearizationSemantics,
+    #[serde(deserialize_with = "deserialize_modalities")]
     expected_modalities: Vec<ModalityProjection>,
     producer_software_digest: String,
     producer_configuration_digest: String,
@@ -1669,7 +1794,7 @@ mod tests {
         DeploymentRegistry::from_json(&serde_json::to_vec(value).expect("fixture encodes"))
     }
 
-    fn decode_pinned(value: &Value) -> DeploymentRegistry {
+    fn decode_pinned(value: &Value) -> PinnedDeploymentRegistry {
         let bytes = serde_json::to_vec(value).expect("fixture encodes");
         let digest = DeploymentRegistry::from_json(&bytes)
             .expect("registry validates")
@@ -1719,6 +1844,42 @@ mod tests {
             first_registry.canonical_json(),
             reordered_registry.canonical_json()
         );
+    }
+
+    #[test]
+    fn strict_decode_rejects_duplicate_and_unknown_document_keys() {
+        let encoded = serde_json::to_string(&registry_value()).expect("fixture encodes");
+        let duplicated = encoded.replacen(
+            "\"schema_version\":\"1.0\"",
+            "\"schema_version\":\"1.0\",\"schema_version\":\"1.0\"",
+            1,
+        );
+        let unknown = encoded.replacen(
+            "\"schema_version\":\"1.0\"",
+            "\"schema_version\":\"1.0\",\"unexpected\":true",
+            1,
+        );
+
+        for invalid_document in [duplicated, unknown] {
+            assert!(matches!(
+                DeploymentRegistry::from_json(invalid_document.as_bytes()),
+                Err(RegistryError::Decode(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn collection_ceiling_is_enforced_during_deserialization() {
+        let mut value = registry_value();
+        let frame = value["frames"][0].clone();
+        value["frames"] = Value::Array(vec![frame; MAX_REGISTRY_ENTRIES + 1]);
+        let bytes = serde_json::to_vec(&value).expect("oversized fixture encodes");
+
+        let error = DeploymentRegistry::from_json(&bytes)
+            .expect_err("oversized frame array must fail during strict decode");
+
+        assert!(matches!(&error, RegistryError::Decode(_)));
+        assert!(error.to_string().contains("array length exceeds maximum"));
     }
 
     #[test]
@@ -1801,7 +1962,6 @@ mod tests {
             .expect("exact deployment pin validates");
 
         assert_eq!(pinned.digest(), digest);
-        assert!(pinned.deployment_pin_verified());
     }
 
     #[test]
@@ -2288,21 +2448,18 @@ mod tests {
             context_id: CONTEXT_ID,
             prior_id: 31,
         };
-        let projection = ConsistencyProjection {
-            values: [1.0, 2.0, 3.0],
-            dimensions: 3,
-            frame_id: FRAME_ID,
-            context_id: CONTEXT_ID,
-            prior_id: 31,
-        };
+        let projection =
+            ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, FRAME_ID, CONTEXT_ID, 31)
+                .expect("test projection is valid");
 
         assert_eq!(
             registry.verify_projection(identity, Modality::Visual, &projection),
             Ok(())
         );
 
-        let mut wrong_frame = projection;
-        wrong_frame.frame_id = FRAME_ID + 1;
+        let wrong_frame =
+            ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, FRAME_ID + 1, CONTEXT_ID, 31)
+                .expect("mismatched test projection remains structurally valid");
         assert!(matches!(
             registry.verify_projection(identity, Modality::Visual, &wrong_frame),
             Err(RegistryViolation::ProjectionIdentityMismatch {
@@ -2312,8 +2469,9 @@ mod tests {
             }) if received_frame_id == FRAME_ID + 1
         ));
 
-        let mut wrong_context = projection;
-        wrong_context.context_id = CONTEXT_ID + 1;
+        let wrong_context =
+            ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, FRAME_ID, CONTEXT_ID + 1, 31)
+                .expect("mismatched test projection remains structurally valid");
         assert!(matches!(
             registry.verify_projection(identity, Modality::Visual, &wrong_context),
             Err(RegistryViolation::ProjectionIdentityMismatch {
@@ -2323,9 +2481,9 @@ mod tests {
             }) if received_context_id == CONTEXT_ID + 1
         ));
 
-        let mut wrong_dimensions = projection;
-        wrong_dimensions.values = [1.0, 0.0, 0.0];
-        wrong_dimensions.dimensions = 1;
+        let wrong_dimensions =
+            ConsistencyProjection::try_new_raw([1.0, 0.0, 0.0], 1, FRAME_ID, CONTEXT_ID, 31)
+                .expect("one-dimensional test projection is valid");
         assert_eq!(
             registry.verify_projection(identity, Modality::Visual, &wrong_dimensions),
             Err(RegistryViolation::ProjectionDimensionMismatch {
@@ -2369,32 +2527,22 @@ mod tests {
                 ..
             })
         ));
-
-        let unpinned = decode(&registry_value()).expect("registry validates for digest tooling");
-        assert_eq!(
-            unpinned.verify_projection(identity, Modality::Visual, &projection),
-            Err(RegistryViolation::RegistryNotPinned)
-        );
     }
 
     #[test]
     fn registry_verifier_exposes_only_externally_pinned_opportunity_policy() {
         let pinned = decode_pinned(&registry_value());
+        let expected = RegistryOpportunityPolicy::try_new(RegistryOpportunityParams {
+            max_active_tracks: MAX_ACTIVE_TRACKS,
+            max_frame_inputs: MAX_FRAME_ITEMS,
+            max_attempts_per_track_modality: 8,
+            max_outcomes_per_frame: MAX_FRAME_ITEMS,
+            max_monitor_queue_events: MAX_MONITOR_QUEUE_EVENTS,
+        })
+        .expect("fixture policy is valid");
         assert_eq!(
-            <DeploymentRegistry as RegistryVerifier>::opportunity_policy(&pinned),
-            Ok(RegistryOpportunityPolicy {
-                max_active_tracks: MAX_ACTIVE_TRACKS,
-                max_frame_inputs: MAX_FRAME_ITEMS,
-                max_attempts_per_track_modality: 8,
-                max_outcomes_per_frame: MAX_FRAME_ITEMS,
-                max_monitor_queue_events: MAX_MONITOR_QUEUE_EVENTS,
-            })
-        );
-
-        let unpinned = decode(&registry_value()).expect("registry validates for digest tooling");
-        assert_eq!(
-            <DeploymentRegistry as RegistryVerifier>::opportunity_policy(&unpinned),
-            Err(RegistryViolation::RegistryNotPinned)
+            <PinnedDeploymentRegistry as RegistryVerifier>::opportunity_policy(&pinned),
+            Ok(expected)
         );
     }
 
@@ -2425,28 +2573,6 @@ mod tests {
             Err(RegistryViolation::NotApplicable {
                 timestamp_ms: 1_000
             })
-        );
-    }
-
-    #[test]
-    fn registry_verifier_rejects_tooling_only_unpinned_content() {
-        let registry = decode(&registry_value()).expect("registry validates for digest tooling");
-        let identity = FrameIdentity {
-            fusion_seq: 1,
-            fusion_timestamp_ms: 1_500,
-            frame_id: FRAME_ID,
-            context_id: CONTEXT_ID,
-            prior_id: 1,
-        };
-
-        assert!(!registry.deployment_pin_verified());
-        assert_eq!(
-            registry.verify_summary(
-                identity,
-                registry.digest(),
-                &[Modality::Visual, Modality::Radar]
-            ),
-            Err(RegistryViolation::RegistryNotPinned)
         );
     }
 

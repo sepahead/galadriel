@@ -23,7 +23,10 @@ use crate::monitor::{
     ModalityOutcomeKind, MonitorEnvelope, MonitorError, ProducerEvent, MAX_ACTIVE_TRACKS,
     MAX_FRAME_ITEMS, MAX_HEARTBEAT_DURATION_MS, MAX_MONITOR_EVENT_BYTES,
 };
-use crate::{SidecarEnvelope, SidecarEnvelopeError, MAX_ID_SEGMENT_BYTES};
+use crate::{
+    config_identity::ConfigurationIdentityBuilder, ConfigurationIdentity, SidecarEnvelope,
+    SidecarEnvelopeError, MAX_ID_SEGMENT_BYTES,
+};
 
 /// Maximum sidecar bytes admitted by the pure assembler before JSON decoding.
 pub const MAX_ASSEMBLER_SIDECAR_BYTES: usize = 64 * 1024;
@@ -37,6 +40,12 @@ pub const MAX_ASSEMBLER_BUFFERED_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_ASSEMBLER_PRIOR_IDENTITIES: usize = 1_000_000;
 /// Hard ceiling for retained `(track, modality)` observation replay streams.
 pub const MAX_ASSEMBLER_OBSERVATION_STREAMS: usize = 64 * 1024;
+/// Hard ceiling for the aggregate number of per-frame state slots.
+pub const MAX_ASSEMBLER_FRAME_STATE_SLOTS: usize = 16 * 1024 * 1024;
+/// Hard ceiling for aggregate frame, reorder, and replay-index slots.
+pub const MAX_ASSEMBLER_TOTAL_STATE_SLOTS: usize = 32 * 1024 * 1024;
+/// Hard ceiling for sequence-window distances admitted by a configuration.
+pub const MAX_ASSEMBLER_SEQUENCE_DISTANCE: u64 = JSON_SAFE_INTEGER_MAX as u64;
 
 /// Route on which an assembly fault or advisory was observed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,12 +74,15 @@ pub struct FrameIdentity {
 
 impl FrameIdentity {
     fn from_observation(observation: &PidObservation) -> Option<Self> {
-        observation.consistency_projection.map(|projection| Self {
-            fusion_seq: observation.seq,
-            fusion_timestamp_ms: observation.timestamp_ms,
-            frame_id: projection.frame_id,
-            context_id: projection.context_id,
-            prior_id: projection.prior_id,
+        observation.consistency_projection().map(|projection| {
+            let identity = projection.identity();
+            Self {
+                fusion_seq: observation.sequence().get(),
+                fusion_timestamp_ms: observation.timestamp_ms().get(),
+                frame_id: identity.frame_id().get(),
+                context_id: identity.context_id().get(),
+                prior_id: identity.frozen_prior_id().get(),
+            }
         })
     }
 
@@ -109,8 +121,10 @@ impl FrameIdentity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RegistryViolation {
-    /// Registry content was validated but not compared with an external deployment pin.
+    /// A verifier implementation could not establish its external deployment pin.
     RegistryNotPinned,
+    /// A supposedly validated registry could not produce a bounded typed policy.
+    InvalidOpportunityPolicy,
     /// Summary digest differs from the deployment pin.
     DigestMismatch,
     /// Frame identifier is unknown.
@@ -148,9 +162,9 @@ pub enum RegistryViolation {
     },
 }
 
-/// Deployment-pinned producer bounds needed while assembling evidence.
+/// Untrusted raw producer-opportunity parameters from a registry document.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RegistryOpportunityPolicy {
+pub struct RegistryOpportunityParams {
     /// Maximum frozen or post-processing active tracks.
     pub max_active_tracks: u32,
     /// Maximum bounded inputs represented by one frame.
@@ -161,6 +175,151 @@ pub struct RegistryOpportunityPolicy {
     pub max_outcomes_per_frame: u32,
     /// Maximum producer monitor-queue capacity.
     pub max_monitor_queue_events: u32,
+}
+
+/// Invalid producer-opportunity policy from a registry document.
+#[derive(Debug, thiserror::Error, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RegistryOpportunityPolicyError {
+    /// A required bound was zero or exceeded its wire hard maximum.
+    #[error("invalid registry opportunity limit {field}: {value}, maximum {maximum}")]
+    InvalidLimit {
+        /// Invalid field.
+        field: &'static str,
+        /// Received value.
+        value: u32,
+        /// Compiled wire maximum.
+        maximum: u32,
+    },
+}
+
+/// Validated, immutable deployment-pinned producer bounds.
+///
+/// ```compile_fail
+/// use galadriel_ncp::assembler::RegistryOpportunityPolicy;
+/// let _ = RegistryOpportunityPolicy {
+///     max_active_tracks: 1,
+///     max_frame_inputs: 1,
+///     max_attempts_per_track_modality: 1,
+///     max_outcomes_per_frame: 1,
+///     max_monitor_queue_events: 1,
+/// };
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RegistryOpportunityPolicy {
+    max_active_tracks: u32,
+    max_frame_inputs: u32,
+    max_attempts_per_track_modality: u32,
+    max_outcomes_per_frame: u32,
+    max_monitor_queue_events: u32,
+    identity: ConfigurationIdentity,
+}
+
+impl RegistryOpportunityPolicy {
+    /// Validate raw opportunity parameters.
+    pub fn try_new(
+        params: RegistryOpportunityParams,
+    ) -> Result<Self, RegistryOpportunityPolicyError> {
+        Self::try_from(params)
+    }
+
+    /// Maximum frozen or post-processing active tracks.
+    #[must_use]
+    pub const fn max_active_tracks(self) -> u32 {
+        self.max_active_tracks
+    }
+
+    /// Maximum bounded inputs represented by one frame.
+    #[must_use]
+    pub const fn max_frame_inputs(self) -> u32 {
+        self.max_frame_inputs
+    }
+
+    /// Maximum attempts represented for one track/modality pair.
+    #[must_use]
+    pub const fn max_attempts_per_track_modality(self) -> u32 {
+        self.max_attempts_per_track_modality
+    }
+
+    /// Maximum outcome/miss events represented by one frame.
+    #[must_use]
+    pub const fn max_outcomes_per_frame(self) -> u32 {
+        self.max_outcomes_per_frame
+    }
+
+    /// Maximum producer monitor-queue capacity.
+    #[must_use]
+    pub const fn max_monitor_queue_events(self) -> u32 {
+        self.max_monitor_queue_events
+    }
+
+    /// Canonical identity of this validated registry policy.
+    #[must_use]
+    pub const fn identity(self) -> ConfigurationIdentity {
+        self.identity
+    }
+}
+
+impl TryFrom<RegistryOpportunityParams> for RegistryOpportunityPolicy {
+    type Error = RegistryOpportunityPolicyError;
+
+    fn try_from(params: RegistryOpportunityParams) -> Result<Self, Self::Error> {
+        for (field, value, maximum) in [
+            (
+                "max_active_tracks",
+                params.max_active_tracks,
+                MAX_ACTIVE_TRACKS,
+            ),
+            ("max_frame_inputs", params.max_frame_inputs, MAX_FRAME_ITEMS),
+            (
+                "max_attempts_per_track_modality",
+                params.max_attempts_per_track_modality,
+                MAX_FRAME_ITEMS,
+            ),
+            (
+                "max_outcomes_per_frame",
+                params.max_outcomes_per_frame,
+                MAX_FRAME_ITEMS,
+            ),
+            (
+                "max_monitor_queue_events",
+                params.max_monitor_queue_events,
+                crate::monitor::MAX_MONITOR_QUEUE_EVENTS,
+            ),
+        ] {
+            if value == 0 || value > maximum {
+                return Err(RegistryOpportunityPolicyError::InvalidLimit {
+                    field,
+                    value,
+                    maximum,
+                });
+            }
+        }
+        let identity = ConfigurationIdentityBuilder::new("registry-opportunity-policy")
+            .u64("max_active_tracks", u64::from(params.max_active_tracks))
+            .u64("max_frame_inputs", u64::from(params.max_frame_inputs))
+            .u64(
+                "max_attempts_per_track_modality",
+                u64::from(params.max_attempts_per_track_modality),
+            )
+            .u64(
+                "max_outcomes_per_frame",
+                u64::from(params.max_outcomes_per_frame),
+            )
+            .u64(
+                "max_monitor_queue_events",
+                u64::from(params.max_monitor_queue_events),
+            )
+            .finish();
+        Ok(Self {
+            max_active_tracks: params.max_active_tracks,
+            max_frame_inputs: params.max_frame_inputs,
+            max_attempts_per_track_modality: params.max_attempts_per_track_modality,
+            max_outcomes_per_frame: params.max_outcomes_per_frame,
+            max_monitor_queue_events: params.max_monitor_queue_events,
+            identity,
+        })
+    }
 }
 
 /// Read-only boundary between the assembler and a deployment-pinned registry.
@@ -192,9 +351,9 @@ pub trait RegistryVerifier {
     ) -> Result<(), RegistryViolation>;
 }
 
-/// Finite resource and deadline policy for one assembler epoch.
+/// Untrusted raw assembler resource and deadline parameters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AssemblerLimits {
+pub struct AssemblerParams {
     /// Maximum open frames, including observation-first frames.
     pub max_open_frames: usize,
     /// Maximum outcome/miss records retained for one frame.
@@ -227,26 +386,287 @@ pub struct AssemblerLimits {
     pub initial_heartbeat_deadline: Duration,
 }
 
-impl Default for AssemblerLimits {
-    fn default() -> Self {
-        Self {
-            max_open_frames: 64,
-            max_events_per_frame: MAX_FRAME_ITEMS as usize,
-            max_observations_per_frame: MAX_FRAME_ITEMS as usize,
-            max_tracks_per_frame: 2 * MAX_ACTIVE_TRACKS as usize,
-            max_reorder_events: 1_024,
-            max_reorder_distance: MAX_FRAME_ITEMS as u64,
-            max_buffered_bytes: 8 * 1024 * 1024,
-            max_prior_identities: MAX_ASSEMBLER_PRIOR_IDENTITIES,
-            max_observation_streams: MAX_ASSEMBLER_OBSERVATION_STREAMS,
-            max_observation_advance: 1_000_000,
-            frame_deadline: Duration::from_secs(5),
-            reorder_deadline: Duration::from_secs(1),
-            heartbeat_interval: Duration::from_secs(1),
-            heartbeat_deadline: Duration::from_secs(3),
-            initial_heartbeat_deadline: Duration::from_secs(30),
+/// Named, reviewed assembler profiles for release 0.9.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum AssemblerProfile {
+    /// Bounded cross-route assembly profile shipped in 0.9.
+    BoundedV0_9,
+}
+
+impl AssemblerProfile {
+    /// Return this profile's frozen raw parameters.
+    #[must_use]
+    pub const fn params(self) -> AssemblerParams {
+        match self {
+            Self::BoundedV0_9 => AssemblerParams {
+                max_open_frames: 64,
+                max_events_per_frame: MAX_FRAME_ITEMS as usize,
+                max_observations_per_frame: MAX_FRAME_ITEMS as usize,
+                max_tracks_per_frame: 2 * MAX_ACTIVE_TRACKS as usize,
+                max_reorder_events: 1_024,
+                max_reorder_distance: MAX_FRAME_ITEMS as u64,
+                max_buffered_bytes: 8 * 1024 * 1024,
+                max_prior_identities: MAX_ASSEMBLER_PRIOR_IDENTITIES,
+                max_observation_streams: MAX_ASSEMBLER_OBSERVATION_STREAMS,
+                max_observation_advance: 1_000_000,
+                frame_deadline: Duration::from_secs(5),
+                reorder_deadline: Duration::from_secs(1),
+                heartbeat_interval: Duration::from_secs(1),
+                heartbeat_deadline: Duration::from_secs(3),
+                initial_heartbeat_deadline: Duration::from_secs(30),
+            },
         }
     }
+
+    /// Validate this profile and return its immutable capability.
+    pub fn try_limits(self) -> Result<AssemblerLimits, AssemblerConfigError> {
+        AssemblerLimits::try_from(self.params())
+    }
+}
+
+/// Finite, validated resource and deadline policy for one assembler epoch.
+///
+/// ```compile_fail
+/// use galadriel_ncp::assembler::AssemblerLimits;
+/// let _ = AssemblerLimits::default();
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AssemblerLimits {
+    max_open_frames: usize,
+    max_events_per_frame: usize,
+    max_observations_per_frame: usize,
+    max_tracks_per_frame: usize,
+    max_reorder_events: usize,
+    max_reorder_distance: u64,
+    max_buffered_bytes: usize,
+    max_prior_identities: usize,
+    max_observation_streams: usize,
+    max_observation_advance: u64,
+    frame_deadline: Duration,
+    reorder_deadline: Duration,
+    heartbeat_interval: Duration,
+    heartbeat_deadline: Duration,
+    initial_heartbeat_deadline: Duration,
+    identity: ConfigurationIdentity,
+}
+
+impl AssemblerLimits {
+    /// Maximum open frames, including observation-first frames.
+    #[must_use]
+    pub const fn max_open_frames(self) -> usize {
+        self.max_open_frames
+    }
+
+    /// Maximum outcome/miss records retained for one frame.
+    #[must_use]
+    pub const fn max_events_per_frame(self) -> usize {
+        self.max_events_per_frame
+    }
+
+    /// Maximum observations retained for one frame.
+    #[must_use]
+    pub const fn max_observations_per_frame(self) -> usize {
+        self.max_observations_per_frame
+    }
+
+    /// Maximum track identities retained for one frame.
+    #[must_use]
+    pub const fn max_tracks_per_frame(self) -> usize {
+        self.max_tracks_per_frame
+    }
+
+    /// Maximum monitor events waiting for reordering.
+    #[must_use]
+    pub const fn max_reorder_events(self) -> usize {
+        self.max_reorder_events
+    }
+
+    /// Maximum forward monitor sequence distance.
+    #[must_use]
+    pub const fn max_reorder_distance(self) -> u64 {
+        self.max_reorder_distance
+    }
+
+    /// Aggregate encoded-byte budget.
+    #[must_use]
+    pub const fn max_buffered_bytes(self) -> usize {
+        self.max_buffered_bytes
+    }
+
+    /// Maximum retained frozen-prior identities.
+    #[must_use]
+    pub const fn max_prior_identities(self) -> usize {
+        self.max_prior_identities
+    }
+
+    /// Maximum retained observation replay streams.
+    #[must_use]
+    pub const fn max_observation_streams(self) -> usize {
+        self.max_observation_streams
+    }
+
+    /// Maximum forward observation sequence advance.
+    #[must_use]
+    pub const fn max_observation_advance(self) -> u64 {
+        self.max_observation_advance
+    }
+
+    /// Fixed frame-completion deadline.
+    #[must_use]
+    pub const fn frame_deadline(self) -> Duration {
+        self.frame_deadline
+    }
+
+    /// Fixed monitor reorder-gap deadline.
+    #[must_use]
+    pub const fn reorder_deadline(self) -> Duration {
+        self.reorder_deadline
+    }
+
+    /// Required producer heartbeat interval.
+    #[must_use]
+    pub const fn heartbeat_interval(self) -> Duration {
+        self.heartbeat_interval
+    }
+
+    /// Steady-state receiver heartbeat deadline.
+    #[must_use]
+    pub const fn heartbeat_deadline(self) -> Duration {
+        self.heartbeat_deadline
+    }
+
+    /// Initial receiver heartbeat grace period.
+    #[must_use]
+    pub const fn initial_heartbeat_deadline(self) -> Duration {
+        self.initial_heartbeat_deadline
+    }
+
+    /// Canonical SHA-256 identity of this validated policy.
+    #[must_use]
+    pub const fn identity(self) -> ConfigurationIdentity {
+        self.identity
+    }
+
+    const fn as_params(self) -> AssemblerParams {
+        AssemblerParams {
+            max_open_frames: self.max_open_frames,
+            max_events_per_frame: self.max_events_per_frame,
+            max_observations_per_frame: self.max_observations_per_frame,
+            max_tracks_per_frame: self.max_tracks_per_frame,
+            max_reorder_events: self.max_reorder_events,
+            max_reorder_distance: self.max_reorder_distance,
+            max_buffered_bytes: self.max_buffered_bytes,
+            max_prior_identities: self.max_prior_identities,
+            max_observation_streams: self.max_observation_streams,
+            max_observation_advance: self.max_observation_advance,
+            frame_deadline: self.frame_deadline,
+            reorder_deadline: self.reorder_deadline,
+            heartbeat_interval: self.heartbeat_interval,
+            heartbeat_deadline: self.heartbeat_deadline,
+            initial_heartbeat_deadline: self.initial_heartbeat_deadline,
+        }
+    }
+}
+
+impl TryFrom<AssemblerParams> for AssemblerLimits {
+    type Error = AssemblerConfigError;
+
+    fn try_from(params: AssemblerParams) -> Result<Self, Self::Error> {
+        validate_assembler_params(params, None)?;
+        let duration_value = |field, duration| {
+            duration_ms(duration).ok_or(AssemblerConfigError::InvalidDuration {
+                field,
+                violation: AssemblerDurationViolation::NotExactMilliseconds,
+            })
+        };
+        let identity = ConfigurationIdentityBuilder::new("assembler-limits")
+            .u64("max_open_frames", params.max_open_frames as u64)
+            .u64("max_events_per_frame", params.max_events_per_frame as u64)
+            .u64(
+                "max_observations_per_frame",
+                params.max_observations_per_frame as u64,
+            )
+            .u64("max_tracks_per_frame", params.max_tracks_per_frame as u64)
+            .u64("max_reorder_events", params.max_reorder_events as u64)
+            .u64("max_reorder_distance", params.max_reorder_distance)
+            .u64("max_buffered_bytes", params.max_buffered_bytes as u64)
+            .u64("max_prior_identities", params.max_prior_identities as u64)
+            .u64(
+                "max_observation_streams",
+                params.max_observation_streams as u64,
+            )
+            .u64("max_observation_advance", params.max_observation_advance)
+            .u64(
+                "frame_deadline_ms",
+                duration_value("frame_deadline", params.frame_deadline)?,
+            )
+            .u64(
+                "reorder_deadline_ms",
+                duration_value("reorder_deadline", params.reorder_deadline)?,
+            )
+            .u64(
+                "heartbeat_interval_ms",
+                duration_value("heartbeat_interval", params.heartbeat_interval)?,
+            )
+            .u64(
+                "heartbeat_deadline_ms",
+                duration_value("heartbeat_deadline", params.heartbeat_deadline)?,
+            )
+            .u64(
+                "initial_heartbeat_deadline_ms",
+                duration_value(
+                    "initial_heartbeat_deadline",
+                    params.initial_heartbeat_deadline,
+                )?,
+            )
+            .finish();
+        Ok(Self {
+            max_open_frames: params.max_open_frames,
+            max_events_per_frame: params.max_events_per_frame,
+            max_observations_per_frame: params.max_observations_per_frame,
+            max_tracks_per_frame: params.max_tracks_per_frame,
+            max_reorder_events: params.max_reorder_events,
+            max_reorder_distance: params.max_reorder_distance,
+            max_buffered_bytes: params.max_buffered_bytes,
+            max_prior_identities: params.max_prior_identities,
+            max_observation_streams: params.max_observation_streams,
+            max_observation_advance: params.max_observation_advance,
+            frame_deadline: params.frame_deadline,
+            reorder_deadline: params.reorder_deadline,
+            heartbeat_interval: params.heartbeat_interval,
+            heartbeat_deadline: params.heartbeat_deadline,
+            initial_heartbeat_deadline: params.initial_heartbeat_deadline,
+            identity,
+        })
+    }
+}
+
+#[cfg(test)]
+impl Default for AssemblerLimits {
+    fn default() -> Self {
+        AssemblerProfile::BoundedV0_9
+            .try_limits()
+            .expect("the compiled assembler test profile is valid")
+    }
+}
+
+/// Why a duration policy was rejected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum AssemblerDurationViolation {
+    /// Duration was zero.
+    Zero,
+    /// Duration cannot be represented as an exact `u64` millisecond count.
+    NotExactMilliseconds,
+    /// Duration exceeded the compiled hard maximum.
+    ExceedsHardMaximum,
+    /// Steady deadline was shorter than the declared heartbeat interval.
+    DeadlineShorterThanInterval,
+    /// Initial grace was shorter than the steady heartbeat deadline.
+    InitialShorterThanSteady,
+    /// Deadline cannot be represented at the supplied monotonic anchor.
+    AnchorOverflow,
 }
 
 /// Invalid immutable assembler configuration.
@@ -271,9 +691,40 @@ pub enum AssemblerConfigError {
         /// Hard maximum.
         maximum: usize,
     },
-    /// A duration is zero, not an exact millisecond duration, or violates ordering.
-    #[error("invalid assembler duration policy: {0}")]
-    InvalidDuration(&'static str),
+    /// A sequence-distance bound is zero or exceeds its hard ceiling.
+    #[error("invalid assembler sequence limit {field}: {value}, maximum {maximum}")]
+    InvalidSequenceLimit {
+        /// Invalid field.
+        field: &'static str,
+        /// Invalid value.
+        value: u64,
+        /// Compiled hard maximum.
+        maximum: u64,
+    },
+    /// Aggregate configured state exceeded the compiled ceiling.
+    #[error("assembler aggregate state {value} exceeds maximum {maximum}")]
+    AggregateStateTooLarge {
+        /// Computed state slots, or `usize::MAX` on arithmetic overflow.
+        value: usize,
+        /// Compiled aggregate maximum.
+        maximum: usize,
+    },
+    /// The aggregate byte budget cannot admit one maximum route payload.
+    #[error("assembler buffered-byte budget {value} is smaller than required minimum {minimum}")]
+    BufferBudgetTooSmall {
+        /// Configured aggregate budget.
+        value: usize,
+        /// Minimum capable of admitting one bounded route payload.
+        minimum: usize,
+    },
+    /// A duration is invalid or violates ordering.
+    #[error("invalid assembler duration {field}: {violation:?}")]
+    InvalidDuration {
+        /// Invalid duration field or relationship.
+        field: &'static str,
+        /// Typed reason for rejection.
+        violation: AssemblerDurationViolation,
+    },
     /// Registry was not externally pinned or could not expose trusted policy.
     #[error("invalid assembler registry policy: {0:?}")]
     Registry(RegistryViolation),
@@ -942,7 +1393,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
                         AssemblyFaultKind::InvalidEnvelope {
                             route: EvidenceRoute::Observation,
                         },
-                        Some(envelope.observation.seq),
+                        Some(envelope.observation.sequence().get()),
                         received_at,
                     ));
                 }
@@ -967,7 +1418,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
                 AssemblyFaultKind::PayloadTooLarge {
                     route: EvidenceRoute::Observation,
                 },
-                Some(envelope.observation.seq),
+                Some(envelope.observation.sequence().get()),
                 received_at,
             ));
             return events;
@@ -985,28 +1436,19 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             });
         }
         let observation = envelope.observation;
-        let fusion_seq = observation.seq;
-        if observation.track_id == 0 {
-            events.push(self.fail(
-                AssemblyFaultKind::InvalidEnvelope {
-                    route: EvidenceRoute::Observation,
-                },
-                Some(fusion_seq),
-                received_at,
-            ));
-            return events;
-        }
-        if let Some(projection) = &observation.consistency_projection {
+        let fusion_seq = observation.sequence().get();
+        if let Some(projection) = observation.consistency_projection() {
+            let projection_identity = projection.identity();
             let identity = FrameIdentity {
                 fusion_seq,
-                fusion_timestamp_ms: observation.timestamp_ms,
-                frame_id: projection.frame_id,
-                context_id: projection.context_id,
-                prior_id: projection.prior_id,
+                fusion_timestamp_ms: observation.timestamp_ms().get(),
+                frame_id: projection_identity.frame_id().get(),
+                context_id: projection_identity.context_id().get(),
+                prior_id: projection_identity.frozen_prior_id().get(),
             };
             if let Err(error) =
                 self.registry
-                    .verify_projection(identity, observation.modality, projection)
+                    .verify_projection(identity, observation.modality(), projection)
             {
                 events.push(self.fail(
                     AssemblyFaultKind::Registry(error),
@@ -1027,7 +1469,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             ));
             return events;
         }
-        let stream = (observation.track_id, observation.modality);
+        let stream = (observation.track_id().get(), observation.modality());
         if let Some(previous) = self.observation_high_water.get(&stream).copied() {
             if fusion_seq <= previous {
                 events.push(self.fail(
@@ -1093,7 +1535,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             ));
             return events;
         }
-        if !frame.track_ids.contains(&observation.track_id)
+        if !frame.track_ids.contains(&observation.track_id().get())
             && frame.track_ids.len() >= self.limits.max_tracks_per_frame
         {
             events.push(self.fail(
@@ -1138,7 +1580,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             ));
             return events;
         };
-        frame.track_ids.insert(observation.track_id);
+        frame.track_ids.insert(observation.track_id().get());
         frame.buffered_bytes = frame.buffered_bytes.saturating_add(encoded_bytes);
         frame
             .observations
@@ -1604,7 +2046,10 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
                 .map(|stored| stored.observation)
                 .collect::<Vec<_>>();
             observations.sort_by_key(|observation| {
-                (observation.track_id, modality_rank(observation.modality))
+                (
+                    observation.track_id().get(),
+                    modality_rank(observation.modality()),
+                )
             });
             self.last_finalized_fusion_seq = Some(fusion_seq);
             events.push(AssemblyEvent::FrameReady(AssembledFrame {
@@ -1765,8 +2210,8 @@ fn validate_observation_join(
     expected: &HashMap<(u64, Modality), Option<ConsistencyProjection>>,
     observation: &PidObservation,
 ) -> Result<(), AssemblyFaultKind> {
-    let track_id = observation.track_id;
-    let modality = observation.modality;
+    let track_id = observation.track_id().get();
+    let modality = observation.modality();
     let Some(expected_projection) = expected.get(&(track_id, modality)) else {
         return Err(AssemblyFaultKind::UnexpectedObservation {
             fusion_seq: identity.fusion_seq,
@@ -1774,14 +2219,14 @@ fn validate_observation_join(
             modality,
         });
     };
-    if observation.timestamp_ms != identity.fusion_timestamp_ms {
+    if observation.timestamp_ms().get() != identity.fusion_timestamp_ms {
         return Err(AssemblyFaultKind::ObservationTimestampMismatch {
             fusion_seq: identity.fusion_seq,
             track_id,
             modality,
         });
     }
-    if &observation.consistency_projection != expected_projection {
+    if observation.consistency_projection() != expected_projection.as_ref() {
         return Err(AssemblyFaultKind::ObservationProjectionMismatch {
             fusion_seq: identity.fusion_seq,
             track_id,
@@ -1912,7 +2357,7 @@ fn validate_frame_ledger(
                     && expected_observations
                         .insert(
                             (outcome.track_id, outcome.modality),
-                            outcome.consistency_projection,
+                            outcome.consistency_projection.clone(),
                         )
                         .is_some()
                 {
@@ -2005,6 +2450,13 @@ fn validate_limits(
     limits: AssemblerLimits,
     started_at: Instant,
 ) -> Result<(), AssemblerConfigError> {
+    validate_assembler_params(limits.as_params(), Some(started_at))
+}
+
+fn validate_assembler_params(
+    limits: AssemblerParams,
+    anchor: Option<Instant>,
+) -> Result<(), AssemblerConfigError> {
     for (field, value, maximum) in [
         (
             "max_open_frames",
@@ -2055,69 +2507,122 @@ fn validate_limits(
             });
         }
     }
-    if limits.max_reorder_distance == 0 || limits.max_observation_advance == 0 {
-        return Err(AssemblerConfigError::InvalidDuration(
-            "sequence distances must be positive",
-        ));
-    }
-    for duration in [
-        limits.frame_deadline,
-        limits.reorder_deadline,
-        limits.heartbeat_interval,
-        limits.heartbeat_deadline,
-        limits.initial_heartbeat_deadline,
+    for (field, value) in [
+        ("max_reorder_distance", limits.max_reorder_distance),
+        ("max_observation_advance", limits.max_observation_advance),
     ] {
-        if duration.is_zero()
-            || duration.subsec_nanos() % 1_000_000 != 0
-            || duration_ms(duration).is_none()
-        {
-            return Err(AssemblerConfigError::InvalidDuration(
-                "all deadlines must be positive exact u64-millisecond durations",
-            ));
+        if value == 0 || value > MAX_ASSEMBLER_SEQUENCE_DISTANCE {
+            return Err(AssemblerConfigError::InvalidSequenceLimit {
+                field,
+                value,
+                maximum: MAX_ASSEMBLER_SEQUENCE_DISTANCE,
+            });
+        }
+    }
+    let minimum_buffer = MAX_ASSEMBLER_SIDECAR_BYTES.max(MAX_MONITOR_EVENT_BYTES);
+    if limits.max_buffered_bytes < minimum_buffer {
+        return Err(AssemblerConfigError::BufferBudgetTooSmall {
+            value: limits.max_buffered_bytes,
+            minimum: minimum_buffer,
+        });
+    }
+    let per_frame_slots = limits
+        .max_events_per_frame
+        .checked_add(limits.max_observations_per_frame)
+        .and_then(|value| value.checked_add(limits.max_tracks_per_frame));
+    let frame_slots = per_frame_slots.and_then(|value| value.checked_mul(limits.max_open_frames));
+    let total_slots = frame_slots
+        .and_then(|value| value.checked_add(limits.max_reorder_events))
+        .and_then(|value| value.checked_add(limits.max_prior_identities))
+        .and_then(|value| value.checked_add(limits.max_observation_streams));
+    if frame_slots.is_none_or(|value| value > MAX_ASSEMBLER_FRAME_STATE_SLOTS)
+        || total_slots.is_none_or(|value| value > MAX_ASSEMBLER_TOTAL_STATE_SLOTS)
+    {
+        return Err(AssemblerConfigError::AggregateStateTooLarge {
+            value: total_slots.unwrap_or(usize::MAX),
+            maximum: MAX_ASSEMBLER_TOTAL_STATE_SLOTS,
+        });
+    }
+
+    for (field, duration) in [
+        ("frame_deadline", limits.frame_deadline),
+        ("reorder_deadline", limits.reorder_deadline),
+        ("heartbeat_interval", limits.heartbeat_interval),
+        ("heartbeat_deadline", limits.heartbeat_deadline),
+        (
+            "initial_heartbeat_deadline",
+            limits.initial_heartbeat_deadline,
+        ),
+    ] {
+        if duration.is_zero() {
+            return Err(AssemblerConfigError::InvalidDuration {
+                field,
+                violation: AssemblerDurationViolation::Zero,
+            });
+        }
+        let Some(millis) = duration_ms(duration) else {
+            return Err(AssemblerConfigError::InvalidDuration {
+                field,
+                violation: AssemblerDurationViolation::NotExactMilliseconds,
+            });
+        };
+        if duration.subsec_nanos() % 1_000_000 != 0 {
+            return Err(AssemblerConfigError::InvalidDuration {
+                field,
+                violation: AssemblerDurationViolation::NotExactMilliseconds,
+            });
+        }
+        if millis > MAX_HEARTBEAT_DURATION_MS {
+            return Err(AssemblerConfigError::InvalidDuration {
+                field,
+                violation: AssemblerDurationViolation::ExceedsHardMaximum,
+            });
         }
     }
     if limits.heartbeat_deadline < limits.heartbeat_interval {
-        return Err(AssemblerConfigError::InvalidDuration(
-            "heartbeat deadline must not be shorter than its interval",
-        ));
+        return Err(AssemblerConfigError::InvalidDuration {
+            field: "heartbeat_deadline",
+            violation: AssemblerDurationViolation::DeadlineShorterThanInterval,
+        });
     }
     if limits.initial_heartbeat_deadline < limits.heartbeat_deadline {
-        return Err(AssemblerConfigError::InvalidDuration(
-            "initial heartbeat deadline must not be shorter than the steady deadline",
-        ));
+        return Err(AssemblerConfigError::InvalidDuration {
+            field: "initial_heartbeat_deadline",
+            violation: AssemblerDurationViolation::InitialShorterThanSteady,
+        });
     }
-    if duration_ms(limits.heartbeat_interval)
-        .is_none_or(|millis| millis > MAX_HEARTBEAT_DURATION_MS)
-    {
-        return Err(AssemblerConfigError::InvalidDuration(
-            "heartbeat interval exceeds the monitor wire maximum",
-        ));
+    if let Some(anchor) = anchor {
+        validate_deadline_anchor_params(limits, anchor)?;
     }
-    if duration_ms(limits.heartbeat_deadline)
-        .is_none_or(|millis| millis > MAX_HEARTBEAT_DURATION_MS)
-    {
-        return Err(AssemblerConfigError::InvalidDuration(
-            "heartbeat deadline exceeds the monitor wire maximum",
-        ));
-    }
-    validate_deadline_anchor(limits, started_at)?;
     Ok(())
 }
 
+#[cfg(any(feature = "zenoh", test))]
 fn validate_deadline_anchor(
     limits: AssemblerLimits,
     anchor: Instant,
 ) -> Result<(), AssemblerConfigError> {
-    for duration in [
-        limits.frame_deadline,
-        limits.reorder_deadline,
-        limits.heartbeat_deadline,
-        limits.initial_heartbeat_deadline,
+    validate_deadline_anchor_params(limits.as_params(), anchor)
+}
+
+fn validate_deadline_anchor_params(
+    limits: AssemblerParams,
+    anchor: Instant,
+) -> Result<(), AssemblerConfigError> {
+    for (field, duration) in [
+        ("frame_deadline", limits.frame_deadline),
+        ("reorder_deadline", limits.reorder_deadline),
+        ("heartbeat_deadline", limits.heartbeat_deadline),
+        (
+            "initial_heartbeat_deadline",
+            limits.initial_heartbeat_deadline,
+        ),
     ] {
         if anchor.checked_add(duration).is_none() {
-            return Err(AssemblerConfigError::InvalidDuration(
-                "deadline cannot be represented at the monotonic clock anchor",
-            ));
+            return Err(AssemblerConfigError::InvalidDuration {
+                field,
+                violation: AssemblerDurationViolation::AnchorOverflow,
+            });
         }
     }
     Ok(())
@@ -2198,7 +2703,7 @@ fn modality_rank(modality: Modality) -> u8 {
 mod tests {
     use super::*;
     use crate::monitor::{GateEvidence, GateMethod, QueueHealth};
-    use crate::registry::DeploymentRegistry;
+    use crate::registry::{DeploymentRegistry, PinnedDeploymentRegistry};
 
     const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     const FIXTURE_REGISTRY_DIGEST: &str =
@@ -2208,13 +2713,14 @@ mod tests {
     struct TestRegistry;
 
     fn wire_policy() -> RegistryOpportunityPolicy {
-        RegistryOpportunityPolicy {
+        RegistryOpportunityPolicy::try_new(RegistryOpportunityParams {
             max_active_tracks: MAX_ACTIVE_TRACKS,
             max_frame_inputs: MAX_FRAME_ITEMS,
             max_attempts_per_track_modality: MAX_FRAME_ITEMS,
             max_outcomes_per_frame: MAX_FRAME_ITEMS,
             max_monitor_queue_events: crate::monitor::MAX_MONITOR_QUEUE_EVENTS,
-        }
+        })
+        .expect("wire policy is bounded")
     }
 
     fn verify_test_projection(
@@ -2223,19 +2729,20 @@ mod tests {
         projection: &ConsistencyProjection,
         expected_modalities: &[Modality],
     ) -> Result<(), RegistryViolation> {
-        if (
-            projection.frame_id,
-            projection.context_id,
-            projection.prior_id,
-        ) != (identity.frame_id, identity.context_id, identity.prior_id)
+        let projection_identity = projection.identity();
+        let frame_id = projection_identity.frame_id().get();
+        let context_id = projection_identity.context_id().get();
+        let prior_id = projection_identity.frozen_prior_id().get();
+        if (frame_id, context_id, prior_id)
+            != (identity.frame_id, identity.context_id, identity.prior_id)
         {
             return Err(RegistryViolation::ProjectionIdentityMismatch {
                 expected_frame_id: identity.frame_id,
-                received_frame_id: projection.frame_id,
+                received_frame_id: frame_id,
                 expected_context_id: identity.context_id,
-                received_context_id: projection.context_id,
+                received_context_id: context_id,
                 expected_prior_id: identity.prior_id,
-                received_prior_id: projection.prior_id,
+                received_prior_id: prior_id,
             });
         }
         if !expected_modalities.contains(&modality) {
@@ -2244,11 +2751,11 @@ mod tests {
                 modality,
             });
         }
-        if projection.dimensions != 3 {
+        if projection.dimensions() != 3 {
             return Err(RegistryViolation::ProjectionDimensionMismatch {
                 context_id: identity.context_id,
                 expected: 3,
-                received: projection.dimensions,
+                received: projection.dimensions(),
             });
         }
         Ok(())
@@ -2364,13 +2871,8 @@ mod tests {
     }
 
     fn projection(prior_id: u64) -> ConsistencyProjection {
-        ConsistencyProjection {
-            values: [1.0, 2.0, 3.0],
-            dimensions: 3,
-            frame_id: 10,
-            context_id: 20,
-            prior_id,
-        }
+        ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, 10, 20, prior_id)
+            .expect("test projection is valid")
     }
 
     fn outcome(seq: u64, prior_id: u64) -> ModalityOutcome {
@@ -2543,37 +3045,37 @@ mod tests {
     }
 
     fn observation(seq: u64, prior_id: u64) -> PidObservation {
-        PidObservation {
-            track_id: 7,
-            timestamp_ms: 1_000 + seq,
+        test_observation(
+            7,
+            1_000 + seq,
             seq,
-            modality: Modality::Visual,
-            nis: 1.0,
-            dof: 3,
-            innovation: None,
-            innovation_cov: None,
-            consistency_projection: Some(projection(prior_id)),
+            Modality::Visual,
+            1.0,
+            Some(projection(prior_id)),
+        )
+    }
+
+    fn test_observation(
+        track_id: u64,
+        timestamp_ms: u64,
+        sequence: u64,
+        modality: Modality,
+        nis: f64,
+        projection: Option<ConsistencyProjection>,
+    ) -> PidObservation {
+        let observation =
+            PidObservation::try_scalar_raw(track_id, timestamp_ms, sequence, modality, nis, 3)
+                .expect("test observation is valid");
+        match projection {
+            Some(projection) => observation.with_consistency_projection(projection),
+            None => observation,
         }
     }
 
     fn one_dimensional_registry_observation() -> PidObservation {
-        PidObservation {
-            track_id: 7,
-            timestamp_ms: 1_100,
-            seq: 1,
-            modality: Modality::Visual,
-            nis: 1.0,
-            dof: 3,
-            innovation: None,
-            innovation_cov: None,
-            consistency_projection: Some(ConsistencyProjection {
-                values: [1.0, 0.0, 0.0],
-                dimensions: 1,
-                frame_id: 17,
-                context_id: 23,
-                prior_id: 101,
-            }),
-        }
+        let projection = ConsistencyProjection::try_new_raw([1.0, 0.0, 0.0], 1, 17, 23, 101)
+            .expect("one-dimensional test projection is valid");
+        test_observation(7, 1_100, 1, Modality::Visual, 1.0, Some(projection))
     }
 
     fn one_dimensional_registry_outcome() -> ModalityOutcome {
@@ -2596,11 +3098,13 @@ mod tests {
                 d2: 1.0,
                 threshold: 7.815,
             }),
-            consistency_projection: one_dimensional_registry_observation().consistency_projection,
+            consistency_projection: one_dimensional_registry_observation()
+                .consistency_projection()
+                .cloned(),
         }
     }
 
-    fn pinned_fixture_registry() -> DeploymentRegistry {
+    fn pinned_fixture_registry() -> PinnedDeploymentRegistry {
         DeploymentRegistry::from_json_pinned(
             include_bytes!("../tests/fixtures/crebain_registry_v1.json"),
             FIXTURE_REGISTRY_DIGEST,
@@ -2785,6 +3289,55 @@ mod tests {
     }
 
     #[test]
+    fn release_profiles_have_stable_architecture_independent_identities() {
+        let limits = AssemblerProfile::BoundedV0_9.try_limits().unwrap();
+        let policy = wire_policy();
+
+        assert_eq!(
+            limits.identity().to_hex(),
+            "de32762c3262bef5424bbe66ae96a698173f5b35bbae5f5b1c06955594cd6b13"
+        );
+        assert_eq!(
+            policy.identity().to_hex(),
+            "0efa70a37ea0bbf937a580d19294fe65a5970d7a18d3497b280c3a55725d5b9f"
+        );
+    }
+
+    #[test]
+    fn typed_construction_rejects_buffer_aggregate_and_registry_boundaries() {
+        let mut too_small_buffer = AssemblerProfile::BoundedV0_9.params();
+        too_small_buffer.max_buffered_bytes = MAX_ASSEMBLER_SIDECAR_BYTES - 1;
+        assert!(matches!(
+            AssemblerLimits::try_from(too_small_buffer),
+            Err(AssemblerConfigError::BufferBudgetTooSmall { .. })
+        ));
+
+        let mut excessive_aggregate = AssemblerProfile::BoundedV0_9.params();
+        excessive_aggregate.max_open_frames = MAX_ASSEMBLER_OPEN_FRAMES;
+        excessive_aggregate.max_tracks_per_frame = MAX_FRAME_ITEMS as usize;
+        assert!(matches!(
+            AssemblerLimits::try_from(excessive_aggregate),
+            Err(AssemblerConfigError::AggregateStateTooLarge { .. })
+        ));
+
+        let mut invalid_policy = RegistryOpportunityParams {
+            max_active_tracks: MAX_ACTIVE_TRACKS,
+            max_frame_inputs: MAX_FRAME_ITEMS,
+            max_attempts_per_track_modality: MAX_FRAME_ITEMS,
+            max_outcomes_per_frame: MAX_FRAME_ITEMS,
+            max_monitor_queue_events: crate::monitor::MAX_MONITOR_QUEUE_EVENTS,
+        };
+        invalid_policy.max_active_tracks = 0;
+        assert!(matches!(
+            RegistryOpportunityPolicy::try_new(invalid_policy),
+            Err(RegistryOpportunityPolicyError::InvalidLimit {
+                field: "max_active_tracks",
+                ..
+            })
+        ));
+    }
+
+    #[test]
     fn resource_and_duration_validation_isolation_covers_each_predicate() {
         let start = Instant::now();
         let defaults = AssemblerLimits::default();
@@ -2814,12 +3367,10 @@ mod tests {
                 ..defaults
             },
         ] {
-            assert_eq!(
+            assert!(matches!(
                 validate_limits(invalid, start),
-                Err(AssemblerConfigError::InvalidDuration(
-                    "sequence distances must be positive"
-                ))
-            );
+                Err(AssemblerConfigError::InvalidSequenceLimit { value: 0, .. })
+            ));
         }
 
         let zero = AssemblerLimits {
@@ -2830,30 +3381,32 @@ mod tests {
             frame_deadline: Duration::from_nanos(1),
             ..defaults
         };
-        for invalid in [zero, fractional] {
-            assert_eq!(
-                validate_limits(invalid, start),
-                Err(AssemblerConfigError::InvalidDuration(
-                    "all deadlines must be positive exact u64-millisecond durations"
-                ))
-            );
-        }
+        assert!(matches!(
+            validate_limits(zero, start),
+            Err(AssemblerConfigError::InvalidDuration {
+                field: "frame_deadline",
+                violation: AssemblerDurationViolation::Zero,
+            })
+        ));
+        assert!(matches!(
+            validate_limits(fractional, start),
+            Err(AssemblerConfigError::InvalidDuration {
+                field: "frame_deadline",
+                violation: AssemblerDurationViolation::NotExactMilliseconds,
+            })
+        ));
 
         let unrepresentable = AssemblerLimits {
             frame_deadline: Duration::from_millis(u64::MAX),
             ..defaults
         };
-        let mut near_monotonic_limit = start;
-        while let Some(next) = near_monotonic_limit.checked_add(unrepresentable.frame_deadline) {
-            assert!(next > near_monotonic_limit);
-            near_monotonic_limit = next;
-        }
-        assert_eq!(
-            validate_limits(unrepresentable, near_monotonic_limit),
-            Err(AssemblerConfigError::InvalidDuration(
-                "deadline cannot be represented at the monotonic clock anchor"
-            ))
-        );
+        assert!(matches!(
+            validate_limits(unrepresentable, start),
+            Err(AssemblerConfigError::InvalidDuration {
+                field: "frame_deadline",
+                violation: AssemblerDurationViolation::ExceedsHardMaximum,
+            })
+        ));
     }
 
     #[test]
@@ -3289,7 +3842,7 @@ mod tests {
         ] {
             assert!(matches!(
                 CrossRouteAssembler::new("epoch-1", "crebain", TestRegistry, invalid, start),
-                Err(AssemblerConfigError::InvalidDuration(_))
+                Err(AssemblerConfigError::InvalidDuration { .. })
             ));
         }
     }
@@ -3468,8 +4021,7 @@ mod tests {
     fn assembler_establishes_observation_projection_identity_before_monitor() {
         let start = Instant::now();
         let mut assembler = assembler(start);
-        let mut bad = observation(1, 101);
-        bad.consistency_projection = Some(projection(999));
+        let bad = test_observation(7, 1_001, 1, Modality::Visual, 1.0, Some(projection(999)));
         assembler.ingest_observation_bytes(&observation_bytes(bad), start);
         let events = assembler.ingest_monitor_bytes(
             &monitor_bytes(1, ProducerEvent::ModalityOutcome(outcome(1, 101))),
@@ -3618,8 +4170,8 @@ mod tests {
         );
         assert!(!partial.ready);
 
-        let mut unexpected = observation(1, 101);
-        unexpected.track_id = 8;
+        let unexpected =
+            test_observation(8, 1_001, 1, Modality::Visual, 1.0, Some(projection(101)));
         let events = assembler.ingest_observation_bytes(&observation_bytes(unexpected), start);
         assert!(matches!(
             fault_kind(&events),
@@ -3635,8 +4187,8 @@ mod tests {
     fn assembler_rejects_observation_without_v1_expected_key() {
         let start = Instant::now();
         let mut assembler = assembler(start);
-        let mut unexpected = observation(1, 101);
-        unexpected.track_id = 8;
+        let unexpected =
+            test_observation(8, 1_001, 1, Modality::Visual, 1.0, Some(projection(101)));
         assembler.ingest_observation_bytes(&observation_bytes(unexpected), start);
         assembler.ingest_monitor_bytes(
             &monitor_bytes(1, ProducerEvent::ModalityOutcome(outcome(1, 101))),
@@ -3709,8 +4261,7 @@ mod tests {
         let mut assembler = assembler(start);
         assembler.ingest_observation_bytes(&observation_bytes(observation(2, 101)), start);
 
-        let mut earlier = observation(1, 101);
-        earlier.track_id = 8;
+        let earlier = test_observation(8, 1_001, 1, Modality::Visual, 1.0, Some(projection(101)));
         let events = assembler.ingest_observation_bytes(&observation_bytes(earlier), start);
 
         let fault = fault(&events).expect("observation prior reuse faults immediately");
@@ -3822,10 +4373,10 @@ mod tests {
     }
 
     #[test]
-    fn decoded_envelopes_use_canonical_size_for_buffer_budget() {
+    fn decoded_envelopes_fit_the_required_single_payload_buffer_floor() {
         let start = Instant::now();
         let limits = AssemblerLimits {
-            max_buffered_bytes: 1,
+            max_buffered_bytes: MAX_ASSEMBLER_SIDECAR_BYTES.max(MAX_MONITOR_EVENT_BYTES),
             heartbeat_deadline: Duration::from_secs(30),
             ..AssemblerLimits::default()
         };
@@ -3837,12 +4388,9 @@ mod tests {
 
         let events = assembler.ingest_observation_envelope(envelope, start);
 
-        assert!(matches!(
-            fault_kind(&events),
-            Some(AssemblyFaultKind::CapacityExceeded {
-                capacity: AssemblyCapacity::BufferedBytes
-            })
-        ));
+        assert!(fault_kind(&events).is_none());
+        assert!(assembler.buffered_bytes() > 0);
+        assert!(assembler.buffered_bytes() <= limits.max_buffered_bytes());
 
         let mut assembler =
             CrossRouteAssembler::new("epoch-1", "crebain", TestRegistry, limits, start)
@@ -3857,12 +4405,8 @@ mod tests {
 
         let events = assembler.ingest_monitor_envelope(envelope, start);
 
-        assert!(matches!(
-            fault_kind(&events),
-            Some(AssemblyFaultKind::CapacityExceeded {
-                capacity: AssemblyCapacity::BufferedBytes
-            })
-        ));
+        assert!(fault_kind(&events).is_none());
+        assert_eq!(assembler.buffered_bytes(), 0);
     }
 
     #[test]
@@ -4077,8 +4621,8 @@ mod tests {
             &assembler.ingest_observation_bytes(&observation_bytes(observation(1, 101)), start,)
         )
         .is_none());
-        let mut second_track = observation(1, 101);
-        second_track.track_id = 8;
+        let second_track =
+            test_observation(8, 1_001, 1, Modality::Visual, 1.0, Some(projection(101)));
 
         let events = assembler.ingest_observation_bytes(&observation_bytes(second_track), start);
 

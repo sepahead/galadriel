@@ -1,8 +1,17 @@
-# Phase 1 ten-lens review: identity, claims and contract
+# Superseded Phase 1 review: identity, claims and contract
+
+Status: **historical provenance only; not a closure record for the current
+116-task handoff**. The external handoff identified in
+`release/0.9.0/handoff-source.json` superseded the 120-task source used for this
+review. Current tasks must be re-derived and re-evidenced; no statement below
+closes a current task by inheritance.
 
 Date: 2026-07-14
 
-Reviewer/author: Sepehr Mahmoudian
+Record author and decision owner: Sepehr Mahmoudian
+
+Review method: machine-assisted author review; no independent human reviewer is
+claimed by this historical record.
 
 Tasks: T000–T009
 
@@ -32,7 +41,7 @@ deployment claim.
 ## Correctness and invariants
 
 The release identity is consistently 0.9.0 and author identity is Sepehr Mahmoudian.
-The 120-task sequence is machine-checked as contiguous with the exact dependency
+The superseded 120-task sequence was machine-checked as contiguous with its dependency
 chain. Report estimands and ordered verdict functionals are frozen in
 `STATISTICAL-CONTRACT.md`. The authority validator accepts equality/restriction and
 rejects every modeled widening. Remaining correctness risk is explicitly outside
@@ -109,7 +118,7 @@ not independent field evidence.
 
 The release record explains source-handoff preservation, version adaptation,
 claims, estimands, threats, API, dependencies, support and change control. README
-links the controlling documents and plainly labels 0.9.0 supervisor-review status.
+links the controlling documents and plainly labels the 0.9.0 research-release status.
 Security reporting has a private channel and exact contact. Publication/runbook and
 withdrawal operator drills remain later tasks.
 

@@ -24,9 +24,18 @@ detector contract **SHALL NOT** be public. The former public `chi2` module is
 private in 0.9.0; callers consume the typed NIS report rather than depending on a
 particular incomplete-gamma backend.
 
+**GLD-090-API-005:** Accepted whole-stream reports **SHALL** remain sealed.
+`AssessmentBinding` may be compared, inspected, or verified against an exact stream
+and `ReleaseSuite`, but callers cannot construct it or attach it to replacement
+component reports. Unbound component fusion APIs are diagnostic compatibility
+surfaces and do not return an accepted `DefaultReport`.
+
 The pre-change snapshot is
 `release/0.9.0/api/galadriel-core.baseline.txt`; the accepted 0.9.0 snapshot is
-generated after the complete implementation. Because the preceding public
+`release/0.9.0/api/galadriel-core.0.9.0.txt`. The optional PID adapter also has an
+audit-only snapshot at `release/0.9.0/api/galadriel-pid.0.9.0.txt`; retaining it
+proves that accepted PID configs and sealed reports expose no public fields, but
+does not promote that experimental crate to the stable surface. Because the preceding public
 version was 0.1.0 and explicitly a research prototype, 0.9.0 may remove accidental
 surface. Subsequent 0.9.x releases use the accepted snapshot as the compatibility
 baseline. Serialization schemas are separately versioned and do not become stable

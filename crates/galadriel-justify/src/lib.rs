@@ -315,6 +315,11 @@ pub fn auc(pos: &[f64], neg: &[f64]) -> Result<f64> {
             "AUC classes must both be non-empty".into(),
         ));
     }
+    if pos.len() > MAX_TRIALS || neg.len() > MAX_TRIALS {
+        return Err(GaladrielError::InvalidChannels(format!(
+            "AUC classes accept at most {MAX_TRIALS} observations each"
+        )));
+    }
     if !pos.iter().chain(neg).all(|value| value.is_finite()) {
         return Err(GaladrielError::NonFinite("AUC score"));
     }
@@ -367,6 +372,11 @@ pub fn auc_ci(pos: &[f64], neg: &[f64], n_boot: usize, seed: u64) -> Result<(f64
         return Err(GaladrielError::InvalidChannels(
             "paired AUC bootstrap classes must have equal lengths".into(),
         ));
+    }
+    if pos.len() > MAX_TRIALS {
+        return Err(GaladrielError::InvalidChannels(format!(
+            "paired AUC bootstrap accepts at most {MAX_TRIALS} trial pairs"
+        )));
     }
     if pos.len() < MIN_TRIALS {
         return Err(GaladrielError::InvalidChannels(format!(
@@ -1486,7 +1496,8 @@ pub fn format_seq(s: &SeqStudy) -> String {
 // φ from data, with its own uncertainty — a registered enhancement decision.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Window length for the AR(1) null study — matches `CorrConfig::default().window`.
+/// Window length for the AR(1) null study — matches the standalone-advisory 0.9
+/// correlation profile's window.
 const AR1_WINDOW: usize = 128;
 /// Lag-1 AR coefficients scanned (φ = 0 is the calibration check).
 pub const AR1_PHIS: [f64; 5] = [0.0, 0.3, 0.5, 0.7, 0.9];
@@ -1874,6 +1885,9 @@ mod tests {
         assert!(run_synergy(MAX_TRIALS + 1, 600, 7).is_err());
         assert!(run_seq(Coupling::Linear, 0, 0.5, 7).is_err());
         assert!(auc_ci(&[1.0], &[0.0], 0, 7).is_err());
+        let oversized = vec![0.0; MAX_TRIALS + 1];
+        assert!(auc(&oversized, &[0.0]).is_err());
+        assert!(auc_ci(&oversized, &oversized, MIN_BOOTSTRAP_RESAMPLES, 7).is_err());
     }
 
     #[test]

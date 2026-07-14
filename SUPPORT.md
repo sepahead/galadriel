@@ -1,7 +1,7 @@
 # Support policy
 
-Galadriel 0.9.0 is a research source release for supervisor review. Sepehr
-Mahmoudian is the maintainer and release author.
+Galadriel 0.9.0 is a research source release. Sepehr Mahmoudian is the
+maintainer and release author.
 
 **GLD-090-META-001:** General reproducible defects **SHALL** be reported through
 the GitHub issue tracker with the exact commit, platform, Rust toolchain, command,

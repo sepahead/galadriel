@@ -21,12 +21,14 @@
 //! clique**, and an attributed channel must have a successfully estimated low edge
 //! to every clique member. Equal dyads and estimator failures are therefore
 //! insufficient, never nominal or attributed. Positive attribution is
-//! circular delete-block-confirmed by default: the joint worst-consensus margin
+//! circular delete-block-confirmed by the explicit
+//! [`PidResearchProfile::CircularDeleteBlockV0_9`] profile: the joint worst-consensus margin
 //! needs a positive lower bound, and the joint worst-candidate margin needs a
 //! negative upper bound. Edge maxima/minima are recomputed inside every resample,
 //! so all fitted edges enter two family-level extrema rather than an unresolvable
-//! per-edge Bonferroni split. [`PidConfig::family_alpha`] is divided across those
-//! two one-sided bounds (and across projection axes by [`assess_stream`]). Alongside it —
+//! per-edge Bonferroni split. The accepted
+//! [`CircularDeleteBlockConfirmation::family_alpha`] budget is divided across those two
+//! one-sided bounds (and across projection axes by [`assess_stream`]). Alongside it —
 //! advisory, **report-only**, never read by the verdict — the engine reports the
 //! channel's shared-exclusions **PID atoms** (`I^sx` redundancy and its Möbius
 //! synergy) for the triple (channel, stable designated peer, consensus of the
@@ -38,7 +40,7 @@
 //!
 //! Estimator work is explicitly bounded. Direct [`analyze`] handles one aligned
 //! scalar projection; [`assess_stream`] evaluates each producer-attested common
-//! projection axis separately. Geometry gates, bootstrap bounds, and deterministic
+//! projection axis separately. Geometry gates, delete-block bounds, and deterministic
 //! modality-keyed Gaussian observation-noise model are safeguards, not a calibration theorem: the clique and
 //! reference are selected on the same window, the empirical delete-block interval
 //! is not formal selective inference, thresholds are not fleet-calibrated, and
@@ -46,16 +48,27 @@
 
 mod engine;
 mod fusion;
+mod identity;
+mod suite;
 
 pub use engine::{
-    analyze, ChannelPid, PairKsgEvidence, PidConfig, PidEstimatorEvidence, PidReport, PidVerdict,
-    MAX_PID_WINDOW, PID_ATOM_POINT_FIT_UNITS, PID_CONFIRMATION_EDGE_FIT_UNITS,
-    PID_PAIR_POINT_FIT_UNITS, PID_RS_REVISION, PID_RS_VERSION,
+    analyze, ChannelPid, CircularDeleteBlockConfirmation, PairKsgEvidence, PidConfig,
+    PidConfigError, PidConfirmation, PidConfirmationParams, PidEstimatorEvidence, PidParams,
+    PidReport, PidResearchProfile, PidVerdict, MAX_PID_WINDOW, PID_ATOM_POINT_FIT_UNITS,
+    PID_CONFIRMATION_EDGE_FIT_UNITS, PID_PAIR_POINT_FIT_UNITS, PID_RS_REVISION, PID_RS_VERSION,
 };
 pub use fusion::{
-    assess_stream, assess_stream_with_correlation, fuse, fuse_axes, AxisPidReport, FusedReport,
+    assess_stream, fuse, fuse_axes, fuse_axes_diagnostics, AxisPidReport, FusedReport,
 };
 pub use galadriel_core::FusedVerdict;
+pub use identity::{
+    PidAssessmentBinding, PidAssessmentDigest, PidConfigDigest, PidResearchClassification,
+    PidResearchSuiteDigest,
+};
+pub use suite::{
+    PidResearchSuite, PidResearchSuiteError, PidResearchSuiteParams,
+    MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK, MIN_PID_RESEARCH_MODALITIES,
+};
 
 // The signed-scalar channel extractor lives in galadriel-core (it is shared with the
 // pure correlation detector); re-exported here for convenience.

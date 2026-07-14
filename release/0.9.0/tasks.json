@@ -1,0 +1,1639 @@
+{
+  "schema": "galadriel.current-handoff-tasks.v2",
+  "source": {
+    "master_package": "SEPAHEAD_V1_0_CURRENT_HEAD_MAX_EFFORT_MASTER_HANDOFF",
+    "child_package": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF.zip",
+    "child_package_sha256": "41bd414e38e7f46a0417005d59e2b0c0eb5e139ec38cce632e006b60a750cd94",
+    "task_ledger_sha256": "b7477290a798feaa00d636ef602e0c09f07d953fd556135478334994f0a03721",
+    "prepared": "2026-07-14",
+    "frozen_commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",
+    "original_target": "1.0.0",
+    "adapted_target": "0.9.0"
+  },
+  "tasks": [
+    {
+      "id": "T000",
+      "phase": "P0 Audit and scope",
+      "title": "Freeze exact audit inputs and produce a signed immutable input manifest",
+      "source_scope": "entire repository and external dependencies",
+      "focus": "commit, tree, submodules, tags, toolchains, packages, models/data, papers, downstream heads",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T001",
+      "phase": "P0 Audit and scope",
+      "title": "Reconcile Git tracked files, filesystem files, generated outputs, symlinks, binaries, and ignored release inputs",
+      "source_scope": "entire repository",
+      "focus": "complete source inventory",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T000"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T002",
+      "phase": "P0 Audit and scope",
+      "title": "Complete language-classified line-by-line review packets and reviewer assignments",
+      "source_scope": "all text/code/config/docs",
+      "focus": "human review coverage",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T001"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T003",
+      "phase": "P0 Audit and scope",
+      "title": "Create public surface inventory and claim-tier ledger",
+      "source_scope": "exports, CLI, IPC, schemas, docs, packages, GitHub metadata",
+      "focus": "truthful scope",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T002"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T004",
+      "phase": "P0 Audit and scope",
+      "title": "Create threat, misuse, failure, and quirky-case register",
+      "source_scope": "all trust/scientific boundaries",
+      "focus": "adversarial model",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T003"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T005",
+      "phase": "P0 Audit and scope",
+      "title": "Reproduce the unmodified baseline and archive every command/result",
+      "source_scope": "all supported profiles and platforms",
+      "focus": "baseline evidence",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T004"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T006",
+      "phase": "P0 Audit and scope",
+      "title": "Inventory TODO/FIXME/HACK/experimental/unimplemented/dormant and permissive fallback paths",
+      "source_scope": "all tracked text files",
+      "focus": "latent incompleteness",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T005"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T007",
+      "phase": "P0 Audit and scope",
+      "title": "Inventory dependencies, features, code generators, licenses, assets, datasets, and supply-chain trust",
+      "source_scope": "build/package/deployment surfaces",
+      "focus": "dependency governance",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T006"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T008",
+      "phase": "P0 Audit and scope",
+      "title": "Create the requirement-to-code-to-test-to-evidence graph",
+      "source_scope": "all claims",
+      "focus": "traceability",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T007"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T009",
+      "phase": "P0 Audit and scope",
+      "title": "Freeze stable, experimental, unsupported, and removed 1.0 capability profiles",
+      "source_scope": "public contract",
+      "focus": "scope decision",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T008"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T010",
+      "phase": "Path group: Root scope and workspace",
+      "title": "Read and specify Root scope and workspace",
+      "source_scope": "README.md, AGENTS.md, Cargo.toml, Cargo.lock, rust-toolchain.toml, deny.toml, SECURITY.md, CHANGELOG.md",
+      "focus": "Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth.; language family=md/toml",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T009"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T011",
+      "phase": "Path group: Root scope and workspace",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Root scope and workspace",
+      "source_scope": "README.md, AGENTS.md, Cargo.toml, Cargo.lock, rust-toolchain.toml, deny.toml, SECURITY.md, CHANGELOG.md",
+      "focus": "Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T010"
+      ],
+      "execution_wave": 0,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T012",
+      "phase": "Path group: Root scope and workspace",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Root scope and workspace",
+      "source_scope": "README.md, AGENTS.md, Cargo.toml, Cargo.lock, rust-toolchain.toml, deny.toml, SECURITY.md, CHANGELOG.md",
+      "focus": "Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T011"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T013",
+      "phase": "Path group: Root scope and workspace",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Root scope and workspace",
+      "source_scope": "README.md, AGENTS.md, Cargo.toml, Cargo.lock, rust-toolchain.toml, deny.toml, SECURITY.md, CHANGELOG.md",
+      "focus": "Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T012"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T014",
+      "phase": "Path group: Root scope and workspace",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Root scope and workspace",
+      "source_scope": "README.md, AGENTS.md, Cargo.toml, Cargo.lock, rust-toolchain.toml, deny.toml, SECURITY.md, CHANGELOG.md",
+      "focus": "Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T013"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T015",
+      "phase": "Path group: Core detector contracts",
+      "title": "Read and specify Core detector contracts",
+      "source_scope": "crates/galadriel-core/**",
+      "focus": "Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources.; language family=rust",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T014"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T016",
+      "phase": "Path group: Core detector contracts",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Core detector contracts",
+      "source_scope": "crates/galadriel-core/**",
+      "focus": "Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T015"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T017",
+      "phase": "Path group: Core detector contracts",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Core detector contracts",
+      "source_scope": "crates/galadriel-core/**",
+      "focus": "Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T016"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T018",
+      "phase": "Path group: Core detector contracts",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Core detector contracts",
+      "source_scope": "crates/galadriel-core/**",
+      "focus": "Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T017"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T019",
+      "phase": "Path group: Core detector contracts",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Core detector contracts",
+      "source_scope": "crates/galadriel-core/**",
+      "focus": "Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T018"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T020",
+      "phase": "Path group: NIS and sequential statistics",
+      "title": "Read and specify NIS and sequential statistics",
+      "source_scope": "galadriel-core NIS/CUSUM modules and tests",
+      "focus": "Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration.; language family=rust",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T019"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T021",
+      "phase": "Path group: NIS and sequential statistics",
+      "title": "Prove input, state, error, time, identity, and resource invariants for NIS and sequential statistics",
+      "source_scope": "galadriel-core NIS/CUSUM modules and tests",
+      "focus": "Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T020"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T022",
+      "phase": "Path group: NIS and sequential statistics",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of NIS and sequential statistics",
+      "source_scope": "galadriel-core NIS/CUSUM modules and tests",
+      "focus": "Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T021"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T023",
+      "phase": "Path group: NIS and sequential statistics",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for NIS and sequential statistics",
+      "source_scope": "galadriel-core NIS/CUSUM modules and tests",
+      "focus": "Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T022"
+      ],
+      "execution_wave": 1,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T024",
+      "phase": "Path group: NIS and sequential statistics",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for NIS and sequential statistics",
+      "source_scope": "galadriel-core NIS/CUSUM modules and tests",
+      "focus": "Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T023"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T025",
+      "phase": "Path group: Correlation, geometry, and attribution",
+      "title": "Read and specify Correlation, geometry, and attribution",
+      "source_scope": "galadriel-core correlation/projection/attribution modules",
+      "focus": "Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases.; language family=rust",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T024"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T026",
+      "phase": "Path group: Correlation, geometry, and attribution",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Correlation, geometry, and attribution",
+      "source_scope": "galadriel-core correlation/projection/attribution modules",
+      "focus": "Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T025"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T027",
+      "phase": "Path group: Correlation, geometry, and attribution",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Correlation, geometry, and attribution",
+      "source_scope": "galadriel-core correlation/projection/attribution modules",
+      "focus": "Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T026"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T028",
+      "phase": "Path group: Correlation, geometry, and attribution",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Correlation, geometry, and attribution",
+      "source_scope": "galadriel-core correlation/projection/attribution modules",
+      "focus": "Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T027"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T029",
+      "phase": "Path group: Correlation, geometry, and attribution",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Correlation, geometry, and attribution",
+      "source_scope": "galadriel-core correlation/projection/attribution modules",
+      "focus": "Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T028"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T030",
+      "phase": "Path group: Fusion and availability",
+      "title": "Read and specify Fusion and availability",
+      "source_scope": "galadriel-core fusion/readiness/heartbeat modules",
+      "focus": "Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites.; language family=rust",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T029"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T031",
+      "phase": "Path group: Fusion and availability",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Fusion and availability",
+      "source_scope": "galadriel-core fusion/readiness/heartbeat modules",
+      "focus": "Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T030"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T032",
+      "phase": "Path group: Fusion and availability",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Fusion and availability",
+      "source_scope": "galadriel-core fusion/readiness/heartbeat modules",
+      "focus": "Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T031"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T033",
+      "phase": "Path group: Fusion and availability",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Fusion and availability",
+      "source_scope": "galadriel-core fusion/readiness/heartbeat modules",
+      "focus": "Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T032"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T034",
+      "phase": "Path group: Fusion and availability",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Fusion and availability",
+      "source_scope": "galadriel-core fusion/readiness/heartbeat modules",
+      "focus": "Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T033"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T035",
+      "phase": "Path group: Synthetic simulation",
+      "title": "Read and specify Synthetic simulation",
+      "source_scope": "crates/galadriel-sim/**",
+      "focus": "Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift.; language family=rust",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T034"
+      ],
+      "execution_wave": 2,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T036",
+      "phase": "Path group: Synthetic simulation",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Synthetic simulation",
+      "source_scope": "crates/galadriel-sim/**",
+      "focus": "Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T035"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T037",
+      "phase": "Path group: Synthetic simulation",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Synthetic simulation",
+      "source_scope": "crates/galadriel-sim/**",
+      "focus": "Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T036"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T038",
+      "phase": "Path group: Synthetic simulation",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Synthetic simulation",
+      "source_scope": "crates/galadriel-sim/**",
+      "focus": "Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T037"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T039",
+      "phase": "Path group: Synthetic simulation",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Synthetic simulation",
+      "source_scope": "crates/galadriel-sim/**",
+      "focus": "Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T038"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T040",
+      "phase": "Path group: Evaluation and calibration",
+      "title": "Read and specify Evaluation and calibration",
+      "source_scope": "crates/galadriel-eval/**",
+      "focus": "Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence.; language family=rust",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T039"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T041",
+      "phase": "Path group: Evaluation and calibration",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Evaluation and calibration",
+      "source_scope": "crates/galadriel-eval/**",
+      "focus": "Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T040"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T042",
+      "phase": "Path group: Evaluation and calibration",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Evaluation and calibration",
+      "source_scope": "crates/galadriel-eval/**",
+      "focus": "Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T041"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T043",
+      "phase": "Path group: Evaluation and calibration",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Evaluation and calibration",
+      "source_scope": "crates/galadriel-eval/**",
+      "focus": "Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T042"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T044",
+      "phase": "Path group: Evaluation and calibration",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Evaluation and calibration",
+      "source_scope": "crates/galadriel-eval/**",
+      "focus": "Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T043"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T045",
+      "phase": "Path group: Mathematical justification",
+      "title": "Read and specify Mathematical justification",
+      "source_scope": "crates/galadriel-justify/**",
+      "focus": "Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code.; language family=rust/md",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T044"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T046",
+      "phase": "Path group: Mathematical justification",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Mathematical justification",
+      "source_scope": "crates/galadriel-justify/**",
+      "focus": "Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T045"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T047",
+      "phase": "Path group: Mathematical justification",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Mathematical justification",
+      "source_scope": "crates/galadriel-justify/**",
+      "focus": "Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T046"
+      ],
+      "execution_wave": 3,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T048",
+      "phase": "Path group: Mathematical justification",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Mathematical justification",
+      "source_scope": "crates/galadriel-justify/**",
+      "focus": "Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T047"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T049",
+      "phase": "Path group: Mathematical justification",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Mathematical justification",
+      "source_scope": "crates/galadriel-justify/**",
+      "focus": "Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T048"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T050",
+      "phase": "Path group: NCP ingestion",
+      "title": "Read and specify NCP ingestion",
+      "source_scope": "crates/galadriel-ncp/**",
+      "focus": "Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown.; language family=rust",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T049"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T051",
+      "phase": "Path group: NCP ingestion",
+      "title": "Prove input, state, error, time, identity, and resource invariants for NCP ingestion",
+      "source_scope": "crates/galadriel-ncp/**",
+      "focus": "Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T050"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T052",
+      "phase": "Path group: NCP ingestion",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of NCP ingestion",
+      "source_scope": "crates/galadriel-ncp/**",
+      "focus": "Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T051"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T053",
+      "phase": "Path group: NCP ingestion",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for NCP ingestion",
+      "source_scope": "crates/galadriel-ncp/**",
+      "focus": "Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T052"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T054",
+      "phase": "Path group: NCP ingestion",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for NCP ingestion",
+      "source_scope": "crates/galadriel-ncp/**",
+      "focus": "Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T053"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T055",
+      "phase": "Path group: Optional PID adapter",
+      "title": "Read and specify Optional PID adapter",
+      "source_scope": "crates/galadriel-pid/**",
+      "focus": "Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair.; language family=rust",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T054"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T056",
+      "phase": "Path group: Optional PID adapter",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Optional PID adapter",
+      "source_scope": "crates/galadriel-pid/**",
+      "focus": "Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T055"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T057",
+      "phase": "Path group: Optional PID adapter",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Optional PID adapter",
+      "source_scope": "crates/galadriel-pid/**",
+      "focus": "Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T056"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T058",
+      "phase": "Path group: Optional PID adapter",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Optional PID adapter",
+      "source_scope": "crates/galadriel-pid/**",
+      "focus": "Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T057"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T059",
+      "phase": "Path group: Optional PID adapter",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Optional PID adapter",
+      "source_scope": "crates/galadriel-pid/**",
+      "focus": "Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T058"
+      ],
+      "execution_wave": 4,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T060",
+      "phase": "Path group: CLI and operator surfaces",
+      "title": "Read and specify CLI and operator surfaces",
+      "source_scope": "crates/galadriel-cli/**",
+      "focus": "Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation.; language family=rust",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T059"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T061",
+      "phase": "Path group: CLI and operator surfaces",
+      "title": "Prove input, state, error, time, identity, and resource invariants for CLI and operator surfaces",
+      "source_scope": "crates/galadriel-cli/**",
+      "focus": "Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T060"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T062",
+      "phase": "Path group: CLI and operator surfaces",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of CLI and operator surfaces",
+      "source_scope": "crates/galadriel-cli/**",
+      "focus": "Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T061"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T063",
+      "phase": "Path group: CLI and operator surfaces",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for CLI and operator surfaces",
+      "source_scope": "crates/galadriel-cli/**",
+      "focus": "Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T062"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T064",
+      "phase": "Path group: CLI and operator surfaces",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for CLI and operator surfaces",
+      "source_scope": "crates/galadriel-cli/**",
+      "focus": "Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T063"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T065",
+      "phase": "Path group: Claims and statistical docs",
+      "title": "Read and specify Claims and statistical docs",
+      "source_scope": "docs/CLAIMS.md, STATISTICAL-CONTRACT.md, EVALUATION.md, JUSTIFICATION.md, MOTIVATION.md, PAPER.md, RELATED-WORK.md",
+      "focus": "Every theorem, metric, number, threshold, limitation, citation, and operational interpretation.; language family=md",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T064"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T066",
+      "phase": "Path group: Claims and statistical docs",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Claims and statistical docs",
+      "source_scope": "docs/CLAIMS.md, STATISTICAL-CONTRACT.md, EVALUATION.md, JUSTIFICATION.md, MOTIVATION.md, PAPER.md, RELATED-WORK.md",
+      "focus": "Every theorem, metric, number, threshold, limitation, citation, and operational interpretation.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T065"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T067",
+      "phase": "Path group: Claims and statistical docs",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Claims and statistical docs",
+      "source_scope": "docs/CLAIMS.md, STATISTICAL-CONTRACT.md, EVALUATION.md, JUSTIFICATION.md, MOTIVATION.md, PAPER.md, RELATED-WORK.md",
+      "focus": "Every theorem, metric, number, threshold, limitation, citation, and operational interpretation.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T066"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T068",
+      "phase": "Path group: Claims and statistical docs",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Claims and statistical docs",
+      "source_scope": "docs/CLAIMS.md, STATISTICAL-CONTRACT.md, EVALUATION.md, JUSTIFICATION.md, MOTIVATION.md, PAPER.md, RELATED-WORK.md",
+      "focus": "Every theorem, metric, number, threshold, limitation, citation, and operational interpretation.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T067"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T069",
+      "phase": "Path group: Claims and statistical docs",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Claims and statistical docs",
+      "source_scope": "docs/CLAIMS.md, STATISTICAL-CONTRACT.md, EVALUATION.md, JUSTIFICATION.md, MOTIVATION.md, PAPER.md, RELATED-WORK.md",
+      "focus": "Every theorem, metric, number, threshold, limitation, citation, and operational interpretation.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T068"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T070",
+      "phase": "Path group: Authority and producer contracts",
+      "title": "Read and specify Authority and producer contracts",
+      "source_scope": "docs/ADVISORY-BOUNDARY.md, PRODUCER-CONTRACT.md, API-SURFACE.md, PID_RS_1_0_MIGRATION.md",
+      "focus": "Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations.; language family=md",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T069"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T071",
+      "phase": "Path group: Authority and producer contracts",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Authority and producer contracts",
+      "source_scope": "docs/ADVISORY-BOUNDARY.md, PRODUCER-CONTRACT.md, API-SURFACE.md, PID_RS_1_0_MIGRATION.md",
+      "focus": "Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T070"
+      ],
+      "execution_wave": 5,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T072",
+      "phase": "Path group: Authority and producer contracts",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Authority and producer contracts",
+      "source_scope": "docs/ADVISORY-BOUNDARY.md, PRODUCER-CONTRACT.md, API-SURFACE.md, PID_RS_1_0_MIGRATION.md",
+      "focus": "Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T071"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T073",
+      "phase": "Path group: Authority and producer contracts",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Authority and producer contracts",
+      "source_scope": "docs/ADVISORY-BOUNDARY.md, PRODUCER-CONTRACT.md, API-SURFACE.md, PID_RS_1_0_MIGRATION.md",
+      "focus": "Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T072"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T074",
+      "phase": "Path group: Authority and producer contracts",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Authority and producer contracts",
+      "source_scope": "docs/ADVISORY-BOUNDARY.md, PRODUCER-CONTRACT.md, API-SURFACE.md, PID_RS_1_0_MIGRATION.md",
+      "focus": "Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T073"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T075",
+      "phase": "Path group: Threat and deployment docs",
+      "title": "Read and specify Threat and deployment docs",
+      "source_scope": "docs/THREAT-MODEL.md, SECURE-DEPLOYMENT.md, DEPENDENCY-POLICY.md",
+      "focus": "Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile.; language family=md",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T074"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T076",
+      "phase": "Path group: Threat and deployment docs",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Threat and deployment docs",
+      "source_scope": "docs/THREAT-MODEL.md, SECURE-DEPLOYMENT.md, DEPENDENCY-POLICY.md",
+      "focus": "Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T075"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T077",
+      "phase": "Path group: Threat and deployment docs",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Threat and deployment docs",
+      "source_scope": "docs/THREAT-MODEL.md, SECURE-DEPLOYMENT.md, DEPENDENCY-POLICY.md",
+      "focus": "Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T076"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T078",
+      "phase": "Path group: Threat and deployment docs",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Threat and deployment docs",
+      "source_scope": "docs/THREAT-MODEL.md, SECURE-DEPLOYMENT.md, DEPENDENCY-POLICY.md",
+      "focus": "Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T077"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T079",
+      "phase": "Path group: Threat and deployment docs",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Threat and deployment docs",
+      "source_scope": "docs/THREAT-MODEL.md, SECURE-DEPLOYMENT.md, DEPENDENCY-POLICY.md",
+      "focus": "Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T078"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T080",
+      "phase": "Path group: Evidence and release candidate",
+      "title": "Read and specify Evidence and release candidate",
+      "source_scope": "evidence/**, release/0.9.0/**",
+      "focus": "Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction.; language family=json/md/data",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T079"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T081",
+      "phase": "Path group: Evidence and release candidate",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Evidence and release candidate",
+      "source_scope": "evidence/**, release/0.9.0/**",
+      "focus": "Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T080"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T082",
+      "phase": "Path group: Evidence and release candidate",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Evidence and release candidate",
+      "source_scope": "evidence/**, release/0.9.0/**",
+      "focus": "Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T081"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T083",
+      "phase": "Path group: Evidence and release candidate",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Evidence and release candidate",
+      "source_scope": "evidence/**, release/0.9.0/**",
+      "focus": "Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T082"
+      ],
+      "execution_wave": 6,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T084",
+      "phase": "Path group: Evidence and release candidate",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Evidence and release candidate",
+      "source_scope": "evidence/**, release/0.9.0/**",
+      "focus": "Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T083"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T085",
+      "phase": "Path group: Deployment assets",
+      "title": "Read and specify Deployment assets",
+      "source_scope": "deploy/**, assets/**",
+      "focus": "mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility.; language family=yaml/json/certs/docs",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T084"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T086",
+      "phase": "Path group: Deployment assets",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Deployment assets",
+      "source_scope": "deploy/**, assets/**",
+      "focus": "mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T085"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T087",
+      "phase": "Path group: Deployment assets",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Deployment assets",
+      "source_scope": "deploy/**, assets/**",
+      "focus": "mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T086"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T088",
+      "phase": "Path group: Deployment assets",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Deployment assets",
+      "source_scope": "deploy/**, assets/**",
+      "focus": "mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T087"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T089",
+      "phase": "Path group: Deployment assets",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Deployment assets",
+      "source_scope": "deploy/**, assets/**",
+      "focus": "mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T088"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T090",
+      "phase": "Path group: Fuzzing, scripts, and workflows",
+      "title": "Read and specify Fuzzing, scripts, and workflows",
+      "source_scope": "fuzz/**, scripts/**, .github/**",
+      "focus": "Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release.; language family=rust/python/shell/yaml",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T089"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T091",
+      "phase": "Path group: Fuzzing, scripts, and workflows",
+      "title": "Prove input, state, error, time, identity, and resource invariants for Fuzzing, scripts, and workflows",
+      "source_scope": "fuzz/**, scripts/**, .github/**",
+      "focus": "Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T090"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T092",
+      "phase": "Path group: Fuzzing, scripts, and workflows",
+      "title": "Adversarially review numerical/security/concurrency/compatibility behavior of Fuzzing, scripts, and workflows",
+      "source_scope": "fuzz/**, scripts/**, .github/**",
+      "focus": "Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T091"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T093",
+      "phase": "Path group: Fuzzing, scripts, and workflows",
+      "title": "Build independent tests, oracles, fuzz corpus, and failure injection for Fuzzing, scripts, and workflows",
+      "source_scope": "fuzz/**, scripts/**, .github/**",
+      "focus": "Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T092"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T094",
+      "phase": "Path group: Fuzzing, scripts, and workflows",
+      "title": "Reconcile public docs, migrations, evidence, and downstream consumers for Fuzzing, scripts, and workflows",
+      "source_scope": "fuzz/**, scripts/**, .github/**",
+      "focus": "Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T093"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T095",
+      "phase": "Repository-specific closure",
+      "title": "Write a normative statistical estimand for every report field and verdict.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Write a normative statistical estimand for every report field and verdict.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T094"
+      ],
+      "execution_wave": 7,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T096",
+      "phase": "Repository-specific closure",
+      "title": "Choose and justify a sequential-error-control method; calibrate it under serial dependence and estimated covariance.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Choose and justify a sequential-error-control method; calibrate it under serial dependence and estimated covariance.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T095"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T097",
+      "phase": "Repository-specific closure",
+      "title": "Control multiplicity across channels, axes, directions, windows, tracks, and repeated assessments.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Control multiplicity across channels, axes, directions, windows, tracks, and repeated assessments.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T096"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T098",
+      "phase": "Repository-specific closure",
+      "title": "Create a complete fusion truth table and property tests proving unavailable evidence never becomes Nominal and conflicting positive evidence cannot disappear.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Create a complete fusion truth table and property tests proving unavailable evidence never becomes Nominal and conflicting positive evidence cannot disappear.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T097"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T099",
+      "phase": "Repository-specific closure",
+      "title": "Define readiness and availability budgets separately from anomaly statistics.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Define readiness and availability budgets separately from anomaly statistics.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T098"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T100",
+      "phase": "Repository-specific closure",
+      "title": "Predeclare acceptance thresholds for false-alert episodes, mission false-alarm probability, detection probability, conditional delay, attribution error, and abstention.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Predeclare acceptance thresholds for false-alert episodes, mission false-alarm probability, detection probability, conditional delay, attribution error, and abstention.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T099"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T101",
+      "phase": "Repository-specific closure",
+      "title": "Use independently authored generators or external datasets for at least one holdout arm.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Use independently authored generators or external datasets for at least one holdout arm.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T100"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T102",
+      "phase": "Repository-specific closure",
+      "title": "Require producer-attested common projection and reject historical captures that cannot prove it.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Require producer-attested common projection and reject historical captures that cannot prove it.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T101"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T103",
+      "phase": "Repository-specific closure",
+      "title": "Run consistency-preserving, common-mode, frame-swap, unit-swap, stale-prior, route-confusion, and gating-censorship attack campaigns.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Run consistency-preserving, common-mode, frame-swap, unit-swap, stale-prior, route-confusion, and gating-censorship attack campaigns.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T102"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T104",
+      "phase": "Repository-specific closure",
+      "title": "Keep initial Haldir consumption record-only; any future restrict-only profile requires separate deployment calibration and cannot widen ALLOW.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Keep initial Haldir consumption record-only; any future restrict-only profile requires separate deployment calibration and cannot widen ALLOW.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T103"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T105",
+      "phase": "Repository-specific closure",
+      "title": "Requalify against published pid-rs and NCP 1.0 artifacts rather than source-branch assumptions.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Requalify against published pid-rs and NCP 1.0 artifacts rather than source-branch assumptions.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T104"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T106",
+      "phase": "Repository-specific closure",
+      "title": "Commission independent statistical and security reviews and publish negative/failure-region results.",
+      "source_scope": "repository-specific paths named by requirement",
+      "focus": "Commission independent statistical and security reviews and publish negative/failure-region results.",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T105"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T107",
+      "phase": "Final qualification",
+      "title": "Run full feature/platform/profile matrix and prove unsupported combinations fail clearly",
+      "source_scope": "all code/build profiles",
+      "focus": "matrix qualification",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T106"
+      ],
+      "execution_wave": 8,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T108",
+      "phase": "Final qualification",
+      "title": "Run long-duration resource, cancellation, restart, fault, and hostile-input campaigns",
+      "source_scope": "all runtime profiles",
+      "focus": "resilience",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T107"
+      ],
+      "execution_wave": 9,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T109",
+      "phase": "Final qualification",
+      "title": "Generate reproducible packages, SBOM, license report, vulnerability scan, provenance and checksums",
+      "source_scope": "release artifacts",
+      "focus": "supply chain",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T108"
+      ],
+      "execution_wave": 9,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T110",
+      "phase": "Final qualification",
+      "title": "Commission independent clean-room build and critical evidence reproduction",
+      "source_scope": "clean external environment",
+      "focus": "independence",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T109"
+      ],
+      "execution_wave": 9,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T111",
+      "phase": "Final qualification",
+      "title": "Reconcile every README, GitHub description, citation, package, tag, schema and support claim",
+      "source_scope": "all public metadata",
+      "focus": "truthfulness",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T110"
+      ],
+      "execution_wave": 9,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T112",
+      "phase": "Final qualification",
+      "title": "Run publication, rollback, revocation, withdrawal, and post-publication rehearsals without changing candidate",
+      "source_scope": "release process",
+      "focus": "release safety",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T111"
+      ],
+      "execution_wave": 9,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    },
+    {
+      "id": "T113",
+      "phase": "Final qualification",
+      "title": "Create local convergence manifest and hand off only explicit cross-repository requirements",
+      "source_scope": "release evidence",
+      "focus": "ecosystem boundary",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T112"
+      ],
+      "execution_wave": 9,
+      "subagent_lane": 3,
+      "lead_review_required": true
+    },
+    {
+      "id": "T114",
+      "phase": "Final qualification",
+      "title": "Perform final lead-only twenty-lens diff review against frozen audit cut",
+      "source_scope": "entire candidate diff",
+      "focus": "final review",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T113"
+      ],
+      "execution_wave": 9,
+      "subagent_lane": 1,
+      "lead_review_required": true
+    },
+    {
+      "id": "T115",
+      "phase": "Final qualification",
+      "title": "Issue signed GO, NARROWED_GO, or NO_GO decision with residual risks and removed claims",
+      "source_scope": "release manifest",
+      "focus": "governance",
+      "priority": "P0_RELEASE_BLOCKER",
+      "dependencies": [
+        "T114"
+      ],
+      "execution_wave": 9,
+      "subagent_lane": 2,
+      "lead_review_required": true
+    }
+  ]
+}

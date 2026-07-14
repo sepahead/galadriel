@@ -94,7 +94,11 @@ erase an independent source-health fault.
    authenticated only when the NCP transport identity / ACL binds the publisher. Neither
    is a cryptographic signature. A consumer must not treat Galadriel output as signed
    evidence until a signed advisory envelope exists (§5), and must bind transport identity
-   to application identity itself.
+   to application identity itself. The pinned Zenoh 1.9 client also trusts built-in public
+   WebPKI roots in addition to the deployment CA, so the deployment must apply the router-
+   authentication mitigation in
+   [`SECURE-DEPLOYMENT.md`](SECURE-DEPLOYMENT.md#tls-server-authentication-limitation);
+   local configuration alone does not exclusively pin the router.
 7. **Distinct identities for a future publisher.** When a signed Galadriel→consumer
    advisory publisher is built, it must use separate input (subscribe) and output
    (advisory-publish) identities, neither of which is usable on any control route.
@@ -115,9 +119,10 @@ Historical/default Crebain captures omit the attested common projection, and the
 successful-update-only stream is downstream of association and a chi-square gate, so
 rejected and missed measurements are censored rather than represented. A consumer must not
 read that gap as safety: with those preconditions absent, Galadriel's correlation and
-fused assessment correctly return `InsufficientEvidence`. The opt-in operational producer
-now supplies frozen-prior projections plus explicit misses/rejections, but no accepted
-recorded study has yet measured the resulting selection effects or calibrated the stream.
+fused assessment correctly return `InsufficientEvidence`. A retained historical opt-in
+producer fixture carried frozen-prior projections plus explicit misses/rejections, but it
+does not qualify a current reciprocal integration. No accepted recorded study has measured
+the resulting selection effects or calibrated the stream.
 
 ## 5. Current implementation status
 
@@ -125,16 +130,16 @@ recorded study has yet measured the resulting selection effects or calibrated th
   operational Zenoh receiver. It remains read-only with respect to downstream policy:
   there is no Galadriel→consumer signed advisory *publisher* yet, and verdicts surface
   only via the CLI / files.
-- **NCP wire: 0.8.** Galadriel pins `ncp-core`/`ncp-zenoh` to the `v0.8.0` tag, matching the
-  underlying NCP version used by both Crebain and Prisoma. Crebain has the matching opt-in
-  Galadriel sidecar publisher baseline. Crebain
-  `4c311900ade5668200a48d56fb191be1916b884a` requires the deployment epoch, contains
-  the byte-identical shared golden, and pins Galadriel
-  `81437d807ca83b66b45c8353968948e540072d97`. Prisoma observes normative NCP sensor
-  frames and is not a Galadriel sidecar consumer. Galadriel's live taps and operational join
-  have in-process Zenoh loopback coverage. A retained external multi-process mTLS/ACL run
-  between the actual binaries is still absent, so component compatibility is not deployment
-  evidence.
+- **NCP wire: 0.8.** Galadriel pins `ncp-core`/`ncp-zenoh` to the immutable revision
+  selected by the public `v0.8.0` tag. Crebain
+  `4c311900ade5668200a48d56fb191be1916b884a` and Galadriel
+  `81437d807ca83b66b45c8353968948e540072d97` form a retained historical sidecar/
+  registry compatibility fixture; that pair does not pin or qualify the current candidate.
+  Current reciprocal integration and final cross-repository qualification are
+  `NOT_CLAIMED`. Prisoma observes normative NCP sensor frames and is not a Galadriel
+  sidecar consumer. Galadriel's live taps and operational join have in-process Zenoh
+  loopback coverage, but no retained external multi-process mTLS/ACL run between current
+  binaries exists.
 - Building the signed advisory envelope, retaining the external secured interop campaign,
   and completing an independent recorded calibration study are the ordered prerequisites
   before *any* restrict-only profile in §3.3 is even a candidate.

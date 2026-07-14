@@ -13,14 +13,15 @@
 //!
 //! ```no_run
 //! # async fn run() -> Result<(), Box<dyn std::error::Error>> {
-//! use galadriel_ncp::live::{HandoffConfig, SidecarTap, TransportMode};
+//! use galadriel_ncp::live::{HandoffProfile, SidecarTap, TransportMode};
 //! let tap = SidecarTap::open(TransportMode::Secure).await?;
+//! let handoff = HandoffProfile::BoundedV0_9.try_config()?;
 //! let (health, mut observations) = tap
-//!     .subscribe_channel("uav3", "crebain", HandoffConfig::default())
+//!     .subscribe_channel("uav3", "crebain", handoff)
 //!     .await?;
 //! assert_eq!(health.payloads_received(), 0);
 //! if let Some(obs) = observations.recv().await {
-//!     let _ = obs.nis;
+//!     let _ = obs.nis();
 //! }
 //! # Ok(()) }
 //! ```
@@ -29,19 +30,22 @@ use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
 use std::future::poll_fn;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
-use galadriel_core::observation::{Modality, PidObservation};
-use ncp_core::{ContractStatus, Keys, DEFAULT_REALM};
+use galadriel_core::{Modality, PidObservation, Sequence, TrackId};
+use ncp_core::{ContractStatus, Keys, DEFAULT_REALM, JSON_SAFE_INTEGER_MAX};
 use ncp_zenoh::{ZenohBus, ZenohError};
 use tokio::sync::mpsc;
 
-use crate::{sidecar_key, valid_realm, SidecarEnvelope, SidecarEnvelopeError};
+use crate::{
+    config_identity::ConfigurationIdentityBuilder, sidecar_key, valid_realm, ConfigurationIdentity,
+    SidecarEnvelope, SidecarEnvelopeError,
+};
 
-/// Maximum live sidecar payload accepted under [`LiveLimits::default`].
+/// Maximum live sidecar payload accepted under the bounded 0.9 profile.
 ///
 /// This bounds galadriel's **decode** work only. The transport copies the full
 /// received message before this gate runs, and Zenoh's own `max_message_size`
@@ -60,6 +64,19 @@ pub const DEFAULT_LIVE_HANDOFF_CAPACITY: usize = 1_024;
 
 /// Hard upper bound for a live observation handoff queue.
 pub const MAX_LIVE_HANDOFF_CAPACITY: usize = 4_096;
+/// Maximum aggregate encoded-byte exposure represented by a handoff queue.
+pub const MAX_LIVE_HANDOFF_STATE_BYTES: usize =
+    MAX_LIVE_HANDOFF_CAPACITY * DEFAULT_MAX_LIVE_PAYLOAD_BYTES;
+/// Hard ceiling for a live sidecar payload.
+pub const MAX_LIVE_PAYLOAD_BYTES: usize = 64 * 1024;
+/// Hard ceiling for retained live replay streams.
+pub const MAX_LIVE_SEQUENCE_STREAMS: usize = 64 * 1024;
+/// Hard ceiling for forward sequence distance.
+pub const MAX_LIVE_SEQUENCE_ADVANCE: u64 = JSON_SAFE_INTEGER_MAX as u64;
+/// Conservative fixed work units charged to each retained replay stream.
+const LIVE_SEQUENCE_STATE_WORK_UNITS: usize = 64;
+/// Hard ceiling for aggregate decode and replay-state work units.
+pub const MAX_LIVE_CONFIGURED_WORK_UNITS: usize = 4 * 1024 * 1024;
 
 /// Fixed overflow behavior for bounded live observation handoffs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,10 +86,48 @@ pub enum HandoffOverflowPolicy {
     DropNewest,
 }
 
+/// Untrusted raw bounded-handoff parameters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandoffParams {
+    /// Maximum decoded observations queued for a consumer.
+    pub capacity: usize,
+}
+
+/// Named, reviewed live-handoff profiles for release 0.9.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum HandoffProfile {
+    /// Bounded drop-newest handoff shipped in 0.9.
+    BoundedV0_9,
+}
+
+impl HandoffProfile {
+    /// Return this profile's frozen raw parameters.
+    #[must_use]
+    pub const fn params(self) -> HandoffParams {
+        match self {
+            Self::BoundedV0_9 => HandoffParams {
+                capacity: DEFAULT_LIVE_HANDOFF_CAPACITY,
+            },
+        }
+    }
+
+    /// Validate this profile and return its immutable capability.
+    pub fn try_config(self) -> Result<HandoffConfig, HandoffConfigError> {
+        HandoffConfig::try_from(self.params())
+    }
+}
+
 /// Validated configuration for a bounded live observation handoff.
+///
+/// ```compile_fail
+/// use galadriel_ncp::live::HandoffConfig;
+/// let _ = HandoffConfig::default();
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HandoffConfig {
     capacity: usize,
+    identity: ConfigurationIdentity,
 }
 
 impl HandoffConfig {
@@ -84,16 +139,7 @@ impl HandoffConfig {
     /// Returns [`HandoffConfigError`] when `capacity` is zero or exceeds the hard
     /// process-memory bound.
     pub fn new(capacity: usize) -> Result<Self, HandoffConfigError> {
-        if capacity == 0 {
-            return Err(HandoffConfigError::ZeroCapacity);
-        }
-        if capacity > MAX_LIVE_HANDOFF_CAPACITY {
-            return Err(HandoffConfigError::CapacityTooLarge {
-                capacity,
-                maximum: MAX_LIVE_HANDOFF_CAPACITY,
-            });
-        }
-        Ok(Self { capacity })
+        Self::try_from(HandoffParams { capacity })
     }
 
     /// Maximum number of decoded observations waiting for the consumer.
@@ -105,13 +151,55 @@ impl HandoffConfig {
     pub fn overflow_policy(self) -> HandoffOverflowPolicy {
         HandoffOverflowPolicy::DropNewest
     }
+
+    /// Canonical identity of this validated handoff configuration.
+    #[must_use]
+    pub const fn identity(self) -> ConfigurationIdentity {
+        self.identity
+    }
 }
 
+impl TryFrom<HandoffParams> for HandoffConfig {
+    type Error = HandoffConfigError;
+
+    fn try_from(params: HandoffParams) -> Result<Self, Self::Error> {
+        if params.capacity == 0 {
+            return Err(HandoffConfigError::ZeroCapacity);
+        }
+        if params.capacity > MAX_LIVE_HANDOFF_CAPACITY {
+            return Err(HandoffConfigError::CapacityTooLarge {
+                capacity: params.capacity,
+                maximum: MAX_LIVE_HANDOFF_CAPACITY,
+            });
+        }
+        let aggregate_bytes = params
+            .capacity
+            .checked_mul(DEFAULT_MAX_LIVE_PAYLOAD_BYTES)
+            .ok_or(HandoffConfigError::AggregateStateTooLarge {
+                bytes: usize::MAX,
+                maximum: MAX_LIVE_HANDOFF_STATE_BYTES,
+            })?;
+        if aggregate_bytes > MAX_LIVE_HANDOFF_STATE_BYTES {
+            return Err(HandoffConfigError::AggregateStateTooLarge {
+                bytes: aggregate_bytes,
+                maximum: MAX_LIVE_HANDOFF_STATE_BYTES,
+            });
+        }
+        Ok(Self {
+            capacity: params.capacity,
+            identity: ConfigurationIdentityBuilder::new("live-handoff")
+                .u64("capacity", params.capacity as u64)
+                .finish(),
+        })
+    }
+}
+
+#[cfg(test)]
 impl Default for HandoffConfig {
     fn default() -> Self {
-        Self {
-            capacity: DEFAULT_LIVE_HANDOFF_CAPACITY,
-        }
+        HandoffProfile::BoundedV0_9
+            .try_config()
+            .expect("the compiled handoff test profile is valid")
     }
 }
 
@@ -125,19 +213,85 @@ pub enum HandoffConfigError {
     /// The requested capacity exceeded [`MAX_LIVE_HANDOFF_CAPACITY`].
     #[error("live handoff capacity {capacity} exceeds maximum {maximum}")]
     CapacityTooLarge { capacity: usize, maximum: usize },
+    /// Aggregate represented state exceeded its hard cap.
+    #[error("live handoff represented bytes {bytes} exceed maximum {maximum}")]
+    AggregateStateTooLarge { bytes: usize, maximum: usize },
 }
 
-/// Resource limits for live sidecar ingest.
+/// Untrusted raw live-ingest parameters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LiveLimitsParams {
+    /// Maximum encoded sidecar payload bytes.
+    pub max_payload_bytes: usize,
+    /// Maximum retained replay streams.
+    pub max_sequence_streams: usize,
+    /// Maximum forward advance after a stream baseline.
+    pub max_sequence_advance: u64,
+}
+
+/// Named, reviewed live-ingest profiles for release 0.9.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum LiveLimitsProfile {
+    /// Bounded sidecar ingest profile shipped in 0.9.
+    BoundedV0_9,
+}
+
+impl LiveLimitsProfile {
+    /// Return this profile's frozen raw parameters.
+    #[must_use]
+    pub const fn params(self) -> LiveLimitsParams {
+        match self {
+            Self::BoundedV0_9 => LiveLimitsParams {
+                max_payload_bytes: DEFAULT_MAX_LIVE_PAYLOAD_BYTES,
+                max_sequence_streams: DEFAULT_MAX_LIVE_SEQUENCE_STREAMS,
+                max_sequence_advance: DEFAULT_MAX_LIVE_SEQUENCE_ADVANCE,
+            },
+        }
+    }
+
+    /// Validate this profile and return its immutable capability.
+    pub fn try_limits(self) -> Result<LiveLimits, LiveLimitsError> {
+        LiveLimits::try_from(self.params())
+    }
+}
+
+/// Invalid live sidecar resource parameters.
+#[derive(Debug, thiserror::Error, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum LiveLimitsError {
+    /// A required limit was zero.
+    #[error("live limit {field} must be greater than zero")]
+    Zero { field: &'static str },
+    /// A limit exceeded its hard maximum.
+    #[error("live limit {field} is {value}, exceeding maximum {maximum}")]
+    ExceedsHardMaximum {
+        field: &'static str,
+        value: u64,
+        maximum: u64,
+    },
+    /// Combined payload and replay-state work exceeded its hard cap.
+    #[error("live configured work {value} exceeds maximum {maximum}")]
+    AggregateWorkTooLarge { value: usize, maximum: usize },
+}
+
+/// Validated resource limits for live sidecar ingest.
+///
+/// ```compile_fail
+/// use galadriel_ncp::live::LiveLimits;
+/// let _ = LiveLimits::default();
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LiveLimits {
     max_payload_bytes: usize,
     max_sequence_streams: usize,
     max_sequence_advance: u64,
+    identity: ConfigurationIdentity,
 }
 
 impl LiveLimits {
     /// Build a nonzero live-payload limit with the default sequence-stream bound.
-    pub fn new(max_payload_bytes: usize) -> Result<Self, ZenohError> {
+    pub fn new(max_payload_bytes: usize) -> Result<Self, LiveLimitsError> {
         Self::with_sequence_stream_limit(max_payload_bytes, DEFAULT_MAX_LIVE_SEQUENCE_STREAMS)
     }
 
@@ -145,7 +299,7 @@ impl LiveLimits {
     pub fn with_sequence_stream_limit(
         max_payload_bytes: usize,
         max_sequence_streams: usize,
-    ) -> Result<Self, ZenohError> {
+    ) -> Result<Self, LiveLimitsError> {
         Self::with_sequence_policy(
             max_payload_bytes,
             max_sequence_streams,
@@ -166,23 +320,8 @@ impl LiveLimits {
         max_payload_bytes: usize,
         max_sequence_streams: usize,
         max_sequence_advance: u64,
-    ) -> Result<Self, ZenohError> {
-        if max_payload_bytes == 0 {
-            return Err(ZenohError(
-                "max live payload bytes must be greater than zero".to_string(),
-            ));
-        }
-        if max_sequence_streams == 0 {
-            return Err(ZenohError(
-                "max live sequence streams must be greater than zero".to_string(),
-            ));
-        }
-        if max_sequence_advance == 0 {
-            return Err(ZenohError(
-                "max live sequence advance must be greater than zero".to_string(),
-            ));
-        }
-        Ok(Self {
+    ) -> Result<Self, LiveLimitsError> {
+        Self::try_from(LiveLimitsParams {
             max_payload_bytes,
             max_sequence_streams,
             max_sequence_advance,
@@ -203,16 +342,87 @@ impl LiveLimits {
     pub fn max_sequence_advance(self) -> u64 {
         self.max_sequence_advance
     }
+
+    /// Canonical identity of this validated live-ingest policy.
+    #[must_use]
+    pub const fn identity(self) -> ConfigurationIdentity {
+        self.identity
+    }
 }
 
+impl TryFrom<LiveLimitsParams> for LiveLimits {
+    type Error = LiveLimitsError;
+
+    fn try_from(params: LiveLimitsParams) -> Result<Self, Self::Error> {
+        let scalar_limits = [
+            (
+                "max_payload_bytes",
+                params.max_payload_bytes as u64,
+                MAX_LIVE_PAYLOAD_BYTES as u64,
+            ),
+            (
+                "max_sequence_streams",
+                params.max_sequence_streams as u64,
+                MAX_LIVE_SEQUENCE_STREAMS as u64,
+            ),
+            (
+                "max_sequence_advance",
+                params.max_sequence_advance,
+                MAX_LIVE_SEQUENCE_ADVANCE,
+            ),
+        ];
+        for (field, value, maximum) in scalar_limits {
+            if value == 0 {
+                return Err(LiveLimitsError::Zero { field });
+            }
+            if value > maximum {
+                return Err(LiveLimitsError::ExceedsHardMaximum {
+                    field,
+                    value,
+                    maximum,
+                });
+            }
+        }
+        let work = params
+            .max_sequence_streams
+            .checked_mul(LIVE_SEQUENCE_STATE_WORK_UNITS)
+            .and_then(|value| value.checked_add(params.max_payload_bytes))
+            .ok_or(LiveLimitsError::AggregateWorkTooLarge {
+                value: usize::MAX,
+                maximum: MAX_LIVE_CONFIGURED_WORK_UNITS,
+            })?;
+        if work > MAX_LIVE_CONFIGURED_WORK_UNITS {
+            return Err(LiveLimitsError::AggregateWorkTooLarge {
+                value: work,
+                maximum: MAX_LIVE_CONFIGURED_WORK_UNITS,
+            });
+        }
+        Ok(Self {
+            max_payload_bytes: params.max_payload_bytes,
+            max_sequence_streams: params.max_sequence_streams,
+            max_sequence_advance: params.max_sequence_advance,
+            identity: ConfigurationIdentityBuilder::new("live-limits")
+                .u64("max_payload_bytes", params.max_payload_bytes as u64)
+                .u64("max_sequence_streams", params.max_sequence_streams as u64)
+                .u64("max_sequence_advance", params.max_sequence_advance)
+                .finish(),
+        })
+    }
+}
+
+#[cfg(test)]
 impl Default for LiveLimits {
     fn default() -> Self {
-        Self {
-            max_payload_bytes: DEFAULT_MAX_LIVE_PAYLOAD_BYTES,
-            max_sequence_streams: DEFAULT_MAX_LIVE_SEQUENCE_STREAMS,
-            max_sequence_advance: DEFAULT_MAX_LIVE_SEQUENCE_ADVANCE,
-        }
+        LiveLimitsProfile::BoundedV0_9
+            .try_limits()
+            .expect("the compiled live-limit test profile is valid")
     }
+}
+
+fn bounded_live_limits() -> Result<LiveLimits, ZenohError> {
+    LiveLimitsProfile::BoundedV0_9
+        .try_limits()
+        .map_err(|error| ZenohError(error.to_string()))
 }
 
 /// A reason a live payload was rejected before callback delivery.
@@ -238,8 +448,55 @@ pub enum RejectionReason {
     /// A new `(track, modality)` stream arrived after sequence state reached its
     /// configured capacity. Existing replay high-water marks are retained.
     SequenceCapacityExceeded,
-    /// Internal bounded sequence state could not be reserved or remained inconsistent.
+    /// Internal live state failed, including allocation failure or terminal mutex
+    /// poison. Inspect [`SubscriptionHealth::internal_fault`] for the typed cause.
     SequenceStateFailure,
+}
+
+/// Typed terminal internal failure for one live-tap epoch.
+///
+/// Once any variant is observed, the tap fails closed: later payloads are rejected,
+/// callbacks are not invoked, and bounded receivers quarantine queued observations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum LiveInternalFault {
+    /// Per-stream replay high-water state was poisoned.
+    SequenceStatePoisoned,
+    /// Callback/reset delivery-boundary state was poisoned.
+    DeliveryBoundaryPoisoned,
+    /// Bounded-handoff metadata state was poisoned.
+    HandoffStatePoisoned,
+    /// Last-accepted-observation telemetry was poisoned.
+    LastAcceptedTelemetryPoisoned,
+    /// Callback-latency telemetry was poisoned.
+    CallbackLatencyTelemetryPoisoned,
+    /// A user callback panicked after sequence admission; the subscription is terminal.
+    CallbackPanicked,
+}
+
+impl LiveInternalFault {
+    const fn code(self) -> u8 {
+        match self {
+            Self::SequenceStatePoisoned => 1,
+            Self::DeliveryBoundaryPoisoned => 2,
+            Self::HandoffStatePoisoned => 3,
+            Self::LastAcceptedTelemetryPoisoned => 4,
+            Self::CallbackLatencyTelemetryPoisoned => 5,
+            Self::CallbackPanicked => 6,
+        }
+    }
+
+    fn from_code(code: u8) -> Option<Self> {
+        match code {
+            1 => Some(Self::SequenceStatePoisoned),
+            2 => Some(Self::DeliveryBoundaryPoisoned),
+            3 => Some(Self::HandoffStatePoisoned),
+            4 => Some(Self::LastAcceptedTelemetryPoisoned),
+            5 => Some(Self::CallbackLatencyTelemetryPoisoned),
+            6 => Some(Self::CallbackPanicked),
+            _ => None,
+        }
+    }
 }
 
 /// Snapshot of typed live-payload rejection counters.
@@ -264,7 +521,7 @@ pub struct RejectionCounts {
     pub excessive_forward_sequence_gap: u64,
     /// New streams rejected because sequence state was at capacity.
     pub sequence_capacity_exceeded: u64,
-    /// Internal sequence-state failures.
+    /// Internal live-state failures, including terminal mutex poison.
     pub sequence_state_failure: u64,
 }
 
@@ -320,10 +577,10 @@ pub struct LastAcceptedObservation {
 impl From<&PidObservation> for LastAcceptedObservation {
     fn from(observation: &PidObservation) -> Self {
         Self {
-            track_id: observation.track_id,
-            modality: observation.modality,
-            sequence: observation.seq,
-            timestamp_ms: observation.timestamp_ms,
+            track_id: observation.track_id().get(),
+            modality: observation.modality(),
+            sequence: observation.sequence().get(),
+            timestamp_ms: observation.timestamp_ms().get(),
         }
     }
 }
@@ -420,6 +677,8 @@ struct IngestCounters {
     excessive_forward_sequence_gap: AtomicU64,
     sequence_capacity_exceeded: AtomicU64,
     sequence_state_failure: AtomicU64,
+    first_internal_fault: AtomicU8,
+    internal_faults: AtomicU64,
     handoff_enqueued: AtomicU64,
     handoff_delivered: AtomicU64,
     handoff_full_drops: AtomicU64,
@@ -474,24 +733,89 @@ impl IngestCounters {
         }
     }
 
-    fn last_accepted(&self) -> Option<LastAcceptedObservation> {
-        *self
-            .last_accepted
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
+    fn internal_fault(&self) -> Option<LiveInternalFault> {
+        LiveInternalFault::from_code(self.first_internal_fault.load(Ordering::Acquire))
     }
+}
 
-    fn callback_latency(&self) -> CallbackLatencyMetrics {
-        let latency = self
-            .callback_latency
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
-        CallbackLatencyMetrics {
+fn latch_internal_fault(counters: &IngestCounters, fault: LiveInternalFault) -> bool {
+    if counters
+        .first_internal_fault
+        .compare_exchange(0, fault.code(), Ordering::AcqRel, Ordering::Acquire)
+        .is_ok()
+    {
+        counters.internal_faults.fetch_add(1, Ordering::Relaxed);
+        true
+    } else {
+        false
+    }
+}
+
+fn latch_internal_fault_pair(
+    tap: &IngestCounters,
+    subscription: &IngestCounters,
+    fault: LiveInternalFault,
+) {
+    latch_internal_fault(tap, fault);
+    latch_internal_fault(subscription, fault);
+}
+
+fn internal_fault_pair(
+    tap: &IngestCounters,
+    subscription: &IngestCounters,
+) -> Option<LiveInternalFault> {
+    tap.internal_fault()
+        .or_else(|| subscription.internal_fault())
+}
+
+fn snapshot_last_accepted(
+    counters: &IngestCounters,
+) -> Result<Option<LastAcceptedObservation>, LiveInternalFault> {
+    match counters.last_accepted.lock() {
+        Ok(last) => Ok(*last),
+        Err(poisoned) => {
+            let mut last = poisoned.into_inner();
+            *last = None;
+            counters.last_accepted.clear_poison();
+            Err(LiveInternalFault::LastAcceptedTelemetryPoisoned)
+        }
+    }
+}
+
+fn snapshot_callback_latency(
+    counters: &IngestCounters,
+) -> Result<CallbackLatencyMetrics, LiveInternalFault> {
+    match counters.callback_latency.lock() {
+        Ok(latency) => Ok(CallbackLatencyMetrics {
             samples: latency.samples,
             last: latency.last,
             maximum: latency.maximum,
+        }),
+        Err(poisoned) => {
+            let mut latency = poisoned.into_inner();
+            *latency = CallbackLatencyState::default();
+            counters.callback_latency.clear_poison();
+            Err(LiveInternalFault::CallbackLatencyTelemetryPoisoned)
         }
     }
+}
+
+fn preflight_telemetry_pair(tap: &IngestCounters, subscription: &IngestCounters) -> bool {
+    for counters in [tap, subscription] {
+        if counters.last_accepted.is_poisoned() {
+            if let Err(fault) = snapshot_last_accepted(counters) {
+                latch_internal_fault_pair(tap, subscription, fault);
+                return false;
+            }
+        }
+        if counters.callback_latency.is_poisoned() {
+            if let Err(fault) = snapshot_callback_latency(counters) {
+                latch_internal_fault_pair(tap, subscription, fault);
+                return false;
+            }
+        }
+    }
+    true
 }
 
 #[derive(Debug)]
@@ -535,14 +859,73 @@ impl HandoffQueueState {
 struct HandoffState {
     config: HandoffConfig,
     queue: Mutex<HandoffQueueState>,
+    tap_counters: Arc<IngestCounters>,
+    subscription_counters: Arc<IngestCounters>,
+    sequences: Arc<Mutex<LiveSequenceTracker>>,
 }
 
 impl HandoffState {
-    fn new(config: HandoffConfig) -> Self {
+    fn new(
+        config: HandoffConfig,
+        tap_counters: Arc<IngestCounters>,
+        subscription_counters: Arc<IngestCounters>,
+        sequences: Arc<Mutex<LiveSequenceTracker>>,
+    ) -> Self {
         Self {
             config,
             queue: Mutex::new(HandoffQueueState::new(config.capacity())),
+            tap_counters,
+            subscription_counters,
+            sequences,
         }
+    }
+
+    fn lock_queue(
+        &self,
+    ) -> Result<std::sync::MutexGuard<'_, HandoffQueueState>, LiveInternalFault> {
+        if self.sequences.is_poisoned() {
+            drop(lock_sequence_state(
+                &self.sequences,
+                &self.tap_counters,
+                &self.subscription_counters,
+            ));
+        }
+        preflight_telemetry_pair(&self.tap_counters, &self.subscription_counters);
+        if let Some(fault) = internal_fault_pair(&self.tap_counters, &self.subscription_counters) {
+            return Err(fault);
+        }
+        match self.queue.lock() {
+            Ok(queue) => Ok(queue),
+            Err(poisoned) => {
+                let mut queue = poisoned.into_inner();
+                *queue = HandoffQueueState::new(self.config.capacity());
+                self.queue.clear_poison();
+                let fault = LiveInternalFault::HandoffStatePoisoned;
+                latch_internal_fault_pair(&self.tap_counters, &self.subscription_counters, fault);
+                Err(fault)
+            }
+        }
+    }
+
+    fn preflight(&self) -> bool {
+        self.lock_queue().is_ok()
+    }
+
+    fn quarantine_receiver(&self, receiver: &mut mpsc::Receiver<QueuedObservation>) -> u64 {
+        receiver.close();
+        let mut discarded = 0_u64;
+        while receiver.try_recv().is_ok() {
+            discarded = discarded.saturating_add(1);
+        }
+        if let Ok(mut queue) = self.queue.lock() {
+            queue.entries.clear();
+        }
+        increment_pair_by(
+            &self.tap_counters.handoff_abandoned_drops,
+            &self.subscription_counters.handoff_abandoned_drops,
+            discarded,
+        );
+        discarded
     }
 
     fn record_dequeue(
@@ -574,7 +957,10 @@ impl HandoffState {
         receiver: &mut mpsc::Receiver<QueuedObservation>,
         context: &mut Context<'_>,
     ) -> Poll<Option<QueuedObservation>> {
-        let mut queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
+        let Ok(mut queue) = self.lock_queue() else {
+            self.quarantine_receiver(receiver);
+            return Poll::Ready(None);
+        };
         match receiver.poll_recv(context) {
             Poll::Ready(Some(queued)) => {
                 Self::record_dequeue(&mut queue, &queued, Instant::now());
@@ -588,29 +974,25 @@ impl HandoffState {
         &self,
         receiver: &mut mpsc::Receiver<QueuedObservation>,
     ) -> Result<QueuedObservation, mpsc::error::TryRecvError> {
-        let mut queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
+        let Ok(mut queue) = self.lock_queue() else {
+            self.quarantine_receiver(receiver);
+            return Err(mpsc::error::TryRecvError::Disconnected);
+        };
         let queued = receiver.try_recv()?;
         Self::record_dequeue(&mut queue, &queued, Instant::now());
         Ok(queued)
     }
 
-    fn abandon_all(&self) -> usize {
-        let mut queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
-        let abandoned = queue.entries.len();
-        queue.entries.clear();
-        abandoned
-    }
-
-    fn snapshot(&self, counters: &IngestCounters, generation: u64) -> HandoffMetrics {
+    fn snapshot(&self, counters: &IngestCounters, generation: u64) -> Option<HandoffMetrics> {
         let now = Instant::now();
-        let queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
+        let queue = self.lock_queue().ok()?;
         let oldest_queued = queue.entries.front().map(|entry| entry.observation);
         let oldest_queued_generation = queue.entries.front().map(|entry| entry.generation);
         let oldest_enqueue_age = queue
             .entries
             .front()
             .map(|entry| now.saturating_duration_since(entry.enqueued_at));
-        HandoffMetrics {
+        Some(HandoffMetrics {
             capacity: self.config.capacity(),
             overflow_policy: self.config.overflow_policy(),
             generation,
@@ -631,7 +1013,7 @@ impl HandoffState {
             max_enqueue_latency: queue.max_enqueue_latency,
             last_dequeue_latency: queue.last_dequeue_latency,
             max_dequeue_latency: queue.max_dequeue_latency,
-        }
+        })
     }
 }
 
@@ -645,6 +1027,10 @@ struct ObservationHandoff {
 }
 
 impl ObservationHandoff {
+    fn preflight(&self) -> bool {
+        self.state.preflight()
+    }
+
     fn enqueue(&self, observation: PidObservation) {
         let enqueued_at = Instant::now();
         let generation = self.delivery_boundary.generation();
@@ -662,11 +1048,9 @@ impl ObservationHandoff {
 
         // Synchronize the mirror metadata with try_send so depth and oldest-entry
         // snapshots cannot race ahead of, or behind, the actual channel operation.
-        let mut queue = self
-            .state
-            .queue
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
+        let Ok(mut queue) = self.state.lock_queue() else {
+            return;
+        };
         match self.sender.try_send(queued) {
             Ok(()) => {
                 queue.entries.push_back(metadata);
@@ -762,7 +1146,13 @@ impl LiveObservationReceiver {
     }
 
     fn finish_dequeue(&self, queued: QueuedObservation) -> Option<PidObservation> {
-        let _delivery = self.delivery_boundary.begin_delivery();
+        let Ok(_delivery) = self.delivery_boundary.begin_delivery() else {
+            increment_pair(
+                &self.tap_counters.handoff_abandoned_drops,
+                &self.subscription_counters.handoff_abandoned_drops,
+            );
+            return None;
+        };
         if queued.generation != self.delivery_boundary.generation() {
             increment_pair(
                 &self.tap_counters.handoff_stale_generation_drops,
@@ -780,20 +1170,15 @@ impl LiveObservationReceiver {
 
 impl Drop for LiveObservationReceiver {
     fn drop(&mut self) {
-        let _delivery = self.delivery_boundary.begin_delivery();
-        self.receiver.close();
-        let abandoned = self.state.abandon_all() as u64;
-        increment_pair_by(
-            &self.tap_counters.handoff_abandoned_drops,
-            &self.subscription_counters.handoff_abandoned_drops,
-            abandoned,
-        );
+        let _delivery = self.delivery_boundary.begin_delivery().ok();
+        self.state.quarantine_receiver(&mut self.receiver);
     }
 }
 
 fn bounded_handoff(
     config: HandoffConfig,
     delivery_boundary: Arc<DeliveryBoundary>,
+    sequences: Arc<Mutex<LiveSequenceTracker>>,
     tap_counters: Arc<IngestCounters>,
     subscription_counters: Arc<IngestCounters>,
 ) -> (
@@ -801,7 +1186,12 @@ fn bounded_handoff(
     LiveObservationReceiver,
     Arc<HandoffState>,
 ) {
-    let state = Arc::new(HandoffState::new(config));
+    let state = Arc::new(HandoffState::new(
+        config,
+        Arc::clone(&tap_counters),
+        Arc::clone(&subscription_counters),
+        sequences,
+    ));
     let (sender, receiver) = mpsc::channel(config.capacity());
     let handoff = ObservationHandoff {
         sender,
@@ -833,6 +1223,8 @@ pub enum SequenceResetError {
     TooManyPendingResets,
     /// The monotonic delivery generation cannot represent another reset.
     GenerationExhausted,
+    /// A mutex-protected live state was poisoned and the epoch is terminal.
+    InternalStateFault { fault: LiveInternalFault },
 }
 
 impl std::fmt::Display for SequenceResetError {
@@ -850,6 +1242,12 @@ impl std::fmt::Display for SequenceResetError {
             Self::GenerationExhausted => {
                 formatter.write_str("live delivery generation is exhausted")
             }
+            Self::InternalStateFault { fault } => {
+                write!(
+                    formatter,
+                    "live epoch has terminal internal fault {fault:?}"
+                )
+            }
         }
     }
 }
@@ -863,31 +1261,81 @@ struct DeliveryBoundaryState {
     pending_resets: usize,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct DeliveryBoundary {
     state: Mutex<DeliveryBoundaryState>,
     changed: Condvar,
     generation: AtomicU64,
+    tap_counters: Arc<IngestCounters>,
+    subscription_counters: Arc<IngestCounters>,
 }
 
 impl DeliveryBoundary {
-    fn begin_delivery(&self) -> DeliveryGuard<'_> {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+    fn new(tap_counters: Arc<IngestCounters>, subscription_counters: Arc<IngestCounters>) -> Self {
+        Self {
+            state: Mutex::new(DeliveryBoundaryState::default()),
+            changed: Condvar::new(),
+            generation: AtomicU64::new(0),
+            tap_counters,
+            subscription_counters,
+        }
+    }
+
+    fn latch_poison(&self) -> LiveInternalFault {
+        let fault = LiveInternalFault::DeliveryBoundaryPoisoned;
+        latch_internal_fault_pair(&self.tap_counters, &self.subscription_counters, fault);
+        self.changed.notify_all();
+        fault
+    }
+
+    fn lock_state(
+        &self,
+    ) -> Result<std::sync::MutexGuard<'_, DeliveryBoundaryState>, LiveInternalFault> {
+        if let Some(fault) = internal_fault_pair(&self.tap_counters, &self.subscription_counters) {
+            return Err(fault);
+        }
+        match self.state.lock() {
+            Ok(state) => Ok(state),
+            Err(poisoned) => {
+                let mut state = poisoned.into_inner();
+                *state = DeliveryBoundaryState::default();
+                self.state.clear_poison();
+                Err(self.latch_poison())
+            }
+        }
+    }
+
+    fn wait_for_change<'a>(
+        &'a self,
+        state: std::sync::MutexGuard<'a, DeliveryBoundaryState>,
+    ) -> Result<std::sync::MutexGuard<'a, DeliveryBoundaryState>, LiveInternalFault> {
+        match self.changed.wait(state) {
+            Ok(state) => Ok(state),
+            Err(poisoned) => {
+                let mut state = poisoned.into_inner();
+                *state = DeliveryBoundaryState::default();
+                self.state.clear_poison();
+                Err(self.latch_poison())
+            }
+        }
+    }
+
+    fn begin_delivery(&self) -> Result<DeliveryGuard<'_>, LiveInternalFault> {
+        let mut state = self.lock_state()?;
         while state.delivery_active || state.reset_active || state.pending_resets > 0 {
-            state = self
-                .changed
-                .wait(state)
-                .unwrap_or_else(|error| error.into_inner());
+            state = self.wait_for_change(state)?;
         }
         state.delivery_active = true;
-        DeliveryGuard { boundary: self }
+        Ok(DeliveryGuard { boundary: self })
     }
 
     fn begin_reset(&self) -> Result<ResetGuard<'_>, SequenceResetError> {
         if callback_active() {
             return Err(SequenceResetError::CalledFromCallback);
         }
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self
+            .lock_state()
+            .map_err(|fault| SequenceResetError::InternalStateFault { fault })?;
         if state.delivery_active {
             return Err(SequenceResetError::DeliveryInProgress);
         }
@@ -898,9 +1346,8 @@ impl DeliveryBoundary {
         self.changed.notify_all();
         while state.reset_active {
             state = self
-                .changed
-                .wait(state)
-                .unwrap_or_else(|error| error.into_inner());
+                .wait_for_change(state)
+                .map_err(|fault| SequenceResetError::InternalStateFault { fault })?;
         }
         state.pending_resets -= 1;
         state.reset_active = true;
@@ -912,6 +1359,9 @@ impl DeliveryBoundary {
     }
 
     fn advance_generation(&self) -> Result<u64, SequenceResetError> {
+        if let Some(fault) = internal_fault_pair(&self.tap_counters, &self.subscription_counters) {
+            return Err(SequenceResetError::InternalStateFault { fault });
+        }
         self.generation
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |generation| {
                 generation.checked_add(1)
@@ -921,19 +1371,34 @@ impl DeliveryBoundary {
     }
 }
 
+#[cfg(test)]
+impl Default for DeliveryBoundary {
+    fn default() -> Self {
+        Self::new(
+            Arc::new(IngestCounters::default()),
+            Arc::new(IngestCounters::default()),
+        )
+    }
+}
+
 struct DeliveryGuard<'a> {
     boundary: &'a DeliveryBoundary,
 }
 
 impl Drop for DeliveryGuard<'_> {
     fn drop(&mut self) {
-        let mut state = self
-            .boundary
-            .state
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
-        state.delivery_active = false;
-        self.boundary.changed.notify_all();
+        match self.boundary.state.lock() {
+            Ok(mut state) => {
+                state.delivery_active = false;
+                self.boundary.changed.notify_all();
+            }
+            Err(poisoned) => {
+                let mut state = poisoned.into_inner();
+                *state = DeliveryBoundaryState::default();
+                self.boundary.state.clear_poison();
+                self.boundary.latch_poison();
+            }
+        }
     }
 }
 
@@ -943,13 +1408,18 @@ struct ResetGuard<'a> {
 
 impl Drop for ResetGuard<'_> {
     fn drop(&mut self) {
-        let mut state = self
-            .boundary
-            .state
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
-        state.reset_active = false;
-        self.boundary.changed.notify_all();
+        match self.boundary.state.lock() {
+            Ok(mut state) => {
+                state.reset_active = false;
+                self.boundary.changed.notify_all();
+            }
+            Err(poisoned) => {
+                let mut state = poisoned.into_inner();
+                *state = DeliveryBoundaryState::default();
+                self.boundary.state.clear_poison();
+                self.boundary.latch_poison();
+            }
+        }
     }
 }
 
@@ -981,7 +1451,7 @@ impl Drop for CallbackGuard {
     }
 }
 
-type SequenceKey = (u64, Modality);
+type SequenceKey = (TrackId, Modality);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SequenceRejection {
@@ -1004,7 +1474,7 @@ impl From<SequenceRejection> for RejectionReason {
 
 #[derive(Debug, Default)]
 struct LiveSequenceTracker {
-    states: HashMap<SequenceKey, u64>,
+    states: HashMap<SequenceKey, Sequence>,
 }
 
 impl LiveSequenceTracker {
@@ -1024,16 +1494,17 @@ impl LiveSequenceTracker {
             return Err(SequenceRejection::StateFailure);
         }
 
-        let key = (observation.track_id, observation.modality);
+        let key = (observation.track_id(), observation.modality());
+        let sequence = observation.sequence();
         if let Some(last) = self.states.get(&key).copied() {
-            if observation.seq <= last {
+            if sequence <= last {
                 return Err(SequenceRejection::DuplicateOrRegressed);
             }
-            let gap = observation.seq - last;
+            let gap = sequence.get() - last.get();
             if gap > max_forward_gap {
                 return Err(SequenceRejection::ExcessiveForwardGap);
             }
-            self.states.insert(key, observation.seq);
+            self.states.insert(key, sequence);
             return Ok(());
         }
 
@@ -1043,7 +1514,7 @@ impl LiveSequenceTracker {
         self.states
             .try_reserve(1)
             .map_err(|_| SequenceRejection::StateFailure)?;
-        self.states.insert(key, observation.seq);
+        self.states.insert(key, sequence);
         Ok(())
     }
 
@@ -1055,6 +1526,28 @@ impl LiveSequenceTracker {
 
     fn len(&self) -> usize {
         self.states.len()
+    }
+}
+
+fn lock_sequence_state<'a>(
+    sequences: &'a Mutex<LiveSequenceTracker>,
+    tap_counters: &IngestCounters,
+    subscription_counters: &IngestCounters,
+) -> Result<std::sync::MutexGuard<'a, LiveSequenceTracker>, LiveInternalFault> {
+    if let Some(fault) = internal_fault_pair(tap_counters, subscription_counters) {
+        return Err(fault);
+    }
+    match sequences.lock() {
+        Ok(state) => Ok(state),
+        Err(poisoned) => {
+            let mut state = poisoned.into_inner();
+            *state = LiveSequenceTracker::default();
+            drop(state);
+            sequences.clear_poison();
+            let fault = LiveInternalFault::SequenceStatePoisoned;
+            latch_internal_fault_pair(tap_counters, subscription_counters, fault);
+            Err(fault)
+        }
     }
 }
 
@@ -1102,7 +1595,13 @@ impl SubscriptionHealth {
     /// Last observation accepted in this subscription's serialized ingest order.
     /// Returns `None` before the first acceptance and immediately after a reset.
     pub fn last_accepted(&self) -> Option<LastAcceptedObservation> {
-        self.counters.last_accepted()
+        match snapshot_last_accepted(&self.counters) {
+            Ok(last) => last,
+            Err(fault) => {
+                latch_internal_fault_pair(&self.tap_counters, &self.counters, fault);
+                None
+            }
+        }
     }
 
     /// User callback panics contained at the subscription boundary.
@@ -1114,7 +1613,28 @@ impl SubscriptionHealth {
     /// Inline subscriptions measure user code; bounded handoffs measure the internal
     /// nonblocking enqueue callback. Decode and validation time are excluded.
     pub fn callback_latency(&self) -> CallbackLatencyMetrics {
-        self.counters.callback_latency()
+        match snapshot_callback_latency(&self.counters) {
+            Ok(metrics) => metrics,
+            Err(fault) => {
+                latch_internal_fault_pair(&self.tap_counters, &self.counters, fault);
+                CallbackLatencyMetrics {
+                    samples: 0,
+                    last: None,
+                    maximum: None,
+                }
+            }
+        }
+    }
+
+    /// Retained terminal internal fault for this subscription or its parent tap.
+    pub fn internal_fault(&self) -> Option<LiveInternalFault> {
+        internal_fault_pair(&self.tap_counters, &self.counters)
+    }
+
+    /// Number of terminal internal-fault transitions visible to this subscription.
+    /// This is zero before failure and one after failure.
+    pub fn internal_faults(&self) -> u64 {
+        u64::from(self.internal_fault().is_some())
     }
 
     /// Legacy eviction counter, retained for API compatibility. The fail-closed
@@ -1182,19 +1702,18 @@ impl SubscriptionHealth {
     /// Queue depth, oldest observation, drop counts, and consumer-lag metrics for
     /// this subscription's bounded handoff. The snapshot is serialized with enqueue,
     /// dequeue, and reset, so it may wait briefly for current bounded callback work.
-    /// Returns `None` for inline callbacks.
+    /// Returns `None` for inline callbacks and when a terminal
+    /// [`LiveInternalFault`] makes the snapshot unavailable.
     pub fn handoff_metrics(&self) -> Option<HandoffMetrics> {
         let handoff = self.handoff.as_ref()?;
-        let _delivery = self.delivery_boundary.begin_delivery();
-        Some(handoff.snapshot(&self.counters, self.delivery_boundary.generation()))
+        let _delivery = self.delivery_boundary.begin_delivery().ok()?;
+        handoff.snapshot(&self.counters, self.delivery_boundary.generation())
     }
 
     /// Number of `(track, modality)` sequence streams currently retained.
     pub fn retained_sequence_streams(&self) -> usize {
-        self.sequences
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .len()
+        lock_sequence_state(&self.sequences, &self.tap_counters, &self.counters)
+            .map_or(0, |sequences| sequences.len())
     }
 
     /// Clear sequence replay state and return the number of removed streams.
@@ -1227,20 +1746,24 @@ impl SubscriptionHealth {
     /// # Errors
     ///
     /// Returns [`SequenceResetError`] for a callback-context reset, an active target
-    /// delivery, an exhausted pending-reset counter, or an exhausted generation.
+    /// delivery, exhausted counters/generation, or terminal poisoned internal state.
     pub fn reset_sequence_state(&self) -> Result<usize, SequenceResetError> {
         let _reset = self.delivery_boundary.begin_reset()?;
         self.delivery_boundary.advance_generation()?;
-        let removed = self
-            .sequences
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
+        let removed = lock_sequence_state(&self.sequences, &self.tap_counters, &self.counters)
+            .map_err(|fault| SequenceResetError::InternalStateFault { fault })?
             .clear();
-        *self
-            .counters
-            .last_accepted
-            .lock()
-            .unwrap_or_else(|error| error.into_inner()) = None;
+        match self.counters.last_accepted.lock() {
+            Ok(mut last) => *last = None,
+            Err(poisoned) => {
+                let mut last = poisoned.into_inner();
+                *last = None;
+                self.counters.last_accepted.clear_poison();
+                let fault = LiveInternalFault::LastAcceptedTelemetryPoisoned;
+                latch_internal_fault_pair(&self.tap_counters, &self.counters, fault);
+                return Err(SequenceResetError::InternalStateFault { fault });
+            }
+        }
         self.counters
             .sequence_resets
             .fetch_add(1, Ordering::Relaxed);
@@ -1268,6 +1791,15 @@ pub enum TransportMode {
     QuietDevelopment,
 }
 
+/// Explicit lifecycle ownership of a shared Zenoh bus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BusOwnership {
+    /// This component opened the bus and may close it.
+    Owned,
+    /// A host supplied the bus and retains exclusive close authority.
+    HostOwned,
+}
+
 /// A live, read-only tap on Galadriel's named perception route over Zenoh.
 pub struct SidecarTap {
     bus: ZenohBus,
@@ -1278,13 +1810,13 @@ pub struct SidecarTap {
     /// taps wrap a host-owned bus and must never close it: `ZenohBus` clones share
     /// one session and one retained-subscriber registry, so closing from the tap
     /// would tear down the host's entire transport.
-    owns_bus: bool,
+    ownership: BusOwnership,
 }
 
 impl SidecarTap {
     /// Open a tap on the default NCP realm with explicit transport-security intent.
     pub async fn open(mode: TransportMode) -> Result<Self, ZenohError> {
-        Self::open_with_limits(mode, LiveLimits::default()).await
+        Self::open_with_limits(mode, bounded_live_limits()?).await
     }
 
     /// Open a default-realm tap with explicit intent and caller-supplied limits.
@@ -1297,14 +1829,14 @@ impl SidecarTap {
             TransportMode::Secure => crate::secure_live::open_secure_bus(keys).await?,
             TransportMode::QuietDevelopment => ZenohBus::open_realm(keys).await?,
         };
-        Self::from_parts(bus, DEFAULT_REALM.to_string(), limits, true)
+        Self::from_parts(bus, DEFAULT_REALM.to_string(), limits, BusOwnership::Owned)
     }
 
     fn from_parts(
         bus: ZenohBus,
         realm: String,
         limits: LiveLimits,
-        owns_bus: bool,
+        ownership: BusOwnership,
     ) -> Result<Self, ZenohError> {
         if !valid_realm(&realm) {
             return Err(ZenohError(format!(
@@ -1316,7 +1848,7 @@ impl SidecarTap {
             realm,
             limits,
             counters: Arc::new(IngestCounters::default()),
-            owns_bus,
+            ownership,
         })
     }
 
@@ -1325,7 +1857,7 @@ impl SidecarTap {
         realm: impl Into<String>,
         mode: TransportMode,
     ) -> Result<Self, ZenohError> {
-        Self::open_realm_with_limits(realm, mode, LiveLimits::default()).await
+        Self::open_realm_with_limits(realm, mode, bounded_live_limits()?).await
     }
 
     /// Open an explicit-realm tap with explicit intent and caller-supplied limits.
@@ -1346,7 +1878,7 @@ impl SidecarTap {
             TransportMode::Secure => crate::secure_live::open_secure_bus(keys).await?,
             TransportMode::QuietDevelopment => ZenohBus::open_realm(keys).await?,
         };
-        Self::from_parts(bus, realm, limits, true)
+        Self::from_parts(bus, realm, limits, BusOwnership::Owned)
     }
 
     /// Wrap an already-open bus, so a host app can share one Zenoh session across its
@@ -1360,14 +1892,14 @@ impl SidecarTap {
     /// error, and the tap's subscriptions remain declared on the host session until
     /// the host closes its own `ZenohBus`. The host owns the transport lifecycle.
     pub fn from_bus(bus: ZenohBus) -> Result<Self, ZenohError> {
-        Self::from_bus_with_limits(bus, LiveLimits::default())
+        Self::from_bus_with_limits(bus, bounded_live_limits()?)
     }
 
     /// Wrap an already-open bus with caller-supplied payload limits.
     /// See [`Self::from_bus`] for the shared-session close semantics.
     pub fn from_bus_with_limits(bus: ZenohBus, limits: LiveLimits) -> Result<Self, ZenohError> {
         let realm = bus.keys().realm().to_owned();
-        Self::from_parts(bus, realm, limits, false)
+        Self::from_parts(bus, realm, limits, BusOwnership::HostOwned)
     }
 
     /// Payloads rejected for excessive size, malformed JSON, invalid observation
@@ -1395,11 +1927,17 @@ impl SidecarTap {
     /// sequence reset does **not** clear this tap-level snapshot, so it may still
     /// report an observation from before the reset.
     pub fn last_accepted(&self) -> Option<LastAcceptedObservation> {
-        self.counters.last_accepted()
+        match snapshot_last_accepted(&self.counters) {
+            Ok(last) => last,
+            Err(fault) => {
+                latch_internal_fault(&self.counters, fault);
+                None
+            }
+        }
     }
 
-    /// User callback panics caught at the receive boundary. The panicking payload is
-    /// dropped, while Zenoh's receive task remains alive for later observations.
+    /// User callback panics caught at the receive boundary. The first panic latches
+    /// a terminal fault so no later payload is decoded or delivered.
     pub fn callback_panics(&self) -> u64 {
         self.counters.callback_panics.load(Ordering::Relaxed)
     }
@@ -1408,7 +1946,28 @@ impl SidecarTap {
     /// The `last` value is the most recently completed callback across independent
     /// subscriptions; `maximum` is their aggregate high-water mark.
     pub fn callback_latency(&self) -> CallbackLatencyMetrics {
-        self.counters.callback_latency()
+        match snapshot_callback_latency(&self.counters) {
+            Ok(metrics) => metrics,
+            Err(fault) => {
+                latch_internal_fault(&self.counters, fault);
+                CallbackLatencyMetrics {
+                    samples: 0,
+                    last: None,
+                    maximum: None,
+                }
+            }
+        }
+    }
+
+    /// Retained tap-wide terminal internal fault, if any subscription state or
+    /// tap telemetry was poisoned.
+    pub fn internal_fault(&self) -> Option<LiveInternalFault> {
+        self.counters.internal_fault()
+    }
+
+    /// Number of tap-wide terminal internal-fault transitions (zero or one).
+    pub fn internal_faults(&self) -> u64 {
+        self.counters.internal_faults.load(Ordering::Relaxed)
     }
 
     /// Total payloads seen on the sidecar key (decoded **or** dropped), across all
@@ -1504,8 +2063,9 @@ impl SidecarTap {
     ///
     /// Oversized, malformed, invalid, misattributed, duplicate, regressed, and
     /// excessive-forward-gap payloads are dropped and counted by
-    /// [`Self::decode_failures`]. Callback panics are caught and counted by
-    /// [`Self::callback_panics`] so they cannot unwind Zenoh's receive task.
+    /// [`Self::decode_failures`]. A callback panic is caught, counted by
+    /// [`Self::callback_panics`], and latched as a terminal internal fault so it
+    /// cannot unwind Zenoh's receive task or permit later delivery.
     pub async fn subscribe<F>(
         &self,
         session_id: &str,
@@ -1547,7 +2107,10 @@ impl SidecarTap {
         let subscription_counters = Arc::new(IngestCounters::default());
         let limits = self.limits;
         let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
-        let delivery_boundary = Arc::new(DeliveryBoundary::default());
+        let delivery_boundary = Arc::new(DeliveryBoundary::new(
+            Arc::clone(&tap_counters),
+            Arc::clone(&subscription_counters),
+        ));
         let health = SubscriptionHealth {
             counters: Arc::clone(&subscription_counters),
             tap_counters: Arc::clone(&tap_counters),
@@ -1606,10 +2169,14 @@ impl SidecarTap {
         let subscription_counters = Arc::new(IngestCounters::default());
         let limits = self.limits;
         let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
-        let delivery_boundary = Arc::new(DeliveryBoundary::default());
+        let delivery_boundary = Arc::new(DeliveryBoundary::new(
+            Arc::clone(&tap_counters),
+            Arc::clone(&subscription_counters),
+        ));
         let (handoff, receiver, handoff_state) = bounded_handoff(
             config,
             Arc::clone(&delivery_boundary),
+            Arc::clone(&sequences),
             Arc::clone(&tap_counters),
             Arc::clone(&subscription_counters),
         );
@@ -1622,6 +2189,7 @@ impl SidecarTap {
         };
         self.bus
             .subscribe(&key, move |_key, bytes| {
+                handoff.preflight();
                 process_payload(
                     &bytes,
                     PayloadContext {
@@ -1649,7 +2217,7 @@ impl SidecarTap {
     /// not just galadriel's. That call therefore fails with a typed error and changes
     /// nothing; the host closes the session through its own `ZenohBus` handle.
     pub async fn close(&self) -> Result<(), ZenohError> {
-        if !self.owns_bus {
+        if self.ownership != BusOwnership::Owned {
             return Err(ZenohError(
                 "refusing to close a host-owned bus: this tap was created with \
                  from_bus, and closing would tear down the host's shared Zenoh \
@@ -1680,7 +2248,35 @@ where
         &context.tap_counters.payloads_received,
         &context.subscription_counters.payloads_received,
     );
-    let _delivery = context.delivery_boundary.begin_delivery();
+    // Detect a poison event that predates this callback before parsing attacker-
+    // controlled bytes. A poison that races after this boundary is still caught by
+    // the mandatory sequence lock before admission; mutex poison cannot be observed
+    // asynchronously at the instant another thread panics.
+    if context.sequences.is_poisoned() {
+        drop(lock_sequence_state(
+            context.sequences,
+            context.tap_counters,
+            context.subscription_counters,
+        ));
+    }
+    if internal_fault_pair(context.tap_counters, context.subscription_counters).is_some()
+        || !preflight_telemetry_pair(context.tap_counters, context.subscription_counters)
+    {
+        reject_pair(
+            context.tap_counters,
+            context.subscription_counters,
+            RejectionReason::SequenceStateFailure,
+        );
+        return;
+    }
+    let Ok(_delivery) = context.delivery_boundary.begin_delivery() else {
+        reject_pair(
+            context.tap_counters,
+            context.subscription_counters,
+            RejectionReason::SequenceStateFailure,
+        );
+        return;
+    };
     if bytes.len() > context.limits.max_payload_bytes {
         reject_pair(
             context.tap_counters,
@@ -1690,12 +2286,13 @@ where
         return;
     }
 
-    // Parse straight into the typed envelope. A `serde_json::Value` intermediate would
-    // collapse duplicate JSON keys (last occurrence wins) before `deny_unknown_fields`
-    // could reject them — a parser differential with first-wins JSON consumers on a
-    // security boundary. `classify()` preserves the malformed-vs-invalid counter split.
-    let envelope = match serde_json::from_slice::<SidecarEnvelope>(bytes) {
-        Ok(envelope) => envelope,
+    // Parse straight into the strict raw DTO, then perform typed semantic conversion.
+    // A `serde_json::Value` intermediate would collapse duplicate JSON keys (last
+    // occurrence wins) before `deny_unknown_fields` could reject them — a parser
+    // differential with first-wins JSON consumers on a security boundary. Keeping
+    // conversion separate also preserves typed compatibility rejection.
+    let raw = match serde_json::from_slice::<crate::RawSidecarEnvelope>(bytes) {
+        Ok(raw) => raw,
         Err(error) => {
             let reason = if error.classify() == serde_json::error::Category::Data {
                 RejectionReason::InvalidEnvelope
@@ -1703,6 +2300,17 @@ where
                 RejectionReason::MalformedJson
             };
             reject_pair(context.tap_counters, context.subscription_counters, reason);
+            return;
+        }
+    };
+    let envelope = match SidecarEnvelope::try_from(raw) {
+        Ok(envelope) => envelope,
+        Err(error) => {
+            reject_pair(
+                context.tap_counters,
+                context.subscription_counters,
+                rejection_reason_for_envelope_error(&error),
+            );
             return;
         }
     };
@@ -1721,10 +2329,21 @@ where
         };
     let observation = envelope.observation;
     {
-        let mut sequences = context
-            .sequences
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
+        let mut sequences = match lock_sequence_state(
+            context.sequences,
+            context.tap_counters,
+            context.subscription_counters,
+        ) {
+            Ok(sequences) => sequences,
+            Err(_) => {
+                reject_pair(
+                    context.tap_counters,
+                    context.subscription_counters,
+                    RejectionReason::SequenceStateFailure,
+                );
+                return;
+            }
+        };
         match sequences.accept(
             &observation,
             context.limits.max_sequence_streams,
@@ -1747,11 +2366,15 @@ where
             &context.subscription_counters.contract_hash_mismatches,
         );
     }
-    record_acceptance_pair(
+    if record_acceptance_pair(
         context.tap_counters,
         context.subscription_counters,
         &observation,
-    );
+    )
+    .is_err()
+    {
+        return;
+    }
 
     let callback_started = Instant::now();
     let callback_panicked = {
@@ -1759,17 +2382,24 @@ where
         catch_unwind(AssertUnwindSafe(|| on_obs(observation))).is_err()
     };
     let callback_completed_at = Instant::now();
-    record_callback_latency_pair(
-        context.tap_counters,
-        context.subscription_counters,
-        callback_completed_at.saturating_duration_since(callback_started),
-        callback_completed_at,
-    );
     if callback_panicked {
         increment_pair(
             &context.tap_counters.callback_panics,
             &context.subscription_counters.callback_panics,
         );
+        latch_internal_fault_pair(
+            context.tap_counters,
+            context.subscription_counters,
+            LiveInternalFault::CallbackPanicked,
+        );
+    }
+    if let Err(fault) = record_callback_latency_pair(
+        context.tap_counters,
+        context.subscription_counters,
+        callback_completed_at.saturating_duration_since(callback_started),
+        callback_completed_at,
+    ) {
+        latch_internal_fault_pair(context.tap_counters, context.subscription_counters, fault);
     }
 }
 
@@ -1787,16 +2417,25 @@ fn record_callback_latency_pair(
     subscription: &IngestCounters,
     latency: Duration,
     completed_at: Instant,
-) {
-    record_callback_latency(tap, latency, completed_at);
-    record_callback_latency(subscription, latency, completed_at);
+) -> Result<(), LiveInternalFault> {
+    record_callback_latency(tap, latency, completed_at)?;
+    record_callback_latency(subscription, latency, completed_at)
 }
 
-fn record_callback_latency(counters: &IngestCounters, latency: Duration, completed_at: Instant) {
-    let mut state = counters
-        .callback_latency
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
+fn record_callback_latency(
+    counters: &IngestCounters,
+    latency: Duration,
+    completed_at: Instant,
+) -> Result<(), LiveInternalFault> {
+    let mut state = match counters.callback_latency.lock() {
+        Ok(state) => state,
+        Err(poisoned) => {
+            let mut state = poisoned.into_inner();
+            *state = CallbackLatencyState::default();
+            counters.callback_latency.clear_poison();
+            return Err(LiveInternalFault::CallbackLatencyTelemetryPoisoned);
+        }
+    };
     state.samples = state.samples.saturating_add(1);
     state.maximum = Some(
         state
@@ -1810,6 +2449,7 @@ fn record_callback_latency(counters: &IngestCounters, latency: Duration, complet
         state.last = Some(latency);
         state.last_completed_at = Some(completed_at);
     }
+    Ok(())
 }
 
 fn rejection_counter(counters: &IngestCounters, reason: RejectionReason) -> &AtomicU64 {
@@ -1849,19 +2489,35 @@ fn record_acceptance_pair(
     tap: &IngestCounters,
     subscription: &IngestCounters,
     observation: &PidObservation,
-) {
+) -> Result<(), LiveInternalFault> {
+    let last = Some(LastAcceptedObservation::from(observation));
+    match tap.last_accepted.lock() {
+        Ok(mut accepted) => *accepted = last,
+        Err(poisoned) => {
+            let mut accepted = poisoned.into_inner();
+            *accepted = None;
+            tap.last_accepted.clear_poison();
+            let fault = LiveInternalFault::LastAcceptedTelemetryPoisoned;
+            latch_internal_fault_pair(tap, subscription, fault);
+            return Err(fault);
+        }
+    }
+    match subscription.last_accepted.lock() {
+        Ok(mut accepted) => *accepted = last,
+        Err(poisoned) => {
+            let mut accepted = poisoned.into_inner();
+            *accepted = None;
+            subscription.last_accepted.clear_poison();
+            let fault = LiveInternalFault::LastAcceptedTelemetryPoisoned;
+            latch_internal_fault_pair(tap, subscription, fault);
+            return Err(fault);
+        }
+    }
     increment_pair(
         &tap.observations_accepted,
         &subscription.observations_accepted,
     );
-    let last = Some(LastAcceptedObservation::from(observation));
-    *tap.last_accepted
-        .lock()
-        .unwrap_or_else(|error| error.into_inner()) = last;
-    *subscription
-        .last_accepted
-        .lock()
-        .unwrap_or_else(|error| error.into_inner()) = last;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -1887,8 +2543,20 @@ mod tests {
         }
     }
 
+    fn test_observation(
+        track_id: u64,
+        timestamp_ms: u64,
+        sequence: u64,
+        modality: Modality,
+        nis: f64,
+        dof: u8,
+    ) -> PidObservation {
+        PidObservation::try_scalar_raw(track_id, timestamp_ms, sequence, modality, nis, dof)
+            .expect("test observation is valid")
+    }
+
     fn encoded(track_id: u64, sequence: u64) -> Vec<u8> {
-        serde_json::to_vec(&envelope(PidObservation::scalar(
+        serde_json::to_vec(&envelope(test_observation(
             track_id,
             sequence,
             sequence,
@@ -1938,13 +2606,17 @@ mod tests {
     impl HandoffHarness {
         fn new(capacity: usize) -> Self {
             let config = HandoffConfig::new(capacity).unwrap();
-            let delivery_boundary = Arc::new(DeliveryBoundary::default());
-            let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
             let tap_counters = Arc::new(IngestCounters::default());
             let subscription_counters = Arc::new(IngestCounters::default());
+            let delivery_boundary = Arc::new(DeliveryBoundary::new(
+                Arc::clone(&tap_counters),
+                Arc::clone(&subscription_counters),
+            ));
+            let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
             let (handoff, receiver, state) = bounded_handoff(
                 config,
                 Arc::clone(&delivery_boundary),
+                Arc::clone(&sequences),
                 Arc::clone(&tap_counters),
                 Arc::clone(&subscription_counters),
             );
@@ -1967,6 +2639,7 @@ mod tests {
         }
 
         fn push(&self, track_id: u64, sequence: u64) {
+            self.handoff.preflight();
             process_payload(
                 &encoded(track_id, sequence),
                 LiveLimits::default(),
@@ -2000,6 +2673,52 @@ mod tests {
     }
 
     #[test]
+    fn release_live_profiles_have_stable_identities() {
+        let handoff = HandoffProfile::BoundedV0_9.try_config().unwrap();
+        let limits = LiveLimitsProfile::BoundedV0_9.try_limits().unwrap();
+
+        assert_eq!(
+            handoff.identity().to_hex(),
+            "8102d551625d24f8cae73f7e467c8bf8bb5c5e1a3b8747c50b1a4ef6aaed70b3"
+        );
+        assert_eq!(
+            limits.identity().to_hex(),
+            "c7f6f6b6446415c5610d313ec0465093597e76cb5b2be2bc16b2818a4939fdcb"
+        );
+    }
+
+    #[test]
+    fn live_limits_reject_scalar_and_aggregate_boundaries() {
+        assert!(matches!(
+            LiveLimits::with_sequence_policy(0, 1, 1),
+            Err(LiveLimitsError::Zero {
+                field: "max_payload_bytes"
+            })
+        ));
+        assert!(matches!(
+            LiveLimits::with_sequence_policy(MAX_LIVE_PAYLOAD_BYTES + 1, 1, 1),
+            Err(LiveLimitsError::ExceedsHardMaximum {
+                field: "max_payload_bytes",
+                ..
+            })
+        ));
+        assert!(matches!(
+            LiveLimits::with_sequence_policy(MAX_LIVE_PAYLOAD_BYTES, MAX_LIVE_SEQUENCE_STREAMS, 1,),
+            Err(LiveLimitsError::AggregateWorkTooLarge { .. })
+        ));
+
+        let mut changed = LiveLimitsProfile::BoundedV0_9.params();
+        changed.max_sequence_advance += 1;
+        assert_ne!(
+            LiveLimits::try_from(changed).unwrap().identity(),
+            LiveLimitsProfile::BoundedV0_9
+                .try_limits()
+                .unwrap()
+                .identity()
+        );
+    }
+
+    #[test]
     fn bounded_handoff_drops_newest_at_capacity_and_reports_queue_metrics() {
         let mut harness = HandoffHarness::new(1);
 
@@ -2021,10 +2740,15 @@ mod tests {
         assert!(callbacks.last.is_some());
         assert!(callbacks.maximum.is_some());
         assert!(callbacks.maximum >= callbacks.last);
-        assert_eq!(harness.tap_counters.callback_latency().samples, 2);
+        assert_eq!(
+            snapshot_callback_latency(&harness.tap_counters)
+                .expect("test callback telemetry is healthy")
+                .samples,
+            2
+        );
 
         let delivered = harness.receiver().try_recv().unwrap();
-        assert_eq!(delivered.seq, 1);
+        assert_eq!(delivered.sequence().get(), 1);
         let drained = harness.health.handoff_metrics().unwrap();
         assert_eq!(drained.queue_depth, 0);
         assert_eq!(drained.delivered, 1);
@@ -2041,7 +2765,7 @@ mod tests {
 
         let first = harness.receiver().try_recv().unwrap();
         let second = harness.receiver().try_recv().unwrap();
-        assert_eq!((first.seq, second.seq), (1, 2));
+        assert_eq!((first.sequence().get(), second.sequence().get()), (1, 2));
 
         harness.push(1, 3);
 
@@ -2076,8 +2800,10 @@ mod tests {
         let handoff = harness.handoff.clone();
         let delivery_boundary = Arc::clone(&harness.delivery_boundary);
         thread::spawn(move || {
-            let _delivery = delivery_boundary.begin_delivery();
-            handoff.enqueue(PidObservation::scalar(1, 2, 2, Modality::Radar, 3.0, 3));
+            let _delivery = delivery_boundary
+                .begin_delivery()
+                .expect("test delivery boundary is healthy");
+            handoff.enqueue(test_observation(1, 2, 2, Modality::Radar, 3.0, 3));
         })
         .join()
         .unwrap();
@@ -2089,7 +2815,7 @@ mod tests {
 
         let first = harness.receiver().finish_dequeue(queued).unwrap();
         let second = harness.receiver().try_recv().unwrap();
-        assert_eq!((first.seq, second.seq), (1, 2));
+        assert_eq!((first.sequence().get(), second.sequence().get()), (1, 2));
     }
 
     #[test]
@@ -2117,7 +2843,7 @@ mod tests {
 
         let delivered = harness.receiver().try_recv().unwrap();
 
-        assert_eq!(delivered.seq, 1);
+        assert_eq!(delivered.sequence().get(), 1);
         assert_eq!(harness.health.handoff_stale_generation_drops(), 1);
         assert_eq!(harness.health.handoff_delivered(), 1);
         assert_eq!(harness.health.handoff_metrics().unwrap().generation, 1);
@@ -2137,7 +2863,7 @@ mod tests {
 
         // The caller owns this value now. This is why a cross-task reset must
         // first pause the consumer and wait for its downstream work to finish.
-        assert_eq!(already_returned.seq, 1);
+        assert_eq!(already_returned.sequence().get(), 1);
         assert_eq!(harness.health.handoff_delivered(), 1);
         assert_eq!(harness.health.handoff_stale_generation_drops(), 0);
     }
@@ -2154,7 +2880,8 @@ mod tests {
                 &newer_counters,
                 Duration::from_millis(7),
                 origin + Duration::from_millis(2),
-            );
+            )
+            .expect("test telemetry mutex is healthy");
             newer_recorded_tx.send(()).unwrap();
         });
         let older_counters = Arc::clone(&counters);
@@ -2166,13 +2893,14 @@ mod tests {
                 &older_counters,
                 Duration::from_millis(20),
                 origin + Duration::from_millis(1),
-            );
+            )
+            .expect("test telemetry mutex remains healthy");
         });
         newer.join().unwrap();
         older.join().unwrap();
 
         assert_eq!(
-            counters.callback_latency(),
+            snapshot_callback_latency(&counters).expect("test telemetry snapshot is healthy"),
             CallbackLatencyMetrics {
                 samples: 2,
                 last: Some(Duration::from_millis(7)),
@@ -2257,16 +2985,12 @@ mod tests {
     }
 
     #[test]
-    fn process_payload_rejects_invalid_observation_values() {
-        let invalid = serde_json::to_vec(&envelope(PidObservation::scalar(
-            1,
-            0,
-            1,
-            Modality::Radar,
-            -0.1,
-            3,
-        )))
-        .unwrap();
+    fn process_payload_rejects_invalid_observation_during_typed_envelope_decode() {
+        let mut invalid =
+            serde_json::to_value(envelope(test_observation(1, 0, 1, Modality::Radar, 1.0, 3)))
+                .unwrap();
+        invalid["observation"]["nis"] = serde_json::json!(-0.1);
+        let invalid = serde_json::to_vec(&invalid).unwrap();
         let delivery_boundary = DeliveryBoundary::default();
         let sequences = Mutex::new(LiveSequenceTracker::default());
         let tap = IngestCounters::default();
@@ -2287,7 +3011,7 @@ mod tests {
 
         assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 1);
         assert_eq!(
-            subscription.rejection_count(RejectionReason::InvalidObservation),
+            subscription.rejection_count(RejectionReason::InvalidEnvelope),
             1
         );
         assert_eq!(callbacks.load(Ordering::Relaxed), 0);
@@ -2296,9 +3020,8 @@ mod tests {
     #[test]
     fn process_payload_rejects_unversioned_legacy_payload_and_wrong_provenance() {
         let legacy =
-            serde_json::to_vec(&PidObservation::scalar(1, 0, 1, Modality::Radar, 3.0, 3)).unwrap();
-        let mut wrong_provenance =
-            envelope(PidObservation::scalar(1, 0, 2, Modality::Radar, 3.0, 3));
+            serde_json::to_vec(&test_observation(1, 0, 1, Modality::Radar, 3.0, 3)).unwrap();
+        let mut wrong_provenance = envelope(test_observation(1, 0, 2, Modality::Radar, 3.0, 3));
         wrong_provenance.session_id = "other-session".to_string();
         let wrong_provenance = serde_json::to_vec(&wrong_provenance).unwrap();
         let delivery_boundary = DeliveryBoundary::default();
@@ -2334,10 +3057,10 @@ mod tests {
 
     #[test]
     fn process_payload_rejects_incompatible_version_and_surfaces_hash_advisory() {
-        let mut wrong_version = envelope(PidObservation::scalar(1, 0, 1, Modality::Radar, 3.0, 3));
+        let mut wrong_version = envelope(test_observation(1, 0, 1, Modality::Radar, 3.0, 3));
         wrong_version.ncp_version = "0.6".to_string();
         let wrong_version = serde_json::to_vec(&wrong_version).unwrap();
-        let mut drifted = envelope(PidObservation::scalar(1, 0, 2, Modality::Radar, 3.0, 3));
+        let mut drifted = envelope(test_observation(1, 0, 2, Modality::Radar, 3.0, 3));
         drifted.contract_hash = "deadbeefdeadbeef".to_string();
         let drifted = serde_json::to_vec(&drifted).unwrap();
         let delivery_boundary = DeliveryBoundary::default();
@@ -2387,7 +3110,7 @@ mod tests {
     }
 
     #[test]
-    fn process_payload_catches_callback_panic_and_accepts_later_input() {
+    fn process_payload_callback_panic_is_terminal_before_later_decode() {
         let delivery_boundary = DeliveryBoundary::default();
         let sequences = Mutex::new(LiveSequenceTracker::default());
         let tap = IngestCounters::default();
@@ -2411,11 +3134,20 @@ mod tests {
             );
         }
 
-        assert_eq!(callbacks.load(Ordering::Relaxed), 2);
+        assert_eq!(callbacks.load(Ordering::Relaxed), 1);
         assert_eq!(subscription.callback_panics.load(Ordering::Relaxed), 1);
-        assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 0);
-        let callback_latency = subscription.callback_latency();
-        assert_eq!(callback_latency.samples, 2);
+        assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            subscription.observations_accepted.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            internal_fault_pair(&tap, &subscription),
+            Some(LiveInternalFault::CallbackPanicked)
+        );
+        let callback_latency =
+            snapshot_callback_latency(&subscription).expect("test callback telemetry is healthy");
+        assert_eq!(callback_latency.samples, 1);
         assert!(callback_latency.last.is_some());
         assert!(callback_latency.maximum.is_some());
         assert!(callback_latency.maximum >= callback_latency.last);
@@ -2454,7 +3186,7 @@ mod tests {
         );
         assert_eq!(sequences.lock().unwrap().len(), 2);
         assert_eq!(
-            subscription.last_accepted(),
+            snapshot_last_accepted(&subscription).expect("test acceptance telemetry is healthy"),
             Some(LastAcceptedObservation {
                 track_id: 2,
                 modality: Modality::Radar,
@@ -2497,6 +3229,7 @@ mod tests {
 
         assert_eq!(callbacks.load(Ordering::Relaxed), 3);
         assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 2);
+        assert_eq!(subscription.malformed_json.load(Ordering::Relaxed), 0);
         assert_eq!(
             subscription.rejection_count(RejectionReason::SequenceCapacityExceeded),
             1
@@ -2571,11 +3304,7 @@ mod tests {
         sequences
             .lock()
             .unwrap()
-            .accept(
-                &PidObservation::scalar(1, 0, 1, Modality::Radar, 3.0, 3),
-                2,
-                10,
-            )
+            .accept(&test_observation(1, 0, 1, Modality::Radar, 3.0, 3), 2, 10)
             .unwrap();
         let counters = Arc::new(IngestCounters::default());
         *counters.last_accepted.lock().unwrap() = Some(LastAcceptedObservation {
@@ -2806,6 +3535,296 @@ mod tests {
     fn live_limits_reject_zero_sequence_advance() {
         let error = LiveLimits::with_sequence_policy(1, 1, 0).unwrap_err();
 
-        assert!(error.to_string().contains("sequence advance"));
+        assert_eq!(
+            error,
+            LiveLimitsError::Zero {
+                field: "max_sequence_advance"
+            }
+        );
+    }
+
+    type FaultParts = (
+        Arc<IngestCounters>,
+        Arc<IngestCounters>,
+        Arc<DeliveryBoundary>,
+        Arc<Mutex<LiveSequenceTracker>>,
+    );
+
+    fn fault_parts() -> FaultParts {
+        let tap = Arc::new(IngestCounters::default());
+        let subscription = Arc::new(IngestCounters::default());
+        let boundary = Arc::new(DeliveryBoundary::new(
+            Arc::clone(&tap),
+            Arc::clone(&subscription),
+        ));
+        let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+        (tap, subscription, boundary, sequences)
+    }
+
+    fn poison_sequence_state(sequences: &Arc<Mutex<LiveSequenceTracker>>) {
+        let sequences = Arc::clone(sequences);
+        assert!(thread::spawn(move || {
+            let _state = sequences
+                .lock()
+                .expect("test sequence state starts healthy");
+            panic!("deterministic live sequence poison");
+        })
+        .join()
+        .is_err());
+    }
+
+    fn poison_delivery_boundary(boundary: &Arc<DeliveryBoundary>) {
+        let boundary = Arc::clone(boundary);
+        assert!(thread::spawn(move || {
+            let _state = boundary
+                .state
+                .lock()
+                .expect("test delivery boundary starts healthy");
+            panic!("deterministic live delivery-boundary poison");
+        })
+        .join()
+        .is_err());
+    }
+
+    fn poison_last_accepted(counters: &Arc<IngestCounters>) {
+        let counters = Arc::clone(counters);
+        assert!(thread::spawn(move || {
+            let _last = counters
+                .last_accepted
+                .lock()
+                .expect("test last-accepted telemetry starts healthy");
+            panic!("deterministic last-accepted telemetry poison");
+        })
+        .join()
+        .is_err());
+    }
+
+    fn poison_callback_latency(counters: &Arc<IngestCounters>) {
+        let counters = Arc::clone(counters);
+        assert!(thread::spawn(move || {
+            let _latency = counters
+                .callback_latency
+                .lock()
+                .expect("test callback telemetry starts healthy");
+            panic!("deterministic callback-latency telemetry poison");
+        })
+        .join()
+        .is_err());
+    }
+
+    #[test]
+    fn poisoned_sequence_state_rejects_current_and_later_payloads() {
+        let (tap, subscription, boundary, sequences) = fault_parts();
+        poison_sequence_state(&sequences);
+        let callbacks = AtomicU64::new(0);
+
+        for payload in [encoded(1, 1), encoded(1, 2)] {
+            process_payload(
+                &payload,
+                LiveLimits::default(),
+                &boundary,
+                &sequences,
+                &tap,
+                &subscription,
+                &|_| {
+                    callbacks.fetch_add(1, Ordering::Relaxed);
+                },
+            );
+        }
+
+        assert_eq!(callbacks.load(Ordering::Relaxed), 0);
+        assert_eq!(
+            subscription.observations_accepted.load(Ordering::Relaxed),
+            0
+        );
+        assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 2);
+        assert_eq!(
+            internal_fault_pair(&tap, &subscription),
+            Some(LiveInternalFault::SequenceStatePoisoned)
+        );
+        assert_eq!(sequences.lock().expect("poison is quarantined").len(), 0);
+    }
+
+    #[test]
+    fn poisoned_delivery_boundary_fences_callback_before_sequence_admission() {
+        let (tap, subscription, boundary, sequences) = fault_parts();
+        poison_delivery_boundary(&boundary);
+        let callbacks = AtomicU64::new(0);
+
+        process_payload(
+            &encoded(1, 1),
+            LiveLimits::default(),
+            &boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &|_| {
+                callbacks.fetch_add(1, Ordering::Relaxed);
+            },
+        );
+
+        assert_eq!(callbacks.load(Ordering::Relaxed), 0);
+        assert_eq!(
+            subscription.observations_accepted.load(Ordering::Relaxed),
+            0
+        );
+        assert_eq!(
+            sequences.lock().expect("sequence state is healthy").len(),
+            0
+        );
+        assert_eq!(
+            internal_fault_pair(&tap, &subscription),
+            Some(LiveInternalFault::DeliveryBoundaryPoisoned)
+        );
+    }
+
+    #[test]
+    fn poisoned_last_accepted_telemetry_fails_before_decoding() {
+        let (tap, subscription, boundary, sequences) = fault_parts();
+        poison_last_accepted(&subscription);
+        let callbacks = AtomicU64::new(0);
+
+        process_payload(
+            &encoded(1, 1),
+            LiveLimits::default(),
+            &boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &|_| {
+                callbacks.fetch_add(1, Ordering::Relaxed);
+            },
+        );
+
+        assert_eq!(callbacks.load(Ordering::Relaxed), 0);
+        assert_eq!(
+            subscription.observations_accepted.load(Ordering::Relaxed),
+            0
+        );
+        assert_eq!(
+            internal_fault_pair(&tap, &subscription),
+            Some(LiveInternalFault::LastAcceptedTelemetryPoisoned)
+        );
+        assert_eq!(snapshot_last_accepted(&subscription), Ok(None));
+    }
+
+    #[test]
+    fn poisoned_callback_latency_telemetry_fails_before_decoding() {
+        let (tap, subscription, boundary, sequences) = fault_parts();
+        poison_callback_latency(&subscription);
+        let callbacks = AtomicU64::new(0);
+
+        process_payload(
+            &encoded(1, 1),
+            LiveLimits::default(),
+            &boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &|_| {
+                callbacks.fetch_add(1, Ordering::Relaxed);
+            },
+        );
+
+        assert_eq!(callbacks.load(Ordering::Relaxed), 0);
+        assert_eq!(
+            subscription.observations_accepted.load(Ordering::Relaxed),
+            0
+        );
+        assert_eq!(
+            internal_fault_pair(&tap, &subscription),
+            Some(LiveInternalFault::CallbackLatencyTelemetryPoisoned)
+        );
+        assert_eq!(
+            snapshot_callback_latency(&subscription),
+            Ok(CallbackLatencyMetrics {
+                samples: 0,
+                last: None,
+                maximum: None,
+            })
+        );
+    }
+
+    #[test]
+    fn poisoned_handoff_state_quarantines_queued_observation() {
+        let mut harness = HandoffHarness::new(2);
+        harness.push(1, 1);
+        let state = Arc::clone(&harness.handoff.state);
+        assert!(thread::spawn(move || {
+            let _queue = state
+                .queue
+                .lock()
+                .expect("test handoff state starts healthy");
+            panic!("deterministic handoff-state poison");
+        })
+        .join()
+        .is_err());
+
+        harness.push(1, 2);
+
+        assert_eq!(
+            harness.receiver().try_recv(),
+            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected)
+        );
+        assert_eq!(harness.health.observations_accepted(), 1);
+        assert_eq!(harness.health.handoff_delivered(), 0);
+        assert_eq!(harness.health.handoff_abandoned_drops(), 1);
+        assert_eq!(
+            harness.health.internal_fault(),
+            Some(LiveInternalFault::HandoffStatePoisoned)
+        );
+    }
+
+    #[test]
+    fn poisoned_sequence_state_quarantines_previously_queued_observation() {
+        let mut harness = HandoffHarness::new(2);
+        harness.push(1, 1);
+        poison_sequence_state(&harness.sequences);
+
+        assert_eq!(
+            harness.receiver().try_recv(),
+            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected)
+        );
+        assert_eq!(harness.health.handoff_delivered(), 0);
+        assert_eq!(harness.health.handoff_abandoned_drops(), 1);
+        assert_eq!(
+            harness.health.internal_fault(),
+            Some(LiveInternalFault::SequenceStatePoisoned)
+        );
+    }
+
+    #[test]
+    fn internal_poison_preserves_prior_callback_panic_evidence() {
+        let (tap, subscription, boundary, sequences) = fault_parts();
+        process_payload(
+            &encoded(1, 1),
+            LiveLimits::default(),
+            &boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &|_| panic!("contained callback panic"),
+        );
+        poison_sequence_state(&sequences);
+
+        process_payload(
+            &encoded(1, 2),
+            LiveLimits::default(),
+            &boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &|_| {},
+        );
+
+        assert_eq!(subscription.callback_panics.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            subscription.observations_accepted.load(Ordering::Relaxed),
+            1
+        );
+        assert_eq!(
+            internal_fault_pair(&tap, &subscription),
+            Some(LiveInternalFault::CallbackPanicked)
+        );
     }
 }

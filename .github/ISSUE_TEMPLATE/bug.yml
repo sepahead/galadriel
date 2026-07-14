@@ -1,0 +1,54 @@
+name: Reproducible defect
+description: Report a non-security correctness, reproducibility, or documentation defect.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not disclose vulnerabilities here. Use the private process in SECURITY.md.
+  - type: input
+    id: commit
+    attributes:
+      label: Exact commit
+      description: Full 40-character Git commit used for the reproduction.
+      placeholder: 0123456789abcdef0123456789abcdef01234567
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, architecture, Rust/Python versions, and relevant hardware.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and configuration
+      description: Exact command, feature set, configuration, seeds, and non-sensitive inputs.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: Include complete error output or a minimal checksummed artifact.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior and contract
+      description: Cite the documented requirement or explain the expected invariant.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: This report contains no credentials, private data, or undisclosed vulnerability details.
+          required: true

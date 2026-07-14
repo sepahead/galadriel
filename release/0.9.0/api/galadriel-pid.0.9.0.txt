@@ -1,0 +1,1232 @@
+pub mod galadriel_pid
+pub use galadriel_pid::FusedVerdict
+pub use galadriel_pid::consistency_channels_with_temporal_limits
+pub use galadriel_pid::scalar_channels
+pub enum galadriel_pid::PidConfigError
+pub galadriel_pid::PidConfigError::AxisCountOutOfRange
+pub galadriel_pid::PidConfigError::AxisCountOutOfRange::maximum: usize
+pub galadriel_pid::PidConfigError::AxisCountOutOfRange::requested: usize
+pub galadriel_pid::PidConfigError::AxisFamilyAlreadyDerived
+pub galadriel_pid::PidConfigError::AxisFamilyAlreadyDerived::current: usize
+pub galadriel_pid::PidConfigError::ConfirmationBlockSizeInvalid
+pub galadriel_pid::PidConfigError::ConfirmationFamilyAlphaInvalid
+pub galadriel_pid::PidConfigError::ConfirmationFamilyAlphaUnderflow
+pub galadriel_pid::PidConfigError::ConfirmationFamilyAlphaUnderflow::axis_count: usize
+pub galadriel_pid::PidConfigError::ConfirmationResamplesExceedWindow
+pub galadriel_pid::PidConfigError::ConfirmationResamplesOutOfRange
+pub galadriel_pid::PidConfigError::ConfirmationTailRankUnresolvable
+pub galadriel_pid::PidConfigError::ConfirmationTailRankUnresolvable::axis_count: usize
+pub galadriel_pid::PidConfigError::ConfirmationTailRankUnresolvable::resamples: usize
+pub galadriel_pid::PidConfigError::DecoupleRatioInvalid
+pub galadriel_pid::PidConfigError::DistanceCvMinimumInvalid
+pub galadriel_pid::PidConfigError::GeometryKTooSmall
+pub galadriel_pid::PidConfigError::IntrinsicDimensionMaximumInvalid
+pub galadriel_pid::PidConfigError::MiFloorInvalid
+pub galadriel_pid::PidConfigError::MinimumSamplesOutOfRange
+pub galadriel_pid::PidConfigError::NearestNeighborRatioInvalid
+pub galadriel_pid::PidConfigError::ObservationNoiseInvalid
+pub galadriel_pid::PidConfigError::WindowOutOfRange
+pub galadriel_pid::PidConfigError::WorkEstimateExceedsLimit
+pub galadriel_pid::PidConfigError::WorkEstimateExceedsLimit::maximum: usize
+pub galadriel_pid::PidConfigError::WorkEstimateExceedsLimit::requested: usize
+pub galadriel_pid::PidConfigError::WorkEstimateOverflow
+impl core::clone::Clone for galadriel_pid::PidConfigError
+pub fn galadriel_pid::PidConfigError::clone(&self) -> galadriel_pid::PidConfigError
+impl core::cmp::Eq for galadriel_pid::PidConfigError
+impl core::cmp::PartialEq for galadriel_pid::PidConfigError
+pub fn galadriel_pid::PidConfigError::eq(&self, &galadriel_pid::PidConfigError) -> bool
+impl core::convert::From<galadriel_pid::PidConfigError> for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::from(galadriel_pid::PidConfigError) -> Self
+impl core::convert::From<galadriel_pid::PidConfigError> for galadriel_pid::PidResearchSuiteError
+pub fn galadriel_pid::PidResearchSuiteError::from(galadriel_pid::PidConfigError) -> Self
+impl core::error::Error for galadriel_pid::PidConfigError
+impl core::fmt::Debug for galadriel_pid::PidConfigError
+pub fn galadriel_pid::PidConfigError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_pid::PidConfigError
+pub fn galadriel_pid::PidConfigError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::PidConfigError
+impl core::marker::Freeze for galadriel_pid::PidConfigError
+impl core::marker::Send for galadriel_pid::PidConfigError
+impl core::marker::Sync for galadriel_pid::PidConfigError
+impl core::marker::Unpin for galadriel_pid::PidConfigError
+impl core::marker::UnsafeUnpin for galadriel_pid::PidConfigError
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidConfigError
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidConfigError
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidConfigError where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidConfigError::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidConfigError::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidConfigError::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidConfigError::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidConfigError where U: core::convert::From<T>
+pub fn galadriel_pid::PidConfigError::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidConfigError where U: core::convert::Into<T>
+pub type galadriel_pid::PidConfigError::Error = core::convert::Infallible
+pub fn galadriel_pid::PidConfigError::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidConfigError where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidConfigError::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidConfigError::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidConfigError where T: core::clone::Clone
+pub type galadriel_pid::PidConfigError::Owned = T
+pub fn galadriel_pid::PidConfigError::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidConfigError::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_pid::PidConfigError where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_pid::PidConfigError::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_pid::PidConfigError where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidConfigError::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidConfigError where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfigError::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidConfigError where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfigError::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidConfigError where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidConfigError::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidConfigError
+pub fn galadriel_pid::PidConfigError::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidConfigError where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidConfigError
+pub type galadriel_pid::PidConfigError::Output = T
+pub enum galadriel_pid::PidConfirmation
+pub galadriel_pid::PidConfirmation::CircularDeleteBlock(galadriel_pid::CircularDeleteBlockConfirmation)
+pub galadriel_pid::PidConfirmation::PointEstimateOnly
+impl galadriel_pid::PidConfirmation
+pub const fn galadriel_pid::PidConfirmation::circular_delete_block(&self) -> core::option::Option<&galadriel_pid::CircularDeleteBlockConfirmation>
+pub const fn galadriel_pid::PidConfirmation::name(&self) -> &'static str
+impl core::clone::Clone for galadriel_pid::PidConfirmation
+pub fn galadriel_pid::PidConfirmation::clone(&self) -> galadriel_pid::PidConfirmation
+impl core::cmp::PartialEq for galadriel_pid::PidConfirmation
+pub fn galadriel_pid::PidConfirmation::eq(&self, &galadriel_pid::PidConfirmation) -> bool
+impl core::fmt::Debug for galadriel_pid::PidConfirmation
+pub fn galadriel_pid::PidConfirmation::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::PidConfirmation
+impl core::marker::Freeze for galadriel_pid::PidConfirmation
+impl core::marker::Send for galadriel_pid::PidConfirmation
+impl core::marker::Sync for galadriel_pid::PidConfirmation
+impl core::marker::Unpin for galadriel_pid::PidConfirmation
+impl core::marker::UnsafeUnpin for galadriel_pid::PidConfirmation
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidConfirmation
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidConfirmation
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidConfirmation where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidConfirmation::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidConfirmation::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidConfirmation::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidConfirmation::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidConfirmation where U: core::convert::From<T>
+pub fn galadriel_pid::PidConfirmation::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidConfirmation where U: core::convert::Into<T>
+pub type galadriel_pid::PidConfirmation::Error = core::convert::Infallible
+pub fn galadriel_pid::PidConfirmation::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidConfirmation where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidConfirmation::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidConfirmation::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidConfirmation where T: core::clone::Clone
+pub type galadriel_pid::PidConfirmation::Owned = T
+pub fn galadriel_pid::PidConfirmation::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidConfirmation::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidConfirmation where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidConfirmation::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidConfirmation where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfirmation::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidConfirmation where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfirmation::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidConfirmation where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidConfirmation::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidConfirmation
+pub fn galadriel_pid::PidConfirmation::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidConfirmation where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidConfirmation
+pub type galadriel_pid::PidConfirmation::Output = T
+pub enum galadriel_pid::PidConfirmationParams
+pub galadriel_pid::PidConfirmationParams::CircularDeleteBlock
+pub galadriel_pid::PidConfirmationParams::CircularDeleteBlock::block_size: usize
+pub galadriel_pid::PidConfirmationParams::CircularDeleteBlock::family_alpha: f64
+pub galadriel_pid::PidConfirmationParams::CircularDeleteBlock::resamples: usize
+pub galadriel_pid::PidConfirmationParams::PointEstimateOnly
+impl core::clone::Clone for galadriel_pid::PidConfirmationParams
+pub fn galadriel_pid::PidConfirmationParams::clone(&self) -> galadriel_pid::PidConfirmationParams
+impl core::cmp::PartialEq for galadriel_pid::PidConfirmationParams
+pub fn galadriel_pid::PidConfirmationParams::eq(&self, &galadriel_pid::PidConfirmationParams) -> bool
+impl core::fmt::Debug for galadriel_pid::PidConfirmationParams
+pub fn galadriel_pid::PidConfirmationParams::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::PidConfirmationParams
+impl core::marker::Freeze for galadriel_pid::PidConfirmationParams
+impl core::marker::Send for galadriel_pid::PidConfirmationParams
+impl core::marker::Sync for galadriel_pid::PidConfirmationParams
+impl core::marker::Unpin for galadriel_pid::PidConfirmationParams
+impl core::marker::UnsafeUnpin for galadriel_pid::PidConfirmationParams
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidConfirmationParams
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidConfirmationParams
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidConfirmationParams where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidConfirmationParams::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidConfirmationParams::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidConfirmationParams::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidConfirmationParams::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidConfirmationParams where U: core::convert::From<T>
+pub fn galadriel_pid::PidConfirmationParams::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidConfirmationParams where U: core::convert::Into<T>
+pub type galadriel_pid::PidConfirmationParams::Error = core::convert::Infallible
+pub fn galadriel_pid::PidConfirmationParams::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidConfirmationParams where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidConfirmationParams::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidConfirmationParams::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidConfirmationParams where T: core::clone::Clone
+pub type galadriel_pid::PidConfirmationParams::Owned = T
+pub fn galadriel_pid::PidConfirmationParams::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidConfirmationParams::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidConfirmationParams where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidConfirmationParams::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidConfirmationParams where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfirmationParams::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidConfirmationParams where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfirmationParams::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidConfirmationParams where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidConfirmationParams::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidConfirmationParams
+pub fn galadriel_pid::PidConfirmationParams::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidConfirmationParams where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidConfirmationParams
+pub type galadriel_pid::PidConfirmationParams::Output = T
+pub enum galadriel_pid::PidResearchClassification
+pub galadriel_pid::PidResearchClassification::CustomAcceptedResearch
+pub galadriel_pid::PidResearchClassification::NamedResearchProfile
+impl core::clone::Clone for galadriel_pid::PidResearchClassification
+pub fn galadriel_pid::PidResearchClassification::clone(&self) -> galadriel_pid::PidResearchClassification
+impl core::cmp::Eq for galadriel_pid::PidResearchClassification
+impl core::cmp::PartialEq for galadriel_pid::PidResearchClassification
+pub fn galadriel_pid::PidResearchClassification::eq(&self, &galadriel_pid::PidResearchClassification) -> bool
+impl core::fmt::Debug for galadriel_pid::PidResearchClassification
+pub fn galadriel_pid::PidResearchClassification::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_pid::PidResearchClassification
+impl core::marker::StructuralPartialEq for galadriel_pid::PidResearchClassification
+impl core::marker::Freeze for galadriel_pid::PidResearchClassification
+impl core::marker::Send for galadriel_pid::PidResearchClassification
+impl core::marker::Sync for galadriel_pid::PidResearchClassification
+impl core::marker::Unpin for galadriel_pid::PidResearchClassification
+impl core::marker::UnsafeUnpin for galadriel_pid::PidResearchClassification
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidResearchClassification
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidResearchClassification
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidResearchClassification where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidResearchClassification::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidResearchClassification::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidResearchClassification::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidResearchClassification::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidResearchClassification where U: core::convert::From<T>
+pub fn galadriel_pid::PidResearchClassification::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidResearchClassification where U: core::convert::Into<T>
+pub type galadriel_pid::PidResearchClassification::Error = core::convert::Infallible
+pub fn galadriel_pid::PidResearchClassification::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidResearchClassification where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidResearchClassification::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidResearchClassification::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidResearchClassification where T: core::clone::Clone
+pub type galadriel_pid::PidResearchClassification::Owned = T
+pub fn galadriel_pid::PidResearchClassification::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidResearchClassification::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidResearchClassification where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidResearchClassification::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidResearchClassification where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchClassification::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidResearchClassification where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchClassification::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidResearchClassification where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidResearchClassification::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidResearchClassification
+pub fn galadriel_pid::PidResearchClassification::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidResearchClassification where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidResearchClassification
+pub type galadriel_pid::PidResearchClassification::Output = T
+pub enum galadriel_pid::PidResearchProfile
+pub galadriel_pid::PidResearchProfile::CircularDeleteBlockV0_9
+pub galadriel_pid::PidResearchProfile::PointEstimateOnlyV0_9
+impl galadriel_pid::PidResearchProfile
+pub const fn galadriel_pid::PidResearchProfile::name(self) -> &'static str
+pub fn galadriel_pid::PidResearchProfile::params(self) -> galadriel_pid::PidParams
+pub fn galadriel_pid::PidResearchProfile::try_config(self) -> core::result::Result<galadriel_pid::PidConfig, galadriel_pid::PidConfigError>
+impl core::clone::Clone for galadriel_pid::PidResearchProfile
+pub fn galadriel_pid::PidResearchProfile::clone(&self) -> galadriel_pid::PidResearchProfile
+impl core::cmp::Eq for galadriel_pid::PidResearchProfile
+impl core::cmp::PartialEq for galadriel_pid::PidResearchProfile
+pub fn galadriel_pid::PidResearchProfile::eq(&self, &galadriel_pid::PidResearchProfile) -> bool
+impl core::fmt::Debug for galadriel_pid::PidResearchProfile
+pub fn galadriel_pid::PidResearchProfile::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_pid::PidResearchProfile
+impl core::marker::StructuralPartialEq for galadriel_pid::PidResearchProfile
+impl core::marker::Freeze for galadriel_pid::PidResearchProfile
+impl core::marker::Send for galadriel_pid::PidResearchProfile
+impl core::marker::Sync for galadriel_pid::PidResearchProfile
+impl core::marker::Unpin for galadriel_pid::PidResearchProfile
+impl core::marker::UnsafeUnpin for galadriel_pid::PidResearchProfile
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidResearchProfile
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidResearchProfile
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidResearchProfile where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidResearchProfile::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidResearchProfile::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidResearchProfile::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidResearchProfile::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidResearchProfile where U: core::convert::From<T>
+pub fn galadriel_pid::PidResearchProfile::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidResearchProfile where U: core::convert::Into<T>
+pub type galadriel_pid::PidResearchProfile::Error = core::convert::Infallible
+pub fn galadriel_pid::PidResearchProfile::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidResearchProfile where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidResearchProfile::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidResearchProfile::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidResearchProfile where T: core::clone::Clone
+pub type galadriel_pid::PidResearchProfile::Owned = T
+pub fn galadriel_pid::PidResearchProfile::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidResearchProfile::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidResearchProfile where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidResearchProfile::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidResearchProfile where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchProfile::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidResearchProfile where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchProfile::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidResearchProfile where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidResearchProfile::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidResearchProfile
+pub fn galadriel_pid::PidResearchProfile::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidResearchProfile where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidResearchProfile
+pub type galadriel_pid::PidResearchProfile::Output = T
+pub enum galadriel_pid::PidResearchSuiteError
+pub galadriel_pid::PidResearchSuiteError::PidConfig(galadriel_pid::PidConfigError)
+pub galadriel_pid::PidResearchSuiteError::PidConfigAlreadyDerived
+pub galadriel_pid::PidResearchSuiteError::PidConfigAlreadyDerived::axis_count: usize
+pub galadriel_pid::PidResearchSuiteError::ReleaseSuite(galadriel_core::config::ReleaseSuiteError)
+pub galadriel_pid::PidResearchSuiteError::TooFewModalities
+pub galadriel_pid::PidResearchSuiteError::TooFewModalities::available: usize
+pub galadriel_pid::PidResearchSuiteError::TooFewModalities::minimum: usize
+pub galadriel_pid::PidResearchSuiteError::WorkEstimateOverflow
+pub galadriel_pid::PidResearchSuiteError::WorkLimitExceeded
+pub galadriel_pid::PidResearchSuiteError::WorkLimitExceeded::maximum: usize
+pub galadriel_pid::PidResearchSuiteError::WorkLimitExceeded::requested: usize
+impl core::clone::Clone for galadriel_pid::PidResearchSuiteError
+pub fn galadriel_pid::PidResearchSuiteError::clone(&self) -> galadriel_pid::PidResearchSuiteError
+impl core::cmp::Eq for galadriel_pid::PidResearchSuiteError
+impl core::cmp::PartialEq for galadriel_pid::PidResearchSuiteError
+pub fn galadriel_pid::PidResearchSuiteError::eq(&self, &galadriel_pid::PidResearchSuiteError) -> bool
+impl core::convert::From<galadriel_core::config::ReleaseSuiteError> for galadriel_pid::PidResearchSuiteError
+pub fn galadriel_pid::PidResearchSuiteError::from(galadriel_core::config::ReleaseSuiteError) -> Self
+impl core::convert::From<galadriel_pid::PidConfigError> for galadriel_pid::PidResearchSuiteError
+pub fn galadriel_pid::PidResearchSuiteError::from(galadriel_pid::PidConfigError) -> Self
+impl core::convert::From<galadriel_pid::PidResearchSuiteError> for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::from(galadriel_pid::PidResearchSuiteError) -> Self
+impl core::error::Error for galadriel_pid::PidResearchSuiteError
+pub fn galadriel_pid::PidResearchSuiteError::source(&self) -> core::option::Option<&(dyn core::error::Error + 'static)>
+impl core::fmt::Debug for galadriel_pid::PidResearchSuiteError
+pub fn galadriel_pid::PidResearchSuiteError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_pid::PidResearchSuiteError
+pub fn galadriel_pid::PidResearchSuiteError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::PidResearchSuiteError
+impl core::marker::Freeze for galadriel_pid::PidResearchSuiteError
+impl core::marker::Send for galadriel_pid::PidResearchSuiteError
+impl core::marker::Sync for galadriel_pid::PidResearchSuiteError
+impl core::marker::Unpin for galadriel_pid::PidResearchSuiteError
+impl core::marker::UnsafeUnpin for galadriel_pid::PidResearchSuiteError
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidResearchSuiteError
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidResearchSuiteError
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidResearchSuiteError where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidResearchSuiteError::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidResearchSuiteError::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidResearchSuiteError::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidResearchSuiteError::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidResearchSuiteError where U: core::convert::From<T>
+pub fn galadriel_pid::PidResearchSuiteError::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidResearchSuiteError where U: core::convert::Into<T>
+pub type galadriel_pid::PidResearchSuiteError::Error = core::convert::Infallible
+pub fn galadriel_pid::PidResearchSuiteError::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidResearchSuiteError where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidResearchSuiteError::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidResearchSuiteError::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidResearchSuiteError where T: core::clone::Clone
+pub type galadriel_pid::PidResearchSuiteError::Owned = T
+pub fn galadriel_pid::PidResearchSuiteError::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidResearchSuiteError::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_pid::PidResearchSuiteError where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteError::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_pid::PidResearchSuiteError where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteError::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidResearchSuiteError where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteError::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidResearchSuiteError where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteError::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidResearchSuiteError where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidResearchSuiteError::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidResearchSuiteError
+pub fn galadriel_pid::PidResearchSuiteError::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidResearchSuiteError where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidResearchSuiteError
+pub type galadriel_pid::PidResearchSuiteError::Output = T
+pub enum galadriel_pid::PidVerdict
+pub galadriel_pid::PidVerdict::Decoupled(alloc::vec::Vec<galadriel_core::observation::Modality>)
+pub galadriel_pid::PidVerdict::InsufficientEvidence
+pub galadriel_pid::PidVerdict::Nominal
+impl core::clone::Clone for galadriel_pid::PidVerdict
+pub fn galadriel_pid::PidVerdict::clone(&self) -> galadriel_pid::PidVerdict
+impl core::cmp::PartialEq for galadriel_pid::PidVerdict
+pub fn galadriel_pid::PidVerdict::eq(&self, &galadriel_pid::PidVerdict) -> bool
+impl core::fmt::Debug for galadriel_pid::PidVerdict
+pub fn galadriel_pid::PidVerdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::PidVerdict
+impl core::marker::Freeze for galadriel_pid::PidVerdict
+impl core::marker::Send for galadriel_pid::PidVerdict
+impl core::marker::Sync for galadriel_pid::PidVerdict
+impl core::marker::Unpin for galadriel_pid::PidVerdict
+impl core::marker::UnsafeUnpin for galadriel_pid::PidVerdict
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidVerdict
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidVerdict
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidVerdict where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidVerdict::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidVerdict::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidVerdict::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidVerdict::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidVerdict where U: core::convert::From<T>
+pub fn galadriel_pid::PidVerdict::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidVerdict where U: core::convert::Into<T>
+pub type galadriel_pid::PidVerdict::Error = core::convert::Infallible
+pub fn galadriel_pid::PidVerdict::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidVerdict where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidVerdict::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidVerdict::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidVerdict where T: core::clone::Clone
+pub type galadriel_pid::PidVerdict::Owned = T
+pub fn galadriel_pid::PidVerdict::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidVerdict::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidVerdict where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidVerdict::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidVerdict where T: ?core::marker::Sized
+pub fn galadriel_pid::PidVerdict::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidVerdict where T: ?core::marker::Sized
+pub fn galadriel_pid::PidVerdict::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidVerdict where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidVerdict::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidVerdict
+pub fn galadriel_pid::PidVerdict::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidVerdict where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidVerdict
+pub type galadriel_pid::PidVerdict::Output = T
+pub struct galadriel_pid::AxisPidReport
+impl galadriel_pid::AxisPidReport
+pub const fn galadriel_pid::AxisPidReport::assessment_binding(&self) -> core::option::Option<&galadriel_pid::PidAssessmentBinding>
+pub const fn galadriel_pid::AxisPidReport::axis(&self) -> usize
+pub const fn galadriel_pid::AxisPidReport::report(&self) -> &galadriel_pid::PidReport
+pub const fn galadriel_pid::AxisPidReport::single_axis(galadriel_pid::PidReport) -> Self
+pub fn galadriel_pid::AxisPidReport::try_new(usize, galadriel_pid::PidReport) -> galadriel_core::error::Result<Self>
+impl core::clone::Clone for galadriel_pid::AxisPidReport
+pub fn galadriel_pid::AxisPidReport::clone(&self) -> galadriel_pid::AxisPidReport
+impl core::fmt::Debug for galadriel_pid::AxisPidReport
+pub fn galadriel_pid::AxisPidReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_pid::AxisPidReport
+impl core::marker::Send for galadriel_pid::AxisPidReport
+impl core::marker::Sync for galadriel_pid::AxisPidReport
+impl core::marker::Unpin for galadriel_pid::AxisPidReport
+impl core::marker::UnsafeUnpin for galadriel_pid::AxisPidReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::AxisPidReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::AxisPidReport
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::AxisPidReport where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::AxisPidReport::from_subset(&SS) -> SP
+pub fn galadriel_pid::AxisPidReport::is_in_subset(&self) -> bool
+pub fn galadriel_pid::AxisPidReport::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::AxisPidReport::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::AxisPidReport where U: core::convert::From<T>
+pub fn galadriel_pid::AxisPidReport::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::AxisPidReport where U: core::convert::Into<T>
+pub type galadriel_pid::AxisPidReport::Error = core::convert::Infallible
+pub fn galadriel_pid::AxisPidReport::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::AxisPidReport where U: core::convert::TryFrom<T>
+pub type galadriel_pid::AxisPidReport::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::AxisPidReport::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::AxisPidReport where T: core::clone::Clone
+pub type galadriel_pid::AxisPidReport::Owned = T
+pub fn galadriel_pid::AxisPidReport::clone_into(&self, &mut T)
+pub fn galadriel_pid::AxisPidReport::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::AxisPidReport where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::AxisPidReport::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::AxisPidReport where T: ?core::marker::Sized
+pub fn galadriel_pid::AxisPidReport::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::AxisPidReport where T: ?core::marker::Sized
+pub fn galadriel_pid::AxisPidReport::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::AxisPidReport where T: core::clone::Clone
+pub unsafe fn galadriel_pid::AxisPidReport::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::AxisPidReport
+pub fn galadriel_pid::AxisPidReport::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_pid::AxisPidReport
+pub type galadriel_pid::AxisPidReport::Output = T
+pub struct galadriel_pid::ChannelPid
+impl galadriel_pid::ChannelPid
+pub const fn galadriel_pid::ChannelPid::confirmation_interval(&self) -> core::option::Option<(f64, f64)>
+pub const fn galadriel_pid::ChannelPid::corroboration(&self) -> core::option::Option<f64>
+pub fn galadriel_pid::ChannelPid::gate_note(&self) -> &str
+pub const fn galadriel_pid::ChannelPid::gate_ok(&self) -> bool
+pub const fn galadriel_pid::ChannelPid::is_decoupled(&self) -> bool
+pub const fn galadriel_pid::ChannelPid::modality(&self) -> galadriel_core::observation::Modality
+pub const fn galadriel_pid::ChannelPid::n(&self) -> usize
+pub const fn galadriel_pid::ChannelPid::redundancy(&self) -> core::option::Option<f64>
+pub const fn galadriel_pid::ChannelPid::synergy(&self) -> core::option::Option<f64>
+impl core::clone::Clone for galadriel_pid::ChannelPid
+pub fn galadriel_pid::ChannelPid::clone(&self) -> galadriel_pid::ChannelPid
+impl core::fmt::Debug for galadriel_pid::ChannelPid
+pub fn galadriel_pid::ChannelPid::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_pid::ChannelPid
+impl core::marker::Send for galadriel_pid::ChannelPid
+impl core::marker::Sync for galadriel_pid::ChannelPid
+impl core::marker::Unpin for galadriel_pid::ChannelPid
+impl core::marker::UnsafeUnpin for galadriel_pid::ChannelPid
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::ChannelPid
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::ChannelPid
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::ChannelPid where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::ChannelPid::from_subset(&SS) -> SP
+pub fn galadriel_pid::ChannelPid::is_in_subset(&self) -> bool
+pub fn galadriel_pid::ChannelPid::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::ChannelPid::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::ChannelPid where U: core::convert::From<T>
+pub fn galadriel_pid::ChannelPid::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::ChannelPid where U: core::convert::Into<T>
+pub type galadriel_pid::ChannelPid::Error = core::convert::Infallible
+pub fn galadriel_pid::ChannelPid::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::ChannelPid where U: core::convert::TryFrom<T>
+pub type galadriel_pid::ChannelPid::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::ChannelPid::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::ChannelPid where T: core::clone::Clone
+pub type galadriel_pid::ChannelPid::Owned = T
+pub fn galadriel_pid::ChannelPid::clone_into(&self, &mut T)
+pub fn galadriel_pid::ChannelPid::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::ChannelPid where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::ChannelPid::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::ChannelPid where T: ?core::marker::Sized
+pub fn galadriel_pid::ChannelPid::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::ChannelPid where T: ?core::marker::Sized
+pub fn galadriel_pid::ChannelPid::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::ChannelPid where T: core::clone::Clone
+pub unsafe fn galadriel_pid::ChannelPid::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::ChannelPid
+pub fn galadriel_pid::ChannelPid::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_pid::ChannelPid
+pub type galadriel_pid::ChannelPid::Output = T
+pub struct galadriel_pid::CircularDeleteBlockConfirmation
+impl galadriel_pid::CircularDeleteBlockConfirmation
+pub const fn galadriel_pid::CircularDeleteBlockConfirmation::block_size(&self) -> usize
+pub const fn galadriel_pid::CircularDeleteBlockConfirmation::family_alpha(&self) -> f64
+pub const fn galadriel_pid::CircularDeleteBlockConfirmation::resamples(&self) -> usize
+impl core::clone::Clone for galadriel_pid::CircularDeleteBlockConfirmation
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::clone(&self) -> galadriel_pid::CircularDeleteBlockConfirmation
+impl core::cmp::PartialEq for galadriel_pid::CircularDeleteBlockConfirmation
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::eq(&self, &galadriel_pid::CircularDeleteBlockConfirmation) -> bool
+impl core::fmt::Debug for galadriel_pid::CircularDeleteBlockConfirmation
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::CircularDeleteBlockConfirmation
+impl core::marker::Freeze for galadriel_pid::CircularDeleteBlockConfirmation
+impl core::marker::Send for galadriel_pid::CircularDeleteBlockConfirmation
+impl core::marker::Sync for galadriel_pid::CircularDeleteBlockConfirmation
+impl core::marker::Unpin for galadriel_pid::CircularDeleteBlockConfirmation
+impl core::marker::UnsafeUnpin for galadriel_pid::CircularDeleteBlockConfirmation
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::CircularDeleteBlockConfirmation
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::CircularDeleteBlockConfirmation
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::CircularDeleteBlockConfirmation where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::from_subset(&SS) -> SP
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::is_in_subset(&self) -> bool
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::CircularDeleteBlockConfirmation where U: core::convert::From<T>
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::CircularDeleteBlockConfirmation where U: core::convert::Into<T>
+pub type galadriel_pid::CircularDeleteBlockConfirmation::Error = core::convert::Infallible
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::CircularDeleteBlockConfirmation where U: core::convert::TryFrom<T>
+pub type galadriel_pid::CircularDeleteBlockConfirmation::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::CircularDeleteBlockConfirmation where T: core::clone::Clone
+pub type galadriel_pid::CircularDeleteBlockConfirmation::Owned = T
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::clone_into(&self, &mut T)
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::CircularDeleteBlockConfirmation where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::CircularDeleteBlockConfirmation where T: ?core::marker::Sized
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::CircularDeleteBlockConfirmation where T: ?core::marker::Sized
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::CircularDeleteBlockConfirmation where T: core::clone::Clone
+pub unsafe fn galadriel_pid::CircularDeleteBlockConfirmation::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::CircularDeleteBlockConfirmation
+pub fn galadriel_pid::CircularDeleteBlockConfirmation::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::CircularDeleteBlockConfirmation where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::CircularDeleteBlockConfirmation
+pub type galadriel_pid::CircularDeleteBlockConfirmation::Output = T
+pub struct galadriel_pid::FusedReport
+impl galadriel_pid::FusedReport
+pub const fn galadriel_pid::FusedReport::assessment_binding(&self) -> &galadriel_pid::PidAssessmentBinding
+pub const fn galadriel_pid::FusedReport::baseline(&self) -> &galadriel_core::decision::MirrorReport
+pub const fn galadriel_pid::FusedReport::classification(&self) -> galadriel_pid::PidResearchClassification
+pub fn galadriel_pid::FusedReport::correlations(&self) -> &[galadriel_core::fusion::AxisCorrelationReport]
+pub fn galadriel_pid::FusedReport::note(&self) -> &str
+pub fn galadriel_pid::FusedReport::pids(&self) -> &[galadriel_pid::AxisPidReport]
+pub const fn galadriel_pid::FusedReport::suite_identity(&self) -> galadriel_pid::PidResearchSuiteDigest
+pub const fn galadriel_pid::FusedReport::verdict(&self) -> &galadriel_core::fusion::FusedVerdict
+impl core::clone::Clone for galadriel_pid::FusedReport
+pub fn galadriel_pid::FusedReport::clone(&self) -> galadriel_pid::FusedReport
+impl core::fmt::Debug for galadriel_pid::FusedReport
+pub fn galadriel_pid::FusedReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_pid::FusedReport
+impl core::marker::Send for galadriel_pid::FusedReport
+impl core::marker::Sync for galadriel_pid::FusedReport
+impl core::marker::Unpin for galadriel_pid::FusedReport
+impl core::marker::UnsafeUnpin for galadriel_pid::FusedReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::FusedReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::FusedReport
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::FusedReport where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::FusedReport::from_subset(&SS) -> SP
+pub fn galadriel_pid::FusedReport::is_in_subset(&self) -> bool
+pub fn galadriel_pid::FusedReport::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::FusedReport::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::FusedReport where U: core::convert::From<T>
+pub fn galadriel_pid::FusedReport::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::FusedReport where U: core::convert::Into<T>
+pub type galadriel_pid::FusedReport::Error = core::convert::Infallible
+pub fn galadriel_pid::FusedReport::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::FusedReport where U: core::convert::TryFrom<T>
+pub type galadriel_pid::FusedReport::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::FusedReport::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::FusedReport where T: core::clone::Clone
+pub type galadriel_pid::FusedReport::Owned = T
+pub fn galadriel_pid::FusedReport::clone_into(&self, &mut T)
+pub fn galadriel_pid::FusedReport::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::FusedReport where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::FusedReport::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::FusedReport where T: ?core::marker::Sized
+pub fn galadriel_pid::FusedReport::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::FusedReport where T: ?core::marker::Sized
+pub fn galadriel_pid::FusedReport::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::FusedReport where T: core::clone::Clone
+pub unsafe fn galadriel_pid::FusedReport::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::FusedReport
+pub fn galadriel_pid::FusedReport::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_pid::FusedReport
+pub type galadriel_pid::FusedReport::Output = T
+pub struct galadriel_pid::PairKsgEvidence
+pub galadriel_pid::PairKsgEvidence::assumption_ledger: alloc::vec::Vec<pid_core::report::AssumptionLedgerEntry>
+pub galadriel_pid::PairKsgEvidence::estimand: pid_core::report::EstimandIdentity
+pub galadriel_pid::PairKsgEvidence::estimate_nats: f64
+pub galadriel_pid::PairKsgEvidence::first: galadriel_core::observation::Modality
+pub galadriel_pid::PairKsgEvidence::k: usize
+pub galadriel_pid::PairKsgEvidence::method_status: pid_core::ksg::KsgMethodStatus
+pub galadriel_pid::PairKsgEvidence::n_samples: usize
+pub galadriel_pid::PairKsgEvidence::observation_model_description: alloc::string::String
+pub galadriel_pid::PairKsgEvidence::preprocessing_description: alloc::string::String
+pub galadriel_pid::PairKsgEvidence::provenance_hashes: alloc::sync::Arc<pid_core::report::ProvenanceHashes>
+pub galadriel_pid::PairKsgEvidence::report_warnings: alloc::vec::Vec<pid_core::report::WarningCode>
+pub galadriel_pid::PairKsgEvidence::resource_estimate: pid_core::resource::ResourceEstimate
+pub galadriel_pid::PairKsgEvidence::sampling_model_description: core::option::Option<alloc::string::String>
+pub galadriel_pid::PairKsgEvidence::scientific_status: pid_core::report::ScientificStatus
+pub galadriel_pid::PairKsgEvidence::second: galadriel_core::observation::Modality
+pub galadriel_pid::PairKsgEvidence::support_contract: pid_core::support::SupportContract
+pub galadriel_pid::PairKsgEvidence::warnings: alloc::vec::Vec<pid_core::ksg::KsgReportWarning>
+impl core::clone::Clone for galadriel_pid::PairKsgEvidence
+pub fn galadriel_pid::PairKsgEvidence::clone(&self) -> galadriel_pid::PairKsgEvidence
+impl core::cmp::PartialEq for galadriel_pid::PairKsgEvidence
+pub fn galadriel_pid::PairKsgEvidence::eq(&self, &galadriel_pid::PairKsgEvidence) -> bool
+impl core::fmt::Debug for galadriel_pid::PairKsgEvidence
+pub fn galadriel_pid::PairKsgEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::PairKsgEvidence
+impl core::marker::Freeze for galadriel_pid::PairKsgEvidence
+impl core::marker::Send for galadriel_pid::PairKsgEvidence
+impl core::marker::Sync for galadriel_pid::PairKsgEvidence
+impl core::marker::Unpin for galadriel_pid::PairKsgEvidence
+impl core::marker::UnsafeUnpin for galadriel_pid::PairKsgEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PairKsgEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PairKsgEvidence
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PairKsgEvidence where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PairKsgEvidence::from_subset(&SS) -> SP
+pub fn galadriel_pid::PairKsgEvidence::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PairKsgEvidence::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PairKsgEvidence::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PairKsgEvidence where U: core::convert::From<T>
+pub fn galadriel_pid::PairKsgEvidence::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PairKsgEvidence where U: core::convert::Into<T>
+pub type galadriel_pid::PairKsgEvidence::Error = core::convert::Infallible
+pub fn galadriel_pid::PairKsgEvidence::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PairKsgEvidence where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PairKsgEvidence::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PairKsgEvidence::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PairKsgEvidence where T: core::clone::Clone
+pub type galadriel_pid::PairKsgEvidence::Owned = T
+pub fn galadriel_pid::PairKsgEvidence::clone_into(&self, &mut T)
+pub fn galadriel_pid::PairKsgEvidence::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PairKsgEvidence where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PairKsgEvidence::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PairKsgEvidence where T: ?core::marker::Sized
+pub fn galadriel_pid::PairKsgEvidence::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PairKsgEvidence where T: ?core::marker::Sized
+pub fn galadriel_pid::PairKsgEvidence::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PairKsgEvidence where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PairKsgEvidence::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PairKsgEvidence
+pub fn galadriel_pid::PairKsgEvidence::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PairKsgEvidence where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PairKsgEvidence
+pub type galadriel_pid::PairKsgEvidence::Output = T
+pub struct galadriel_pid::PidAssessmentBinding
+impl galadriel_pid::PidAssessmentBinding
+pub const fn galadriel_pid::PidAssessmentBinding::digest(&self) -> galadriel_pid::PidAssessmentDigest
+pub const fn galadriel_pid::PidAssessmentBinding::release_binding(&self) -> &galadriel_core::identity::AssessmentBinding
+pub const fn galadriel_pid::PidAssessmentBinding::suite_identity(&self) -> galadriel_pid::PidResearchSuiteDigest
+impl core::clone::Clone for galadriel_pid::PidAssessmentBinding
+pub fn galadriel_pid::PidAssessmentBinding::clone(&self) -> galadriel_pid::PidAssessmentBinding
+impl core::cmp::Eq for galadriel_pid::PidAssessmentBinding
+impl core::cmp::PartialEq for galadriel_pid::PidAssessmentBinding
+pub fn galadriel_pid::PidAssessmentBinding::eq(&self, &galadriel_pid::PidAssessmentBinding) -> bool
+impl core::fmt::Debug for galadriel_pid::PidAssessmentBinding
+pub fn galadriel_pid::PidAssessmentBinding::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_pid::PidAssessmentBinding
+pub fn galadriel_pid::PidAssessmentBinding::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for galadriel_pid::PidAssessmentBinding
+impl core::marker::Freeze for galadriel_pid::PidAssessmentBinding
+impl core::marker::Send for galadriel_pid::PidAssessmentBinding
+impl core::marker::Sync for galadriel_pid::PidAssessmentBinding
+impl core::marker::Unpin for galadriel_pid::PidAssessmentBinding
+impl core::marker::UnsafeUnpin for galadriel_pid::PidAssessmentBinding
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidAssessmentBinding
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidAssessmentBinding
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidAssessmentBinding where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidAssessmentBinding::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidAssessmentBinding::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidAssessmentBinding::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidAssessmentBinding::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidAssessmentBinding where U: core::convert::From<T>
+pub fn galadriel_pid::PidAssessmentBinding::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidAssessmentBinding where U: core::convert::Into<T>
+pub type galadriel_pid::PidAssessmentBinding::Error = core::convert::Infallible
+pub fn galadriel_pid::PidAssessmentBinding::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidAssessmentBinding where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidAssessmentBinding::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidAssessmentBinding::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidAssessmentBinding where T: core::clone::Clone
+pub type galadriel_pid::PidAssessmentBinding::Owned = T
+pub fn galadriel_pid::PidAssessmentBinding::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidAssessmentBinding::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidAssessmentBinding where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidAssessmentBinding::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidAssessmentBinding where T: ?core::marker::Sized
+pub fn galadriel_pid::PidAssessmentBinding::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidAssessmentBinding where T: ?core::marker::Sized
+pub fn galadriel_pid::PidAssessmentBinding::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidAssessmentBinding where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidAssessmentBinding::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidAssessmentBinding
+pub fn galadriel_pid::PidAssessmentBinding::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidAssessmentBinding where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidAssessmentBinding
+pub type galadriel_pid::PidAssessmentBinding::Output = T
+pub struct galadriel_pid::PidAssessmentDigest(_)
+impl galadriel_pid::PidAssessmentDigest
+pub const fn galadriel_pid::PidAssessmentDigest::as_bytes(&self) -> &[u8; 32]
+pub fn galadriel_pid::PidAssessmentDigest::to_hex(self) -> alloc::string::String
+impl core::clone::Clone for galadriel_pid::PidAssessmentDigest
+pub fn galadriel_pid::PidAssessmentDigest::clone(&self) -> galadriel_pid::PidAssessmentDigest
+impl core::cmp::Eq for galadriel_pid::PidAssessmentDigest
+impl core::cmp::PartialEq for galadriel_pid::PidAssessmentDigest
+pub fn galadriel_pid::PidAssessmentDigest::eq(&self, &galadriel_pid::PidAssessmentDigest) -> bool
+impl core::fmt::Debug for galadriel_pid::PidAssessmentDigest
+pub fn galadriel_pid::PidAssessmentDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_pid::PidAssessmentDigest
+pub fn galadriel_pid::PidAssessmentDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_pid::PidAssessmentDigest
+pub fn galadriel_pid::PidAssessmentDigest::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for galadriel_pid::PidAssessmentDigest
+impl core::marker::StructuralPartialEq for galadriel_pid::PidAssessmentDigest
+impl core::marker::Freeze for galadriel_pid::PidAssessmentDigest
+impl core::marker::Send for galadriel_pid::PidAssessmentDigest
+impl core::marker::Sync for galadriel_pid::PidAssessmentDigest
+impl core::marker::Unpin for galadriel_pid::PidAssessmentDigest
+impl core::marker::UnsafeUnpin for galadriel_pid::PidAssessmentDigest
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidAssessmentDigest
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidAssessmentDigest
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidAssessmentDigest where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidAssessmentDigest::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidAssessmentDigest::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidAssessmentDigest::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidAssessmentDigest::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidAssessmentDigest where U: core::convert::From<T>
+pub fn galadriel_pid::PidAssessmentDigest::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidAssessmentDigest where U: core::convert::Into<T>
+pub type galadriel_pid::PidAssessmentDigest::Error = core::convert::Infallible
+pub fn galadriel_pid::PidAssessmentDigest::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidAssessmentDigest where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidAssessmentDigest::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidAssessmentDigest::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidAssessmentDigest where T: core::clone::Clone
+pub type galadriel_pid::PidAssessmentDigest::Owned = T
+pub fn galadriel_pid::PidAssessmentDigest::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidAssessmentDigest::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_pid::PidAssessmentDigest where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_pid::PidAssessmentDigest::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_pid::PidAssessmentDigest where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidAssessmentDigest::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidAssessmentDigest where T: ?core::marker::Sized
+pub fn galadriel_pid::PidAssessmentDigest::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidAssessmentDigest where T: ?core::marker::Sized
+pub fn galadriel_pid::PidAssessmentDigest::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidAssessmentDigest where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidAssessmentDigest::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidAssessmentDigest
+pub fn galadriel_pid::PidAssessmentDigest::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidAssessmentDigest where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidAssessmentDigest
+pub type galadriel_pid::PidAssessmentDigest::Output = T
+pub struct galadriel_pid::PidConfig
+impl galadriel_pid::PidConfig
+pub const fn galadriel_pid::PidConfig::axis_family_count(&self) -> usize
+pub const fn galadriel_pid::PidConfig::axis_family_was_derived(&self) -> bool
+pub const fn galadriel_pid::PidConfig::classification(&self) -> galadriel_pid::PidResearchClassification
+pub const fn galadriel_pid::PidConfig::confirmation(&self) -> &galadriel_pid::PidConfirmation
+pub fn galadriel_pid::PidConfig::confirmation_tail_rank(&self) -> core::option::Option<usize>
+pub const fn galadriel_pid::PidConfig::cv_min(&self) -> f64
+pub const fn galadriel_pid::PidConfig::decouple_ratio(&self) -> f64
+pub const fn galadriel_pid::PidConfig::geom_k(&self) -> usize
+pub const fn galadriel_pid::PidConfig::id_max(&self) -> f64
+pub fn galadriel_pid::PidConfig::identity(&self) -> galadriel_pid::PidConfigDigest
+pub const fn galadriel_pid::PidConfig::mi_floor(&self) -> f64
+pub const fn galadriel_pid::PidConfig::min_samples(&self) -> usize
+pub const fn galadriel_pid::PidConfig::nn_ratio_max(&self) -> f64
+pub const fn galadriel_pid::PidConfig::observation_noise_std(&self) -> f64
+pub const fn galadriel_pid::PidConfig::quadratic_fit_work(&self) -> usize
+pub fn galadriel_pid::PidConfig::required_samples(&self) -> usize
+pub const fn galadriel_pid::PidConfig::seed(&self) -> u64
+pub const fn galadriel_pid::PidConfig::source_profile(&self) -> core::option::Option<galadriel_pid::PidResearchProfile>
+pub fn galadriel_pid::PidConfig::try_for_axis_family(&self, usize) -> core::result::Result<Self, galadriel_pid::PidConfigError>
+pub fn galadriel_pid::PidConfig::try_new(galadriel_pid::PidParams) -> core::result::Result<Self, galadriel_pid::PidConfigError>
+pub const fn galadriel_pid::PidConfig::window(&self) -> usize
+impl core::clone::Clone for galadriel_pid::PidConfig
+pub fn galadriel_pid::PidConfig::clone(&self) -> galadriel_pid::PidConfig
+impl core::cmp::PartialEq for galadriel_pid::PidConfig
+pub fn galadriel_pid::PidConfig::eq(&self, &galadriel_pid::PidConfig) -> bool
+impl core::fmt::Debug for galadriel_pid::PidConfig
+pub fn galadriel_pid::PidConfig::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::PidConfig
+impl core::marker::Freeze for galadriel_pid::PidConfig
+impl core::marker::Send for galadriel_pid::PidConfig
+impl core::marker::Sync for galadriel_pid::PidConfig
+impl core::marker::Unpin for galadriel_pid::PidConfig
+impl core::marker::UnsafeUnpin for galadriel_pid::PidConfig
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidConfig
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidConfig
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidConfig where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidConfig::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidConfig::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidConfig::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidConfig::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidConfig where U: core::convert::From<T>
+pub fn galadriel_pid::PidConfig::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidConfig where U: core::convert::Into<T>
+pub type galadriel_pid::PidConfig::Error = core::convert::Infallible
+pub fn galadriel_pid::PidConfig::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidConfig where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidConfig::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidConfig::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidConfig where T: core::clone::Clone
+pub type galadriel_pid::PidConfig::Owned = T
+pub fn galadriel_pid::PidConfig::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidConfig::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidConfig where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidConfig::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidConfig where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfig::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidConfig where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfig::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidConfig where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidConfig::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidConfig
+pub fn galadriel_pid::PidConfig::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidConfig where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidConfig
+pub type galadriel_pid::PidConfig::Output = T
+pub struct galadriel_pid::PidConfigDigest(_)
+impl galadriel_pid::PidConfigDigest
+pub const fn galadriel_pid::PidConfigDigest::as_bytes(&self) -> &[u8; 32]
+pub fn galadriel_pid::PidConfigDigest::to_hex(self) -> alloc::string::String
+impl core::clone::Clone for galadriel_pid::PidConfigDigest
+pub fn galadriel_pid::PidConfigDigest::clone(&self) -> galadriel_pid::PidConfigDigest
+impl core::cmp::Eq for galadriel_pid::PidConfigDigest
+impl core::cmp::PartialEq for galadriel_pid::PidConfigDigest
+pub fn galadriel_pid::PidConfigDigest::eq(&self, &galadriel_pid::PidConfigDigest) -> bool
+impl core::fmt::Debug for galadriel_pid::PidConfigDigest
+pub fn galadriel_pid::PidConfigDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_pid::PidConfigDigest
+pub fn galadriel_pid::PidConfigDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_pid::PidConfigDigest
+pub fn galadriel_pid::PidConfigDigest::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for galadriel_pid::PidConfigDigest
+impl core::marker::StructuralPartialEq for galadriel_pid::PidConfigDigest
+impl core::marker::Freeze for galadriel_pid::PidConfigDigest
+impl core::marker::Send for galadriel_pid::PidConfigDigest
+impl core::marker::Sync for galadriel_pid::PidConfigDigest
+impl core::marker::Unpin for galadriel_pid::PidConfigDigest
+impl core::marker::UnsafeUnpin for galadriel_pid::PidConfigDigest
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidConfigDigest
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidConfigDigest
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidConfigDigest where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidConfigDigest::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidConfigDigest::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidConfigDigest::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidConfigDigest::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidConfigDigest where U: core::convert::From<T>
+pub fn galadriel_pid::PidConfigDigest::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidConfigDigest where U: core::convert::Into<T>
+pub type galadriel_pid::PidConfigDigest::Error = core::convert::Infallible
+pub fn galadriel_pid::PidConfigDigest::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidConfigDigest where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidConfigDigest::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidConfigDigest::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidConfigDigest where T: core::clone::Clone
+pub type galadriel_pid::PidConfigDigest::Owned = T
+pub fn galadriel_pid::PidConfigDigest::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidConfigDigest::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_pid::PidConfigDigest where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_pid::PidConfigDigest::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_pid::PidConfigDigest where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidConfigDigest::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidConfigDigest where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfigDigest::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidConfigDigest where T: ?core::marker::Sized
+pub fn galadriel_pid::PidConfigDigest::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidConfigDigest where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidConfigDigest::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidConfigDigest
+pub fn galadriel_pid::PidConfigDigest::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidConfigDigest where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidConfigDigest
+pub type galadriel_pid::PidConfigDigest::Output = T
+pub struct galadriel_pid::PidEstimatorEvidence
+impl galadriel_pid::PidEstimatorEvidence
+pub const fn galadriel_pid::PidEstimatorEvidence::atom_estimator(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::atom_isx_k(&self) -> usize
+pub const fn galadriel_pid::PidEstimatorEvidence::atom_ksg_k(&self) -> usize
+pub const fn galadriel_pid::PidEstimatorEvidence::atom_method(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::atom_scientific_status(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::axis_family_count(&self) -> usize
+pub const fn galadriel_pid::PidEstimatorEvidence::axis_family_was_derived(&self) -> bool
+pub const fn galadriel_pid::PidEstimatorEvidence::classification(&self) -> galadriel_pid::PidResearchClassification
+pub const fn galadriel_pid::PidEstimatorEvidence::config_identity(&self) -> galadriel_pid::PidConfigDigest
+pub const fn galadriel_pid::PidEstimatorEvidence::confirmation(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::confirmation_family_alpha(&self) -> core::option::Option<f64>
+pub const fn galadriel_pid::PidEstimatorEvidence::estimator_metric(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::geom_k(&self) -> usize
+pub const fn galadriel_pid::PidEstimatorEvidence::negative_handling(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::observation_noise_model(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::observation_noise_std(&self) -> f64
+pub const fn galadriel_pid::PidEstimatorEvidence::pairwise_estimator(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::pairwise_ksg_k(&self) -> usize
+pub fn galadriel_pid::PidEstimatorEvidence::pairwise_reports(&self) -> &[galadriel_pid::PairKsgEvidence]
+pub const fn galadriel_pid::PidEstimatorEvidence::pairwise_scientific_status(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::pid_rs_revision(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::pid_rs_version(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::research_profile(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::seed(&self) -> u64
+pub const fn galadriel_pid::PidEstimatorEvidence::support_contract(&self) -> &'static str
+pub const fn galadriel_pid::PidEstimatorEvidence::tie_epsilon(&self) -> f64
+impl core::clone::Clone for galadriel_pid::PidEstimatorEvidence
+pub fn galadriel_pid::PidEstimatorEvidence::clone(&self) -> galadriel_pid::PidEstimatorEvidence
+impl core::cmp::PartialEq for galadriel_pid::PidEstimatorEvidence
+pub fn galadriel_pid::PidEstimatorEvidence::eq(&self, &galadriel_pid::PidEstimatorEvidence) -> bool
+impl core::fmt::Debug for galadriel_pid::PidEstimatorEvidence
+pub fn galadriel_pid::PidEstimatorEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::PidEstimatorEvidence
+impl core::marker::Freeze for galadriel_pid::PidEstimatorEvidence
+impl core::marker::Send for galadriel_pid::PidEstimatorEvidence
+impl core::marker::Sync for galadriel_pid::PidEstimatorEvidence
+impl core::marker::Unpin for galadriel_pid::PidEstimatorEvidence
+impl core::marker::UnsafeUnpin for galadriel_pid::PidEstimatorEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidEstimatorEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidEstimatorEvidence
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidEstimatorEvidence where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidEstimatorEvidence::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidEstimatorEvidence::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidEstimatorEvidence::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidEstimatorEvidence::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidEstimatorEvidence where U: core::convert::From<T>
+pub fn galadriel_pid::PidEstimatorEvidence::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidEstimatorEvidence where U: core::convert::Into<T>
+pub type galadriel_pid::PidEstimatorEvidence::Error = core::convert::Infallible
+pub fn galadriel_pid::PidEstimatorEvidence::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidEstimatorEvidence where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidEstimatorEvidence::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidEstimatorEvidence::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidEstimatorEvidence where T: core::clone::Clone
+pub type galadriel_pid::PidEstimatorEvidence::Owned = T
+pub fn galadriel_pid::PidEstimatorEvidence::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidEstimatorEvidence::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidEstimatorEvidence where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidEstimatorEvidence::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidEstimatorEvidence where T: ?core::marker::Sized
+pub fn galadriel_pid::PidEstimatorEvidence::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidEstimatorEvidence where T: ?core::marker::Sized
+pub fn galadriel_pid::PidEstimatorEvidence::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidEstimatorEvidence where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidEstimatorEvidence::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidEstimatorEvidence
+pub fn galadriel_pid::PidEstimatorEvidence::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidEstimatorEvidence where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidEstimatorEvidence
+pub type galadriel_pid::PidEstimatorEvidence::Output = T
+pub struct galadriel_pid::PidParams
+pub galadriel_pid::PidParams::confirmation: galadriel_pid::PidConfirmationParams
+pub galadriel_pid::PidParams::cv_min: f64
+pub galadriel_pid::PidParams::decouple_ratio: f64
+pub galadriel_pid::PidParams::geom_k: usize
+pub galadriel_pid::PidParams::id_max: f64
+pub galadriel_pid::PidParams::mi_floor: f64
+pub galadriel_pid::PidParams::min_samples: usize
+pub galadriel_pid::PidParams::nn_ratio_max: f64
+pub galadriel_pid::PidParams::observation_noise_std: f64
+pub galadriel_pid::PidParams::seed: u64
+pub galadriel_pid::PidParams::window: usize
+impl core::clone::Clone for galadriel_pid::PidParams
+pub fn galadriel_pid::PidParams::clone(&self) -> galadriel_pid::PidParams
+impl core::cmp::PartialEq for galadriel_pid::PidParams
+pub fn galadriel_pid::PidParams::eq(&self, &galadriel_pid::PidParams) -> bool
+impl core::fmt::Debug for galadriel_pid::PidParams
+pub fn galadriel_pid::PidParams::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_pid::PidParams
+impl core::marker::Freeze for galadriel_pid::PidParams
+impl core::marker::Send for galadriel_pid::PidParams
+impl core::marker::Sync for galadriel_pid::PidParams
+impl core::marker::Unpin for galadriel_pid::PidParams
+impl core::marker::UnsafeUnpin for galadriel_pid::PidParams
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidParams
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidParams
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidParams where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidParams::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidParams::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidParams::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidParams::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidParams where U: core::convert::From<T>
+pub fn galadriel_pid::PidParams::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidParams where U: core::convert::Into<T>
+pub type galadriel_pid::PidParams::Error = core::convert::Infallible
+pub fn galadriel_pid::PidParams::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidParams where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidParams::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidParams::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidParams where T: core::clone::Clone
+pub type galadriel_pid::PidParams::Owned = T
+pub fn galadriel_pid::PidParams::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidParams::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidParams where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidParams::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidParams where T: ?core::marker::Sized
+pub fn galadriel_pid::PidParams::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidParams where T: ?core::marker::Sized
+pub fn galadriel_pid::PidParams::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidParams where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidParams::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidParams
+pub fn galadriel_pid::PidParams::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidParams where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidParams
+pub type galadriel_pid::PidParams::Output = T
+pub struct galadriel_pid::PidReport
+impl galadriel_pid::PidReport
+pub fn galadriel_pid::PidReport::channels(&self) -> &[galadriel_pid::ChannelPid]
+pub const fn galadriel_pid::PidReport::estimator(&self) -> &galadriel_pid::PidEstimatorEvidence
+pub fn galadriel_pid::PidReport::note(&self) -> &str
+pub const fn galadriel_pid::PidReport::verdict(&self) -> &galadriel_pid::PidVerdict
+impl core::clone::Clone for galadriel_pid::PidReport
+pub fn galadriel_pid::PidReport::clone(&self) -> galadriel_pid::PidReport
+impl core::fmt::Debug for galadriel_pid::PidReport
+pub fn galadriel_pid::PidReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_pid::PidReport
+impl core::marker::Send for galadriel_pid::PidReport
+impl core::marker::Sync for galadriel_pid::PidReport
+impl core::marker::Unpin for galadriel_pid::PidReport
+impl core::marker::UnsafeUnpin for galadriel_pid::PidReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidReport
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidReport where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidReport::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidReport::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidReport::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidReport::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidReport where U: core::convert::From<T>
+pub fn galadriel_pid::PidReport::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidReport where U: core::convert::Into<T>
+pub type galadriel_pid::PidReport::Error = core::convert::Infallible
+pub fn galadriel_pid::PidReport::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidReport where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidReport::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidReport::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidReport where T: core::clone::Clone
+pub type galadriel_pid::PidReport::Owned = T
+pub fn galadriel_pid::PidReport::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidReport::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidReport where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidReport::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidReport where T: ?core::marker::Sized
+pub fn galadriel_pid::PidReport::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidReport where T: ?core::marker::Sized
+pub fn galadriel_pid::PidReport::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidReport where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidReport::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidReport
+pub fn galadriel_pid::PidReport::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_pid::PidReport
+pub type galadriel_pid::PidReport::Output = T
+pub struct galadriel_pid::PidResearchSuite
+impl galadriel_pid::PidResearchSuite
+pub fn galadriel_pid::PidResearchSuite::circular_delete_block_v0_9(&[galadriel_core::observation::Modality]) -> core::result::Result<Self, galadriel_pid::PidResearchSuiteError>
+pub const fn galadriel_pid::PidResearchSuite::classification(&self) -> galadriel_pid::PidResearchClassification
+pub const fn galadriel_pid::PidResearchSuite::identity(&self) -> galadriel_pid::PidResearchSuiteDigest
+pub const fn galadriel_pid::PidResearchSuite::maximum_quadratic_fit_work(&self) -> usize
+pub const fn galadriel_pid::PidResearchSuite::pid_config(&self) -> &galadriel_pid::PidConfig
+pub fn galadriel_pid::PidResearchSuite::point_estimate_only_v0_9(&[galadriel_core::observation::Modality]) -> core::result::Result<Self, galadriel_pid::PidResearchSuiteError>
+pub const fn galadriel_pid::PidResearchSuite::release_suite(&self) -> &galadriel_core::config::ReleaseSuite
+pub const fn galadriel_pid::PidResearchSuite::source_profile(&self) -> core::option::Option<galadriel_pid::PidResearchProfile>
+pub fn galadriel_pid::PidResearchSuite::try_new(galadriel_pid::PidResearchSuiteParams) -> core::result::Result<Self, galadriel_pid::PidResearchSuiteError>
+impl core::clone::Clone for galadriel_pid::PidResearchSuite
+pub fn galadriel_pid::PidResearchSuite::clone(&self) -> galadriel_pid::PidResearchSuite
+impl core::fmt::Debug for galadriel_pid::PidResearchSuite
+pub fn galadriel_pid::PidResearchSuite::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_pid::PidResearchSuite
+impl core::marker::Send for galadriel_pid::PidResearchSuite
+impl core::marker::Sync for galadriel_pid::PidResearchSuite
+impl core::marker::Unpin for galadriel_pid::PidResearchSuite
+impl core::marker::UnsafeUnpin for galadriel_pid::PidResearchSuite
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidResearchSuite
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidResearchSuite
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidResearchSuite where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidResearchSuite::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidResearchSuite::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidResearchSuite::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidResearchSuite::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidResearchSuite where U: core::convert::From<T>
+pub fn galadriel_pid::PidResearchSuite::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidResearchSuite where U: core::convert::Into<T>
+pub type galadriel_pid::PidResearchSuite::Error = core::convert::Infallible
+pub fn galadriel_pid::PidResearchSuite::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidResearchSuite where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidResearchSuite::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidResearchSuite::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidResearchSuite where T: core::clone::Clone
+pub type galadriel_pid::PidResearchSuite::Owned = T
+pub fn galadriel_pid::PidResearchSuite::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidResearchSuite::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidResearchSuite where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuite::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidResearchSuite where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuite::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidResearchSuite where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuite::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidResearchSuite where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidResearchSuite::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidResearchSuite
+pub fn galadriel_pid::PidResearchSuite::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_pid::PidResearchSuite
+pub type galadriel_pid::PidResearchSuite::Output = T
+pub struct galadriel_pid::PidResearchSuiteDigest(_)
+impl galadriel_pid::PidResearchSuiteDigest
+pub const fn galadriel_pid::PidResearchSuiteDigest::as_bytes(&self) -> &[u8; 32]
+pub fn galadriel_pid::PidResearchSuiteDigest::to_hex(self) -> alloc::string::String
+impl core::clone::Clone for galadriel_pid::PidResearchSuiteDigest
+pub fn galadriel_pid::PidResearchSuiteDigest::clone(&self) -> galadriel_pid::PidResearchSuiteDigest
+impl core::cmp::Eq for galadriel_pid::PidResearchSuiteDigest
+impl core::cmp::PartialEq for galadriel_pid::PidResearchSuiteDigest
+pub fn galadriel_pid::PidResearchSuiteDigest::eq(&self, &galadriel_pid::PidResearchSuiteDigest) -> bool
+impl core::fmt::Debug for galadriel_pid::PidResearchSuiteDigest
+pub fn galadriel_pid::PidResearchSuiteDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_pid::PidResearchSuiteDigest
+pub fn galadriel_pid::PidResearchSuiteDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_pid::PidResearchSuiteDigest
+pub fn galadriel_pid::PidResearchSuiteDigest::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for galadriel_pid::PidResearchSuiteDigest
+impl core::marker::StructuralPartialEq for galadriel_pid::PidResearchSuiteDigest
+impl core::marker::Freeze for galadriel_pid::PidResearchSuiteDigest
+impl core::marker::Send for galadriel_pid::PidResearchSuiteDigest
+impl core::marker::Sync for galadriel_pid::PidResearchSuiteDigest
+impl core::marker::Unpin for galadriel_pid::PidResearchSuiteDigest
+impl core::marker::UnsafeUnpin for galadriel_pid::PidResearchSuiteDigest
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidResearchSuiteDigest
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidResearchSuiteDigest
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidResearchSuiteDigest where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidResearchSuiteDigest::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidResearchSuiteDigest::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidResearchSuiteDigest::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidResearchSuiteDigest::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidResearchSuiteDigest where U: core::convert::From<T>
+pub fn galadriel_pid::PidResearchSuiteDigest::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidResearchSuiteDigest where U: core::convert::Into<T>
+pub type galadriel_pid::PidResearchSuiteDigest::Error = core::convert::Infallible
+pub fn galadriel_pid::PidResearchSuiteDigest::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidResearchSuiteDigest where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidResearchSuiteDigest::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidResearchSuiteDigest::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidResearchSuiteDigest where T: core::clone::Clone
+pub type galadriel_pid::PidResearchSuiteDigest::Owned = T
+pub fn galadriel_pid::PidResearchSuiteDigest::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidResearchSuiteDigest::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_pid::PidResearchSuiteDigest where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteDigest::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_pid::PidResearchSuiteDigest where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteDigest::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidResearchSuiteDigest where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteDigest::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidResearchSuiteDigest where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteDigest::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidResearchSuiteDigest where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidResearchSuiteDigest::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidResearchSuiteDigest
+pub fn galadriel_pid::PidResearchSuiteDigest::from(T) -> T
+impl<T> nalgebra::base::scalar::Scalar for galadriel_pid::PidResearchSuiteDigest where T: 'static + core::clone::Clone + core::cmp::PartialEq + core::fmt::Debug
+impl<T> typenum::type_operators::Same for galadriel_pid::PidResearchSuiteDigest
+pub type galadriel_pid::PidResearchSuiteDigest::Output = T
+pub struct galadriel_pid::PidResearchSuiteParams
+pub galadriel_pid::PidResearchSuiteParams::pid: galadriel_pid::PidConfig
+pub galadriel_pid::PidResearchSuiteParams::release_suite: galadriel_core::config::ReleaseSuite
+impl core::clone::Clone for galadriel_pid::PidResearchSuiteParams
+pub fn galadriel_pid::PidResearchSuiteParams::clone(&self) -> galadriel_pid::PidResearchSuiteParams
+impl core::fmt::Debug for galadriel_pid::PidResearchSuiteParams
+pub fn galadriel_pid::PidResearchSuiteParams::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_pid::PidResearchSuiteParams
+impl core::marker::Send for galadriel_pid::PidResearchSuiteParams
+impl core::marker::Sync for galadriel_pid::PidResearchSuiteParams
+impl core::marker::Unpin for galadriel_pid::PidResearchSuiteParams
+impl core::marker::UnsafeUnpin for galadriel_pid::PidResearchSuiteParams
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_pid::PidResearchSuiteParams
+impl core::panic::unwind_safe::UnwindSafe for galadriel_pid::PidResearchSuiteParams
+impl<SS, SP> simba::scalar::subset::SupersetOf<SS> for galadriel_pid::PidResearchSuiteParams where SS: simba::scalar::subset::SubsetOf<SP>
+pub fn galadriel_pid::PidResearchSuiteParams::from_subset(&SS) -> SP
+pub fn galadriel_pid::PidResearchSuiteParams::is_in_subset(&self) -> bool
+pub fn galadriel_pid::PidResearchSuiteParams::to_subset(&self) -> core::option::Option<SS>
+pub fn galadriel_pid::PidResearchSuiteParams::to_subset_unchecked(&self) -> SS
+impl<T, U> core::convert::Into<U> for galadriel_pid::PidResearchSuiteParams where U: core::convert::From<T>
+pub fn galadriel_pid::PidResearchSuiteParams::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_pid::PidResearchSuiteParams where U: core::convert::Into<T>
+pub type galadriel_pid::PidResearchSuiteParams::Error = core::convert::Infallible
+pub fn galadriel_pid::PidResearchSuiteParams::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_pid::PidResearchSuiteParams where U: core::convert::TryFrom<T>
+pub type galadriel_pid::PidResearchSuiteParams::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_pid::PidResearchSuiteParams::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_pid::PidResearchSuiteParams where T: core::clone::Clone
+pub type galadriel_pid::PidResearchSuiteParams::Owned = T
+pub fn galadriel_pid::PidResearchSuiteParams::clone_into(&self, &mut T)
+pub fn galadriel_pid::PidResearchSuiteParams::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_pid::PidResearchSuiteParams where T: 'static + ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteParams::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_pid::PidResearchSuiteParams where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteParams::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_pid::PidResearchSuiteParams where T: ?core::marker::Sized
+pub fn galadriel_pid::PidResearchSuiteParams::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_pid::PidResearchSuiteParams where T: core::clone::Clone
+pub unsafe fn galadriel_pid::PidResearchSuiteParams::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_pid::PidResearchSuiteParams
+pub fn galadriel_pid::PidResearchSuiteParams::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_pid::PidResearchSuiteParams
+pub type galadriel_pid::PidResearchSuiteParams::Output = T
+pub const galadriel_pid::MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK: usize
+pub const galadriel_pid::MAX_PID_WINDOW: usize
+pub const galadriel_pid::MIN_PID_RESEARCH_MODALITIES: usize
+pub const galadriel_pid::PID_ATOM_POINT_FIT_UNITS: usize
+pub const galadriel_pid::PID_CONFIRMATION_EDGE_FIT_UNITS: usize
+pub const galadriel_pid::PID_PAIR_POINT_FIT_UNITS: usize
+pub const galadriel_pid::PID_RS_REVISION: &str
+pub const galadriel_pid::PID_RS_VERSION: &str
+pub fn galadriel_pid::analyze(&[(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)], &galadriel_pid::PidConfig) -> galadriel_core::error::Result<galadriel_pid::PidReport>
+pub fn galadriel_pid::assess_stream(&[galadriel_core::observation::PidObservation], &galadriel_pid::PidResearchSuite) -> galadriel_core::error::Result<galadriel_pid::FusedReport>
+pub fn galadriel_pid::fuse(&galadriel_pid::PidResearchSuite, galadriel_core::decision::MirrorReport, galadriel_core::correlation::CorrReport, galadriel_pid::PidReport) -> galadriel_core::error::Result<(galadriel_core::fusion::FusedVerdict, alloc::string::String)>
+pub fn galadriel_pid::fuse_axes(&galadriel_pid::PidResearchSuite, galadriel_core::decision::MirrorReport, alloc::vec::Vec<galadriel_core::fusion::AxisCorrelationReport>, alloc::vec::Vec<galadriel_pid::AxisPidReport>) -> galadriel_core::error::Result<galadriel_pid::FusedReport>
+pub fn galadriel_pid::fuse_axes_diagnostics(&galadriel_pid::PidResearchSuite, &galadriel_core::decision::MirrorReport, &[galadriel_core::fusion::AxisCorrelationReport], &[galadriel_pid::AxisPidReport]) -> galadriel_core::error::Result<(galadriel_core::fusion::FusedVerdict, alloc::string::String)>

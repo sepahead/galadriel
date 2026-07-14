@@ -1,0 +1,15 @@
+{
+  "schema": "galadriel.handoff-source.v2",
+  "prepared": "2026-07-14",
+  "repository": "https://github.com/sepahead/galadriel",
+  "frozen_commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",
+  "original_target": "1.0.0",
+  "adapted_release_target": "0.9.0",
+  "master_package": "SEPAHEAD_V1_0_CURRENT_HEAD_MAX_EFFORT_MASTER_HANDOFF",
+  "child_archive": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF.zip",
+  "child_archive_sha256": "41bd414e38e7f46a0417005d59e2b0c0eb5e139ec38cce632e006b60a750cd94",
+  "task_ledger_sha256": "b7477290a798feaa00d636ef602e0c09f07d953fd556135478334994f0a03721",
+  "task_count": 116,
+  "supersedes_embedded_handoff_sha256": "f654ec83d2da6b3761f9922dd7ea130a6e1dd011012e72a7e113d52af1c37e58",
+  "provenance_note": "The current external package is an instruction source, not release evidence. The superseded embedded handoff was removed to prevent inherited prose or historical summaries from being mistaken for fresh proof."
+}

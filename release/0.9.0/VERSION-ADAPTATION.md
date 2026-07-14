@@ -9,17 +9,18 @@ Date: 2026-07-14
 ## Context
 
 The supplied standalone handoff names `1.0.0` throughout. The author and release
-owner has instead requested a first public supervisor-review release at `0.9.0`,
-with no DOI or Zenodo record yet. Rewriting the source handoff would destroy its
-provenance; calling the result 1.0.0 would contradict the release owner's explicit
-scope and overstate qualification.
+owner has instead requested a first public research release at `0.9.0`,
+with no DOI or Zenodo record yet. The source package remains externally immutable
+and is identified by its archive and task-ledger SHA-256 values. Calling the result
+1.0.0 would contradict the release owner's explicit scope and overstate qualification.
 
 ## Decision
 
-**GLD-090-REL-001:** The implementation **SHALL** preserve the supplied handoff
-byte-for-byte under `release/0.9.0/handoff/` and **SHALL** interpret every product
-version or “1.0 release” reference in that handoff as the complete target design
-being reviewed in the `0.9.0` release process.
+**GLD-090-REL-001:** The implementation **SHALL** bind the current supplied handoff
+through `release/0.9.0/handoff-source.json` and its full archive/task-ledger
+SHA-256 identities. It **SHALL** interpret every product-version or “1.0 release”
+reference in that handoff as the complete target design being reviewed in the
+`0.9.0` release process. Superseded handoffs **SHALL NOT** control closure.
 
 **GLD-090-REL-002:** The version adaptation **SHALL NOT** relax a technical,
 safety, security, test, evidence, reproducibility, documentation, or governance
@@ -42,7 +43,7 @@ rules in `RELEASE-POLICY.md`, not by maintaining a divergent branch.
 
 ## Consequences
 
-The complete 120-task ledger remains controlling and ordered. Version 0.9.0 means
+The complete 116-task ledger remains controlling and ordered. Version 0.9.0 means
 “first reviewable release,” not “partial safety.” A later 1.0.0 requires a new
 decision, a fresh evidence set, and closure of any 0.9.0 `NOT_CLAIMED` items that
 are promoted into 1.0 claims. Nothing in 0.9.0 reserves or asserts a DOI.

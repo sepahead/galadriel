@@ -51,6 +51,7 @@ indistinguishable from attacks where the evidence cannot separate them.
 | Excessive gap/skew/reorder | Reset/abstain according to the explicit epoch and window rules; never ordinally realign unequal tails. | Loss can create prolonged abstention and is a denial-of-service lever. |
 | Replay/prior reuse | Reject duplicate/regressing identities and cross-sequence frozen-prior reuse in the bounded operational assembler. | Lifetime replay protection requires epoch rollover before bounded ledgers exhaust. |
 | Route/session/producer confusion | Exact realm, route, schema, session, producer, registry and version checks; wrong provenance is terminal or rejected. | Payload identity is not authenticated without transport identity/ACL binding. |
+| Router/server substitution | Use a non-publicly-issuable private router hostname with controlled resolution, or enforce the exact router certificate/SPKI in an external layer; retain the certificate actually presented. | The pinned Zenoh 1.9 client trusts built-in public WebPKI roots in addition to the deployment CA. Local profile validation does not exclusively pin the router, and that exclusivity is `NOT_CLAIMED`. |
 | Malformed/duplicate-key/oversized JSON | Bound size before parse where the API permits, reject duplicate keys and non-exact integers, retain typed fault counters. | Zenoh may allocate transport bytes before the application size gate; broker bounds are mandatory. |
 | Advisory replay/staleness | A future consumer must independently authenticate, bind profile digest/session/time and apply no effect when invalid. | No signed downstream advisory publisher or consumer is qualified in 0.9.0. |
 | Verdict-induced authority widening | The core non-widening validator rejects deny-to-allow, increased limits/TTL/lease, watchdog mutation, and all record-only changes. | A consumer that bypasses the validator remains outside the claim. |
@@ -77,6 +78,7 @@ policy with health accounting. None of these states is silently mapped to
 Component tests can establish parsing, state and policy invariants. Deployment
 qualification additionally requires an actual multi-process router campaign that
 retains correct-certificate allow results, wrong/no-certificate denies, wrong-route
-denies, replay/stale behavior, saturation, resource measurements and independent
-configuration identities. That evidence does not exist for 0.9.0, so secured
-deployment remains `NOT_CLAIMED`.
+denies, replay/stale behavior, saturation, resource measurements, the router certificate
+actually presented, the server-authentication mitigation, and independent configuration
+identities. That evidence does not exist for 0.9.0, so secured deployment remains
+`NOT_CLAIMED`.

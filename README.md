@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License: MIT OR Apache-2.0">
   <img src="https://img.shields.io/badge/rust-1.89%2B-orange.svg" alt="Rust 1.89+">
   <img src="https://img.shields.io/badge/release-0.9.0-blue.svg" alt="release: 0.9.0">
-  <img src="https://img.shields.io/badge/status-supervisor%20review-orange.svg" alt="status: supervisor review">
+  <img src="https://img.shields.io/badge/status-research%20review-orange.svg" alt="status: research review">
   <img src="https://img.shields.io/badge/unsafe-forbidden-success.svg" alt="unsafe forbidden">
 </p>
 
@@ -23,7 +23,7 @@ correlation and a producer provenance claim — not a cryptographic signature.)
 
 ```mermaid
 flowchart LR
-    P[Crebain frozen prior] --> O[accepted observations]
+    P[conforming producer frozen prior] --> O[accepted observations]
     P --> L[misses / outcomes / summaries / heartbeat]
     O --> R[exact observation route]
     L --> T[exact monitor route]
@@ -77,18 +77,21 @@ generated from commit `8a0084f` with `dirty=false`.
 
 - The post-audit runner records its Git commit, toolchains, complete configuration,
   fixed seed domains, per-trial outcomes, holdout summaries, and checksums in one command.
+- The retained `8a0084f` diagnostic artifact uses its historical trial-v1 numeric-seed
+  wire. New runner output uses trial v3 with exact decimal-string and fixed-width
+  hexadecimal seeds; the two schemas are not silently conflated.
 - Synthetic stream studies report false-alert episodes/track-hour, mission false-alert
   probability, run length, conditional delay, abstention, attribution, autocorrelation,
   covariance-scale sensitivity, and provenance rejection separately.
 - The bundled Crebain fixture proves bounded parsing and baseline replay only. It is
   roughly 15.8 seconds long and has no attested common projection, so recorded full-detector
   stream metrics are explicitly `not_estimable`, never replaced with synthetic numbers.
-- Crebain now has a normal-runtime, opt-in producer baseline for the common projection and
-  lifecycle route, and Galadriel has a bounded operational receiver. Cross-repository
-  component closeout is complete: Crebain `4c311900ade5668200a48d56fb191be1916b884a`
-  requires the deployment epoch, contains the byte-identical shared registry fixture, and
-  pins Galadriel `81437d807ca83b66b45c8353968948e540072d97`. In-process tests are component
-  evidence, not a receiver-verified external mTLS/ACL deployment or field study.
+- Galadriel contains the bounded consumer for an opt-in common-projection and lifecycle
+  producer. Crebain `4c311900ade5668200a48d56fb191be1916b884a` and Galadriel
+  `81437d807ca83b66b45c8353968948e540072d97` are a retained historical compatibility
+  fixture, not a reciprocal pin of this 0.9.0 candidate. Current cross-repository
+  qualification is `NOT_CLAIMED`. In-process tests remain component evidence, not a
+  receiver-verified external mTLS/ACL deployment or field study.
 
 The artifact is a diagnostic result, not an acceptance result. In its independent clean
 arm, the current default reports 26.26 alert episodes/hour and a 0.9167 mission probability
@@ -102,15 +105,19 @@ be completed before any operational use.
 > cross-channel consistency, and must not silently veto a control path. Reports are
 > advisory evidence, not calibrated posteriors.
 
-> **Current integration status.** The opt-in Crebain producer baseline snapshots one immutable
-> pre-association prior, maps supported measurements into the pinned Cartesian context,
-> emits explicit lifecycle outcomes/misses and heartbeats, and publishes both strict
-> routes through bounded lanes. Crebain `4c311900ade5668200a48d56fb191be1916b884a`
-> requires an operator-provisioned epoch, contains the byte-identical shared
-> registry golden, and pins Galadriel `81437d807ca83b66b45c8353968948e540072d97`.
-> Deployment remains responsible for epoch freshness and non-reuse. This closes the
-> epoch/golden/revision-pin task. Historical captures remain `not_estimable`; no
-> real-router certificate/ACL campaign or recorded stream calibration has been accepted.
+> **Current integration status.** Galadriel implements the strict two-route consumer,
+> registry pin capability, lifecycle adapter, and bounded operational receiver. The
+> previously paired Crebain/Galadriel revisions are retained only as a historical
+> compatibility fixture; they do not identify or qualify this candidate. A current
+> reciprocal pin, final cross-repository qualification, real-router certificate/ACL
+> campaign, and recorded stream calibration are all `NOT_CLAIMED`. Historical captures
+> remain `not_estimable`, and deployments remain responsible for fresh, non-reused epochs.
+
+> **TLS trust limitation.** The pinned Zenoh 1.9 client trusts built-in public WebPKI
+> roots in addition to the configured deployment CA. Exclusive router-certificate/CA
+> pinning is `NOT_CLAIMED`; use a private, non-publicly-issuable router name with
+> controlled resolution or an external exact-certificate/SPKI pinning layer. See the
+> [secure deployment runbook](docs/SECURE-DEPLOYMENT.md#tls-server-authentication-limitation).
 
 How Galadriel expects to be consumed by a downstream authorization gate — as
 non-authoritative, record-only, never `ALLOW`-widening advisory evidence — is specified in
@@ -139,8 +146,9 @@ used as a cross-modal fallback. The detector requires:
 Invalid configuration or input returns `Err(...)`; it is not converted into a verdict.
 Missing, stale, geometrically incomparable, lifecycle-incomplete, or statistically
 insufficient evidence returns `InsufficientEvidence`/an explicit abstention, not `Nominal`.
-The legacy `CREBAIN_PID_JSONL` capture remains a baseline-only path. Operational evidence
-uses Crebain's separately gated two-route producer and Galadriel's assembler; it never
+The legacy `CREBAIN_PID_JSONL` capture remains a baseline-only path. Lifecycle-complete
+operational evidence requires a separately qualified two-route producer plus Galadriel's
+assembler; no current reciprocal producer qualification is claimed, and the consumer never
 infers a successful lifecycle stage from a missing record.
 
 ## Detector layers
@@ -174,7 +182,11 @@ across axes, or a positive axis beside an insufficient axis, become
 `UnclassifiedAnomaly` rather than `AttributedInconsistency`.
 
 `galadriel_core::assess_default` fuses magnitude and consistency evidence without
-turning an unavailable consistency assessment into `Nominal`.
+turning an unavailable consistency assessment into `Nominal`. Its sealed
+`DefaultReport` carries an opaque `AssessmentBinding` over the complete accepted
+`ReleaseSuite` and every field of every ordered input observation. The magnitude and
+correlation components must carry that exact binding; unbound component helpers produce
+diagnostic tuples only and cannot mint an accepted report.
 
 ### PID research layer
 
@@ -183,15 +195,19 @@ shared-exclusions PID atoms. MI/PID is sign-invariant and therefore **additive**
 cannot repair missing geometry, create a consensus from a dyad, or override
 contradictory signed correlation. Canonical synthetic studies show regimes where this
 evidence may be useful; they do not show that those regimes occur in crebain output.
-The path pins pid-rs 1.0, declares its restricted regular-continuous support model,
-records seeded Gaussian observation noise as an estimand-changing model choice, and
-classifies PID2 atoms as `experimental_restricted_domain`. Point gates use pid-rs's
-report-first KSG API; bounded circular-resample confirmation remains an explicitly
-experimental raw-scalar pipeline. See the [0.4→1.0 migration record](docs/PID_RS_1_0_MIGRATION.md).
+The path pins an immutable pid-rs revision whose `pid-core` manifest declares 1.0.0;
+there is no public v1 tag or released upstream 1.x artifact. It declares the pinned
+revision's restricted regular-continuous support model, records seeded Gaussian
+observation noise as an estimand-changing model choice, and classifies PID2 atoms as
+`experimental_restricted_domain`. Point gates use the pinned report-first KSG API;
+bounded circular-resample confirmation remains an explicitly experimental raw-scalar
+pipeline. Accepted PID reports add a `PidAssessmentBinding` over the core assessment
+binding and the complete PID research suite. See the [0.4→1.0 migration
+record](docs/PID_RS_1_0_MIGRATION.md).
 
 ## Project status
 
-**Version `0.9.0`, pre-1.0 supervisor-review release.** The `galadriel-core` source
+**Version `0.9.0`, pre-1.0 research release.** The `galadriel-core` source
 surface is frozen for the 0.9.x line; supporting crates and wire adapters remain
 experimental. Every workspace package sets `publish = false`, so this is a GitHub source
 release rather than a crates.io publication. Unit, property, integration, and synthetic
@@ -200,6 +216,8 @@ field-validated or production-ready. The normative [claims matrix](docs/CLAIMS.m
 [statistical contract](docs/STATISTICAL-CONTRACT.md), [threat model](docs/THREAT-MODEL.md),
 and [API policy](docs/API-SURFACE.md) state the exact boundary. No project DOI or Zenodo
 record is claimed yet.
+
+Author and maintainer: **Sepehr Mahmoudian**.
 
 | Crate | Role | Evidence level |
 |---|---|---|
@@ -219,7 +237,7 @@ treated as project-status claims.
 | Feature | Pulls | Adds |
 |---|---|---|
 | default | no sibling integration crates | core, simulator, CLI |
-| `pid` | `pid-core` 1.0 experimental continuous/pipeline surface | KSG-MI/PID research layer |
+| `pid` | exact `pid-core` Git revision whose manifest declares 1.0.0 | experimental KSG-MI/PID research layer; no upstream 1.x release claim |
 | `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.8 key helpers; strict observation and producer-monitor envelopes; the CLI `replay` subcommand |
 | `ncp-live` | `ncp-zenoh`, exact `zenoh` 1.9 guard types, `tokio` | secure `observe` command plus bounded two-route receiver, deadlines, lifecycle gate, and health state |
 
@@ -230,16 +248,16 @@ A fresh clone requires no sibling checkout, private repository token, or global 
 credential rewrite.
 
 Run the operational observer only with the rendered observer config and the same exact
-epoch/registry pin supplied to Crebain:
+epoch/registry pin supplied to the intended external producer deployment:
 
 ```bash
 export NCP_ZENOH_CONFIG=/secure/config/galadriel-epoch/zenoh-observer.json5
 cargo run --locked --features ncp-live --bin galadriel -- observe \
   --realm engram/ncp \
-  --epoch "$CREBAIN_GALADRIEL_EPOCH" \
-  --producer-id crebain-galadriel-producer \
-  --registry /secure/config/crebain-registry.json \
-  --registry-sha256 "$CREBAIN_GALADRIEL_REGISTRY_DIGEST"
+  --epoch "$GALADRIEL_DEPLOYMENT_EPOCH" \
+  --producer-id "$GALADRIEL_PRODUCER_ID" \
+  --registry "$GALADRIEL_REGISTRY_PATH" \
+  --registry-sha256 "$GALADRIEL_REGISTRY_DIGEST"
 ```
 
 The renderer's checksummed `galadriel-handoff.json` binds that realm/epoch/producer/
@@ -263,9 +281,21 @@ Replay high-water state never evicts within an epoch: operators must watch the C
 prior-identity and observation-stream utilization and coordinate a new epoch before a cap.
 Live library callers must use a Tokio runtime with its time driver enabled.
 
+After assembly, `LifecycleDetector` admits explicit typed `StreamPosition`s. Exact
+successors advance normally; continuity changes require a generation-advancing reset, and
+rollover requires an unseen epoch at sequence/generation zero. `reset_at`, `timeout_at`,
+and `rollover_at` return bounded hash-linked `LifecycleReceipt`s; duplicate/replay/gap/
+generation violations reject and latch. The legacy frame convenience path derives a local
+position from frozen sidecar v1 fields, so these receipts do not claim new NCP wire fields.
+Assessment receipts bind the complete serialized reports, and fault receipts bind the
+exact returned reason. Standalone receipt decoding has a 16 KiB strict-JSON integrity gate;
+it does not authenticate the writer or provide durability. Receipts remain in-memory audit
+evidence, not a durable journal. See
+[`docs/STATE-MACHINE.md`](docs/STATE-MACHINE.md).
+
 Every live payload is a strict `galadriel_pid_observation` schema `1.0` envelope carrying
 `ncp_version`, advisory `contract_hash`, `session_id`, `producer_id`, and the existing
-Crebain-compatible `observation`; the exact independent-producer contract is
+historically Crebain-compatible `observation`; the exact independent-producer contract is
 [`galadriel-pid-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json)
 (a descriptive snapshot — the runtime `SidecarEnvelope` validation gate is normative).
 The observation tap and assembler reject incompatible versions, undeclared fields, malformed
@@ -288,16 +318,15 @@ Producer lifecycle and liveness use a separate strict
 heartbeat, outcome, miss, and frame-summary types are frozen in
 [`galadriel-monitor-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json).
 The monitor tap, pinned registry, fail-closed assembler, lifecycle adapter, and operational
-receiver implement the consumer boundary described in
-[`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md). Crebain contains the matching
-opt-in publisher baseline. Crebain `4c311900ade5668200a48d56fb191be1916b884a`
-requires the deployment epoch, contains the shared registry golden, and pins the Galadriel
-implementation at `81437d807ca83b66b45c8353968948e540072d97`. None of this attests a
-remote router's active ACL or calibrates the detector.
+receiver implement the Galadriel consumer boundary described in
+[`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md). The retained Crebain/Galadriel
+commit pair is a historical component fixture only. The current candidate has no accepted
+reciprocal producer pin or final cross-repository qualification, and none of the local
+evidence attests a remote router's active ACL or calibrates the detector.
 
-These are project-owned sidecar payloads, not normative NCP `SensorFrame`s. The
-Crebain producer builds the two exact named-sensor keys and publishes the
-serialized envelopes through `ZenohBus::put(..., Plane::Perception)`. It must not call
+These are project-owned sidecar payloads, not normative NCP `SensorFrame`s. A conforming
+producer must build the two exact named-sensor keys and publish the serialized envelopes
+through `ZenohBus::put(..., Plane::Perception)`. It must not call
 `put_sensor_named`, whose publisher gate correctly accepts only a complete NCP
 `sensor_frame`.
 
@@ -321,9 +350,10 @@ The workspace MSRV is **1.89**. Crate targets forbid unsafe code.
   is a concrete example of an attack that preserves camera/LiDAR consistency.
 - **Consistency is not truth.** A decoupled channel can represent a spoof, a true
   channel-specific event, a coordinate mismatch, or an estimator artifact.
-- **Historical Crebain captures have no consistency projection.** The opt-in producer now
-  computes a registered Cartesian projection from one frozen prior; older JSONL fixtures
-  remain baseline-only and Galadriel never falls back to their native mixed-frame vectors.
+- **Historical Crebain captures have no consistency projection.** The retained historical
+  opt-in producer fixture computed a registered Cartesian projection from one frozen prior,
+  but it does not qualify a current producer. Older JSONL fixtures remain baseline-only and
+  Galadriel never falls back to their native mixed-frame vectors.
 - **Gating censors evidence.** Association and chi-square rejection can turn the largest
   attacks into missing observations. Missingness is informative, not random.
 - **Lifecycle absence is not health.** Explicit misses/rejections immediately break the
@@ -332,41 +362,42 @@ The workspace MSRV is **1.89**. Crate targets forbid unsafe code.
 - **Advisory attribution is not enforcement.** Authentication, ACLs, mTLS, a safety
   governor, and an independently reviewed control policy remain separate requirements.
 
-## Producer and integration roadmap
+## Producer and integration boundary
 
-The Galadriel implementation and reciprocal producer closeout are complete at component
-level. Crebain `4c311900ade5668200a48d56fb191be1916b884a` immutably pins the Galadriel
-implementation at `81437d807ca83b66b45c8353968948e540072d97`:
+Galadriel 0.9.0 implements its local consumer contract: bounded live taps, cross-route
+assembly, pinned-registry admission, lifecycle abstention, secure observer configuration,
+and component/in-process test paths. The historical Crebain/Galadriel pair demonstrates an
+earlier compatibility fixture; it does not close the current candidate across repositories.
 
-- [x] frozen-prior Cartesian producer projection and explicit gate/lifecycle evidence;
-- [x] refresh the Crebain publisher to require the exact deployment-supplied epoch and pin
-  the merged Galadriel implementation;
-- [x] commit and verify the byte/hash-identical registry golden in Crebain;
-- [x] bounded live monitor, cross-route assembler, lifecycle abstention boundary, secure
-  observer CLI, and exact-epoch least-privilege configuration generator;
-- [x] CI, current-stable, fuzz, mutation, supply-chain, and reproducible synthetic evidence
-  paths;
-- [ ] real multi-process mTLS/ACL allow-and-deny campaign with retained router/certificate
-  evidence;
-- [ ] recorded pre-gate stream study and independent stream-level threshold calibration;
-- [ ] explicit API/release review before removing `publish = false` or the research label.
-
-The unchecked items are evidence gates, not missing code silently treated as success. See
-the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md) for the exact external drills.
+The following remain explicit exclusions: a current reciprocal producer pin, final
+cross-repository qualification, a retained multi-process mTLS/ACL allow-and-deny campaign,
+recorded pre-gate calibration, and any API or publication promotion beyond this research
+source release. See the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md) for the
+external procedure; none of those exclusions is converted into an implementation success.
 
 ## Documentation
 
 - [`docs/CLAIMS.md`](docs/CLAIMS.md) — normative 0.9.0 claim tiers and non-claims.
+- [`docs/CORE-CONTRACT.md`](docs/CORE-CONTRACT.md) — typed domain, outcome, failure,
+  and exact assessment-provenance contract.
+- [`docs/CONFIGURATION-CONTRACT.md`](docs/CONFIGURATION-CONTRACT.md) — immutable
+  accepted configuration, named profiles, capability choices, identities, and bounds.
 - [`docs/STATISTICAL-CONTRACT.md`](docs/STATISTICAL-CONTRACT.md) — exact report-field
   estimands, verdict functionals, and repeated-look boundary.
 - [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) — adversaries, trust boundaries,
   required safe failures, and residual risks.
 - [`docs/API-SURFACE.md`](docs/API-SURFACE.md) — stable core and experimental surfaces.
+- [`docs/MIGRATION-0.9.md`](docs/MIGRATION-0.9.md) — source migration to typed 0.9
+  identity, lifecycle, result, and PID APIs.
+- [`docs/STATE-MACHINE.md`](docs/STATE-MACHINE.md) — positioned lifecycle admission,
+  explicit reset/timeout/rollover, and bounded hash-linked receipts.
 - [`docs/DEPENDENCY-POLICY.md`](docs/DEPENDENCY-POLICY.md) — immutable qualification
   pins, locked registry graph, and upstream release-claim boundary.
 - [`docs/MOTIVATION.md`](docs/MOTIVATION.md) — threat grounding and scope.
 - [`docs/PAPER.md`](docs/PAPER.md) — research argument and current evidence boundary.
 - [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) — when MI/PID can add information.
+- [`docs/PID_RS_1_0_MIGRATION.md`](docs/PID_RS_1_0_MIGRATION.md) — exact pinned-source
+  PID API/scientific migration without an upstream 1.x release claim.
 - [`docs/EVALUATION.md`](docs/EVALUATION.md) — reproducible synthetic methodology.
 - [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) — frozen observation and
   lifecycle/liveness wire contract plus operational acceptance boundary.
@@ -375,6 +406,8 @@ the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md) for the exact externa
 - [`docs/POST-AUDIT-EVIDENCE.md`](docs/POST-AUDIT-EVIDENCE.md) — one-command,
   checksummed streaming evidence artifact.
 - [`docs/RELATED-WORK.md`](docs/RELATED-WORK.md) — competing and complementary methods.
+- [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) — non-authoritative,
+  non-widening downstream use and prohibited control connections.
 - [`release/0.9.0/README.md`](release/0.9.0/README.md) — auditable handoff, ledger,
   claims, evidence, and version-adaptation record.
 

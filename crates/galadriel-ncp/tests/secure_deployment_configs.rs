@@ -9,8 +9,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use galadriel_ncp::secure_live::validate_secure_client_config;
+use galadriel_ncp::secure_live::{
+    validate_secure_client_config, SecureConfigError, MAX_SECURE_CREDENTIAL_BYTES,
+};
 use ncp_zenoh::ZenohConfig;
+use sha2::{Digest as _, Sha256};
 
 static FIXTURE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -39,8 +42,14 @@ impl CredentialFixture {
                 .unwrap_or_else(|error| panic!("cannot write {}: {error}", path.display()));
         }
         #[cfg(unix)]
-        fs::set_permissions(&paths[2], fs::Permissions::from_mode(0o600))
-            .expect("test private key mode is restricted");
+        {
+            for path in &paths[..2] {
+                fs::set_permissions(path, fs::Permissions::from_mode(0o644))
+                    .expect("test public credential mode denies group/world writes");
+            }
+            fs::set_permissions(&paths[2], fs::Permissions::from_mode(0o600))
+                .expect("test private key mode is restricted");
+        }
         Self {
             directory,
             root_ca: paths[0]
@@ -89,8 +98,12 @@ fn exact_epoch_reference_configs_parse_with_pinned_zenoh() {
             .unwrap_or_else(|error| panic!("{} must load: {error}", path.display()));
         let credentials = CredentialFixture::new();
         credentials.apply(&mut config);
-        validate_secure_client_config(&config)
+        let capability = validate_secure_client_config(&config)
             .unwrap_or_else(|error| panic!("{} must be strict: {error}", path.display()));
+        let repeated = validate_secure_client_config(&config)
+            .unwrap_or_else(|error| panic!("{} must remain strict: {error}", path.display()));
+        assert_eq!(capability.identity(), repeated.identity());
+        assert_eq!(capability.identity().to_hex().len(), 64);
     }
 
     let router_path = reference.join("zenoh-router.json5");
@@ -100,6 +113,49 @@ fn exact_epoch_reference_configs_parse_with_pinned_zenoh() {
         validate_secure_client_config(&router).is_err(),
         "the router config must never pass the client startup gate"
     );
+}
+
+#[test]
+fn secure_capability_debug_redacts_credential_paths_and_digests() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("deploy/reference/zenoh-observer.json5");
+    let mut config = ZenohConfig::from_file(&path)
+        .unwrap_or_else(|error| panic!("{} must load: {error}", path.display()));
+    let credentials = CredentialFixture::new();
+    credentials.apply(&mut config);
+    let capability = validate_secure_client_config(&config).expect("fixture baseline is strict");
+    let rendered = format!("{capability:?}");
+
+    for credential_path in [
+        &credentials.root_ca,
+        &credentials.certificate,
+        &credentials.private_key,
+    ] {
+        assert!(
+            !rendered.contains(
+                credential_path
+                    .to_str()
+                    .expect("credential fixture path is UTF-8")
+            ),
+            "capability Debug exposed a credential path"
+        );
+    }
+    let digest = Sha256::digest(b"test credential material");
+    let digest_hex = digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    assert!(
+        !rendered.contains(&digest_hex),
+        "capability Debug exposed a credential digest"
+    );
+    let digest_bytes: [u8; 32] = digest.into();
+    assert!(
+        !rendered.contains(&format!("{digest_bytes:?}")),
+        "capability Debug exposed credential digest bytes"
+    );
+    assert!(rendered.contains("credential_count: 3"));
 }
 
 #[test]
@@ -123,6 +179,22 @@ fn live_startup_rejects_each_strict_profile_regression() {
         (
             "connect/endpoints",
             r#"["tls/router.example.invalid:7447", "tls/router2.example.invalid:7447"]"#,
+        ),
+        (
+            "connect/endpoints",
+            r#"["tls/router.example.invalid:7447#verify_name_on_connect=false"]"#,
+        ),
+        (
+            "connect/endpoints",
+            r#"["tls/router.example.invalid:7447#enable_mtls=false"]"#,
+        ),
+        (
+            "connect/endpoints",
+            r#"["tls/router.example.invalid:7447#close_link_on_expiration=false"]"#,
+        ),
+        (
+            "connect/endpoints",
+            r#"["tls/router.example.invalid:7447?rel=0"]"#,
         ),
         ("listen/endpoints", r#"["tls/0.0.0.0:7448"]"#),
         ("listen/endpoints", r#"{ client: ["tls/0.0.0.0:7448"] }"#),
@@ -156,6 +228,68 @@ fn live_startup_rejects_each_strict_profile_regression() {
         error.to_string().contains("requires a non-empty"),
         "whitespace path reached a later validation stage: {error}"
     );
+}
+
+#[test]
+fn runtime_endpoint_gate_matches_the_shared_deployment_corpus() {
+    let reference = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("deploy/reference/zenoh-observer.json5");
+    let corpus_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("deploy/secure-client-endpoint-corpus.json");
+    let mut config = ZenohConfig::from_file(&reference)
+        .unwrap_or_else(|error| panic!("{} must load: {error}", reference.display()));
+    let credentials = CredentialFixture::new();
+    credentials.apply(&mut config);
+    let corpus: serde_json::Value = serde_json::from_slice(
+        &fs::read(&corpus_path)
+            .unwrap_or_else(|error| panic!("cannot read {}: {error}", corpus_path.display())),
+    )
+    .unwrap_or_else(|error| panic!("{} must be strict JSON: {error}", corpus_path.display()));
+
+    for endpoint in corpus["valid"]
+        .as_array()
+        .expect("valid endpoint corpus is an array")
+    {
+        let endpoint = endpoint
+            .as_str()
+            .expect("valid endpoint corpus contains strings");
+        let mut candidate = config.clone();
+        candidate
+            .insert_json5(
+                "connect/endpoints",
+                &serde_json::to_string(&[endpoint]).expect("valid endpoint list encodes"),
+            )
+            .unwrap_or_else(|error| panic!("valid endpoint must parse: {endpoint:?}: {error}"));
+        validate_secure_client_config(&candidate).unwrap_or_else(|error| {
+            panic!("shared valid endpoint rejected: {endpoint:?}: {error}")
+        });
+    }
+
+    for endpoint in corpus["invalid"]
+        .as_array()
+        .expect("invalid endpoint corpus is an array")
+    {
+        let endpoint = endpoint
+            .as_str()
+            .expect("invalid endpoint corpus contains strings");
+        let mut candidate = config.clone();
+        let encoded = serde_json::to_string(&[endpoint]).expect("invalid endpoint list encodes");
+        if candidate
+            .insert_json5("connect/endpoints", &encoded)
+            .is_err()
+        {
+            continue;
+        }
+        assert!(
+            matches!(
+                validate_secure_client_config(&candidate),
+                Err(SecureConfigError::InvalidConnectEndpoints)
+            ),
+            "shared invalid endpoint passed runtime validation: {endpoint:?}"
+        );
+    }
 }
 
 #[test]
@@ -210,6 +344,28 @@ fn live_startup_rejects_unsafe_credential_filesystem_boundaries() {
 
     #[cfg(unix)]
     {
+        for (path, setting) in [
+            (
+                &credentials.root_ca,
+                "transport/link/tls/root_ca_certificate",
+            ),
+            (
+                &credentials.certificate,
+                "transport/link/tls/connect_certificate",
+            ),
+        ] {
+            fs::set_permissions(path, fs::Permissions::from_mode(0o664))
+                .expect("public credential fixture becomes group-writable");
+            assert!(matches!(
+                validate_secure_client_config(&config),
+                Err(SecureConfigError::UnsafeCredentialWritePermissions {
+                    setting: actual
+                }) if actual == setting
+            ));
+            fs::set_permissions(path, fs::Permissions::from_mode(0o644))
+                .expect("public credential fixture restores its safe mode");
+        }
+
         fs::set_permissions(&credentials.private_key, fs::Permissions::from_mode(0o644))
             .expect("private-key fixture becomes group/world readable");
         assert!(validate_secure_client_config(&config).is_err());
@@ -227,6 +383,64 @@ fn live_startup_rejects_unsafe_credential_filesystem_boundaries() {
             );
         }
     }
+}
+
+#[test]
+fn credential_byte_ceiling_accepts_exact_boundary_and_rejects_one_more() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("deploy/reference/zenoh-observer.json5");
+    let mut config = ZenohConfig::from_file(&path)
+        .unwrap_or_else(|error| panic!("{} must load: {error}", path.display()));
+    let credentials = CredentialFixture::new();
+    credentials.apply(&mut config);
+
+    let private_key = fs::OpenOptions::new()
+        .write(true)
+        .open(&credentials.private_key)
+        .expect("private-key fixture reopens");
+    private_key
+        .set_len(MAX_SECURE_CREDENTIAL_BYTES)
+        .expect("private-key fixture reaches the exact byte ceiling");
+    validate_secure_client_config(&config).expect("exact credential byte ceiling is inclusive");
+
+    private_key
+        .set_len(MAX_SECURE_CREDENTIAL_BYTES + 1)
+        .expect("private-key fixture grows by one byte");
+    let error = validate_secure_client_config(&config)
+        .expect_err("one byte beyond the credential ceiling must fail");
+    assert!(matches!(
+        error,
+        SecureConfigError::CredentialTooLarge {
+            setting: "transport/link/tls/connect_private_key",
+            observed,
+        } if observed == MAX_SECURE_CREDENTIAL_BYTES + 1
+    ));
+}
+
+#[test]
+fn credential_snapshot_revalidation_detects_same_size_byte_replacement() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("deploy/reference/zenoh-observer.json5");
+    let mut config = ZenohConfig::from_file(&path)
+        .unwrap_or_else(|error| panic!("{} must load: {error}", path.display()));
+    let credentials = CredentialFixture::new();
+    credentials.apply(&mut config);
+    let capability = validate_secure_client_config(&config).expect("fixture baseline is strict");
+
+    let byte_count = fs::metadata(&credentials.private_key)
+        .expect("private-key fixture metadata is readable")
+        .len() as usize;
+    fs::write(&credentials.private_key, vec![b'x'; byte_count])
+        .expect("same-size credential replacement writes");
+
+    assert!(matches!(
+        capability.revalidate_credential_files(),
+        Err(SecureConfigError::CredentialChanged {
+            setting: "transport/link/tls/connect_private_key"
+        })
+    ));
 }
 
 #[test]

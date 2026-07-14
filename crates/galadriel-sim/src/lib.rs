@@ -18,4 +18,7 @@ pub mod rng;
 pub mod scenario;
 
 pub use injection::{inject, BroadbandJam, Injection, PhantomAcousticDoa};
-pub use scenario::{generate, ScenarioConfig};
+pub use scenario::{
+    generate, ScenarioConfig, ScenarioConfigError, ScenarioConfigOrigin, ScenarioParams,
+    ScenarioResearchProfile,
+};

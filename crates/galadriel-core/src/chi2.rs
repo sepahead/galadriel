@@ -88,12 +88,28 @@ mod tests {
     #[test]
     fn survival_function_preserves_small_upper_tail_probabilities() {
         // For χ²(2), SF(x) = exp(-x/2) exactly.
-        for x in [40.0_f64, 70.0, 80.0, 100.0] {
+        for x in [40.0_f64, 70.0, 80.0, 100.0, 1_400.0, 1_420.0, 1_432.0] {
             let expected = (-x / 2.0).exp();
             let actual = chi2_sf(x, 2.0);
             assert!(actual > 0.0);
-            assert!((actual / expected - 1.0).abs() < 1e-12);
+            assert!(
+                (actual / expected - 1.0).abs() < 1e-12,
+                "x={x}, actual={actual}, expected={expected}"
+            );
         }
+    }
+
+    #[test]
+    fn dependency_underflow_boundary_is_explicit() {
+        // statrs preserves subnormal Q(1, x) through this point, then applies its
+        // exp-underflow guard even while the mathematical result is representable.
+        let preserved = chi2_sf(1_432.0, 2.0);
+        let rounded_to_zero = chi2_sf(1_434.0, 2.0);
+        let expected = (-716.0_f64).exp();
+        assert!(preserved > 0.0);
+        assert!(preserved.to_bits().abs_diff(expected.to_bits()) <= 4);
+        assert_eq!(rounded_to_zero, 0.0);
+        assert!((-717.0_f64).exp() > 0.0);
     }
 
     #[test]

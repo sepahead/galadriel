@@ -14,7 +14,7 @@
 //! Opening and receiving require a Tokio runtime with the time driver enabled.
 
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
@@ -28,23 +28,66 @@ use crate::assembler::{
     EvidenceRoute, RegistryVerifier, MAX_ASSEMBLER_SIDECAR_BYTES,
 };
 use crate::monitor::{MAX_MONITOR_EVENT_BYTES, MONITOR_SENSOR_NAME};
-use crate::SIDECAR_SENSOR_NAME;
+use crate::{
+    config_identity::ConfigurationIdentityBuilder, ConfigurationIdentity, SIDECAR_SENSOR_NAME,
+};
 
 /// Default number of raw cross-route payloads waiting for the assembler.
 pub const DEFAULT_OPERATIONAL_INGRESS_CAPACITY: usize = 1_024;
 
 /// Hard ceiling for the raw cross-route handoff.
 pub const MAX_OPERATIONAL_INGRESS_CAPACITY: usize = 8_192;
+/// Hard aggregate encoded-byte exposure represented by the raw ingress queue.
+pub const MAX_OPERATIONAL_INGRESS_STATE_BYTES: usize =
+    MAX_OPERATIONAL_INGRESS_CAPACITY * MAX_MONITOR_EVENT_BYTES;
 
 const INGRESS_STARTING: u8 = 0;
 const INGRESS_ACTIVATING: u8 = 1;
 const INGRESS_ACTIVE: u8 = 2;
 const INGRESS_CLOSED: u8 = 3;
 
-/// Bounded configuration for one operational receiver.
+/// Untrusted raw operational-ingress parameters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OperationalLiveParams {
+    /// Maximum raw cross-route payloads waiting for the assembler.
+    pub ingress_capacity: usize,
+}
+
+/// Named, reviewed operational-ingress profiles for release 0.9.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum OperationalLiveProfile {
+    /// Bounded serialized cross-route ingress shipped in 0.9.
+    BoundedV0_9,
+}
+
+impl OperationalLiveProfile {
+    /// Return this profile's frozen raw parameters.
+    #[must_use]
+    pub const fn params(self) -> OperationalLiveParams {
+        match self {
+            Self::BoundedV0_9 => OperationalLiveParams {
+                ingress_capacity: DEFAULT_OPERATIONAL_INGRESS_CAPACITY,
+            },
+        }
+    }
+
+    /// Validate this profile and return its immutable capability.
+    pub fn try_config(self) -> Result<OperationalLiveConfig, OperationalLiveConfigError> {
+        OperationalLiveConfig::try_from(self.params())
+    }
+}
+
+/// Bounded, validated configuration for one operational receiver.
+///
+/// ```compile_fail
+/// use galadriel_ncp::operational_live::OperationalLiveConfig;
+/// let _ = OperationalLiveConfig::default();
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OperationalLiveConfig {
     ingress_capacity: usize,
+    identity: ConfigurationIdentity,
 }
 
 impl OperationalLiveConfig {
@@ -55,29 +98,62 @@ impl OperationalLiveConfig {
     /// Returns [`OperationalLiveConfigError`] when `ingress_capacity` is zero or
     /// exceeds [`MAX_OPERATIONAL_INGRESS_CAPACITY`].
     pub fn new(ingress_capacity: usize) -> Result<Self, OperationalLiveConfigError> {
-        if ingress_capacity == 0 {
-            return Err(OperationalLiveConfigError::ZeroIngressCapacity);
-        }
-        if ingress_capacity > MAX_OPERATIONAL_INGRESS_CAPACITY {
-            return Err(OperationalLiveConfigError::IngressCapacityTooLarge {
-                capacity: ingress_capacity,
-                maximum: MAX_OPERATIONAL_INGRESS_CAPACITY,
-            });
-        }
-        Ok(Self { ingress_capacity })
+        Self::try_from(OperationalLiveParams { ingress_capacity })
     }
 
     /// Maximum raw payloads waiting for the assembler.
     pub fn ingress_capacity(self) -> usize {
         self.ingress_capacity
     }
+
+    /// Canonical identity of this validated operational-ingress policy.
+    #[must_use]
+    pub const fn identity(self) -> ConfigurationIdentity {
+        self.identity
+    }
 }
 
+impl TryFrom<OperationalLiveParams> for OperationalLiveConfig {
+    type Error = OperationalLiveConfigError;
+
+    fn try_from(params: OperationalLiveParams) -> Result<Self, Self::Error> {
+        if params.ingress_capacity == 0 {
+            return Err(OperationalLiveConfigError::ZeroIngressCapacity);
+        }
+        if params.ingress_capacity > MAX_OPERATIONAL_INGRESS_CAPACITY {
+            return Err(OperationalLiveConfigError::IngressCapacityTooLarge {
+                capacity: params.ingress_capacity,
+                maximum: MAX_OPERATIONAL_INGRESS_CAPACITY,
+            });
+        }
+        let represented_bytes = params
+            .ingress_capacity
+            .checked_mul(MAX_MONITOR_EVENT_BYTES)
+            .ok_or(OperationalLiveConfigError::AggregateStateTooLarge {
+                bytes: usize::MAX,
+                maximum: MAX_OPERATIONAL_INGRESS_STATE_BYTES,
+            })?;
+        if represented_bytes > MAX_OPERATIONAL_INGRESS_STATE_BYTES {
+            return Err(OperationalLiveConfigError::AggregateStateTooLarge {
+                bytes: represented_bytes,
+                maximum: MAX_OPERATIONAL_INGRESS_STATE_BYTES,
+            });
+        }
+        Ok(Self {
+            ingress_capacity: params.ingress_capacity,
+            identity: ConfigurationIdentityBuilder::new("operational-live")
+                .u64("ingress_capacity", params.ingress_capacity as u64)
+                .finish(),
+        })
+    }
+}
+
+#[cfg(test)]
 impl Default for OperationalLiveConfig {
     fn default() -> Self {
-        Self {
-            ingress_capacity: DEFAULT_OPERATIONAL_INGRESS_CAPACITY,
-        }
+        OperationalLiveProfile::BoundedV0_9
+            .try_config()
+            .expect("the compiled operational-live test profile is valid")
     }
 }
 
@@ -91,6 +167,9 @@ pub enum OperationalLiveConfigError {
     /// The requested handoff exceeded its process ceiling.
     #[error("operational ingress capacity {capacity} exceeds maximum {maximum}")]
     IngressCapacityTooLarge { capacity: usize, maximum: usize },
+    /// Aggregate represented raw payload bytes exceeded the hard cap.
+    #[error("operational ingress represented bytes {bytes} exceed maximum {maximum}")]
+    AggregateStateTooLarge { bytes: usize, maximum: usize },
 }
 
 /// What the receiver itself can establish about its transport setup.
@@ -147,6 +226,9 @@ pub enum OperationalIngressFault {
     /// The receiver observed that all handoff senders had closed.
     #[error("operational ingress channel closed")]
     IngressClosed { detected_at: Instant },
+    /// The serialized ingress mutex was poisoned by a panic in its critical section.
+    #[error("operational ingress state was poisoned")]
+    InternalStatePoisoned { detected_at: Instant },
 }
 
 impl OperationalIngressFault {
@@ -158,7 +240,8 @@ impl OperationalIngressFault {
             | Self::PayloadTooLarge { detected_at, .. }
             | Self::HandoffFull { detected_at, .. }
             | Self::HandoffClosed { detected_at, .. }
-            | Self::IngressClosed { detected_at } => *detected_at,
+            | Self::IngressClosed { detected_at }
+            | Self::InternalStatePoisoned { detected_at } => *detected_at,
         }
     }
 }
@@ -197,6 +280,9 @@ impl OperationalLiveFault {
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum OperationalLiveOpenError {
+    /// Immutable operational-ingress configuration was invalid.
+    #[error(transparent)]
+    Config(#[from] OperationalLiveConfigError),
     /// Immutable assembler configuration was invalid.
     #[error(transparent)]
     Assembler(#[from] AssemblerConfigError),
@@ -209,6 +295,9 @@ pub enum OperationalLiveOpenError {
     /// Evidence arrived during the non-atomic two-subscription startup window.
     #[error("evidence arrived before both exact operational subscriptions were active")]
     EvidenceBeforeReady,
+    /// Serialized ingress state was poisoned during startup.
+    #[error("operational ingress state was poisoned during startup")]
+    InternalStatePoisoned,
 }
 
 /// Coherent point-in-time counters for one operational receiver.
@@ -254,6 +343,11 @@ pub struct OperationalLiveHealthSnapshot {
     pub assembly_faults_observed: u64,
     /// Zero before failure and one after the retained first fault.
     pub terminal_faults: u64,
+    /// Number of times this epoch first observed poisoned serialized ingress state.
+    ///
+    /// This remains observable even when an earlier terminal fault retains priority
+    /// in [`Self::first_fault`]. It is therefore either zero or one.
+    pub internal_state_poison_events: u64,
     /// Latest monotonic receipt captured under callback serialization.
     pub last_receipt_at: Option<Instant>,
     /// Retained first terminal fault.
@@ -283,6 +377,7 @@ impl OperationalLiveHealthSnapshot {
             contract_advisories_delivered: 0,
             assembly_faults_observed: 0,
             terminal_faults: 0,
+            internal_state_poison_events: 0,
             last_receipt_at: None,
             first_fault: None,
         }
@@ -319,6 +414,7 @@ struct RawIngress {
 
 struct SharedIngress {
     state: Mutex<IngressState>,
+    state_poison_observed: AtomicBool,
     terminal_notify: Notify,
     startup_notify: Notify,
     startup_inflight: AtomicUsize,
@@ -370,10 +466,33 @@ impl IngressState {
 }
 
 fn lock_state(shared: &SharedIngress) -> MutexGuard<'_, IngressState> {
-    shared
-        .state
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+    match shared.state.lock() {
+        Ok(state) => state,
+        Err(poisoned) => {
+            // A panic while this lock was held may have interrupted a multi-field
+            // transition. Fence callbacks before inspecting the recovered value;
+            // the value is used only to publish terminal diagnostics and is never
+            // returned to healthy ingress operation.
+            shared.phase.store(INGRESS_CLOSED, Ordering::Release);
+            let mut state = poisoned.into_inner();
+            if !shared.state_poison_observed.swap(true, Ordering::AcqRel) {
+                increment(&mut state.health.internal_state_poison_events);
+                let latched = state.latch_first(
+                    OperationalIngressFault::InternalStatePoisoned {
+                        detected_at: Instant::now(),
+                    }
+                    .into(),
+                );
+                if latched {
+                    shared.terminal_notify.notify_one();
+                }
+            }
+            // The state remains terminal. Clearing the standard-library poison bit
+            // prevents repeated recovery from obscuring the one recorded event.
+            shared.state.clear_poison();
+            state
+        }
+    }
 }
 
 fn increment(counter: &mut u64) {
@@ -492,8 +611,10 @@ fn enter_callback(shared: &SharedIngress) -> (u8, Option<StartupCallbackPermit<'
 }
 
 fn begin_startup_activation(shared: &SharedIngress) {
-    let _state = lock_state(shared);
-    shared.phase.store(INGRESS_ACTIVATING, Ordering::Release);
+    let state = lock_state(shared);
+    if state.health.first_fault.is_none() {
+        shared.phase.store(INGRESS_ACTIVATING, Ordering::Release);
+    }
 }
 
 fn close_ingress(shared: &SharedIngress) {
@@ -812,7 +933,7 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
             producer_id,
             registry,
             assembler_limits,
-            OperationalLiveConfig::default(),
+            OperationalLiveProfile::BoundedV0_9.try_config()?,
         )
         .await
     }
@@ -871,7 +992,7 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
             producer_id,
             registry,
             assembler_limits,
-            OperationalLiveConfig::default(),
+            OperationalLiveProfile::BoundedV0_9.try_config()?,
         )
         .await
     }
@@ -978,6 +1099,7 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
                 ),
                 capacity: config.ingress_capacity,
             }),
+            state_poison_observed: AtomicBool::new(false),
             terminal_notify: Notify::new(),
             startup_notify: Notify::new(),
             startup_inflight: AtomicUsize::new(0),
@@ -1008,14 +1130,17 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
         }
         {
             let state = lock_state(&shared);
-            if matches!(
-                state.health.first_fault,
-                Some(OperationalLiveFault::Ingress(
-                    OperationalIngressFault::EvidenceBeforeReady { .. }
-                ))
-            ) {
+            if let Some(fault) = &state.health.first_fault {
                 shared.phase.store(INGRESS_CLOSED, Ordering::Release);
-                return Err(OperationalLiveOpenError::EvidenceBeforeReady);
+                return Err(match fault {
+                    OperationalLiveFault::Ingress(
+                        OperationalIngressFault::EvidenceBeforeReady { .. },
+                    ) => OperationalLiveOpenError::EvidenceBeforeReady,
+                    OperationalLiveFault::Ingress(
+                        OperationalIngressFault::InternalStatePoisoned { .. },
+                    ) => OperationalLiveOpenError::InternalStatePoisoned,
+                    _ => OperationalLiveOpenError::InternalStatePoisoned,
+                });
             }
             // Anchor heartbeat and monotonic-order enforcement at the same
             // serialized boundary that first admits callback evidence.
@@ -1432,13 +1557,14 @@ mod tests {
     use tokio::sync::{mpsc, Notify};
 
     use super::{
-        accept_payload, begin_startup_activation, classify_callback_phase, enter_callback,
-        lifecycle_cleanup_complete, lock_state, receipt_precedes_deadline,
-        startup_callbacks_drained, take_deadline_ingress, CallbackPayload, CallbackPhase,
-        IngressCloseGuard, IngressState, OperationalLiveConfig, OperationalLiveHealthSnapshot,
+        accept_payload, begin_startup_activation, classify_callback_phase,
+        discard_buffered_on_boundary, enter_callback, lifecycle_cleanup_complete, lock_state,
+        receipt_precedes_deadline, startup_callbacks_drained, take_deadline_ingress,
+        CallbackPayload, CallbackPhase, IngressCloseGuard, IngressState, OperationalLiveConfig,
+        OperationalLiveConfigError, OperationalLiveHealthSnapshot, OperationalLiveProfile,
         OperationalTransportSecurity, PriorityIngressBudget, RawIngress, SharedIngress,
         StartupActivationGuard, INGRESS_ACTIVATING, INGRESS_ACTIVE, INGRESS_CLOSED,
-        INGRESS_STARTING,
+        INGRESS_STARTING, MAX_OPERATIONAL_INGRESS_CAPACITY,
     };
     use crate::assembler::EvidenceRoute;
 
@@ -1457,6 +1583,7 @@ mod tests {
                 ),
                 capacity,
             }),
+            state_poison_observed: AtomicBool::new(false),
             terminal_notify: Notify::new(),
             startup_notify: Notify::new(),
             startup_inflight: AtomicUsize::new(startup_inflight),
@@ -1469,6 +1596,28 @@ mod tests {
     fn config_accessor_preserves_nondefault_capacity() {
         let config = OperationalLiveConfig::new(7).expect("test capacity is valid");
         assert_eq!(config.ingress_capacity(), 7);
+    }
+
+    #[test]
+    fn bounded_operational_profile_has_a_stable_identity() {
+        let config = OperationalLiveProfile::BoundedV0_9.try_config().unwrap();
+
+        assert_eq!(
+            config.identity().to_hex(),
+            "74e833da8bee40d9f966c1b0b5f8fc9e407ef619992aa62e42f9700c747d90c0"
+        );
+    }
+
+    #[test]
+    fn operational_config_rejects_scalar_boundaries() {
+        assert_eq!(
+            OperationalLiveConfig::new(0),
+            Err(OperationalLiveConfigError::ZeroIngressCapacity)
+        );
+        assert!(matches!(
+            OperationalLiveConfig::new(MAX_OPERATIONAL_INGRESS_CAPACITY + 1),
+            Err(OperationalLiveConfigError::IngressCapacityTooLarge { .. })
+        ));
     }
 
     #[test]
@@ -1825,5 +1974,121 @@ mod tests {
                 super::OperationalIngressFault::IngressClosed { .. }
             ))
         ));
+    }
+
+    fn poison_ingress_state(shared: &Arc<SharedIngress>) {
+        let poisoned = Arc::clone(shared);
+        assert!(std::thread::spawn(move || {
+            let _state = poisoned.state.lock().expect("test state starts healthy");
+            panic!("deterministic ingress-state poison");
+        })
+        .join()
+        .is_err());
+    }
+
+    #[test]
+    fn poisoned_ingress_state_fences_callback_before_materialization() {
+        let (shared, mut receiver) = shared_ingress(1, INGRESS_ACTIVE, 0);
+        poison_ingress_state(&shared);
+        let materialized = Arc::new(AtomicBool::new(false));
+        let callback_materialized = Arc::clone(&materialized);
+
+        accept_payload(
+            &shared,
+            CallbackPayload {
+                route: EvidenceRoute::Observation,
+                expected_key: "expected/key",
+                received_key: "expected/key".to_owned(),
+                payload_len: 2,
+                materialize: move || {
+                    callback_materialized.store(true, Ordering::Release);
+                    b"{}".to_vec()
+                },
+            },
+            INGRESS_ACTIVE,
+            None,
+        );
+
+        assert!(!materialized.load(Ordering::Acquire));
+        assert_eq!(shared.phase.load(Ordering::Acquire), INGRESS_CLOSED);
+        assert!(matches!(
+            receiver.try_recv(),
+            Err(mpsc::error::TryRecvError::Empty)
+        ));
+        let health = &lock_state(&shared).health;
+        assert!(matches!(
+            health.first_fault,
+            Some(super::OperationalLiveFault::Ingress(
+                super::OperationalIngressFault::InternalStatePoisoned { .. }
+            ))
+        ));
+        assert_eq!(health.internal_state_poison_events, 1);
+        assert_eq!(health.terminal_faults, 1);
+    }
+
+    #[test]
+    fn poisoned_startup_state_cannot_be_reactivated() {
+        let (shared, _receiver) = shared_ingress(1, INGRESS_STARTING, 0);
+        poison_ingress_state(&shared);
+
+        begin_startup_activation(&shared);
+
+        assert_eq!(shared.phase.load(Ordering::Acquire), INGRESS_CLOSED);
+        assert!(matches!(
+            lock_state(&shared).health.first_fault,
+            Some(super::OperationalLiveFault::Ingress(
+                super::OperationalIngressFault::InternalStatePoisoned { .. }
+            ))
+        ));
+    }
+
+    #[test]
+    fn poisoned_ingress_state_quarantines_queued_payloads_on_boundary() {
+        let (shared, mut receiver) = shared_ingress(2, INGRESS_ACTIVE, 0);
+        {
+            let state = lock_state(&shared);
+            state
+                .sender
+                .try_send(RawIngress {
+                    route: EvidenceRoute::Monitor,
+                    payload: b"queued".to_vec(),
+                    received_at: std::time::Instant::now(),
+                })
+                .expect("test payload is queued");
+        }
+        poison_ingress_state(&shared);
+        let mut pending_events = std::collections::VecDeque::new();
+
+        discard_buffered_on_boundary(&shared, &mut receiver, &mut pending_events);
+
+        assert!(matches!(
+            receiver.try_recv(),
+            Err(mpsc::error::TryRecvError::Empty)
+        ));
+        let health = &lock_state(&shared).health;
+        assert_eq!(health.queued_payloads_discarded, 1);
+        assert!(matches!(
+            health.first_fault,
+            Some(super::OperationalLiveFault::Ingress(
+                super::OperationalIngressFault::InternalStatePoisoned { .. }
+            ))
+        ));
+    }
+
+    #[test]
+    fn poison_metric_does_not_replace_an_earlier_terminal_fault() {
+        let (shared, _receiver) = shared_ingress(1, INGRESS_ACTIVE, 0);
+        let earlier =
+            super::OperationalLiveFault::Ingress(super::OperationalIngressFault::HandoffClosed {
+                route: EvidenceRoute::Observation,
+                detected_at: std::time::Instant::now(),
+            });
+        lock_state(&shared).latch_first(earlier.clone());
+        poison_ingress_state(&shared);
+
+        let health = &lock_state(&shared).health;
+        assert_eq!(health.first_fault, Some(earlier));
+        assert_eq!(health.internal_state_poison_events, 1);
+        assert_eq!(health.terminal_faults, 1);
     }
 }

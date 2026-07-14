@@ -19,16 +19,28 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from repo_work import build_task_dispositions as closure_plan  # noqa: E402
+
+
 RELEASE = ROOT / "release" / "0.9.0"
 INPUTS = RELEASE / "audit-inputs.json"
 CLAIMS = RELEASE / "claims.json"
 DISPOSITIONS = RELEASE / "task-dispositions.json"
-TASKS = RELEASE / "handoff" / "tasks.json"
+CLOSURE_PLAN = RELEASE / "task-closure-plan.json"
+TASKS = RELEASE / "tasks.json"
+HANDOFF_SOURCE = RELEASE / "handoff-source.json"
+THREAT_REGISTER = RELEASE / "audit" / "threat-register.json"
 AUDIT_OUTPUT = RELEASE / "audit-manifest.json"
 LEDGER_OUTPUT = RELEASE / "requirements-ledger.json"
 VERSION = "0.9.0"
+
+AUDIT_SELF_EXCLUSIONS = frozenset(
+    {AUDIT_OUTPUT.relative_to(ROOT).as_posix()}
+)
 
 TASK_ID = re.compile(r"T(?P<number>\d{3})\Z")
 REVISION = re.compile(r"[0-9a-f]{40}\Z")
@@ -41,18 +53,13 @@ VALID_TIERS = {
     "DEPLOYMENT_QUALIFIED",
     "NOT_CLAIMED",
 }
-LENSES = (
-    "correctness_and_invariants",
-    "safety_and_failure_behavior",
-    "security_and_adversarial_behavior",
-    "determinism_and_reproducibility",
-    "performance_and_bounded_resources",
-    "api_schema_and_compatibility",
-    "observability_and_provenance",
-    "testing_and_independent_evidence",
-    "documentation_and_operator_usability",
-    "ecosystem_composition_and_governance",
-)
+LENSES = tuple(f"L{index:02d}" for index in range(1, 21))
+VALID_THREAT_DISPOSITIONS = {
+    "FIX_AND_PROVE",
+    "REMOVE_FROM_0_9",
+    "KEEP_EXPERIMENTAL_AND_NOT_CLAIMED",
+    "NO_GO",
+}
 
 
 class AuditError(RuntimeError):
@@ -111,15 +118,86 @@ def require_keys(value: dict[str, Any], keys: set[str], context: str) -> None:
         raise AuditError(f"{context}: missing={missing}, unexpected={extra}")
 
 
-def artifact(path: Path, purpose: str) -> dict[str, Any]:
-    if not path.is_file():
+def artifact(
+    path: Path, purpose: str, *, exact_bytes: bytes | None = None
+) -> dict[str, Any]:
+    if exact_bytes is None and not path.is_file():
         raise AuditError(f"required artifact is missing: {path.relative_to(ROOT)}")
+    digest = (
+        hashlib.sha256(exact_bytes).hexdigest()
+        if exact_bytes is not None
+        else sha256(path)
+    )
+    size = len(exact_bytes) if exact_bytes is not None else path.stat().st_size
     return {
         "path": path.relative_to(ROOT).as_posix(),
         "purpose": purpose,
-        "sha256": sha256(path),
-        "size_bytes": path.stat().st_size,
+        "sha256": digest,
+        "size_bytes": size,
     }
+
+
+def workflow_action_refs() -> set[tuple[str, str]]:
+    """Return every external action and immutable revision used by workflows."""
+
+    reference = re.compile(
+        r"^\s*uses:\s*([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)@"
+        r"([0-9a-f]{40})(?:\s+#.*)?\s*$"
+    )
+    result: set[tuple[str, str]] = set()
+    for path in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
+        for line_number, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), 1
+        ):
+            if not line.lstrip().startswith("uses:"):
+                continue
+            match = reference.fullmatch(line)
+            if match is None:
+                relative = path.relative_to(ROOT)
+                raise AuditError(
+                    f"{relative}:{line_number}: action use is not pinned to a full revision"
+                )
+            result.add((match.group(1), match.group(2)))
+    if not result:
+        raise AuditError("workflow action inventory is empty")
+    return result
+
+
+def tracked_repository_paths() -> set[str]:
+    """Return the exact index path set without newline-delimited ambiguity."""
+
+    process = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+    )
+    if process.returncode != 0:
+        raise AuditError(
+            "git ls-files failed: "
+            + process.stderr.decode("utf-8", errors="replace").strip()
+        )
+    try:
+        entries = process.stdout.decode("utf-8").split("\0")
+    except UnicodeDecodeError as error:
+        raise AuditError("tracked paths are not valid UTF-8") from error
+    return {entry for entry in entries if entry}
+
+
+def validate_artifact_coverage(artifacts: list[dict[str, Any]]) -> None:
+    """Require one audit artifact for every indexed path except the manifest itself."""
+
+    tracked = tracked_repository_paths()
+    covered = {entry["path"] for entry in artifacts}
+    expected = tracked - AUDIT_SELF_EXCLUSIONS
+    missing = sorted(expected - covered)
+    extra = sorted(covered - expected)
+    if missing or extra:
+        raise AuditError(
+            "artifact inventory does not exactly cover tracked source: "
+            f"missing={missing}, unexpected={extra}, "
+            f"self_exclusions={sorted(AUDIT_SELF_EXCLUSIONS)}"
+        )
 
 
 def validate_inputs(inputs: dict[str, Any]) -> None:
@@ -132,6 +210,7 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
             "baseline_repository",
             "repositories",
             "toolchains",
+            "github_actions",
             "artifact_sets",
             "external_sources",
             "adaptation_decision",
@@ -182,26 +261,103 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
         require_keys(tool, {"name", "version", "identity", "role"}, "toolchain")
         if not all(isinstance(tool[key], str) and tool[key] for key in tool):
             raise AuditError("toolchain entries must contain non-empty strings")
+    recorded_actions: set[tuple[str, str]] = set()
+    for action in inputs["github_actions"]:
+        require_keys(
+            action,
+            {
+                "action",
+                "repository",
+                "commit",
+                "source_ref",
+                "source_ref_kind",
+                "version",
+                "role",
+            },
+            "GitHub Action",
+        )
+        if not all(isinstance(action[key], str) and action[key] for key in action):
+            raise AuditError("GitHub Action entries must contain non-empty strings")
+        action_id = action["action"]
+        revision = action["commit"]
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", action_id):
+            raise AuditError(f"invalid GitHub Action identity: {action_id!r}")
+        if not REVISION.fullmatch(revision):
+            raise AuditError(f"{action_id}: action commit is not a full revision")
+        if action["repository"] != f"https://github.com/{action_id}":
+            raise AuditError(f"{action_id}: repository URL does not match action identity")
+        if action["source_ref_kind"] not in {
+            "lightweight_tag",
+            "annotated_tag_target",
+            "branch_snapshot",
+        }:
+            raise AuditError(f"{action_id}: unsupported source-ref kind")
+        key = (action_id, revision)
+        if key in recorded_actions:
+            raise AuditError(f"duplicate GitHub Action revision: {action_id}@{revision}")
+        recorded_actions.add(key)
+    used_actions = workflow_action_refs()
+    if recorded_actions != used_actions:
+        raise AuditError(
+            "GitHub Action inventory differs from workflows: "
+            f"missing={sorted(used_actions - recorded_actions)}, "
+            f"unexpected={sorted(recorded_actions - used_actions)}"
+        )
     if not inputs["adaptation_decision"].startswith("release/0.9.0/"):
         raise AuditError("adaptation decision must be retained inside the release record")
 
 
-def collect_artifacts(inputs: dict[str, Any]) -> list[dict[str, Any]]:
+def collect_artifacts(
+    inputs: dict[str, Any], *, exact_bytes: dict[Path, bytes] | None = None
+) -> list[dict[str, Any]]:
+    exact_bytes = exact_bytes or {}
+    indexed_paths = tracked_repository_paths()
     collected: dict[str, dict[str, Any]] = {}
     for artifact_set in inputs["artifact_sets"]:
         require_keys(artifact_set, {"purpose", "patterns"}, "artifact set")
+        if (
+            not isinstance(artifact_set["purpose"], str)
+            or not artifact_set["purpose"].strip()
+            or not isinstance(artifact_set["patterns"], list)
+            or not artifact_set["patterns"]
+        ):
+            raise AuditError("artifact set purpose and patterns must be non-empty")
         matched: list[Path] = []
         for pattern in artifact_set["patterns"]:
-            matched.extend(path for path in ROOT.glob(pattern) if path.is_file())
+            if (
+                not isinstance(pattern, str)
+                or not pattern
+                or Path(pattern).is_absolute()
+                or ".." in Path(pattern).parts
+            ):
+                raise AuditError(f"invalid artifact pattern: {pattern!r}")
+            matched.extend(
+                path
+                for path in ROOT.glob(pattern)
+                if path.is_file()
+                and path.relative_to(ROOT).as_posix() in indexed_paths
+            )
+            matched.extend(
+                path
+                for path in exact_bytes
+                if path.relative_to(ROOT).match(pattern)
+                and path.relative_to(ROOT).as_posix() in indexed_paths
+            )
         if not matched:
             raise AuditError(f"artifact pattern set matched no files: {artifact_set}")
         for path in sorted(set(matched)):
             key = path.relative_to(ROOT).as_posix()
-            entry = artifact(path, artifact_set["purpose"])
+            entry = artifact(
+                path,
+                artifact_set["purpose"],
+                exact_bytes=exact_bytes.get(path),
+            )
             if key in collected and collected[key] != entry:
                 raise AuditError(f"artifact has conflicting purposes: {key}")
             collected[key] = entry
-    return [collected[key] for key in sorted(collected)]
+    artifacts = [collected[key] for key in sorted(collected)]
+    validate_artifact_coverage(artifacts)
+    return artifacts
 
 
 def collect_external_references(inputs: dict[str, Any]) -> list[dict[str, Any]]:
@@ -210,7 +366,7 @@ def collect_external_references(inputs: dict[str, Any]) -> list[dict[str, Any]]:
         path
         for pattern in inputs["external_sources"]["scan_patterns"]
         for path in ROOT.glob(pattern)
-        if path.is_file() and RELEASE / "handoff" not in path.parents
+        if path.is_file()
     )
     for path in source_paths:
         relative = path.relative_to(ROOT).as_posix()
@@ -333,6 +489,7 @@ def validate_normative_documents() -> list[dict[str, Any]]:
         "SUPPORT.md": ("GLD-090-META-001", "GLD-090-META-002"),
         "docs/DEPENDENCY-POLICY.md": ("GLD-090-PIN-001", "GLD-090-PIN-004"),
         "RELEASE-POLICY.md": ("GLD-090-CTL-001", "GLD-090-CTL-005"),
+        "release/0.9.0/RELEASE-RUNBOOK.md": ("GLD-090-PUB-001", "GLD-090-PUB-003"),
     }
     artifacts = []
     for path_string, identifiers in requirements.items():
@@ -381,102 +538,212 @@ def validate_normative_documents() -> list[dict[str, Any]]:
     return artifacts
 
 
+def validate_threat_register() -> dict[str, Any]:
+    document = load_json(THREAT_REGISTER)
+    require_keys(
+        document,
+        {
+            "schema",
+            "release",
+            "status",
+            "source",
+            "disposition_values",
+            "threats",
+        },
+        "threat register",
+    )
+    if document["schema"] != "galadriel.threat-register.v1":
+        raise AuditError("unsupported threat-register schema")
+    if document["release"] != VERSION:
+        raise AuditError("threat register has the wrong release")
+    if set(document["disposition_values"]) != VALID_THREAT_DISPOSITIONS:
+        raise AuditError("threat register has the wrong disposition vocabulary")
+    source = document["source"]
+    require_keys(source, {"handoff", "task_ledger_sha256"}, "threat-register source")
+    task_source = load_json(TASKS)["source"]
+    if source["task_ledger_sha256"] != task_source["task_ledger_sha256"]:
+        raise AuditError("threat register is bound to the wrong task ledger")
+
+    required_fields = {
+        "threat_id",
+        "asset_or_claim",
+        "actor",
+        "preconditions",
+        "sequence",
+        "trust_boundary",
+        "observable_symptoms",
+        "worst_consequence",
+        "preventive_controls",
+        "detective_controls",
+        "recovery",
+        "tests",
+        "evidence",
+        "residual_risk",
+        "claim_impact",
+        "owner",
+        "disposition",
+    }
+    threats = document["threats"]
+    if not isinstance(threats, list) or len(threats) < 10:
+        raise AuditError("threat register must retain at least ten repository threats")
+    seen: set[str] = set()
+    for threat in threats:
+        if not isinstance(threat, dict):
+            raise AuditError("threat-register entries must be objects")
+        require_keys(threat, required_fields, "threat-register entry")
+        threat_id = threat["threat_id"]
+        if not isinstance(threat_id, str) or not re.fullmatch(r"GLD-THR-\d{3}", threat_id):
+            raise AuditError(f"invalid threat ID: {threat_id!r}")
+        if threat_id in seen:
+            raise AuditError(f"duplicate threat ID: {threat_id}")
+        seen.add(threat_id)
+        if threat["owner"] != "Sepehr Mahmoudian":
+            raise AuditError(f"{threat_id}: threat owner must be Sepehr Mahmoudian")
+        if threat["disposition"] not in VALID_THREAT_DISPOSITIONS:
+            raise AuditError(f"{threat_id}: invalid threat disposition")
+        for field in required_fields - {"tests", "evidence"}:
+            if not isinstance(threat[field], str) or not threat[field].strip():
+                raise AuditError(f"{threat_id}: {field} must be non-empty text")
+        for field in ("tests", "evidence"):
+            values = threat[field]
+            if not isinstance(values, list) or not values:
+                raise AuditError(f"{threat_id}: {field} must be a non-empty list")
+            for path_string in values:
+                if not isinstance(path_string, str) or not (ROOT / path_string).exists():
+                    raise AuditError(f"{threat_id}: missing {field} path {path_string!r}")
+    return artifact(THREAT_REGISTER, "repository threat, misuse, and failure register")
+
+
 def validate_tasks() -> list[dict[str, Any]]:
     document = load_json(TASKS)
-    require_keys(document, {"schema", "source", "source_sha256", "tasks"}, "tasks")
-    source = ROOT / document["source"]
-    if sha256(source) != document["source_sha256"]:
-        raise AuditError("derived task inventory no longer matches the handoff ledger")
+    require_keys(document, {"schema", "source", "tasks"}, "tasks")
+    if document["schema"] != "galadriel.current-handoff-tasks.v2":
+        raise AuditError("task inventory has the wrong schema")
+    source = document["source"]
+    require_keys(
+        source,
+        {
+            "master_package",
+            "child_package",
+            "child_package_sha256",
+            "task_ledger_sha256",
+            "prepared",
+            "frozen_commit",
+            "original_target",
+            "adapted_target",
+        },
+        "task source",
+    )
+    handoff = load_json(HANDOFF_SOURCE)
+    if source["child_package_sha256"] != handoff["child_archive_sha256"]:
+        raise AuditError("task inventory child-package digest differs from handoff source")
+    if source["task_ledger_sha256"] != handoff["task_ledger_sha256"]:
+        raise AuditError("task inventory ledger digest differs from handoff source")
+    if source["frozen_commit"] != handoff["frozen_commit"]:
+        raise AuditError("task inventory frozen commit differs from handoff source")
+    if source["original_target"] != "1.0.0" or source["adapted_target"] != VERSION:
+        raise AuditError("task inventory does not preserve the 1.0-to-0.9 adaptation")
     tasks = document["tasks"]
-    if len(tasks) != 120:
-        raise AuditError(f"task inventory must contain 120 tasks, got {len(tasks)}")
+    if len(tasks) != 116:
+        raise AuditError(f"task inventory must contain 116 tasks, got {len(tasks)}")
     for index, task in enumerate(tasks):
-        require_keys(task, {"id", "phase", "phase_title", "title", "priority", "dependencies"}, "task")
+        require_keys(
+            task,
+            {
+                "id",
+                "phase",
+                "title",
+                "source_scope",
+                "focus",
+                "priority",
+                "dependencies",
+                "execution_wave",
+                "subagent_lane",
+                "lead_review_required",
+            },
+            "task",
+        )
         expected = f"T{index:03d}"
         if task["id"] != expected or not TASK_ID.fullmatch(task["id"]):
             raise AuditError(f"task sequence is not contiguous at {expected}")
         expected_dependencies = [] if index == 0 else [f"T{index - 1:03d}"]
         if task["dependencies"] != expected_dependencies:
             raise AuditError(f"{expected}: dependency chain changed")
-        if task["priority"] != "release_blocker":
+        if task["priority"] != "P0_RELEASE_BLOCKER":
             raise AuditError(f"{expected}: priority changed")
+        if task["execution_wave"] != index // 12 and not (
+            index >= 108 and task["execution_wave"] == 9
+        ):
+            raise AuditError(f"{expected}: execution wave changed")
+        if task["subagent_lane"] not in {1, 2, 3}:
+            raise AuditError(f"{expected}: invalid subagent lane")
+        if task["lead_review_required"] is not True:
+            raise AuditError(f"{expected}: lead review is not mandatory")
     return tasks
 
 
-def validate_ledger(tasks: list[dict[str, Any]]) -> dict[str, Any]:
-    document = load_json(DISPOSITIONS)
-    require_keys(document, {"schema", "release", "overrides"}, "task dispositions")
-    if document["schema"] != "galadriel.task-dispositions.v1" or document["release"] != VERSION:
-        raise AuditError("task dispositions have the wrong schema or release")
-    overrides: dict[str, Any] = {}
-    for override in document["overrides"]:
-        require_keys(
-            override,
-            {
-                "task_id",
-                "status",
-                "requirement_ids",
-                "requirements",
-                "evidence",
-                "tests",
-                "review",
-                "residual_risk",
-            },
-            "task disposition",
-        )
-        task_id = override["task_id"]
-        if task_id in overrides or not TASK_ID.fullmatch(task_id):
-            raise AuditError(f"invalid or duplicate task override: {task_id}")
-        if override["status"] not in VALID_STATUSES - {"OPEN"}:
-            raise AuditError(f"{task_id}: overrides may only close or explicitly disclaim")
-        if not override["requirement_ids"] or not override["requirements"]:
-            raise AuditError(f"{task_id}: disposition lacks normative requirements")
-        for requirement in override["requirements"]:
-            if " SHALL " not in f" {requirement} " and " SHALL NOT " not in f" {requirement} ":
-                raise AuditError(f"{task_id}: requirement lacks explicit SHALL language")
-        if override["status"] == "COMPLETE":
-            if not override["evidence"] or not override["tests"]:
-                raise AuditError(f"{task_id}: COMPLETE is prohibited without tests and evidence")
-            if set(override["review"]) != set(LENSES):
-                raise AuditError(f"{task_id}: ten-lens review is incomplete")
-            if not all(override["review"][lens] for lens in LENSES):
-                raise AuditError(f"{task_id}: ten-lens results must be concrete")
-        else:
-            if not override["residual_risk"]:
-                raise AuditError(f"{task_id}: NOT_CLAIMED lacks an explicit reason")
-        for path_string in [*override["evidence"], *override["tests"]]:
-            evidence_path = ROOT / path_string.split("#", 1)[0]
-            if not evidence_path.exists():
-                raise AuditError(f"{task_id}: referenced evidence is missing: {path_string}")
-        overrides[task_id] = override
+def validate_ledger(
+    tasks: list[dict[str, Any]], claims: list[dict[str, Any]]
+) -> dict[str, Any]:
+    claims_by_id = {claim["id"]: claim for claim in claims}
+    try:
+        plan = closure_plan.validate_plan(tasks, claims_by_id)
+        source_state = closure_plan.validate_source_dispositions()
+    except closure_plan.DispositionError as error:
+        raise AuditError(f"invalid source closure plan: {error}") from error
 
     ledger_tasks = []
-    previous_complete = True
-    for task in tasks:
-        override = overrides.get(task["id"])
-        status = override["status"] if override else "OPEN"
-        if status in {"COMPLETE", "NOT_CLAIMED"} and not previous_complete:
-            raise AuditError(f"{task['id']}: cannot close before its dependency")
-        previous_complete = status in {"COMPLETE", "NOT_CLAIMED"}
+    for task, planned in zip(tasks, plan["tasks"], strict=True):
+        status = "NOT_CLAIMED" if planned["status"] == "NOT_CLAIMED" else "OPEN"
         ledger_tasks.append(
             {
                 **task,
                 "status": status,
-                "requirement_ids": [] if override is None else override["requirement_ids"],
-                "requirements": [] if override is None else override["requirements"],
-                "evidence": [] if override is None else override["evidence"],
-                "tests": [] if override is None else override["tests"],
-                "review": {} if override is None else override["review"],
-                "residual_risk": "Not yet reviewed." if override is None else override["residual_risk"],
+                "source_plan_status": planned["status"],
+                "source_projection_sha256": planned["source_projection_sha256"],
+                "source_requirements": {
+                    field: planned["source_projection"][field]
+                    for field in (
+                        "preconditions",
+                        "procedure",
+                        "mandatory_counterfactuals",
+                        "required_evidence",
+                        "completion_rule",
+                    )
+                },
+                "accepted_cases": planned["accepted_cases"],
+                "rejected_cases": planned["rejected_cases"],
+                "required_evidence_types": planned["evidence_types"],
+                "failed_attempt_record_requirements": planned[
+                    "failure_record_requirements"
+                ],
+                "requirement_exclusions": planned["requirement_exclusions"],
+                "lens_exclusions": planned["lens_exclusions"],
+                "claim_removal_links": planned["claim_removal_links"],
+                "residual_risks": planned["residual_risks"],
+                "review_questions": {
+                    lens: planned["source_projection"]["twenty_lens_review"][lens][
+                        "question"
+                    ]
+                    for lens in LENSES
+                },
+                "post_commit_evidence": [],
+                "post_commit_tests": [],
+                "post_commit_findings": {},
             }
         )
-    unknown = sorted(set(overrides) - {task["id"] for task in tasks})
-    if unknown:
-        raise AuditError(f"task dispositions contain unknown IDs: {unknown}")
-    counts = {status: sum(item["status"] == status for item in ledger_tasks) for status in VALID_STATUSES}
+    counts = {
+        status: sum(item["status"] == status for item in ledger_tasks)
+        for status in VALID_STATUSES
+    }
+    if counts != {"OPEN": 109, "COMPLETE": 0, "NOT_CLAIMED": 7}:
+        raise AuditError(f"source ledger has an unexpected closure count: {counts}")
     return {
-        "schema": "galadriel.requirements-ledger.v1",
+        "schema": "galadriel.requirements-ledger.v2",
         "release": VERSION,
+        "closure_boundary": plan["closure_boundary"],
+        "source_task_plan_sha256": sha256(CLOSURE_PLAN),
+        "source_dispositions_state": source_state["state"],
         "source_task_count": len(tasks),
         "status_counts": counts,
         "tasks": ledger_tasks,
@@ -488,7 +755,8 @@ def build_outputs() -> tuple[dict[str, Any], dict[str, Any]]:
     validate_inputs(inputs)
     claims = validate_claims()
     tasks = validate_tasks()
-    ledger = validate_ledger(tasks)
+    ledger = validate_ledger(tasks, claims)
+    ledger_bytes = canonical_bytes(ledger)
     metadata = validate_project_metadata(inputs)
     audit = {
         "schema": "galadriel.release-audit-manifest.v1",
@@ -497,12 +765,25 @@ def build_outputs() -> tuple[dict[str, Any], dict[str, Any]]:
         "baseline_repository": inputs["baseline_repository"],
         "repositories": inputs["repositories"],
         "toolchains": inputs["toolchains"],
+        "github_actions": inputs["github_actions"],
         "git_dependencies": lockfile_git_sources(),
-        "artifacts": collect_artifacts(inputs),
+        "artifacts": collect_artifacts(
+            inputs, exact_bytes={LEDGER_OUTPUT: ledger_bytes}
+        ),
+        "artifact_self_exclusions": sorted(AUDIT_SELF_EXCLUSIONS),
         "normative_documents": validate_normative_documents(),
+        "threat_register": validate_threat_register(),
         "external_sources": collect_external_references(inputs),
         "claims": claims,
         "requirements": ledger["status_counts"],
+        "source_closure_plan": artifact(
+            CLOSURE_PLAN,
+            "post-commit task requirements, evidence rules, exclusions, and review questions",
+        ),
+        "source_task_dispositions": artifact(
+            DISPOSITIONS,
+            "explicitly empty source state awaiting exact-candidate review",
+        ),
         "adaptation_decision": inputs["adaptation_decision"],
     }
     return audit, ledger

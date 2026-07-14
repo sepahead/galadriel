@@ -33,6 +33,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  RELEASE_BASE_SHA: 94e2f8cc01f352d2bf899b7f656997f143a2588f
 
 jobs:
   fuzz-smoke:
@@ -44,29 +45,49 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Capture exact subject identity
+        env:
+          EXPECTED_SUBJECT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse "HEAD^{commit}")" = "$EXPECTED_SUBJECT"
+          git rev-parse "HEAD^{commit}"
+          git rev-parse "HEAD^{tree}"
 
       - name: Install nightly Rust
         uses: dtolnay/rust-toolchain@efcb852328a9f50117170cc43094fb6f09eaf1ae # nightly
+        with:
+          toolchain: nightly-2026-06-16
 
       - name: Restore Cargo cache
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
           workspaces: "fuzz -> target"
 
       - name: Install pinned cargo-fuzz
-        run: cargo +nightly install cargo-fuzz --version 0.13.2 --locked
+        run: >-
+          cargo +nightly-2026-06-16 install
+          cargo-fuzz --version 0.13.2 --locked
 
       - name: Fuzz typed NCP and JSONL decoding
-        run: cargo +nightly fuzz run ncp_decode -- -runs=5000 -max_len=131072
+        run: cargo +nightly-2026-06-16 fuzz run ncp_decode -- -runs=5000 -max_len=131072
 
       - name: Fuzz detector and provenance boundaries
-        run: cargo +nightly fuzz run detector_boundaries -- -runs=5000 -max_len=131072
+        run: cargo +nightly-2026-06-16 fuzz run detector_boundaries -- -runs=5000 -max_len=131072
 
   mutation-diff:
     name: mutation check for changed Rust · ${{ matrix.label }}
-    if: github.event_name == 'pull_request'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    # The frozen release diff currently spans every runtime package. Four
+    # deterministic shards retain complete coverage without turning a runner
+    # scheduling limit into a false mutation result.
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -89,22 +110,52 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+
+      - name: Capture exact subject identity
+        env:
+          EXPECTED_SUBJECT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse "HEAD^{commit}")" = "$EXPECTED_SUBJECT"
+          git rev-parse "HEAD^{commit}"
+          git rev-parse "HEAD^{tree}"
 
       - name: Install current stable Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
 
       - name: Restore Cargo cache
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Install pinned cargo-mutants
         run: cargo install cargo-mutants --version 27.1.0 --locked
 
-      - name: Capture pull-request diff
+      - name: Capture frozen release-baseline diff
         shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: git diff "$BASE_SHA"..HEAD -- | tee git.diff
+        run: |
+          git cat-file -e "${RELEASE_BASE_SHA}^{commit}"
+          git merge-base --is-ancestor "$RELEASE_BASE_SHA" HEAD
+          git \
+            -c color.ui=false \
+            -c core.quotePath=true \
+            diff \
+            --no-ext-diff \
+            --no-textconv \
+            --no-renames \
+            --full-index \
+            --binary \
+            --diff-algorithm=myers \
+            --no-indent-heuristic \
+            "$RELEASE_BASE_SHA"..HEAD \
+            -- > git.diff
+          sha256sum git.diff > git.diff.sha256
+          {
+            echo "candidate_commit=$(git rev-parse "HEAD^{commit}")"
+            echo "candidate_tree=$(git rev-parse "HEAD^{tree}")"
+            echo "baseline_commit=$RELEASE_BASE_SHA"
+            echo "diff_sha256=$(cut -d ' ' -f 1 git.diff.sha256)"
+            echo "shard=${{ matrix.shard }}"
+          } > SUBJECT.txt
 
       - name: Mutate changed Rust
         # The evaluation/justification harnesses contain long Monte Carlo studies,
@@ -126,10 +177,15 @@ jobs:
 
       - name: Archive mutation results
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: mutation-diff-results-${{ matrix.artifact }}
-          path: mutants.out
+          if-no-files-found: error
+          path: |
+            mutants.out
+            git.diff
+            git.diff.sha256
+            SUBJECT.txt
 
   mutation-baseline:
     name: observational mutation baseline (misses recorded)
@@ -141,12 +197,22 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Capture exact subject identity
+        env:
+          EXPECTED_SUBJECT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse "HEAD^{commit}")" = "$EXPECTED_SUBJECT"
+          git rev-parse "HEAD^{commit}"
+          git rev-parse "HEAD^{tree}"
 
       - name: Install current stable Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
 
       - name: Restore Cargo cache
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Install pinned cargo-mutants
         run: cargo install cargo-mutants --version 27.1.0 --locked
@@ -171,7 +237,7 @@ jobs:
 
       - name: Archive mutation baseline
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: mutation-baseline-results
           path: |

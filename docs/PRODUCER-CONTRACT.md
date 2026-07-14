@@ -1,18 +1,18 @@
 # Producer Observation and Lifecycle Contract
 
-Status: Accepted ADR; component and reciprocal producer closeout complete, deployment
-evidence blocking. The frozen contracts, Crebain producer baseline, pinned registry,
-Galadriel assembler/lifecycle receiver, and exact-epoch configuration profile exist and are
-tested. Crebain `4c311900ade5668200a48d56fb191be1916b884a` requires the
-deployment-supplied epoch, contains the byte-identical shared fixture, and pins Galadriel
-`81437d807ca83b66b45c8353968948e540072d97`. This is not evidence that a remote router
-loaded the ACL, certificates were authorized correctly, or detector thresholds are
-operationally calibrated.
+Status: Accepted Galadriel-side ADR; local consumer components are implemented and
+deployment evidence is excluded. The strict contracts, pinned-registry capability,
+assembler, typed lifecycle adapter, and exact-epoch configuration profile exist and are
+component-tested. Crebain `4c311900ade5668200a48d56fb191be1916b884a` and
+Galadriel `81437d807ca83b66b45c8353968948e540072d97` are a historical
+compatibility fixture only. They do not pin this candidate; current reciprocal integration,
+final cross-repository qualification, remote-router enforcement, and operational
+calibration are `NOT_CLAIMED`.
 
 ## Decision
 
-Galadriel and its producer use two project-owned, observation-only sensor routes
-with different responsibilities:
+Galadriel's consumer contract defines two project-owned, observation-only sensor
+routes that a conforming producer must use, with different responsibilities:
 
 | Route | Payload | Responsibility |
 | --- | --- | --- |
@@ -20,7 +20,8 @@ with different responsibilities:
 | `{realm}/session/{epoch}/sensor/galadriel-monitor` | Strict monitor envelope schema v1 | Measurement lifecycle outcomes, fusion-frame closure, and producer liveness |
 
 The observation route MUST remain byte- and schema-compatible with
-`galadriel-pid-envelope-v1.schema.json`. Monitor events MUST NOT be added to that
+[`galadriel-pid-envelope-v1.schema.json`](../crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json).
+Monitor events MUST NOT be added to that
 route. The monitor route MUST use an independently versioned, strict,
 project-owned schema and MUST NOT be presented as an NCP normative message.
 
@@ -56,19 +57,19 @@ exact routes through one serialized bounded ingress, advances all declared
 deadlines, and passes only lifecycle-complete frames into the detector adapter.
 Explicit misses/rejections immediately abstain and clear the affected suffix.
 
-The matching opt-in Crebain runtime baseline snapshots the predicted track set before
-association/update, calculates registered Cartesian projections from that one
-prior, records bounded opportunity outcomes, publishes summaries through ordered
-queues, and runs an independent heartbeat. Crebain
-`4c311900ade5668200a48d56fb191be1916b884a` requires the deployment-supplied epoch,
-contains the byte-identical shared registry fixture, and pins the merged Galadriel consumer
-implementation at `81437d807ca83b66b45c8353968948e540072d97`. Historical JSONL
-captures remain successful-update-only and are not upgraded by this implementation.
+The producer design calls for a runtime that snapshots the predicted track set before
+association/update, calculates registered Cartesian projections from that one prior,
+records bounded opportunity outcomes, publishes summaries through ordered queues, and
+runs an independent heartbeat. The retained Crebain/Galadriel commit pair demonstrates a
+historical compatibility fixture for that shape, not the current candidate. Historical
+JSONL captures remain successful-update-only and are not upgraded by either repository's
+later implementation.
 
 Existing evidence is synthetic, golden, unit/property, or in-process transport
 evidence. The real multi-process allow/deny, wrong/no-certificate, restart, loss,
-and all-silence campaign remains an external acceptance gate. This ADR defines
-both the implemented contract and that still-open deployment evidence boundary.
+and all-silence campaign remains an external acceptance gate. This ADR defines the
+implemented Galadriel consumer contract and the excluded producer, cross-repository,
+and deployment evidence boundaries.
 
 ## Route and publication rules
 
@@ -448,6 +449,15 @@ tests. A consumer constructed from a host-provided bus inherits that host's
 security posture; construction alone does not prove mTLS or ACL enforcement.
 Secure mode MUST be explicit and fail closed.
 
+The pinned Zenoh 1.9 client authenticates the router against built-in public WebPKI
+roots plus the configured deployment CA; that CA is not an exclusive server pin.
+Conformance therefore additionally requires a private router hostname that is not
+eligible for public CA issuance plus controlled name resolution, or an external layer
+that enforces the exact router certificate/SPKI. Router-side client-certificate mTLS
+remains constrained by the configured client-authentication CA. See
+[`SECURE-DEPLOYMENT.md`](SECURE-DEPLOYMENT.md#tls-server-authentication-limitation);
+exclusive router pinning by the local profile alone is `NOT_CLAIMED`.
+
 The Zenoh transport receive maximum message size MUST be configured so an
 oversized message is rejected before excessive allocation. Application-level
 event-size limits remain required after transport framing; neither substitutes for
@@ -509,24 +519,21 @@ negative measurement evidence becomes auditable, idle liveness is distinguishabl
 from observations, and transport loss cannot silently masquerade as a statistically
 healthy frame.
 
-Implementation proceeded in this order:
+The release disposition is:
 
-1. **Complete:** monitor Rust/JSON types, limits, typed reason taxonomy, canonical registry,
-   opportunity policy, and a byte-identical cross-repository golden pinned by Crebain
-   `4c311900ade5668200a48d56fb191be1916b884a`.
-2. **Complete:** immutable predicted-prior snapshot, registered Cartesian residuals
-   before sequential updates, and bounded opportunity outcomes in Crebain.
-3. **Complete:** bounded publisher lanes, pre-enqueue sequencing, summaries, independent
-   heartbeat, exact deployment-supplied epoch, shared golden, and immutable Galadriel
-   implementation pin `81437d807ca83b66b45c8353968948e540072d97`.
-4. **Complete:** live monitor tap, fail-closed assembler, lifecycle adapter, and
-   two-route operational receiver/CLI.
-5. **Complete at component level:** exact-epoch secure configuration generator,
-   health counters, static mutation checks, runbook, and in-process fault tests.
-6. **Open external gate:** execute and retain all five acceptance-lens suites on a
-   real secured multi-process deployment, then run a recorded pre-gate calibration
-   study independent of threshold fitting.
+1. **Implemented locally:** monitor Rust/JSON types, limits, typed reason taxonomy,
+   canonical registry parsing and pin capability, opportunity policy, live monitor tap,
+   fail-closed assembler, typed lifecycle adapter, two-route receiver/CLI, exact-epoch
+   secure configuration generator, health counters, and in-process fault tests.
+2. **Historical fixture:** the two old commit identities above record an earlier
+   byte-identical registry and producer/consumer compatibility exercise. They are retained
+   for provenance and are not current qualification evidence.
+3. **Not claimed:** a reciprocal current producer pin or final cross-repository
+   qualification.
+4. **External gate:** execute and retain all five acceptance-lens suites on a real secured
+   multi-process deployment, then run a recorded pre-gate calibration study independent of
+   threshold fitting.
 
-Until step 6 and the acceptance matrix are satisfied, the operational components
-remain a research prototype. No deployment, remote ACL, field-performance, or
-calibrated-posterior claim is justified.
+Until the external gate and acceptance matrix are satisfied, the operational components
+remain a research prototype. No deployment, remote ACL, field-performance, or calibrated-
+posterior claim is justified.

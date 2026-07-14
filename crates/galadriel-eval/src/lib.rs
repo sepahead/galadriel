@@ -27,13 +27,16 @@
 //! and pairwise-MI paths on linear-Gaussian data using pointwise intervals. It does
 //! not establish equivalence, family-wise superiority, or pure-synergy detection.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use galadriel_core::{
-    correlation, CorrConfig, CorrVerdict, DetectorConfig, GaladrielError, Mirror, Modality,
-    PidObservation, Result as CoreResult, Verdict,
+    correlation, CorrConfig, CorrVerdict, GaladrielError, Mirror, Modality, PidObservation,
+    ReleaseSuite, Result as CoreResult, Verdict,
 };
-use galadriel_pid::{analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidVerdict};
+use galadriel_pid::{
+    analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidConfigError,
+    PidConfirmation, PidResearchProfile, PidResearchSuite, PidVerdict,
+};
 use galadriel_pid::{
     MAX_PID_WINDOW, PID_ATOM_POINT_FIT_UNITS, PID_CONFIRMATION_EDGE_FIT_UNITS,
     PID_PAIR_POINT_FIT_UNITS,
@@ -41,8 +44,10 @@ use galadriel_pid::{
 use galadriel_sim::injection::{inject, BroadbandJam, Maneuver, PhantomAcousticDoa};
 use galadriel_sim::scenario::{
     generate, generate_collusion, generate_spoofed, generate_spoofed_partial, ScenarioConfig,
-    StealthySpoof,
+    ScenarioConfigError, ScenarioParams, StealthySpoof,
 };
+use sha2::{Digest as _, Sha256};
+use thiserror::Error;
 
 /// Minimum trial count accepted by inferential reports.
 pub const MIN_INFERENCE_TRIALS: usize = 20;
@@ -55,12 +60,18 @@ const MAX_SUITE_PID_QUADRATIC_WORK: u128 = 300_000_000_000;
 const ADAPTIVE_CALIBRATION_DOMAIN: u64 = 0x4144_4150_5443_414c;
 const ADAPTIVE_HOLDOUT_DOMAIN: u64 = 0x4144_4150_5448_4f4c;
 
+fn pid_research_config() -> std::result::Result<PidConfig, EvalConfigError> {
+    PidResearchProfile::CircularDeleteBlockV0_9
+        .try_config()
+        .map_err(|source| EvalConfigError::Pid { source })
+}
+
 /// The sensor channels under test.
 pub const MODALITIES: [Modality; 3] = [Modality::Visual, Modality::Radar, Modality::Acoustic];
 
-/// Evaluation parameters.
+/// Literal-friendly, untrusted evaluation parameters.
 #[derive(Debug, Clone)]
-pub struct EvalConfig {
+pub struct EvalParams {
     /// Trials per attack regime.
     pub trials: usize,
     /// Base seed; each study derives trial seeds in a named deterministic domain.
@@ -77,104 +88,439 @@ pub struct EvalConfig {
     pub jam_inflation: f64,
 }
 
-impl Default for EvalConfig {
-    fn default() -> Self {
-        Self {
-            trials: 200,
-            base_seed: 1000,
-            frames: 300,
-            rho: 0.7,
-            sigma: 1.0,
-            spoof_bias: 8.0,
-            jam_inflation: 3.0,
+/// Named, bounded research evaluation profiles.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EvaluationResearchProfile {
+    /// Synthetic evaluation defaults shipped with the 0.9 source release.
+    SyntheticV0_9,
+}
+
+impl EvaluationResearchProfile {
+    /// Return mutable raw parameters for a custom research evaluation.
+    #[must_use]
+    pub const fn params(self) -> EvalParams {
+        match self {
+            Self::SyntheticV0_9 => EvalParams {
+                trials: 200,
+                base_seed: 1000,
+                frames: 300,
+                rho: 0.7,
+                sigma: 1.0,
+                spoof_bias: 8.0,
+                jam_inflation: 3.0,
+            },
         }
     }
+
+    /// Resolve the exact named profile to an immutable accepted value.
+    ///
+    /// Construction is `O(1)`, allocates no retained collections, and proves the
+    /// per-trial scenario bound. Whole-suite grid, bootstrap, latency-prefix, and
+    /// PID work is accepted separately by [`EvalSuiteConfig::try_new`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EvalConfigError`] if the named profile ceases to satisfy the
+    /// evaluation contract.
+    pub fn try_config(self) -> std::result::Result<EvalConfig, EvalConfigError> {
+        EvalConfig::try_new_with_origin(self.params(), EvalConfigOrigin::Named(self))
+    }
+
+    /// Stable profile identity used in canonical configuration preimages.
+    #[must_use]
+    pub const fn identity(self) -> &'static str {
+        match self {
+            Self::SyntheticV0_9 => "galadriel-eval/synthetic-v0.9",
+        }
+    }
+}
+
+/// Provenance and research classification of an accepted evaluation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EvalConfigOrigin {
+    /// Exact named research profile.
+    Named(EvaluationResearchProfile),
+    /// Caller-supplied custom research parameters.
+    CustomResearch,
+}
+
+/// Typed evaluation configuration and preflight failures.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum EvalConfigError {
+    /// Trial count is outside inferential bounds.
+    #[error("trials must be in {minimum}..={maximum} for inferential reports")]
+    TrialsOutOfRange { minimum: usize, maximum: usize },
+    /// Frame count is outside simulator/evaluation bounds.
+    #[error("frames must be in 128..=10000")]
+    FramesOutOfRange,
+    /// Corroborated-regime correlation is invalid.
+    #[error("rho must be finite and in (0, 1) for corroborated studies")]
+    InvalidCorrelation,
+    /// Nominal standard deviation or its square is invalid.
+    #[error("sigma must be finite, > 0, and have a finite nonzero square")]
+    InvalidSigma,
+    /// Loud-spoof bias or its square is invalid.
+    #[error("spoof_bias must be finite, > 0, and have a finite square")]
+    InvalidSpoofBias,
+    /// Jam inflation or its square is invalid.
+    #[error("jam_inflation must be finite, > 1, and have a finite square")]
+    InvalidJamInflation,
+    /// A derived scenario did not satisfy the simulator contract.
+    #[error("evaluation scenario is invalid: {source}")]
+    Scenario {
+        /// Typed simulator source.
+        #[source]
+        source: ScenarioConfigError,
+    },
+    /// The named PID research profile could not be accepted.
+    #[error("evaluation PID profile is invalid: {source}")]
+    Pid {
+        /// Typed PID configuration source.
+        #[source]
+        source: PidConfigError,
+    },
+    /// A checked preflight product overflowed.
+    #[error("{context} work estimate overflowed")]
+    WorkOverflow { context: &'static str },
+    /// A bounded work estimate exceeds its fixed maximum.
+    #[error("{context} requests about {actual} work units; maximum is {maximum}")]
+    WorkLimit {
+        context: &'static str,
+        actual: u128,
+        maximum: u128,
+    },
+    /// A study grid has an invalid length.
+    #[error("{grid} grid must contain 1..={maximum} entries")]
+    GridLength { grid: &'static str, maximum: usize },
+    /// A decoupling value is not finite and in range.
+    #[error("decoupling value at index {index} must be finite and in [0, 1]")]
+    InvalidDecoupling { index: usize },
+    /// A study grid repeats an arm and would create ambiguous duplicate evidence.
+    #[error("{grid} grid repeats the value at index {index}")]
+    DuplicateGridValue { grid: &'static str, index: usize },
+    /// Bootstrap resamples are outside inferential bounds.
+    #[error("inferential bootstrap resamples must be in 200..=100000")]
+    BootstrapOutOfRange,
+    /// Latency step is zero or exceeds the accepted frame count.
+    #[error("latency step must be in 1..=frames")]
+    InvalidLatencyStep,
+    /// Maneuver lag arithmetic cannot be represented.
+    #[error("maneuver lag at index {index} overflows its frame window")]
+    ManeuverLagOverflow { index: usize },
+    /// Maneuver magnitude is not a finite, positive, representable scale.
+    #[error("maneuver magnitude must be finite, > 0, and have a finite square")]
+    InvalidManeuverMagnitude,
+    /// A zero-frame maneuver has no study exposure.
+    #[error("maneuver duration must be > 0")]
+    InvalidManeuverDuration,
+    /// A lagged modality's complete maneuver window is censored by the capture.
+    #[error(
+        "maneuver lag at index {index} requires capture end frame {required_end}; available frames are {available_frames}"
+    )]
+    ManeuverOutsideCapture {
+        index: usize,
+        required_end: u64,
+        available_frames: usize,
+    },
+}
+
+impl From<EvalConfigError> for GaladrielError {
+    fn from(error: EvalConfigError) -> Self {
+        Self::InvalidConfig(error.to_string())
+    }
+}
+
+/// Immutable, fully accepted base configuration for research evaluation.
+///
+/// ```compile_fail
+/// use galadriel_eval::EvalConfig;
+/// let _forged = EvalConfig { trials: usize::MAX };
+/// ```
+///
+/// ```compile_fail
+/// use galadriel_eval::EvalConfig;
+/// let _implicit = EvalConfig::default();
+/// ```
+#[derive(Debug, Clone)]
+pub struct EvalConfig {
+    trials: usize,
+    base_seed: u64,
+    frames: usize,
+    rho: f64,
+    sigma: f64,
+    spoof_bias: f64,
+    jam_inflation: f64,
+    origin: EvalConfigOrigin,
+    canonical_digest: String,
 }
 
 impl EvalConfig {
-    /// Validate workload bounds and every numeric simulation parameter.
-    pub fn validate(&self) -> Result<(), String> {
-        if !(MIN_INFERENCE_TRIALS..=1_000).contains(&self.trials) {
-            return Err(format!(
-                "trials must be in {MIN_INFERENCE_TRIALS}..=1000 for inferential reports"
-            ));
+    /// Accept caller-supplied custom research parameters.
+    ///
+    /// Construction is `O(1)`, retains no collections, and validates all local
+    /// scalar, derived-variance, per-stream allocation, timestamp, sequence, and
+    /// prior-identity bounds.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EvalConfigError`] for any invalid or unrepresentable input.
+    pub fn try_new(params: EvalParams) -> std::result::Result<Self, EvalConfigError> {
+        Self::try_new_with_origin(params, EvalConfigOrigin::CustomResearch)
+    }
+
+    fn try_new_with_origin(
+        params: EvalParams,
+        origin: EvalConfigOrigin,
+    ) -> std::result::Result<Self, EvalConfigError> {
+        if !(MIN_INFERENCE_TRIALS..=1_000).contains(&params.trials) {
+            return Err(EvalConfigError::TrialsOutOfRange {
+                minimum: MIN_INFERENCE_TRIALS,
+                maximum: 1_000,
+            });
         }
-        if !(128..=10_000).contains(&self.frames) {
-            return Err("frames must be in 128..=10000".into());
+        if !(128..=10_000).contains(&params.frames) {
+            return Err(EvalConfigError::FramesOutOfRange);
         }
-        if !self.rho.is_finite() || self.rho <= 0.0 || self.rho >= 1.0 {
-            return Err("rho must be finite and in (0, 1) for corroborated studies".into());
+        if !params.rho.is_finite() || params.rho <= 0.0 || params.rho >= 1.0 {
+            return Err(EvalConfigError::InvalidCorrelation);
         }
-        if !self.sigma.is_finite()
-            || self.sigma <= 0.0
-            || !(self.sigma * self.sigma).is_finite()
-            || self.sigma * self.sigma == 0.0
+        if !params.sigma.is_finite()
+            || params.sigma <= 0.0
+            || !(params.sigma * params.sigma).is_finite()
+            || params.sigma * params.sigma == 0.0
         {
-            return Err("sigma must be finite, > 0, and have a finite nonzero square".into());
+            return Err(EvalConfigError::InvalidSigma);
         }
-        if !self.spoof_bias.is_finite()
-            || self.spoof_bias <= 0.0
-            || !(self.spoof_bias * self.spoof_bias).is_finite()
+        if !params.spoof_bias.is_finite()
+            || params.spoof_bias <= 0.0
+            || !(params.spoof_bias * params.spoof_bias).is_finite()
         {
-            return Err("spoof_bias must be finite, > 0, and have a finite square".into());
+            return Err(EvalConfigError::InvalidSpoofBias);
         }
-        if !self.jam_inflation.is_finite()
-            || self.jam_inflation <= 1.0
-            || !(self.jam_inflation * self.jam_inflation).is_finite()
+        if !params.jam_inflation.is_finite()
+            || params.jam_inflation <= 1.0
+            || !(params.jam_inflation * params.jam_inflation).is_finite()
         {
-            return Err("jam_inflation must be finite, > 1, and have a finite square".into());
+            return Err(EvalConfigError::InvalidJamInflation);
         }
-        Ok(())
+        scenario_from_parts(&params, params.base_seed)
+            .map_err(|source| EvalConfigError::Scenario { source })?;
+        let canonical_digest = eval_digest(&params, origin);
+        Ok(Self {
+            trials: params.trials,
+            base_seed: params.base_seed,
+            frames: params.frames,
+            rho: params.rho,
+            sigma: params.sigma,
+            spoof_bias: params.spoof_bias,
+            jam_inflation: params.jam_inflation,
+            origin,
+            canonical_digest,
+        })
+    }
+
+    /// Trials per attack regime.
+    #[must_use]
+    pub const fn trials(&self) -> usize {
+        self.trials
+    }
+    /// Base seed for named deterministic seed domains.
+    #[must_use]
+    pub const fn base_seed(&self) -> u64 {
+        self.base_seed
+    }
+    /// Frames per trial.
+    #[must_use]
+    pub const fn frames(&self) -> usize {
+        self.frames
+    }
+    /// Corroborated-regime cross-channel correlation.
+    #[must_use]
+    pub const fn rho(&self) -> f64 {
+        self.rho
+    }
+    /// Nominal per-axis innovation standard deviation.
+    #[must_use]
+    pub const fn sigma(&self) -> f64 {
+        self.sigma
+    }
+    /// Loud-spoof bias in nominal standard deviations.
+    #[must_use]
+    pub const fn spoof_bias(&self) -> f64 {
+        self.spoof_bias
+    }
+    /// Broadband-jam innovation multiplier.
+    #[must_use]
+    pub const fn jam_inflation(&self) -> f64 {
+        self.jam_inflation
+    }
+    /// Named-profile or custom-research provenance.
+    #[must_use]
+    pub const fn origin(&self) -> EvalConfigOrigin {
+        self.origin
+    }
+    /// SHA-256 of the domain-separated canonical accepted configuration.
+    #[must_use]
+    pub fn canonical_digest(&self) -> &str {
+        &self.canonical_digest
     }
 }
 
-fn validate_config(cfg: &EvalConfig) -> CoreResult<()> {
-    cfg.validate().map_err(GaladrielError::InvalidConfig)
+impl TryFrom<EvalParams> for EvalConfig {
+    type Error = EvalConfigError;
+
+    fn try_from(params: EvalParams) -> std::result::Result<Self, Self::Error> {
+        Self::try_new(params)
+    }
 }
 
-fn validate_trials(trials: usize) -> CoreResult<()> {
+fn scenario_from_parts(
+    params: &EvalParams,
+    seed: u64,
+) -> std::result::Result<ScenarioConfig, ScenarioConfigError> {
+    ScenarioConfig::try_new(ScenarioParams {
+        track_id: 1,
+        frames: params.frames,
+        modalities: MODALITIES.to_vec(),
+        sigma: params.sigma,
+        rho: params.rho,
+        dt_ms: 100,
+        seed,
+    })
+}
+
+fn eval_digest(params: &EvalParams, origin: EvalConfigOrigin) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"galadriel-eval-config-v0.9\0");
+    match origin {
+        EvalConfigOrigin::Named(profile) => {
+            hasher.update(b"named\0");
+            hasher.update(profile.identity().as_bytes());
+            hasher.update([0]);
+        }
+        EvalConfigOrigin::CustomResearch => hasher.update(b"custom-research\0"),
+    }
+    hasher.update((params.trials as u128).to_be_bytes());
+    hasher.update(params.base_seed.to_be_bytes());
+    hasher.update((params.frames as u128).to_be_bytes());
+    hasher.update(params.rho.to_bits().to_be_bytes());
+    hasher.update(params.sigma.to_bits().to_be_bytes());
+    hasher.update(params.spoof_bias.to_bits().to_be_bytes());
+    hasher.update(params.jam_inflation.to_bits().to_be_bytes());
+    let digest = hasher.finalize();
+    let mut encoded = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        use std::fmt::Write as _;
+        let _ = write!(encoded, "{byte:02x}");
+    }
+    encoded
+}
+
+fn validate_trials(trials: usize) -> std::result::Result<(), EvalConfigError> {
     if !(MIN_INFERENCE_TRIALS..=1_000).contains(&trials) {
-        return Err(GaladrielError::InvalidConfig(format!(
-            "study trials must be in {MIN_INFERENCE_TRIALS}..=1000"
-        )));
+        return Err(EvalConfigError::TrialsOutOfRange {
+            minimum: MIN_INFERENCE_TRIALS,
+            maximum: 1_000,
+        });
     }
     Ok(())
 }
 
-fn validate_bootstrap(n_boot: usize) -> CoreResult<()> {
+fn validate_bootstrap(n_boot: usize) -> std::result::Result<(), EvalConfigError> {
     if !(200..=100_000).contains(&n_boot) {
-        return Err(GaladrielError::InvalidConfig(
-            "inferential bootstrap resamples must be in 200..=100000".into(),
-        ));
+        return Err(EvalConfigError::BootstrapOutOfRange);
     }
     Ok(())
 }
 
-fn validate_decouplings(decouplings: &[f64]) -> CoreResult<()> {
+fn validate_decouplings(decouplings: &[f64]) -> std::result::Result<(), EvalConfigError> {
     if decouplings.is_empty() || decouplings.len() > 10_000 {
-        return Err(GaladrielError::InvalidConfig(
-            "decoupling grid must contain 1..=10000 entries".into(),
-        ));
+        return Err(EvalConfigError::GridLength {
+            grid: "decoupling",
+            maximum: 10_000,
+        });
     }
-    if decouplings
-        .iter()
-        .any(|value| !value.is_finite() || !(0.0..=1.0).contains(value))
-    {
-        return Err(GaladrielError::InvalidConfig(
-            "decoupling values must be finite and in [0, 1]".into(),
-        ));
+    let mut values = HashSet::with_capacity(decouplings.len());
+    for (index, value) in decouplings.iter().copied().enumerate() {
+        if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+            return Err(EvalConfigError::InvalidDecoupling { index });
+        }
+        let canonical_bits = if value == 0.0 { 0 } else { value.to_bits() };
+        if !values.insert(canonical_bits) {
+            return Err(EvalConfigError::DuplicateGridValue {
+                grid: "decoupling",
+                index,
+            });
+        }
     }
     Ok(())
 }
 
-fn validate_grid_work(cfg: &EvalConfig, grid_len: usize) -> CoreResult<()> {
-    let combinations = cfg.trials.checked_mul(grid_len).ok_or_else(|| {
-        GaladrielError::InvalidConfig("grid × trials work estimate overflowed".into())
-    })?;
+fn validate_maneuver_inputs(
+    cfg: &EvalConfig,
+    lag_steps: &[u64],
+    magnitude: f64,
+    duration: u64,
+) -> std::result::Result<(), EvalConfigError> {
+    if lag_steps.is_empty() || lag_steps.len() > 10_000 {
+        return Err(EvalConfigError::GridLength {
+            grid: "maneuver lag",
+            maximum: 10_000,
+        });
+    }
+    if !magnitude.is_finite() || magnitude <= 0.0 || !(magnitude * magnitude).is_finite() {
+        return Err(EvalConfigError::InvalidManeuverMagnitude);
+    }
+    if duration == 0 {
+        return Err(EvalConfigError::InvalidManeuverDuration);
+    }
+    let mut unique_lags = HashSet::with_capacity(lag_steps.len());
+    let maneuver_start = (cfg.frames / 3) as u64;
+    let max_modality = MODALITIES
+        .iter()
+        .copied()
+        .map(|modality| u64::from(modality.stable_code()))
+        .fold(0, u64::max);
+    for (index, lag_step) in lag_steps.iter().copied().enumerate() {
+        if !unique_lags.insert(lag_step) {
+            return Err(EvalConfigError::DuplicateGridValue {
+                grid: "maneuver lag",
+                index,
+            });
+        }
+        let required_end = max_modality
+            .checked_mul(lag_step)
+            .and_then(|lag| maneuver_start.checked_add(lag))
+            .and_then(|start| start.checked_add(duration))
+            .ok_or(EvalConfigError::ManeuverLagOverflow { index })?;
+        if required_end > cfg.frames as u64 {
+            return Err(EvalConfigError::ManeuverOutsideCapture {
+                index,
+                required_end,
+                available_frames: cfg.frames,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn validate_grid_work(
+    cfg: &EvalConfig,
+    grid_len: usize,
+) -> std::result::Result<(), EvalConfigError> {
+    let combinations = cfg
+        .trials
+        .checked_mul(grid_len)
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "grid × trials",
+        })?;
     if combinations > MAX_GRID_TRIAL_COMBINATIONS {
-        return Err(GaladrielError::InvalidConfig(format!(
-            "grid requests {combinations} trial combinations; maximum is {MAX_GRID_TRIAL_COMBINATIONS}"
-        )));
+        return Err(EvalConfigError::WorkLimit {
+            context: "grid × trials",
+            actual: combinations as u128,
+            maximum: MAX_GRID_TRIAL_COMBINATIONS as u128,
+        });
     }
     validate_observation_work(cfg.trials, cfg.frames, grid_len)?;
     Ok(())
@@ -184,96 +530,175 @@ fn validate_observation_work(
     trials: usize,
     frames: usize,
     streams_per_trial: usize,
-) -> CoreResult<()> {
+) -> std::result::Result<(), EvalConfigError> {
     let observations = trials
         .checked_mul(frames)
         .and_then(|frames| frames.checked_mul(MODALITIES.len()))
         .and_then(|observations| observations.checked_mul(streams_per_trial))
-        .ok_or_else(|| GaladrielError::InvalidConfig("study work estimate overflowed".into()))?;
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "generated observations",
+        })?;
     if observations > MAX_STUDY_OBSERVATIONS {
-        return Err(GaladrielError::InvalidConfig(format!(
-            "study requests about {observations} generated observations; maximum is {MAX_STUDY_OBSERVATIONS}"
-        )));
+        return Err(EvalConfigError::WorkLimit {
+            context: "generated observations",
+            actual: observations as u128,
+            maximum: MAX_STUDY_OBSERVATIONS as u128,
+        });
     }
     Ok(())
 }
 
-fn validate_bootstrap_work(trials: usize, n_boot: usize, interval_count: usize) -> CoreResult<()> {
-    let combined = trials.checked_mul(2).ok_or_else(|| {
-        GaladrielError::InvalidConfig("bootstrap AUC work estimate overflowed".into())
+fn validate_bootstrap_work(
+    trials: usize,
+    n_boot: usize,
+    interval_count: usize,
+) -> std::result::Result<(), EvalConfigError> {
+    let combined = trials.checked_mul(2).ok_or(EvalConfigError::WorkOverflow {
+        context: "bootstrap AUC",
     })?;
     let rank_levels = usize::try_from(usize::BITS - combined.leading_zeros()).unwrap_or(usize::MAX);
     let work = combined
         .checked_mul(rank_levels)
         .and_then(|rank_work| rank_work.checked_mul(n_boot))
         .and_then(|comparisons| comparisons.checked_mul(interval_count))
-        .ok_or_else(|| {
-            GaladrielError::InvalidConfig("bootstrap AUC work estimate overflowed".into())
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "bootstrap AUC",
         })?;
     if work > MAX_BOOTSTRAP_AUC_COMPARISONS {
-        return Err(GaladrielError::InvalidConfig(format!(
-            "bootstrap requests about {work} rank-work units; maximum is {MAX_BOOTSTRAP_AUC_COMPARISONS}"
-        )));
+        return Err(EvalConfigError::WorkLimit {
+            context: "bootstrap AUC rank",
+            actual: work as u128,
+            maximum: MAX_BOOTSTRAP_AUC_COMPARISONS as u128,
+        });
     }
     Ok(())
 }
 
-fn pid_fit_count(cfg: &PidConfig) -> CoreResult<u128> {
-    cfg.validate()?;
+fn pid_fit_count(cfg: &PidConfig) -> std::result::Result<u128, EvalConfigError> {
     let channels = MODALITIES.len();
     let pair_count = channels
         .checked_mul(channels.saturating_sub(1))
         .map(|pairs| pairs / 2)
-        .ok_or_else(|| GaladrielError::InvalidConfig("PID pair count overflowed".into()))?;
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "PID pair count",
+        })?;
     let point_fits = pair_count
         .checked_mul(PID_PAIR_POINT_FIT_UNITS)
         .and_then(|fits| fits.checked_add(channels.saturating_mul(PID_ATOM_POINT_FIT_UNITS)))
-        .ok_or_else(|| GaladrielError::InvalidConfig("PID point-fit count overflowed".into()))?;
-    let confirmation_fits = if cfg.bootstrap {
-        let consensus = channels / 2 + 1;
-        let consensus_edges = consensus
-            .checked_mul(consensus.saturating_sub(1))
-            .map(|edges| edges / 2)
-            .ok_or_else(|| {
-                GaladrielError::InvalidConfig("PID confirmation-edge count overflowed".into())
-            })?;
-        let excluded_edges = channels
-            .saturating_sub(consensus)
-            .checked_mul(consensus)
-            .ok_or_else(|| {
-                GaladrielError::InvalidConfig("PID candidate-edge count overflowed".into())
-            })?;
-        consensus_edges
-            .checked_add(excluded_edges)
-            .and_then(|edges| edges.checked_mul(PID_CONFIRMATION_EDGE_FIT_UNITS))
-            .and_then(|edges| edges.checked_mul(cfg.n_boot))
-            .ok_or_else(|| {
-                GaladrielError::InvalidConfig("PID confirmation-fit count overflowed".into())
-            })?
-    } else {
-        0
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "PID point-fit count",
+        })?;
+    let confirmation_fits = match cfg.confirmation() {
+        PidConfirmation::PointEstimateOnly => 0,
+        PidConfirmation::CircularDeleteBlock(confirmation) => {
+            let consensus = channels / 2 + 1;
+            let consensus_edges = consensus
+                .checked_mul(consensus.saturating_sub(1))
+                .map(|edges| edges / 2)
+                .ok_or(EvalConfigError::WorkOverflow {
+                    context: "PID confirmation-edge count",
+                })?;
+            let excluded_edges = channels
+                .saturating_sub(consensus)
+                .checked_mul(consensus)
+                .ok_or(EvalConfigError::WorkOverflow {
+                    context: "PID candidate-edge count",
+                })?;
+            consensus_edges
+                .checked_add(excluded_edges)
+                .and_then(|edges| edges.checked_mul(PID_CONFIRMATION_EDGE_FIT_UNITS))
+                .and_then(|edges| edges.checked_mul(confirmation.resamples()))
+                .ok_or(EvalConfigError::WorkOverflow {
+                    context: "PID confirmation-fit count",
+                })?
+        }
     };
     point_fits
         .checked_add(confirmation_fits)
         .map(|fits| fits as u128)
-        .ok_or_else(|| GaladrielError::InvalidConfig("PID total-fit count overflowed".into()))
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "PID total-fit count",
+        })
 }
 
-fn pid_analysis_work(cfg: &PidConfig, samples: usize, fit_count: u128) -> CoreResult<u128> {
+fn pid_analysis_work(
+    cfg: &PidConfig,
+    samples: usize,
+    fit_count: u128,
+) -> std::result::Result<u128, EvalConfigError> {
     if samples < cfg.required_samples() {
         return Ok(0);
     }
-    let window = samples.min(cfg.window).min(MAX_PID_WINDOW) as u128;
+    let window = samples.min(cfg.window()).min(MAX_PID_WINDOW) as u128;
     window
         .checked_mul(window)
         .and_then(|distance_pairs| distance_pairs.checked_mul(fit_count))
-        .ok_or_else(|| GaladrielError::InvalidConfig("PID analysis work overflowed".into()))
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "PID analysis",
+        })
 }
 
-fn checked_work_product(left: u128, right: u128, label: &str) -> CoreResult<u128> {
-    left.checked_mul(right).ok_or_else(|| {
-        GaladrielError::InvalidConfig(format!("{label} PID work estimate overflowed"))
-    })
+fn full_pid_work(cfg: &EvalConfig, calls: usize) -> std::result::Result<u128, EvalConfigError> {
+    let pid_cfg = pid_research_config()?;
+    let fit_count = pid_fit_count(&pid_cfg)?;
+    let per_call = pid_analysis_work(&pid_cfg, cfg.frames, fit_count)?;
+    checked_work_product(calls as u128, per_call, "full-stream PID")
+}
+
+fn validate_pid_work_limit(
+    work: u128,
+    context: &'static str,
+) -> std::result::Result<(), EvalConfigError> {
+    if work > MAX_SUITE_PID_QUADRATIC_WORK {
+        return Err(EvalConfigError::WorkLimit {
+            context,
+            actual: work,
+            maximum: MAX_SUITE_PID_QUADRATIC_WORK,
+        });
+    }
+    Ok(())
+}
+
+fn validate_full_pid_calls(
+    cfg: &EvalConfig,
+    calls: usize,
+    context: &'static str,
+) -> std::result::Result<(), EvalConfigError> {
+    validate_pid_work_limit(full_pid_work(cfg, calls)?, context)
+}
+
+fn latency_pid_work(
+    cfg: &EvalConfig,
+    trials: usize,
+    step: usize,
+) -> std::result::Result<u128, EvalConfigError> {
+    let pid_cfg = pid_research_config()?;
+    let fit_count = pid_fit_count(&pid_cfg)?;
+    let onset = cfg.frames / 3;
+    let work_per_stream = ttd_probe_schedule(cfg.frames, onset, step)
+        .into_iter()
+        .try_fold(0_u128, |work, probe| {
+            let probe_work = pid_analysis_work(&pid_cfg, probe.frames, fit_count)?;
+            work.checked_add(probe_work)
+                .ok_or(EvalConfigError::WorkOverflow {
+                    context: "latency PID",
+                })
+        })?;
+    let streams = trials
+        .checked_mul(Attack::ALL.len().saturating_sub(1))
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "latency PID stream count",
+        })?;
+    checked_work_product(streams as u128, work_per_stream, "latency PID")
+}
+
+fn checked_work_product(
+    left: u128,
+    right: u128,
+    context: &'static str,
+) -> std::result::Result<u128, EvalConfigError> {
+    left.checked_mul(right)
+        .ok_or(EvalConfigError::WorkOverflow { context })
 }
 
 fn validate_suite_pid_work(
@@ -282,11 +707,7 @@ fn validate_suite_pid_work(
     lag_count: usize,
     latency_trials: usize,
     latency_step: usize,
-) -> CoreResult<()> {
-    let pid_cfg = PidConfig::default();
-    let fit_count = pid_fit_count(&pid_cfg)?;
-    let full_analysis = pid_analysis_work(&pid_cfg, cfg.frames, fit_count)?;
-
+) -> std::result::Result<(), EvalConfigError> {
     // Per trial: main report (axis-0 component plus every fused axis), CI study,
     // sweep, collusion, adaptive calibration/holdout/attacks, and maneuver study.
     let full_calls_per_trial = Attack::ALL
@@ -297,44 +718,201 @@ fn validate_suite_pid_work(
         .and_then(|calls| calls.checked_add(1))
         .and_then(|calls| calls.checked_add(2 + grid_len))
         .and_then(|calls| calls.checked_add(lag_count))
-        .ok_or_else(|| GaladrielError::InvalidConfig("suite PID call count overflowed".into()))?;
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "suite PID call count",
+        })?;
     let full_calls = checked_work_product(
         cfg.trials as u128,
         full_calls_per_trial as u128,
         "full-stream",
     )?;
-    let full_work = checked_work_product(full_calls, full_analysis, "full-stream")?;
-
-    let onset = cfg.frames / 3;
-    let latency_per_stream = ttd_probe_schedule(cfg.frames, onset, latency_step)
-        .into_iter()
-        .try_fold(0_u128, |work, probe| {
-            let probe_work = pid_analysis_work(&pid_cfg, probe.frames, fit_count)?;
-            work.checked_add(probe_work).ok_or_else(|| {
-                GaladrielError::InvalidConfig("latency PID work estimate overflowed".into())
-            })
-        })?;
-    let attack_count = Attack::ALL.len() - 1;
-    let latency_streams = checked_work_product(
-        latency_trials as u128,
-        attack_count as u128,
-        "latency-stream",
-    )?;
-    let latency_work = checked_work_product(latency_streams, latency_per_stream, "latency")?;
-    let total = full_work.checked_add(latency_work).ok_or_else(|| {
-        GaladrielError::InvalidConfig("suite PID work estimate overflowed".into())
+    let full_calls = usize::try_from(full_calls).map_err(|_| EvalConfigError::WorkOverflow {
+        context: "full-stream PID call count",
     })?;
-    if total > MAX_SUITE_PID_QUADRATIC_WORK {
-        return Err(GaladrielError::InvalidConfig(format!(
-            "suite requests about {total} PID quadratic fit-units across full streams, fused axes, confirmation resamples, and latency prefixes; maximum is {MAX_SUITE_PID_QUADRATIC_WORK}; reduce trials/grid/frames or increase latency step"
-        )));
-    }
-    Ok(())
+    let full_work = full_pid_work(cfg, full_calls)?;
+    let latency_work = latency_pid_work(cfg, latency_trials, latency_step)?;
+    let total = full_work
+        .checked_add(latency_work)
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "suite PID",
+        })?;
+    validate_pid_work_limit(total, "suite PID quadratic fits")
 }
 
-/// Preflight the complete command-line report suite before any simulations run.
-/// This prevents a late study from rejecting a workload only after earlier,
-/// expensive sections have already completed and printed partial results.
+/// Raw workload parameters for the complete command-line evaluation suite.
+#[derive(Debug, Clone)]
+pub struct EvalSuiteParams {
+    /// Decoupling strengths used by sweep/adaptive/gain studies.
+    pub decouplings: Vec<f64>,
+    /// Per-modality maneuver lag steps.
+    pub lag_steps: Vec<u64>,
+    /// Bootstrap resamples for inferential intervals.
+    pub bootstrap_resamples: usize,
+    /// Trial count used by time-to-detect studies.
+    pub latency_trials: usize,
+    /// Prefix stride used by time-to-detect studies.
+    pub latency_step: usize,
+}
+
+/// Immutable accepted composition for the complete synthetic evaluation suite.
+///
+/// A value exists only after all grid, trial, observation, bootstrap, maneuver,
+/// latency-prefix, pair, estimator-fit, and multi-axis PID products have passed
+/// checked arithmetic and fixed ceilings. Construction is `O(g + l + p)`, where
+/// `g` and `l` are grid lengths and `p` is the number of latency probes; it retains
+/// exactly the two supplied grids. The admitted work is bounded by the constants
+/// documented in this crate's configuration contract.
+///
+/// ```compile_fail
+/// use galadriel_eval::EvalSuiteConfig;
+/// let _forged = EvalSuiteConfig { latency_step: 0 };
+/// ```
+///
+/// ```compile_fail
+/// use galadriel_eval::EvalSuiteConfig;
+/// let _implicit = EvalSuiteConfig::default();
+/// ```
+#[derive(Debug, Clone)]
+pub struct EvalSuiteConfig {
+    eval: EvalConfig,
+    decouplings: Vec<f64>,
+    lag_steps: Vec<u64>,
+    bootstrap_resamples: usize,
+    latency_trials: usize,
+    latency_step: usize,
+    canonical_digest: String,
+}
+
+impl EvalSuiteConfig {
+    /// Preflight and accept a complete evaluation suite before any simulation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EvalConfigError`] on the first invalid local or aggregate bound.
+    pub fn try_new(
+        eval: EvalConfig,
+        mut params: EvalSuiteParams,
+    ) -> std::result::Result<Self, EvalConfigError> {
+        validate_decouplings(&params.decouplings)?;
+        for value in &mut params.decouplings {
+            if *value == 0.0 {
+                *value = 0.0;
+            }
+        }
+        validate_maneuver_inputs(&eval, &params.lag_steps, 12.0, 90)?;
+        validate_trials(params.latency_trials)?;
+        validate_bootstrap(params.bootstrap_resamples)?;
+
+        let stream_factor = params
+            .decouplings
+            .len()
+            .checked_mul(4)
+            .and_then(|factor| factor.checked_add(params.lag_steps.len()))
+            .and_then(|factor| factor.checked_add(10))
+            .ok_or(EvalConfigError::WorkOverflow {
+                context: "suite stream count",
+            })?;
+        validate_observation_work(eval.trials, eval.frames, stream_factor)?;
+
+        let bootstrap_intervals = params
+            .decouplings
+            .len()
+            .checked_mul(4)
+            .and_then(|intervals| intervals.checked_add(5))
+            .ok_or(EvalConfigError::WorkOverflow {
+                context: "suite bootstrap interval count",
+            })?;
+        validate_bootstrap_work(eval.trials, params.bootstrap_resamples, bootstrap_intervals)?;
+
+        if params.latency_step == 0 || params.latency_step > eval.frames {
+            return Err(EvalConfigError::InvalidLatencyStep);
+        }
+        validate_suite_pid_work(
+            &eval,
+            params.decouplings.len(),
+            params.lag_steps.len(),
+            params.latency_trials,
+            params.latency_step,
+        )?;
+        validate_latency_work(&eval, params.latency_trials, params.latency_step)?;
+        let canonical_digest = suite_digest(&eval, &params);
+        Ok(Self {
+            eval,
+            decouplings: params.decouplings,
+            lag_steps: params.lag_steps,
+            bootstrap_resamples: params.bootstrap_resamples,
+            latency_trials: params.latency_trials,
+            latency_step: params.latency_step,
+            canonical_digest,
+        })
+    }
+
+    /// Accepted base evaluation configuration.
+    #[must_use]
+    pub const fn eval(&self) -> &EvalConfig {
+        &self.eval
+    }
+    /// Accepted decoupling grid.
+    #[must_use]
+    pub fn decouplings(&self) -> &[f64] {
+        &self.decouplings
+    }
+    /// Accepted maneuver-lag grid.
+    #[must_use]
+    pub fn lag_steps(&self) -> &[u64] {
+        &self.lag_steps
+    }
+    /// Accepted bootstrap count.
+    #[must_use]
+    pub const fn bootstrap_resamples(&self) -> usize {
+        self.bootstrap_resamples
+    }
+    /// Accepted latency trial count.
+    #[must_use]
+    pub const fn latency_trials(&self) -> usize {
+        self.latency_trials
+    }
+    /// Accepted latency-prefix stride.
+    #[must_use]
+    pub const fn latency_step(&self) -> usize {
+        self.latency_step
+    }
+    /// SHA-256 of the complete domain-separated suite composition.
+    #[must_use]
+    pub fn canonical_digest(&self) -> &str {
+        &self.canonical_digest
+    }
+}
+
+fn suite_digest(eval: &EvalConfig, params: &EvalSuiteParams) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"galadriel-eval-suite-config-v0.9\0");
+    hasher.update(eval.canonical_digest.as_bytes());
+    hasher.update([0]);
+    hasher.update((params.decouplings.len() as u128).to_be_bytes());
+    for value in &params.decouplings {
+        hasher.update(value.to_bits().to_be_bytes());
+    }
+    hasher.update((params.lag_steps.len() as u128).to_be_bytes());
+    for value in &params.lag_steps {
+        hasher.update(value.to_be_bytes());
+    }
+    hasher.update((params.bootstrap_resamples as u128).to_be_bytes());
+    hasher.update((params.latency_trials as u128).to_be_bytes());
+    hasher.update((params.latency_step as u128).to_be_bytes());
+    let digest = hasher.finalize();
+    let mut encoded = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        use std::fmt::Write as _;
+        let _ = write!(encoded, "{byte:02x}");
+    }
+    encoded
+}
+
+/// Preflight the complete command-line report suite before any simulation runs.
+///
+/// This compatibility entry point now returns the accepted composition; callers
+/// should retain it and take all subsequent inputs from its getters.
 pub fn validate_report_suite(
     cfg: &EvalConfig,
     decouplings: &[f64],
@@ -342,47 +920,17 @@ pub fn validate_report_suite(
     n_boot: usize,
     latency_trials: usize,
     latency_step: usize,
-) -> CoreResult<()> {
-    validate_config(cfg)?;
-    validate_decouplings(decouplings)?;
-    if lag_steps.is_empty() || lag_steps.len() > 10_000 {
-        return Err(GaladrielError::InvalidConfig(
-            "maneuver lag grid must contain 1..=10000 entries".into(),
-        ));
-    }
-    validate_trials(latency_trials)?;
-    validate_bootstrap(n_boot)?;
-
-    let stream_factor = decouplings
-        .len()
-        .checked_mul(4)
-        .and_then(|factor| factor.checked_add(lag_steps.len()))
-        .and_then(|factor| factor.checked_add(10))
-        .ok_or_else(|| GaladrielError::InvalidConfig("suite work estimate overflowed".into()))?;
-    validate_observation_work(cfg.trials, cfg.frames, stream_factor)?;
-
-    let bootstrap_intervals = decouplings
-        .len()
-        .checked_mul(4)
-        .and_then(|intervals| intervals.checked_add(5))
-        .ok_or_else(|| {
-            GaladrielError::InvalidConfig("suite bootstrap work estimate overflowed".into())
-        })?;
-    validate_bootstrap_work(cfg.trials, n_boot, bootstrap_intervals)?;
-
-    if latency_step == 0 || latency_step > cfg.frames {
-        return Err(GaladrielError::InvalidConfig(
-            "latency step must be in 1..=frames".into(),
-        ));
-    }
-    validate_suite_pid_work(
-        cfg,
-        decouplings.len(),
-        lag_steps.len(),
-        latency_trials,
-        latency_step,
-    )?;
-    validate_latency_work(cfg, latency_trials, latency_step)
+) -> std::result::Result<EvalSuiteConfig, EvalConfigError> {
+    EvalSuiteConfig::try_new(
+        cfg.clone(),
+        EvalSuiteParams {
+            decouplings: decouplings.to_vec(),
+            lag_steps: lag_steps.to_vec(),
+            bootstrap_resamples: n_boot,
+            latency_trials,
+            latency_step,
+        },
+    )
 }
 
 /// The four regimes.
@@ -448,8 +996,8 @@ fn adaptive_clean_seed(cfg: &EvalConfig, trial: usize, arm: AdaptiveCleanArm) ->
     mixer.next_u64()
 }
 
-fn scenario(cfg: &EvalConfig, seed: u64) -> ScenarioConfig {
-    ScenarioConfig {
+fn scenario(cfg: &EvalConfig, seed: u64) -> CoreResult<ScenarioConfig> {
+    ScenarioConfig::try_new(ScenarioParams {
         track_id: 1,
         frames: cfg.frames,
         modalities: MODALITIES.to_vec(),
@@ -457,12 +1005,12 @@ fn scenario(cfg: &EvalConfig, seed: u64) -> ScenarioConfig {
         rho: cfg.rho,
         dt_ms: 100,
         seed,
-    }
+    })
+    .map_err(|error| GaladrielError::InvalidConfig(error.to_string()))
 }
 
 fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> CoreResult<Vec<PidObservation>> {
-    validate_config(cfg)?;
-    let s = scenario(cfg, seed);
+    let s = scenario(cfg, seed)?;
     let start = (cfg.frames as u64) / 3;
     match attack {
         Attack::Clean => generate(&s),
@@ -522,13 +1070,23 @@ impl DetectorEvidence {
 /// magnitude evidence; score = the strongest per-channel terminal-window surprise
 /// `1 − min_c p_right`, ranked above all non-alarms when a CUSUM-only alarm fires.
 fn baseline_eval(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
-    let mut m = Mirror::with_modalities(DetectorConfig::default(), &MODALITIES)?;
+    let suite = ReleaseSuite::standalone_advisory_v0_9(&MODALITIES)?;
+    let mut m = Mirror::from_release_suite(&suite);
     for o in stream {
         m.ingest(o)?;
     }
-    let last = stream.iter().map(|o| o.seq).max().unwrap_or(0);
-    let rep = m.assess(1, last)?;
-    let alarm = match rep.verdict {
+    let first = stream.first().ok_or_else(|| {
+        GaladrielError::InvalidObservation("baseline evaluation requires observations".into())
+    })?;
+    let last = stream
+        .iter()
+        .map(PidObservation::sequence)
+        .max()
+        .ok_or_else(|| {
+            GaladrielError::InvalidObservation("baseline evaluation requires observations".into())
+        })?;
+    let rep = m.assess(first.track_id(), last)?;
+    let alarm = match rep.verdict() {
         Verdict::InsufficientEvidence => None,
         Verdict::AttributedInconsistency { .. }
         | Verdict::BroadDegradation
@@ -536,10 +1094,10 @@ fn baseline_eval(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
         Verdict::Nominal => Some(false),
     };
     let minimum_p = rep
-        .channels
+        .channels()
         .iter()
-        .filter(|c| c.ready)
-        .map(|c| c.p_right)
+        .filter(|c| c.ready())
+        .map(|c| c.p_right())
         .reduce(f64::min);
     Ok(DetectorEvidence {
         alarm,
@@ -585,16 +1143,16 @@ fn alarm_rank_evidence(evidence: DetectorEvidence) -> DetectorEvidence {
 /// depth over KSG-MI corroborations.
 fn pid_evidence(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
     let channels = scalar_channels(stream, &MODALITIES, 0)?;
-    let rep = analyze(&channels, &PidConfig::default())?;
-    let alarm = match rep.verdict {
+    let rep = analyze(&channels, &pid_research_config()?)?;
+    let alarm = match rep.verdict() {
         PidVerdict::Decoupled(_) => Some(true),
         PidVerdict::Nominal => Some(false),
         PidVerdict::InsufficientEvidence => None,
     };
     let corrs: Vec<f64> = rep
-        .channels
+        .channels()
         .iter()
-        .filter_map(|c| c.corroboration)
+        .filter_map(|c| c.corroboration())
         .collect();
     Ok(DetectorEvidence {
         alarm,
@@ -610,16 +1168,16 @@ fn pid_eval(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
 /// are derived from the same report; all-axis fusion is evaluated separately.
 fn corr_evidence(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
     let channels = scalar_channels(stream, &MODALITIES, 0)?;
-    let report = correlation::analyze(&channels, &CorrConfig::default())?;
-    let alarm = match report.verdict {
+    let report = correlation::analyze(&channels, &CorrConfig::standalone_advisory_v0_9()?)?;
+    let alarm = match report.verdict() {
         CorrVerdict::Decoupled(_) => Some(true),
         CorrVerdict::Nominal => Some(false),
         CorrVerdict::InsufficientEvidence => None,
     };
     let corrs: Vec<f64> = report
-        .channels
+        .channels()
         .iter()
-        .filter_map(|c| c.corroboration)
+        .filter_map(|c| c.corroboration())
         .collect();
     Ok(DetectorEvidence {
         alarm,
@@ -642,13 +1200,9 @@ fn component_evaluations(stream: &[PidObservation]) -> CoreResult<[DetectorEvide
 /// Fused detector: alarm on attributed-inconsistency, broad-degradation, or unclassified
 /// evidence (NIS ⊕ PID escalation).
 fn fused_eval(stream: &[PidObservation]) -> CoreResult<Option<bool>> {
-    let r = assess_stream(
-        stream,
-        &MODALITIES,
-        &DetectorConfig::default(),
-        &PidConfig::default(),
-    )?;
-    Ok(match r.verdict {
+    let suite = PidResearchSuite::circular_delete_block_v0_9(&MODALITIES)?;
+    let r = assess_stream(stream, &suite)?;
+    Ok(match r.verdict() {
         FusedVerdict::InsufficientEvidence => None,
         FusedVerdict::AttributedInconsistency { .. }
         | FusedVerdict::BroadDegradation
@@ -722,7 +1276,18 @@ impl SplitMix64 {
     }
     /// A uniform index in `0..n`.
     fn below(&mut self, n: usize) -> usize {
-        (self.next_u64() % n as u64) as usize
+        debug_assert!(n > 0);
+        let bound = n as u64;
+        // Reject the short residue at the bottom of the u64 domain. A plain
+        // modulo maps that residue onto early indices one extra time whenever
+        // the resample length does not divide 2^64.
+        let threshold = bound.wrapping_neg() % bound;
+        loop {
+            let draw = self.next_u64();
+            if draw >= threshold {
+                return (draw % bound) as usize;
+            }
+        }
     }
 }
 
@@ -860,8 +1425,14 @@ pub fn stealthy_ci_study(
     cfg: &EvalConfig,
     n_boot: usize,
 ) -> CoreResult<(Vec<CiRow>, (f64, f64, f64))> {
-    validate_config(cfg)?;
     validate_observation_work(cfg.trials, cfg.frames, 2)?;
+    let pid_calls = cfg
+        .trials
+        .checked_mul(2)
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "CI study PID call count",
+        })?;
+    validate_full_pid_calls(cfg, pid_calls, "CI study PID quadratic fits")?;
     validate_bootstrap(n_boot)?;
     // Three single-detector AUC intervals plus two AUC evaluations inside
     // each paired difference resample.
@@ -964,11 +1535,18 @@ pub fn decoupling_sweep(
     decouplings: &[f64],
     n_boot: usize,
 ) -> CoreResult<Vec<SweepRow>> {
-    validate_config(cfg)?;
     validate_decouplings(decouplings)?;
     validate_bootstrap(n_boot)?;
     validate_grid_work(cfg, decouplings.len())?;
     validate_observation_work(cfg.trials, cfg.frames, decouplings.len().saturating_add(1))?;
+    let pid_calls = decouplings
+        .len()
+        .checked_add(1)
+        .and_then(|streams| streams.checked_mul(cfg.trials))
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "sweep PID call count",
+        })?;
+    validate_full_pid_calls(cfg, pid_calls, "sweep PID quadratic fits")?;
     let intervals = decouplings.len().checked_mul(4).ok_or_else(|| {
         GaladrielError::InvalidConfig("sweep bootstrap work estimate overflowed".into())
     })?;
@@ -993,7 +1571,7 @@ pub fn decoupling_sweep(
             Vec::with_capacity(cfg.trials),
         );
         for t in 0..cfg.trials {
-            let scenario = scenario(cfg, attack_seed(cfg, t, Attack::Stealthy));
+            let scenario = scenario(cfg, attack_seed(cfg, t, Attack::Stealthy))?;
             let stream = generate_spoofed_partial(&scenario, spoof, d)?;
             sc.push(corr_evidence(&stream)?.require_score("correlation")?);
             sp.push(pid_evidence(&stream)?.require_score("PID")?);
@@ -1090,33 +1668,34 @@ pub struct CollusionResult {
 /// forces. This is the honest-majority assumption failing: with the liars in the majority the
 /// "consensus" is theirs, and the honest minority is the one that looks decoupled.
 pub fn collusion_study(cfg: &EvalConfig, n: usize) -> CoreResult<CollusionResult> {
-    validate_config(cfg)?;
     validate_trials(n)?;
     validate_observation_work(n, cfg.frames, 1)?;
+    validate_full_pid_calls(cfg, n, "collusion PID quadratic fits")?;
     let honest = Modality::Visual;
     let colluders = [Modality::Radar, Modality::Acoustic];
     let start = (cfg.frames as u64) / 3;
+    let pid_config = pid_research_config()?;
     let (mut c_acc, mut p_acc, mut c_fire, mut p_fire, mut p_insufficient) =
         (0usize, 0usize, 0usize, 0usize, 0usize);
     for t in 0..n {
-        let s = scenario(cfg, cfg.base_seed.wrapping_add(t as u64));
+        let s = scenario(cfg, cfg.base_seed.wrapping_add(t as u64))?;
         let stream = generate_collusion(&s, &colluders, start)?;
         let chans = scalar_channels(&stream, &MODALITIES, 0)?;
 
-        let cr = correlation::analyze(&chans, &CorrConfig::default())?;
+        let cr = correlation::analyze(&chans, &CorrConfig::standalone_advisory_v0_9()?)?;
         if cr
-            .channels
+            .channels()
             .iter()
-            .any(|c| c.modality == honest && c.decoupled)
+            .any(|c| c.modality() == honest && c.decoupled())
         {
             c_acc += 1;
         }
-        if cr.channels.iter().any(|c| c.decoupled) {
+        if cr.channels().iter().any(|c| c.decoupled()) {
             c_fire += 1;
         }
 
-        let pr = analyze(&chans, &PidConfig::default())?;
-        match &pr.verdict {
+        let pr = analyze(&chans, &pid_config)?;
+        match pr.verdict() {
             PidVerdict::Decoupled(modalities) => {
                 p_fire += 1;
                 p_acc += usize::from(modalities.contains(&honest));
@@ -1229,10 +1808,17 @@ pub fn adaptive_adversary(
     decouplings: &[f64],
     far: f64,
 ) -> CoreResult<AdaptiveStudy> {
-    validate_config(cfg)?;
     validate_decouplings(decouplings)?;
     validate_grid_work(cfg, decouplings.len())?;
     validate_observation_work(cfg.trials, cfg.frames, decouplings.len().saturating_add(2))?;
+    let pid_calls = decouplings
+        .len()
+        .checked_add(2)
+        .and_then(|streams| streams.checked_mul(cfg.trials))
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "adaptive PID call count",
+        })?;
+    validate_full_pid_calls(cfg, pid_calls, "adaptive PID quadratic fits")?;
     if !far.is_finite() || far <= 0.0 || far >= 1.0 {
         return Err(GaladrielError::InvalidConfig(
             "target clean upper-tail quantile must be finite and in (0, 1)".into(),
@@ -1278,7 +1864,7 @@ pub fn adaptive_adversary(
     for &d in decouplings {
         let (mut cd, mut pd) = (0usize, 0usize);
         for t in 0..cfg.trials {
-            let scenario = scenario(cfg, attack_seed(cfg, t, Attack::Stealthy));
+            let scenario = scenario(cfg, attack_seed(cfg, t, Attack::Stealthy))?;
             let stream = generate_spoofed_partial(&scenario, spoof, d)?;
             if corr_evidence(&stream)?.require_score("correlation")? > corr_thresh {
                 cd += 1;
@@ -1395,19 +1981,23 @@ pub fn maneuver_far(
     magnitude: f64,
     duration: u64,
 ) -> CoreResult<Vec<ManeuverRow>> {
-    validate_config(cfg)?;
-    if lag_steps.is_empty() || lag_steps.len() > 10_000 {
-        return Err(GaladrielError::InvalidConfig(
-            "maneuver lag grid must contain 1..=10000 entries".into(),
-        ));
-    }
+    validate_maneuver_inputs(cfg, lag_steps, magnitude, duration)?;
     validate_grid_work(cfg, lag_steps.len())?;
+    let pid_calls =
+        lag_steps
+            .len()
+            .checked_mul(cfg.trials)
+            .ok_or(EvalConfigError::WorkOverflow {
+                context: "maneuver PID call count",
+            })?;
+    validate_full_pid_calls(cfg, pid_calls, "maneuver PID quadratic fits")?;
     let start = (cfg.frames as u64) / 3;
+    let pid_config = pid_research_config()?;
     let mut rows = Vec::with_capacity(lag_steps.len());
     for &lag_step in lag_steps {
         let (mut cf, mut pf) = (0usize, 0usize);
         for t in 0..cfg.trials {
-            let scenario = scenario(cfg, cfg.base_seed.wrapping_add(t as u64));
+            let scenario = scenario(cfg, cfg.base_seed.wrapping_add(t as u64))?;
             let mut stream = generate(&scenario)?;
             inject(
                 &mut stream,
@@ -1419,17 +2009,17 @@ pub fn maneuver_far(
                 },
             )?;
             let channels = scalar_channels(&stream, &MODALITIES, 0)?;
-            if correlation::analyze(&channels, &CorrConfig::default())?
-                .channels
+            if correlation::analyze(&channels, &CorrConfig::standalone_advisory_v0_9()?)?
+                .channels()
                 .iter()
-                .any(|channel| channel.decoupled)
+                .any(|channel| channel.decoupled())
             {
                 cf += 1;
             }
-            if analyze(&channels, &PidConfig::default())?
-                .channels
+            if analyze(&channels, &pid_config)?
+                .channels()
                 .iter()
-                .any(|channel| channel.decoupled)
+                .any(|channel| channel.is_decoupled())
             {
                 pf += 1;
             }
@@ -1492,8 +2082,8 @@ fn fused_innovation(stream: &[PidObservation]) -> Vec<f64> {
                 .iter()
                 .filter_map(|observation| {
                     observation
-                        .consistency_projection
-                        .map(|projection| projection.values[0])
+                        .consistency_projection()
+                        .map(|projection| projection.values()[0])
                 })
                 .fold((0.0, 0usize), |(s, c), v| (s + v, c + 1));
             if cnt == 0 {
@@ -1523,7 +2113,6 @@ pub struct AttackerGainRow {
 /// it. The zero-mean phantom does not model an attacker-chosen directional bias or
 /// accumulated state-estimation error.
 pub fn attacker_gain(cfg: &EvalConfig, decouplings: &[f64]) -> CoreResult<Vec<AttackerGainRow>> {
-    validate_config(cfg)?;
     validate_decouplings(decouplings)?;
     validate_grid_work(cfg, decouplings.len())?;
     let streams = decouplings.len().checked_mul(2).ok_or_else(|| {
@@ -1540,7 +2129,7 @@ pub fn attacker_gain(cfg: &EvalConfig, decouplings: &[f64]) -> CoreResult<Vec<At
         let (mut bias_sq, mut count) = (0.0_f64, 0usize);
         let mut detect = 0usize;
         for t in 0..cfg.trials {
-            let scenario = scenario(cfg, cfg.base_seed.wrapping_add(t as u64));
+            let scenario = scenario(cfg, cfg.base_seed.wrapping_add(t as u64))?;
             let clean = generate(&scenario)?;
             let spoofed = generate_spoofed_partial(&scenario, spoof, d)?;
             let (clean_fused, spoofed_fused) =
@@ -1671,8 +2260,15 @@ pub struct EvalResults {
 
 /// Run the Monte-Carlo evaluation.
 pub fn run(cfg: &EvalConfig) -> CoreResult<EvalResults> {
-    validate_config(cfg)?;
     validate_observation_work(cfg.trials, cfg.frames, Attack::ALL.len())?;
+    let pid_calls = cfg
+        .trials
+        .checked_mul(Attack::ALL.len())
+        .and_then(|calls| calls.checked_mul(1 + EVAL_PROJECTION_AXES))
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "main evaluation PID call count",
+        })?;
+    validate_full_pid_calls(cfg, pid_calls, "main evaluation PID quadratic fits")?;
     let mut b_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
     let mut c_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
     let mut p_scores: HashMap<Attack, Vec<f64>> = HashMap::new();
@@ -1999,7 +2595,11 @@ fn ttd(
     Ok(TtdOutcome::Never)
 }
 
-fn validate_latency_work(cfg: &EvalConfig, trials: usize, step: usize) -> CoreResult<()> {
+fn validate_latency_work(
+    cfg: &EvalConfig,
+    trials: usize,
+    step: usize,
+) -> std::result::Result<(), EvalConfigError> {
     let probes = ttd_probe_schedule(cfg.frames, cfg.frames / 3, step).len();
     let observations = trials
         .checked_mul(Attack::ALL.len() - 1)
@@ -2007,13 +2607,15 @@ fn validate_latency_work(cfg: &EvalConfig, trials: usize, step: usize) -> CoreRe
         .and_then(|work| work.checked_mul(probes))
         .and_then(|work| work.checked_mul(cfg.frames))
         .and_then(|work| work.checked_mul(MODALITIES.len()))
-        .ok_or_else(|| {
-            GaladrielError::InvalidConfig("latency prefix-work estimate overflowed".into())
+        .ok_or(EvalConfigError::WorkOverflow {
+            context: "latency prefix observations",
         })?;
     if observations > MAX_LATENCY_PREFIX_OBSERVATIONS {
-        return Err(GaladrielError::InvalidConfig(format!(
-            "latency study requests about {observations} prefix-observation visits; maximum is {MAX_LATENCY_PREFIX_OBSERVATIONS}; increase step or reduce frames/trials"
-        )));
+        return Err(EvalConfigError::WorkLimit {
+            context: "latency prefix observations",
+            actual: observations as u128,
+            maximum: MAX_LATENCY_PREFIX_OBSERVATIONS as u128,
+        });
     }
     Ok(())
 }
@@ -2026,14 +2628,15 @@ pub fn measure_latency(
     trials: usize,
     step: usize,
 ) -> CoreResult<Vec<AttackLatency>> {
-    validate_config(cfg)?;
     validate_trials(trials)?;
     if step == 0 || step > cfg.frames {
-        return Err(GaladrielError::InvalidConfig(
-            "latency step must be in 1..=frames".into(),
-        ));
+        return Err(EvalConfigError::InvalidLatencyStep.into());
     }
     validate_latency_work(cfg, trials, step)?;
+    validate_pid_work_limit(
+        latency_pid_work(cfg, trials, step)?,
+        "latency PID quadratic fits",
+    )?;
     let onset = cfg.frames / 3;
     let mut rows = Vec::with_capacity(Attack::ALL.len() - 1);
     for &attack in Attack::ALL
@@ -2135,6 +2738,22 @@ pub fn format_latency(rows: &[AttackLatency], trials: usize, step: usize) -> Str
 mod tests {
     use super::*;
 
+    fn config(mut update: impl FnMut(&mut EvalParams)) -> EvalConfig {
+        let mut params = EvaluationResearchProfile::SyntheticV0_9.params();
+        update(&mut params);
+        EvalConfig::try_new(params).expect("test evaluation parameters must be valid")
+    }
+
+    fn suite_params() -> EvalSuiteParams {
+        EvalSuiteParams {
+            decouplings: vec![1.0, 0.6, 0.2],
+            lag_steps: vec![0, 16],
+            bootstrap_resamples: 200,
+            latency_trials: MIN_INFERENCE_TRIALS,
+            latency_step: 10,
+        }
+    }
+
     fn metrics(r: &EvalResults, a: Attack) -> AttackMetrics {
         r.per_attack
             .iter()
@@ -2144,13 +2763,210 @@ mod tests {
     }
 
     #[test]
+    fn eval_config_rejects_every_scalar_boundary_with_typed_categories() {
+        for trials in [0, MIN_INFERENCE_TRIALS - 1, 1_001, usize::MAX] {
+            let mut params = EvaluationResearchProfile::SyntheticV0_9.params();
+            params.trials = trials;
+            assert!(matches!(
+                EvalConfig::try_new(params),
+                Err(EvalConfigError::TrialsOutOfRange { .. })
+            ));
+        }
+        for frames in [0, 127, 10_001, usize::MAX] {
+            let mut params = EvaluationResearchProfile::SyntheticV0_9.params();
+            params.frames = frames;
+            assert!(matches!(
+                EvalConfig::try_new(params),
+                Err(EvalConfigError::FramesOutOfRange)
+            ));
+        }
+        for rho in [f64::NEG_INFINITY, -0.0, 0.0, 1.0, f64::INFINITY, f64::NAN] {
+            let mut params = EvaluationResearchProfile::SyntheticV0_9.params();
+            params.rho = rho;
+            assert!(matches!(
+                EvalConfig::try_new(params),
+                Err(EvalConfigError::InvalidCorrelation)
+            ));
+        }
+        for sigma in [
+            f64::NEG_INFINITY,
+            -1.0,
+            0.0,
+            f64::MIN_POSITIVE,
+            f64::INFINITY,
+            f64::NAN,
+        ] {
+            let mut params = EvaluationResearchProfile::SyntheticV0_9.params();
+            params.sigma = sigma;
+            assert!(matches!(
+                EvalConfig::try_new(params),
+                Err(EvalConfigError::InvalidSigma)
+            ));
+        }
+        for spoof_bias in [
+            f64::NEG_INFINITY,
+            -1.0,
+            0.0,
+            f64::MAX,
+            f64::INFINITY,
+            f64::NAN,
+        ] {
+            let mut params = EvaluationResearchProfile::SyntheticV0_9.params();
+            params.spoof_bias = spoof_bias;
+            assert!(matches!(
+                EvalConfig::try_new(params),
+                Err(EvalConfigError::InvalidSpoofBias)
+            ));
+        }
+        for jam_inflation in [
+            f64::NEG_INFINITY,
+            -1.0,
+            0.0,
+            1.0,
+            f64::MAX,
+            f64::INFINITY,
+            f64::NAN,
+        ] {
+            let mut params = EvaluationResearchProfile::SyntheticV0_9.params();
+            params.jam_inflation = jam_inflation;
+            assert!(matches!(
+                EvalConfig::try_new(params),
+                Err(EvalConfigError::InvalidJamInflation)
+            ));
+        }
+    }
+
+    #[test]
+    fn named_and_custom_eval_identities_are_deterministic_and_distinct() {
+        let first = EvaluationResearchProfile::SyntheticV0_9
+            .try_config()
+            .expect("named evaluation profile must be accepted");
+        let second = EvaluationResearchProfile::SyntheticV0_9
+            .try_config()
+            .expect("named evaluation profile must be accepted");
+        let custom = EvalConfig::try_new(EvaluationResearchProfile::SyntheticV0_9.params())
+            .expect("identical custom parameters must be accepted");
+
+        assert_eq!(
+            first.origin(),
+            EvalConfigOrigin::Named(EvaluationResearchProfile::SyntheticV0_9)
+        );
+        assert_eq!(first.canonical_digest(), second.canonical_digest());
+        assert_eq!(first.canonical_digest().len(), 64);
+        assert_eq!(custom.origin(), EvalConfigOrigin::CustomResearch);
+        assert_ne!(first.canonical_digest(), custom.canonical_digest());
+    }
+
+    #[test]
+    fn suite_acceptance_rejects_duplicate_malformed_and_overflowing_grids() {
+        let cfg = config(|params| params.trials = MIN_INFERENCE_TRIALS);
+
+        let mut empty = suite_params();
+        empty.decouplings.clear();
+        assert!(matches!(
+            EvalSuiteConfig::try_new(cfg.clone(), empty),
+            Err(EvalConfigError::GridLength {
+                grid: "decoupling",
+                ..
+            })
+        ));
+
+        let mut duplicate_zero = suite_params();
+        duplicate_zero.decouplings = vec![0.0, -0.0];
+        assert!(matches!(
+            EvalSuiteConfig::try_new(cfg.clone(), duplicate_zero),
+            Err(EvalConfigError::DuplicateGridValue {
+                grid: "decoupling",
+                index: 1
+            })
+        ));
+
+        let mut nonfinite = suite_params();
+        nonfinite.decouplings[1] = f64::NAN;
+        assert!(matches!(
+            EvalSuiteConfig::try_new(cfg.clone(), nonfinite),
+            Err(EvalConfigError::InvalidDecoupling { index: 1 })
+        ));
+
+        let mut duplicate_lag = suite_params();
+        duplicate_lag.lag_steps = vec![16, 16];
+        assert!(matches!(
+            EvalSuiteConfig::try_new(cfg.clone(), duplicate_lag),
+            Err(EvalConfigError::DuplicateGridValue {
+                grid: "maneuver lag",
+                index: 1
+            })
+        ));
+
+        let mut lag_overflow = suite_params();
+        lag_overflow.lag_steps = vec![u64::MAX];
+        assert!(matches!(
+            EvalSuiteConfig::try_new(cfg.clone(), lag_overflow),
+            Err(EvalConfigError::ManeuverLagOverflow { index: 0 })
+        ));
+
+        let mut censored_lag = suite_params();
+        censored_lag.lag_steps = vec![64];
+        assert!(matches!(
+            EvalSuiteConfig::try_new(cfg.clone(), censored_lag),
+            Err(EvalConfigError::ManeuverOutsideCapture {
+                index: 0,
+                required_end: 382,
+                available_frames: 300,
+            })
+        ));
+
+        let mut bootstrap = suite_params();
+        bootstrap.bootstrap_resamples = 199;
+        assert!(matches!(
+            EvalSuiteConfig::try_new(cfg.clone(), bootstrap),
+            Err(EvalConfigError::BootstrapOutOfRange)
+        ));
+
+        let mut latency = suite_params();
+        latency.latency_step = 0;
+        assert!(matches!(
+            EvalSuiteConfig::try_new(cfg, latency),
+            Err(EvalConfigError::InvalidLatencyStep)
+        ));
+    }
+
+    #[test]
+    fn accepted_suite_retains_exact_inputs_and_stable_identity() {
+        let cfg = config(|params| params.trials = MIN_INFERENCE_TRIALS);
+        let params = suite_params();
+        let first = EvalSuiteConfig::try_new(cfg.clone(), params.clone())
+            .expect("bounded suite must be accepted");
+        let second =
+            EvalSuiteConfig::try_new(cfg, params).expect("same bounded suite must be accepted");
+
+        assert_eq!(first.decouplings(), [1.0, 0.6, 0.2]);
+        assert_eq!(first.lag_steps(), [0, 16]);
+        assert_eq!(first.bootstrap_resamples(), 200);
+        assert_eq!(first.latency_trials(), MIN_INFERENCE_TRIALS);
+        assert_eq!(first.latency_step(), 10);
+        assert_eq!(first.canonical_digest(), second.canonical_digest());
+        assert_eq!(first.canonical_digest().len(), 64);
+
+        let mut positive_zero = suite_params();
+        positive_zero.decouplings = vec![0.0, 0.6];
+        let mut negative_zero = positive_zero.clone();
+        negative_zero.decouplings[0] = -0.0;
+        let positive_zero = EvalSuiteConfig::try_new(first.eval().clone(), positive_zero)
+            .expect("positive-zero grid must be accepted");
+        let negative_zero = EvalSuiteConfig::try_new(first.eval().clone(), negative_zero)
+            .expect("negative-zero grid must be accepted");
+        assert_eq!(negative_zero.decouplings()[0].to_bits(), 0.0_f64.to_bits());
+        assert_eq!(
+            negative_zero.canonical_digest(),
+            positive_zero.canonical_digest()
+        );
+    }
+
+    #[test]
     fn hypothesis_holds() {
         // Smaller trial count keeps the test fast but statistically clear.
-        let r = run(&EvalConfig {
-            trials: 40,
-            ..Default::default()
-        })
-        .expect("valid evaluation");
+        let r = run(&config(|params| params.trials = 40)).expect("valid evaluation");
 
         // Every detector is quiet on the null.
         assert!(r.baseline_far < 0.1, "baseline FAR {:.3}", r.baseline_far);
@@ -2223,11 +3039,10 @@ mod tests {
 
     #[test]
     fn ttd_probes_non_aligned_final_capture_frame_once() {
-        let cfg = EvalConfig {
-            trials: MIN_INFERENCE_TRIALS,
-            frames: 128,
-            ..Default::default()
-        };
+        let cfg = config(|params| {
+            params.trials = MIN_INFERENCE_TRIALS;
+            params.frames = 128;
+        });
         let stream = build(Attack::Clean, &cfg, 7).expect("valid synthetic stream");
         let onset = cfg.frames / 3;
         let final_probes = std::cell::Cell::new(0usize);
@@ -2250,10 +3065,7 @@ mod tests {
     #[test]
     fn latency_tracks_attack_ownership() {
         // Lean settings: enough trials for a stable median, small enough to stay fast.
-        let cfg = EvalConfig {
-            frames: 210,
-            ..Default::default()
-        };
+        let cfg = config(|params| params.frames = 210);
         let rows = measure_latency(&cfg, 20, 6).expect("valid latency study");
 
         let st = rows.iter().find(|r| r.attack == Attack::Stealthy).unwrap();
@@ -2281,10 +3093,7 @@ mod tests {
 
     #[test]
     fn bootstrap_cis_match_alarm_ranked_auc_and_beat_baseline() {
-        let cfg = EvalConfig {
-            trials: 80,
-            ..Default::default()
-        };
+        let cfg = config(|params| params.trials = 80);
         let (rows, (diff, dlo, dhi)) = stealthy_ci_study(&cfg, 500).expect("valid bootstrap study");
 
         let corr = &rows[1];
@@ -2336,10 +3145,7 @@ mod tests {
 
     #[test]
     fn colluding_majority_inverts_the_detector_onto_the_honest_channel() {
-        let cfg = EvalConfig {
-            trials: 40,
-            ..Default::default()
-        };
+        let cfg = config(|params| params.trials = 40);
         let r = collusion_study(&cfg, 40).expect("valid collusion study");
         // The detector fires (it is not silent)…
         assert!(
@@ -2365,10 +3171,7 @@ mod tests {
 
     #[test]
     fn decoupling_sweep_shows_correlation_dominates_the_boundary() {
-        let cfg = EvalConfig {
-            trials: 60,
-            ..Default::default()
-        };
+        let cfg = config(|params| params.trials = 60);
         let grid = [1.0, 0.6, 0.4, 0.2, 0.1];
         let rows = decoupling_sweep(&cfg, &grid, 400).expect("valid sweep");
 
@@ -2402,10 +3205,7 @@ mod tests {
 
     #[test]
     fn adaptive_detection_declines_as_decoupling_weakens() {
-        let cfg = EvalConfig {
-            trials: 50,
-            ..Default::default()
-        };
+        let cfg = config(|params| params.trials = 50);
         let grid = [1.0, 0.6, 0.4, 0.2, 0.1, 0.05];
         let study = adaptive_adversary(&cfg, &grid, 0.05).expect("valid adaptive study");
         let rows = &study.rows;
@@ -2430,7 +3230,9 @@ mod tests {
 
     #[test]
     fn adaptive_clean_calibration_and_holdout_seed_domains_are_disjoint() {
-        let cfg = EvalConfig::default();
+        let cfg = EvaluationResearchProfile::SyntheticV0_9
+            .try_config()
+            .expect("named evaluation profile must be valid");
         let calibration: std::collections::HashSet<_> = (0..1_000)
             .map(|trial| adaptive_clean_seed(&cfg, trial, AdaptiveCleanArm::Calibration))
             .collect();
@@ -2468,10 +3270,7 @@ mod tests {
 
     #[test]
     fn synchronized_maneuver_does_not_false_alarm() {
-        let cfg = EvalConfig {
-            trials: 40,
-            ..Default::default()
-        };
+        let cfg = config(|params| params.trials = 40);
         let rows = maneuver_far(&cfg, &[0, 32], 12.0, 90).expect("valid maneuver study");
         // A synchronized maneuver (lag 0) keeps channels correlated → ~no consistency FAR.
         assert!(
@@ -2496,11 +3295,26 @@ mod tests {
     }
 
     #[test]
+    fn maneuver_study_rejects_invalid_or_censored_inputs_before_generation() {
+        let cfg = config(|params| params.trials = MIN_INFERENCE_TRIALS);
+        assert!(matches!(
+            validate_maneuver_inputs(&cfg, &[0], f64::NAN, 90),
+            Err(EvalConfigError::InvalidManeuverMagnitude)
+        ));
+        assert!(matches!(
+            validate_maneuver_inputs(&cfg, &[0], 12.0, 0),
+            Err(EvalConfigError::InvalidManeuverDuration)
+        ));
+        assert!(matches!(
+            validate_maneuver_inputs(&cfg, &[64], 12.0, 90),
+            Err(EvalConfigError::ManeuverOutsideCapture { .. })
+        ));
+        assert!(maneuver_far(&cfg, &[64], 12.0, 90).is_err());
+    }
+
+    #[test]
     fn modeled_perturbation_grows_with_decoupling() {
-        let cfg = EvalConfig {
-            trials: 60,
-            ..Default::default()
-        };
+        let cfg = config(|params| params.trials = 60);
         let rows = attacker_gain(&cfg, &[0.1, 0.4, 1.0]).expect("valid attacker study");
         // More decoupling injects more fused-innovation bias…
         assert!(
@@ -2538,19 +3352,13 @@ mod tests {
 
     #[test]
     fn command_report_suite_preflights_before_work() {
-        let cfg = EvalConfig {
-            trials: MIN_INFERENCE_TRIALS,
-            ..Default::default()
-        };
+        let cfg = config(|params| params.trials = MIN_INFERENCE_TRIALS);
         let grid = [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05];
-        let lags = [0, 8, 16, 32, 64];
+        let lags = [0, 8, 16, 24, 32];
         validate_report_suite(&cfg, &grid, &lags, 200, MIN_INFERENCE_TRIALS, 10)
             .expect("minimum CLI suite must pass preflight");
 
-        let documented_larger = EvalConfig {
-            trials: 200,
-            ..Default::default()
-        };
+        let documented_larger = config(|params| params.trials = 200);
         validate_report_suite(
             &documented_larger,
             &grid,
@@ -2561,11 +3369,10 @@ mod tests {
         )
         .expect("documented 200-trial release suite must pass preflight");
 
-        let excessive = EvalConfig {
-            trials: 1_000,
-            frames: 10_000,
-            ..Default::default()
-        };
+        let excessive = config(|params| {
+            params.trials = 1_000;
+            params.frames = 10_000;
+        });
         assert!(
             validate_report_suite(&excessive, &grid, &lags, 200, 1_000, 1).is_err(),
             "accepted field maxima must not imply an unbounded aggregate suite"
@@ -2574,22 +3381,37 @@ mod tests {
 
     #[test]
     fn command_preflight_rejects_pid_estimator_work_before_observation_limits() {
-        let estimator_heavy = EvalConfig {
-            trials: 1_000,
-            frames: 128,
-            ..Default::default()
-        };
-        let error = validate_report_suite(
-            &estimator_heavy,
-            &[1.0, 0.6, 0.2],
-            &[0, 16],
-            200,
-            1_000,
-            128,
-        )
-        .expect_err("quadratic PID work must reject this otherwise bounded suite");
+        let estimator_heavy = config(|params| {
+            params.trials = 1_000;
+            params.frames = 192;
+        });
+        let error =
+            validate_report_suite(&estimator_heavy, &[1.0, 0.6, 0.2], &[0], 200, 1_000, 128)
+                .expect_err("quadratic PID work must reject this otherwise bounded suite");
 
-        assert!(error.to_string().contains("PID quadratic fit-units"));
+        assert!(matches!(
+            error,
+            EvalConfigError::WorkLimit {
+                context: "suite PID quadratic fits",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn individual_study_rejects_aggregate_pid_work_before_execution() {
+        let cfg = config(|params| {
+            params.trials = 1_000;
+            params.frames = 128;
+        });
+        let grid = (0..50).map(|index| index as f64 / 49.0).collect::<Vec<_>>();
+        let error = decoupling_sweep(&cfg, &grid, 200)
+            .expect_err("standalone sweep must enforce the aggregate PID ceiling");
+        assert!(matches!(
+            error,
+            GaladrielError::InvalidConfig(message)
+                if message.contains("sweep PID quadratic fits")
+        ));
     }
 
     #[test]
@@ -2606,6 +3428,42 @@ mod prop_tests {
     use proptest::prelude::*;
 
     proptest! {
+        /// Every point inside the documented scalar domain is accepted without
+        /// normalization, and canonical identity is deterministic.
+        #[test]
+        fn valid_eval_params_round_trip_into_an_immutable_config(
+            trials in MIN_INFERENCE_TRIALS..=1_000usize,
+            base_seed in any::<u64>(),
+            frames in 128usize..=10_000,
+            rho in 1.0e-6f64..0.999_999,
+            sigma in 1.0e-6f64..1.0e100,
+            spoof_bias in 1.0e-6f64..1.0e100,
+            jam_inflation in 1.000_001f64..1.0e100,
+        ) {
+            let params = EvalParams {
+                trials,
+                base_seed,
+                frames,
+                rho,
+                sigma,
+                spoof_bias,
+                jam_inflation,
+            };
+            let first = EvalConfig::try_new(params.clone())
+                .expect("generated parameters are inside every accepted scalar bound");
+            let second = EvalConfig::try_new(params)
+                .expect("the same generated parameters remain accepted");
+
+            prop_assert_eq!(first.trials(), trials);
+            prop_assert_eq!(first.base_seed(), base_seed);
+            prop_assert_eq!(first.frames(), frames);
+            prop_assert_eq!(first.rho().to_bits(), rho.to_bits());
+            prop_assert_eq!(first.sigma().to_bits(), sigma.to_bits());
+            prop_assert_eq!(first.spoof_bias().to_bits(), spoof_bias.to_bits());
+            prop_assert_eq!(first.jam_inflation().to_bits(), jam_inflation.to_bits());
+            prop_assert_eq!(first.canonical_digest(), second.canonical_digest());
+        }
+
         /// The AUC is a probability in [0, 1] and antisymmetric: swapping the classes
         /// gives `1 − AUC`.
         #[test]

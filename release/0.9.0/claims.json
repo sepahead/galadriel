@@ -14,8 +14,7 @@
       "tier": "IMPLEMENTED",
       "scope": "galadriel-core source behavior under its validated configuration and bounded inputs",
       "evidence": [
-        "crates/galadriel-core/src/decision.rs",
-        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+        "crates/galadriel-core/src/decision.rs"
       ],
       "limitations": "Implementation does not authenticate physical truth, identify attack cause, or establish a calibrated false-alert rate."
     },
@@ -26,7 +25,8 @@
       "scope": "galadriel-core projection extraction and default correlation path",
       "evidence": [
         "crates/galadriel-core/src/lib.rs",
-        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+        "crates/galadriel-core/src/observation.rs",
+        "crates/galadriel-core/src/correlation.rs"
       ],
       "limitations": "Producer-attested means a provenance claim; cryptographic authenticity exists only when an independently configured transport binds publisher identity."
     },
@@ -36,8 +36,10 @@
       "tier": "IMPLEMENTED",
       "scope": "galadriel-ncp component and in-process receiver behavior at the exact NCP 0.8 pin",
       "evidence": [
-        "crates/galadriel-ncp/src",
-        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+        "crates/galadriel-ncp/src/lib.rs",
+        "crates/galadriel-ncp/src/assembler.rs",
+        "crates/galadriel-ncp/src/lifecycle.rs",
+        "crates/galadriel-ncp/tests/crebain_capture.rs"
       ],
       "limitations": "No external actual-binary mTLS/ACL campaign or NCP 1.0 conformance is claimed."
     },
@@ -47,7 +49,8 @@
       "tier": "VALIDATED",
       "scope": "exact baseline commit, lockfile, toolchain, commands, seeds, fixtures and in-process transports recorded by the audit manifest",
       "evidence": [
-        "release/0.9.0/evidence/baseline-workspace-all-features.log"
+        "release/0.9.0/evidence/baseline-94e2f8cc/baseline.json",
+        "release/0.9.0/evidence/baseline-94e2f8cc/baseline.log"
       ],
       "limitations": "A passing component suite is not independent field validation, a performance guarantee, or evidence for untested platforms."
     },
@@ -100,7 +103,7 @@
       "tier": "NOT_CLAIMED",
       "scope": "package publication and operational support",
       "evidence": [],
-      "limitations": "All workspace packages remain publish=false; 0.9.0 is a GitHub source release for supervisor review."
+      "limitations": "All workspace packages remain publish=false; 0.9.0 is a GitHub research source release."
     },
     {
       "id": "CLM-011",
@@ -108,7 +111,55 @@
       "tier": "NOT_CLAIMED",
       "scope": "citation and archival identity",
       "evidence": [],
-      "limitations": "The author will add DOI/Zenodo metadata only after this supervisor-review release."
+      "limitations": "The author will add DOI/Zenodo metadata only after this 0.9.0 release."
+    },
+    {
+      "id": "CLM-012",
+      "claim": "The 0.9.0 candidate has completed independent human, statistical, or security review.",
+      "tier": "NOT_CLAIMED",
+      "scope": "review independence and expert assurance",
+      "evidence": [],
+      "limitations": "The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate."
+    },
+    {
+      "id": "CLM-013",
+      "claim": "Per-assessment significance controls provide calibrated sequential or mission-wide error control across repeated windows, tracks, and operating time.",
+      "tier": "NOT_CLAIMED",
+      "scope": "sequential monitoring, repeated looks, serial dependence, and mission-level multiplicity",
+      "evidence": [],
+      "limitations": "The release controls stated within-assessment channel and projection-axis families only. It does not convert those thresholds into an anytime-valid, track-wide, or mission-wide false-alarm guarantee."
+    },
+    {
+      "id": "CLM-014",
+      "claim": "At least one retained holdout arm uses an independently authored generator or external representative deployment dataset.",
+      "tier": "NOT_CLAIMED",
+      "scope": "scientific holdout independence and external validity",
+      "evidence": [],
+      "limitations": "The checked-in generators and reciprocal Crebain fixture are repository-controlled compatibility inputs, not an independently authored or representative deployment holdout."
+    },
+    {
+      "id": "CLM-015",
+      "claim": "The complete platform/profile matrix and long-duration operational resilience envelope are qualified.",
+      "tier": "NOT_CLAIMED",
+      "scope": "cross-platform equivalence, sustained resource behavior, cancellation, restart, scheduling, and availability",
+      "evidence": [],
+      "limitations": "Qualification covers the recorded author host, Linux CI, bounded hostile-input campaigns, and supported feature graphs; it is not a full platform matrix or a long-duration deployment soak."
+    },
+    {
+      "id": "CLM-016",
+      "claim": "An independent clean-room party reproduced the build, evidence, and release artifacts.",
+      "tier": "NOT_CLAIMED",
+      "scope": "organizationally independent reproducibility",
+      "evidence": [],
+      "limitations": "The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent."
+    },
+    {
+      "id": "CLM-017",
+      "claim": "Publication, rollback, revocation, withdrawal, and post-publication response were rehearsed against a disposable production-equivalent release environment.",
+      "tier": "NOT_CLAIMED",
+      "scope": "release-operations rehearsal and incident response",
+      "evidence": [],
+      "limitations": "The release includes checked procedures and performs the actual GitHub publication path, but destructive rollback, credential revocation, and production-equivalent incident drills are intentionally not fabricated."
     }
   ]
 }

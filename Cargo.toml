@@ -58,8 +58,9 @@ galadriel-sim = { version = "0.9.0", path = "crates/galadriel-sim" }
 galadriel-pid = { version = "0.9.0", path = "crates/galadriel-pid" }
 galadriel-ncp = { version = "0.9.0", path = "crates/galadriel-ncp" }
 # Public sibling ecosystem crates pinned to immutable commits. pid-rs currently
-# declares 1.0.0 on main without a v1 tag; this revision includes the 1.0 release
-# commit plus its same-day correctness/CI follow-ups. Galadriel opts into the
+# declares 1.0.0 on main without a v1 tag or published artifact; this revision
+# includes that version-declaration commit plus its same-day correctness/CI
+# follow-ups. Galadriel opts into the
 # explicitly experimental continuous/pipeline surface used by its advisory PID path.
 pid-core = { version = "1.0.0", git = "https://github.com/sepahead/pid-rs", rev = "1cd2424f7967e1752dcc8e53859e8fdad3566f51", features = ["experimental-pipelines"] }
 ncp-core = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0

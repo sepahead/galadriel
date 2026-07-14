@@ -10,7 +10,7 @@ use ncp_core::{
     contract_status, valid_id_segment, ContractStatus, Keys, CONTRACT_HASH, DEFAULT_REALM,
     JSON_SAFE_INTEGER_MAX, NCP_VERSION,
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::MAX_ID_SEGMENT_BYTES;
 
@@ -45,6 +45,15 @@ pub const MAX_MONITOR_EVENT_BYTES: usize = 64 * 1_024;
 /// SHA-256 registry digest length in lowercase hexadecimal characters.
 pub const REGISTRY_DIGEST_HEX_LEN: usize = 64;
 
+/// Semantic role of one monitor-envelope identity field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdentityRole {
+    /// NCP producer-epoch session identifier.
+    Session,
+    /// Concrete producer identifier within that epoch.
+    Producer,
+}
+
 /// A validated producer-monitor envelope.
 ///
 /// `event_seq` is global across all event variants within one producer session.
@@ -52,25 +61,37 @@ pub const REGISTRY_DIGEST_HEX_LEN: usize = 64;
 /// producer/transport loss, but operational consumers must surface it as a fault
 /// via [`MonitorEnvelope::validate_next`]. A producer that resets the counter must
 /// mint a fresh `session_id`.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct MonitorEnvelope {
     /// Stable discriminator, [`MONITOR_KIND`].
-    pub kind: String,
+    pub(crate) kind: String,
     /// Galadriel-owned monitor schema, [`MONITOR_SCHEMA_VERSION`].
-    pub schema_version: String,
+    pub(crate) schema_version: String,
     /// NCP wire version governing the named-perception route.
-    pub ncp_version: String,
+    pub(crate) ncp_version: String,
     /// Advisory identity of the NCP contract revision used by the producer.
-    pub contract_hash: String,
+    pub(crate) contract_hash: String,
     /// NCP session and producer epoch.
-    pub session_id: String,
+    pub(crate) session_id: String,
     /// Concrete producer identifier.
-    pub producer_id: String,
+    pub(crate) producer_id: String,
     /// Globally monotonic event sequence within this producer session.
-    pub event_seq: u64,
+    pub(crate) event_seq: u64,
     /// Typed producer event.
-    pub event: ProducerEvent,
+    pub(crate) event: ProducerEvent,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawMonitorEnvelope {
+    kind: String,
+    schema_version: String,
+    ncp_version: String,
+    contract_hash: String,
+    session_id: String,
+    producer_id: String,
+    event_seq: u64,
+    event: ProducerEvent,
 }
 
 /// One producer-monitor event, adjacent-tagged as `{ "type", "data" }`.
@@ -433,7 +454,7 @@ impl MonitorEnvelope {
         event_seq: u64,
         event: ProducerEvent,
     ) -> Result<Self, MonitorError> {
-        let envelope = Self {
+        Self::try_from(RawMonitorEnvelope {
             kind: MONITOR_KIND.to_string(),
             schema_version: MONITOR_SCHEMA_VERSION.to_string(),
             ncp_version: NCP_VERSION.to_string(),
@@ -442,9 +463,52 @@ impl MonitorEnvelope {
             producer_id: producer_id.into(),
             event_seq,
             event,
-        };
-        envelope.validate()?;
-        Ok(envelope)
+        })
+    }
+
+    /// Return the stable producer-monitor payload discriminator.
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    /// Return the Galadriel-owned producer-monitor schema version.
+    pub fn schema_version(&self) -> &str {
+        &self.schema_version
+    }
+
+    /// Return the NCP wire version declared by the producer.
+    pub fn ncp_version(&self) -> &str {
+        &self.ncp_version
+    }
+
+    /// Return the producer-advertised NCP contract hash.
+    pub fn contract_hash(&self) -> &str {
+        &self.contract_hash
+    }
+
+    /// Return the producer epoch bound to the monitor route.
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    /// Return the producer identity claimed by the envelope.
+    pub fn producer_id(&self) -> &str {
+        &self.producer_id
+    }
+
+    /// Return the validated global event sequence.
+    pub const fn event_seq(&self) -> u64 {
+        self.event_seq
+    }
+
+    /// Borrow the validated producer event.
+    pub const fn event(&self) -> &ProducerEvent {
+        &self.event
+    }
+
+    /// Consume the envelope and return its validated producer event.
+    pub fn into_event(self) -> ProducerEvent {
+        self.event
     }
 
     /// Validate identity, NCP compatibility, JSON-safe integers, and event semantics.
@@ -471,8 +535,8 @@ impl MonitorEnvelope {
         ncp_core::check_version(&self.ncp_version, true)
             .map_err(|error| MonitorError::IncompatibleNcpVersion(error.to_string()))?;
         validate_contract_hash(&self.contract_hash)?;
-        validate_identity(&self.session_id, true)?;
-        validate_identity(&self.producer_id, false)?;
+        validate_identity(&self.session_id, IdentityRole::Session)?;
+        validate_identity(&self.producer_id, IdentityRole::Producer)?;
         if self.event_seq == 0 {
             return Err(MonitorError::ZeroEventSequence);
         }
@@ -554,10 +618,38 @@ impl MonitorEnvelope {
     /// Decode and semantically validate one bounded envelope.
     pub fn decode(encoded: &[u8]) -> Result<Self, MonitorError> {
         validate_encoded_size(encoded.len())?;
-        let envelope: Self = serde_json::from_slice(encoded)
+        let raw: RawMonitorEnvelope = serde_json::from_slice(encoded)
             .map_err(|error| MonitorError::Json(error.to_string()))?;
+        Self::try_from(raw)
+    }
+}
+
+impl TryFrom<RawMonitorEnvelope> for MonitorEnvelope {
+    type Error = MonitorError;
+
+    fn try_from(raw: RawMonitorEnvelope) -> Result<Self, Self::Error> {
+        let envelope = Self {
+            kind: raw.kind,
+            schema_version: raw.schema_version,
+            ncp_version: raw.ncp_version,
+            contract_hash: raw.contract_hash,
+            session_id: raw.session_id,
+            producer_id: raw.producer_id,
+            event_seq: raw.event_seq,
+            event: raw.event,
+        };
         envelope.validate()?;
         Ok(envelope)
+    }
+}
+
+impl<'de> Deserialize<'de> for MonitorEnvelope {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = RawMonitorEnvelope::deserialize(deserializer)?;
+        Self::try_from(raw).map_err(serde::de::Error::custom)
     }
 }
 
@@ -672,11 +764,12 @@ impl ModalityOutcome {
         if let Some(evidence) = self.gate_evidence {
             evidence.validate()?;
         }
-        if let Some(projection) = self.consistency_projection {
-            validate_projection(&projection)?;
-            if projection.frame_id != self.frame_id
-                || projection.context_id != self.context_id
-                || projection.prior_id != self.prior_id
+        if let Some(projection) = self.consistency_projection.as_ref() {
+            validate_projection(projection)?;
+            let identity = projection.identity();
+            if identity.frame_id().get() != self.frame_id
+                || identity.context_id().get() != self.context_id
+                || identity.frozen_prior_id().get() != self.prior_id
             {
                 return Err(MonitorError::EventCoherence(
                     "consistency projection provenance must match the outcome frame",
@@ -871,14 +964,13 @@ fn validate_contract_hash(contract_hash: &str) -> Result<(), MonitorError> {
     Ok(())
 }
 
-fn validate_identity(identity: &str, session: bool) -> Result<(), MonitorError> {
+fn validate_identity(identity: &str, role: IdentityRole) -> Result<(), MonitorError> {
     if valid_id_segment(identity) && identity.len() <= MAX_ID_SEGMENT_BYTES {
         return Ok(());
     }
-    if session {
-        Err(MonitorError::InvalidSessionId(identity.to_string()))
-    } else {
-        Err(MonitorError::InvalidProducerId(identity.to_string()))
+    match role {
+        IdentityRole::Session => Err(MonitorError::InvalidSessionId(identity.to_string())),
+        IdentityRole::Producer => Err(MonitorError::InvalidProducerId(identity.to_string())),
     }
 }
 
@@ -955,15 +1047,19 @@ fn validate_frame_identity(
 }
 
 fn validate_projection(projection: &ConsistencyProjection) -> Result<(), MonitorError> {
-    projection
-        .validate()
-        .map_err(|error| MonitorError::InvalidConsistencyProjection(error.to_string()))?;
-    validate_json_integer("event.consistency_projection.frame_id", projection.frame_id)?;
+    let identity = projection.identity();
+    validate_json_integer(
+        "event.consistency_projection.frame_id",
+        identity.frame_id().get(),
+    )?;
     validate_json_integer(
         "event.consistency_projection.context_id",
-        projection.context_id,
+        identity.context_id().get(),
     )?;
-    validate_json_integer("event.consistency_projection.prior_id", projection.prior_id)
+    validate_json_integer(
+        "event.consistency_projection.prior_id",
+        identity.frozen_prior_id().get(),
+    )
 }
 
 fn validate_gate_value(field: &'static str, value: f64) -> Result<(), MonitorError> {
@@ -1083,13 +1179,12 @@ mod tests {
     }
 
     fn projection() -> ConsistencyProjection {
-        ConsistencyProjection {
-            values: [1.0, -2.0, 0.0],
-            dimensions: 2,
-            frame_id: 17,
-            context_id: 23,
-            prior_id: 29,
-        }
+        projection_for(17, 23, 29)
+    }
+
+    fn projection_for(frame_id: u64, context_id: u64, prior_id: u64) -> ConsistencyProjection {
+        ConsistencyProjection::try_new_raw([1.0, -2.0, 0.0], 2, frame_id, context_id, prior_id)
+            .expect("test projection is structurally valid")
     }
 
     fn outcome(kind: ModalityOutcomeKind) -> ModalityOutcome {
@@ -1169,6 +1264,29 @@ mod tests {
         );
 
         assert_eq!(serde_json::to_string(&envelope).unwrap(), expected);
+    }
+
+    #[test]
+    fn monitor_envelope_rejects_unversioned_nested_projection_identity() {
+        let envelope = MonitorEnvelope::try_new(
+            "uav3",
+            "crebain",
+            8,
+            ProducerEvent::ModalityOutcome(outcome(ModalityOutcomeKind::Updated)),
+        )
+        .unwrap();
+        let mut raw = serde_json::to_value(envelope).unwrap();
+        raw["event"]["data"]["consistency_projection"] = serde_json::json!({
+            "values": [1.0, -2.0, 0.0],
+            "dimensions": 2,
+            "identity": {
+                "frame_id": 17,
+                "context_id": 23,
+                "frozen_prior_id": 29
+            }
+        });
+
+        assert!(serde_json::from_value::<MonitorEnvelope>(raw).is_err());
     }
 
     #[test]
@@ -1256,6 +1374,38 @@ mod tests {
     }
 
     #[test]
+    fn monitor_envelope_deserialization_rejects_semantically_invalid_events() {
+        let envelope =
+            MonitorEnvelope::try_new("uav3", "crebain", 1, ProducerEvent::Heartbeat(heartbeat()))
+                .unwrap();
+        let mut raw = serde_json::to_value(envelope).unwrap();
+        raw["event"]["data"]["declared_interval_ms"] = serde_json::json!(0);
+
+        let error = serde_json::from_value::<MonitorEnvelope>(raw).unwrap_err();
+
+        assert!(error
+            .to_string()
+            .contains("declared_interval_ms must be in 1..="));
+    }
+
+    #[test]
+    fn monitor_envelope_deserialization_rejects_duplicate_fields() {
+        let envelope =
+            MonitorEnvelope::try_new("uav3", "crebain", 1, ProducerEvent::Heartbeat(heartbeat()))
+                .unwrap();
+        let json = serde_json::to_string(&envelope).unwrap();
+        let duplicated = json.replacen(
+            "\"session_id\":\"uav3\"",
+            "\"session_id\":\"other\",\"session_id\":\"uav3\"",
+            1,
+        );
+
+        let error = serde_json::from_slice::<MonitorEnvelope>(duplicated.as_bytes()).unwrap_err();
+
+        assert_eq!(error.classify(), serde_json::error::Category::Data);
+    }
+
+    #[test]
     fn event_sequence_must_be_json_safe_and_globally_newer() {
         let event = ProducerEvent::Heartbeat(heartbeat());
         let zero = MonitorEnvelope::try_new("uav3", "crebain", 0, event.clone()).unwrap_err();
@@ -1291,15 +1441,15 @@ mod tests {
 
     #[test]
     fn ncp_version_spelling_must_match_the_frozen_schema() {
-        let mut envelope =
+        let envelope =
             MonitorEnvelope::try_new("uav3", "crebain", 1, ProducerEvent::Heartbeat(heartbeat()))
                 .unwrap();
-        envelope.ncp_version = "00.08".to_string();
+        let mut raw = serde_json::to_value(envelope).unwrap();
+        raw["ncp_version"] = serde_json::json!("00.08");
 
-        assert!(matches!(
-            envelope.validate(),
-            Err(MonitorError::IncompatibleNcpVersion(_))
-        ));
+        let error = serde_json::from_value::<MonitorEnvelope>(raw).unwrap_err();
+
+        assert!(error.to_string().contains("noncanonical ncp_version"));
     }
 
     #[test]
@@ -1312,14 +1462,14 @@ mod tests {
 
         assert!(MonitorEnvelope::try_new(oversized, "crebain", 1, event).is_err());
         assert!(matches!(
-            envelope.validate_for("other", &envelope.producer_id),
+            envelope.validate_for("other", envelope.producer_id()),
             Err(MonitorError::ProvenanceMismatch {
                 field: "session_id",
                 ..
             })
         ));
         assert!(matches!(
-            envelope.validate_for(&envelope.session_id, "other"),
+            envelope.validate_for(envelope.session_id(), "other"),
             Err(MonitorError::ProvenanceMismatch {
                 field: "producer_id",
                 ..
@@ -1644,30 +1794,18 @@ mod tests {
 
     #[test]
     fn outcome_rejects_invalid_or_unsafe_projection() {
-        let mut invalid = outcome(ModalityOutcomeKind::Updated);
-        invalid.consistency_projection.as_mut().unwrap().dimensions = 0;
-        assert!(matches!(
-            invalid.validate(),
-            Err(MonitorError::InvalidConsistencyProjection(_))
-        ));
-
-        let mut unsafe_id = outcome(ModalityOutcomeKind::Updated);
-        unsafe_id.consistency_projection.as_mut().unwrap().prior_id =
-            JSON_SAFE_INTEGER_MAX as u64 + 1;
-        assert!(matches!(
-            unsafe_id.validate(),
-            Err(MonitorError::IntegerOutOfRange {
-                field: "event.consistency_projection.prior_id",
-                ..
-            })
-        ));
+        assert!(ConsistencyProjection::try_new_raw([1.0, 0.0, 0.0], 0, 17, 23, 29).is_err());
+        assert!(ConsistencyProjection::try_new_raw(
+            [1.0, 0.0, 0.0],
+            1,
+            17,
+            23,
+            JSON_SAFE_INTEGER_MAX as u64 + 1,
+        )
+        .is_err());
 
         let mut wrong_frame = outcome(ModalityOutcomeKind::Updated);
-        wrong_frame
-            .consistency_projection
-            .as_mut()
-            .unwrap()
-            .frame_id += 1;
+        wrong_frame.consistency_projection = Some(projection_for(18, 23, 29));
         assert_eq!(
             wrong_frame.validate(),
             Err(MonitorError::EventCoherence(
@@ -1676,11 +1814,7 @@ mod tests {
         );
 
         let mut wrong_context = outcome(ModalityOutcomeKind::Updated);
-        wrong_context
-            .consistency_projection
-            .as_mut()
-            .unwrap()
-            .context_id += 1;
+        wrong_context.consistency_projection = Some(projection_for(17, 24, 29));
         assert_eq!(
             wrong_context.validate(),
             Err(MonitorError::EventCoherence(
@@ -1689,11 +1823,7 @@ mod tests {
         );
 
         let mut wrong_prior = outcome(ModalityOutcomeKind::Updated);
-        wrong_prior
-            .consistency_projection
-            .as_mut()
-            .unwrap()
-            .prior_id += 1;
+        wrong_prior.consistency_projection = Some(projection_for(17, 23, 30));
         assert_eq!(
             wrong_prior.validate(),
             Err(MonitorError::EventCoherence(
@@ -1851,6 +1981,21 @@ mod tests {
     }
 
     #[test]
+    fn bounded_decoder_preserves_semantic_validation_errors() {
+        let envelope =
+            MonitorEnvelope::try_new("uav3", "crebain", 1, ProducerEvent::Heartbeat(heartbeat()))
+                .unwrap();
+        let mut raw = serde_json::to_value(envelope).unwrap();
+        raw["event_seq"] = serde_json::json!(0);
+        let encoded = serde_json::to_vec(&raw).unwrap();
+
+        assert_eq!(
+            MonitorEnvelope::decode(&encoded),
+            Err(MonitorError::ZeroEventSequence)
+        );
+    }
+
+    #[test]
     fn monitor_schema_identity_and_enums_match_runtime_contract() {
         let schema: serde_json::Value =
             serde_json::from_str(MONITOR_SCHEMA_JSON).expect("embedded monitor schema is JSON");
@@ -1931,6 +2076,17 @@ mod tests {
             schema["$defs"]["modalityMiss"]["properties"]["reason"]["enum"],
             miss_values
         );
+        assert_eq!(
+            schema["$defs"]["consistencyProjection"]["required"],
+            serde_json::json!(["values", "dimensions", "frame_id", "context_id", "prior_id"])
+        );
+        for field in ["frame_id", "context_id", "prior_id"] {
+            assert_eq!(
+                schema["$defs"]["consistencyProjection"]["properties"][field]["$ref"],
+                "#/$defs/positiveSafeUnsignedInteger"
+            );
+        }
+        assert!(schema["$defs"].get("projectionIdentity").is_none());
 
         let rules = schema["$defs"]["modalityOutcome"]["allOf"]
             .as_array()

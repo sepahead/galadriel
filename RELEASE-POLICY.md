@@ -9,9 +9,10 @@ Release target: `0.9.0` GitHub source release
 ## Freeze and change control
 
 **GLD-090-CTL-001:** `main` **SHALL** be the sole 0.9.0 candidate line. The freeze
-begins when the phase-1 requirement ledger is closed and ends only after T119 is
+begins when the current-handoff audit-and-scope wave is closed and ends only after T115 is
 closed or explicitly `NOT_CLAIMED` in dependency order and the final decision is
-GO. No separate branch may carry unreviewed release-only changes.
+`GO` or `NARROWED_GO` for the exact publication scope. A `NO_GO` decision stops
+publication. No separate branch may carry unreviewed release-only changes.
 
 **GLD-090-CTL-002:** During freeze, every change **SHALL** identify affected stable
 requirements, tests, generated evidence, claims and residual risks. A change that
@@ -36,10 +37,16 @@ Unqualified integrations shall be `NOT_CLAIMED`, not forced into another reposit
 
 A commit is a candidate only when the worktree is clean, metadata says 0.9.0, the
 lockfile/toolchain/pins are immutable, the release audit verifies, phase and full
-commands have complete retained output, and no release-blocking task is `OPEN`.
-Publication additionally requires signed tag/archive/checksums/provenance, clean
-room reproduction, final multi-lens review, withdrawal/rollback instructions, and
-remote post-publication verification.
+commands have complete retained output, and its exact source task plan is frozen.
+Because review results can exist only after that commit exists, closure is carried
+by separately signed post-commit dispositions bound to the candidate commit and
+tree; publication requires that set to contain no `OPEN` task. Publication also
+requires signed tag/archive/checksums/provenance, clean candidate qualification,
+final multi-lens review, withdrawal/rollback instructions, and remote
+post-publication verification. Independent clean-room
+reproduction is required only for a claim that such reproduction occurred; a
+`NARROWED_GO` GitHub source release may instead close that task as `NOT_CLAIMED`
+when the claims matrix, decision, and release notes all preserve the exclusion.
 
 Old tags/releases are removed only after their exact identities and withdrawal
 reason are retained in the 0.9.0 release record. Deletion is not evidence erasure.

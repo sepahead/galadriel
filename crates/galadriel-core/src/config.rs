@@ -1,85 +1,128 @@
-//! Detector configuration.
+//! Immutable detector and release-suite configuration boundaries.
+
+use serde::Serialize;
+use thiserror::Error;
+
+use crate::correlation::{CorrConfig, CorrProfile};
+use crate::identity::IdentityBuilder;
+use crate::{ConfigDigest, Modality};
+
+const fn modality_identity_tag(modality: Modality) -> u8 {
+    match modality {
+        Modality::Visual => 1,
+        Modality::Thermal => 2,
+        Modality::Acoustic => 3,
+        Modality::Radar => 4,
+        Modality::Lidar => 5,
+        Modality::RadioFrequency => 6,
+    }
+}
 
 /// Aggregate upper bound for retained NIS values across all tracks and modalities.
-///
-/// This bounds the worst-case state implied by a valid [`DetectorConfig`] rather
-/// than validating each window and track limit in isolation.
 pub const MAX_RETAINED_NIS_SAMPLES: usize = 1_000_000;
 
+/// Fixed maximum number of track identities one detector may retain.
+pub const MAX_DETECTOR_TRACKS: usize = 4_096;
+
+/// Fixed maximum number of `(track, modality)` channel states.
+pub const MAX_DETECTOR_CHANNEL_STATES: usize = MAX_DETECTOR_TRACKS * Modality::ALL.len();
+
+/// Conservative maximum retained detector-state allocation.
+pub const MAX_DETECTOR_STATE_BYTES: usize = 256 * 1024 * 1024;
+
+/// Per-channel fixed state and `HashMap` allocation allowance, excluding the
+/// NIS sample buffer and exact-sum cache.
+pub const CHANNEL_STATE_AND_MAP_OVERHEAD_BYTES: usize = 256;
+
+/// Conservative full-suite lifecycle sample-work ceiling.
+pub const MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS: usize = 8_000_000;
+
+/// Conservative full-suite retained and transient-state ceiling.
+pub const MAX_RELEASE_SUITE_STATE_BYTES: usize = 384 * 1024 * 1024;
+
+/// Smallest family significance whose maximum six-way Bonferroni split keeps
+/// every per-channel test in the numerically supported normal `f64` range.
+pub const MIN_NIS_FAMILY_ALPHA: f64 =
+    crate::baseline::MIN_NIS_TEST_ALPHA * Modality::ALL.len() as f64;
+
 /// Largest supported fusion-sequence gap for one contiguous evidence window.
-///
-/// This matches the largest retained correlation window. Larger values would
-/// effectively disable sequence continuity while adding no usable evidence.
 pub const MAX_ALIGNMENT_SEQ_GAP: u64 = crate::correlation::MAX_CORRELATION_WINDOW as u64;
 
 /// Largest supported timestamp span across one aligned cross-modal frame.
-///
-/// A zero value is valid and requests exact timestamp equality; it does not
-/// disable the check. The day-scale ceiling prevents `u64::MAX`-style sentinels
-/// from silently disabling temporal coherence.
 pub const MAX_ALIGNMENT_TIMESTAMP_SKEW_MS: u64 = 86_400_000;
 
 /// Largest supported interval between successive samples of one modality.
-///
-/// A finite ceiling prevents configurations from effectively disabling temporal
-/// continuity. Slower feeds should explicitly segment runs and reset detector
-/// state rather than carrying statistical evidence across day-scale holes.
 pub const MAX_INTER_SAMPLE_GAP_MS: u64 = 86_400_000;
 
-/// Tunables for the baseline [`crate::Mirror`] detector.
+/// Closed detector-component profiles shipped in the 0.9 source release.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DetectorProfile {
+    /// NIS/CUSUM component of the standalone advisory release suite.
+    StandaloneAdvisoryV0_9,
+}
+
+impl DetectorProfile {
+    /// Stable machine-readable profile name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::StandaloneAdvisoryV0_9 => "standalone_advisory_v0_9",
+        }
+    }
+
+    /// Raw parameter template for this profile.
+    pub fn params(self) -> DetectorParams {
+        match self {
+            Self::StandaloneAdvisoryV0_9 => DetectorParams::standalone_advisory_v0_9(),
+        }
+    }
+
+    /// Resolve this profile through the normal validation boundary.
+    pub fn try_config(self) -> Result<DetectorConfig, DetectorConfigError> {
+        DetectorConfig::try_new_with_profile(self.params(), Some(self))
+    }
+}
+
+/// Whether an accepted component came from a named release profile or custom input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConfigurationClass {
+    /// A closed, versioned release-component profile.
+    NamedRelease,
+    /// Accepted custom parameters; never relabelled as a shipped profile.
+    CustomAccepted,
+}
+
+/// Unvalidated boundary values for constructing a [`DetectorConfig`].
 #[derive(Debug, Clone, PartialEq)]
-pub struct DetectorConfig {
+pub struct DetectorParams {
     /// Per-`(track, modality)` sliding-window length, in observations.
     pub window_len: usize,
-    /// Minimum samples a channel window must hold before its verdict is trusted;
-    /// below this the channel is treated as not-ready (fail closed).
+    /// Minimum samples required before one channel is ready.
     pub min_samples: usize,
-    /// Minimum number of ready channels before any non-`InsufficientEvidence`
-    /// verdict is issued.
+    /// Minimum number of ready channels required for an evidence verdict.
     pub min_channels: usize,
-    /// Maximum allowed fusion-sequence gap between successive channel samples and
-    /// between assessment and a channel's newest observation. A larger ingest gap
-    /// starts a new evidence window; a larger assessment gap makes the channel
-    /// stale. `1` tolerates normal within-frame arrival ordering while catching a
-    /// feed that stops producing after an association-gate miss.
+    /// Largest accepted fusion-sequence gap.
     pub max_seq_gap: u64,
-    /// Maximum timestamp span across otherwise-ready modalities at assessment.
-    /// A larger span means the records do not describe one comparable fusion
-    /// instant and therefore cannot support a nominal or attributed verdict.
-    /// Zero requests exact timestamp equality; it never disables the check.
+    /// Largest timestamp span across an aligned frame.
     pub max_timestamp_skew_ms: u64,
-    /// Maximum forward timestamp gap between successive observations of one
-    /// `(track, modality)`. A larger gap starts a new evidence window.
+    /// Largest timestamp gap between successive samples of one modality.
     pub max_inter_sample_gap_ms: u64,
-    /// Maximum number of track ids retained at once. New tracks are rejected once
-    /// this limit is reached until a caller removes stale state with
-    /// [`crate::Mirror::remove_track`] or [`crate::Mirror::clear`].
+    /// Maximum number of track identities retained at once.
     pub max_tracks: usize,
-    /// Per-assessment family-wise significance for the right-tailed windowed NIS
-    /// χ² tests. [`crate::Mirror`] Bonferroni-divides this across assessed channels.
+    /// Per-assessment family-wise NIS significance.
     pub nis_alpha: f64,
-    /// CUSUM slack `k` in null-standard-deviation units after scaling NIS by
-    /// `sqrt(2*dof)`. This keeps one configuration comparable across dimensions.
-    ///
-    /// The slack applies symmetrically to both arms. At the default `k = 3/sqrt(6)`
-    /// and the fusion core's `dof = 3`, the scaled target `dof/sqrt(2*dof)` equals the
-    /// slack, so the below-target (lower) arm can never accumulate: a *below*-target
-    /// NIS shift — an over-conservative filter, or a replay/frozen sensor whose
-    /// innovations match the prediction too closely — is intentionally not flagged at
-    /// `dof <= 3`. The lower arm becomes active for `dof > 3`, or for a configured `k`
-    /// strictly below the scaled target. Treating a below-target shift as an attack is
-    /// a design choice deferred to a study, not an oversight.
+    /// Two-sided CUSUM slack in scaled null-standard-deviation units.
     pub cusum_slack: f64,
-    /// CUSUM alarm threshold `h` in accumulated null-standard-deviation units.
+    /// Two-sided CUSUM alarm threshold in scaled units.
     pub cusum_threshold: f64,
-    /// Fraction of ready channels that must be anomalous to call [`crate::Verdict::BroadDegradation`]
-    /// (broad degradation evidence) rather than
-    /// [`crate::Verdict::AttributedInconsistency`] (localized magnitude evidence).
+    /// Fraction of ready channels required for broad-degradation evidence.
     pub jam_fraction: f64,
 }
 
-impl Default for DetectorConfig {
-    fn default() -> Self {
+impl DetectorParams {
+    /// Raw values of the 0.9 standalone-advisory detector component.
+    pub fn standalone_advisory_v0_9() -> Self {
         Self {
             window_len: 64,
             min_samples: 32,
@@ -89,8 +132,6 @@ impl Default for DetectorConfig {
             max_inter_sample_gap_ms: 10_000,
             max_tracks: 1_024,
             nis_alpha: 0.01,
-            // These preserve the previous dof=3 operating point (3 and 15 raw
-            // NIS units) while giving the parameters consistent units for any dof.
             cusum_slack: 3.0 / 6.0_f64.sqrt(),
             cusum_threshold: 15.0 / 6.0_f64.sqrt(),
             jam_fraction: 0.6,
@@ -98,212 +139,873 @@ impl Default for DetectorConfig {
     }
 }
 
+/// Typed failure from detector configuration construction.
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DetectorConfigError {
+    /// Window length is outside the fixed allocation domain.
+    #[error("window_len must be in 1..={maximum}, got {requested}")]
+    WindowOutOfRange { requested: usize, maximum: usize },
+    /// Readiness minimum is zero or exceeds the window.
+    #[error("min_samples must be in 1..=window_len")]
+    MinimumSamplesOutOfRange,
+    /// Required channel count is outside the closed modality vocabulary.
+    #[error("min_channels must be in 2..={maximum}, got {requested}")]
+    MinimumChannelsOutOfRange { requested: usize, maximum: usize },
+    /// Sequence continuity limit is unsupported.
+    #[error("max_seq_gap must be in 1..={maximum}, got {requested}")]
+    SequenceGapOutOfRange { requested: u64, maximum: u64 },
+    /// Cross-modal timestamp skew is above the hard ceiling.
+    #[error("max_timestamp_skew_ms must be in 0..={maximum}, got {requested}")]
+    TimestampSkewOutOfRange { requested: u64, maximum: u64 },
+    /// Inter-sample time gap is unsupported.
+    #[error("max_inter_sample_gap_ms must be in 1..={maximum}, got {requested}")]
+    InterSampleGapOutOfRange { requested: u64, maximum: u64 },
+    /// Track ceiling is zero or above the fixed bound.
+    #[error("max_tracks must be in 1..={maximum}, got {requested}")]
+    TrackCountOutOfRange { requested: usize, maximum: usize },
+    /// Family-wise significance is outside the numerically supported domain.
+    #[error("nis_alpha must be finite and in [{minimum}, 1)")]
+    NisAlphaInvalid { minimum: String },
+    /// CUSUM slack is non-finite or negative.
+    #[error("cusum_slack must be finite and nonnegative")]
+    CusumSlackInvalid,
+    /// CUSUM threshold is non-finite or nonpositive.
+    #[error("cusum_threshold must be finite and positive")]
+    CusumThresholdInvalid,
+    /// Broad-degradation fraction is outside `(0, 1]`.
+    #[error("jam_fraction must be finite and in (0, 1]")]
+    JamFractionInvalid,
+    /// A checked aggregate estimate overflowed.
+    #[error("detector retained-state estimate overflowed")]
+    StateEstimateOverflow,
+    /// Channel-state cardinality exceeds the fixed ceiling.
+    #[error("detector can retain {requested} channel states; maximum is {maximum}")]
+    ChannelStateLimitExceeded { requested: usize, maximum: usize },
+    /// Retained NIS values exceed the fixed ceiling.
+    #[error("detector can retain {requested} NIS samples; maximum is {maximum}")]
+    RetainedSampleLimitExceeded { requested: usize, maximum: usize },
+    /// Conservative retained bytes exceed the fixed ceiling.
+    #[error("detector can retain {requested} bytes; maximum is {maximum}")]
+    RetainedByteLimitExceeded { requested: usize, maximum: usize },
+}
+
+/// Immutable, fully validated NIS/CUSUM detector configuration.
+///
+/// Construction is `O(1)` and allocates nothing. A detector can retain at most
+/// `max_tracks * modalities` channel states. Each state budgets
+/// `window_len * size_of::<f64>()` sample bytes, the fixed 272-byte exact
+/// [`crate::NisWindow`] cache, and [`CHANNEL_STATE_AND_MAP_OVERHEAD_BYTES`] for
+/// channel state plus nested `HashMap` allocation. All products are checked.
+///
+/// ```compile_fail
+/// use galadriel_core::DetectorConfig;
+/// let _ = DetectorConfig { window_len: 64 };
+/// ```
+///
+/// ```compile_fail
+/// use galadriel_core::DetectorConfig;
+/// let mut config = DetectorConfig::standalone_advisory_v0_9().unwrap();
+/// config.max_tracks = 1;
+/// ```
+///
+/// ```compile_fail
+/// use galadriel_core::DetectorConfig;
+/// let _: DetectorConfig = Default::default();
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub struct DetectorConfig {
+    window_len: usize,
+    min_samples: usize,
+    min_channels: usize,
+    max_seq_gap: u64,
+    max_timestamp_skew_ms: u64,
+    max_inter_sample_gap_ms: u64,
+    max_tracks: usize,
+    nis_alpha: f64,
+    cusum_slack: f64,
+    cusum_threshold: f64,
+    jam_fraction: f64,
+    source_profile: Option<DetectorProfile>,
+    retained_channel_states: usize,
+    retained_state_bytes: usize,
+    identity: ConfigDigest,
+}
+
 impl DetectorConfig {
-    /// Validate the configuration, returning an error describing the first problem.
-    pub fn validate(&self) -> crate::Result<()> {
-        use crate::GaladrielError::InvalidConfig;
-        if self.window_len == 0 {
-            return Err(InvalidConfig("window_len must be > 0".into()));
+    /// Validate raw custom parameters and construct an immutable config.
+    pub fn try_new(params: DetectorParams) -> Result<Self, DetectorConfigError> {
+        Self::try_new_with_profile(params, None)
+    }
+
+    fn try_new_with_profile(
+        mut params: DetectorParams,
+        source_profile: Option<DetectorProfile>,
+    ) -> Result<Self, DetectorConfigError> {
+        if !(1..=crate::window::MAX_WINDOW_LEN).contains(&params.window_len) {
+            return Err(DetectorConfigError::WindowOutOfRange {
+                requested: params.window_len,
+                maximum: crate::window::MAX_WINDOW_LEN,
+            });
         }
-        if self.window_len > crate::window::MAX_WINDOW_LEN {
-            return Err(InvalidConfig(format!(
-                "window_len must be <= {}",
-                crate::window::MAX_WINDOW_LEN
-            )));
+        if !(1..=params.window_len).contains(&params.min_samples) {
+            return Err(DetectorConfigError::MinimumSamplesOutOfRange);
         }
-        if self.min_samples > self.window_len {
-            return Err(InvalidConfig("min_samples must be <= window_len".into()));
-        }
-        if self.min_samples == 0 {
-            return Err(InvalidConfig("min_samples must be > 0".into()));
-        }
-        if self.min_channels < 2 {
-            return Err(InvalidConfig("min_channels must be >= 2".into()));
-        }
-        if self.min_channels > crate::Modality::ALL.len() {
-            return Err(InvalidConfig(format!(
-                "min_channels must be <= {}",
-                crate::Modality::ALL.len()
-            )));
+        if !(2..=Modality::ALL.len()).contains(&params.min_channels) {
+            return Err(DetectorConfigError::MinimumChannelsOutOfRange {
+                requested: params.min_channels,
+                maximum: Modality::ALL.len(),
+            });
         }
         validate_alignment_limits(
-            self.max_seq_gap,
-            self.max_timestamp_skew_ms,
-            self.max_inter_sample_gap_ms,
+            params.max_seq_gap,
+            params.max_timestamp_skew_ms,
+            params.max_inter_sample_gap_ms,
         )?;
-        if self.max_tracks == 0 {
-            return Err(InvalidConfig("max_tracks must be > 0".into()));
+        if !(1..=MAX_DETECTOR_TRACKS).contains(&params.max_tracks) {
+            return Err(DetectorConfigError::TrackCountOutOfRange {
+                requested: params.max_tracks,
+                maximum: MAX_DETECTOR_TRACKS,
+            });
         }
-        let retained_samples = self
-            .max_tracks
-            .checked_mul(crate::Modality::ALL.len())
-            .and_then(|channels| channels.checked_mul(self.window_len))
-            .ok_or_else(|| {
-                InvalidConfig("max_tracks × modalities × window_len overflows usize".into())
-            })?;
-        if retained_samples > MAX_RETAINED_NIS_SAMPLES {
-            return Err(InvalidConfig(format!(
-                "configuration can retain {retained_samples} NIS samples; maximum is {MAX_RETAINED_NIS_SAMPLES}"
-            )));
-        }
-        if !self.nis_alpha.is_finite() || self.nis_alpha <= 0.0 || self.nis_alpha >= 1.0 {
-            return Err(InvalidConfig(
-                "nis_alpha must be finite and in (0, 1)".into(),
-            ));
-        }
-        if self.nis_alpha / crate::Modality::ALL.len() as f64 == 0.0 {
-            return Err(InvalidConfig(format!(
-                "nis_alpha is too small to divide across {} supported modalities",
-                crate::Modality::ALL.len()
-            )));
-        }
-        if !self.jam_fraction.is_finite() || self.jam_fraction <= 0.0 || self.jam_fraction > 1.0 {
-            return Err(InvalidConfig(
-                "jam_fraction must be finite and in (0, 1]".into(),
-            ));
-        }
-        if !self.cusum_slack.is_finite()
-            || !self.cusum_threshold.is_finite()
-            || self.cusum_slack < 0.0
-            || self.cusum_threshold <= 0.0
+        if !params.nis_alpha.is_finite() || !(MIN_NIS_FAMILY_ALPHA..1.0).contains(&params.nis_alpha)
         {
-            return Err(InvalidConfig(
-                "cusum_slack must be finite and >= 0; cusum_threshold must be finite and > 0"
-                    .into(),
-            ));
+            return Err(DetectorConfigError::NisAlphaInvalid {
+                minimum: format!("{MIN_NIS_FAMILY_ALPHA:e}"),
+            });
         }
-        Ok(())
+        if !params.cusum_slack.is_finite() || params.cusum_slack < 0.0 {
+            return Err(DetectorConfigError::CusumSlackInvalid);
+        }
+        if !params.cusum_threshold.is_finite() || params.cusum_threshold <= 0.0 {
+            return Err(DetectorConfigError::CusumThresholdInvalid);
+        }
+        if !params.jam_fraction.is_finite()
+            || params.jam_fraction <= 0.0
+            || params.jam_fraction > 1.0
+        {
+            return Err(DetectorConfigError::JamFractionInvalid);
+        }
+
+        // Canonicalize the only admitted signed zero before storage and hashing.
+        if params.cusum_slack == 0.0 {
+            params.cusum_slack = 0.0;
+        }
+
+        let retained_channel_states = params
+            .max_tracks
+            .checked_mul(Modality::ALL.len())
+            .ok_or(DetectorConfigError::StateEstimateOverflow)?;
+        if retained_channel_states > MAX_DETECTOR_CHANNEL_STATES {
+            return Err(DetectorConfigError::ChannelStateLimitExceeded {
+                requested: retained_channel_states,
+                maximum: MAX_DETECTOR_CHANNEL_STATES,
+            });
+        }
+        let retained_samples = retained_channel_states
+            .checked_mul(params.window_len)
+            .ok_or(DetectorConfigError::StateEstimateOverflow)?;
+        if retained_samples > MAX_RETAINED_NIS_SAMPLES {
+            return Err(DetectorConfigError::RetainedSampleLimitExceeded {
+                requested: retained_samples,
+                maximum: MAX_RETAINED_NIS_SAMPLES,
+            });
+        }
+        let sample_bytes = retained_samples
+            .checked_mul(std::mem::size_of::<f64>())
+            .ok_or(DetectorConfigError::StateEstimateOverflow)?;
+        let fixed_channel_bytes = crate::window::NIS_WINDOW_EXACT_CACHE_BYTES
+            .checked_add(CHANNEL_STATE_AND_MAP_OVERHEAD_BYTES)
+            .and_then(|bytes| bytes.checked_mul(retained_channel_states))
+            .ok_or(DetectorConfigError::StateEstimateOverflow)?;
+        let retained_state_bytes = sample_bytes
+            .checked_add(fixed_channel_bytes)
+            .ok_or(DetectorConfigError::StateEstimateOverflow)?;
+        if retained_state_bytes > MAX_DETECTOR_STATE_BYTES {
+            return Err(DetectorConfigError::RetainedByteLimitExceeded {
+                requested: retained_state_bytes,
+                maximum: MAX_DETECTOR_STATE_BYTES,
+            });
+        }
+
+        let mut identity = IdentityBuilder::new(b"galadriel-detector-config-v1");
+        identity.u8(
+            b"classification",
+            if source_profile.is_some() { 1 } else { 2 },
+        );
+        identity.u8(
+            b"source_profile",
+            match source_profile {
+                Some(DetectorProfile::StandaloneAdvisoryV0_9) => 1,
+                None => 0,
+            },
+        );
+        identity.usize(b"window_len", params.window_len);
+        identity.usize(b"min_samples", params.min_samples);
+        identity.usize(b"min_channels", params.min_channels);
+        identity.u64(b"max_seq_gap", params.max_seq_gap);
+        identity.u64(b"max_timestamp_skew_ms", params.max_timestamp_skew_ms);
+        identity.u64(b"max_inter_sample_gap_ms", params.max_inter_sample_gap_ms);
+        identity.usize(b"max_tracks", params.max_tracks);
+        identity.f64(b"nis_alpha", params.nis_alpha);
+        identity.f64(b"cusum_slack", params.cusum_slack);
+        identity.f64(b"cusum_threshold", params.cusum_threshold);
+        identity.f64(b"jam_fraction", params.jam_fraction);
+        identity.usize(b"retained_channel_states", retained_channel_states);
+        identity.usize(b"retained_state_bytes", retained_state_bytes);
+
+        Ok(Self {
+            window_len: params.window_len,
+            min_samples: params.min_samples,
+            min_channels: params.min_channels,
+            max_seq_gap: params.max_seq_gap,
+            max_timestamp_skew_ms: params.max_timestamp_skew_ms,
+            max_inter_sample_gap_ms: params.max_inter_sample_gap_ms,
+            max_tracks: params.max_tracks,
+            nis_alpha: params.nis_alpha,
+            cusum_slack: params.cusum_slack,
+            cusum_threshold: params.cusum_threshold,
+            jam_fraction: params.jam_fraction,
+            source_profile,
+            retained_channel_states,
+            retained_state_bytes,
+            identity: identity.finish(),
+        })
+    }
+
+    /// Construct the named 0.9 standalone-advisory detector component.
+    pub fn standalone_advisory_v0_9() -> Result<Self, DetectorConfigError> {
+        DetectorProfile::StandaloneAdvisoryV0_9.try_config()
+    }
+
+    /// Per-channel window length.
+    pub const fn window_len(&self) -> usize {
+        self.window_len
+    }
+    /// Minimum samples required for channel readiness.
+    pub const fn min_samples(&self) -> usize {
+        self.min_samples
+    }
+    /// Minimum ready channels required for an evidence verdict.
+    pub const fn min_channels(&self) -> usize {
+        self.min_channels
+    }
+    /// Largest accepted fusion-sequence gap.
+    pub const fn max_seq_gap(&self) -> u64 {
+        self.max_seq_gap
+    }
+    /// Largest timestamp span across an aligned frame.
+    pub const fn max_timestamp_skew_ms(&self) -> u64 {
+        self.max_timestamp_skew_ms
+    }
+    /// Largest timestamp gap between successive samples of one modality.
+    pub const fn max_inter_sample_gap_ms(&self) -> u64 {
+        self.max_inter_sample_gap_ms
+    }
+    /// Maximum retained track identities.
+    pub const fn max_tracks(&self) -> usize {
+        self.max_tracks
+    }
+    /// Per-assessment family-wise NIS significance.
+    pub const fn nis_alpha(&self) -> f64 {
+        self.nis_alpha
+    }
+    /// Scaled CUSUM slack.
+    pub const fn cusum_slack(&self) -> f64 {
+        self.cusum_slack
+    }
+    /// Scaled CUSUM threshold.
+    pub const fn cusum_threshold(&self) -> f64 {
+        self.cusum_threshold
+    }
+    /// Broad-degradation channel fraction.
+    pub const fn jam_fraction(&self) -> f64 {
+        self.jam_fraction
+    }
+    /// Named source profile, if any.
+    pub const fn source_profile(&self) -> Option<DetectorProfile> {
+        self.source_profile
+    }
+    /// Release/custom classification retained by this accepted component.
+    pub const fn classification(&self) -> ConfigurationClass {
+        if self.source_profile.is_some() {
+            ConfigurationClass::NamedRelease
+        } else {
+            ConfigurationClass::CustomAccepted
+        }
+    }
+    /// Maximum `(track, modality)` states budgeted by this config.
+    pub const fn retained_channel_states(&self) -> usize {
+        self.retained_channel_states
+    }
+    /// Conservative maximum retained bytes budgeted by this config.
+    pub const fn retained_state_bytes(&self) -> usize {
+        self.retained_state_bytes
+    }
+    /// Canonical complete accepted-configuration identity.
+    pub const fn identity(&self) -> ConfigDigest {
+        self.identity
     }
 }
 
-/// Validate the raw temporal limits shared by streaming and direct extraction.
+impl TryFrom<DetectorParams> for DetectorConfig {
+    type Error = DetectorConfigError;
+
+    fn try_from(params: DetectorParams) -> Result<Self, Self::Error> {
+        Self::try_new(params)
+    }
+}
+
+/// Validate temporal limits shared by streaming and direct extraction.
 pub(crate) fn validate_alignment_limits(
     max_seq_gap: u64,
     max_timestamp_skew_ms: u64,
     max_inter_sample_gap_ms: u64,
-) -> crate::Result<()> {
-    use crate::GaladrielError::InvalidConfig;
-
+) -> Result<(), DetectorConfigError> {
     if !(1..=MAX_ALIGNMENT_SEQ_GAP).contains(&max_seq_gap) {
-        return Err(InvalidConfig(format!(
-            "max_seq_gap must be in 1..={MAX_ALIGNMENT_SEQ_GAP}"
-        )));
+        return Err(DetectorConfigError::SequenceGapOutOfRange {
+            requested: max_seq_gap,
+            maximum: MAX_ALIGNMENT_SEQ_GAP,
+        });
     }
     if max_timestamp_skew_ms > MAX_ALIGNMENT_TIMESTAMP_SKEW_MS {
-        return Err(InvalidConfig(format!(
-            "max_timestamp_skew_ms must be in 0..={MAX_ALIGNMENT_TIMESTAMP_SKEW_MS}; zero means exact synchrony"
-        )));
+        return Err(DetectorConfigError::TimestampSkewOutOfRange {
+            requested: max_timestamp_skew_ms,
+            maximum: MAX_ALIGNMENT_TIMESTAMP_SKEW_MS,
+        });
     }
     if !(1..=MAX_INTER_SAMPLE_GAP_MS).contains(&max_inter_sample_gap_ms) {
-        return Err(InvalidConfig(format!(
-            "max_inter_sample_gap_ms must be in 1..={MAX_INTER_SAMPLE_GAP_MS}"
-        )));
+        return Err(DetectorConfigError::InterSampleGapOutOfRange {
+            requested: max_inter_sample_gap_ms,
+            maximum: MAX_INTER_SAMPLE_GAP_MS,
+        });
     }
     Ok(())
+}
+
+/// Closed source-release suite profiles. A profile is reproducible behavior,
+/// not deployment qualification or a mission-level calibration claim.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReleaseProfile {
+    /// NIS/CUSUM plus signed correlation; PID is intentionally absent.
+    StandaloneAdvisoryV0_9,
+}
+
+impl ReleaseProfile {
+    /// Stable machine-readable profile name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::StandaloneAdvisoryV0_9 => "standalone_advisory_v0_9",
+        }
+    }
+
+    /// Resolve a named release suite for an explicit expected-modality set.
+    pub fn try_suite(
+        self,
+        expected_modalities: &[Modality],
+    ) -> Result<ReleaseSuite, ReleaseSuiteError> {
+        match self {
+            Self::StandaloneAdvisoryV0_9 => ReleaseSuite::try_new_with_profile(
+                ReleaseSuiteParams {
+                    detector: DetectorProfile::StandaloneAdvisoryV0_9.try_config()?,
+                    correlation: CorrProfile::StandaloneAdvisoryV0_9.try_config()?,
+                    expected_modalities: expected_modalities.to_vec(),
+                    axis_policy: ProducerAxisFamilyPolicy::AttestedCommonProjectionBonferroniV1,
+                },
+                Some(self),
+            ),
+        }
+    }
+}
+
+/// Explicit policy for producer axes and statistical family sharing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProducerAxisFamilyPolicy {
+    /// Use only producer-attested common projections and split the correlation
+    /// family budget once across every active axis.
+    AttestedCommonProjectionBonferroniV1,
+}
+
+/// Unvalidated composition input for a release detector suite.
+#[derive(Debug, Clone)]
+pub struct ReleaseSuiteParams {
+    /// Already accepted magnitude detector component.
+    pub detector: DetectorConfig,
+    /// Already accepted signed-correlation component.
+    pub correlation: CorrConfig,
+    /// Complete expected modality set.
+    pub expected_modalities: Vec<Modality>,
+    /// Producer-axis and family-sharing semantics.
+    pub axis_policy: ProducerAxisFamilyPolicy,
+}
+
+/// Typed failure from release-suite composition.
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ReleaseSuiteError {
+    /// Detector component construction failed.
+    #[error("release detector component is invalid: {0}")]
+    Detector(#[from] DetectorConfigError),
+    /// Correlation component construction failed.
+    #[error("release correlation component is invalid: {0}")]
+    Correlation(#[from] crate::CorrConfigError),
+    /// No modality capability was declared.
+    #[error("release suite expected modalities must not be empty")]
+    EmptyModalities,
+    /// A modality was declared more than once.
+    #[error("release suite expected modalities must be unique")]
+    DuplicateModalities,
+    /// The modality set cannot meet detector readiness.
+    #[error("expected modality count {available} is below detector min_channels {required}")]
+    TooFewModalities { available: usize, required: usize },
+    /// A checked aggregate estimate overflowed.
+    #[error("release-suite aggregate preflight overflowed")]
+    AggregateOverflow,
+    /// Lifecycle work across both statistical windows exceeds the ceiling.
+    #[error("release suite requires {requested} lifecycle sample-units; maximum is {maximum}")]
+    LifecycleWorkLimitExceeded { requested: usize, maximum: usize },
+    /// Conservative retained plus transient bytes exceed the ceiling.
+    #[error("release suite requires {requested} state bytes; maximum is {maximum}")]
+    StateByteLimitExceeded { requested: usize, maximum: usize },
+}
+
+/// Immutable NIS/CUSUM plus signed-correlation release composition.
+///
+/// Construction sorts and validates at most six modalities (`O(m log m)`, `O(m)`
+/// storage). It checks
+/// `max(detector.window_len, correlation.window) * max_tracks * modalities`
+/// before any detector allocation, includes every detector channel state's sample
+/// buffer, 272-byte exact cache and map/state overhead, and budgets a full aligned
+/// correlation tail. PID is not a field of this type.
+///
+/// ```compile_fail
+/// use galadriel_core::ReleaseSuite;
+/// let _ = ReleaseSuite { expected_modalities: Vec::new() };
+/// ```
+#[derive(Debug, Clone)]
+pub struct ReleaseSuite {
+    detector: DetectorConfig,
+    correlation: CorrConfig,
+    expected_modalities: Vec<Modality>,
+    axis_policy: ProducerAxisFamilyPolicy,
+    source_profile: Option<ReleaseProfile>,
+    lifecycle_sample_units: usize,
+    state_bytes: usize,
+    identity: ConfigDigest,
+}
+
+impl ReleaseSuite {
+    /// Compose accepted custom components into an accepted custom release suite.
+    pub fn try_new(params: ReleaseSuiteParams) -> Result<Self, ReleaseSuiteError> {
+        Self::try_new_with_profile(params, None)
+    }
+
+    fn try_new_with_profile(
+        params: ReleaseSuiteParams,
+        source_profile: Option<ReleaseProfile>,
+    ) -> Result<Self, ReleaseSuiteError> {
+        if params.expected_modalities.is_empty() {
+            return Err(ReleaseSuiteError::EmptyModalities);
+        }
+        if params.expected_modalities.len() > Modality::ALL.len() {
+            return Err(ReleaseSuiteError::DuplicateModalities);
+        }
+        let mut expected_modalities = params.expected_modalities;
+        expected_modalities.sort_unstable_by_key(|modality| modality.stable_code());
+        let before = expected_modalities.len();
+        expected_modalities.dedup();
+        if expected_modalities.len() != before {
+            return Err(ReleaseSuiteError::DuplicateModalities);
+        }
+        if expected_modalities.len() < params.detector.min_channels() {
+            return Err(ReleaseSuiteError::TooFewModalities {
+                available: expected_modalities.len(),
+                required: params.detector.min_channels(),
+            });
+        }
+
+        let lifecycle_window = params
+            .detector
+            .window_len()
+            .max(params.correlation.window());
+        let lifecycle_sample_units = params
+            .detector
+            .max_tracks()
+            .checked_mul(expected_modalities.len())
+            .and_then(|channels| channels.checked_mul(lifecycle_window))
+            .ok_or(ReleaseSuiteError::AggregateOverflow)?;
+        if lifecycle_sample_units > MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS {
+            return Err(ReleaseSuiteError::LifecycleWorkLimitExceeded {
+                requested: lifecycle_sample_units,
+                maximum: MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS,
+            });
+        }
+        let aligned_tail_bytes = lifecycle_sample_units
+            .checked_mul(std::mem::size_of::<f64>())
+            .ok_or(ReleaseSuiteError::AggregateOverflow)?;
+        let pair_count = expected_modalities
+            .len()
+            .checked_mul(expected_modalities.len().saturating_sub(1))
+            .map(|ordered| ordered / 2)
+            .ok_or(ReleaseSuiteError::AggregateOverflow)?;
+        let pair_work_bytes = pair_count
+            .checked_mul(params.correlation.window())
+            .and_then(|values| values.checked_mul(std::mem::size_of::<f64>()))
+            .ok_or(ReleaseSuiteError::AggregateOverflow)?;
+        let state_bytes = params
+            .detector
+            .retained_state_bytes()
+            .checked_add(aligned_tail_bytes)
+            .and_then(|bytes| bytes.checked_add(pair_work_bytes))
+            .ok_or(ReleaseSuiteError::AggregateOverflow)?;
+        if state_bytes > MAX_RELEASE_SUITE_STATE_BYTES {
+            return Err(ReleaseSuiteError::StateByteLimitExceeded {
+                requested: state_bytes,
+                maximum: MAX_RELEASE_SUITE_STATE_BYTES,
+            });
+        }
+
+        let mut identity = IdentityBuilder::new(b"galadriel-release-suite-v1");
+        identity.u8(
+            b"classification",
+            if source_profile.is_some() { 1 } else { 2 },
+        );
+        identity.u8(
+            b"source_profile",
+            match source_profile {
+                Some(ReleaseProfile::StandaloneAdvisoryV0_9) => 1,
+                None => 0,
+            },
+        );
+        identity.digest(b"detector", params.detector.identity());
+        identity.digest(b"correlation", params.correlation.identity());
+        identity.usize(b"modality_count", expected_modalities.len());
+        for (index, modality) in expected_modalities.iter().enumerate() {
+            let field = match index {
+                0 => b"modality_0".as_slice(),
+                1 => b"modality_1".as_slice(),
+                2 => b"modality_2".as_slice(),
+                3 => b"modality_3".as_slice(),
+                4 => b"modality_4".as_slice(),
+                _ => b"modality_5".as_slice(),
+            };
+            identity.bytes(field, &[modality_identity_tag(*modality)]);
+        }
+        identity.u8(
+            b"axis_policy",
+            match params.axis_policy {
+                ProducerAxisFamilyPolicy::AttestedCommonProjectionBonferroniV1 => 1,
+            },
+        );
+        identity.usize(b"lifecycle_sample_units", lifecycle_sample_units);
+        identity.usize(b"state_bytes", state_bytes);
+
+        Ok(Self {
+            detector: params.detector,
+            correlation: params.correlation,
+            expected_modalities,
+            axis_policy: params.axis_policy,
+            source_profile,
+            lifecycle_sample_units,
+            state_bytes,
+            identity: identity.finish(),
+        })
+    }
+
+    /// Construct the named release suite for explicit expected modalities.
+    pub fn standalone_advisory_v0_9(
+        expected_modalities: &[Modality],
+    ) -> Result<Self, ReleaseSuiteError> {
+        ReleaseProfile::StandaloneAdvisoryV0_9.try_suite(expected_modalities)
+    }
+
+    /// Accepted magnitude component.
+    pub const fn detector(&self) -> &DetectorConfig {
+        &self.detector
+    }
+    /// Accepted signed-correlation component.
+    pub const fn correlation(&self) -> &CorrConfig {
+        &self.correlation
+    }
+    /// Canonically ordered complete expected-modality capability.
+    pub fn expected_modalities(&self) -> &[Modality] {
+        &self.expected_modalities
+    }
+    /// Producer-axis and family-sharing policy.
+    pub const fn axis_policy(&self) -> ProducerAxisFamilyPolicy {
+        self.axis_policy
+    }
+    /// Named source-release profile, if any.
+    pub const fn source_profile(&self) -> Option<ReleaseProfile> {
+        self.source_profile
+    }
+    /// Checked lifecycle sample-work bound.
+    pub const fn lifecycle_sample_units(&self) -> usize {
+        self.lifecycle_sample_units
+    }
+    /// Checked retained plus transient state-byte bound.
+    pub const fn state_bytes(&self) -> usize {
+        self.state_bytes
+    }
+    /// Canonical complete accepted-suite identity.
+    pub const fn identity(&self) -> ConfigDigest {
+        self.identity
+    }
+}
+
+/// Closed exploratory profiles that can issue a subset-only detector capability.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExploratoryResearchProfile {
+    /// Explicit subset-only magnitude research; never release-interchangeable.
+    SubsetMagnitudeV0_9,
+}
+
+impl ExploratoryResearchProfile {
+    /// Issue the opaque capability required by [`crate::Mirror::for_exploratory_subset`].
+    pub fn capability(self) -> ExploratorySubsetResearch {
+        ExploratorySubsetResearch { profile: self }
+    }
+}
+
+/// Opaque capability for subset-only exploratory assessment.
+///
+/// It cannot be fabricated with a literal and is not interchangeable with a
+/// [`ReleaseSuite`]. Obtain it only from [`ExploratoryResearchProfile::capability`].
+///
+/// ```compile_fail
+/// use galadriel_core::ExploratorySubsetResearch;
+/// let _ = ExploratorySubsetResearch {};
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExploratorySubsetResearch {
+    profile: ExploratoryResearchProfile,
+}
+
+impl ExploratorySubsetResearch {
+    /// Research profile that issued this capability.
+    pub const fn profile(self) -> ExploratoryResearchProfile {
+        self.profile
+    }
+
+    pub(crate) fn identity(self, detector: &DetectorConfig) -> ConfigDigest {
+        let mut identity = IdentityBuilder::new(b"galadriel-exploratory-subset-v1");
+        identity.u8(
+            b"profile",
+            match self.profile {
+                ExploratoryResearchProfile::SubsetMagnitudeV0_9 => 1,
+            },
+        );
+        identity.digest(b"detector", detector.identity());
+        identity.finish()
+    }
+}
+
+/// Release/research classification retained in every magnitude report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(tag = "class", content = "profile", rename_all = "snake_case")]
+pub enum AssessmentClassification {
+    /// Report came from a named release suite.
+    NamedRelease(ReleaseProfile),
+    /// Report came from accepted custom release-suite components.
+    CustomReleaseSuite,
+    /// Report came from explicit subset-only research.
+    ExploratoryResearch(ExploratoryResearchProfile),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::GaladrielError;
 
-    fn is_invalid(r: crate::Result<()>) -> bool {
-        matches!(r, Err(GaladrielError::InvalidConfig(_)))
+    fn custom_params() -> DetectorParams {
+        DetectorParams::standalone_advisory_v0_9()
     }
 
     #[test]
-    fn default_config_validates() {
-        assert!(DetectorConfig::default().validate().is_ok());
+    fn named_detector_profile_is_valid_and_identified() {
+        let config = DetectorConfig::standalone_advisory_v0_9().unwrap();
+
+        assert_eq!(
+            config.source_profile(),
+            Some(DetectorProfile::StandaloneAdvisoryV0_9)
+        );
+        assert_eq!(config.classification(), ConfigurationClass::NamedRelease);
+        assert_eq!(config.retained_channel_states(), 6_144);
+        assert!(config.retained_state_bytes() > 6_144 * 272);
     }
 
     #[test]
-    fn rejects_out_of_range_fields() {
-        let bad = |f: fn(&mut DetectorConfig)| {
-            let mut c = DetectorConfig::default();
-            f(&mut c);
-            is_invalid(c.validate())
-        };
-        assert!(bad(|c| c.window_len = 0), "window_len 0");
-        assert!(
-            bad(|c| c.window_len = crate::window::MAX_WINDOW_LEN + 1),
-            "window_len above allocation bound"
-        );
-        assert!(bad(|c| c.min_samples = 0), "min_samples 0");
-        assert!(
-            bad(|c| c.min_samples = c.window_len + 1),
-            "min_samples > window_len"
-        );
-        assert!(bad(|c| c.nis_alpha = 0.0), "nis_alpha 0");
-        assert!(bad(|c| c.nis_alpha = 1.0), "nis_alpha 1");
-        assert!(bad(|c| c.nis_alpha = f64::NAN), "nis_alpha NaN");
-        assert!(bad(|c| c.nis_alpha = 1.5), "nis_alpha > 1");
-        assert!(
-            bad(|c| c.nis_alpha = f64::from_bits(1)),
-            "nis_alpha must survive the maximum channel correction"
-        );
-        assert!(bad(|c| c.jam_fraction = 0.0), "jam_fraction 0");
-        assert!(bad(|c| c.jam_fraction = f64::NAN), "jam_fraction NaN");
-        assert!(bad(|c| c.jam_fraction = 1.5), "jam_fraction > 1");
-        assert!(bad(|c| c.min_channels = 1), "min_channels < 2");
-        assert!(bad(|c| c.max_seq_gap = 0), "max_seq_gap 0");
-        assert!(
-            bad(|c| c.max_seq_gap = MAX_ALIGNMENT_SEQ_GAP + 1),
-            "max_seq_gap above policy bound"
-        );
-        assert!(
-            bad(|c| c.max_timestamp_skew_ms = MAX_ALIGNMENT_TIMESTAMP_SKEW_MS + 1),
-            "max_timestamp_skew_ms above policy bound"
-        );
-        assert!(
-            bad(|c| c.max_inter_sample_gap_ms = 0),
-            "max_inter_sample_gap_ms 0"
-        );
-        assert!(
-            bad(|c| c.max_inter_sample_gap_ms = MAX_INTER_SAMPLE_GAP_MS + 1),
-            "max_inter_sample_gap_ms above policy bound"
-        );
-        assert!(bad(|c| c.max_tracks = 0), "max_tracks 0");
-        assert!(
-            bad(|c| {
-                c.window_len = crate::window::MAX_WINDOW_LEN;
-                c.min_samples = 1;
-                c.max_tracks = 3;
-            }),
-            "aggregate retained state above the memory budget"
-        );
-        assert!(bad(|c| c.max_tracks = usize::MAX), "state-size overflow");
-        assert!(bad(|c| c.cusum_slack = -1.0), "cusum_slack < 0");
-        assert!(
-            bad(|c| c.cusum_slack = f64::INFINITY),
-            "cusum_slack infinite"
-        );
-        assert!(bad(|c| c.cusum_threshold = 0.0), "cusum_threshold 0");
-        assert!(bad(|c| c.cusum_threshold = f64::NAN), "cusum_threshold NaN");
+    fn custom_and_named_equal_parameters_have_distinct_identities() {
+        let named = DetectorConfig::standalone_advisory_v0_9().unwrap();
+        let custom = DetectorConfig::try_new(custom_params()).unwrap();
+
+        assert_ne!(named.identity(), custom.identity());
     }
 
     #[test]
-    fn accepts_the_inclusive_boundaries() {
-        // jam_fraction = 1.0 is valid; nis_alpha remains strictly below one.
-        for jam_fraction in [f64::MIN_POSITIVE, 1.0] {
-            let c = DetectorConfig {
-                nis_alpha: 1.0 - f64::EPSILON,
-                jam_fraction,
-                ..Default::default()
-            };
-            assert!(c.validate().is_ok(), "jam_fraction {jam_fraction}");
-        }
+    fn detector_identity_has_a_fixed_golden_digest() {
+        let identity = DetectorConfig::standalone_advisory_v0_9()
+            .unwrap()
+            .identity()
+            .to_hex();
 
-        for max_timestamp_skew_ms in [0, MAX_ALIGNMENT_TIMESTAMP_SKEW_MS] {
-            let c = DetectorConfig {
-                max_seq_gap: MAX_ALIGNMENT_SEQ_GAP,
-                max_timestamp_skew_ms,
-                max_inter_sample_gap_ms: MAX_INTER_SAMPLE_GAP_MS,
-                ..Default::default()
-            };
-            assert!(
-                c.validate().is_ok(),
-                "timestamp skew boundary {max_timestamp_skew_ms}"
+        assert_eq!(
+            identity,
+            "ee347d3fa29406b214613af183d5052f9f63d8ca7439611a8d224eef48038944"
+        );
+    }
+
+    #[test]
+    fn every_detector_field_changes_the_identity() {
+        let baseline = DetectorConfig::try_new(custom_params()).unwrap().identity();
+        let changes: [fn(&mut DetectorParams); 11] = [
+            |p| {
+                p.window_len = 65;
+            },
+            |p| {
+                p.min_samples = 31;
+            },
+            |p| {
+                p.min_channels = 3;
+            },
+            |p| {
+                p.max_seq_gap = 2;
+            },
+            |p| {
+                p.max_timestamp_skew_ms = 999;
+            },
+            |p| {
+                p.max_inter_sample_gap_ms = 9_999;
+            },
+            |p| {
+                p.max_tracks = 1_023;
+            },
+            |p| {
+                p.nis_alpha = 0.02;
+            },
+            |p| {
+                p.cusum_slack = 0.4;
+            },
+            |p| {
+                p.cusum_threshold = 5.0;
+            },
+            |p| {
+                p.jam_fraction = 0.7;
+            },
+        ];
+        for change in changes {
+            let mut params = custom_params();
+            change(&mut params);
+            assert_ne!(
+                DetectorConfig::try_new(params).unwrap().identity(),
+                baseline
             );
         }
+    }
+
+    #[test]
+    fn fixed_track_ceiling_closes_small_window_overhead_hole() {
+        let mut params = custom_params();
+        params.window_len = 1;
+        params.min_samples = 1;
+        params.max_tracks = 166_000;
+
+        assert!(matches!(
+            DetectorConfig::try_new(params),
+            Err(DetectorConfigError::TrackCountOutOfRange { .. })
+        ));
+    }
+
+    #[test]
+    fn named_release_suite_is_order_canonical_and_pid_free() {
+        let left = ReleaseSuite::standalone_advisory_v0_9(&[
+            Modality::Radar,
+            Modality::Visual,
+            Modality::Acoustic,
+        ])
+        .unwrap();
+        let right = ReleaseSuite::standalone_advisory_v0_9(&[
+            Modality::Acoustic,
+            Modality::Radar,
+            Modality::Visual,
+        ])
+        .unwrap();
+
+        assert_eq!(left.identity(), right.identity());
+        assert_eq!(left.expected_modalities(), right.expected_modalities());
+        assert_eq!(
+            left.source_profile(),
+            Some(ReleaseProfile::StandaloneAdvisoryV0_9)
+        );
+    }
+
+    #[test]
+    fn release_suite_identity_has_a_fixed_golden_digest() {
+        let identity = ReleaseSuite::standalone_advisory_v0_9(&[
+            Modality::Visual,
+            Modality::Radar,
+            Modality::Acoustic,
+        ])
+        .unwrap()
+        .identity()
+        .to_hex();
+
+        assert_eq!(
+            identity,
+            "6e88f0907af330ddd0919738e241038e2bc912076bda873c90fdd63bab9c756a"
+        );
+    }
+
+    #[test]
+    fn custom_suite_with_equal_components_is_not_mislabelled_named() {
+        let named = ReleaseSuite::standalone_advisory_v0_9(&[
+            Modality::Visual,
+            Modality::Radar,
+            Modality::Acoustic,
+        ])
+        .unwrap();
+        let custom = ReleaseSuite::try_new(ReleaseSuiteParams {
+            detector: named.detector().clone(),
+            correlation: named.correlation().clone(),
+            expected_modalities: named.expected_modalities().to_vec(),
+            axis_policy: named.axis_policy(),
+        })
+        .unwrap();
+
+        assert_eq!(custom.source_profile(), None);
+        assert_ne!(custom.identity(), named.identity());
+    }
+
+    #[test]
+    fn release_suite_rejects_duplicate_or_incomplete_modalities() {
+        assert!(matches!(
+            ReleaseSuite::standalone_advisory_v0_9(&[Modality::Visual, Modality::Visual]),
+            Err(ReleaseSuiteError::DuplicateModalities)
+        ));
+        assert!(matches!(
+            ReleaseSuite::standalone_advisory_v0_9(&[Modality::Visual]),
+            Err(ReleaseSuiteError::TooFewModalities { .. })
+        ));
+    }
+
+    #[test]
+    fn detector_rejects_field_and_aggregate_boundaries() {
+        let mut params = custom_params();
+        params.window_len = crate::window::MAX_WINDOW_LEN;
+        params.min_samples = 1;
+        params.max_tracks = 3;
+        assert!(matches!(
+            DetectorConfig::try_new(params),
+            Err(DetectorConfigError::RetainedSampleLimitExceeded { .. })
+        ));
+
+        let mut invalid = custom_params();
+        invalid.nis_alpha = f64::NAN;
+        assert!(matches!(
+            DetectorConfig::try_new(invalid),
+            Err(DetectorConfigError::NisAlphaInvalid { .. })
+        ));
     }
 }

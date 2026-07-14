@@ -17,11 +17,17 @@ use std::{num::NonZeroUsize, ops::Range};
 #[cfg(feature = "ncp-live")]
 use anyhow::Context as _;
 use clap::{Parser, Subcommand};
+#[cfg(feature = "ncp-live")]
+use galadriel_core::CorrConfig;
+#[cfg(feature = "ncp")]
+use galadriel_core::DetectorConfig;
+#[cfg(feature = "ncp")]
+use galadriel_core::ExploratoryResearchProfile;
 use galadriel_core::{
-    DetectorConfig, FusedVerdict, MagnitudeEvidence, Mirror, Modality, PidObservation, Verdict,
+    FusedVerdict, MagnitudeEvidence, Mirror, Modality, PidObservation, ReleaseSuite, Verdict,
 };
 use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
-use galadriel_sim::scenario::{generate, ScenarioConfig};
+use galadriel_sim::scenario::{generate, ScenarioConfig, ScenarioParams};
 #[cfg(feature = "ncp-live")]
 use std::io::Read as _;
 
@@ -30,9 +36,12 @@ const MAX_DEMO_FRAMES: usize = 10_000;
 #[cfg(all(feature = "ncp", feature = "pid"))]
 const MAX_REPLAY_PID_TRACKS: usize = 8;
 
-fn attack_start_frame(frames: usize, divisor: usize) -> u64 {
-    debug_assert!(divisor > 0, "attack start divisor must be nonzero");
-    u64::try_from(frames / divisor).expect("supported frame counts fit in u64")
+fn attack_start_frame(frames: usize, divisor: usize) -> anyhow::Result<u64> {
+    let quotient = frames
+        .checked_div(divisor)
+        .ok_or_else(|| anyhow::anyhow!("attack start divisor must be nonzero"))?;
+    u64::try_from(quotient)
+        .map_err(|_| anyhow::anyhow!("attack start frame is not representable as u64"))
 }
 
 #[derive(Parser)]
@@ -141,7 +150,7 @@ fn run_observe(
 fn load_deployment_registry(
     registry_path: &std::path::Path,
     registry_sha256: &str,
-) -> anyhow::Result<galadriel_ncp::registry::DeploymentRegistry> {
+) -> anyhow::Result<galadriel_ncp::registry::PinnedDeploymentRegistry> {
     // Read through the registry's wire ceiling instead of allocating according
     // to an untrusted file length before the strict parser can enforce it.
     let registry_file = std::fs::File::open(registry_path)
@@ -180,13 +189,13 @@ impl ObserveTelemetry {
         let limits = assembler.limits();
         Self {
             prior_identities: assembler.prior_identities(),
-            max_prior_identities: limits.max_prior_identities,
+            max_prior_identities: limits.max_prior_identities(),
             observation_streams: assembler.observation_streams(),
-            max_observation_streams: limits.max_observation_streams,
+            max_observation_streams: limits.max_observation_streams(),
             open_frames: assembler.open_frames(),
-            max_open_frames: limits.max_open_frames,
+            max_open_frames: limits.max_open_frames(),
             buffered_bytes: assembler.buffered_bytes(),
-            max_buffered_bytes: limits.max_buffered_bytes,
+            max_buffered_bytes: limits.max_buffered_bytes(),
         }
     }
 }
@@ -212,7 +221,7 @@ fn render_lifecycle_assessment(
             report,
         } => Ok(format!(
             "frame={fusion_seq} track={track_id} history_reset={history_reset} evidence={:?} calibrated_posterior=false",
-            report.verdict
+            report.verdict()
         )),
         LifecycleAssessment::Abstained {
             track_id,
@@ -283,23 +292,29 @@ async fn observe_epoch(
     keys: galadriel_ncp::ncp_core::Keys,
     epoch: &str,
     producer_id: &str,
-    registry: galadriel_ncp::registry::DeploymentRegistry,
+    registry: galadriel_ncp::registry::PinnedDeploymentRegistry,
 ) -> anyhow::Result<()> {
-    use galadriel_ncp::assembler::AssemblerLimits;
+    use galadriel_ncp::assembler::AssemblerProfile;
     use galadriel_ncp::lifecycle::LifecycleDetector;
     use galadriel_ncp::operational_live::OperationalLiveReceiver;
 
     // Validate the immutable statistical policy before acquiring transport
     // resources. A configuration failure must not leave a live subscription
     // waiting for drop-based cleanup.
-    let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
-        .context("default lifecycle detector policy is invalid")?;
+    let detector_config = DetectorConfig::standalone_advisory_v0_9()
+        .context("standalone-advisory lifecycle detector policy is invalid")?;
+    let correlation_config = CorrConfig::standalone_advisory_v0_9()
+        .context("standalone-advisory correlation policy is invalid")?;
+    let mut detector = LifecycleDetector::new(detector_config, correlation_config)
+        .context("standalone-advisory lifecycle detector policy is invalid")?;
     let mut receiver = OperationalLiveReceiver::open_secure(
         keys,
         epoch,
         producer_id,
         registry,
-        AssemblerLimits::default(),
+        AssemblerProfile::BoundedV0_9
+            .try_limits()
+            .context("bounded 0.9 assembler profile is invalid")?,
     )
     .await
     .context("cannot open the strict two-route receiver; verify NCP_ZENOH_CONFIG")?;
@@ -366,15 +381,15 @@ async fn observe_epoch(
         health.ingress_queue_depth,
         health.ingress_capacity,
         assembler.open_frames(),
-        limits.max_open_frames,
+        limits.max_open_frames(),
         assembler.buffered_bytes(),
-        limits.max_buffered_bytes,
+        limits.max_buffered_bytes(),
         assembler.pending_monitor_events(),
-        limits.max_reorder_events,
+        limits.max_reorder_events(),
         assembler.prior_identities(),
-        limits.max_prior_identities,
+        limits.max_prior_identities(),
         assembler.observation_streams(),
-        limits.max_observation_streams,
+        limits.max_observation_streams(),
         assembler.next_expected_monitor_event_seq(),
         assembler.last_heartbeat_receipt(),
     );
@@ -395,9 +410,9 @@ mod observe_cli_tests {
 
     use galadriel_core::ConsistencyProjection;
     use galadriel_ncp::assembler::{
-        AssemblerLimits, AssemblyEvent, AssemblyFault, AssemblyFaultKind, CrossRouteAssembler,
-        EvidenceRoute, FrameIdentity, RegistryOpportunityPolicy, RegistryVerifier,
-        RegistryViolation,
+        AssemblerProfile, AssemblyEvent, AssemblyFault, AssemblyFaultKind, CrossRouteAssembler,
+        EvidenceRoute, FrameIdentity, RegistryOpportunityParams, RegistryOpportunityPolicy,
+        RegistryVerifier, RegistryViolation,
     };
     use galadriel_ncp::lifecycle::{LifecycleAssessment, LifecycleDetector};
     use galadriel_ncp::monitor::{
@@ -413,13 +428,14 @@ mod observe_cli_tests {
 
     impl RegistryVerifier for TestRegistry {
         fn opportunity_policy(&self) -> Result<RegistryOpportunityPolicy, RegistryViolation> {
-            Ok(RegistryOpportunityPolicy {
+            RegistryOpportunityPolicy::try_new(RegistryOpportunityParams {
                 max_active_tracks: 32,
                 max_frame_inputs: 128,
                 max_attempts_per_track_modality: 128,
                 max_outcomes_per_frame: 128,
                 max_monitor_queue_events: 128,
             })
+            .map_err(|_| RegistryViolation::InvalidOpportunityPolicy)
         }
 
         fn verify_summary(
@@ -476,27 +492,14 @@ mod observe_cli_tests {
     }
 
     fn projection(prior_id: u64) -> ConsistencyProjection {
-        ConsistencyProjection {
-            values: [1.0, 2.0, 3.0],
-            dimensions: 3,
-            frame_id: 10,
-            context_id: 20,
-            prior_id,
-        }
+        ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, 10, 20, prior_id)
+            .expect("test projection provenance is valid")
     }
 
     fn observation(modality: Modality) -> PidObservation {
-        PidObservation {
-            track_id: 7,
-            timestamp_ms: 1_001,
-            seq: 1,
-            modality,
-            nis: 1.0,
-            dof: 3,
-            innovation: None,
-            innovation_cov: None,
-            consistency_projection: Some(projection(101)),
-        }
+        PidObservation::try_scalar_raw(7, 1_001, 1, modality, 1.0, 3)
+            .expect("test observation coordinates are valid")
+            .with_consistency_projection(projection(101))
     }
 
     fn outcome(modality: Modality, measurement_index: u32) -> ModalityOutcome {
@@ -529,7 +532,9 @@ mod observe_cli_tests {
             "epoch-1",
             "crebain",
             TestRegistry,
-            AssemblerLimits::default(),
+            AssemblerProfile::BoundedV0_9
+                .try_limits()
+                .expect("compiled assembler test profile is valid"),
             now,
         )
         .expect("CLI handler fixture assembler is valid");
@@ -673,8 +678,14 @@ mod observe_cli_tests {
 
     #[test]
     fn observe_event_handler_renders_frame_and_both_assessment_shapes() {
-        let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
-            .expect("default lifecycle detector is valid");
+        let detector_config = DetectorConfig::standalone_advisory_v0_9()
+            .expect("standalone-advisory detector config is valid");
+        let mut detector = LifecycleDetector::new(
+            detector_config,
+            CorrConfig::standalone_advisory_v0_9()
+                .expect("standalone-advisory correlation config is valid"),
+        )
+        .expect("standalone-advisory lifecycle detector is valid");
         let output = handle_observe_event(assembled_frame_event(), &mut detector, telemetry())
             .expect("complete frame is assessed");
         assert_eq!(output.stderr, Vec::<String>::new());
@@ -696,8 +707,14 @@ mod observe_cli_tests {
 
     #[test]
     fn observe_event_handler_reports_exact_heartbeat_and_contract_advisory() {
-        let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
-            .expect("default lifecycle detector is valid");
+        let detector_config = DetectorConfig::standalone_advisory_v0_9()
+            .expect("standalone-advisory detector config is valid");
+        let mut detector = LifecycleDetector::new(
+            detector_config,
+            CorrConfig::standalone_advisory_v0_9()
+                .expect("standalone-advisory correlation config is valid"),
+        )
+        .expect("standalone-advisory lifecycle detector is valid");
         let heartbeat = handle_observe_event(
             AssemblyEvent::HeartbeatAccepted {
                 event_seq: 11,
@@ -729,8 +746,14 @@ mod observe_cli_tests {
 
     #[test]
     fn observe_event_handler_fails_closed_if_receiver_fault_lifting_regresses() {
-        let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
-            .expect("default lifecycle detector is valid");
+        let detector_config = DetectorConfig::standalone_advisory_v0_9()
+            .expect("standalone-advisory detector config is valid");
+        let mut detector = LifecycleDetector::new(
+            detector_config,
+            CorrConfig::standalone_advisory_v0_9()
+                .expect("standalone-advisory correlation config is valid"),
+        )
+        .expect("standalone-advisory lifecycle detector is valid");
         let error = handle_observe_event(
             AssemblyEvent::Fault(AssemblyFault {
                 kind: AssemblyFaultKind::HeartbeatDeadlineExpired,
@@ -754,7 +777,7 @@ fn run_demo(frames: usize, seed: u64) -> anyhow::Result<()> {
     );
     let color = std::io::stdout().is_terminal();
     let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
-    let base = ScenarioConfig {
+    let base = ScenarioConfig::try_new(ScenarioParams {
         track_id: 1,
         frames,
         modalities: mods.clone(),
@@ -762,8 +785,8 @@ fn run_demo(frames: usize, seed: u64) -> anyhow::Result<()> {
         rho: 0.7,
         dt_ms: 100,
         seed,
-    };
-    let start = attack_start_frame(frames, 2);
+    })?;
+    let start = attack_start_frame(frames, 2)?;
 
     banner(color);
 
@@ -856,24 +879,28 @@ fn run_case(
         stream.len().is_multiple_of(mods.len()),
         "demo stream has an incomplete fusion frame"
     );
-    let mut mirror = Mirror::with_modalities(DetectorConfig::default(), mods)?;
-    let track = stream[0].track_id;
+    let suite = ReleaseSuite::standalone_advisory_v0_9(mods)?;
+    let mut mirror = Mirror::from_release_suite(&suite);
+    let track = stream[0].track_id();
     let mut history: HashMap<Modality, Vec<f64>> = HashMap::new();
     let mut report = None;
 
     for chunk in stream.chunks(mods.len()) {
         anyhow::ensure!(
-            chunk
-                .iter()
-                .all(|observation| observation.track_id == track && observation.seq == chunk[0].seq),
+            chunk.iter().all(|observation| {
+                observation.track_id() == track && observation.sequence() == chunk[0].sequence()
+            }),
             "demo stream is not grouped into one track and sequence per fusion frame"
         );
         for o in chunk {
             mirror.ingest(o)?;
         }
-        let r = mirror.assess(track, chunk[0].seq)?;
-        for ch in &r.channels {
-            history.entry(ch.modality).or_default().push(ch.mean_nis);
+        let r = mirror.assess(track, chunk[0].sequence())?;
+        for ch in r.channels() {
+            history
+                .entry(ch.modality())
+                .or_default()
+                .push(ch.mean_nis());
         }
         report = Some(r);
     }
@@ -883,9 +910,9 @@ fn run_case(
     println!("{}", cyan(&format!("┌─ {title}"), color));
     for &m in mods {
         let hist = history.get(&m).cloned().unwrap_or_default();
-        let ch = report.channels.iter().find(|c| c.modality == m);
+        let ch = report.channels().iter().find(|c| c.modality() == m);
         let (mean, anomalous, ready) = ch.map_or((0.0, false, false), |c| {
-            (c.mean_nis, c.anomalous(), c.ready)
+            (c.mean_nis(), c.anomalous(), c.ready())
         });
         let spark = sparkline(&hist, 0.0, 30.0);
         let tag = if !ready {
@@ -897,9 +924,9 @@ fn run_case(
         };
         println!("│  {:<15} {}  μ={:>6.2}  {}", m.label(), spark, mean, tag);
     }
-    let v = verdict_str(&report.verdict);
-    let vc = color_for_tone(&v, verdict_tone(&report.verdict), color);
-    println!("└▷ {}   {}", vc, dim(&report.note, color));
+    let v = verdict_str(report.verdict());
+    let vc = color_for_tone(&v, verdict_tone(report.verdict()), color);
+    println!("└▷ {}   {}", vc, dim(report.note(), color));
     Ok(())
 }
 
@@ -1060,11 +1087,11 @@ fn pid_channel_is_assessable(gate_ok: bool, corroboration: Option<f64>) -> bool 
 /// the modeled decoupling. This synthetic scene needs correlated honest channels
 /// (`ρ = 0.7`) and is not field-performance evidence.
 fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
-    use galadriel_core::{assess_default, CorrConfig, CorrVerdict};
+    use galadriel_core::{assess_default, CorrVerdict};
     use galadriel_sim::scenario::{generate_spoofed, StealthySpoof};
 
     let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
-    let cfg = ScenarioConfig {
+    let cfg = ScenarioConfig::try_new(ScenarioParams {
         track_id: 1,
         frames,
         modalities: mods.clone(),
@@ -1072,21 +1099,17 @@ fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::R
         rho: 0.7,
         dt_ms: 100,
         seed,
-    };
+    })?;
     let stream = generate_spoofed(
         &cfg,
         StealthySpoof {
             target: Modality::Acoustic,
-            start_frame: attack_start_frame(frames, 3),
+            start_frame: attack_start_frame(frames, 3)?,
         },
     )?;
 
-    let report = assess_default(
-        &stream,
-        &mods,
-        &DetectorConfig::default(),
-        &CorrConfig::default(),
-    )?;
+    let suite = ReleaseSuite::standalone_advisory_v0_9(&mods)?;
+    let report = assess_default(&stream, &suite)?;
 
     println!();
     println!(
@@ -1096,36 +1119,41 @@ fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::R
             color
         )
     );
-    for axis in &report.correlations {
-        let axis_insufficient = matches!(axis.report.verdict, CorrVerdict::InsufficientEvidence);
-        for c in &axis.report.channels {
+    for axis in report.correlations() {
+        let axis_insufficient =
+            matches!(axis.report().verdict(), CorrVerdict::InsufficientEvidence);
+        for c in axis.report().channels() {
             let tag = channel_evidence_tag(
-                channel_evidence_label(c.decoupled, c.corroboration.is_some(), axis_insufficient),
+                channel_evidence_label(
+                    c.decoupled(),
+                    c.corroboration().is_some(),
+                    axis_insufficient,
+                ),
                 color,
             );
             let rho = c
-                .corroboration
+                .corroboration()
                 .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));
             println!(
                 "│  axis {} {:<15} ρ corroboration={}  {}",
-                axis.axis,
-                c.modality.label(),
+                axis.axis(),
+                c.modality().label(),
                 rho,
                 tag
             );
         }
     }
-    let bl = match report.baseline.verdict {
+    let bl = match report.baseline().verdict() {
         Verdict::Nominal => green("NOMINAL — blind (NIS stays in-covariance)", color),
-        _ => red(&verdict_str(&report.baseline.verdict), color),
+        _ => red(&verdict_str(report.baseline().verdict()), color),
     };
-    let fused = fused_verdict_str(&report.verdict);
-    let fc = color_for_tone(&fused, fused_verdict_tone(&report.verdict), color);
+    let fused = fused_verdict_str(report.verdict());
+    let fc = color_for_tone(&fused, fused_verdict_tone(report.verdict()), color);
     println!("│  baseline (NIS χ²):      {bl}");
     println!(
         "└▷ correlation default:   {}   {}",
         fc,
-        dim(&report.note, color)
+        dim(report.note(), color)
     );
     Ok(())
 }
@@ -1238,6 +1266,7 @@ impl ConsistencyFrameStatus {
 struct ReplayHistory {
     alarms: FrameSpan,
     insufficient: FrameSpan,
+    generation_resets: FrameSpan,
     too_few_modalities: FrameSpan,
     missing_projection: FrameSpan,
     extraction_errors: FrameSpan,
@@ -1246,6 +1275,10 @@ struct ReplayHistory {
 
 #[cfg(feature = "ncp")]
 impl ReplayHistory {
+    fn observe_generation_reset(&mut self, seq: u64) {
+        self.generation_resets.observe(seq);
+    }
+
     fn observe(
         &mut self,
         seq: u64,
@@ -1271,6 +1304,7 @@ impl ReplayHistory {
     fn merge(&mut self, other: &Self) {
         self.alarms.merge(&other.alarms);
         self.insufficient.merge(&other.insufficient);
+        self.generation_resets.merge(&other.generation_resets);
         self.too_few_modalities.merge(&other.too_few_modalities);
         self.missing_projection.merge(&other.missing_projection);
         self.extraction_errors.merge(&other.extraction_errors);
@@ -1293,6 +1327,7 @@ impl ReplayHistory {
         }
         for (span, label) in [
             (&self.insufficient, "insufficient-evidence"),
+            (&self.generation_resets, "explicit-generation-reset"),
             (&self.too_few_modalities, "too-few-modalities"),
             (&self.missing_projection, "missing-projection"),
             (&self.extraction_errors, "projection-extraction-error"),
@@ -1371,6 +1406,16 @@ fn replay_track_uses_pid(track_index: usize, max_pid_tracks: usize) -> bool {
     track_index < max_pid_tracks
 }
 
+#[cfg(all(feature = "ncp", feature = "pid"))]
+fn replay_generation_observation_range(
+    frame_ranges: &[Range<usize>],
+    generation_start_frame: usize,
+) -> Option<Range<usize>> {
+    let first = frame_ranges.get(generation_start_frame)?;
+    let last = frame_ranges.last()?;
+    (first.start <= last.end).then_some(first.start..last.end)
+}
+
 #[cfg(feature = "ncp")]
 fn contiguous_ranges_by_key<T, K: PartialEq>(
     items: &[T],
@@ -1413,14 +1458,8 @@ fn has_required_modalities(modality_count: usize, minimum: usize) -> bool {
 fn correlation_config_for_axes(
     base: &galadriel_core::CorrConfig,
     axis_count: usize,
-) -> galadriel_core::CorrConfig {
-    debug_assert!(
-        axis_count > 0,
-        "a validated projection has at least one axis"
-    );
-    let mut adjusted = base.clone();
-    adjusted.family_alpha /= axis_count as f64;
-    adjusted
+) -> Result<galadriel_core::CorrConfig, galadriel_core::CorrConfigError> {
+    base.try_for_axis_family(axis_count)
 }
 
 #[cfg(feature = "ncp")]
@@ -1430,7 +1469,7 @@ fn correlation_reports_are_insufficient(reports: &[galadriel_core::AxisCorrelati
     reports.is_empty()
         || reports
             .iter()
-            .any(|axis| matches!(axis.report.verdict, CorrVerdict::InsufficientEvidence))
+            .any(|axis| matches!(axis.report().verdict(), CorrVerdict::InsufficientEvidence))
 }
 
 #[cfg(feature = "ncp")]
@@ -1447,16 +1486,16 @@ fn run_replay(
     #[cfg(feature = "pid")] max_pid_tracks: usize,
 ) -> anyhow::Result<()> {
     use galadriel_core::{
-        combine_correlation_axes, consistency_channels_with_temporal_limits, correlation,
-        AxisCorrelationReport, CorrConfig,
+        combine, combine_correlation_axes, consistency_channels_with_temporal_limits, correlation,
+        AxisCorrelationReport, ConsistencyEvidence, CorrConfig,
     };
 
     let color = std::io::stdout().is_terminal();
-    let detector_cfg = DetectorConfig::default();
+    let detector_cfg = DetectorConfig::standalone_advisory_v0_9()?;
     anyhow::ensure!(
-        (1..=detector_cfg.max_tracks).contains(&max_report_tracks),
+        (1..=detector_cfg.max_tracks()).contains(&max_report_tracks),
         "max-report-tracks must be in 1..={}",
-        detector_cfg.max_tracks
+        detector_cfg.max_tracks()
     );
     #[cfg(feature = "pid")]
     anyhow::ensure!(
@@ -1471,17 +1510,17 @@ fn run_replay(
     // preprocessing plus a single linear replay pass.
     obs.sort_by_key(|observation| {
         (
-            observation.track_id,
-            observation.seq,
-            observation.modality as u8,
+            observation.track_id(),
+            observation.sequence(),
+            observation.modality().stable_code(),
         )
     });
-    let track_ranges = contiguous_ranges_by_key(&obs, |observation| observation.track_id);
+    let track_ranges = contiguous_ranges_by_key(&obs, PidObservation::track_id);
     let track_count = track_ranges.len();
     anyhow::ensure!(
-        track_count <= detector_cfg.max_tracks,
+        track_count <= detector_cfg.max_tracks(),
         "capture contains {track_count} tracks; detector maximum is {}",
-        detector_cfg.max_tracks
+        detector_cfg.max_tracks()
     );
 
     println!();
@@ -1500,57 +1539,87 @@ fn run_replay(
     let mut suppressed = SuppressedReplayStats::default();
     for (track_index, track_range) in track_ranges.iter().enumerate() {
         let track_obs = &obs[track_range.clone()];
-        let track_id = track_obs[0].track_id;
-        let mut mods: Vec<Modality> = track_obs.iter().map(|o| o.modality).collect();
-        mods.sort_by_key(|modality| *modality as u8);
+        let track_id = track_obs[0].track_id();
+        let mut mods: Vec<Modality> = track_obs.iter().map(PidObservation::modality).collect();
+        mods.sort_by_key(|modality| modality.stable_code());
         mods.dedup();
 
-        let modalities_ready = has_required_modalities(mods.len(), detector_cfg.min_channels);
-        let mut mirror = if modalities_ready {
-            Mirror::with_modalities(detector_cfg.clone(), &mods)?
-        } else {
-            Mirror::new(detector_cfg.clone())?
+        let modalities_ready = has_required_modalities(mods.len(), detector_cfg.min_channels());
+        let release_suite = modalities_ready
+            .then(|| ReleaseSuite::standalone_advisory_v0_9(&mods))
+            .transpose()?;
+        let mut mirror = match &release_suite {
+            Some(suite) => Mirror::from_release_suite(suite),
+            None => Mirror::for_exploratory_subset(
+                detector_cfg.clone(),
+                ExploratoryResearchProfile::SubsetMagnitudeV0_9.capability(),
+            ),
         };
-        let corr_cfg = CorrConfig::default();
+        let corr_cfg = CorrConfig::standalone_advisory_v0_9()?;
         let mut baseline_history = ReplayHistory::default();
         let mut default_history = ReplayHistory::default();
         let mut baseline_terminal = None;
         let mut default_terminal: Option<(FusedVerdict, String)> = None;
+        let mut generation_start_frame = 0usize;
 
-        let frame_ranges = contiguous_ranges_by_key(track_obs, |observation| observation.seq);
+        let frame_ranges = contiguous_ranges_by_key(track_obs, PidObservation::sequence);
         for (frame_index, frame_range) in frame_ranges.iter().enumerate() {
-            let seq = track_obs[frame_range.start].seq;
-            for observation in &track_obs[frame_range.clone()] {
-                mirror.ingest(observation)?;
+            let seq = track_obs[frame_range.start].sequence();
+            let frame = &track_obs[frame_range.clone()];
+            if let Err(error) = frame
+                .iter()
+                .try_for_each(|observation| mirror.ingest_checked(observation))
+            {
+                if error.code() != galadriel_core::FailureCode::ResetRequired {
+                    return Err(anyhow::anyhow!(
+                        "track {track_id} ingest at sequence {seq}: {error}"
+                    ));
+                }
+                mirror.remove_track(track_id);
+                generation_start_frame = frame_index;
+                baseline_history.observe_generation_reset(seq.get());
+                default_history.observe_generation_reset(seq.get());
+                frame
+                    .iter()
+                    .try_for_each(|observation| mirror.ingest_checked(observation))
+                    .map_err(|retry_error| {
+                        anyhow::anyhow!(
+                            "track {track_id} ingest after explicit generation reset at sequence {seq}: {retry_error}"
+                        )
+                    })?;
             }
             let baseline = mirror.assess(track_id, seq)?;
             baseline_history.observe(
-                seq,
-                baseline_alarm(&baseline.verdict),
-                matches!(&baseline.verdict, Verdict::InsufficientEvidence),
+                seq.get(),
+                baseline_alarm(baseline.verdict()),
+                matches!(baseline.verdict(), Verdict::InsufficientEvidence),
                 None,
             );
 
-            let window_range =
-                replay_window_observation_range(&frame_ranges, frame_index, corr_cfg.window);
+            let generation_ranges = &frame_ranges[generation_start_frame..=frame_index];
+            let window_range = replay_window_observation_range(
+                generation_ranges,
+                frame_index - generation_start_frame,
+                corr_cfg.window(),
+            );
             let (correlations, consistency_status, consistency_note) = if modalities_ready {
                 match consistency_channels_with_temporal_limits(
                     &track_obs[window_range],
                     &mods,
-                    detector_cfg.max_seq_gap,
-                    detector_cfg.max_timestamp_skew_ms,
-                    detector_cfg.max_inter_sample_gap_ms,
+                    detector_cfg.max_seq_gap(),
+                    detector_cfg.max_timestamp_skew_ms(),
+                    detector_cfg.max_inter_sample_gap_ms(),
                 ) {
                     Ok(Some(projection)) => {
                         let axis_count = projection.axes.len();
+                        let adjusted = correlation_config_for_axes(&corr_cfg, axis_count)?;
                         let reports = projection
                             .axes
                             .iter()
                             .enumerate()
                             .map(|(axis, channels)| {
-                                let adjusted = correlation_config_for_axes(&corr_cfg, axis_count);
                                 correlation::analyze(channels, &adjusted)
-                                    .map(|report| AxisCorrelationReport { axis, report })
+                                    .and_then(|report| AxisCorrelationReport::try_new(axis, report))
                             })
                             .collect::<galadriel_core::Result<Vec<_>>>();
                         match reports {
@@ -1558,7 +1627,9 @@ fn run_replay(
                                 let insufficient = correlation_reports_are_insufficient(&reports);
                                 let note = reports
                                     .iter()
-                                    .map(|axis| format!("axis {}: {}", axis.axis, axis.report.note))
+                                    .map(|axis| {
+                                        format!("axis {}: {}", axis.axis(), axis.report().note())
+                                    })
                                     .collect::<Vec<_>>()
                                     .join(" | ");
                                 (
@@ -1592,9 +1663,12 @@ fn run_replay(
                     "fewer than the configured minimum modalities".to_string(),
                 )
             };
-            let (fused, fusion_note) = combine_correlation_axes(&baseline, &correlations);
+            let (fused, fusion_note) = match &release_suite {
+                Some(suite) => combine_correlation_axes(suite, &baseline, &correlations)?,
+                None => combine(&baseline, ConsistencyEvidence::Insufficient),
+            };
             default_history.observe(
-                seq,
+                seq.get(),
                 fused_alarm(&fused),
                 matches!(&fused, FusedVerdict::InsufficientEvidence),
                 Some(consistency_status),
@@ -1612,14 +1686,14 @@ fn run_replay(
             .ok_or_else(|| anyhow::anyhow!("track {track_id} has no fused assessment"))?;
         let verbose = replay_track_is_verbose(track_index, max_report_tracks);
         if verbose {
-            let verdict = verdict_str(&baseline.verdict);
-            let colored = color_for_tone(&verdict, verdict_tone(&baseline.verdict), color);
+            let verdict = verdict_str(baseline.verdict());
+            let colored = color_for_tone(&verdict, verdict_tone(baseline.verdict()), color);
             println!(
                 "│  baseline · track {track_id}: terminal {}  {}",
                 colored,
                 dim(&baseline_history.summary(), color)
             );
-            println!("│             {}", dim(&baseline.note, color));
+            println!("│             {}", dim(baseline.note(), color));
 
             let fused = fused_verdict_str(&default_verdict);
             let colored = color_for_tone(&fused, fused_verdict_tone(&default_verdict), color);
@@ -1635,31 +1709,52 @@ fn run_replay(
 
         #[cfg(feature = "pid")]
         if replay_track_uses_pid(track_index, max_pid_tracks) {
-            use galadriel_pid::{assess_stream, PidConfig};
+            use galadriel_pid::{assess_stream, PidResearchSuite, MIN_PID_RESEARCH_MODALITIES};
 
-            let report = assess_stream(track_obs, &mods, &detector_cfg, &PidConfig::default());
-            if verbose {
-                match report {
-                    Ok(report) => {
-                        println!(
-                            "│  PID      · track {track_id}: terminal-only fused {:?}  {}",
-                            report.verdict,
-                            dim(&report.note, color)
-                        );
-                        for axis in &report.pids {
-                            println!(
-                                "│             axis {} {:?}  {}",
-                                axis.axis,
-                                axis.report.verdict,
-                                dim(&axis.report.note, color)
-                            );
-                        }
-                    }
-                    Err(error) => println!(
+            if mods.len() < MIN_PID_RESEARCH_MODALITIES {
+                if verbose {
+                    println!(
                         "│  PID      · track {track_id}: {}  {}",
                         dim("terminal-only INSUFFICIENT-EVIDENCE", color),
-                        dim(&format!("estimator input rejected: {error}"), color)
-                    ),
+                        dim(
+                            "fewer than the PID research minimum modalities; estimator not started",
+                            color,
+                        )
+                    );
+                }
+            } else {
+                let pid_suite = PidResearchSuite::circular_delete_block_v0_9(&mods)?;
+                let terminal_generation =
+                    replay_generation_observation_range(&frame_ranges, generation_start_frame)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "track {track_id} has no terminal generation for PID assessment"
+                            )
+                        })?;
+                let report = assess_stream(&track_obs[terminal_generation], &pid_suite);
+                if verbose {
+                    match report {
+                        Ok(report) => {
+                            println!(
+                                "│  PID      · track {track_id}: terminal-only fused {:?}  {}",
+                                report.verdict(),
+                                dim(report.note(), color)
+                            );
+                            for axis in report.pids() {
+                                println!(
+                                    "│             axis {} {:?}  {}",
+                                    axis.axis(),
+                                    axis.report().verdict(),
+                                    dim(axis.report().note(), color)
+                                );
+                            }
+                        }
+                        Err(error) => println!(
+                            "│  PID      · track {track_id}: {}  {}",
+                            dim("terminal-only INSUFFICIENT-EVIDENCE", color),
+                            dim(&format!("estimator input rejected: {error}"), color)
+                        ),
+                    }
                 }
             }
         }
@@ -1710,11 +1805,11 @@ fn run_replay(
 /// evaluated on the same synthetic decoupling.
 #[cfg(feature = "pid")]
 fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
-    use galadriel_pid::{assess_stream, PidConfig, PidVerdict};
+    use galadriel_pid::{assess_stream, PidResearchSuite, PidVerdict};
     use galadriel_sim::scenario::{generate_spoofed, StealthySpoof};
 
     let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
-    let cfg = ScenarioConfig {
+    let cfg = ScenarioConfig::try_new(ScenarioParams {
         track_id: 1,
         frames,
         modalities: mods.clone(),
@@ -1722,23 +1817,19 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
         rho: 0.7,
         dt_ms: 100,
         seed,
-    };
+    })?;
     let stream = generate_spoofed(
         &cfg,
         StealthySpoof {
             target: Modality::Acoustic,
-            start_frame: attack_start_frame(frames, 3),
+            start_frame: attack_start_frame(frames, 3)?,
         },
     )?;
 
     // Compare the KSG-MI escalation on every attested projection axis. Agreement
     // is an observed finite-sample result, not an equivalence guarantee.
-    let report = assess_stream(
-        &stream,
-        &mods,
-        &DetectorConfig::default(),
-        &PidConfig::default(),
-    )?;
+    let pid_suite = PidResearchSuite::circular_delete_block_v0_9(&mods)?;
+    let report = assess_stream(&stream, &pid_suite)?;
 
     println!();
     println!(
@@ -1748,31 +1839,31 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
             color
         )
     );
-    for axis in &report.pids {
-        let axis_insufficient = matches!(axis.report.verdict, PidVerdict::InsufficientEvidence);
-        for c in &axis.report.channels {
+    for axis in report.pids() {
+        let axis_insufficient = matches!(axis.report().verdict(), PidVerdict::InsufficientEvidence);
+        for c in axis.report().channels() {
             let tag = channel_evidence_tag(
                 channel_evidence_label(
-                    c.decoupled,
-                    pid_channel_is_assessable(c.gate_ok, c.corroboration),
+                    c.is_decoupled(),
+                    pid_channel_is_assessable(c.gate_ok(), c.corroboration()),
                     axis_insufficient,
                 ),
                 color,
             );
             let mi = c
-                .corroboration
+                .corroboration()
                 .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));
             println!(
                 "│  axis {} {:<15} KSG-MI corroboration={}  {}",
-                axis.axis,
-                c.modality.label(),
+                axis.axis(),
+                c.modality().label(),
                 mi,
                 tag
             );
         }
     }
-    let fused = fused_verdict_str(&report.verdict);
-    let pv = match report.verdict {
+    let fused = fused_verdict_str(report.verdict());
+    let pv = match report.verdict() {
         FusedVerdict::Nominal => green(&fused, color),
         FusedVerdict::InsufficientEvidence => dim(&fused, color),
         FusedVerdict::AttributedInconsistency { .. }
@@ -1782,7 +1873,7 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
     println!(
         "└▷ multi-axis fused PID: {}   {}   {}",
         pv,
-        dim(&report.note, color),
+        dim(report.note(), color),
         dim(
             "(synthetic linear-Gaussian comparison; PID atoms are diagnostic only)",
             color
@@ -1795,15 +1886,32 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
 mod replay_history_tests {
     use super::*;
 
-    fn axis_report(verdict: galadriel_core::CorrVerdict) -> galadriel_core::AxisCorrelationReport {
-        galadriel_core::AxisCorrelationReport {
-            axis: 0,
-            report: galadriel_core::CorrReport {
-                channels: Vec::new(),
-                verdict,
-                note: String::new(),
-            },
-        }
+    fn nominal_axis_report() -> galadriel_core::AxisCorrelationReport {
+        let config = galadriel_core::CorrConfig::standalone_advisory_v0_9().unwrap();
+        let values = (0..config.min_samples())
+            .map(|index| (index as f64 * 0.17).sin())
+            .collect::<Vec<_>>();
+        let channels = [
+            (Modality::Visual, values.clone()),
+            (Modality::Radar, values.clone()),
+            (Modality::Acoustic, values),
+        ];
+        let report = galadriel_core::correlation::analyze(&channels, &config).unwrap();
+        assert!(matches!(
+            report.verdict(),
+            galadriel_core::CorrVerdict::Nominal
+        ));
+        galadriel_core::AxisCorrelationReport::single_axis(report)
+    }
+
+    fn insufficient_axis_report() -> galadriel_core::AxisCorrelationReport {
+        let config = galadriel_core::CorrConfig::standalone_advisory_v0_9().unwrap();
+        let report = galadriel_core::correlation::analyze(&[], &config).unwrap();
+        assert!(matches!(
+            report.verdict(),
+            galadriel_core::CorrVerdict::InsufficientEvidence
+        ));
+        galadriel_core::AxisCorrelationReport::single_axis(report)
     }
 
     #[test]
@@ -1844,6 +1952,23 @@ mod replay_history_tests {
         );
     }
 
+    #[cfg(feature = "pid")]
+    #[test]
+    fn terminal_pid_range_excludes_retired_generations() {
+        let frame_ranges = [0..2, 2..5, 5..6, 6..10];
+
+        assert_eq!(
+            replay_generation_observation_range(&frame_ranges, 2),
+            Some(5..10)
+        );
+        assert_eq!(
+            replay_generation_observation_range(&frame_ranges, 0),
+            Some(0..10)
+        );
+        assert_eq!(replay_generation_observation_range(&frame_ranges, 4), None);
+        assert_eq!(replay_generation_observation_range(&[], 0), None);
+    }
+
     #[test]
     fn required_modality_boundary_is_inclusive() {
         assert!(!has_required_modalities(1, 2));
@@ -1853,23 +1978,23 @@ mod replay_history_tests {
 
     #[test]
     fn correlation_family_alpha_is_split_across_projection_axes() {
-        let base = galadriel_core::CorrConfig::default();
-        let adjusted = correlation_config_for_axes(&base, 3);
+        let base = galadriel_core::CorrConfig::standalone_advisory_v0_9().unwrap();
+        let adjusted = correlation_config_for_axes(&base, 3).unwrap();
 
-        assert!((adjusted.family_alpha - base.family_alpha / 3.0).abs() < f64::EPSILON);
-        assert_eq!(adjusted.window, base.window);
-        assert_eq!(adjusted.min_samples, base.min_samples);
+        assert!((adjusted.family_alpha() - base.family_alpha() / 3.0).abs() < f64::EPSILON);
+        assert_eq!(adjusted.window(), base.window());
+        assert_eq!(adjusted.min_samples(), base.min_samples());
     }
 
     #[test]
     fn correlation_report_insufficiency_covers_empty_ready_and_mixed_inputs() {
-        let nominal = axis_report(galadriel_core::CorrVerdict::Nominal);
-        let insufficient = axis_report(galadriel_core::CorrVerdict::InsufficientEvidence);
+        let nominal = nominal_axis_report();
+        let insufficient = insufficient_axis_report();
 
         assert!(correlation_reports_are_insufficient(&[]));
         assert!(!correlation_reports_are_insufficient(&[nominal]));
         assert!(correlation_reports_are_insufficient(&[
-            axis_report(galadriel_core::CorrVerdict::Nominal),
+            nominal_axis_report(),
             insufficient,
         ]));
     }
@@ -1931,6 +2056,22 @@ mod replay_history_tests {
         assert!(!span.has_frames());
         span.observe(5);
         assert!(span.has_frames());
+    }
+
+    #[test]
+    fn replay_history_retains_explicit_generation_boundaries() {
+        let mut first = ReplayHistory::default();
+        first.observe_generation_reset(7);
+        let mut second = ReplayHistory::default();
+        second.observe_generation_reset(19);
+        first.merge(&second);
+
+        assert_eq!(first.generation_resets.frames, 2);
+        assert_eq!(first.generation_resets.first_seq, Some(7));
+        assert_eq!(first.generation_resets.last_seq, Some(19));
+        assert!(first
+            .summary()
+            .contains("explicit-generation-reset 2 frame(s), first seq 7, last seq 19"));
     }
 
     #[test]
@@ -2094,9 +2235,10 @@ mod verdict_label_tests {
 
     #[test]
     fn attack_start_uses_floor_division_at_supported_boundaries() {
-        assert_eq!(attack_start_frame(128, 2), 64);
-        assert_eq!(attack_start_frame(128, 3), 42);
-        assert_eq!(attack_start_frame(129, 3), 43);
+        assert_eq!(attack_start_frame(128, 2).unwrap(), 64);
+        assert_eq!(attack_start_frame(128, 3).unwrap(), 42);
+        assert_eq!(attack_start_frame(129, 3).unwrap(), 43);
+        assert!(attack_start_frame(128, 0).is_err());
     }
 
     #[test]

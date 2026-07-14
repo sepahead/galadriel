@@ -26,8 +26,8 @@ use std::time::Duration;
 
 use galadriel_core::observation::{Modality, PidObservation};
 use galadriel_ncp::live::{
-    HandoffConfig, LastAcceptedObservation, LiveLimits, RejectionReason, SidecarTap,
-    SubscriptionHealth, TransportMode,
+    HandoffConfig, HandoffProfile, LastAcceptedObservation, LiveLimits, RejectionReason,
+    SidecarTap, SubscriptionHealth, TransportMode,
 };
 use galadriel_ncp::{sidecar_key, SidecarEnvelope};
 use ncp_core::keys::Keys;
@@ -45,6 +45,12 @@ const PRODUCER_ID: &str = "crebain";
 const RECV_DEADLINE: Duration = Duration::from_secs(10);
 const COUNTER_DEADLINE: Duration = Duration::from_secs(10);
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
+
+fn handoff() -> HandoffConfig {
+    HandoffProfile::BoundedV0_9
+        .try_config()
+        .expect("compiled test handoff profile is valid")
+}
 
 /// Hermetic in-process loopback config, byte-for-byte the knobs NCP's own
 /// runtime test uses: no multicast scouting, no gossip, no shared-memory —
@@ -72,7 +78,8 @@ async fn loopback_bus(realm: &str) -> ZenohBus {
 
 /// A crebain-shaped baseline observation (radar, dof 3, χ²-plausible NIS).
 fn observation(seq: u64) -> PidObservation {
-    PidObservation::scalar(42, 1_000 + seq, seq, Modality::Radar, 2.5, 3)
+    PidObservation::try_scalar_raw(42, 1_000 + seq, seq, Modality::Radar, 2.5, 3)
+        .expect("test observation is valid")
 }
 
 fn envelope_for(session_id: &str, observation: PidObservation) -> SidecarEnvelope {
@@ -145,15 +152,18 @@ async fn from_bus_live_leg_delivers_valid_envelope_end_to_end() {
     assert_eq!(key, "engram/ncp/session/uav3/sensor/galadriel-pid");
 
     let (health, mut observations) = tap
-        .subscribe_channel(SESSION_ID, PRODUCER_ID, HandoffConfig::default())
+        .subscribe_channel(SESSION_ID, PRODUCER_ID, handoff())
         .await
         .expect("subscribe to the sidecar channel");
     assert_eq!(health.payloads_received(), 0);
 
     // Research-mode observation: assert full field fidelity through the wire.
-    let mut published = observation(7);
-    published.innovation = Some([0.5, -0.25, 0.125]);
-    published.innovation_cov = Some([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
+    let published = observation(7)
+        .try_with_research(
+            [0.5, -0.25, 0.125],
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        )
+        .expect("test research fields are valid");
     let bytes = serde_json::to_vec(&envelope_for(SESSION_ID, published.clone()))
         .expect("envelope serializes");
 
@@ -173,15 +183,18 @@ async fn from_bus_live_leg_delivers_valid_envelope_end_to_end() {
         .expect("publish sidecar envelope");
 
     let received = recv_one(&mut observations, "valid envelope on the subscribed key").await;
-    assert_eq!(received.track_id, published.track_id);
-    assert_eq!(received.timestamp_ms, published.timestamp_ms);
-    assert_eq!(received.seq, published.seq);
-    assert_eq!(received.modality, published.modality);
-    assert_eq!(received.nis, published.nis);
-    assert_eq!(received.dof, published.dof);
-    assert_eq!(received.innovation, published.innovation);
-    assert_eq!(received.innovation_cov, published.innovation_cov);
-    assert!(received.consistency_projection.is_none());
+    assert_eq!(received.track_id(), published.track_id());
+    assert_eq!(received.timestamp_ms(), published.timestamp_ms());
+    assert_eq!(received.sequence(), published.sequence());
+    assert_eq!(received.modality(), published.modality());
+    assert_eq!(received.nis(), published.nis());
+    assert_eq!(received.dof(), published.dof());
+    assert_eq!(received.innovation(), published.innovation());
+    assert_eq!(
+        received.innovation_covariance(),
+        published.innovation_covariance()
+    );
+    assert!(received.consistency_projection().is_none());
 
     // Subscription-scoped health counters.
     assert_eq!(
@@ -203,10 +216,10 @@ async fn from_bus_live_leg_delivers_valid_envelope_end_to_end() {
     assert_eq!(tap.decode_failures(), 0);
     // `LastAcceptedObservation` is #[non_exhaustive]; compare field-by-field.
     let last: LastAcceptedObservation = tap.last_accepted().expect("an observation was accepted");
-    assert_eq!(last.track_id, published.track_id);
-    assert_eq!(last.modality, published.modality);
-    assert_eq!(last.sequence, published.seq);
-    assert_eq!(last.timestamp_ms, published.timestamp_ms);
+    assert_eq!(last.track_id, published.track_id().get());
+    assert_eq!(last.modality, published.modality());
+    assert_eq!(last.sequence, published.sequence().get());
+    assert_eq!(last.timestamp_ms, published.timestamp_ms().get());
 
     // A shared-bus tap must refuse to close the HOST's session — and the refusal
     // must change nothing: the host's transport keeps working afterwards.
@@ -223,7 +236,7 @@ async fn from_bus_live_leg_delivers_valid_envelope_end_to_end() {
         .await
         .expect("host session must survive the refused tap close");
     let survived = recv_one(&mut observations, "delivery after refused close").await;
-    assert_eq!(survived.seq, 8);
+    assert_eq!(survived.sequence().get(), 8);
 
     // The HOST closes the shared session through its own handle — that is the
     // documented lifecycle owner, and it still works.
@@ -250,7 +263,7 @@ async fn quiet_development_open_realm_round_trip() {
         .await
         .expect("QuietDevelopment opens the hardened default (scouting-off) session");
     let (health, mut observations) = tap
-        .subscribe_channel(SESSION_ID, PRODUCER_ID, HandoffConfig::default())
+        .subscribe_channel(SESSION_ID, PRODUCER_ID, handoff())
         .await
         .expect("subscribe to the sidecar channel");
 
@@ -263,9 +276,9 @@ async fn quiet_development_open_realm_round_trip() {
         .expect("publish via the raw shared zenoh session");
 
     let received = recv_one(&mut observations, "QuietDevelopment loopback").await;
-    assert_eq!(received.track_id, 42);
-    assert_eq!(received.seq, 3);
-    assert_eq!(received.modality, Modality::Radar);
+    assert_eq!(received.track_id().get(), 42);
+    assert_eq!(received.sequence().get(), 3);
+    assert_eq!(received.modality(), Modality::Radar);
     assert_eq!(health.payloads_received(), 1);
     assert_eq!(health.observations_accepted(), 1);
     assert_eq!(health.decode_failures(), 0);
@@ -282,7 +295,7 @@ async fn wrong_session_envelope_is_rejected_counted_and_not_delivered() {
     let publisher = bus.clone();
     let tap = SidecarTap::from_bus(bus).expect("wrap the shared bus");
     let (health, mut observations) = tap
-        .subscribe_channel(SESSION_ID, PRODUCER_ID, HandoffConfig::default())
+        .subscribe_channel(SESSION_ID, PRODUCER_ID, handoff())
         .await
         .expect("subscribe to the sidecar channel");
 
@@ -310,7 +323,7 @@ async fn wrong_session_envelope_is_rejected_counted_and_not_delivered() {
         .await
         .expect("publish valid envelope after rejection");
     let received = recv_one(&mut observations, "valid envelope after rejection").await;
-    assert_eq!(received.seq, 2);
+    assert_eq!(received.sequence().get(), 2);
     assert_eq!(health.payloads_received(), 2);
     assert_eq!(health.observations_accepted(), 1);
 
@@ -329,7 +342,7 @@ async fn duplicate_json_key_payload_is_counted_invalid_envelope() {
     let publisher = bus.clone();
     let tap = SidecarTap::from_bus(bus).expect("wrap the shared bus");
     let (health, mut observations) = tap
-        .subscribe_channel(SESSION_ID, PRODUCER_ID, HandoffConfig::default())
+        .subscribe_channel(SESSION_ID, PRODUCER_ID, handoff())
         .await
         .expect("subscribe to the sidecar channel");
 
@@ -377,7 +390,7 @@ async fn oversized_payload_is_rejected_before_parse() {
     let limits = LiveLimits::new(2_048).expect("nonzero payload limit");
     let tap = SidecarTap::from_bus_with_limits(bus, limits).expect("wrap the shared bus");
     let (health, mut observations) = tap
-        .subscribe_channel(SESSION_ID, PRODUCER_ID, HandoffConfig::default())
+        .subscribe_channel(SESSION_ID, PRODUCER_ID, handoff())
         .await
         .expect("subscribe to the sidecar channel");
 
@@ -408,7 +421,7 @@ async fn oversized_payload_is_rejected_before_parse() {
         .await
         .expect("publish valid envelope after oversize rejection");
     let received = recv_one(&mut observations, "valid envelope after oversize rejection").await;
-    assert_eq!(received.seq, 9);
+    assert_eq!(received.sequence().get(), 9);
     assert_eq!(health.observations_accepted(), 1);
 
     tap.close()

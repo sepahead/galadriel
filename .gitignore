@@ -16,6 +16,7 @@ __pycache__/
 
 # Scratch / local artifacts
 /scratch
+/audit/generated/
 *.jsonl.tmp
 
 # Secrets and local credentials (examples may be committed explicitly).

@@ -27,7 +27,7 @@ The Monte Carlo harness can compare detector behavior under explicitly generated
    and benign lag affect synthetic detection and latency?
 5. What is the relative compute cost on the machine running the benchmark?
 
-It cannot answer whether crebain's deployed residual stream satisfies those models, how
+It cannot answer whether an external producer's deployed residual stream satisfies those models, how
 operators respond, or whether a verdict is safe to use for control.
 
 ## 2. Synthetic model
@@ -85,8 +85,10 @@ Because MI is sign-invariant, it is additive evidence rather than a substitute f
 signed-consensus gate. PID cannot convert missing geometry, degeneracy, an ambiguous
 clique, or an unassessable channel into a nominal or attributed result. Bootstrap and
 geometry configuration must be valid; otherwise the call fails or remains inconclusive.
-Under pid-rs 1.0, the point gate explicitly declares regular full-dimensional continuous
-support and records a `conditional_continuous/restricted_domain` status. PID2 atoms remain
+Under the pinned pid-rs revision whose manifest declares 1.0.0, the point gate explicitly
+declares regular full-dimensional continuous support and records a
+`conditional_continuous/restricted_domain` status. No released upstream 1.x artifact is
+claimed. PID2 atoms remain
 `experimental_restricted_domain`. The configured seeded Gaussian perturbation is an
 observation-noise model that changes the estimand, not a generic tie repair; its scale and
 seed are carried in every PID report. The circular delete-block confirmation uses the
@@ -99,6 +101,25 @@ maneuver study, collusion study, and latency study are pre-registered to atteste
 consistency-projection **axis 0**. They isolate like-for-like scalar estimands and must not
 be presented as full-detector or all-axis performance. Only the fused fields in the main
 report exercise every active projection axis.
+
+### 3.5 Bounded maneuver design
+
+The complete CLI suite fixes a benign `12σ`, 90-frame triangular maneuver beginning
+at `floor(frames/3)` and uses the lag grid `[0, 8, 16, 24, 32]`. For the current
+three-modality study, the per-modality lag multipliers are visual `0`, acoustic `2`,
+and radar `3`. A lag `L` therefore occupies half-open windows ending no later than
+`floor(F/3) + 3L + D`, where `F` is the capture length and `D` the maneuver duration.
+Preflight requires that end to be at most `F`; the complete maneuver for every modality
+must be observed rather than right-censored. At the named profile's `F=300` and `D=90`,
+the largest registered lag ends at frame 286.
+
+Both `EvalSuiteConfig::try_new` and direct `maneuver_far` calls reject before generation
+unless the lag grid has 1..=10,000 unique `u64` entries, magnitude is finite and positive
+with a finite square, duration is nonzero, and every checked window fits. The study also
+requires `trials * lag_count <= 50,000` and
+`trials * frames * 3 * lag_count <= 100,000,000`, with checked arithmetic, before its
+PID-work preflight. These are workload and complete-exposure bounds, not evidence that
+the proxy represents field maneuvers.
 
 ## 4. Metrics
 
@@ -150,12 +171,12 @@ A regenerated synthetic report is useful only if all of these hold:
 
 ## 6. Recorded-data gate
 
-No synthetic or component result can validate the deployed Crebain integration. The
-reciprocal epoch/golden/revision-pin closeout is complete: Crebain
-`4c311900ade5668200a48d56fb191be1916b884a` requires the deployment epoch, contains
-the byte-identical shared golden, and pins Galadriel
-`81437d807ca83b66b45c8353968948e540072d97`. A recorded evaluation must still capture
-and verify all of the following:
+No synthetic or component result can validate a deployed Crebain integration. Crebain
+`4c311900ade5668200a48d56fb191be1916b884a` and Galadriel
+`81437d807ca83b66b45c8353968948e540072d97` identify a retained historical
+epoch/registry compatibility fixture only. They do not reciprocally pin this candidate;
+current cross-repository qualification is `NOT_CLAIMED`. A recorded evaluation must
+capture and verify all of the following against the exact current binaries:
 
 - `consistency_projection` enabled for every requested modality in the normal runtime path;
 - matching physical-frame/projection-context IDs and dimensions across modalities;

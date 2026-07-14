@@ -1,7 +1,8 @@
 //! Attack injections that transform a clean stream into a spoof or a jam.
 
 use galadriel_core::{
-    validate_and_symmetrize_covariance, GaladrielError, Modality, PidObservation, Result,
+    validate_and_symmetrize_covariance, ConsistencyProjection, GaladrielError, Modality,
+    PidObservation, Result,
 };
 
 const MAX_INJECTION_OBSERVATIONS: usize = 1_000_000;
@@ -91,8 +92,8 @@ fn recompute_nis(innovation: [f64; 3], covariance: [[f64; 3]; 3]) -> Result<f64>
 /// projection only for the simulator's explicit identity projection. Producer
 /// projections may otherwise use different units or a nonlinear basis.
 fn require_identity_projection(obs: &PidObservation, innovation: [f64; 3]) -> Result<()> {
-    if let Some(projection) = obs.consistency_projection {
-        if projection.dimensions != 3 || projection.values != innovation {
+    if let Some(projection) = obs.consistency_projection() {
+        if projection.dimensions() != 3 || projection.padded_values() != innovation {
             return Err(GaladrielError::InvalidObservation(
                 "directional injection can update consistency_projection only when it is the simulator identity projection"
                     .into(),
@@ -100,6 +101,43 @@ fn require_identity_projection(obs: &PidObservation, innovation: [f64; 3]) -> Re
         }
     }
     Ok(())
+}
+
+fn rebuilt_observation(
+    source: &PidObservation,
+    nis: f64,
+    research: Option<([f64; 3], [[f64; 3]; 3])>,
+    projection: Option<ConsistencyProjection>,
+) -> Result<PidObservation> {
+    let mut rebuilt = PidObservation::try_scalar(
+        source.track_id(),
+        source.timestamp_ms(),
+        source.sequence(),
+        source.modality(),
+        nis,
+        source.dof(),
+    )?;
+    if let Some((innovation, covariance)) = research {
+        rebuilt = rebuilt.try_with_research(innovation, covariance)?;
+    }
+    if let Some(projection) = projection {
+        rebuilt = rebuilt.with_consistency_projection(projection);
+    }
+    Ok(rebuilt)
+}
+
+fn map_projection(
+    observation: &PidObservation,
+    mut update: impl FnMut(&mut [f64]),
+) -> Result<Option<ConsistencyProjection>> {
+    observation
+        .consistency_projection()
+        .map(|projection| {
+            let mut values = projection.padded_values();
+            update(&mut values[..usize::from(projection.dimensions())]);
+            ConsistencyProjection::try_new(values, projection.dimensions(), projection.identity())
+        })
+        .transpose()
 }
 
 /// A per-observation attack transform.
@@ -178,15 +216,13 @@ impl Injection for PhantomAcousticDoa {
 
     fn apply(&self, obs: &mut PidObservation) -> Result<()> {
         self.validate()?;
-        if obs.modality != self.target || obs.seq < self.start_frame {
+        if obs.modality() != self.target || obs.sequence().get() < self.start_frame {
             return Ok(());
         }
-        obs.validate()?;
 
-        let mut updated = obs.clone();
-        match (updated.innovation, updated.innovation_cov) {
+        match (obs.innovation(), obs.innovation_covariance()) {
             (Some(mut innovation), Some(covariance)) => {
-                require_identity_projection(&updated, innovation)?;
+                require_identity_projection(obs, innovation)?;
                 let sigma = covariance[0][0].sqrt();
                 let delta = self.bias * sigma;
                 let biased = innovation[0] + delta;
@@ -196,13 +232,9 @@ impl Injection for PhantomAcousticDoa {
                     ));
                 }
                 innovation[0] = biased;
-                updated.innovation = Some(innovation);
-                if let Some(mut projection) = updated.consistency_projection {
-                    projection.values[0] += delta;
-                    projection.validate()?;
-                    updated.consistency_projection = Some(projection);
-                }
-                updated.nis = recompute_nis(innovation, covariance)?;
+                let projection = map_projection(obs, |values| values[0] += delta)?;
+                let nis = recompute_nis(innovation, covariance)?;
+                *obs = rebuilt_observation(obs, nis, Some((innovation, covariance)), projection)?;
             }
             (None, None) => {
                 return Err(GaladrielError::InvalidObservation(
@@ -217,8 +249,6 @@ impl Injection for PhantomAcousticDoa {
                 ));
             }
         }
-        updated.validate()?;
-        *obs = updated;
         Ok(())
     }
 }
@@ -226,6 +256,11 @@ impl Injection for PhantomAcousticDoa {
 /// Broadband denial: from `start_frame`, **every** channel's innovation is scaled
 /// by `inflation` (> 1), raising NIS on all modalities together — the correlated
 /// signature of jamming / link degradation.
+///
+/// A consistency projection is transformed only when signed native innovation
+/// fields attest the simulator's identity projection. Scalar-only observations
+/// remain injectable when they carry no projection; an arbitrary producer
+/// projection is never assumed to be linear or expressed in native units.
 #[derive(Debug, Clone)]
 pub struct BroadbandJam {
     /// Frame the jam begins.
@@ -253,14 +288,13 @@ impl Injection for BroadbandJam {
 
     fn apply(&self, obs: &mut PidObservation) -> Result<()> {
         self.validate()?;
-        if obs.seq < self.start_frame {
+        if obs.sequence().get() < self.start_frame {
             return Ok(());
         }
-        obs.validate()?;
 
-        let mut updated = obs.clone();
-        match (updated.innovation, updated.innovation_cov) {
+        match (obs.innovation(), obs.innovation_covariance()) {
             (Some(mut innovation), Some(covariance)) => {
+                require_identity_projection(obs, innovation)?;
                 for value in &mut innovation {
                     *value *= self.inflation;
                 }
@@ -269,31 +303,33 @@ impl Injection for BroadbandJam {
                         "jam inflation produces a non-finite innovation".into(),
                     ));
                 }
-                updated.innovation = Some(innovation);
-                if let Some(mut projection) = updated.consistency_projection {
-                    for value in &mut projection.values[..projection.dimensions as usize] {
+                let projection = map_projection(obs, |values| {
+                    for value in values {
                         *value *= self.inflation;
                     }
-                    projection.validate()?;
-                    updated.consistency_projection = Some(projection);
-                }
-                updated.nis = recompute_nis(innovation, covariance)?;
+                })?;
+                let nis = recompute_nis(innovation, covariance)?;
+                *obs = rebuilt_observation(obs, nis, Some((innovation, covariance)), projection)?;
             }
             (None, None) => {
-                let nis = updated.nis * self.inflation * self.inflation;
+                if obs.consistency_projection().is_some() {
+                    return Err(GaladrielError::InvalidObservation(
+                        "scalar jam injection cannot transform a consistency projection without an identity-attested innovation"
+                            .into(),
+                    ));
+                }
+                let nis = obs.nis() * self.inflation * self.inflation;
                 if !nis.is_finite() {
                     return Err(GaladrielError::InvalidObservation(
                         "jam inflation produces a non-finite scalar NIS".into(),
                     ));
                 }
-                updated.nis = nis;
-                if let Some(mut projection) = updated.consistency_projection {
-                    for value in &mut projection.values[..projection.dimensions as usize] {
+                let projection = map_projection(obs, |values| {
+                    for value in values {
                         *value *= self.inflation;
                     }
-                    projection.validate()?;
-                    updated.consistency_projection = Some(projection);
-                }
+                })?;
+                *obs = rebuilt_observation(obs, nis, None, projection)?;
             }
             _ => {
                 return Err(GaladrielError::InvalidObservation(
@@ -302,8 +338,6 @@ impl Injection for BroadbandJam {
                 ));
             }
         }
-        updated.validate()?;
-        *obs = updated;
         Ok(())
     }
 }
@@ -311,7 +345,7 @@ impl Injection for BroadbandJam {
 /// A **benign target maneuver** (not an attack): from `start_frame`, a deterministic
 /// triangular ramp of peak height `magnitude` over `duration` frames is added to every
 /// channel's first innovation axis — but each modality sees it with its own **lag**
-/// (`lag_step` × the modality's enum discriminant), modelling heterogeneous sensor dynamics/latency.
+/// (`lag_step` × the modality's stable code), modelling heterogeneous sensor dynamics/latency.
 ///
 /// A *synchronized* maneuver (`lag_step = 0`) stays perfectly correlated across channels,
 /// so the consistency detectors should not flag it; the per-channel lag transiently
@@ -326,7 +360,7 @@ pub struct Maneuver {
     pub duration: u64,
     /// Peak ramp height added to innovation axis 0 (σ units).
     pub magnitude: f64,
-    /// Per-modality lag: modality with discriminant `i` is delayed by `i × lag_step` frames.
+    /// Per-modality lag: modality with stable code `i` is delayed by `i × lag_step` frames.
     pub lag_step: u64,
 }
 
@@ -365,12 +399,12 @@ impl Injection for Maneuver {
             return Ok(());
         }
 
-        let max_modality_discriminant = Modality::ALL
+        let max_modality_code = Modality::ALL
             .iter()
-            .map(|&modality| modality as u64)
+            .map(|&modality| u64::from(modality.stable_code()))
             .max()
             .unwrap_or(0);
-        let max_lag = max_modality_discriminant
+        let max_lag = max_modality_code
             .checked_mul(self.lag_step)
             .ok_or_else(|| {
                 GaladrielError::InvalidConfig(
@@ -391,20 +425,20 @@ impl Injection for Maneuver {
         if self.duration == 0 {
             return Ok(());
         }
-        let lag = (obs.modality as u64)
+        let lag = u64::from(obs.modality().stable_code())
             .checked_mul(self.lag_step)
             .ok_or_else(|| {
                 GaladrielError::InvalidConfig(
                     "maneuver modality/lag arithmetic overflows u64".into(),
                 )
             })?;
-        let add = self.profile(obs.seq, lag)?;
+        let add = self.profile(obs.sequence().get(), lag)?;
         if add == 0.0 {
             return Ok(());
         }
-        obs.validate()?;
-
-        let (Some(mut innovation), Some(covariance)) = (obs.innovation, obs.innovation_cov) else {
+        let (Some(mut innovation), Some(covariance)) =
+            (obs.innovation(), obs.innovation_covariance())
+        else {
             return Err(GaladrielError::InvalidObservation(
                 "maneuver injection requires signed innovation/covariance fields".into(),
             ));
@@ -420,16 +454,8 @@ impl Injection for Maneuver {
         innovation[0] = perturbed;
         let nis = recompute_nis(innovation, covariance)?;
 
-        let mut updated = obs.clone();
-        updated.innovation = Some(innovation);
-        if let Some(mut projection) = updated.consistency_projection {
-            projection.values[0] += delta;
-            projection.validate()?;
-            updated.consistency_projection = Some(projection);
-        }
-        updated.nis = nis;
-        updated.validate()?;
-        *obs = updated;
+        let projection = map_projection(obs, |values| values[0] += delta)?;
+        *obs = rebuilt_observation(obs, nis, Some((innovation, covariance)), projection)?;
         Ok(())
     }
 }
@@ -437,35 +463,81 @@ impl Injection for Maneuver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scenario::{generate, ScenarioConfig};
-    use galadriel_core::{ConsistencyProjection, DetectorConfig, Mirror, Verdict};
+    use crate::scenario::{generate, ScenarioConfig, ScenarioParams, ScenarioResearchProfile};
+    use galadriel_core::{ConsistencyProjection, Mirror, ReleaseSuite, Verdict};
+
+    const IDENTITY_COVARIANCE: [[f64; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+
+    fn scenario(mut update: impl FnMut(&mut ScenarioParams)) -> ScenarioConfig {
+        let mut params = ScenarioResearchProfile::SyntheticV0_9.params();
+        update(&mut params);
+        ScenarioConfig::try_new(params).expect("test scenario must be valid")
+    }
+
+    fn scalar(
+        track_id: u64,
+        timestamp_ms: u64,
+        sequence: u64,
+        modality: Modality,
+        nis: f64,
+        dof: u8,
+    ) -> PidObservation {
+        PidObservation::try_scalar_raw(track_id, timestamp_ms, sequence, modality, nis, dof)
+            .unwrap()
+    }
+
+    fn research_observation(
+        modality: Modality,
+        nis: f64,
+        innovation: [f64; 3],
+        covariance: [[f64; 3]; 3],
+        projection_values: [f64; 3],
+        context_id: u64,
+    ) -> PidObservation {
+        let projection =
+            ConsistencyProjection::try_new_raw(projection_values, 3, 1, context_id, 1).unwrap();
+        scalar(1, 0, 1, modality, nis, 3)
+            .try_with_research(innovation, covariance)
+            .unwrap()
+            .with_consistency_projection(projection)
+    }
 
     fn final_verdict(stream: &[PidObservation], n_mods: usize) -> Verdict {
-        let mut m = Mirror::new(DetectorConfig::default()).expect("valid detector config");
-        let track = stream[0].track_id;
+        let modalities = stream[..n_mods]
+            .iter()
+            .map(PidObservation::modality)
+            .collect::<Vec<_>>();
+        let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities)
+            .expect("valid release-suite config");
+        let mut m = Mirror::from_release_suite(&suite);
+        let track = stream[0].track_id();
         let mut last = None;
         for chunk in stream.chunks(n_mods) {
             for o in chunk {
                 m.ingest(o).expect("generated observation must be valid");
             }
             last = Some(
-                m.assess(track, chunk[0].seq)
+                m.assess(track, chunk[0].sequence())
                     .expect("generated frame must be assessable"),
             );
         }
-        last.expect("non-empty stream").verdict
+        last.expect("non-empty stream").verdict().clone()
     }
 
     #[test]
     fn clean_is_nominal() {
-        let cfg = ScenarioConfig::default();
+        let cfg = ScenarioResearchProfile::SyntheticV0_9
+            .try_config()
+            .expect("named scenario profile must be valid");
         let s = generate(&cfg).expect("valid scenario");
-        assert_eq!(final_verdict(&s, cfg.modalities.len()), Verdict::Nominal);
+        assert_eq!(final_verdict(&s, cfg.modalities().len()), Verdict::Nominal);
     }
 
     #[test]
     fn phantom_produces_attributed_inconsistency_on_the_targeted_channel() {
-        let cfg = ScenarioConfig::default();
+        let cfg = ScenarioResearchProfile::SyntheticV0_9
+            .try_config()
+            .expect("named scenario profile must be valid");
         let mut s = generate(&cfg).expect("valid scenario");
         inject(
             &mut s,
@@ -476,7 +548,7 @@ mod tests {
             },
         )
         .expect("valid phantom injection");
-        match final_verdict(&s, cfg.modalities.len()) {
+        match final_verdict(&s, cfg.modalities().len()) {
             Verdict::AttributedInconsistency { channels } => {
                 assert!(channels.contains(&Modality::Acoustic))
             }
@@ -486,7 +558,9 @@ mod tests {
 
     #[test]
     fn broadband_jam_produces_broad_degradation_evidence() {
-        let cfg = ScenarioConfig::default();
+        let cfg = ScenarioResearchProfile::SyntheticV0_9
+            .try_config()
+            .expect("named scenario profile must be valid");
         let mut s = generate(&cfg).expect("valid scenario");
         inject(
             &mut s,
@@ -497,14 +571,14 @@ mod tests {
         )
         .expect("valid jam injection");
         assert_eq!(
-            final_verdict(&s, cfg.modalities.len()),
+            final_verdict(&s, cfg.modalities().len()),
             Verdict::BroadDegradation
         );
     }
 
     #[test]
     fn directional_phantom_rejects_scalar_only_observations() {
-        let mut obs = PidObservation::scalar(1, 500, 5, Modality::Acoustic, 3.0, 3);
+        let mut obs = scalar(1, 500, 5, Modality::Acoustic, 3.0, 3);
         let original = obs.clone();
         assert!(PhantomAcousticDoa {
             target: Modality::Acoustic,
@@ -513,9 +587,9 @@ mod tests {
         }
         .apply(&mut obs)
         .is_err());
-        assert_eq!(obs.nis, original.nis);
+        assert_eq!(obs.nis(), original.nis());
 
-        let mut early = PidObservation::scalar(1, 0, 0, Modality::Acoustic, 3.0, 3);
+        let mut early = scalar(1, 0, 0, Modality::Acoustic, 3.0, 3);
         PhantomAcousticDoa {
             target: Modality::Acoustic,
             start_frame: 5,
@@ -523,29 +597,20 @@ mod tests {
         }
         .apply(&mut early)
         .expect("valid pre-onset phantom injection");
-        assert!((early.nis - 3.0).abs() < 1e-12, "pre-onset untouched");
+        assert!((early.nis() - 3.0).abs() < 1e-12, "pre-onset untouched");
     }
 
     #[test]
-    fn directional_injectors_reject_nonidentity_common_projections() {
-        let mut observation = PidObservation {
-            track_id: 1,
-            timestamp_ms: 100,
-            seq: 1,
-            modality: Modality::Acoustic,
-            nis: 0.0,
-            dof: 3,
-            innovation: Some([0.0; 3]),
-            innovation_cov: Some([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
-            consistency_projection: Some(ConsistencyProjection {
-                values: [10.0, 0.0, 0.0],
-                dimensions: 3,
-                frame_id: 1,
-                context_id: 2,
-                prior_id: 1,
-            }),
-        };
-        let original_projection = observation.consistency_projection;
+    fn projection_transforming_injectors_reject_nonidentity_common_projections() {
+        let mut observation = research_observation(
+            Modality::Acoustic,
+            0.0,
+            [0.0; 3],
+            IDENTITY_COVARIANCE,
+            [10.0, 0.0, 0.0],
+            2,
+        );
+        let original_projection = observation.consistency_projection().cloned();
 
         assert!(PhantomAcousticDoa {
             target: Modality::Acoustic,
@@ -554,29 +619,60 @@ mod tests {
         }
         .apply(&mut observation)
         .is_err());
-        assert_eq!(observation.consistency_projection, original_projection);
-        assert_eq!(observation.innovation, Some([0.0; 3]));
+        assert_eq!(
+            observation.consistency_projection(),
+            original_projection.as_ref()
+        );
+        assert_eq!(observation.innovation(), Some([0.0; 3]));
+
+        let mut jammed = research_observation(
+            Modality::Acoustic,
+            0.0,
+            [0.0; 3],
+            IDENTITY_COVARIANCE,
+            [10.0, 0.0, 0.0],
+            2,
+        );
+        let original = jammed.clone();
+        assert!(BroadbandJam {
+            start_frame: 0,
+            inflation: 2.0,
+        }
+        .apply(&mut jammed)
+        .is_err());
+        assert_eq!(jammed, original);
     }
 
     #[test]
     fn jam_scalar_fallback_scales_nis_by_inflation_squared() {
-        let mut obs = PidObservation::scalar(1, 500, 5, Modality::Radar, 4.0, 3);
+        let mut obs = scalar(1, 500, 5, Modality::Radar, 4.0, 3);
         BroadbandJam {
             start_frame: 5,
             inflation: 3.0,
         }
         .apply(&mut obs)
         .expect("valid scalar jam injection");
-        assert!((obs.nis - 4.0 * 9.0).abs() < 1e-9, "nis={}", obs.nis);
+        assert!((obs.nis() - 4.0 * 9.0).abs() < 1e-9, "nis={}", obs.nis());
+
+        let projection = ConsistencyProjection::try_new_raw([1.0, 0.0, 0.0], 3, 1, 1, 1).unwrap();
+        let mut projected =
+            scalar(1, 500, 5, Modality::Radar, 4.0, 3).with_consistency_projection(projection);
+        let original = projected.clone();
+        assert!(BroadbandJam {
+            start_frame: 5,
+            inflation: 3.0,
+        }
+        .apply(&mut projected)
+        .is_err());
+        assert_eq!(projected, original);
     }
 
     #[test]
     fn maneuver_perturbs_the_innovation_inside_its_window() {
-        let cfg = ScenarioConfig {
-            frames: 200,
-            seed: 3,
-            ..Default::default()
-        };
+        let cfg = scenario(|params| {
+            params.frames = 200;
+            params.seed = 3;
+        });
         let base = generate(&cfg).expect("valid scenario");
         let mut man = base.clone();
         inject(
@@ -593,42 +689,28 @@ mod tests {
         let mid = man
             .iter()
             .zip(&base)
-            .find(|(m, _)| m.seq == 108 && m.modality == Modality::Visual)
+            .find(|(m, _)| m.sequence().get() == 108 && m.modality() == Modality::Visual)
             .unwrap();
         assert!(
-            (mid.0.innovation.unwrap()[0] - mid.1.innovation.unwrap()[0]).abs() > 1.0,
+            (mid.0.innovation().unwrap()[0] - mid.1.innovation().unwrap()[0]).abs() > 1.0,
             "innovation should be perturbed mid-maneuver"
         );
         let far = man
             .iter()
             .zip(&base)
-            .find(|(m, _)| m.seq == 5 && m.modality == Modality::Visual)
+            .find(|(m, _)| m.sequence().get() == 5 && m.modality() == Modality::Visual)
             .unwrap();
         assert!(
-            (far.0.innovation.unwrap()[0] - far.1.innovation.unwrap()[0]).abs() < 1e-12,
+            (far.0.innovation().unwrap()[0] - far.1.innovation().unwrap()[0]).abs() < 1e-12,
             "innovation should be untouched before the maneuver"
         );
     }
 
     #[test]
     fn maneuver_magnitude_is_in_axis_standard_deviations() {
-        let mut observation = PidObservation {
-            track_id: 1,
-            timestamp_ms: 0,
-            seq: 1,
-            modality: Modality::Visual,
-            nis: 0.0,
-            dof: 3,
-            innovation: Some([0.0; 3]),
-            innovation_cov: Some([[9.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
-            consistency_projection: Some(ConsistencyProjection {
-                values: [0.0; 3],
-                dimensions: 3,
-                frame_id: 1,
-                context_id: 1,
-                prior_id: 1,
-            }),
-        };
+        let covariance = [[9.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+        let mut observation =
+            research_observation(Modality::Visual, 0.0, [0.0; 3], covariance, [0.0; 3], 1);
         Maneuver {
             start_frame: 0,
             duration: 2,
@@ -637,31 +719,47 @@ mod tests {
         }
         .apply(&mut observation)
         .expect("valid maneuver");
-        assert_eq!(observation.innovation.unwrap()[0], 6.0);
-        assert_eq!(observation.consistency_projection.unwrap().values[0], 6.0);
-        assert!((observation.nis - 4.0).abs() < 1e-12);
+        assert_eq!(observation.innovation().unwrap()[0], 6.0);
+        assert_eq!(
+            observation.consistency_projection().unwrap().values()[0],
+            6.0
+        );
+        assert!((observation.nis() - 4.0).abs() < 1e-12);
     }
 
     #[test]
     fn stream_injection_is_transactional_on_late_failure() {
-        let cfg = ScenarioConfig {
-            frames: 2,
-            ..Default::default()
-        };
+        struct FailAfterFirstFrame;
+
+        impl Injection for FailAfterFirstFrame {
+            fn name(&self) -> &'static str {
+                "fail-after-first-frame"
+            }
+
+            fn apply(&self, observation: &mut PidObservation) -> Result<()> {
+                if observation.sequence().get() > 0 {
+                    return Err(GaladrielError::InvalidObservation(
+                        "deliberate late test failure".into(),
+                    ));
+                }
+                *observation = rebuilt_observation(
+                    observation,
+                    observation.nis() + 1.0,
+                    observation
+                        .innovation()
+                        .zip(observation.innovation_covariance()),
+                    observation.consistency_projection().cloned(),
+                )?;
+                Ok(())
+            }
+        }
+
+        let cfg = scenario(|params| params.frames = 2);
         let mut stream = generate(&cfg).unwrap();
-        stream.last_mut().unwrap().innovation_cov =
-            Some([[1.0, 2.0, 0.0], [2.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
         let original = stream.clone();
-        assert!(inject(
-            &mut stream,
-            &BroadbandJam {
-                start_frame: 0,
-                inflation: 2.0,
-            },
-        )
-        .is_err());
-        assert_eq!(stream[0].nis, original[0].nis);
-        assert_eq!(stream.last().unwrap().nis, original.last().unwrap().nis);
+        assert!(inject(&mut stream, &FailAfterFirstFrame).is_err());
+        assert_eq!(stream[0].nis(), original[0].nis());
+        assert_eq!(stream.last().unwrap().nis(), original.last().unwrap().nis());
     }
 
     #[test]
@@ -710,23 +808,9 @@ mod tests {
 
     #[test]
     fn phantom_bias_scales_by_axis_standard_deviation() {
-        let mut obs = PidObservation {
-            track_id: 1,
-            timestamp_ms: 0,
-            seq: 0,
-            modality: Modality::Acoustic,
-            nis: 0.0,
-            dof: 3,
-            innovation: Some([0.0; 3]),
-            innovation_cov: Some([[4.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
-            consistency_projection: Some(ConsistencyProjection {
-                values: [0.0; 3],
-                dimensions: 3,
-                frame_id: 1,
-                context_id: 1,
-                prior_id: 1,
-            }),
-        };
+        let covariance = [[4.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+        let mut obs =
+            research_observation(Modality::Acoustic, 0.0, [0.0; 3], covariance, [0.0; 3], 1);
         PhantomAcousticDoa {
             target: Modality::Acoustic,
             start_frame: 0,
@@ -735,14 +819,14 @@ mod tests {
         .apply(&mut obs)
         .expect("valid phantom injection");
 
-        assert_eq!(obs.innovation.expect("research innovation")[0], 4.0);
-        assert_eq!(obs.consistency_projection.unwrap().values[0], 4.0);
-        assert!((obs.nis - 4.0).abs() < 1e-12, "nis={}", obs.nis);
+        assert_eq!(obs.innovation().expect("research innovation")[0], 4.0);
+        assert_eq!(obs.consistency_projection().unwrap().values()[0], 4.0);
+        assert!((obs.nis() - 4.0).abs() < 1e-12, "nis={}", obs.nis());
     }
 
     #[test]
     fn invalid_injection_parameters_do_not_mutate_observations() {
-        let original = PidObservation::scalar(1, 0, 0, Modality::Acoustic, 3.0, 3);
+        let original = scalar(1, 0, 0, Modality::Acoustic, 3.0, 3);
 
         let mut phantom = vec![original.clone()];
         assert!(inject(
@@ -754,7 +838,7 @@ mod tests {
             },
         )
         .is_err());
-        assert_eq!(phantom[0].nis, original.nis);
+        assert_eq!(phantom[0].nis(), original.nis());
 
         let mut jam = vec![original.clone()];
         assert!(inject(
@@ -765,7 +849,7 @@ mod tests {
             },
         )
         .is_err());
-        assert_eq!(jam[0].nis, original.nis);
+        assert_eq!(jam[0].nis(), original.nis());
 
         let mut maneuver = vec![original.clone()];
         assert!(inject(
@@ -778,40 +862,25 @@ mod tests {
             },
         )
         .is_err());
-        assert_eq!(maneuver[0].nis, original.nis);
+        assert_eq!(maneuver[0].nis(), original.nis());
     }
 
     #[test]
-    fn failed_research_update_is_transactional() {
+    fn invalid_research_state_is_rejected_before_an_observation_exists() {
         let innovation = [1.0, 0.0, 0.0];
         let covariance = [[1.0, 2.0, 0.0], [2.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
-        let mut obs = PidObservation {
-            track_id: 1,
-            timestamp_ms: 0,
-            seq: 0,
-            modality: Modality::Acoustic,
-            nis: 1.0,
-            dof: 3,
-            innovation: Some(innovation),
-            innovation_cov: Some(covariance),
-            consistency_projection: None,
-        };
-        let result = PhantomAcousticDoa {
-            target: Modality::Acoustic,
-            start_frame: 0,
-            bias: 2.0,
-        }
-        .apply(&mut obs);
+        let baseline = scalar(1, 0, 0, Modality::Acoustic, 1.0, 3);
+        let result = baseline.clone().try_with_research(innovation, covariance);
 
         assert!(result.is_err());
-        assert_eq!(obs.nis, 1.0);
-        assert_eq!(obs.innovation, Some(innovation));
-        assert_eq!(obs.innovation_cov, Some(covariance));
+        assert_eq!(baseline.nis(), 1.0);
+        assert_eq!(baseline.innovation(), None);
+        assert_eq!(baseline.innovation_covariance(), None);
     }
 
     #[test]
     fn maneuver_rejects_overflow_before_mutating_the_stream() {
-        let original = PidObservation::scalar(1, 0, 0, Modality::Visual, 3.0, 3);
+        let original = scalar(1, 0, 0, Modality::Visual, 3.0, 3);
         let mut stream = vec![original.clone()];
         let result = inject(
             &mut stream,
@@ -824,6 +893,6 @@ mod tests {
         );
 
         assert!(result.is_err());
-        assert_eq!(stream[0].nis, original.nis);
+        assert_eq!(stream[0].nis(), original.nis());
     }
 }

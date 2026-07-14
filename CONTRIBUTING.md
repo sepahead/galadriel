@@ -5,8 +5,9 @@ information-theoretic cross-sensor consistency / spoof detector for multi-sensor
 fusion. It is part of the [`sepahead`](https://github.com/sepahead) ecosystem and
 consumes per-measurement innovation records (`PidObservation`). The bundled historical
 Crebain fixture is a contract/baseline smoke test, not a valid source of cross-modal
-correlation/PID evidence. The operational producer/receiver seam is component-complete, but
-no accepted recorded study establishes field performance, calibration, or deployed validity.
+correlation/PID evidence. The operational producer/receiver seam has repository-level
+implementation and tests, but no accepted recorded study establishes field performance,
+calibration, deployed validity, or cross-repository qualification.
 
 ## Ground rules
 

@@ -5,9 +5,11 @@ boundaries. They intentionally live outside the production workspace because
 `cargo-fuzz` uses nightly compiler instrumentation.
 
 ```bash
-cargo install cargo-fuzz --locked
-cargo +nightly fuzz run ncp_decode -- -max_len=131072
-cargo +nightly fuzz run detector_boundaries -- -max_len=131072
+rustup toolchain install nightly-2026-06-16
+cargo +nightly-2026-06-16 install cargo-fuzz --version 0.13.2 --locked
+cargo +nightly-2026-06-16 fuzz run ncp_decode -- -max_len=131072
+cargo +nightly-2026-06-16 fuzz run detector_boundaries -- -max_len=131072
+cargo deny --manifest-path fuzz/Cargo.toml --all-features --locked check --config fuzz/deny.toml
 ```
 
 For a bounded smoke run, append `-runs=10000`. A crash corpus is not evidence of a

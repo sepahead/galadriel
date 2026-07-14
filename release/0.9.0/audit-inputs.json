@@ -11,8 +11,8 @@
   "audit_date": "2026-07-14",
   "baseline_repository": {
     "url": "https://github.com/sepahead/galadriel",
-    "commit": "017c615e3976eae69c3115aeeb74e9fdb50ec15d",
-    "tree": "bc47c9b1053ade871095e5529136145432683c82"
+    "commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",
+    "tree": "9d9b3f9c2eaa26f50ffcc7ab16c0d38652a9f6c0"
   },
   "repositories": [
     {
@@ -88,21 +88,132 @@
       "version": "0.52.0",
       "identity": "cargo-public-api 0.52.0",
       "role": "stable-source-API inventory"
+    },
+    {
+      "name": "rustc-nightly",
+      "version": "nightly-2026-06-16",
+      "identity": "rustc 1.98.0-nightly 01dfd79246f1b2d5f146616deff08223a840a9ae; aarch64-apple-darwin; LLVM 22.1.7",
+      "role": "bounded fuzz and hostile-input campaigns"
+    },
+    {
+      "name": "cargo-fuzz",
+      "version": "0.13.2",
+      "identity": "cargo-fuzz 0.13.2 installed with --locked",
+      "role": "bounded libFuzzer campaign runner"
+    },
+    {
+      "name": "rustc-current-stable",
+      "version": "1.96.0",
+      "identity": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96; aarch64-apple-darwin; LLVM 22.1.2",
+      "role": "recorded current-stable compatibility compiler"
+    },
+    {
+      "name": "cargo-deny",
+      "version": "0.19.9",
+      "identity": "cargo-deny 0.19.9",
+      "role": "advisory, license, ban, and source policy verifier"
+    },
+    {
+      "name": "cargo-audit",
+      "version": "0.22.2",
+      "identity": "cargo-audit-audit 0.22.2",
+      "role": "independent Cargo.lock advisory report"
+    },
+    {
+      "name": "cargo-cyclonedx",
+      "version": "0.5.9",
+      "identity": "cargo-cyclonedx-cyclonedx 0.5.9",
+      "role": "CycloneDX 1.5 workspace SBOM generator"
+    },
+    {
+      "name": "cargo-mutants",
+      "version": "27.1.0",
+      "identity": "cargo-mutants 27.1.0 installed with --locked",
+      "role": "changed-source and critical-predicate mutation testing"
+    },
+    {
+      "name": "OpenSSH",
+      "version": "10.2p1",
+      "identity": "OpenSSH_10.2p1, LibreSSL 3.3.6",
+      "role": "SSHSIG audit, commit, tag, and release-attestation signatures"
+    },
+    {
+      "name": "GitHub CLI",
+      "version": "2.95.0",
+      "identity": "gh version 2.95.0 (2026-06-17)",
+      "role": "remote pull-request, release, asset, and metadata verification"
+    }
+  ],
+  "github_actions": [
+    {
+      "action": "actions/checkout",
+      "repository": "https://github.com/actions/checkout",
+      "commit": "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+      "source_ref": "refs/tags/v7.0.0",
+      "source_ref_kind": "lightweight_tag",
+      "version": "v7.0.0",
+      "role": "exact candidate checkout without persisted credentials"
+    },
+    {
+      "action": "dtolnay/rust-toolchain",
+      "repository": "https://github.com/dtolnay/rust-toolchain",
+      "commit": "c1709d61444fb708e6ed87924f95626398d8d115",
+      "source_ref": "refs/heads/1.89.0",
+      "source_ref_kind": "branch_snapshot",
+      "version": "1.89.0",
+      "role": "MSRV toolchain installation"
+    },
+    {
+      "action": "dtolnay/rust-toolchain",
+      "repository": "https://github.com/dtolnay/rust-toolchain",
+      "commit": "4be7066ada62dd38de10e7b70166bc74ed198c30",
+      "source_ref": "refs/heads/stable",
+      "source_ref_kind": "branch_snapshot",
+      "version": "stable",
+      "role": "current-stable compatibility and mutation toolchain installation"
+    },
+    {
+      "action": "dtolnay/rust-toolchain",
+      "repository": "https://github.com/dtolnay/rust-toolchain",
+      "commit": "efcb852328a9f50117170cc43094fb6f09eaf1ae",
+      "source_ref": "refs/heads/nightly",
+      "source_ref_kind": "branch_snapshot",
+      "version": "nightly",
+      "role": "date-pinned nightly toolchain installation"
+    },
+    {
+      "action": "Swatinem/rust-cache",
+      "repository": "https://github.com/Swatinem/rust-cache",
+      "commit": "c19371144df3bb44fab255c43d04cbc2ab54d1c4",
+      "source_ref": "refs/tags/v2.9.1^{}",
+      "source_ref_kind": "annotated_tag_target",
+      "version": "v2.9.1",
+      "role": "Cargo registry and build cache restore/save"
+    },
+    {
+      "action": "actions/upload-artifact",
+      "repository": "https://github.com/actions/upload-artifact",
+      "commit": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+      "source_ref": "refs/tags/v7.0.1",
+      "source_ref_kind": "lightweight_tag",
+      "version": "v7.0.1",
+      "role": "candidate-bound mutation evidence upload"
     }
   ],
   "artifact_sets": [
     {
-      "purpose": "unaltered supervisor handoff and derived task inventory",
+      "purpose": "current handoff identity and derived task inventory",
       "patterns": [
-        "release/0.9.0/handoff/*"
+        "release/0.9.0/handoff-source.json",
+        "release/0.9.0/task-closure-plan.json",
+        "release/0.9.0/tasks.json"
       ]
     },
     {
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "patterns": [
         "evidence/**/*",
-        "release/0.9.0/evidence/*.log",
-        "release/0.9.0/evidence/galadriel-core-api.diff",
+        "release/0.9.0/evidence/**/*",
         "release/0.9.0/api/*"
       ]
     },
@@ -110,7 +221,8 @@
       "purpose": "test and interoperability input fixtures",
       "patterns": [
         "crates/*/tests/fixtures/*",
-        "deploy/reference/*"
+        "deploy/reference/*",
+        "deploy/secure-client-endpoint-corpus.json"
       ]
     },
     {
@@ -119,8 +231,69 @@
         "Cargo.lock",
         "fuzz/Cargo.lock",
         "fuzz/Cargo.toml",
+        "fuzz/deny.toml",
         "rust-toolchain.toml",
         "deny.toml"
+      ]
+    },
+    {
+      "purpose": "continuous-integration and dependency-update policy",
+      "patterns": [
+        ".github/**/*"
+      ]
+    },
+    {
+      "purpose": "release governance, claims, review, and signed audit inputs",
+      "patterns": [
+        "release/0.9.0/README.md",
+        "release/0.9.0/RELEASE-RUNBOOK.md",
+        "release/0.9.0/VERSION-ADAPTATION.md",
+        "release/0.9.0/WITHDRAWN-RELEASES.md",
+        "release/0.9.0/local-convergence.json",
+        "release/0.9.0/LOCAL-CONVERGENCE-NOTES.md",
+        "release/0.9.0/NARROWED-GO-DECISION.json",
+        "release/0.9.0/NARROWED-GO-DECISION.json.sig",
+        "release/0.9.0/audit-inputs.json",
+        "release/0.9.0/requirements-ledger.json",
+        "release/0.9.0/claims.json",
+        "release/0.9.0/task-dispositions.json",
+        "release/0.9.0/audit/*",
+        "release/0.9.0/reviews/*"
+      ]
+    },
+    {
+      "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
+      "patterns": [
+        "Cargo.toml",
+        "crates/*/Cargo.toml",
+        "crates/*/README.md",
+        "crates/**/*.rs",
+        "crates/*/schemas/*",
+        "fuzz/fuzz_targets/*.rs",
+        "fuzz/corpus/**/*"
+      ]
+    },
+    {
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "patterns": [
+        ".gitignore",
+        ".gitattributes",
+        ".ncp-consumer",
+        ".superstack/**/*",
+        "*.md",
+        "CITATION.cff",
+        "LICENSE*",
+        "assets/*",
+        "docs/**/*.md",
+        "deploy/README.md",
+        "deploy/galadriel-security-profile.example.json",
+        "fuzz/.gitignore",
+        "fuzz/README.md",
+        "repo_work/README.md",
+        "scripts/*.py",
+        "scripts/tests/*.py",
+        "repo_work/*.py",
+        "repo_work/tests/*.py"
       ]
     }
   ],
@@ -136,7 +309,7 @@
       {
         "kind": "requirements_handoff",
         "title": "Galadriel standalone implementation handoff",
-        "url": "local:release/0.9.0/handoff/PACKAGE_INDEX.md",
+        "url": "local:release/0.9.0/handoff-source.json",
         "purpose": "normative implementation and release review source"
       }
     ]

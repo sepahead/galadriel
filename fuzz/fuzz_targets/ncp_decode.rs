@@ -1,10 +1,8 @@
 #![no_main]
 
 use galadriel_ncp::{
-    monitor::MonitorEnvelope,
-    parse_jsonl_with_limits,
-    registry::DeploymentRegistry,
-    JsonlLimits, SidecarEnvelope, DEFAULT_MAX_JSONL_LINE_BYTES,
+    monitor::MonitorEnvelope, parse_jsonl_with_limits, registry::DeploymentRegistry, JsonlLimits,
+    SidecarEnvelope, DEFAULT_MAX_JSONL_LINE_BYTES,
 };
 use libfuzzer_sys::fuzz_target;
 
@@ -15,7 +13,7 @@ fuzz_target!(|data: &[u8]| {
 
     if let Ok(envelope) = serde_json::from_slice::<SidecarEnvelope>(bounded) {
         let _ = envelope.validate();
-        let _ = envelope.validate_for(&envelope.session_id, &envelope.producer_id);
+        let _ = envelope.validate_for(envelope.session_id(), envelope.producer_id());
         let _ = serde_json::to_vec(&envelope);
     }
 
@@ -25,7 +23,7 @@ fuzz_target!(|data: &[u8]| {
     // panic or an unbounded allocation.
     if let Ok(envelope) = MonitorEnvelope::decode(bounded) {
         let _ = envelope.validate();
-        let _ = envelope.validate_for(&envelope.session_id, &envelope.producer_id);
+        let _ = envelope.validate_for(envelope.session_id(), envelope.producer_id());
         let _ = envelope.encode();
     }
 

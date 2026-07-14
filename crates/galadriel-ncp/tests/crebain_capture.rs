@@ -18,9 +18,16 @@
 //! χ²(3)-plausible NIS. The baseline does not false-alarm, while the current
 //! producer does not emit a common-frame/frozen-prior consistency projection, so
 //! fusion must preserve a fail-closed result rather than comparing native residuals.
+//!
+//! The historical JSONL surface recorded successful applied updates, not explicit
+//! misses. This authentic capture therefore has no acoustic record at fusion
+//! sequence 98. The 0.9 release profile correctly treats the resulting acoustic
+//! 97→99 jump as requiring a new generation; the baseline smoke test below uses
+//! only the complete contiguous prefix through sequence 97.
 
 use galadriel_core::{
-    assess_default, CorrConfig, DetectorConfig, FusedVerdict, Mirror, Modality, Verdict,
+    assess_default, FailureCode, FusedVerdict, Mirror, Modality, PidObservation, ReleaseSuite,
+    Verdict,
 };
 use galadriel_ncp::{read_jsonl, SidecarEnvelope};
 
@@ -28,6 +35,15 @@ const FIXTURE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/tests/fixtures/crebain_clean_capture.jsonl"
 );
+const FIRST_INCOMPLETE_SEQUENCE: u64 = 98;
+
+fn complete_contiguous_prefix(stream: &[PidObservation]) -> &[PidObservation] {
+    let prefix_end = stream
+        .iter()
+        .position(|observation| observation.sequence().get() == FIRST_INCOMPLETE_SEQUENCE)
+        .expect("fixture contains the known incomplete frame");
+    &stream[..prefix_end]
+}
 
 #[test]
 fn crebain_capture_parses_with_full_modality_coverage_and_sane_nis() {
@@ -35,22 +51,34 @@ fn crebain_capture_parses_with_full_modality_coverage_and_sane_nis() {
     assert!(stream.len() > 400, "rich capture, got {}", stream.len());
 
     for modality in [Modality::Visual, Modality::Radar, Modality::Acoustic] {
-        let n = stream.iter().filter(|o| o.modality == modality).count();
+        let n = stream
+            .iter()
+            .filter(|observation| observation.modality() == modality)
+            .count();
         assert!(n > 150, "{modality:?}: {n} records");
     }
-    assert!(stream.iter().all(|o| o.dof == 3));
-    assert!(stream.iter().all(|o| o.nis.is_finite() && o.nis >= 0.0));
+    assert!(stream.iter().all(|observation| observation.dof() == 3));
+    assert!(stream
+        .iter()
+        .all(|observation| observation.nis().is_finite() && observation.nis() >= 0.0));
     // Native research fields are present, but no common consistency projection is.
     assert!(stream
         .iter()
-        .all(|o| o.innovation.is_some() && o.innovation_cov.is_some()));
+        .all(|observation| observation.innovation().is_some()
+            && observation.innovation_covariance().is_some()));
     assert!(
-        stream.iter().all(|o| o.consistency_projection.is_none()),
+        stream
+            .iter()
+            .all(|observation| observation.consistency_projection().is_none()),
         "legacy crebain capture must not be silently treated as common-frame data"
     );
     // Healthy-filter capture: mean NIS ≈ dof (χ²(3)); a gross model mismatch
     // between the repos would show up here first.
-    let mean_nis = stream.iter().map(|o| o.nis).sum::<f64>() / stream.len() as f64;
+    let mean_nis = stream
+        .iter()
+        .map(|observation| observation.nis())
+        .sum::<f64>()
+        / stream.len() as f64;
     assert!(
         (mean_nis - 3.0).abs() < 0.6,
         "mean NIS {mean_nis:.2} should be ≈ dof for a matched filter"
@@ -58,43 +86,88 @@ fn crebain_capture_parses_with_full_modality_coverage_and_sane_nis() {
 }
 
 #[test]
-fn crebain_clean_capture_keeps_insufficient_correlation_fail_closed() {
+fn crebain_historical_capture_requires_reset_at_the_acoustic_omission() {
     let stream = read_jsonl(FIXTURE).expect("crebain capture parses");
+
+    let incomplete_frame: Vec<_> = stream
+        .iter()
+        .filter(|observation| observation.sequence().get() == FIRST_INCOMPLETE_SEQUENCE)
+        .map(|observation| observation.modality())
+        .collect();
+    assert_eq!(incomplete_frame.len(), 2);
+    assert!(incomplete_frame.contains(&Modality::Visual));
+    assert!(incomplete_frame.contains(&Modality::Radar));
+    assert!(!incomplete_frame.contains(&Modality::Acoustic));
+
+    let suite = ReleaseSuite::standalone_advisory_v0_9(&[
+        Modality::Visual,
+        Modality::Radar,
+        Modality::Acoustic,
+    ])
+    .expect("valid release suite and modality contract");
+    let mut mirror = Mirror::from_release_suite(&suite);
+    let (observation, failure) = stream
+        .iter()
+        .find_map(|observation| {
+            mirror
+                .ingest_checked(observation)
+                .err()
+                .map(|failure| (observation, failure))
+        })
+        .expect("the historical omission requires a new generation");
+    assert_eq!(
+        (
+            observation.sequence().get(),
+            observation.modality(),
+            failure.code(),
+        ),
+        (99, Modality::Acoustic, FailureCode::ResetRequired)
+    );
+}
+
+#[test]
+fn crebain_contiguous_prefix_keeps_insufficient_correlation_fail_closed() {
+    let stream = read_jsonl(FIXTURE).expect("crebain capture parses");
+    let continuous = complete_contiguous_prefix(&stream);
     let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
 
-    // The NIS χ² baseline.
-    let mut mirror = Mirror::new(DetectorConfig::default()).expect("valid default config");
-    for observation in &stream {
+    // The NIS χ² baseline, over the complete pre-omission generation only.
+    let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities)
+        .expect("valid release suite and modality contract");
+    let mut mirror = Mirror::from_release_suite(&suite);
+    for observation in continuous {
         mirror
             .ingest(observation)
-            .expect("fixture remains valid and ordered");
+            .expect("contiguous prefix remains valid and ordered");
     }
-    let last = stream.iter().map(|o| o.seq).max().unwrap_or(0);
+    let last = continuous
+        .iter()
+        .map(|observation| observation.sequence())
+        .max()
+        .expect("contiguous prefix contains observations");
+    let track_id = continuous
+        .first()
+        .expect("contiguous prefix contains observations")
+        .track_id();
     let report = mirror
-        .assess(1, last)
+        .assess(track_id, last)
         .expect("baseline assessment succeeds");
     assert!(
         !matches!(
-            report.verdict,
+            report.verdict(),
             Verdict::AttributedInconsistency { .. } | Verdict::BroadDegradation
         ),
         "clean crebain capture must not alarm the baseline: {:?}",
-        report.verdict
+        report.verdict()
     );
 
     // Native radar-polar and Cartesian innovations are intentionally ignored. The
     // producer supplied no common frame/context/frozen-prior attestation.
-    let fused = assess_default(
-        &stream,
-        &modalities,
-        &DetectorConfig::default(),
-        &CorrConfig::default(),
-    )
-    .expect("fused assessment succeeds");
-    assert!(fused.correlations.is_empty());
+    let fused = assess_default(continuous, &suite).expect("fused assessment succeeds");
+    assert!(fused.correlations().is_empty());
     assert_eq!(
-        fused.verdict,
-        FusedVerdict::InsufficientEvidence,
+        fused.verdict(),
+        &FusedVerdict::InsufficientEvidence,
         "fusion must preserve insufficient correlation evidence"
     );
 }
@@ -116,5 +189,5 @@ fn current_crebain_record_roundtrips_inside_the_live_v1_envelope() {
         .validate_for("crebain-capture-epoch-1", "crebain")
         .expect("version and provenance match")
         .is_match());
-    assert!(decoded.observation.consistency_projection.is_none());
+    assert!(decoded.observation().consistency_projection().is_none());
 }

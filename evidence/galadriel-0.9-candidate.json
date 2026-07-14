@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "study_id": "galadriel_0_9_candidate_2026_07_14",
+  "base_seed": "2026071409001",
+  "calibration_tracks": 20,
+  "holdout_tracks": 100,
+  "frames": 3600,
+  "dt_ms": 100,
+  "assessment_step": 10,
+  "alert_episode_reset_policy": "nominal_only",
+  "attack_onset_frame": 1800,
+  "mission_frames": 3600,
+  "rho": 0.7,
+  "sigma": 1.0,
+  "loud_bias_sigma": 6.0,
+  "ordinary_missing_probability": 0.15,
+  "autocorrelation_phis": [
+    0.0,
+    0.85
+  ],
+  "covariance_scales": [
+    1.0,
+    1.3
+  ],
+  "bootstrap_resamples": 1000,
+  "min_metric_eligible_tracks": 20,
+  "min_recorded_duration_ms": 3600000,
+  "detector": {
+    "window_len": 64,
+    "min_samples": 32,
+    "min_channels": 2,
+    "max_seq_gap": 1,
+    "max_timestamp_skew_ms": 1000,
+    "max_inter_sample_gap_ms": 10000,
+    "max_tracks": 1024,
+    "nis_alpha": 0.01,
+    "cusum_slack": 1.2247448713915892,
+    "cusum_threshold": 6.123724356957945,
+    "jam_fraction": 0.6
+  },
+  "correlation": {
+    "window": 128,
+    "min_samples": 64,
+    "decouple_ratio": 0.4,
+    "corr_floor": 0.15,
+    "family_alpha": 0.01
+  },
+  "recorded_fixture": {
+    "path": "../crates/galadriel-ncp/tests/fixtures/crebain_clean_capture.jsonl",
+    "sha256": "154b2b6534659500bc8ef99b53f482692d01f4b3f65d6d52a1e890796eea643c"
+  }
+}

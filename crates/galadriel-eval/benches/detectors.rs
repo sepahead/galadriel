@@ -10,15 +10,19 @@ use std::hint::black_box;
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use galadriel_core::{
-    assess_default, correlation, CorrConfig, DetectorConfig, Mirror, Modality, PidObservation,
+    assess_default, correlation, CorrConfig, CorrParams, DetectorConfig, DetectorParams, Mirror,
+    Modality, PidObservation, ProducerAxisFamilyPolicy, ReleaseSuite, ReleaseSuiteParams, Sequence,
+    TrackId,
 };
-use galadriel_pid::{analyze, assess_stream, scalar_channels, PidConfig};
-use galadriel_sim::scenario::{generate_spoofed, ScenarioConfig, StealthySpoof};
+use galadriel_pid::{
+    analyze, assess_stream, scalar_channels, PidConfig, PidResearchProfile, PidResearchSuite,
+};
+use galadriel_sim::scenario::{generate_spoofed, ScenarioConfig, ScenarioParams, StealthySpoof};
 
 const MODS: [Modality; 3] = [Modality::Visual, Modality::Radar, Modality::Acoustic];
 
 fn stream(frames: usize) -> Vec<PidObservation> {
-    let cfg = ScenarioConfig {
+    let cfg = ScenarioConfig::try_new(ScenarioParams {
         track_id: 1,
         frames,
         modalities: MODS.to_vec(),
@@ -26,7 +30,8 @@ fn stream(frames: usize) -> Vec<PidObservation> {
         rho: 0.7,
         dt_ms: 100,
         seed: 42,
-    };
+    })
+    .expect("benchmark scenario configuration must be valid");
     generate_spoofed(
         &cfg,
         StealthySpoof {
@@ -40,48 +45,48 @@ fn stream(frames: usize) -> Vec<PidObservation> {
 fn bench_detectors(c: &mut Criterion) {
     let s = stream(300);
     let channels = scalar_channels(&s, &MODS, 0).expect("valid benchmark channels");
-    let last_seq = s.iter().map(|o| o.seq).max().unwrap_or(0);
+    let track_id = s.first().expect("benchmark stream is non-empty").track_id();
+    let last_seq = s
+        .iter()
+        .map(PidObservation::sequence)
+        .max()
+        .expect("benchmark stream is non-empty");
+    let pid_config = PidResearchProfile::CircularDeleteBlockV0_9
+        .try_config()
+        .expect("0.9 circular delete-block PID profile is valid");
+    let pid_suite = PidResearchSuite::circular_delete_block_v0_9(&MODS)
+        .expect("0.9 circular delete-block PID suite is valid");
+    let release_suite = ReleaseSuite::standalone_advisory_v0_9(&MODS)
+        .expect("standalone-advisory benchmark suite is valid");
     let mut g = c.benchmark_group("detectors");
 
     // The cheap magnitude yardstick.
     g.bench_function("baseline_nis_chi2", |b| {
         b.iter(|| {
-            let mut m = Mirror::with_modalities(DetectorConfig::default(), &MODS)
-                .expect("valid benchmark detector");
+            let mut m = Mirror::from_release_suite(&release_suite);
             for o in &s {
                 m.ingest(o).expect("valid benchmark observation");
             }
-            black_box(m.assess(1, last_seq).expect("valid benchmark assessment"))
+            black_box(
+                m.assess(track_id, last_seq)
+                    .expect("valid benchmark assessment"),
+            )
         })
     });
 
     // The pure default: NIS ⊕ signed pairwise-ρ consistency (no pid-core).
     g.bench_function("correlation_default_fused", |b| {
-        b.iter(|| {
-            black_box(assess_default(
-                &s,
-                &MODS,
-                &DetectorConfig::default(),
-                &CorrConfig::default(),
-            ))
-        })
+        b.iter(|| black_box(assess_default(&s, &release_suite)))
     });
 
     // The escalation: geometry-gated KSG mutual information.
     g.bench_function("pid_ksg_mi", |b| {
-        b.iter(|| black_box(analyze(&channels, &PidConfig::default())))
+        b.iter(|| black_box(analyze(&channels, &pid_config)))
     });
 
     // The full NIS ⊕ PID fusion.
     g.bench_function("fused_nis_pid", |b| {
-        b.iter(|| {
-            black_box(assess_stream(
-                &s,
-                &MODS,
-                &DetectorConfig::default(),
-                &PidConfig::default(),
-            ))
-        })
+        b.iter(|| black_box(assess_stream(&s, &pid_suite)))
     });
 
     g.finish();
@@ -99,20 +104,19 @@ fn bench_cost_vs_window(c: &mut Criterion) {
             .iter()
             .map(|(m, v)| (*m, v[v.len() - w..].to_vec()))
             .collect();
-        let corr_cfg = CorrConfig {
+        let corr_cfg = CorrConfig::try_new(CorrParams {
             window: w,
             min_samples: (w / 2).max(2),
-            ..CorrConfig::default()
-        };
-        let pid_cfg = PidConfig {
-            window: w,
-            min_samples: (w / 2).max(PidConfig::default().geom_k + 1),
-            // This benchmark isolates the KSG point-estimate scaling. Bootstrap
-            // confirmation has its own bounded fit count and would make the small
-            // windows invalid when n_boot exceeds the available samples.
-            bootstrap: false,
-            ..PidConfig::default()
-        };
+            ..CorrParams::standalone_advisory_v0_9()
+        })
+        .expect("correlation scaling benchmark config is valid");
+        let mut pid_params = PidResearchProfile::PointEstimateOnlyV0_9.params();
+        pid_params.window = w;
+        pid_params.min_samples = (w / 2).max(pid_params.geom_k + 1);
+        // This benchmark isolates KSG point-estimate scaling. Circular delete-block
+        // confirmation has its own bounded fit count and diversity requirements.
+        let pid_cfg = PidConfig::try_new(pid_params)
+            .expect("point-estimate PID scaling benchmark config is valid");
         g.bench_with_input(BenchmarkId::new("correlation", w), &w, |b, _| {
             b.iter(|| black_box(correlation::analyze(&chans, &corr_cfg)))
         });
@@ -128,24 +132,37 @@ fn bench_cost_vs_window(c: &mut Criterion) {
 fn bench_streaming_baseline(c: &mut Criterion) {
     let mut group = c.benchmark_group("streaming_baseline_window");
     for &window_len in &[64usize, 4_096, 65_536] {
-        let cfg = DetectorConfig {
+        let cfg = DetectorConfig::try_new(DetectorParams {
             window_len,
             min_samples: window_len,
             max_tracks: 1,
-            ..DetectorConfig::default()
-        };
-        let mut mirror = Mirror::with_modalities(cfg, &MODS).expect("valid streaming benchmark");
+            ..DetectorParams::standalone_advisory_v0_9()
+        })
+        .expect("streaming benchmark config is valid");
+        let track_id = TrackId::new(1).expect("benchmark track identity is valid");
+        let suite = ReleaseSuite::try_new(ReleaseSuiteParams {
+            detector: cfg,
+            correlation: CorrConfig::standalone_advisory_v0_9()
+                .expect("benchmark correlation profile is valid"),
+            expected_modalities: MODS.to_vec(),
+            axis_policy: ProducerAxisFamilyPolicy::AttestedCommonProjectionBonferroniV1,
+        })
+        .expect("custom streaming benchmark suite is valid");
+        let mut mirror = Mirror::from_release_suite(&suite);
         for seq in 0..window_len as u64 {
             for modality in MODS {
                 mirror
-                    .ingest(&PidObservation::scalar(
-                        1,
-                        seq.saturating_mul(100),
-                        seq,
-                        modality,
-                        3.0,
-                        3,
-                    ))
+                    .ingest(
+                        &PidObservation::try_scalar_raw(
+                            1,
+                            seq.saturating_mul(100),
+                            seq,
+                            modality,
+                            3.0,
+                            3,
+                        )
+                        .expect("benchmark warmup coordinates are valid"),
+                    )
                     .expect("valid benchmark warmup");
             }
         }
@@ -157,17 +174,24 @@ fn bench_streaming_baseline(c: &mut Criterion) {
                 b.iter(|| {
                     for modality in MODS {
                         mirror
-                            .ingest(&PidObservation::scalar(
-                                1,
-                                seq.saturating_mul(100),
-                                seq,
-                                modality,
-                                3.0,
-                                3,
-                            ))
+                            .ingest(
+                                &PidObservation::try_scalar_raw(
+                                    1,
+                                    seq.saturating_mul(100),
+                                    seq,
+                                    modality,
+                                    3.0,
+                                    3,
+                                )
+                                .expect("benchmark sample coordinates are valid"),
+                            )
                             .expect("valid benchmark sample");
                     }
-                    let report = mirror.assess(1, seq).expect("valid benchmark assessment");
+                    let assessment_sequence =
+                        Sequence::new(seq).expect("benchmark sequence is valid");
+                    let report = mirror
+                        .assess(track_id, assessment_sequence)
+                        .expect("valid benchmark assessment");
                     seq += 1;
                     black_box(report)
                 })

@@ -1,0 +1,1405 @@
+{
+  "baseline": {
+    "commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",
+    "files": [
+      {
+        "git_blob": "007db1d25ca73beecaf15e9bae237206908ce501",
+        "path": "Cargo.toml",
+        "sha256": "45453908f8aab5d8d61e194b2ea8b3de7610e707983b4abc9e7d364120a6f089",
+        "size_bytes": 3065
+      },
+      {
+        "git_blob": "d59454c1d05959d1082ed1c2c382cc3ecf293fa3",
+        "path": "Cargo.lock",
+        "sha256": "c3f792764004ad2b2cd4c9aa6d49dfb557b58b716c038c722944d39e3074bf7d",
+        "size_bytes": 107949
+      },
+      {
+        "git_blob": "ee99fb01f1713c35deefac77d8391a8d32663238",
+        "path": "rust-toolchain.toml",
+        "sha256": "3e3727651b8a0c0d727b68740cc5769fb40d548dc05a5ea07277fec27765c79d",
+        "size_bytes": 152
+      },
+      {
+        "git_blob": "619ff7cf6d636ccf354c629715058e9d177a5efc",
+        "path": "deny.toml",
+        "sha256": "f9cd0fe7280fbee0c080884f68099e62121740dc39e787392bed11c123f4a498",
+        "size_bytes": 900
+      }
+    ],
+    "locked_git_dependencies": [
+      {
+        "commit": "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+        "name": "ncp-core",
+        "source": "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+        "version": "0.8.0"
+      },
+      {
+        "commit": "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+        "name": "ncp-zenoh",
+        "source": "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+        "version": "0.8.0"
+      },
+      {
+        "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+        "name": "pid-core",
+        "source": "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+        "version": "1.0.0"
+      },
+      {
+        "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+        "name": "pid-runlog",
+        "source": "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+        "version": "1.0.0"
+      }
+    ],
+    "repository": "https://github.com/sepahead/galadriel",
+    "submodules": [],
+    "tree": "9d9b3f9c2eaa26f50ffcc7ab16c0d38652a9f6c0"
+  },
+  "handoff": {
+    "file_count": 166,
+    "files": [
+      {
+        "kind": "regular",
+        "path": ".DS_Store",
+        "sha256": "c6a760d2828bd4397443b07b9223791cf062c8e36f0b741877f918560ca77aa3",
+        "size_bytes": 10244
+      },
+      {
+        "kind": "regular",
+        "path": "CDC_DIVERSE_VERIFIER_LOOP.md",
+        "sha256": "beac026fa01602fd1e2e45773848e75d44ffe15461733b190f329ff2661d1a53",
+        "size_bytes": 1398
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF.zip",
+        "sha256": "c7c8a342e5a4b94c2d4c411299c63ed1c01163acff847d9bf7389ed8ea8c052a",
+        "size_bytes": 48217
+      },
+      {
+        "kind": "regular",
+        "path": "CURRENT_HEADS.json",
+        "sha256": "dc393b47bac804fa9dd47215e6eced584d0b6863cf57b383ff5957bcbae4bbf6",
+        "size_bytes": 402
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF.zip",
+        "sha256": "41bd414e38e7f46a0417005d59e2b0c0eb5e139ec38cce632e006b60a750cd94",
+        "size_bytes": 42255
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF.zip",
+        "sha256": "1de5cfc2a577621c24ef10e97fd2319799d02b602cfb3de54954928a0d988efe",
+        "size_bytes": 43202
+      },
+      {
+        "kind": "regular",
+        "path": "MASTER_SHA256SUMS.txt",
+        "sha256": "0d4d1c19600bd8e5d930cb269fcaa204e80e9728914572664af7961566d3ba57",
+        "size_bytes": 1356
+      },
+      {
+        "kind": "regular",
+        "path": "MASTER_VALIDATION_REPORT.md",
+        "sha256": "e693dafd3d53ab031b499f358e3a680a5d2c5fd538023e83fd935f5fd020c777",
+        "size_bytes": 1240
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF.zip",
+        "sha256": "661c5a9bd6a62a8a973bc953fd45ba1a58d44592985c871fc6b039c9cbdd333b",
+        "size_bytes": 46369
+      },
+      {
+        "kind": "regular",
+        "path": "PACKAGE_INDEX.json",
+        "sha256": "cec6b200866b0a34473c4429c74137c87790c1fe073a19453ed79e147e32411d",
+        "size_bytes": 1345
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF.zip",
+        "sha256": "9fcdcaf1e5254942c8dbdf4cea3890f6a858674bd6fd613b14f353b2a60e4730",
+        "size_bytes": 73896
+      },
+      {
+        "kind": "regular",
+        "path": "PREVIOUS_HANDOFF_DEFECTS_AND_CORRECTIONS.md",
+        "sha256": "7d604e2a5eb44a358197b6df813a3b862ff7243685fab8a9d46d30cd0d52a8a4",
+        "size_bytes": 3978
+      },
+      {
+        "kind": "regular",
+        "path": "README_FIRST.md",
+        "sha256": "6d80a3d1742849e90fa86d6f65d3deb5b71a8d0b290f29bff5688050afa900b7",
+        "size_bytes": 2473
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF.zip",
+        "sha256": "ae06b5525537e88de4ae37aa49b40de01893061bdc3096bcf1059c5c6d71e3d4",
+        "size_bytes": 11647
+      },
+      {
+        "kind": "regular",
+        "path": "THESIS_BOARD_CORRECTNESS_STRATEGY.md",
+        "sha256": "f4afbf346eb2915eb55ded3bb34d693f92a73ebdb5a90557ec5f1e20bb7ca33a",
+        "size_bytes": 2489
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/ADVERSARIAL_20_LENS_STANDARD.md",
+        "sha256": "c1b951cb40a3fc1108abb243518c4df865e8e2163578b5a84a4b8fb10ab1d87e",
+        "size_bytes": 6619
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CLAIM_EVIDENCE_MATRIX.md",
+        "sha256": "cd0d94e1a48340f0d5e8af8b0e26d37a7794fa315d33df7d74cabacd26580b42",
+        "size_bytes": 1599
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_AUDIT_CUT.json",
+        "sha256": "182e3b9817f2c4a1d99d566269d2ec9a3e75914f171daa952b50cd8e820097df",
+        "size_bytes": 583
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_STATE_AND_CRITICAL_FINDINGS.md",
+        "sha256": "e99c3f74cc40ce14370cc166db71207ad8a599c431a9204a22ac291dd6215abe",
+        "size_bytes": 2730
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/GO_NO_GO_CHECKLIST.md",
+        "sha256": "985e6827dbb97594ae288b0a78d9df93af41f568e1cc16a65caaffb21db77c48",
+        "size_bytes": 1124
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LANGUAGE_SPECIFIC_REVIEW.md",
+        "sha256": "42e624f7769d2eb5b7924a5a86b5714c3d02dfaff7ac47dd24d46907750cc8f3",
+        "size_bytes": 3511
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LOCAL_CONVERGENCE_SCHEMA.json",
+        "sha256": "f9cd8add229bf44ee1318530dcf19a5085410a638df7f02bff94b2226d26b2f1",
+        "size_bytes": 1416
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MANDATORY_LINE_BY_LINE_AUDIT.md",
+        "sha256": "088732d580b0a3627c49707f340a5799864cebc4f11c194a04a53a5a2ac5063a",
+        "size_bytes": 7742
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MASTER_TASK_LEDGER.yaml",
+        "sha256": "5c1752beee10e4821d78aaa02d843cfd2af417b6e8bcf8b9d9aae7879fdd5dfb",
+        "size_bytes": 1297225
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/NORMATIVE_ARCHITECTURE.md",
+        "sha256": "000e0db2e1fdaa2f57cd13edf70417259d0c9904bd9c9f02833677b615be5dfc",
+        "size_bytes": 1980
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/PACKAGE_VALIDATION_REPORT.md",
+        "sha256": "04be29952051aab14c6b56d9798a6cb7d4b24fb525420d8cf5cf200917235bb7",
+        "size_bytes": 721
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/README_FIRST.md",
+        "sha256": "dacf4b1fd7ad9e1a9302f97842eab80495b3e240c88084dd595240a67561d2b2",
+        "size_bytes": 1780
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/RELEASE_MANIFEST_TEMPLATE.json",
+        "sha256": "ab70d25acba7d2d587f10f556cd9f698ca218237ea4ea7e2e423f72fb7176f74",
+        "size_bytes": 876
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SHA256SUMS.txt",
+        "sha256": "2dbf9221dfdd69ac4254d022e28dc282e6356a067d03a9be20f92b52fb82c2a6",
+        "size_bytes": 2083
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SUBAGENT_ASSIGNMENT_TEMPLATE.md",
+        "sha256": "d1b7c094582cb0a5ce8f1c9538032a1e6379c2042c7c164731bd64e1c5aa5c1e",
+        "size_bytes": 810
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/THREAT_MISUSE_FAILURE_MODEL.md",
+        "sha256": "cf0cb551c79a6479cb31d2f4c0f582a1995c3d94c1f67298bb3d3d8079c5bad8",
+        "size_bytes": 2859
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/WAVE_EXECUTION_PLAN.md",
+        "sha256": "fa7feb5d2375e82c8f75f491c0384994fe4315f85f8f698e322d68d88649dd43",
+        "size_bytes": 8424
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/README.md",
+        "sha256": "ad3ff80199eb3128192ce127b14e9f99594fcc5865ca49a683de23ca7a761a73",
+        "size_bytes": 271
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/audit_tracked_files.py",
+        "sha256": "7cb7d510858c328cc485d9b8fa9ad849ec256e8db062303999c84049be9c5e51",
+        "size_bytes": 2763
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/check_frozen_head.py",
+        "sha256": "337eb4c9a3d18ec99f804d35787874cabf02f85e8be90edb8cfd905359e5e72e",
+        "size_bytes": 615
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/make_review_packets.py",
+        "sha256": "465aefb74736beb044ff9fe2d961856ad83cae3d7d969069da23f4f817495ce7",
+        "size_bytes": 931
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/scan_claim_language.py",
+        "sha256": "25c200dfaf91aac83cca25d5cd637921d0ad6d4e336118f5ad46bc9fe6e01618",
+        "size_bytes": 1030
+      },
+      {
+        "kind": "regular",
+        "path": "CREBAIN_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/verify_evidence_manifest.py",
+        "sha256": "6aed5efe80782049c7ccc20a744c4f4f64bb683eb6858198fa4c51353a01ca3d",
+        "size_bytes": 724
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/ADVERSARIAL_20_LENS_STANDARD.md",
+        "sha256": "c1b951cb40a3fc1108abb243518c4df865e8e2163578b5a84a4b8fb10ab1d87e",
+        "size_bytes": 6619
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CLAIM_EVIDENCE_MATRIX.md",
+        "sha256": "6057235fb7ff740d48570a7773e20a1a4737c37f4419788ee0e179f51fb124ce",
+        "size_bytes": 1601
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_AUDIT_CUT.json",
+        "sha256": "7602d01676d56181e8351289ca7b1674a85390807803a8ca2a68e134d504806a",
+        "size_bytes": 585
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_STATE_AND_CRITICAL_FINDINGS.md",
+        "sha256": "fb810b07a8c46d2896b03e74d368a9c32c865dc5a05393ceef8bfb96479effe9",
+        "size_bytes": 2727
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/GO_NO_GO_CHECKLIST.md",
+        "sha256": "201f3540109d55b9661c887bddd011aad7ec9d455ef2900651112fa07e143fdf",
+        "size_bytes": 1126
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LANGUAGE_SPECIFIC_REVIEW.md",
+        "sha256": "42e624f7769d2eb5b7924a5a86b5714c3d02dfaff7ac47dd24d46907750cc8f3",
+        "size_bytes": 3511
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LOCAL_CONVERGENCE_SCHEMA.json",
+        "sha256": "b21696e1d0fcccf1ee7f4fc8a96256950c3c137f9215eb74eb0771c393bdfb61",
+        "size_bytes": 1418
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MANDATORY_LINE_BY_LINE_AUDIT.md",
+        "sha256": "d2efb82fe842f53d66b2b5d7f18aa47c94b441bf43b934e7e96a249105e392fd",
+        "size_bytes": 6239
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MASTER_TASK_LEDGER.yaml",
+        "sha256": "b7477290a798feaa00d636ef602e0c09f07d953fd556135478334994f0a03721",
+        "size_bytes": 946424
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/NORMATIVE_ARCHITECTURE.md",
+        "sha256": "7355ccf10ac224d2986425e945ebad0535f22991360143485416ec69e0200e22",
+        "size_bytes": 1982
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/PACKAGE_VALIDATION_REPORT.md",
+        "sha256": "22106495c8b418daf2451bfc72a84ff02c53b011a7ad568cd3fe101d2adcec3b",
+        "size_bytes": 723
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/README_FIRST.md",
+        "sha256": "8661c61bf9a59957251470da4ad1bf3df2ef0df499fcf754ff05112e0910f85f",
+        "size_bytes": 1784
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/RELEASE_MANIFEST_TEMPLATE.json",
+        "sha256": "60d79da4af3a6a19c9e6f4009dc6be987c1e4534d9548eb52dc394f28e8160da",
+        "size_bytes": 880
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SHA256SUMS.txt",
+        "sha256": "134a782d3baa88ec1d76c3fdf785d502b63869e7e2d8b3762c5fc5265b117b5d",
+        "size_bytes": 2083
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SUBAGENT_ASSIGNMENT_TEMPLATE.md",
+        "sha256": "4a8e60ddac736a53c135265e032d40473c088c3922568157460de57f9ca9eeb5",
+        "size_bytes": 816
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/THREAT_MISUSE_FAILURE_MODEL.md",
+        "sha256": "8594a11b708c6f0c7e262acc2d3e87f7821aedc03598ed4f0c5207fa9facd570",
+        "size_bytes": 2822
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/WAVE_EXECUTION_PLAN.md",
+        "sha256": "58333e6f43e83d6b206335acd1f4d59c624dfb7a23d33b46e066dfc46fe29f54",
+        "size_bytes": 8168
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/README.md",
+        "sha256": "55bf311352cdbef4000a1ba089b750bac1674eb01add217512b9230b397acb77",
+        "size_bytes": 273
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/audit_tracked_files.py",
+        "sha256": "7cb7d510858c328cc485d9b8fa9ad849ec256e8db062303999c84049be9c5e51",
+        "size_bytes": 2763
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/check_frozen_head.py",
+        "sha256": "337eb4c9a3d18ec99f804d35787874cabf02f85e8be90edb8cfd905359e5e72e",
+        "size_bytes": 615
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/make_review_packets.py",
+        "sha256": "465aefb74736beb044ff9fe2d961856ad83cae3d7d969069da23f4f817495ce7",
+        "size_bytes": 931
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/scan_claim_language.py",
+        "sha256": "25c200dfaf91aac83cca25d5cd637921d0ad6d4e336118f5ad46bc9fe6e01618",
+        "size_bytes": 1030
+      },
+      {
+        "kind": "regular",
+        "path": "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/verify_evidence_manifest.py",
+        "sha256": "6aed5efe80782049c7ccc20a744c4f4f64bb683eb6858198fa4c51353a01ca3d",
+        "size_bytes": 724
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/ADVERSARIAL_20_LENS_STANDARD.md",
+        "sha256": "c1b951cb40a3fc1108abb243518c4df865e8e2163578b5a84a4b8fb10ab1d87e",
+        "size_bytes": 6619
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CLAIM_EVIDENCE_MATRIX.md",
+        "sha256": "9b681868fe3b6f94ab7ee3b91979f3f7d33ccfa0a3481c1b6fff29e16afccdd3",
+        "size_bytes": 1598
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_AUDIT_CUT.json",
+        "sha256": "b77dcffa56ec0eb0f80fbbd29ff6f7c98ebf8b894e23393f67685b952af80ca6",
+        "size_bytes": 582
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_STATE_AND_CRITICAL_FINDINGS.md",
+        "sha256": "f96659b5cdffd8448bdd2d0a5438422539212cb3661bd50792326c7222cbadd0",
+        "size_bytes": 2672
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/GO_NO_GO_CHECKLIST.md",
+        "sha256": "e4bd837c5d9e1bd4638a6c7f604cc0b0d0b38dde484dcc5b05e35cc58d1a2189",
+        "size_bytes": 1123
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LANGUAGE_SPECIFIC_REVIEW.md",
+        "sha256": "42e624f7769d2eb5b7924a5a86b5714c3d02dfaff7ac47dd24d46907750cc8f3",
+        "size_bytes": 3511
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LOCAL_CONVERGENCE_SCHEMA.json",
+        "sha256": "daf72faee340176fd888f414d5c44767e951673052d742edac3e87a10980acf2",
+        "size_bytes": 1415
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MANDATORY_LINE_BY_LINE_AUDIT.md",
+        "sha256": "ce71372f1067d046884ab34df8d50b2944981f7cfdb09f98002956fd76c0c28b",
+        "size_bytes": 6478
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MASTER_TASK_LEDGER.yaml",
+        "sha256": "891601e322f453499fc7a3375728d43f7cfb0eaa193be5b96b1a5d6c7aae0f40",
+        "size_bytes": 1027512
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/NORMATIVE_ARCHITECTURE.md",
+        "sha256": "d8a11d6b5c1883f7f139f5bf820ed72b3b9eff232074949394af12e837a1c275",
+        "size_bytes": 1979
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/PACKAGE_VALIDATION_REPORT.md",
+        "sha256": "ee7a58e59daa38c4108960b33024f9505d5f69d0b3d62c385cb2ec6ac19b5e09",
+        "size_bytes": 720
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/README_FIRST.md",
+        "sha256": "bf1d3ea1d830d60a5e8ea9d41b32e5845748165a28d124e52497610b8c3e6f47",
+        "size_bytes": 1778
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/RELEASE_MANIFEST_TEMPLATE.json",
+        "sha256": "b8d294732106a5e671d2c58324ab1773147939a92b3a3c5e801a6df0c666af77",
+        "size_bytes": 874
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SHA256SUMS.txt",
+        "sha256": "5ed07cc488640d512342c8b3adc1feeda523f897f5f9734cdf62441766d216b0",
+        "size_bytes": 2083
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SUBAGENT_ASSIGNMENT_TEMPLATE.md",
+        "sha256": "004b87bcfd1f63c1c3384296f2f765a05140640e9990eb7ac8d9032aa4d12452",
+        "size_bytes": 807
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/THREAT_MISUSE_FAILURE_MODEL.md",
+        "sha256": "34ea37d5dece3b3d68abffb14258a73acd1e378d6ba66743aac6afa6cdfe1a5f",
+        "size_bytes": 2694
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/WAVE_EXECUTION_PLAN.md",
+        "sha256": "1a32b523eca100ab5c7d960eb907a1f9c42c977c2a7adf9ed13b4be94ee43fa6",
+        "size_bytes": 8225
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/README.md",
+        "sha256": "61eb8fe819b4c8f2678df3dbcc56c0e8406a65490aaa4f55f3eeb5493d38df5d",
+        "size_bytes": 270
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/audit_tracked_files.py",
+        "sha256": "7cb7d510858c328cc485d9b8fa9ad849ec256e8db062303999c84049be9c5e51",
+        "size_bytes": 2763
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/check_frozen_head.py",
+        "sha256": "337eb4c9a3d18ec99f804d35787874cabf02f85e8be90edb8cfd905359e5e72e",
+        "size_bytes": 615
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/make_review_packets.py",
+        "sha256": "465aefb74736beb044ff9fe2d961856ad83cae3d7d969069da23f4f817495ce7",
+        "size_bytes": 931
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/scan_claim_language.py",
+        "sha256": "25c200dfaf91aac83cca25d5cd637921d0ad6d4e336118f5ad46bc9fe6e01618",
+        "size_bytes": 1030
+      },
+      {
+        "kind": "regular",
+        "path": "HALDIR_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/verify_evidence_manifest.py",
+        "sha256": "6aed5efe80782049c7ccc20a744c4f4f64bb683eb6858198fa4c51353a01ca3d",
+        "size_bytes": 724
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/ADVERSARIAL_20_LENS_STANDARD.md",
+        "sha256": "c1b951cb40a3fc1108abb243518c4df865e8e2163578b5a84a4b8fb10ab1d87e",
+        "size_bytes": 6619
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CLAIM_EVIDENCE_MATRIX.md",
+        "sha256": "b1e85edeb27c3e255a966c64cb9422ceb34b9b6353913000baa8ac6abd6e10fe",
+        "size_bytes": 1595
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_AUDIT_CUT.json",
+        "sha256": "d27087951b45987f4744b8ca33e9b00b1795a1eb4063b97f458dc0c4064d9f56",
+        "size_bytes": 579
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_STATE_AND_CRITICAL_FINDINGS.md",
+        "sha256": "d90cf2402414c3866a107ffc844c5bc21b2ab78f321d96d855025ad4deef4837",
+        "size_bytes": 2740
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/GO_NO_GO_CHECKLIST.md",
+        "sha256": "83eb026dac0453a13f71751bed9b8198c49d61898055ca76d9a7c2f2477937b3",
+        "size_bytes": 1120
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LANGUAGE_SPECIFIC_REVIEW.md",
+        "sha256": "42e624f7769d2eb5b7924a5a86b5714c3d02dfaff7ac47dd24d46907750cc8f3",
+        "size_bytes": 3511
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LOCAL_CONVERGENCE_SCHEMA.json",
+        "sha256": "61b9f7e7fe442c51d23b32da33419cfbaa36a47b86ae6adb7a06144ad9a25ec6",
+        "size_bytes": 1412
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MANDATORY_LINE_BY_LINE_AUDIT.md",
+        "sha256": "777799108447f33ba07b1e33676432432d35a61e42fdc98b4076626dd47f8040",
+        "size_bytes": 7515
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MASTER_TASK_LEDGER.yaml",
+        "sha256": "9a411e41f1e44324311316af20404632b085b167e70eff1914aaff02ce65e947",
+        "size_bytes": 1190928
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/NORMATIVE_ARCHITECTURE.md",
+        "sha256": "ee85d680d8ea3c6e01561523f8cd67da6fc0b0e45b8f0475c239b39d7ead185a",
+        "size_bytes": 1976
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/PACKAGE_VALIDATION_REPORT.md",
+        "sha256": "9cbfd4327f7254f84523cf0c9d9a49e031385a10a2170048fe95086b8f31a31e",
+        "size_bytes": 717
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/README_FIRST.md",
+        "sha256": "18c5e32f8979c3cd6218da9331485937467ceac6f874047446689e0c8fa0efc2",
+        "size_bytes": 1772
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/RELEASE_MANIFEST_TEMPLATE.json",
+        "sha256": "90909bde389b405bd7119cd1a7e6a4ba3c86e4f2feeacbe7d79a0c903111f634",
+        "size_bytes": 868
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SHA256SUMS.txt",
+        "sha256": "de453c9b98d3f543c5eb3abe8b45343d0fc6be2701cf99e7d53c65585c209031",
+        "size_bytes": 2083
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SUBAGENT_ASSIGNMENT_TEMPLATE.md",
+        "sha256": "c8f887b0c70b13f201481364fd63565f191f4c134c05367509b3dc6383f1fcb2",
+        "size_bytes": 798
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/THREAT_MISUSE_FAILURE_MODEL.md",
+        "sha256": "e0e6c81f801029bdb68a185a7593828b4bfe90f273685ea7f23e312e0c0f74d1",
+        "size_bytes": 2835
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/WAVE_EXECUTION_PLAN.md",
+        "sha256": "dfde37a26a2b554b3c0b983fab524e5f0034d877616e2185b7e1995d620c68f0",
+        "size_bytes": 8342
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/README.md",
+        "sha256": "2861c226b2f11af66aa62d00d193b4c4322b052c815e3721cba6723710fa690a",
+        "size_bytes": 267
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/audit_tracked_files.py",
+        "sha256": "7cb7d510858c328cc485d9b8fa9ad849ec256e8db062303999c84049be9c5e51",
+        "size_bytes": 2763
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/check_frozen_head.py",
+        "sha256": "337eb4c9a3d18ec99f804d35787874cabf02f85e8be90edb8cfd905359e5e72e",
+        "size_bytes": 615
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/make_review_packets.py",
+        "sha256": "465aefb74736beb044ff9fe2d961856ad83cae3d7d969069da23f4f817495ce7",
+        "size_bytes": 931
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/scan_claim_language.py",
+        "sha256": "25c200dfaf91aac83cca25d5cd637921d0ad6d4e336118f5ad46bc9fe6e01618",
+        "size_bytes": 1030
+      },
+      {
+        "kind": "regular",
+        "path": "NCP_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/verify_evidence_manifest.py",
+        "sha256": "6aed5efe80782049c7ccc20a744c4f4f64bb683eb6858198fa4c51353a01ca3d",
+        "size_bytes": 724
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/ADVERSARIAL_20_LENS_STANDARD.md",
+        "sha256": "c1b951cb40a3fc1108abb243518c4df865e8e2163578b5a84a4b8fb10ab1d87e",
+        "size_bytes": 6619
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/ASSUMPTION_GAP_AND_EXPERIMENTAL_REGISTER.md",
+        "sha256": "dea742d00165a329ad36c28e73e9ed390a7c0cf47a69d04b5ea51a58ba507625",
+        "size_bytes": 1723
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/BLIND_HOLDOUT_PROTOCOL.md",
+        "sha256": "2bca1b264372f05843418d3253617bc8810064c660d5690f80c5d8d2244ab81c",
+        "size_bytes": 3415
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CLAIM_EVIDENCE_MATRIX.md",
+        "sha256": "945317c18278c460a1b3b22cd1a92469762e372f4ac21350b42f43a751047519",
+        "size_bytes": 1598
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_AUDIT_CUT.json",
+        "sha256": "f4a4e049ac892b5ed5239a0780f2cc40c77f8a7b595f3669adb699cd89912bfc",
+        "size_bytes": 582
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/CURRENT_STATE_AND_CRITICAL_FINDINGS.md",
+        "sha256": "4a0a851d5d22ca6c486306d04fdbea5e471eab98ed96d80f2352a1e8f6124ac0",
+        "size_bytes": 3435
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/FORMAL_ASSURANCE_MATRIX.csv",
+        "sha256": "8a74741bff270660eaf3a29556d0ba652cf2e9cc748445deeaf78e957c3f2f11",
+        "size_bytes": 1973
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/FORMAL_ASSURANCE_PROGRAM.md",
+        "sha256": "297da2150c5b5ef01bffb9aaf1f360b1207c1c46094e7709547676bc9d4b0ac0",
+        "size_bytes": 6417
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/GO_NO_GO_CHECKLIST.md",
+        "sha256": "2bb9d37602e2649dcc4412229299e3603a219f9cfa3d2a413a8fa82dd0e12fc5",
+        "size_bytes": 1123
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LANGUAGE_SPECIFIC_REVIEW.md",
+        "sha256": "42e624f7769d2eb5b7924a5a86b5714c3d02dfaff7ac47dd24d46907750cc8f3",
+        "size_bytes": 3511
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/LOCAL_CONVERGENCE_SCHEMA.json",
+        "sha256": "210ff4545e9e484378ea91c84cd7ab1a18b6961331f3373008860d35255aaf40",
+        "size_bytes": 1415
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MANDATORY_LINE_BY_LINE_AUDIT.md",
+        "sha256": "f3cb157f57c9ff008c4c6f1acd72641816961924c0cfebbd9859ac3c1cdd3290",
+        "size_bytes": 8157
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MASTER_TASK_LEDGER.yaml",
+        "sha256": "d1a03ea81d2dcb2a99f58c19c292bdcd62c5164273eea0e41704bfed21ed8b8d",
+        "size_bytes": 1301620
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/NORMATIVE_ARCHITECTURE.md",
+        "sha256": "f699a0fa65fc76366ccd766ede28d467d8061aa0717f463f53acd4de548ee23f",
+        "size_bytes": 1979
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/PACKAGE_VALIDATION_REPORT.md",
+        "sha256": "8dc4295d1e2d0ce7dc303d86383e0408e082ca6e6fd38e0927128e03f658aebb",
+        "size_bytes": 1106
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/README_FIRST.md",
+        "sha256": "32464ab4b50e5c4e13895a8a1ae784eb38884203e26b0bd113f2d785dd6dd4d3",
+        "size_bytes": 2020
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/RELEASE_MANIFEST_TEMPLATE.json",
+        "sha256": "bb6da01eeabf3b36403d0bd0460a3ef76beccab29a9e00f7549f536dec7f5d3c",
+        "size_bytes": 874
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/REPO_WORK_SELF_CHECK_REPORT.json",
+        "sha256": "12c5d165af423520fa6a4ed9cf3051663cbc34314356973cc0daafb16e039251",
+        "size_bytes": 956
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SHA256SUMS.txt",
+        "sha256": "d510728e286cbb0bd15357c53c7b75a2ea70b15981df4c9312379808f2723bb1",
+        "size_bytes": 4583
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SUBAGENT_ASSIGNMENT_TEMPLATE.md",
+        "sha256": "58101aaec859e8d91a1a1b2cc0675d79a5aadb7b7e4eb935af41c495f5fbb64c",
+        "size_bytes": 807
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/SUPERVISOR_REVIEW_PACKET.md",
+        "sha256": "e80edd574439bf83d470e7907f0d7e84f7e46e816bb214182ab41b738ead2791",
+        "size_bytes": 2309
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/THEORY_AND_VIVA_DOSSIER.md",
+        "sha256": "5b91d5f5ed649f65b4a4da971b0e4aff7c5466b053c8a0d14284eb983f3a45d0",
+        "size_bytes": 6035
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/THREAT_MISUSE_FAILURE_MODEL.md",
+        "sha256": "c0ee5e3f227c38bcbbe2c67dc8913aa938507230d1ee816db1f5c1eccb9b6702",
+        "size_bytes": 3394
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/WAVE_EXECUTION_PLAN.md",
+        "sha256": "4c51db2181f0d9542959eb2b8df0ad222fd99d56988c4f4df15cf7da0f5d48c4",
+        "size_bytes": 8423
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/README.md",
+        "sha256": "aa1a5223d70b46c11229642044f06d50c56c06a543aa118d503e0b1bd12db057",
+        "size_bytes": 270
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/audit_tracked_files.py",
+        "sha256": "7cb7d510858c328cc485d9b8fa9ad849ec256e8db062303999c84049be9c5e51",
+        "size_bytes": 2763
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/check_frozen_head.py",
+        "sha256": "337eb4c9a3d18ec99f804d35787874cabf02f85e8be90edb8cfd905359e5e72e",
+        "size_bytes": 615
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/make_review_packets.py",
+        "sha256": "465aefb74736beb044ff9fe2d961856ad83cae3d7d969069da23f4f817495ce7",
+        "size_bytes": 931
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/scan_claim_language.py",
+        "sha256": "25c200dfaf91aac83cca25d5cd637921d0ad6d4e336118f5ad46bc9fe6e01618",
+        "size_bytes": 1030
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/verify_evidence_manifest.py",
+        "sha256": "6aed5efe80782049c7ccc20a744c4f4f64bb683eb6858198fa4c51353a01ca3d",
+        "size_bytes": 724
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/lean/PidFormal.lean",
+        "sha256": "3866454b61e61af6c219488991d7a3d3a01288ba7f0abdc13d3db2eccbc22aa4",
+        "size_bytes": 22
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/lean/README.md",
+        "sha256": "78d7ca2002e42de67b6b9a42f42afabd20fefb0ec4546e50432f47de005eeb37",
+        "size_bytes": 533
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/lean/lakefile.lean",
+        "sha256": "1b8223d1f50d80a81878369c648a93b5c33379fbff02bf727e2a16c4c2b3690d",
+        "size_bytes": 183
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/lean/lean-toolchain",
+        "sha256": "2773c517aa90b66ea8a2c52bddddf84393157797f8341be0df45294fff7fd32e",
+        "size_bytes": 25
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/lean/PidFormal/Pid2.lean",
+        "sha256": "db6b333161f9ee1918ff59cd3b8cbedda1ab1d9350edc76a3c8689e904c3a3fe",
+        "size_bytes": 448
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/blind_suite.py",
+        "sha256": "8e521db2b9c95d33eb7fd33468d6ecc71abe85c82a94785f3ee75b492e08e307",
+        "size_bytes": 4388
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/formal_pid2_z3.py",
+        "sha256": "d1c1dcbcd3d0930ab37b583264f35e8b61ba567eabecd4678591590a37b0195e",
+        "size_bytes": 1885
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/information_oracle.py",
+        "sha256": "1fbd0f26632d070081cfdb5ffcfaf5dc5014108308033ff8675279e0e7129223",
+        "size_bytes": 3702
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/metamorphic_checks.py",
+        "sha256": "fa19999d3f2eb86ce12905c496843b79023986dd7d3491ac68bb23b86326e00c",
+        "size_bytes": 2445
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/run_self_checks.py",
+        "sha256": "e01e8e9bc326620ce05381f1191db1983d9abcce34544cc68945057ba09491f5",
+        "size_bytes": 1561
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/self_check_report.json",
+        "sha256": "12c5d165af423520fa6a4ed9cf3051663cbc34314356973cc0daafb16e039251",
+        "size_bytes": 956
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/.hypothesis/.gitignore",
+        "sha256": "41e7ed0dbc23047cfa33374b5909f7b3c7875663fec73abdd23a22518567754a",
+        "size_bytes": 429
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/.hypothesis/constants/15af728daf1f26ae",
+        "sha256": "c88d86f926aa6bb232b6049cee23145ef6433c2813e49216cbe08d54c15b5efc",
+        "size_bytes": 294
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/.hypothesis/constants/93c6924a3f51198f",
+        "sha256": "3524035caefecf1ab3b875c50585d2b88c3e1effd2985bbf023d490446dc9e18",
+        "size_bytes": 314
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/pid_oracle/.hypothesis/constants/e68e8e13ad6502ae",
+        "sha256": "1f9d3d559a9af3abe6f7b84a3cad300ab57ca1c2c670693bd45366a0a6929e61",
+        "size_bytes": 100
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/rust_verification/README.md",
+        "sha256": "e941fdf94ed75d1c26caf8077d6d481ce5d9c43a120c0a1e766a1e1500892b22",
+        "size_bytes": 316
+      },
+      {
+        "kind": "regular",
+        "path": "PID_RS_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/repo_work/rust_verification/kani_harnesses.rs",
+        "sha256": "f1767b75d41c0d5e24fb028b409a8572ddf078397b450a92d8ef05e315246014",
+        "size_bytes": 729
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/ADVERSARIAL_CAMPAIGN.md",
+        "sha256": "6a9963df9ad49a47cdfd61aa51f95a642644e797af6eafe7d8238ab6fcfdd5cc",
+        "size_bytes": 552
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/CHANGE_REQUEST_TEMPLATE.md",
+        "sha256": "8b2f432c89e11c79ab046c51685b2791c47c682f170e40c1eedfe1e96f59d9d4",
+        "size_bytes": 385
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/COMPATIBILITY_MATRIX_TEMPLATE.csv",
+        "sha256": "9eecb5cf15c86de90aec79ebd764a41399c5bd50f0735b2cc80c25cfeb5ab830",
+        "size_bytes": 252
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/CONTRACT_IDENTITY_SCHEMA.json",
+        "sha256": "18af3d7325db77839c47d8e3b38a42570b8e78d56ae7270cf20cf77a1659f815",
+        "size_bytes": 1011
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/CROSS_REPO_TASK_LEDGER.yaml",
+        "sha256": "807d9e2087e932725513dba0eb0d9de252fed85fcce6b75d0121f252fd08f582",
+        "size_bytes": 195760
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/CURRENT_HEADS.json",
+        "sha256": "f43c85b88e71c002ef0f91b2f080526566b3f1e983ae0022f402eadc52efaffa",
+        "size_bytes": 401
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/FINAL_MANIFEST_TEMPLATE.json",
+        "sha256": "9b3682630cee3cba18bbea0fca8eb1c2231bb42767926ac1b02d738046ef165e",
+        "size_bytes": 459
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/GO_NO_GO_CHECKLIST.md",
+        "sha256": "3c501a89f6465f4223bc83919e26938cae9e954de0e835ed69d5dcb2882c7d66",
+        "size_bytes": 733
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/README_FIRST.md",
+        "sha256": "5e11119238d9f08a619968f775f1d980e776753340e796e7f073e2fcedea6018",
+        "size_bytes": 731
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/RELEASE_ORDER_AND_ROLLBACK.md",
+        "sha256": "49c88199b196f281006b94ea1c8108179327fd05e71ef311329f6c4f574855b1",
+        "size_bytes": 813
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/SHA256SUMS.txt",
+        "sha256": "40bd8855cb1ae574d7fb91688d8567a7267089bd80c739c8b1f3270a4efe42f6",
+        "size_bytes": 1006
+      },
+      {
+        "kind": "regular",
+        "path": "SEPAHEAD_V1_0_CURRENT_HEAD_CROSS_REPO_RECONCILIATION_HANDOFF/VALIDATION_REPORT.md",
+        "sha256": "0aad44a81e0171fc3a315acab07ecad44dcc785eb06ce11738cdf19e4f14172f",
+        "size_bytes": 396
+      }
+    ],
+    "galadriel_child_archive_sha256": "41bd414e38e7f46a0417005d59e2b0c0eb5e139ec38cce632e006b60a750cd94",
+    "galadriel_task_ledger_sha256": "b7477290a798feaa00d636ef602e0c09f07d953fd556135478334994f0a03721",
+    "root_name": "SEPAHEAD_V1_0_CURRENT_HEAD_MAX_EFFORT_MASTER_HANDOFF",
+    "total_bytes": 6554750
+  },
+  "release": {
+    "author": "Sepehr Mahmoudian",
+    "doi": null,
+    "version": "0.9.0",
+    "zenodo": null
+  },
+  "release_input_files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "fe62d1dbd838d744f117a3cd742f1cf1f0e76d17d7bf5306de2119eb3ef3817a",
+      "size_bytes": 6879
+    },
+    {
+      "path": ".github/workflows/deep-quality.yml",
+      "sha256": "4498de967a9470afb420108af3b59ab2552c7ae1df78b565f983a5271516e37d",
+      "size_bytes": 8499
+    },
+    {
+      "path": "Cargo.toml",
+      "sha256": "d17014075606bc3f61e1c79d394fc9be4052432bb1c32b0e666cabc2bc111437",
+      "size_bytes": 3098
+    },
+    {
+      "path": "Cargo.lock",
+      "sha256": "595e41ef39194e08aadac7edcee518507d34abc36a8c33bc87c52735338ca96e",
+      "size_bytes": 108004
+    },
+    {
+      "path": "rust-toolchain.toml",
+      "sha256": "3e3727651b8a0c0d727b68740cc5769fb40d548dc05a5ea07277fec27765c79d",
+      "size_bytes": 152
+    },
+    {
+      "path": "deny.toml",
+      "sha256": "76027f6684296e01766e809270d5c8550749abee25bbe87de32d8fc8859f57ca",
+      "size_bytes": 1377
+    },
+    {
+      "path": "fuzz/Cargo.toml",
+      "sha256": "30d159ec8fb02b0d80b5e6d6e94b4171c2c15ff29748a61e2bc9b395c84db3cb",
+      "size_bytes": 702
+    },
+    {
+      "path": "fuzz/Cargo.lock",
+      "sha256": "8f745cfffe945b35fdb1e871ace4998321e26a1de664b60904f447076c46d9a7",
+      "size_bytes": 8509
+    },
+    {
+      "path": "fuzz/deny.toml",
+      "sha256": "3fa71dc5e833e3da478f72afa405bed70112a2764e28e6dbb05f0ed40aeade22",
+      "size_bytes": 484
+    },
+    {
+      "path": "release/0.9.0/audit-inputs.json",
+      "sha256": "bbfdd75bbd9ab210d21ad4f93b9e28898b849ab44231a5a3ff92e207a9bcac1f",
+      "size_bytes": 10168
+    },
+    {
+      "path": "release/0.9.0/handoff-source.json",
+      "sha256": "a5bf3fc637ee09ec0b444f2b30fe2476d146a4949b3ba5ae121051e792aeebff",
+      "size_bytes": 958
+    },
+    {
+      "path": "release/0.9.0/tasks.json",
+      "sha256": "8278951155e7477e59a113e566bb2056a1705ba9fbce7899b4786ada16cec5ca",
+      "size_bytes": 67085
+    },
+    {
+      "path": "release/0.9.0/task-closure-plan.json",
+      "sha256": "7a99323e691036f07f2c66a19385405b1408350d4710b3985de440f5445576e4",
+      "size_bytes": 1996960
+    },
+    {
+      "path": "release/0.9.0/task-dispositions.json",
+      "sha256": "ea36cbbdbed8dfc4aae7a0034dfe91f223de24c7771f837530bff4ddee920639",
+      "size_bytes": 301
+    },
+    {
+      "path": "release/0.9.0/requirements-ledger.json",
+      "sha256": "79c82eedfb026485e6cb3661d71614d2dff7cf04838767082700e2c0d3e5367d",
+      "size_bytes": 1378651
+    },
+    {
+      "path": "release/0.9.0/VERSION-ADAPTATION.md",
+      "sha256": "eb01030278ef7becea9c3892acb37235a1f50ed78d4847d1669a1140d6f88a2d",
+      "size_bytes": 2387
+    },
+    {
+      "path": "release/0.9.0/claims.json",
+      "sha256": "8995c630810a88daeeb12dbcc795fc797b3836d4978554adf3cfad0a3828322f",
+      "size_bytes": 9212
+    },
+    {
+      "path": "release/0.9.0/audit/threat-register.json",
+      "sha256": "1704ae7d464ecf3f746aa8ffd2a7a98eddfd594e07fb5722e20d7136e3501de4",
+      "size_bytes": 27261
+    },
+    {
+      "path": "release/0.9.0/evidence/ACCEPTANCE-CRITERIA.md",
+      "sha256": "87419333614a8baec487653302980a646e33331e64be4561cf24ca0042fc5311",
+      "size_bytes": 8408
+    },
+    {
+      "path": "release/0.9.0/reviews/REVIEW-METHOD.md",
+      "sha256": "4c18482d8c04f703e7e2a42003eb57bac9e559303483202ec5791d4068a9c3aa",
+      "size_bytes": 7135
+    },
+    {
+      "path": "release/0.9.0/reviews/REVIEW-COMMENTS.md",
+      "sha256": "44a1595136d98eaf09ede7f5befdb0f742c6c99f58af9ff1493ba7d4bde7747f",
+      "size_bytes": 2071
+    },
+    {
+      "path": "release/0.9.0/api/galadriel-core.baseline.txt",
+      "sha256": "c36ee97ac474d13182f018dc90bb80e09714181743a1e89f11f1fe430327b033",
+      "size_bytes": 83785
+    },
+    {
+      "path": "release/0.9.0/api/galadriel-core.0.9.0.txt",
+      "sha256": "4cf74dc55797c08ce80a4645bf67cff04e34c169f0f9aa0c2f0d420ae3691fa4",
+      "size_bytes": 711142
+    },
+    {
+      "path": "release/0.9.0/api/galadriel-pid.0.9.0.txt",
+      "sha256": "667b51df10438e245b72886e026fa7c7f27dad4c3bff466373ac48ce46aed225",
+      "size_bytes": 99399
+    },
+    {
+      "path": "release/0.9.0/evidence/galadriel-core-api.diff",
+      "sha256": "63e84001b4b538e75e5c57b3485679510b3ee3ab5ca551edb418c020507f6d5a",
+      "size_bytes": 708609
+    },
+    {
+      "path": "evidence/galadriel-0.9-candidate.json",
+      "sha256": "2eb3018c7aed325c5cefd03b8b1d3ab0db9ece3c8cbe798d80bc0746aec74092",
+      "size_bytes": 1296
+    },
+    {
+      "path": "crates/galadriel-ncp/tests/fixtures/crebain_clean_capture.jsonl",
+      "sha256": "154b2b6534659500bc8ef99b53f482692d01f4b3f65d6d52a1e890796eea643c",
+      "size_bytes": 184195
+    },
+    {
+      "path": "CITATION.cff",
+      "sha256": "71005e2729d015e993f7f796266841b2f091b6737eae1013804789ae695bd0f7",
+      "size_bytes": 753
+    },
+    {
+      "path": "RELEASE-POLICY.md",
+      "sha256": "2bda6993fd040fc763ec77567a21c08d77a0d2ad9f90c76bb680385627c39170",
+      "size_bytes": 2969
+    },
+    {
+      "path": "docs/ADVISORY-BOUNDARY.md",
+      "sha256": "28c4cb8747eacf30c2b2197cc3a890deb05843e429aa26e1f5c8ba19911d7e6e",
+      "size_bytes": 11523
+    },
+    {
+      "path": "docs/CLAIMS.md",
+      "sha256": "fd8c949d7cd6e30420d7d7f5ee5d2cf809e32fd7ea4d9b48d992ef7e3ffd5d43",
+      "size_bytes": 1539
+    },
+    {
+      "path": "docs/CONFIGURATION-CONTRACT.md",
+      "sha256": "d0566f2302dbbf1dff9eb3a8b00dc2127704be591d4a2519f286f597abd93976",
+      "size_bytes": 31009
+    },
+    {
+      "path": "docs/PRODUCER-CONTRACT.md",
+      "sha256": "2b71558c49d8dd72b0629685fa615fba9da5a3064e66b2aa7ad9a60cc300d88c",
+      "size_bytes": 31282
+    },
+    {
+      "path": "docs/RELATED-WORK.md",
+      "sha256": "87b899b076575647d3842dcdc3bf1bf1a637aa8224e5c70690bc5bf221ec612c",
+      "size_bytes": 31892
+    },
+    {
+      "path": "docs/SECURE-DEPLOYMENT.md",
+      "sha256": "7e7ab0db44397b3e447c46df3aed2bb4e03ecdd12ac18437301d3a0e3c426154",
+      "size_bytes": 14129
+    },
+    {
+      "path": "docs/STATE-MACHINE.md",
+      "sha256": "8598e38632e406220d0097303c3ee6a1cf186e3caba5a71010e40ac4c3cedd60",
+      "size_bytes": 13090
+    },
+    {
+      "path": "docs/STATISTICAL-CONTRACT.md",
+      "sha256": "a655fcf7cfaf07562c4d319920ace127ecaa57da4ba8e07f185e13a2593d383f",
+      "size_bytes": 12495
+    },
+    {
+      "path": "docs/THREAT-MODEL.md",
+      "sha256": "e26d99d9c169dff411674d5b1f2971c716d1f22fe61ee80e57b16a6db3f5063b",
+      "size_bytes": 8130
+    },
+    {
+      "path": "deploy/galadriel-security-profile.example.json",
+      "sha256": "25ae824b1651a67cf68c85d29be348ed432968c1f6847f80027051cee6401212",
+      "size_bytes": 964
+    },
+    {
+      "path": "scripts/release_audit.py",
+      "sha256": "368fda29287a338ff096bd61e025354ccbc41fd329bf6cbd8606d534138763cf",
+      "size_bytes": 34083
+    },
+    {
+      "path": "scripts/secure_deployment.py",
+      "sha256": "854e01dc45ae19dd7729132f58f30db09a460c89d8d583b401107b97a5c01323",
+      "size_bytes": 43713
+    },
+    {
+      "path": "repo_work/README.md",
+      "sha256": "7bb817d072d05bbbf2666c1ac9aeac9814ed739e5d5d5ac4be03c10fa6f61acc",
+      "size_bytes": 8010
+    },
+    {
+      "path": "repo_work/audit_tracked_files.py",
+      "sha256": "ed0ef58a2257fe12d7ac35d6283655d7f20b2e719c30a27ffb0f4b1d54f4a9b5",
+      "size_bytes": 14222
+    },
+    {
+      "path": "repo_work/build_task_dispositions.py",
+      "sha256": "6a4b8163f725033c6d8d47597ef1e82a438f7eb6cfd4a796e6cd547a1421c666",
+      "size_bytes": 17960
+    },
+    {
+      "path": "repo_work/check_feature_graph.py",
+      "sha256": "c800269123c10a8eef8364a4cb2090f73c74e5dfd0185ac9746c9b35c8fea5ac",
+      "size_bytes": 4520
+    },
+    {
+      "path": "repo_work/check_frozen_head.py",
+      "sha256": "db4847fb69c7f09485d692511fae7465c2a17f0d2d82f3bfb799b9dc7211333b",
+      "size_bytes": 1282
+    },
+    {
+      "path": "repo_work/check_public_api.py",
+      "sha256": "652f96eaa8a1e27a3630699da6ab6c0b7f17129455f43332ce5e3568c3139112",
+      "size_bytes": 6502
+    },
+    {
+      "path": "repo_work/check_vulnerable_features.py",
+      "sha256": "9214c1b6cd51cfcceb6cdcac5ba384e0ec9e2e95dc4152bac17c55639d732137",
+      "size_bytes": 1232
+    },
+    {
+      "path": "repo_work/common.py",
+      "sha256": "8ed2f7fe2e09db24b2d14e0400b59792c6bdd761402643d7a9a6ed9d2ddc5ada",
+      "size_bytes": 2857
+    },
+    {
+      "path": "repo_work/finalize_release.py",
+      "sha256": "f43410d0fe5eb4c0dd1b25ccc14c6202c2606062f8c11ec4d6737a25076ff244",
+      "size_bytes": 49477
+    },
+    {
+      "path": "repo_work/freeze_audit_inputs.py",
+      "sha256": "0ea6f5772d6c4350f8d8d203342ce93e3aca9aab4ce5df1ab890e01e38cb3843",
+      "size_bytes": 17349
+    },
+    {
+      "path": "repo_work/make_review_packets.py",
+      "sha256": "8d4e8c95e5e3c08a33542f4ff33a7e984b7418d8983866c0dc597cb2bbca6493",
+      "size_bytes": 5641
+    },
+    {
+      "path": "repo_work/prepare_mutation_evidence.py",
+      "sha256": "1c348352d9e5a508ebd26b97e00346dd18922c22f5732981fa123104f158ac1d",
+      "size_bytes": 9679
+    },
+    {
+      "path": "repo_work/qualify_candidate.py",
+      "sha256": "1516823ff2818933b1f3d43ca90ae832902219ff9e46be88f6ab69d59dc658f5",
+      "size_bytes": 52160
+    },
+    {
+      "path": "repo_work/release_assurance.py",
+      "sha256": "f93c020480e00cc0fb2e2ab54cabba1bd401ea6c057a13ad422904805b077bbe",
+      "size_bytes": 63080
+    },
+    {
+      "path": "repo_work/reproduce_baseline.py",
+      "sha256": "193bcf3c2b513ee027d6e22baba1dda5d2d3af10778703f33e80488963933fa6",
+      "size_bytes": 10558
+    },
+    {
+      "path": "repo_work/scan_claim_language.py",
+      "sha256": "4dc0ba8b7fcec0afb56bd545a532a98b4797f22528436fca2daa529dc10bf4f0",
+      "size_bytes": 2925
+    },
+    {
+      "path": "repo_work/tests/test_release_assurance.py",
+      "sha256": "082a6bb891976a597acad88466975365e544c516f17089328a2bd725eb6f4539",
+      "size_bytes": 46480
+    },
+    {
+      "path": "repo_work/tests/test_review_tools.py",
+      "sha256": "ae5d508fdcc7c448fd0a421ec0ec57c8f4f3d2e6ef809cf395cbac6f0304c707",
+      "size_bytes": 12150
+    },
+    {
+      "path": "repo_work/tests/test_task_dispositions.py",
+      "sha256": "7117e46ea1d213667ddced07c24f10eaf2a117203b6525b516345939ab8cb443",
+      "size_bytes": 5372
+    },
+    {
+      "path": "repo_work/verify_evidence_manifest.py",
+      "sha256": "f87d1b2ce8cdbdc49d5b62d9e1cb1bdb25745f841e5db28c09ed8041aec095a3",
+      "size_bytes": 3190
+    },
+    {
+      "path": "scripts/tests/test_release_audit.py",
+      "sha256": "1d93d75ee688e085e7bba11436b28d1e29d719bd5003354c46611fa8032d5b40",
+      "size_bytes": 5756
+    }
+  ],
+  "repository_ref_inputs": {
+    "local_tags_at_freeze": [
+      {
+        "object": "ca1b2c69a0a6e04223fbbc07820b8226d918e275",
+        "object_type": "tag",
+        "peeled_object": "1205ce56a461036769ad29d4af93ceafd83da1db",
+        "ref": "refs/tags/research-snapshot-v0.1.0"
+      }
+    ],
+    "note": "Refs are mutable discovery inputs. Object identities and the signed candidate tag, not ref names alone, govern release qualification.",
+    "origin": "git@github.com:sepahead/galadriel.git"
+  },
+  "schema": "galadriel.frozen-audit-inputs.v1",
+  "scope_note": "This freezes instruction and baseline inputs only. Candidate outputs, qualification results, independent review, DOI, Zenodo, and deployment qualification are not asserted by this manifest.",
+  "signature_contract": {
+    "allowed_signers_path": "ALLOWED_SIGNERS",
+    "format": "OpenSSH SSHSIG",
+    "namespace": "galadriel-release-audit",
+    "principal": "sepmhn@gmail.com",
+    "public_key_fingerprint": "256 SHA256:3gaatfl4IVnuBX4D60Jxw9oVIrvEE1ZphK8IuEyrfPU sepmhn@gmail.com (ED25519)",
+    "signature_path": "FROZEN-AUDIT-INPUTS.json.sig"
+  }
+}

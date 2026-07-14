@@ -12,7 +12,13 @@
 //! confirmation procedures differ, so their scores are comparable only within the
 //! explicitly documented evaluation protocol (see `galadriel-eval`).
 
+use std::{error::Error, fmt};
+
+use serde::Serialize;
+
+use crate::identity::IdentityBuilder;
 use crate::observation::Modality;
+use crate::{ConfigDigest, ConfigurationClass};
 
 /// Largest tail window accepted by the correlation detector.
 pub const MAX_CORRELATION_WINDOW: usize = 65_536;
@@ -28,9 +34,16 @@ pub const MAX_CORRELATION_PAIR_SAMPLES: usize = 1_000_000;
 const MAX_FUSED_CORRELATION_TESTS: usize =
     crate::MAX_CONSISTENCY_PROJECTION_AXES * (Modality::ALL.len() * (Modality::ALL.len() - 1) / 2);
 
-/// Tunables for the correlation consistency check.
-#[derive(Debug, Clone)]
-pub struct CorrConfig {
+const MIN_CORRELATION_WINDOW: usize = 4;
+const MAX_CORRELATION_CHANNELS: usize = Modality::ALL.len();
+const MAX_CORRELATION_PAIRS: usize = MAX_CORRELATION_CHANNELS * (MAX_CORRELATION_CHANNELS - 1) / 2;
+
+/// Unvalidated boundary values for constructing a [`CorrConfig`].
+///
+/// This record is not accepted detector configuration. Pass the complete value
+/// to [`CorrConfig::try_new`] before use.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CorrParams {
     /// Window length (frames) analysed, taken from each channel's tail.
     pub window: usize,
     /// Minimum aligned samples per channel before a verdict is trusted.
@@ -46,8 +59,11 @@ pub struct CorrConfig {
     pub family_alpha: f64,
 }
 
-impl Default for CorrConfig {
-    fn default() -> Self {
+impl CorrParams {
+    /// Returns the explicitly named 0.9 standalone-advisory release values.
+    ///
+    /// These raw values still pass through [`CorrConfig::try_new`] before use.
+    pub fn standalone_advisory_v0_9() -> Self {
         Self {
             window: 128,
             min_samples: 64,
@@ -58,65 +74,461 @@ impl Default for CorrConfig {
     }
 }
 
+/// Closed, versioned correlation profiles shipped by the 0.9 source release.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CorrProfile {
+    /// Signed-correlation settings for the standalone advisory release suite.
+    StandaloneAdvisoryV0_9,
+}
+
+impl CorrProfile {
+    /// Stable machine-readable profile name retained by accepted configs.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::StandaloneAdvisoryV0_9 => "standalone_advisory_v0_9",
+        }
+    }
+
+    /// Returns this profile's raw parameter template.
+    pub fn params(self) -> CorrParams {
+        match self {
+            Self::StandaloneAdvisoryV0_9 => CorrParams::standalone_advisory_v0_9(),
+        }
+    }
+
+    /// Resolves this named profile through the normal validation boundary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CorrConfigError`] if a future invariant change makes the
+    /// versioned profile invalid rather than silently substituting values.
+    pub fn try_config(self) -> Result<CorrConfig, CorrConfigError> {
+        CorrConfig::try_new_with_identity(self.params(), Some(self), AxisFamilyIdentity::Unadjusted)
+    }
+}
+
+/// Typed rejection from correlation configuration construction or derivation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CorrConfigError {
+    /// The tail window is outside the fixed allocation domain.
+    WindowOutOfRange,
+    /// The minimum sample count is incompatible with the accepted window.
+    MinimumSamplesOutOfRange,
+    /// The relative decoupling threshold is outside `(0, 1]`.
+    DecoupleRatioInvalid,
+    /// The absolute correlation floor is outside `(0, 1]`.
+    CorrelationFloorInvalid,
+    /// The family-wise probability is outside `(0, 1)`.
+    FamilyAlphaInvalid,
+    /// Dividing the family budget underflowed to zero.
+    FamilyAlphaUnderflow { divisor: usize },
+    /// The corrected tail probability cannot produce a finite, usable Fisher floor.
+    FamilyAlphaResolutionInsufficient {
+        correction_count: usize,
+        min_samples: usize,
+    },
+    /// The projection-axis family count is outside the fixed protocol domain.
+    AxisCountOutOfRange { requested: usize, maximum: usize },
+    /// A family split was requested from an already-derived config.
+    AxisFamilyAlreadyDerived { current: usize },
+    /// A checked channel-pair or pair-sample calculation overflowed.
+    WorkEstimateOverflow,
+    /// The conservative pair-sample ceiling would be exceeded.
+    WorkEstimateExceedsLimit { requested: usize, maximum: usize },
+}
+
+impl fmt::Display for CorrConfigError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::WindowOutOfRange => write!(
+                formatter,
+                "correlation window must be in {MIN_CORRELATION_WINDOW}..={MAX_CORRELATION_WINDOW}"
+            ),
+            Self::MinimumSamplesOutOfRange => write!(
+                formatter,
+                "correlation min_samples must be in {MIN_CORRELATION_WINDOW}..=window"
+            ),
+            Self::DecoupleRatioInvalid => formatter
+                .write_str("correlation decouple_ratio must be finite and in (0, 1]"),
+            Self::CorrelationFloorInvalid => formatter
+                .write_str("correlation corr_floor must be finite and in (0, 1]"),
+            Self::FamilyAlphaInvalid => formatter
+                .write_str("correlation family_alpha must be finite and in (0, 1)"),
+            Self::FamilyAlphaUnderflow { divisor } => write!(
+                formatter,
+                "correlation family_alpha underflows when divided by {divisor} family members"
+            ),
+            Self::FamilyAlphaResolutionInsufficient {
+                correction_count,
+                min_samples,
+            } => write!(
+                formatter,
+                "correlation family_alpha cannot resolve a finite usable Fisher floor after {correction_count} corrections at min_samples={min_samples}"
+            ),
+            Self::AxisCountOutOfRange { requested, maximum } => write!(
+                formatter,
+                "correlation projection-axis family count must be in 1..={maximum}, got {requested}"
+            ),
+            Self::AxisFamilyAlreadyDerived { current } => write!(
+                formatter,
+                "correlation family budget is already derived across {current} projection axes"
+            ),
+            Self::WorkEstimateOverflow => {
+                formatter.write_str("correlation checked pair-sample work estimate overflowed")
+            }
+            Self::WorkEstimateExceedsLimit { requested, maximum } => write!(
+                formatter,
+                "correlation assessment requires {requested} pair-samples; maximum is {maximum}"
+            ),
+        }
+    }
+}
+
+impl Error for CorrConfigError {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AxisFamilyIdentity {
+    Unadjusted,
+    Derived { axis_count: usize },
+}
+
+impl AxisFamilyIdentity {
+    const fn axis_count(self) -> usize {
+        match self {
+            Self::Unadjusted => 1,
+            Self::Derived { axis_count } => axis_count,
+        }
+    }
+
+    const fn was_derived(self) -> bool {
+        matches!(self, Self::Derived { .. })
+    }
+}
+
+/// Immutable, fully validated signed-correlation configuration.
+///
+/// Construction is `O(1)` time and retains `O(1)` memory. Assessment preflight
+/// checks `pairs(channel_count) * min(input_tail, window)` against
+/// [`MAX_CORRELATION_PAIR_SAMPLES`] before matrix allocation or pair evaluation.
+///
+/// Accepted configs cannot be fabricated or modified by callers:
+///
+/// ```compile_fail
+/// use galadriel_core::CorrConfig;
+/// let _ = CorrConfig { window: 128 };
+/// ```
+///
+/// ```compile_fail
+/// use galadriel_core::CorrConfig;
+/// let mut config = CorrConfig::standalone_advisory_v0_9().unwrap();
+/// config.family_alpha = 0.5;
+/// ```
+///
+/// ```compile_fail
+/// use galadriel_core::CorrConfig;
+/// let _: CorrConfig = Default::default();
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub struct CorrConfig {
+    window: usize,
+    min_samples: usize,
+    decouple_ratio: f64,
+    corr_floor: f64,
+    family_alpha: f64,
+    source_profile: Option<CorrProfile>,
+    axis_family: AxisFamilyIdentity,
+}
+
 impl CorrConfig {
-    /// Validate estimator, allocation, and probability-domain invariants.
-    pub fn validate(&self) -> crate::Result<()> {
-        use crate::GaladrielError::InvalidConfig;
-        if self.window < 4 {
-            return Err(InvalidConfig("correlation window must be >= 4".into()));
+    /// Validates raw parameters and constructs an immutable accepted config.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CorrConfigError`] for an invalid scalar, cross-field relation,
+    /// probability-domain value, or family-correction underflow.
+    pub fn try_new(params: CorrParams) -> Result<Self, CorrConfigError> {
+        Self::try_new_with_identity(params, None, AxisFamilyIdentity::Unadjusted)
+    }
+
+    fn try_new_with_identity(
+        params: CorrParams,
+        source_profile: Option<CorrProfile>,
+        axis_family: AxisFamilyIdentity,
+    ) -> Result<Self, CorrConfigError> {
+        let axis_count = axis_family.axis_count();
+        let maximum_axes = crate::MAX_CONSISTENCY_PROJECTION_AXES;
+        if !(1..=maximum_axes).contains(&axis_count) {
+            return Err(CorrConfigError::AxisCountOutOfRange {
+                requested: axis_count,
+                maximum: maximum_axes,
+            });
         }
-        if self.window > MAX_CORRELATION_WINDOW {
-            return Err(InvalidConfig(format!(
-                "correlation window must be <= {MAX_CORRELATION_WINDOW}"
-            )));
+        if !(MIN_CORRELATION_WINDOW..=MAX_CORRELATION_WINDOW).contains(&params.window) {
+            return Err(CorrConfigError::WindowOutOfRange);
         }
-        if self.min_samples < 4 || self.min_samples > self.window {
-            return Err(InvalidConfig(
-                "correlation min_samples must be in 4..=window".into(),
-            ));
+        if !(MIN_CORRELATION_WINDOW..=params.window).contains(&params.min_samples) {
+            return Err(CorrConfigError::MinimumSamplesOutOfRange);
         }
-        if !self.decouple_ratio.is_finite()
-            || self.decouple_ratio <= 0.0
-            || self.decouple_ratio > 1.0
+        if !params.decouple_ratio.is_finite()
+            || params.decouple_ratio <= 0.0
+            || params.decouple_ratio > 1.0
         {
-            return Err(InvalidConfig(
-                "correlation decouple_ratio must be finite and in (0, 1]".into(),
-            ));
+            return Err(CorrConfigError::DecoupleRatioInvalid);
         }
-        if !self.corr_floor.is_finite() || self.corr_floor <= 0.0 || self.corr_floor > 1.0 {
-            return Err(InvalidConfig(
-                "correlation corr_floor must be finite and in (0, 1]".into(),
-            ));
+        if !params.corr_floor.is_finite() || params.corr_floor <= 0.0 || params.corr_floor > 1.0 {
+            return Err(CorrConfigError::CorrelationFloorInvalid);
         }
-        if !self.family_alpha.is_finite() || self.family_alpha <= 0.0 || self.family_alpha >= 1.0 {
-            return Err(InvalidConfig(
-                "correlation family_alpha must be finite and in (0, 1)".into(),
-            ));
+        if !params.family_alpha.is_finite()
+            || params.family_alpha <= 0.0
+            || params.family_alpha >= 1.0
+        {
+            return Err(CorrConfigError::FamilyAlphaInvalid);
         }
-        if self.family_alpha / MAX_FUSED_CORRELATION_TESTS as f64 == 0.0 {
-            return Err(InvalidConfig(format!(
-                "correlation family_alpha is too small to divide across {MAX_FUSED_CORRELATION_TESTS} fused axis/pair tests"
-            )));
+        let correction_count = match axis_family {
+            AxisFamilyIdentity::Unadjusted => MAX_FUSED_CORRELATION_TESTS,
+            AxisFamilyIdentity::Derived { .. } => MAX_CORRELATION_PAIRS,
+        };
+        if params.family_alpha / correction_count as f64 == 0.0 {
+            return Err(CorrConfigError::FamilyAlphaUnderflow {
+                divisor: correction_count,
+            });
         }
-        Ok(())
+        validate_family_resolution(params.family_alpha, correction_count, params.min_samples)?;
+        Ok(Self {
+            window: params.window,
+            min_samples: params.min_samples,
+            decouple_ratio: params.decouple_ratio,
+            corr_floor: params.corr_floor,
+            family_alpha: params.family_alpha,
+            source_profile,
+            axis_family,
+        })
+    }
+
+    /// Constructs the named standalone-advisory 0.9 release profile.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CorrConfigError`] if a future invariant change makes the
+    /// versioned profile invalid.
+    pub fn standalone_advisory_v0_9() -> Result<Self, CorrConfigError> {
+        CorrProfile::StandaloneAdvisoryV0_9.try_config()
+    }
+
+    /// Returns a new accepted config with its family budget split across axes.
+    ///
+    /// The source is not mutated. A derived config cannot be divided again,
+    /// preventing an accidental double correction.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CorrConfigError`] for an invalid axis count, floating-point
+    /// underflow, or repeated derivation.
+    pub fn try_for_axis_family(&self, axis_count: usize) -> Result<Self, CorrConfigError> {
+        if let AxisFamilyIdentity::Derived { axis_count } = self.axis_family {
+            return Err(CorrConfigError::AxisFamilyAlreadyDerived {
+                current: axis_count,
+            });
+        }
+        let maximum_axes = crate::MAX_CONSISTENCY_PROJECTION_AXES;
+        if !(1..=maximum_axes).contains(&axis_count) {
+            return Err(CorrConfigError::AxisCountOutOfRange {
+                requested: axis_count,
+                maximum: maximum_axes,
+            });
+        }
+        let family_alpha = self.family_alpha / axis_count as f64;
+        if family_alpha == 0.0 {
+            return Err(CorrConfigError::FamilyAlphaUnderflow {
+                divisor: axis_count,
+            });
+        }
+        Self::try_new_with_identity(
+            CorrParams {
+                window: self.window,
+                min_samples: self.min_samples,
+                decouple_ratio: self.decouple_ratio,
+                corr_floor: self.corr_floor,
+                family_alpha,
+            },
+            self.source_profile,
+            AxisFamilyIdentity::Derived { axis_count },
+        )
+    }
+
+    /// Analysis tail-window length.
+    pub const fn window(&self) -> usize {
+        self.window
+    }
+
+    /// Minimum aligned samples required before a verdict is trusted.
+    pub const fn min_samples(&self) -> usize {
+        self.min_samples
+    }
+
+    /// Relative corroboration threshold used to identify an outsider.
+    pub const fn decouple_ratio(&self) -> f64 {
+        self.decouple_ratio
+    }
+
+    /// Absolute positive-correlation floor for a candidate consensus.
+    pub const fn corr_floor(&self) -> f64 {
+        self.corr_floor
+    }
+
+    /// Effective family-wise probability budget after any axis split.
+    pub const fn family_alpha(&self) -> f64 {
+        self.family_alpha
+    }
+
+    /// Named source profile when this config originated from one.
+    pub const fn source_profile(&self) -> Option<CorrProfile> {
+        self.source_profile
+    }
+
+    /// Number of projection axes sharing the family budget.
+    pub const fn axis_family_count(&self) -> usize {
+        self.axis_family.axis_count()
+    }
+
+    /// Whether [`Self::try_for_axis_family`] produced this accepted config.
+    pub const fn axis_family_was_derived(&self) -> bool {
+        self.axis_family.was_derived()
+    }
+
+    /// Named-release or custom classification retained by this accepted component.
+    pub const fn classification(&self) -> ConfigurationClass {
+        if self.source_profile.is_some() {
+            ConfigurationClass::NamedRelease
+        } else {
+            ConfigurationClass::CustomAccepted
+        }
+    }
+
+    /// Canonical complete identity of this accepted configuration and derivation.
+    pub fn identity(&self) -> ConfigDigest {
+        let mut identity = IdentityBuilder::new(b"galadriel-correlation-config-v1");
+        identity.u8(
+            b"classification",
+            match self.classification() {
+                ConfigurationClass::NamedRelease => 1,
+                ConfigurationClass::CustomAccepted => 2,
+            },
+        );
+        identity.u8(
+            b"source_profile",
+            match self.source_profile {
+                Some(CorrProfile::StandaloneAdvisoryV0_9) => 1,
+                None => 0,
+            },
+        );
+        identity.usize(b"window", self.window);
+        identity.usize(b"min_samples", self.min_samples);
+        identity.f64(b"decouple_ratio", self.decouple_ratio);
+        identity.f64(b"corr_floor", self.corr_floor);
+        identity.f64(b"family_alpha", self.family_alpha);
+        identity.u8(
+            b"axis_family_derived",
+            if self.axis_family.was_derived() { 1 } else { 0 },
+        );
+        identity.usize(b"axis_family_count", self.axis_family.axis_count());
+        identity.finish()
+    }
+
+    fn preflight_assessment(
+        &self,
+        channel_count: usize,
+        input_tail: usize,
+    ) -> Result<(usize, usize), CorrConfigError> {
+        let window = input_tail.min(self.window);
+        let pair_count = channel_count
+            .checked_mul(channel_count.saturating_sub(1))
+            .map(|ordered_pairs| ordered_pairs / 2)
+            .ok_or(CorrConfigError::WorkEstimateOverflow)?;
+        let pair_samples = pair_count
+            .checked_mul(window)
+            .ok_or(CorrConfigError::WorkEstimateOverflow)?;
+        if pair_samples > MAX_CORRELATION_PAIR_SAMPLES {
+            return Err(CorrConfigError::WorkEstimateExceedsLimit {
+                requested: pair_samples,
+                maximum: MAX_CORRELATION_PAIR_SAMPLES,
+            });
+        }
+        Ok((window, pair_count))
+    }
+}
+
+fn validate_family_resolution(
+    family_alpha: f64,
+    correction_count: usize,
+    min_samples: usize,
+) -> Result<(), CorrConfigError> {
+    let corrected_alpha = family_alpha / correction_count as f64;
+    let quantile_probability = 1.0 - corrected_alpha;
+    if quantile_probability >= 1.0 {
+        return Err(CorrConfigError::FamilyAlphaResolutionInsufficient {
+            correction_count,
+            min_samples,
+        });
+    }
+    let z = statrs::distribution::ContinuousCDF::inverse_cdf(
+        &statrs::distribution::Normal::standard(),
+        quantile_probability,
+    );
+    let fisher_floor = (z / (min_samples as f64 - 3.0).sqrt()).tanh();
+    if !z.is_finite() || !fisher_floor.is_finite() || fisher_floor >= 1.0 {
+        return Err(CorrConfigError::FamilyAlphaResolutionInsufficient {
+            correction_count,
+            min_samples,
+        });
+    }
+    Ok(())
+}
+
+impl TryFrom<CorrParams> for CorrConfig {
+    type Error = CorrConfigError;
+
+    fn try_from(params: CorrParams) -> Result<Self, Self::Error> {
+        Self::try_new(params)
     }
 }
 
 /// Per-channel correlation detail.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct CorrChannel {
     /// Which modality.
-    pub modality: Modality,
+    modality: Modality,
     /// Aligned samples used.
-    pub n: usize,
+    n: usize,
     /// Corroboration: the channel's best signed pairwise `ρ` with any peer.
-    pub corroboration: Option<f64>,
+    corroboration: Option<f64>,
     /// Whether it was flagged decoupled.
-    pub decoupled: bool,
+    decoupled: bool,
+}
+
+impl CorrChannel {
+    /// Channel modality.
+    pub const fn modality(&self) -> Modality {
+        self.modality
+    }
+    /// Aligned sample count.
+    pub const fn n(&self) -> usize {
+        self.n
+    }
+    /// Best signed pairwise corroboration, if defined.
+    pub const fn corroboration(&self) -> Option<f64> {
+        self.corroboration
+    }
+    /// Whether this channel is outside the admitted consensus clique.
+    pub const fn decoupled(&self) -> bool {
+        self.decoupled
+    }
 }
 
 /// The correlation verdict (same shape as the PID engine's).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "verdict", content = "channels", rename_all = "snake_case")]
 pub enum CorrVerdict {
     /// All ready channels belong to one strict-majority positive-consensus clique.
     Nominal,
@@ -129,17 +541,95 @@ pub enum CorrVerdict {
 }
 
 /// The full report.
-#[derive(Debug, Clone)]
+///
+/// The report is output-only and cannot be deserialized or fabricated by an
+/// external caller. Only [`analyze`] creates an accepted report.
+///
+/// ```compile_fail
+/// use galadriel_core::{CorrReport, CorrVerdict};
+/// let _ = CorrReport { channels: Vec::new(), verdict: CorrVerdict::Nominal, note: String::new() };
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct CorrReport {
     /// Per-channel detail.
-    pub channels: Vec<CorrChannel>,
+    channels: Vec<CorrChannel>,
     /// The verdict.
-    pub verdict: CorrVerdict,
+    verdict: CorrVerdict,
     /// Rationale.
-    pub note: String,
+    note: String,
+    /// Complete accepted correlation-config identity.
+    config_identity: ConfigDigest,
+    /// Named-release or custom accepted classification.
+    classification: ConfigurationClass,
+    /// Named source profile, if present.
+    source_profile: Option<CorrProfile>,
+    /// Projection-axis family count represented by the effective config.
+    axis_family_count: usize,
+    /// Whether the effective family budget was derived for projection axes.
+    axis_family_derived: bool,
 }
 
-/// Signed Pearson correlation of two equal-length finite series.
+impl CorrReport {
+    fn new(
+        channels: Vec<CorrChannel>,
+        verdict: CorrVerdict,
+        note: String,
+        config: &CorrConfig,
+    ) -> Self {
+        Self {
+            channels,
+            verdict,
+            note,
+            config_identity: config.identity(),
+            classification: config.classification(),
+            source_profile: config.source_profile(),
+            axis_family_count: config.axis_family_count(),
+            axis_family_derived: config.axis_family_was_derived(),
+        }
+    }
+
+    /// Per-channel details in input modality order.
+    pub fn channels(&self) -> &[CorrChannel] {
+        &self.channels
+    }
+    /// Correlation verdict.
+    pub const fn verdict(&self) -> &CorrVerdict {
+        &self.verdict
+    }
+    /// Human-readable, non-normative rationale.
+    pub fn note(&self) -> &str {
+        &self.note
+    }
+    /// Canonical complete accepted correlation-config identity.
+    pub const fn config_identity(&self) -> ConfigDigest {
+        self.config_identity
+    }
+    /// Named-release or custom accepted classification.
+    pub const fn classification(&self) -> ConfigurationClass {
+        self.classification
+    }
+    /// Named source profile, if any.
+    pub const fn source_profile(&self) -> Option<CorrProfile> {
+        self.source_profile
+    }
+    /// Effective projection-axis family count.
+    pub const fn axis_family_count(&self) -> usize {
+        self.axis_family_count
+    }
+    /// Whether the family budget was derived for projection axes.
+    pub const fn axis_family_was_derived(&self) -> bool {
+        self.axis_family_derived
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_fixture(verdict: CorrVerdict) -> Self {
+        let config = CorrConfig::standalone_advisory_v0_9().expect("test correlation config");
+        Self::new(Vec::new(), verdict, "test fixture".to_string(), &config)
+    }
+}
+
+/// Signed Pearson correlation of two equal-length finite series no longer than
+/// [`MAX_CORRELATION_WINDOW`].
 ///
 /// Each column is independently scaled before centering so large but finite input
 /// cannot overflow the mean, variance, or covariance. Constant or numerically
@@ -157,6 +647,12 @@ pub fn pearson(x: &[f64], y: &[f64]) -> crate::Result<f64> {
         return Err(crate::GaladrielError::InvalidChannels(
             "Pearson columns must not be empty".into(),
         ));
+    }
+    if x.len() > MAX_CORRELATION_WINDOW {
+        return Err(crate::GaladrielError::InvalidChannels(format!(
+            "Pearson columns contain {} samples; maximum is {MAX_CORRELATION_WINDOW}",
+            x.len()
+        )));
     }
     if !x.iter().chain(y).all(|value| value.is_finite()) {
         return Err(crate::GaladrielError::NonFinite("Pearson input"));
@@ -225,8 +721,22 @@ pub fn abs_pearson(x: &[f64], y: &[f64]) -> crate::Result<f64> {
 /// Analyse aligned per-channel signed-scalar series for linear cross-sensor decoupling.
 /// Requires ≥ 3 channels; the tail `window` is taken and aligned.
 pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Result<CorrReport> {
-    cfg.validate()?;
     let c = channels.len();
+    if c > MAX_CORRELATION_CHANNELS {
+        return Err(crate::GaladrielError::InvalidChannels(format!(
+            "correlation accepts at most {MAX_CORRELATION_CHANNELS} modalities, got {c}"
+        )));
+    }
+    let input_tail = channels.first().map_or(0, |(_, values)| values.len());
+    let (w, pair_count) = cfg.preflight_assessment(c, input_tail)?;
+    if channels
+        .iter()
+        .any(|(_, values)| values.len() != input_tail)
+    {
+        return Err(crate::GaladrielError::InvalidChannels(
+            "correlation columns must already be sequence-aligned and equal-length".into(),
+        ));
+    }
     let unique = channels
         .iter()
         .map(|(modality, _)| *modality)
@@ -236,46 +746,16 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
             "correlation modalities must be unique".into(),
         ));
     }
-    let lengths: std::collections::HashSet<usize> =
-        channels.iter().map(|(_, values)| values.len()).collect();
-    if lengths.len() > 1 {
-        return Err(crate::GaladrielError::InvalidChannels(
-            "correlation columns must already be sequence-aligned and equal-length".into(),
-        ));
-    }
-    let w = channels
-        .first()
-        .map_or(0, |(_, values)| values.len())
-        .min(cfg.window);
-
-    let pair_count = c
-        .checked_mul(c.saturating_sub(1))
-        .map(|ordered_pairs| ordered_pairs / 2)
-        .ok_or_else(|| {
-            crate::GaladrielError::InvalidConfig(
-                "correlation channel-pair count overflows usize".into(),
-            )
-        })?;
-    let pair_samples = pair_count.checked_mul(w).ok_or_else(|| {
-        crate::GaladrielError::InvalidConfig(
-            "correlation pair-sample work estimate overflows usize".into(),
-        )
-    })?;
-    if pair_samples > MAX_CORRELATION_PAIR_SAMPLES {
-        return Err(crate::GaladrielError::InvalidConfig(format!(
-            "correlation assessment requires {pair_samples} pair-samples; maximum is {MAX_CORRELATION_PAIR_SAMPLES}"
-        )));
-    }
-
-    if c < 3 || w < cfg.min_samples {
-        return Ok(CorrReport {
-            channels: Vec::new(),
-            verdict: CorrVerdict::InsufficientEvidence,
-            note: format!(
+    if c < 3 || w < cfg.min_samples() {
+        return Ok(CorrReport::new(
+            Vec::new(),
+            CorrVerdict::InsufficientEvidence,
+            format!(
                 "need ≥3 channels and ≥{} aligned samples (have {c} channels, w={w})",
-                cfg.min_samples
+                cfg.min_samples()
             ),
-        });
+            cfg,
+        ));
     }
 
     let cols: Vec<&[f64]> = channels
@@ -315,18 +795,19 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
         .filter_map(|r| r.corroboration)
         .fold(f64::MIN, f64::max);
 
-    if reference < cfg.corr_floor {
-        return Ok(CorrReport {
-            verdict: CorrVerdict::InsufficientEvidence,
-            note: format!(
+    if reference < cfg.corr_floor() {
+        return Ok(CorrReport::new(
+            reports,
+            CorrVerdict::InsufficientEvidence,
+            format!(
                 "no coherent positive linear consensus (strongest rho {reference:.3} < floor {:.3})",
-                cfg.corr_floor
+                cfg.corr_floor()
             ),
-            channels: reports,
-        });
+            cfg,
+        ));
     }
 
-    let pair_alpha = cfg.family_alpha / pair_count.max(1) as f64;
+    let pair_alpha = cfg.family_alpha() / pair_count.max(1) as f64;
     let z = statrs::distribution::ContinuousCDF::inverse_cdf(
         &statrs::distribution::Normal::standard(),
         1.0 - pair_alpha,
@@ -338,28 +819,30 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
     // a consensus or an attribution. Abstain instead of scoring.
     let significance_floor = (z / (w as f64 - 3.0).sqrt()).tanh();
     if !significance_floor.is_finite() || significance_floor >= 1.0 {
-        return Ok(CorrReport {
-            verdict: CorrVerdict::InsufficientEvidence,
-            note: format!(
+        return Ok(CorrReport::new(
+            reports,
+            CorrVerdict::InsufficientEvidence,
+            format!(
                 "family_alpha {:e} is too small to yield a usable Fisher significance floor for {pair_count} channel pair(s)",
-                cfg.family_alpha
+                cfg.family_alpha()
             ),
-            channels: reports,
-        });
+            cfg,
+        ));
     }
     let threshold = cfg
-        .corr_floor
+        .corr_floor()
         .max(significance_floor)
-        .max(cfg.decouple_ratio * reference);
+        .max(cfg.decouple_ratio() * reference);
 
     if reference < threshold {
-        return Ok(CorrReport {
-            verdict: CorrVerdict::InsufficientEvidence,
-            note: format!(
+        return Ok(CorrReport::new(
+            reports,
+            CorrVerdict::InsufficientEvidence,
+            format!(
                 "no family-wise-significant positive consensus (strongest rho {reference:.3}, required {threshold:.3})"
             ),
-            channels: reports,
-        });
+            cfg,
+        ));
     }
 
     // With at most six Modality variants, exhaustively enumerate cliques. A unique
@@ -388,14 +871,15 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
         largest_cliques.push(members);
     }
     if largest_size * 2 <= c || largest_cliques.len() != 1 {
-        return Ok(CorrReport {
-            verdict: CorrVerdict::InsufficientEvidence,
-            note: format!(
+        return Ok(CorrReport::new(
+            reports,
+            CorrVerdict::InsufficientEvidence,
+            format!(
                 "ambiguous positive-consensus structure (largest clique {largest_size}/{c}, {} tied); no unique strict majority",
                 largest_cliques.len()
             ),
-            channels: reports,
-        });
+            cfg,
+        ));
     }
     let consensus = &largest_cliques[0];
     let consensus_set: std::collections::HashSet<usize> = consensus.iter().copied().collect();
@@ -406,14 +890,15 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
                 .any(|&member| corr[*index][member] >= threshold)
     });
     if let Some(index) = bridged_outsider {
-        return Ok(CorrReport {
-            verdict: CorrVerdict::InsufficientEvidence,
-            note: format!(
+        return Ok(CorrReport::new(
+            reports,
+            CorrVerdict::InsufficientEvidence,
+            format!(
                 "{} remains positively connected to part of the consensus clique; attribution is ambiguous",
                 channels[index].0.label()
             ),
-            channels: reports,
-        });
+            cfg,
+        ));
     }
     let mut decoupled = Vec::new();
     for (index, report) in reports.iter_mut().enumerate() {
@@ -442,19 +927,210 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
         )
     };
 
-    Ok(CorrReport {
-        channels: reports,
-        verdict,
-        note,
-    })
+    Ok(CorrReport::new(reports, verdict, note, cfg))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn release_corr() -> CorrConfig {
+        CorrConfig::standalone_advisory_v0_9().unwrap()
+    }
+
     fn series(n: usize, f: impl Fn(usize) -> f64) -> Vec<f64> {
         (0..n).map(f).collect()
+    }
+
+    #[test]
+    fn named_profile_preserves_exact_values_and_identity() {
+        let config = release_corr();
+
+        assert_eq!(
+            (
+                config.window(),
+                config.min_samples(),
+                config.decouple_ratio(),
+                config.corr_floor(),
+                config.family_alpha(),
+                config.source_profile(),
+                config.axis_family_count(),
+                config.axis_family_was_derived(),
+            ),
+            (
+                128,
+                64,
+                0.4,
+                0.15,
+                0.01,
+                Some(CorrProfile::StandaloneAdvisoryV0_9),
+                1,
+                false,
+            )
+        );
+    }
+
+    #[test]
+    fn named_correlation_identity_has_a_fixed_golden_digest() {
+        assert_eq!(
+            release_corr().identity().to_hex(),
+            "810722c36e36ebdb777235ee63a045544e373837ad20e8684e37ebdcf54e3f0c"
+        );
+    }
+
+    #[test]
+    fn custom_profile_and_axis_derivation_are_identity_distinct() {
+        let named = release_corr();
+        let custom = CorrConfig::try_new(CorrParams::standalone_advisory_v0_9()).unwrap();
+        let derived = named.try_for_axis_family(3).unwrap();
+
+        assert_ne!(named.identity(), custom.identity());
+        assert_ne!(named.identity(), derived.identity());
+        assert_ne!(custom.identity(), derived.identity());
+    }
+
+    #[test]
+    fn every_correlation_field_changes_the_identity() {
+        let baseline = CorrConfig::try_new(CorrParams::standalone_advisory_v0_9())
+            .unwrap()
+            .identity();
+        let changes: [fn(&mut CorrParams); 5] = [
+            |params| params.window = 129,
+            |params| params.min_samples = 63,
+            |params| params.decouple_ratio = 0.5,
+            |params| params.corr_floor = 0.2,
+            |params| params.family_alpha = 0.02,
+        ];
+        for change in changes {
+            let mut params = CorrParams::standalone_advisory_v0_9();
+            change(&mut params);
+            assert_ne!(CorrConfig::try_new(params).unwrap().identity(), baseline);
+        }
+    }
+
+    #[test]
+    fn raw_constructor_rejects_every_scalar_domain() {
+        let rejected = |change: fn(&mut CorrParams), expected| {
+            let mut params = CorrParams::standalone_advisory_v0_9();
+            change(&mut params);
+            assert_eq!(CorrConfig::try_new(params).unwrap_err(), expected);
+        };
+
+        rejected(
+            |params| params.window = MIN_CORRELATION_WINDOW - 1,
+            CorrConfigError::WindowOutOfRange,
+        );
+        rejected(
+            |params| params.window = MAX_CORRELATION_WINDOW + 1,
+            CorrConfigError::WindowOutOfRange,
+        );
+        rejected(
+            |params| params.min_samples = MIN_CORRELATION_WINDOW - 1,
+            CorrConfigError::MinimumSamplesOutOfRange,
+        );
+        rejected(
+            |params| params.min_samples = params.window + 1,
+            CorrConfigError::MinimumSamplesOutOfRange,
+        );
+        for value in [0.0, -1.0, 1.0 + f64::EPSILON, f64::NAN, f64::INFINITY] {
+            let mut params = CorrParams::standalone_advisory_v0_9();
+            params.decouple_ratio = value;
+            assert_eq!(
+                CorrConfig::try_new(params).unwrap_err(),
+                CorrConfigError::DecoupleRatioInvalid
+            );
+        }
+        for value in [0.0, -1.0, 1.0 + f64::EPSILON, f64::NAN, f64::NEG_INFINITY] {
+            let mut params = CorrParams::standalone_advisory_v0_9();
+            params.corr_floor = value;
+            assert_eq!(
+                CorrConfig::try_new(params).unwrap_err(),
+                CorrConfigError::CorrelationFloorInvalid
+            );
+        }
+        for value in [0.0, -1.0, 1.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let mut params = CorrParams::standalone_advisory_v0_9();
+            params.family_alpha = value;
+            assert_eq!(
+                CorrConfig::try_new(params).unwrap_err(),
+                CorrConfigError::FamilyAlphaInvalid
+            );
+        }
+    }
+
+    #[test]
+    fn inclusive_scalar_boundaries_are_accepted() {
+        let mut params = CorrParams::standalone_advisory_v0_9();
+        params.window = MAX_CORRELATION_WINDOW;
+        params.min_samples = MIN_CORRELATION_WINDOW;
+        params.decouple_ratio = 1.0;
+        params.corr_floor = 1.0;
+
+        let config = CorrConfig::try_new(params).unwrap();
+
+        assert_eq!(
+            (
+                config.window(),
+                config.min_samples(),
+                config.decouple_ratio(),
+                config.corr_floor(),
+            ),
+            (MAX_CORRELATION_WINDOW, MIN_CORRELATION_WINDOW, 1.0, 1.0)
+        );
+    }
+
+    #[test]
+    fn axis_family_derivation_is_single_use_and_preserves_source() {
+        let source = release_corr();
+        let derived = source.try_for_axis_family(3).unwrap();
+
+        assert_eq!(source.family_alpha(), 0.01);
+        assert_eq!(derived.family_alpha(), 0.01 / 3.0);
+        assert_eq!(derived.source_profile(), source.source_profile());
+        assert_eq!(derived.axis_family_count(), 3);
+        assert!(derived.axis_family_was_derived());
+        assert_eq!(
+            derived.try_for_axis_family(2).unwrap_err(),
+            CorrConfigError::AxisFamilyAlreadyDerived { current: 3 }
+        );
+        assert_eq!(
+            source.try_for_axis_family(0).unwrap_err(),
+            CorrConfigError::AxisCountOutOfRange {
+                requested: 0,
+                maximum: crate::MAX_CONSISTENCY_PROJECTION_AXES,
+            }
+        );
+        assert_eq!(
+            source
+                .try_for_axis_family(crate::MAX_CONSISTENCY_PROJECTION_AXES + 1)
+                .unwrap_err(),
+            CorrConfigError::AxisCountOutOfRange {
+                requested: crate::MAX_CONSISTENCY_PROJECTION_AXES + 1,
+                maximum: crate::MAX_CONSISTENCY_PROJECTION_AXES,
+            }
+        );
+    }
+
+    #[test]
+    fn assessment_work_preflight_rejects_ceiling_and_checked_overflow() {
+        let mut params = CorrParams::standalone_advisory_v0_9();
+        params.window = MAX_CORRELATION_WINDOW;
+        let config = CorrConfig::try_new(params).unwrap();
+        assert_eq!(
+            config
+                .preflight_assessment(MAX_CORRELATION_CHANNELS + 1, MAX_CORRELATION_WINDOW)
+                .unwrap_err(),
+            CorrConfigError::WorkEstimateExceedsLimit {
+                requested: 21 * MAX_CORRELATION_WINDOW,
+                maximum: MAX_CORRELATION_PAIR_SAMPLES,
+            }
+        );
+        assert_eq!(
+            config
+                .preflight_assessment(usize::MAX, MAX_CORRELATION_WINDOW)
+                .unwrap_err(),
+            CorrConfigError::WorkEstimateOverflow
+        );
     }
 
     #[test]
@@ -465,6 +1141,17 @@ mod tests {
         assert!((pearson(&x, &y).unwrap() + 1.0).abs() < 1e-9);
         assert!(abs_pearson(&x, &y).unwrap() > 1.0 - 1e-9);
         assert!(pearson(&x, &vec![1.0; 100]).is_err());
+    }
+
+    #[test]
+    fn pearson_rejects_work_above_the_public_window_bound() {
+        let oversized = vec![0.0; MAX_CORRELATION_WINDOW + 1];
+
+        assert!(matches!(
+            pearson(&oversized, &oversized),
+            Err(crate::GaladrielError::InvalidChannels(message))
+                if message.contains("maximum")
+        ));
     }
 
     #[test]
@@ -483,12 +1170,12 @@ mod tests {
             (mods[2], c_good),
         ];
         assert_eq!(
-            analyze(&clean, &CorrConfig::default()).unwrap().verdict,
+            analyze(&clean, &release_corr()).unwrap().verdict,
             CorrVerdict::Nominal
         );
 
         let decoupled = vec![(mods[0], a), (mods[1], b), (mods[2], c_bad)];
-        match analyze(&decoupled, &CorrConfig::default()).unwrap().verdict {
+        match analyze(&decoupled, &release_corr()).unwrap().verdict {
             CorrVerdict::Decoupled(v) => assert!(v.contains(&Modality::Acoustic)),
             other => panic!("expected Decoupled(acoustic), got {other:?}"),
         }
@@ -501,7 +1188,7 @@ mod tests {
         let b = series(n, |i| (i as f64).sin() + 0.05);
         let two = vec![(Modality::Visual, a), (Modality::Radar, b)];
         assert_eq!(
-            analyze(&two, &CorrConfig::default()).unwrap().verdict,
+            analyze(&two, &release_corr()).unwrap().verdict,
             CorrVerdict::InsufficientEvidence
         );
     }
@@ -520,7 +1207,7 @@ mod tests {
             (Modality::Acoustic, s(3.0)),
         ];
         assert_eq!(
-            analyze(&chans, &CorrConfig::default()).unwrap().verdict,
+            analyze(&chans, &release_corr()).unwrap().verdict,
             CorrVerdict::InsufficientEvidence
         );
     }
@@ -535,7 +1222,7 @@ mod tests {
             (Modality::Acoustic, x.iter().map(|value| -value).collect()),
         ];
         assert_eq!(
-            analyze(&channels, &CorrConfig::default()).unwrap().verdict,
+            analyze(&channels, &release_corr()).unwrap().verdict,
             CorrVerdict::Decoupled(vec![Modality::Acoustic])
         );
     }
@@ -550,7 +1237,7 @@ mod tests {
             (Modality::Acoustic, vec![1.0; n]),
         ];
         assert!(matches!(
-            analyze(&channels, &CorrConfig::default()),
+            analyze(&channels, &release_corr()),
             Err(crate::GaladrielError::InvalidChannels(_))
         ));
     }
@@ -567,7 +1254,7 @@ mod tests {
             (Modality::Lidar, b),
         ];
         assert_eq!(
-            analyze(&channels, &CorrConfig::default()).unwrap().verdict,
+            analyze(&channels, &release_corr()).unwrap().verdict,
             CorrVerdict::InsufficientEvidence
         );
     }
@@ -592,25 +1279,25 @@ mod tests {
         ];
 
         assert_eq!(
-            analyze(&channels, &CorrConfig::default()).unwrap().verdict,
+            analyze(&channels, &release_corr()).unwrap().verdict,
             CorrVerdict::InsufficientEvidence
         );
     }
 
     #[test]
     fn configuration_and_actual_pair_work_are_bounded() {
-        let oversized = CorrConfig {
-            window: MAX_CORRELATION_WINDOW + 1,
-            min_samples: 4,
-            ..CorrConfig::default()
-        };
-        assert!(oversized.validate().is_err());
+        let mut params = CorrParams::standalone_advisory_v0_9();
+        params.window = MAX_CORRELATION_WINDOW + 1;
+        params.min_samples = MIN_CORRELATION_WINDOW;
+        assert_eq!(
+            CorrConfig::try_new(params).unwrap_err(),
+            CorrConfigError::WindowOutOfRange
+        );
 
-        let cfg = CorrConfig {
-            window: MAX_CORRELATION_WINDOW,
-            min_samples: 4,
-            ..CorrConfig::default()
-        };
+        let mut params = CorrParams::standalone_advisory_v0_9();
+        params.window = MAX_CORRELATION_WINDOW;
+        params.min_samples = MIN_CORRELATION_WINDOW;
+        let cfg = CorrConfig::try_new(params).unwrap();
         let values: Vec<f64> = (0..MAX_CORRELATION_WINDOW)
             .map(|index| index as f64)
             .collect();
@@ -640,39 +1327,52 @@ mod tests {
     }
 
     #[test]
-    fn degenerate_significance_floor_abstains_instead_of_scoring() {
-        // family_alpha so small that `1 - pair_alpha` rounds to exactly 1.0: the Fisher
-        // floor saturates at 1.0. Byte-identical replayed channels clamp to exactly
-        // rho = 1.0 and would still "clear" that floor, so the detector must abstain —
-        // neither clearing the replayed suite as Nominal nor accusing anyone.
-        let cfg = CorrConfig {
-            family_alpha: 1e-300,
-            ..CorrConfig::default()
-        };
-        let n = 128;
-        let replayed = series(n, |i| (i as f64 / 7.0).sin());
-        let channels = vec![
-            (Modality::Visual, replayed.clone()),
-            (Modality::Radar, replayed.clone()),
-            (Modality::Acoustic, replayed),
-        ];
-        let report = analyze(&channels, &cfg).unwrap();
-        assert_eq!(report.verdict, CorrVerdict::InsufficientEvidence);
-        assert!(
-            report.note.contains("too small"),
-            "note should name the degenerate configuration: {}",
-            report.note
+    fn configuration_rejects_unresolvable_fisher_tail_before_analysis() {
+        let mut params = CorrParams::standalone_advisory_v0_9();
+        params.family_alpha = 1e-300;
+
+        assert_eq!(
+            CorrConfig::try_new(params).unwrap_err(),
+            CorrConfigError::FamilyAlphaResolutionInsufficient {
+                correction_count: MAX_FUSED_CORRELATION_TESTS,
+                min_samples: 64,
+            }
         );
     }
 
     #[test]
-    fn configuration_rejects_alpha_that_underflows_during_fused_correction() {
-        let cfg = CorrConfig {
-            family_alpha: f64::from_bits(1),
-            ..CorrConfig::default()
-        };
+    fn fisher_tail_resolution_boundary_rejects_midpoint_and_accepts_successor() {
+        // `1 - 2^-54` is the exact midpoint between 1.0 and its predecessor and
+        // rounds to 1.0 (ties-to-even). Its immediate positive successor resolves
+        // to the predecessor of 1.0 and yields a finite Fisher floor.
+        let midpoint = f64::EPSILON / 4.0;
+        let successor = f64::from_bits(midpoint.to_bits() + 1);
+        let mut params = CorrParams::standalone_advisory_v0_9();
+        params.family_alpha = midpoint * MAX_FUSED_CORRELATION_TESTS as f64;
+        assert!(matches!(
+            CorrConfig::try_new(params.clone()),
+            Err(CorrConfigError::FamilyAlphaResolutionInsufficient { .. })
+        ));
 
-        assert!(cfg.validate().is_err());
+        params.family_alpha = successor * MAX_FUSED_CORRELATION_TESTS as f64;
+        let config = CorrConfig::try_new(params).unwrap();
+        let derived = config
+            .try_for_axis_family(crate::MAX_CONSISTENCY_PROJECTION_AXES)
+            .unwrap();
+        assert!(1.0 - derived.family_alpha() / (MAX_CORRELATION_PAIRS as f64) < 1.0);
+    }
+
+    #[test]
+    fn configuration_rejects_alpha_that_underflows_during_fused_correction() {
+        let mut params = CorrParams::standalone_advisory_v0_9();
+        params.family_alpha = f64::from_bits(1);
+
+        assert_eq!(
+            CorrConfig::try_new(params).unwrap_err(),
+            CorrConfigError::FamilyAlphaUnderflow {
+                divisor: MAX_FUSED_CORRELATION_TESTS
+            }
+        );
     }
 }
 

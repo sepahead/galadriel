@@ -1,0 +1,34 @@
+{
+  "valid": [
+    "tls/router.example.invalid:7447",
+    "tls/router-1:1",
+    "tls/router:65535",
+    "tls/127.0.0.1:7447",
+    "tls/[2001:db8::1]:7447",
+    "tls/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.ddddddddddddddddddddddddddddddddddddddddddddddddddddddddd:1"
+  ],
+  "invalid": [
+    "tcp/router.example.invalid:7447",
+    "tls/router:0",
+    "tls/router:00",
+    "tls/router:65536",
+    "tls/router:notaport",
+    "tls/:7447",
+    "tls/-router:7447",
+    "tls/router-:7447",
+    "tls/router..example:7447",
+    "tls/router.example.:7447",
+    "tls/routér.example:7447",
+    "tls/0.0.0.0:7447",
+    "tls/[::]:7447",
+    "tls/2001:db8::1:7447",
+    "tls/[127.0.0.1]:7447",
+    "tls/router.example.invalid:7447#verify_name_on_connect=false",
+    "tls/router.example.invalid:7447?rel=0",
+    " tls/router.example.invalid:7447",
+    "tls/router.example.invalid:7447 ",
+    "tls/*:7447",
+    "tls/router$:7447",
+    "tls/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.dddddddddddddddddddddddddddddddddddddddddddddddddddddddddd:1"
+  ]
+}

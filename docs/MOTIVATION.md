@@ -13,7 +13,8 @@ sources, then states honestly where galadriel does and does not help.
 > smoke behavior only: it contains native research fields but no attested common projection,
 > modalities use mixed residual frames, sequential updates do not share a frozen prior, and
 > gating censors misses. The cross-channel result for that fixture is therefore
-> `InsufficientEvidence`. The opt-in producer implementation has no accepted recorded study.
+> `InsufficientEvidence`. The retained historical opt-in producer fixture does not qualify
+> a current reciprocal integration and has no accepted recorded study.
 
 ---
 
@@ -24,8 +25,7 @@ University of Texas at Austin team led by Todd Humphreys — invited by the U.S.
 Homeland Security — commandeered a GPS-guided UAV over the White Sands, New Mexico missile range
 from a half-mile standoff using a purpose-built civil-GPS spoofer, inducing the drone to dive
 toward the ground. The equipment cost on the order of $1,000
-([EurekAlert / UT Austin](https://www.eurekalert.org/news-releases/524632);
-[GPS World, "Drone Hack"](https://www.gpsworld.com/drone-hack/);
+([GPS World, "Drone Hack"](https://www.gpsworld.com/drone-hack/);
 [Humphreys, congressional testimony](https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf)).
 
 **A decade later, GNSS spoofing and jamming are a theatre-wide reality.** In the war in Ukraine,
@@ -90,9 +90,11 @@ papers in §2 discuss cross-modal plausibility and consistency checks as the cor
 defenses.
 
 galadriel explores an **N-channel generalization** of that established idea. It is a
-tested research implementation, not a field-validated reference detector. Its opt-in
-producer integration now provides registered comparable cross-modal projections, but no
-accepted recorded field study establishes their calibration or detection performance.
+tested research implementation, not a field-validated reference detector. Its consumer
+contract accepts registered comparable cross-modal projections, and a retained historical
+producer fixture exercised that shape; current reciprocal integration remains
+`NOT_CLAIMED`, and no accepted recorded field study establishes calibration or detection
+performance.
 
 ## 4. Where galadriel fits — and the sharper contribution
 
@@ -124,7 +126,7 @@ So the disciplined recommendation is signed correlation by default and PID only 
 additive, sign-invariant evidence when validated geometry and a nonlinear estimand justify it.
 
 **(b) It is scrupulously honest about scope.** galadriel is **advisory**
-(`calibrated_posterior = false`): it authenticates statistical *consistency*, not *truth*; it
+(`calibrated_posterior = false`): it reports statistical *consistency*, not *truth*; it
 cannot see a statistics-matching spoof (§2); and its evaluation is synthetic,
 non-adaptive study whose limits are stated in the paper's §6. The real enforcement layer is
 cryptographic (per-plane ACL / mTLS on the NCP bus) plus a safety governor; galadriel is
@@ -179,7 +181,7 @@ bias is regime-dependent in general
 
 ## Sources
 
-- UT Austin / Humphreys 2012 UAV GPS-spoofing demonstration — [EurekAlert](https://www.eurekalert.org/news-releases/524632), [GPS World](https://www.gpsworld.com/drone-hack/), [Humphreys testimony (PDF)](https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf)
+- UT Austin / Humphreys 2012 UAV GPS-spoofing demonstration — [GPS World](https://www.gpsworld.com/drone-hack/), [Humphreys testimony (PDF)](https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf)
 - Ukraine / counter-UAS electronic warfare — [Defense One](https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/), [The Record](https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones), [RNTF/New Scientist](https://rntfnd.org/2024/02/03/ukraine-will-spoof-gps-across-the-country-to-stop-russian-drones-new-scientist/), [Jerusalem Post](https://www.jpost.com/defense-and-tech/article-894907)
 - Cao et al., IEEE S&P 2021, *Invisible for both Camera and LiDAR* — [arXiv:2106.09249](https://arxiv.org/abs/2106.09249), [code](https://github.com/ASGuard-UCI/MSF-ADV)
 - Hallyburton et al., USENIX Security 2022, *frustum attack* — [USENIX](https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton), [arXiv:2106.07098](https://arxiv.org/abs/2106.07098)

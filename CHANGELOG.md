@@ -11,11 +11,12 @@ may contain breaking changes.
 
 ### Release contract
 
-- Establish the first supervisor-review release under author Sepehr Mahmoudian, with
+- Establish the first reviewed research release under author Sepehr Mahmoudian, with
   an explicit GitHub-source-only scope and no DOI, Zenodo, crates.io, deployment, or
   production-support claim.
-- Preserve the standalone 1.0 implementation handoff byte-for-byte while adapting its
-  complete technical and evidence obligations to the requested 0.9.0 identity.
+- Bind the current standalone handoff by full archive/task-ledger SHA-256 while adapting
+  its complete technical and evidence obligations to the requested 0.9.0 identity;
+  remove the superseded embedded handoff so inherited prose cannot be mistaken for proof.
 - Add a generated immutable audit manifest, four-tier claims matrix, exact statistical
   contract, threat model, stable-core API policy, requirement/evidence ledger, and
   protected-main change-control policy.
@@ -41,6 +42,11 @@ may contain breaking changes.
   presentation plus the complete local strict profile, and open that same parsed value.
   Caller-supplied buses are separately labeled inherited/unverified; local validation is
   never presented as proof of a remote router's active ACL.
+- Disclose the pinned Zenoh 1.9 client trust asymmetry: server authentication uses the
+  built-in public WebPKI roots plus the configured deployment CA, so exclusive custom-CA
+  router pinning is `NOT_CLAIMED`. Router-side client mTLS remains constrained by its
+  configured CA; deployments use a non-publicly-issuable private router name with
+  controlled resolution or add external exact-certificate/SPKI pinning.
 - Refuse `SidecarTap::close()` on a tap created with `from_bus`: `ZenohBus` clones share
   one Zenoh session and one retained-subscriber registry, so closing from the tap would
   have silently torn down the **host's** entire transport (all of its subscriptions, not
@@ -72,8 +78,9 @@ may contain breaking changes.
 - Add an immutable, strict, deployment-pinned frame/projection registry with canonical
   JSON SHA-256, applicability and source-frame bindings, global content-identifier
   consistency, versioned projection-algorithm identity, deterministic opportunity caps,
-  and a frozen Galadriel-side fixture verified byte/hash-identical in Crebain
-  `4c311900ade5668200a48d56fb191be1916b884a`.
+  and a frozen Galadriel-side fixture historically verified byte/hash-identical with
+  Crebain `4c311900ade5668200a48d56fb191be1916b884a`. That historical pairing does not
+  qualify the current candidate across repositories.
 - Add `CrossRouteAssembler`: bounded observation/monitor joining, canonical byte
   accounting, global prior-reuse rejection, contiguous event sequencing, registry and
   gate-accounting verification, transactional frame closure, and exact frame/reorder/
@@ -91,14 +98,15 @@ may contain breaking changes.
 - Retain exact raw Zenoh subscriber guards in the monitor and operational receivers so
   close/drop undeclares only their selectors, partial startup rolls back, timer state is
   cancelled, and a host-owned shared session remains open.
-- Integrate the matching opt-in Crebain normal-runtime producer baseline: one immutable
+- Retain a historical compatibility fixture for an opt-in Crebain normal-runtime producer
+  baseline: one immutable
   pre-association prior, registered Cartesian residuals, explicit lifecycle records,
   bounded ordered publisher lanes, frame summaries, independent heartbeat, and strict
   registry/configuration/executable pins. Crebain
-  `4c311900ade5668200a48d56fb191be1916b884a` requires the deployment-supplied epoch,
-  commits the shared fixture, and immutably pins Galadriel
-  `81437d807ca83b66b45c8353968948e540072d97`. Historical JSONL captures remain
-  baseline-only.
+  `4c311900ade5668200a48d56fb191be1916b884a` recorded Galadriel
+  `81437d807ca83b66b45c8353968948e540072d97`; both identities predate this 0.9.0
+  candidate. A current reciprocal pin and final cross-repository qualification are
+  `NOT_CLAIMED`. Historical JSONL captures remain baseline-only.
 - Add the separate strict `galadriel_producer_event` monitor wire contract on
   `sensor/galadriel-monitor`: bounded encode/decode, heartbeat health, typed modality
   outcomes and misses, frozen-prior/frame/context provenance, strict gate-method
@@ -148,12 +156,11 @@ may contain breaking changes.
 
 ### Changed
 
-- Replace the stale producer/runtime roadmap with completed Galadriel and reciprocal Crebain
-  epoch/golden/pin component milestones, pinned by Crebain
-  `4c311900ade5668200a48d56fb191be1916b884a` to Galadriel
-  `81437d807ca83b66b45c8353968948e540072d97`; retain two operational evidence gates (a
-  real multi-process mTLS/ACL campaign and an independent recorded stream-calibration study)
-  plus the separate API/release gate.
+- Replace the stale producer/runtime roadmap with a truthful split between implemented
+  Galadriel consumer components and the historical Crebain/Galadriel compatibility fixture.
+  The old commit pair is not a reciprocal pin of the current candidate; current
+  cross-repository qualification, a real multi-process mTLS/ACL campaign, and an independent
+  recorded stream-calibration study remain `NOT_CLAIMED`.
 - Split the unchanged strict changed-Rust mutation set into four deterministic CI shards so
   feature-sized diffs complete within the bounded job window. Add exact lifecycle identity,
   inclusive capacity/channel, history-clear, nested-endpoint, whitespace-path, and Unix
@@ -162,14 +169,16 @@ may contain breaking changes.
   sequence boundaries, distinct malformed/oversized fault taxonomy, state-accessor and
   heartbeat telemetry assertions, frame-ledger birth/attempt/miss truth tables, deep registry
   projection snapshots, and a real process-exit test that proves observe errors reach `main`.
-- Migrate the exact `pid-core` pin from 0.4.0 (`ad489f5…`) to the canonical pid-rs
-  1.0.0 main revision (`1cd2424…`), opt into its explicitly experimental continuous
+- Migrate the exact `pid-core` pin from 0.4.0 (`ad489f5…`) to immutable pid-rs revision
+  `1cd2424…`, whose manifest declares 1.0.0 but which has no public v1 tag or released
+  upstream 1.x artifact; opt into its explicitly experimental continuous
   surface, adopt its report-first KSG point gate and caller-declared support contract,
   and attach exact dependency/scientific-status/noise/seed evidence to PID reports.
   The fixed-seed 0.4→1.0 reproduction and delta dispositions are recorded in
   `docs/PID_RS_1_0_MIGRATION.md` and `evidence/pid-rs-1.0-migration.json`.
-- Raise the workspace MSRV to Rust **1.89** and pin that toolchain. pid-rs 1.0 requires
-  Rust 1.89; the previous Rust 1.88 pin cannot build the migrated graph.
+- Raise the workspace MSRV to Rust **1.89** and pin that toolchain. The pinned
+  pid-rs revision requires Rust 1.89; the previous Rust 1.88 pin cannot build the
+  migrated graph.
 - Mark every package `publish = false`. No crates.io release or production-support promise
   is currently made.
 - Make public detector, simulator, PID, fusion, and serialization paths fail closed with
@@ -214,9 +223,10 @@ may contain breaking changes.
   contract hash `d1b50a2d8a265276`; an earlier `v0.7.1` pin in this cycle was superseded).
   The sidecar now stamps `ncp_version` `"0.8"`; the `PidObservation` payload shape is
   unchanged, so this is a wire-addressing/version bump, not a payload re-versioning. It
-  keeps the underlying NCP dependency aligned with Crebain and Prisoma, which are already
-  on NCP 0.8. Only Crebain publishes the Galadriel sidecar; Prisoma consumes normative NCP
-  sensor frames. NCP's `check_version` is an exact major.minor fail-closed gate, so a
+  records the NCP 0.8 compatibility basis used by the retained historical Crebain and
+  Prisoma fixture revisions. In that fixture, only Crebain published the Galadriel sidecar;
+  Prisoma consumed normative NCP sensor frames. NCP's `check_version` is an exact
+  major.minor fail-closed gate, so a
   0.7-stamped payload would be hard-rejected by 0.8 peers.
 - Document Galadriel's downstream advisory boundary from its own side in
   [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md): the contract any consumer (a
@@ -274,9 +284,10 @@ may contain breaking changes.
   byte-identical replayed channels also clamp to exactly `rho = 1.0`, so the degenerate
   floor could still admit a fabricated consensus — or an attribution against the one
   non-identical channel — instead of abstention.
-- Preserve finite signed-negative pid-rs 1.0 KSG estimates as valid low-dependence
-  evidence. The upstream default intentionally allows finite-sample negative estimates;
-  rejecting them had converted decoupled edges into false estimator insufficiency.
+- Preserve finite signed-negative KSG estimates from the pinned pid-rs revision as
+  valid low-dependence evidence. The upstream default intentionally allows finite-sample
+  negative estimates; rejecting them had converted decoupled edges into false estimator
+  insufficiency.
 - Make the fixed-seed XOR study process-reproducible by replacing randomized `HashMap`
   entropy reduction with deterministic key order; the corrected 0.4/1.0 compatibility
   stdout hashes and reported tables are identical.
@@ -308,6 +319,30 @@ may contain breaking changes.
 - Impose explicit policy ceilings on alignment sequence gaps and timestamp skew (with zero
   documented as exact timestamp equality) so `u64::MAX` cannot silently disable temporal
   comparability in streaming or direct extraction APIs.
+- Bind each accepted whole-stream default assessment to the complete release-suite identity
+  and every exact ordered observation field. Sealed default reports and all component axes
+  share the opaque `AssessmentBinding`; compatibility component fusion remains explicitly
+  unbound and cannot mint an accepted report. PID assessments add a nested binding to the
+  complete research suite.
+- Replace implicit lifecycle clearing on accepted operational paths with typed positioned
+  admission, explicit reset/timeout/rollover operations, and bounded hash-linked receipts.
+  Legacy convenience entry points are compatibility adapters and do not claim new NCP wire
+  fields or durable receipt persistence.
+- Freeze strict-JSON lifecycle receipt interchange behind a 16 KiB-inclusive decode gate.
+  Assessment digests bind the accepted suite and complete serialized reports, while
+  `Faulted { reason }` binds the exact returned reason; internal digest verification is
+  explicitly neither writer authentication nor durable chain retention.
+- Bound secure startup inputs before foreign parsing: standalone strict-JSON configuration
+  is capped at 256 KiB inclusive, Zenoh `__config__` external includes are rejected, and
+  each credential file is capped at 1 MiB inclusive at validation time.
+- Advance generated trial records to `galadriel.evidence.trial.v3`: every synthetic
+  per-trial seed is an exact decimal string with a fixed-width hexadecimal mirror.
+  Candidate `base_seed` input is likewise a decimal string; legacy JSON integer input is
+  accepted only for the retained historical configuration, and normalized accepted output
+  carries canonical decimal and hexadecimal seed strings.
+- Preflight maneuver grids and complete exposure before generation: unique bounded lags,
+  finite positive magnitude, nonzero duration, checked per-modality window ends, and fixed
+  grid/trial/observation work ceilings reject malformed or right-censored studies.
 
 ### Documentation
 
@@ -334,8 +369,8 @@ may contain breaking changes.
   its full title and IEEE EuroS&P 2023 venue; drop an unsupported "below 10% under heavy
   jamming" statistic; restore the exact Hallyburton frustum-attack quotation; and replace a
   dead EurekAlert URL. Remove phantom `[Liu2011]`/`[Mo2010]` reference keys, correct
-  `RELATED-WORK.md`'s key-provenance note, and cite `[Gao2018]`/`[WilliamsBeer2010]` inline
-  in `PAPER.md`.
+  `docs/RELATED-WORK.md`'s key-provenance note, and cite
+  `[Gao2018]`/`[WilliamsBeer2010]` inline in `docs/PAPER.md`.
 - Disclose that at the fusion core's `dof = 3` with the default symmetric CUSUM slack the
   below-target arm is inert, so a moment-shrinking channel (over-conservative filter, replay,
   or frozen sensor) is not flagged by the magnitude layer at that operating point.
@@ -392,8 +427,9 @@ may contain breaking changes.
 
 - Current evidence is synthetic; there is no field-validated detection or false-alarm rate.
 - The bundled historical Crebain capture does not satisfy the common-frame/common-prior
-  estimand required for cross-channel correlation or PID; the new producer has no accepted
-  recorded calibration artifact yet.
+  estimand required for cross-channel correlation or PID; the retained historical producer
+  fixture has no accepted recorded calibration artifact and does not qualify a current
+  reciprocal integration.
 - Association and chi-square gating make the observed accepted-update stream selection-biased;
   a strong attack may appear as missingness.
 - A consistency-preserving adversary and a colluding majority remain fundamental blind spots.

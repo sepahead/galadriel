@@ -147,7 +147,7 @@
     }
   },
   "runtime_checks": [
-    "finite signed-negative KSG estimates remain valid low-dependence evidence under pid-rs 1.0 NegativeHandling::Allow",
+    "finite signed-negative KSG estimates remain valid low-dependence evidence under the pinned revision's manifest-declared 1.0 NegativeHandling::Allow API",
     "bootstrap confirmation remains a fail-closed subset of point-estimate attribution",
     "an insufficient PID path cannot erase independently assessable signed-correlation evidence"
   ],

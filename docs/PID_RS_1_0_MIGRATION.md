@@ -1,9 +1,12 @@
 # pid-rs 0.4 to 1.0 migration
 
-Galadriel now pins `pid-core` 1.0.0 at immutable pid-rs revision
-`1cd2424f7967e1752dcc8e53859e8fdad3566f51`. pid-rs has no public v1 tag at this
-snapshot; the pin contains release commit `91cd811a27b15de60c5cdb08d5516bf3471883ce`
-and its same-day correctness and CI follow-ups. The prior pin was pid-core 0.4.0 at
+Galadriel pins immutable pid-rs revision
+`1cd2424f7967e1752dcc8e53859e8fdad3566f51`, whose `pid-core` manifest declares
+1.0.0. pid-rs has no public v1 tag or released upstream 1.x artifact at this
+snapshot; the words “1.0” below identify the pinned source/API migration, not a
+published dependency release. The pin contains commit
+`91cd811a27b15de60c5cdb08d5516bf3471883ce` and its same-day correctness and CI
+follow-ups. The prior pin was pid-core 0.4.0 at
 `ad489f5bf5e15c164c599d069a6bee0f338c0e48`.
 
 This is an explicit scientific/API migration, not a dependency-only bump:

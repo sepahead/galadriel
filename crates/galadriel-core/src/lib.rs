@@ -26,9 +26,9 @@
 //!
 //! | observation | verdict | reasoning |
 //! |---|---|---|
-//! | all channels' NIS consistent with χ²(dof) | [`Verdict::Nominal`] | individual magnitude checks are consistent |
-//! | **one** channel's NIS inflated, others nominal | [`Verdict::AttributedInconsistency`] | localized magnitude inconsistency; cause unclassified |
-//! | **most/all** channels' NIS inflated together | [`Verdict::BroadDegradation`] | broad magnitude degradation; cause unclassified |
+//! | all channels' windowed NIS consistent with χ²(dof), with no CUSUM alarm | [`Verdict::Nominal`] | individual magnitude checks are consistent |
+//! | **one** channel has high-direction NIS/CUSUM evidence, others nominal | [`Verdict::AttributedInconsistency`] | localized magnitude inconsistency; cause unclassified |
+//! | **most/all** channels have high-direction NIS/CUSUM evidence | [`Verdict::BroadDegradation`] | broad magnitude degradation; cause unclassified |
 //! | too few samples / channels | [`Verdict::InsufficientEvidence`] | **fail closed** — never default to Nominal |
 //!
 //! This is an **advisory** detector. It authenticates *statistical consistency*,
@@ -45,28 +45,53 @@ pub mod config;
 pub mod correlation;
 pub mod cusum;
 pub mod decision;
+pub mod domain;
 pub mod error;
 pub mod fusion;
+mod identity;
+mod numeric;
 pub mod observation;
+pub mod outcome;
 pub mod window;
 
 pub use authority::{validate_advisory_effect, AdvisoryPolicy, AuthoritySnapshot, Authorization};
 pub use config::{
-    DetectorConfig, MAX_ALIGNMENT_SEQ_GAP, MAX_ALIGNMENT_TIMESTAMP_SKEW_MS, MAX_INTER_SAMPLE_GAP_MS,
+    AssessmentClassification, ConfigurationClass, DetectorConfig, DetectorConfigError,
+    DetectorParams, DetectorProfile, ExploratoryResearchProfile, ExploratorySubsetResearch,
+    ProducerAxisFamilyPolicy, ReleaseProfile, ReleaseSuite, ReleaseSuiteError, ReleaseSuiteParams,
+    CHANNEL_STATE_AND_MAP_OVERHEAD_BYTES, MAX_ALIGNMENT_SEQ_GAP, MAX_ALIGNMENT_TIMESTAMP_SKEW_MS,
+    MAX_DETECTOR_CHANNEL_STATES, MAX_DETECTOR_STATE_BYTES, MAX_DETECTOR_TRACKS,
+    MAX_INTER_SAMPLE_GAP_MS, MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS, MAX_RELEASE_SUITE_STATE_BYTES,
+    MIN_NIS_FAMILY_ALPHA,
 };
-pub use correlation::{CorrChannel, CorrConfig, CorrReport, CorrVerdict};
+pub use correlation::{
+    CorrChannel, CorrConfig, CorrConfigError, CorrParams, CorrProfile, CorrReport, CorrVerdict,
+};
 pub use cusum::Cusum;
 pub use decision::{ChannelReport, Mirror, MirrorReport, Verdict};
+pub use domain::{
+    ClockDomain, DomainError, EpochId, EpochIdentity, FrozenPriorId, ProducerId,
+    ProjectionContextId, ProjectionFrameId, ProjectionIdentity, Sequence, SessionId,
+    StateGeneration, StreamId, StreamIdentity, StreamPosition, TimestampMillis, TrackId,
+    JSON_SAFE_INTEGER_MAX, MAX_IDENTIFIER_BYTES,
+};
 pub use error::{GaladrielError, Result};
 pub use fusion::{
-    assess_default, combine, combine_correlation_axes, AxisCorrelationReport, ConsistencyEvidence,
-    DefaultReport, FusedVerdict, MagnitudeEvidence, NonEmptyModalities,
+    assess_default, combine, combine_correlation_axes, prepare_release_assessment, try_combine,
+    AxisCorrelationReport, ConsistencyEvidence, DefaultReport, FusedVerdict, MagnitudeEvidence,
+    NonEmptyModalities, PreparedReleaseAssessment,
 };
+pub use identity::{AssessmentBinding, AssessmentDigest, ConfigDigest};
 pub use observation::{
     validate_and_symmetrize_covariance, ConsistencyProjection, Modality, PidObservation,
     COVARIANCE_SYMMETRY_RELATIVE_TOLERANCE, MAX_CONSISTENCY_PROJECTION_AXES,
 };
-pub use window::NisWindow;
+pub use outcome::{
+    AnomalyEvidence, AnomalyReason, AssessmentFailure, AssessmentOutcome, CollectingReason,
+    EmptyReason, FailureCode, FailureKind, Insufficiency, NonEmptyModalitySet, OutcomeError,
+    StreamState, TimeoutReason, UnavailabilityReason, UnavailabilityReasons, UnclassifiedAnomaly,
+};
+pub use window::{NisWindow, NIS_WINDOW_EXACT_CACHE_BYTES};
 
 /// Default maximum sequence gap for a contiguous aligned series.
 pub const DEFAULT_ALIGNMENT_MAX_SEQ_GAP: u64 = 1;
@@ -105,9 +130,9 @@ fn validate_consistency_input_len(length: usize) -> Result<()> {
 #[derive(Debug, Clone)]
 pub struct ConsistencyChannels {
     /// Common physical coordinate-frame identifier.
-    pub frame_id: u64,
+    pub frame_id: ProjectionFrameId,
     /// Common projection/calibration-context identifier.
-    pub context_id: u64,
+    pub context_id: ProjectionContextId,
     /// One aligned channel set per active projection axis.
     pub axes: Vec<Vec<(Modality, Vec<f64>)>>,
 }
@@ -201,7 +226,8 @@ pub fn scalar_channels_with_temporal_limits(
 /// at another sequence. A context/frame change begins a new suffix; contradictory
 /// within-frame provenance is malformed input. Frames where every modality omits
 /// the optional projection reset the suffix and ultimately return `None` for a
-/// legacy capture.
+/// legacy capture. A requested modality slice larger than the closed six-variant
+/// vocabulary is rejected before set allocation or stream scanning.
 pub fn consistency_channels_with_temporal_limits(
     stream: &[PidObservation],
     modalities: &[Modality],
@@ -211,6 +237,13 @@ pub fn consistency_channels_with_temporal_limits(
 ) -> Result<Option<ConsistencyChannels>> {
     use std::collections::{BTreeMap, HashMap, HashSet};
 
+    if modalities.len() > Modality::ALL.len() {
+        return Err(GaladrielError::InvalidChannels(format!(
+            "consistency extraction accepts at most {} modalities, got {}",
+            Modality::ALL.len(),
+            modalities.len()
+        )));
+    }
     validate_consistency_input_len(stream.len())?;
     crate::config::validate_alignment_limits(
         max_seq_gap,
@@ -227,77 +260,81 @@ pub fn consistency_channels_with_temporal_limits(
         return Ok(None);
     }
 
-    let track_id = stream[0].track_id;
+    let track_id = stream[0].track_id();
     let mut last_seq = None;
-    let mut last_timestamp = HashMap::<Modality, u64>::new();
-    let mut temporal_breaks = HashSet::<u64>::new();
-    let mut prior_sequences = HashMap::<u64, u64>::new();
+    let mut last_timestamp = HashMap::<Modality, TimestampMillis>::new();
+    let mut temporal_breaks = HashSet::<Sequence>::new();
+    let mut prior_sequences = HashMap::<FrozenPriorId, Sequence>::new();
     prior_sequences.try_reserve(stream.len()).map_err(|_| {
         GaladrielError::InvalidChannels(format!(
             "could not reserve provenance tracking for {} observations",
             stream.len()
         ))
     })?;
-    let mut frames: BTreeMap<u64, HashMap<Modality, (Option<ConsistencyProjection>, u64)>> =
-        BTreeMap::new();
+    let mut frames: BTreeMap<
+        Sequence,
+        HashMap<Modality, (Option<&ConsistencyProjection>, TimestampMillis)>,
+    > = BTreeMap::new();
     for observation in stream {
-        observation.validate()?;
-        if observation.track_id != track_id {
+        let observation_track_id = observation.track_id();
+        let sequence = observation.sequence();
+        let timestamp_ms = observation.timestamp_ms();
+        let modality = observation.modality();
+        if observation_track_id != track_id {
             return Err(GaladrielError::InvalidChannels(format!(
                 "single-track analysis required (saw track {track_id} and {})",
-                observation.track_id
+                observation_track_id
             )));
         }
-        if last_seq.is_some_and(|last| observation.seq < last) {
+        if last_seq.is_some_and(|last| sequence < last) {
             return Err(GaladrielError::InvalidChannels(format!(
                 "stream sequence regressed from {} to {}; captures must contain one run in order",
-                last_seq.unwrap_or(0),
-                observation.seq
+                last_seq.map_or(0, Sequence::get),
+                sequence
             )));
         }
-        last_seq = Some(observation.seq);
+        last_seq = Some(sequence);
 
-        if let Some(projection) = observation.consistency_projection {
-            if let Some(previous_sequence) =
-                prior_sequences.insert(projection.prior_id, observation.seq)
-            {
-                if previous_sequence != observation.seq {
+        if let Some(projection) = observation.consistency_projection() {
+            let frozen_prior_id = projection.identity().frozen_prior_id();
+            if let Some(previous_sequence) = prior_sequences.insert(frozen_prior_id, sequence) {
+                if previous_sequence != sequence {
                     return Err(GaladrielError::InvalidChannels(format!(
                         "frozen prior {} was reused at sequences {previous_sequence} and {}",
-                        projection.prior_id, observation.seq
+                        frozen_prior_id, sequence
                     )));
                 }
             }
         }
 
-        if !requested.contains(&observation.modality) {
+        if !requested.contains(&modality) {
             continue;
         }
-        if let Some(&timestamp) = last_timestamp.get(&observation.modality) {
-            if observation.timestamp_ms <= timestamp {
+        if let Some(&timestamp) = last_timestamp.get(&modality) {
+            if timestamp_ms <= timestamp {
                 return Err(GaladrielError::InvalidChannels(format!(
                     "timestamp must increase strictly for {} at sequence {}",
-                    observation.modality.label(),
-                    observation.seq
+                    modality.label(),
+                    sequence
                 )));
             }
-            if observation.timestamp_ms - timestamp > max_inter_sample_gap_ms {
-                temporal_breaks.insert(observation.seq);
+            if timestamp_ms.get() - timestamp.get() > max_inter_sample_gap_ms {
+                temporal_breaks.insert(sequence);
             }
         }
-        last_timestamp.insert(observation.modality, observation.timestamp_ms);
-        let frame = frames.entry(observation.seq).or_default();
+        last_timestamp.insert(modality, timestamp_ms);
+        let frame = frames.entry(sequence).or_default();
         if frame
             .insert(
-                observation.modality,
-                (observation.consistency_projection, observation.timestamp_ms),
+                modality,
+                (observation.consistency_projection(), timestamp_ms),
             )
             .is_some()
         {
             return Err(GaladrielError::InvalidChannels(format!(
                 "duplicate consistency observation for sequence {} / {}",
-                observation.seq,
-                observation.modality.label()
+                sequence,
+                modality.label()
             )));
         }
         while frames.len() > MAX_CONSISTENCY_RETAINED_FRAMES {
@@ -314,8 +351,8 @@ pub fn consistency_channels_with_temporal_limits(
             .collect::<Vec<_>>()
     };
     let mut aligned: Vec<Vec<(Modality, Vec<f64>)>> = Vec::new();
-    let mut suffix_provenance = None::<(u64, u64, u8)>;
-    let mut last_aligned_seq = None::<u64>;
+    let mut suffix_provenance = None::<(ProjectionFrameId, ProjectionContextId, u8)>;
+    let mut last_aligned_seq = None::<Sequence>;
     for (sequence, frame) in frames {
         if !modalities
             .iter()
@@ -350,14 +387,20 @@ pub fn consistency_channels_with_temporal_limits(
                 "consistency projection disappeared at sequence {sequence}"
             )));
         };
-        let provenance = (first.frame_id, first.context_id, first.dimensions);
+        let first_identity = first.identity();
+        let provenance = (
+            first_identity.frame_id(),
+            first_identity.context_id(),
+            first.dimensions(),
+        );
         if projections.iter().any(|projection| {
+            let identity = projection.identity();
             (
-                projection.frame_id,
-                projection.context_id,
-                projection.dimensions,
+                identity.frame_id(),
+                identity.context_id(),
+                projection.dimensions(),
             ) != provenance
-                || projection.prior_id != first.prior_id
+                || identity.frozen_prior_id() != first_identity.frozen_prior_id()
         }) {
             return Err(GaladrielError::InvalidChannels(format!(
                 "modalities attest different frame/context/dimension/prior at sequence {sequence}"
@@ -367,10 +410,10 @@ pub fn consistency_channels_with_temporal_limits(
             .iter()
             .map(|modality| frame[modality].1)
             .fold((u64::MAX, 0_u64), |(minimum, maximum), timestamp| {
-                (minimum.min(timestamp), maximum.max(timestamp))
+                (minimum.min(timestamp.get()), maximum.max(timestamp.get()))
             });
         let sequence_contiguous =
-            last_aligned_seq.is_none_or(|last| sequence - last <= max_seq_gap);
+            last_aligned_seq.is_none_or(|last| sequence.get() - last.get() <= max_seq_gap);
         let timestamp_coherent = maximum_timestamp - minimum_timestamp <= max_timestamp_skew_ms;
         let timestamps_contiguous = !temporal_breaks.contains(&sequence);
         let provenance_contiguous = suffix_provenance.is_none_or(|value| value == provenance);
@@ -385,7 +428,7 @@ pub fn consistency_channels_with_temporal_limits(
         }
         if timestamp_coherent {
             if aligned.is_empty() {
-                aligned = (0..first.dimensions).map(|_| empty_axis()).collect();
+                aligned = (0..first.dimensions()).map(|_| empty_axis()).collect();
             }
             for (axis, channels) in aligned.iter_mut().enumerate() {
                 for (modality, values) in channels {
@@ -399,7 +442,7 @@ pub fn consistency_channels_with_temporal_limits(
                                 modality.label()
                             ))
                             })?;
-                    values.push(projection.values[axis]);
+                    values.push(projection.values()[axis]);
                 }
             }
             suffix_provenance = Some(provenance);
@@ -421,23 +464,94 @@ mod scalar_channel_tests {
     use super::*;
 
     fn research(seq: u64, modality: Modality, value: f64) -> PidObservation {
-        PidObservation {
-            track_id: 1,
-            timestamp_ms: seq * 100,
-            seq,
+        research_with(1, seq * 100, seq, modality, value, 1, 1, seq + 1)
+    }
+
+    #[test]
+    fn seven_modalities_are_rejected_before_set_allocation_or_stream_scans() {
+        let modalities = [
+            Modality::Visual,
+            Modality::Thermal,
+            Modality::Acoustic,
+            Modality::Radar,
+            Modality::Lidar,
+            Modality::RadioFrequency,
+            Modality::Visual,
+        ];
+
+        let direct = consistency_channels_with_temporal_limits(&[], &modalities, 0, u64::MAX, 0)
+            .unwrap_err();
+        let scalar = scalar_channels(&[], &modalities, 0).unwrap_err();
+
+        assert!(matches!(
+            direct,
+            GaladrielError::InvalidChannels(ref message)
+                if message == "consistency extraction accepts at most 6 modalities, got 7"
+        ));
+        assert!(matches!(
+            scalar,
+            GaladrielError::InvalidChannels(ref message)
+                if message == "consistency extraction accepts at most 6 modalities, got 7"
+        ));
+    }
+
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "test fixture names every wire coordinate"
+    )]
+    fn research_with(
+        track_id: u64,
+        timestamp_ms: u64,
+        sequence: u64,
+        modality: Modality,
+        value: f64,
+        frame_id: u64,
+        context_id: u64,
+        frozen_prior_id: u64,
+    ) -> PidObservation {
+        PidObservation::try_scalar(
+            TrackId::new(track_id).unwrap(),
+            TimestampMillis::new(timestamp_ms).unwrap(),
+            Sequence::new(sequence).unwrap(),
             modality,
-            nis: 3.0,
-            dof: 3,
-            innovation: Some([value, 0.0, 0.0]),
-            innovation_cov: Some([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
-            consistency_projection: Some(ConsistencyProjection {
-                values: [value, value + 1.0, value + 2.0],
-                dimensions: 3,
-                frame_id: 1,
-                context_id: 1,
-                prior_id: seq + 1,
-            }),
-        }
+            3.0,
+            3,
+        )
+        .unwrap()
+        .try_with_research(
+            [value, 0.0, 0.0],
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        )
+        .unwrap()
+        .with_consistency_projection(
+            ConsistencyProjection::try_new(
+                [value, value + 1.0, value + 2.0],
+                3,
+                ProjectionIdentity::try_new(frame_id, context_id, frozen_prior_id).unwrap(),
+            )
+            .unwrap(),
+        )
+    }
+
+    fn baseline_only(seq: u64, modality: Modality) -> PidObservation {
+        PidObservation::try_scalar(
+            TrackId::new(1).unwrap(),
+            TimestampMillis::new(seq * 100).unwrap(),
+            Sequence::new(seq).unwrap(),
+            modality,
+            3.0,
+            3,
+        )
+        .unwrap()
+    }
+
+    fn research_without_projection(seq: u64, modality: Modality, value: f64) -> PidObservation {
+        baseline_only(seq, modality)
+            .try_with_research(
+                [value, 0.0, 0.0],
+                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            )
+            .unwrap()
     }
 
     #[test]
@@ -458,11 +572,10 @@ mod scalar_channel_tests {
     #[test]
     fn rejects_ambiguous_track_order_and_axis_inputs() {
         let modalities = [Modality::Visual, Modality::Radar];
-        let mut stream = vec![
+        let stream = vec![
             research(1, Modality::Visual, 1.0),
-            research(1, Modality::Radar, 1.0),
+            research_with(2, 100, 1, Modality::Radar, 1.0, 1, 1, 2),
         ];
-        stream[1].track_id = 2;
         assert!(scalar_channels(&stream, &modalities, 0).is_err());
         assert!(scalar_channels(&[], &modalities, 3).is_err());
     }
@@ -470,27 +583,23 @@ mod scalar_channel_tests {
     #[test]
     fn alignment_rejects_timestamp_regression_and_resets_on_skew() {
         let modalities = [Modality::Visual, Modality::Radar];
-        let mut regressed = vec![
-            research(0, Modality::Visual, 1.0),
+        let regressed = vec![
+            research_with(1, 100, 0, Modality::Visual, 1.0, 1, 1, 1),
             research(0, Modality::Radar, 1.0),
-            research(1, Modality::Visual, 2.0),
+            research_with(1, 0, 1, Modality::Visual, 2.0, 1, 1, 2),
             research(1, Modality::Radar, 2.0),
         ];
-        regressed[2].timestamp_ms = 0;
-        regressed[0].timestamp_ms = 100;
         assert!(scalar_channels(&regressed, &modalities, 0).is_err());
 
-        let mut skewed = vec![
+        let skewed_timestamp = 100 + DEFAULT_ALIGNMENT_MAX_TIMESTAMP_SKEW_MS + 1;
+        let skewed = vec![
             research(0, Modality::Visual, 1.0),
             research(0, Modality::Radar, 1.0),
             research(1, Modality::Visual, 2.0),
-            research(1, Modality::Radar, 2.0),
-            research(2, Modality::Visual, 3.0),
-            research(2, Modality::Radar, 3.0),
+            research_with(1, skewed_timestamp, 1, Modality::Radar, 2.0, 1, 1, 2),
+            research_with(1, skewed_timestamp + 100, 2, Modality::Visual, 3.0, 1, 1, 3),
+            research_with(1, skewed_timestamp + 100, 2, Modality::Radar, 3.0, 1, 1, 3),
         ];
-        skewed[3].timestamp_ms += DEFAULT_ALIGNMENT_MAX_TIMESTAMP_SKEW_MS + 1;
-        skewed[4].timestamp_ms = skewed[3].timestamp_ms + 100;
-        skewed[5].timestamp_ms = skewed[3].timestamp_ms + 100;
         let channels = scalar_channels(&skewed, &modalities, 0).unwrap();
         assert_eq!(channels[0].1, vec![3.0]);
         assert_eq!(channels[1].1, vec![3.0]);
@@ -499,13 +608,12 @@ mod scalar_channel_tests {
     #[test]
     fn alignment_rejects_frozen_timestamps() {
         let modalities = [Modality::Visual, Modality::Radar];
-        let mut stream = vec![
+        let stream = vec![
             research(0, Modality::Visual, 1.0),
             research(0, Modality::Radar, 1.0),
-            research(1, Modality::Visual, 2.0),
+            research_with(1, 0, 1, Modality::Visual, 2.0, 1, 1, 2),
             research(1, Modality::Radar, 2.0),
         ];
-        stream[2].timestamp_ms = stream[0].timestamp_ms;
         assert!(scalar_channels(&stream, &modalities, 0).is_err());
     }
 
@@ -514,11 +622,27 @@ mod scalar_channel_tests {
         let modalities = [Modality::Visual, Modality::Radar];
         let mut stream = Vec::new();
         for sequence in 0..3 {
-            stream.push(research(sequence, Modality::Visual, sequence as f64));
-            stream.push(research(sequence, Modality::Radar, sequence as f64));
-        }
-        for observation in stream.iter_mut().filter(|observation| observation.seq == 2) {
-            observation.timestamp_ms += 1;
+            let timestamp_ms = sequence * 100 + u64::from(sequence == 2);
+            stream.push(research_with(
+                1,
+                timestamp_ms,
+                sequence,
+                Modality::Visual,
+                sequence as f64,
+                1,
+                1,
+                sequence + 1,
+            ));
+            stream.push(research_with(
+                1,
+                timestamp_ms,
+                sequence,
+                Modality::Radar,
+                sequence as f64,
+                1,
+                1,
+                sequence + 1,
+            ));
         }
 
         let channels = scalar_channels_with_temporal_limits(
@@ -543,22 +667,8 @@ mod scalar_channel_tests {
             stream.push(research(sequence, Modality::Radar, sequence as f64));
         }
         for sequence in 4..8 {
-            stream.push(PidObservation::scalar(
-                1,
-                sequence * 100,
-                sequence,
-                Modality::Visual,
-                3.0,
-                3,
-            ));
-            stream.push(PidObservation::scalar(
-                1,
-                sequence * 100,
-                sequence,
-                Modality::Radar,
-                3.0,
-                3,
-            ));
+            stream.push(baseline_only(sequence, Modality::Visual));
+            stream.push(baseline_only(sequence, Modality::Radar));
         }
         let channels = scalar_channels(&stream, &modalities, 0).unwrap();
         assert!(channels.iter().all(|(_, values)| values.is_empty()));
@@ -567,13 +677,10 @@ mod scalar_channel_tests {
     #[test]
     fn legacy_native_innovations_are_not_used_as_consistency_projections() {
         let modalities = [Modality::Visual, Modality::Radar];
-        let mut stream = vec![
-            research(0, Modality::Visual, 1.0),
-            research(0, Modality::Radar, 2.0),
+        let stream = vec![
+            research_without_projection(0, Modality::Visual, 1.0),
+            research_without_projection(0, Modality::Radar, 2.0),
         ];
-        for observation in &mut stream {
-            observation.consistency_projection = None;
-        }
 
         let channels = scalar_channels(&stream, &modalities, 0).unwrap();
         assert!(channels.iter().all(|(_, values)| values.is_empty()));
@@ -582,11 +689,10 @@ mod scalar_channel_tests {
     #[test]
     fn extraction_rejects_different_frozen_priors_within_one_sequence() {
         let modalities = [Modality::Visual, Modality::Radar];
-        let mut stream = vec![
+        let stream = vec![
             research(0, Modality::Visual, 1.0),
-            research(0, Modality::Radar, 2.0),
+            research_with(1, 0, 0, Modality::Radar, 2.0, 1, 1, 2),
         ];
-        stream[1].consistency_projection.as_mut().unwrap().prior_id = 2;
 
         assert!(scalar_channels(&stream, &modalities, 0).is_err());
     }
@@ -594,19 +700,12 @@ mod scalar_channel_tests {
     #[test]
     fn extraction_rejects_prior_reuse_across_sequences() {
         let modalities = [Modality::Visual, Modality::Radar];
-        let mut stream = vec![
+        let stream = vec![
             research(0, Modality::Visual, 1.0),
             research(0, Modality::Radar, 2.0),
-            research(1, Modality::Visual, 3.0),
-            research(1, Modality::Radar, 4.0),
+            research_with(1, 100, 1, Modality::Visual, 3.0, 1, 1, 1),
+            research_with(1, 100, 1, Modality::Radar, 4.0, 1, 1, 1),
         ];
-        for observation in stream.iter_mut().filter(|observation| observation.seq == 1) {
-            observation
-                .consistency_projection
-                .as_mut()
-                .unwrap()
-                .prior_id = 1;
-        }
 
         assert!(scalar_channels(&stream, &modalities, 0).is_err());
     }
@@ -614,18 +713,12 @@ mod scalar_channel_tests {
     #[test]
     fn extraction_rejects_prior_reuse_after_frame_and_context_change() {
         let modalities = [Modality::Visual, Modality::Radar];
-        let mut stream = vec![
+        let stream = vec![
             research(0, Modality::Visual, 1.0),
             research(0, Modality::Radar, 2.0),
-            research(1, Modality::Visual, 3.0),
-            research(1, Modality::Radar, 4.0),
+            research_with(1, 100, 1, Modality::Visual, 3.0, 2, 2, 1),
+            research_with(1, 100, 1, Modality::Radar, 4.0, 2, 2, 1),
         ];
-        for observation in stream.iter_mut().filter(|observation| observation.seq == 1) {
-            let projection = observation.consistency_projection.as_mut().unwrap();
-            projection.frame_id = 2;
-            projection.context_id = 2;
-            projection.prior_id = 1;
-        }
 
         let error = scalar_channels(&stream, &modalities, 0).unwrap_err();
 
@@ -640,11 +733,10 @@ mod scalar_channel_tests {
     #[test]
     fn extraction_rejects_prior_reuse_on_unrequested_modalities() {
         let modalities = [Modality::Visual, Modality::Radar];
-        let mut stream = vec![
+        let stream = vec![
             research(0, Modality::Thermal, 1.0),
-            research(1, Modality::Thermal, 2.0),
+            research_with(1, 100, 1, Modality::Thermal, 2.0, 1, 1, 1),
         ];
-        stream[1].consistency_projection.as_mut().unwrap().prior_id = 1;
 
         let error = scalar_channels(&stream, &modalities, 0).unwrap_err();
 
@@ -725,14 +817,21 @@ mod scalar_channel_tests {
         let frame_count = MAX_CONSISTENCY_RETAINED_FRAMES as u64 + 2;
         let mut stream = Vec::with_capacity(frame_count as usize);
         for sequence in 0..frame_count {
-            let mut observation = research(sequence, Modality::Visual, sequence as f64);
-            let projection = observation.consistency_projection.as_mut().unwrap();
-            projection.prior_id = if sequence + 1 == frame_count {
+            let frozen_prior_id = if sequence + 1 == frame_count {
                 1
             } else {
                 sequence + 1
             };
-            stream.push(observation);
+            stream.push(research_with(
+                1,
+                sequence * 100,
+                sequence,
+                Modality::Visual,
+                sequence as f64,
+                1,
+                1,
+                frozen_prior_id,
+            ));
         }
 
         assert!(scalar_channels(&stream, &modalities, 0).is_err());

@@ -26,6 +26,10 @@ NIS is `q = yᵀ S⁻¹ y`. The model reference is `q ~ χ²(d)` for declared
 degrees of freedom `d`; this reference requires correct covariance, association,
 linearization/model adequacy and an uncensored observation opportunity. Galadriel
 validates representation and bounds, not those physical assumptions.
+The window-sum reference additionally requires the retained `qᵢ` values to be
+independent under the null (or an independently justified model under which their
+sum has the stated χ² distribution). Bonferroni control across channels does not
+remove this within-channel serial-dependence assumption.
 
 ## Magnitude report
 
@@ -43,17 +47,24 @@ For one modality's retained contiguous window `q₁,…,qₙ`:
 - The per-channel threshold is `nis_alpha / C`, where `C` is the number of known
   or expected channels in that assessment. `elevated` is exactly
   `n>0 && p_right < nis_alpha/C`; equality is not elevated.
-- The two CUSUM inputs are `x=q/sqrt(2d)` and target `μ=d/sqrt(2d)`. After each
-  sample, `hi=max(0, hi+x-μ-k)` and `lo=max(0, lo+μ-x-k)`, with configured
-  slack `k`; an arm alarms when its accumulator is greater than or equal to threshold
-  `h`. `cusum_high_alarm` and `cusum_low_alarm` are exactly those arm predicates.
-  The state is historical sequential evidence, not a p-value.
+- The two CUSUM inputs are `x=q/sqrt(2d)` and target `μ=d/sqrt(2d)`. Both arms
+  start at zero. After each sample, `hi=max(0, hi+x-μ-k)` and
+  `lo=max(0, lo+μ-x-k)`, with configured slack `k`; an arm alarms when its
+  accumulator is greater than or equal to threshold `h`. A component reset sets
+  both arms back to zero. Ordinary threshold alarms describe the current arms and
+  can decay; they are not separately latched. If an exact arm update exceeds
+  `f64::MAX`, however, that arm is terminally saturated at `f64::MAX` until reset,
+  because the otherwise unbounded excess cannot be retained for a later opposing
+  update. `cusum_high_alarm` and `cusum_low_alarm` are exactly the resulting arm
+  predicates. The state is historical sequential evidence, not a p-value.
 - `last_seq` and `last_timestamp_ms` are the newest accepted identities;
   `fresh` means assessment sequence minus `last_seq` exists and is at most
   `max_seq_gap`.
-- `ready` means `n >= min_samples && fresh`. A complete assessment additionally
-  requires every known/expected channel ready, at least `min_channels`, and newest
-  timestamps spanning no more than `max_timestamp_skew_ms`.
+- `ready` means
+  `n >= min_samples && fresh && last_seq == assessment_seq`. A complete assessment
+  additionally requires every known/expected channel ready, at least
+  `min_channels`, and newest timestamps spanning no more than
+  `max_timestamp_skew_ms`.
 
 `ChannelReport::high_anomalous` is `ready && (elevated || cusum_high_alarm)`;
 `anomalous` additionally includes the low CUSUM arm. `MirrorReport.track_id` and
@@ -71,9 +82,21 @@ Magnitude verdicts are exact:
 - otherwise `AttributedInconsistency {channels}` for the sorted high-anomaly set.
 
 These branches are ordered. “Attributed” locates evidence; it does not identify a
-cause. The exploratory `Mirror::new` constructor has no expected-modality contract
-and is not the release-qualified cross-sensor path; the default fused path uses an
-explicit expected set.
+cause. `Mirror::from_release_suite` consumes a validated, non-empty expected-modality
+capability. Subset-only analysis is available only through
+`Mirror::for_exploratory_subset` plus an `ExploratorySubsetResearch` capability and
+is classified as research in the report. It is not interchangeable with the
+release-suite path.
+
+`MirrorReport` and `ChannelReport` are output-only sealed values. They serialize
+diagnostics but do not deserialize, expose mutable fields, or offer unchecked public
+constructors. Every channel includes `dof`, `sum_nis`, and its effective
+`channel_alpha`; every magnitude report carries the release/research classification
+and canonical digest of the complete accepted detector or suite. The private typed
+`AssessmentOutcome` is created during assessment and retained for fusion rather
+than reconstructed from report material. A release-classified magnitude-only
+`Nominal` is exposed by `validated_outcome()` as unavailable until the signed-
+consistency prerequisite has completed.
 
 ## Signed-correlation report
 
@@ -98,6 +121,9 @@ In the default multi-axis report, `AxisCorrelationReport.axis` is the zero-based
 producer projection coordinate and `report` is the preceding estimand with the
 family budget divided across active axes. Disagreement between positive axes, or a
 positive axis alongside an insufficient axis, is fused as unclassified evidence.
+An axis report produced by `prepare_release_assessment` also carries the exact
+whole-stream `AssessmentBinding`. `single_axis`/`try_new` remain explicitly unbound
+compatibility diagnostics and cannot be substituted into an accepted report.
 
 ## Fused report
 
@@ -113,7 +139,18 @@ consistency evidence. Conflicting positive attributions become
 consistency evidence becomes `AttributedInconsistency` with its magnitude class;
 otherwise the magnitude verdict is preserved, except nominal magnitude plus
 insufficient consistency remains insufficient. `DefaultReport` retains that
-verdict, the entire magnitude report, every axis report, and a non-normative note.
+verdict, the entire magnitude report, every axis report, a non-normative note, the
+complete suite identity/classification, and one opaque `AssessmentBinding` shared
+by every component.
+
+The core binding is a domain-separated SHA-256 identity over the canonical complete
+`ReleaseSuite` plus every field of every ordered input observation. It includes
+track, timestamp, sequence, modality, NIS, degrees of freedom, optional innovation,
+optional covariance, and every consistency-projection value and provenance field.
+Callers can compare it or verify it against an exact stream/suite, but cannot mint
+one or attach it to replacement reports. `combine_correlation_axes` may return an
+unbound diagnostic tuple when every input is unbound; it rejects mixed bindings and
+does not return a sealed `DefaultReport`.
 
 ## Optional PID research report
 
@@ -133,9 +170,31 @@ delete-block interval for the worst candidate-to-consensus confirmation margin.
 `PidVerdict` means all requested channels admitted (`Nominal`), a strict minority
 confirmed outside (`Decoupled`), or no defensible attribution
 (`InsufficientEvidence`). PID atoms are diagnostics and never a posterior or a
-standalone causal verdict. The fused PID report keeps the magnitude, signed
-correlation and PID axes; sign-invariant PID cannot erase signed-correlation or
-insufficient-evidence findings.
+standalone causal verdict.
+
+PID work is entered only through an explicit accepted `PidResearchSuite`, which
+contains a PID-free `ReleaseSuite` plus one underived `PidConfig`. Construction
+checks the worst-case three-axis quadratic-fit product before observations are
+read; the actual axis family is checked and divided exactly once before any
+estimator invocation. `PidConfigDigest` includes every accepted scalar,
+confirmation variant and applicable payload, named/custom classification,
+axis-family derivation, fixed resource ceilings, and the exact selected upstream
+revision and estimator semantics. Every `PidReport` carries that identity through
+sealed estimator evidence.
+
+`PidEstimatorEvidence`, `ChannelPid`, `PidReport`, `AxisPidReport`, and
+`FusedReport` are sealed output values. PID fusion checks the baseline, every
+correlation axis, and every PID axis against one accepted research suite; mixed
+identities, mismatched/duplicate/non-contiguous axes, and out-of-range labels are
+errors rather than evidence. The fused PID report carries the suite identity and
+classification, retains the magnitude, signed-correlation, and PID axes, and adds
+`PidAssessmentBinding`: a domain-separated binding of the core assessment to the
+complete PID research suite.
+Sign-invariant PID cannot erase positive signed-correlation evidence, and a PID
+nominal result cannot repair unavailable signed-correlation evidence. A complete,
+conflict-free signed attribution may remain reportable as advisory evidence when
+some optional PID axes are insufficient; the incomplete PID evidence stays in the
+report.
 
 ## Repeated use and missingness
 
@@ -144,5 +203,5 @@ stream. Overlapping windows and persistent CUSUM state create repeated looks.
 Association/gating censoring and sensor silence are not missing-at-random. Therefore
 0.9.0 **SHALL NOT** call `nis_alpha`, `family_alpha`, bootstrap intervals, synthetic
 rates, or a single assessment a mission-level false-alert guarantee. The operational
-default profile remains unqualified until the sequential and missingness tasks in
-the release ledger are closed with retained evidence.
+source profile remains research/advisory; mission-level operational qualification is
+`NOT_CLAIMED`.

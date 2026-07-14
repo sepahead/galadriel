@@ -27,6 +27,16 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Capture exact subject identity
+        env:
+          EXPECTED_SUBJECT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse "HEAD^{commit}")" = "$EXPECTED_SUBJECT"
+          git rev-parse "HEAD^{commit}"
+          git rev-parse "HEAD^{tree}"
 
       - name: Install pinned workspace toolchain
         uses: dtolnay/rust-toolchain@c1709d61444fb708e6ed87924f95626398d8d115 # 1.89.0
@@ -34,13 +44,34 @@ jobs:
           components: rustfmt, clippy
 
       - name: Restore Cargo cache
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Fetch locked dependencies
         run: cargo fetch --locked
 
+      - name: Install pinned public-API tool
+        env:
+          RUSTFLAGS: ""
+        run: cargo install cargo-public-api --version 0.52.0 --locked
+
       - name: Verify exact-epoch secure deployment profile
         run: python3 scripts/secure_deployment.py check
+
+      - name: Verify release governance and review tooling
+        run: >-
+          python3 -m unittest -v
+          scripts.tests.test_release_audit
+          repo_work.tests.test_review_tools
+          repo_work.tests.test_task_dispositions
+          repo_work.tests.test_release_assurance
+
+      - name: Verify generated release-audit artifacts
+        run: |
+          python3 repo_work/build_task_dispositions.py verify
+          python3 scripts/release_audit.py verify
+
+      - name: Verify exact public API snapshots
+        run: python3 repo_work/check_public_api.py
 
       - name: Format
         run: cargo fmt --all --check
@@ -49,37 +80,12 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
       - name: Check feature-isolated CLI graphs
-        shell: bash
         run: |
-          set -euo pipefail
+          python3 repo_work/check_feature_graph.py
           cargo check -p galadriel-cli --no-default-features --locked
           cargo check -p galadriel-cli --no-default-features --features pid --locked
           cargo check -p galadriel-cli --no-default-features --features ncp --locked
           cargo check -p galadriel-cli --no-default-features --features ncp-live --locked
-
-          default_tree="$(cargo tree -p galadriel-cli --no-default-features -e normal --locked)"
-          for forbidden in pid-core ncp-core ncp-zenoh zenoh tokio; do
-            if [[ "$default_tree" == *"$forbidden v"* ]]; then
-              echo "default CLI dependency graph unexpectedly contains $forbidden" >&2
-              exit 1
-            fi
-          done
-
-          pid_tree="$(cargo tree -p galadriel-cli --no-default-features --features pid -e normal --locked)"
-          for forbidden in ncp-core ncp-zenoh zenoh tokio; do
-            if [[ "$pid_tree" == *"$forbidden v"* ]]; then
-              echo "pid-only CLI dependency graph unexpectedly contains $forbidden" >&2
-              exit 1
-            fi
-          done
-
-          ncp_tree="$(cargo tree -p galadriel-cli --no-default-features --features ncp -e normal --locked)"
-          for forbidden in pid-core ncp-zenoh zenoh tokio; do
-            if [[ "$ncp_tree" == *"$forbidden v"* ]]; then
-              echo "ncp-only CLI dependency graph unexpectedly contains $forbidden" >&2
-              exit 1
-            fi
-          done
 
       - name: Test (workspace, all features)
         run: cargo test --workspace --all-features --locked
@@ -118,6 +124,16 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Capture exact subject identity
+        env:
+          EXPECTED_SUBJECT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse "HEAD^{commit}")" = "$EXPECTED_SUBJECT"
+          git rev-parse "HEAD^{commit}"
+          git rev-parse "HEAD^{tree}"
 
       - name: Install current stable Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
@@ -126,7 +142,7 @@ jobs:
           components: clippy
 
       - name: Restore Cargo cache
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Fetch locked dependencies
         run: cargo fetch --locked
@@ -146,16 +162,36 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Capture exact subject identity
+        env:
+          EXPECTED_SUBJECT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse "HEAD^{commit}")" = "$EXPECTED_SUBJECT"
+          git rev-parse "HEAD^{commit}"
+          git rev-parse "HEAD^{tree}"
+
+      - name: Install pinned workspace toolchain
+        uses: dtolnay/rust-toolchain@c1709d61444fb708e6ed87924f95626398d8d115 # 1.89.0
+
+      # Build from the checksummed crates.io source package. The otherwise
+      # convenient Docker action downloads its cargo-deny binary without
+      # authenticating the release-asset bytes.
+      - name: Install pinned dependency-policy tool
+        env:
+          RUSTFLAGS: ""
+        run: cargo install cargo-deny --version 0.19.9 --locked
 
       - name: Check dependency policy
-        uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2
-        with:
-          rust-version: "1.89.0"
-          arguments: --all-features --locked
+        run: cargo deny --all-features --locked check
 
       - name: Check fuzz-workspace dependency policy
-        uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2
-        with:
-          rust-version: "1.89.0"
-          manifest-path: fuzz/Cargo.toml
-          arguments: --all-features --locked
+        run: >-
+          cargo deny
+          --manifest-path fuzz/Cargo.toml
+          --all-features
+          --locked
+          check
+          --config fuzz/deny.toml

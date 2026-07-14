@@ -2,10 +2,13 @@
 all-features = true
 
 [advisories]
+yanked = "deny"
 unmaintained = "workspace"
 unsound = "all"
 ignore = [
     { id = "RUSTSEC-2026-0041", reason = "Owner: Galadriel maintainers. Expires: 2026-10-01. Zenoh 1.9 locks lz4_flex 0.10, but CI asserts transport_compression remains disabled; remove on NCP/Zenoh upgrade." },
+    { crate = "spin@0.9.8", reason = "Owner: Galadriel maintainers. Expires: 2026-10-01. Exact NCP 0.8/Zenoh 1.9 transitively selects this yanked release; no RustSec advisory is attached. Remove on the reviewed NCP/Zenoh migration." },
+    { crate = "spin@0.10.0", reason = "Owner: Galadriel maintainers. Expires: 2026-10-01. Exact NCP 0.8/Zenoh 1.9 transitively selects this yanked release; no RustSec advisory is attached. Remove on the reviewed NCP/Zenoh migration." },
 ]
 
 [licenses]
@@ -20,7 +23,6 @@ allow = [
     "ISC",
     "MIT",
     "MPL-2.0",
-    "NCSA",
     "Unicode-3.0",
     "Zlib",
 ]

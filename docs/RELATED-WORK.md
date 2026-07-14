@@ -24,7 +24,8 @@ threat grounding in [`MOTIVATION.md`](MOTIVATION.md).
 > deployment ranking. Galadriel's current performance evidence is synthetic. The bundled
 > historical Crebain output does not provide common-frame, common-frozen-prior cross-modal
 > residuals and is selection-biased by association/gating; it proves parsing and baseline
-> smoke behavior only. An opt-in producer now implements the contract, but no recorded
+> smoke behavior only. A retained historical opt-in producer revision implemented the
+> contract shape, but it does not qualify a current reciprocal integration and no recorded
 > field/calibration result has been accepted.
 
 ---
@@ -114,9 +115,9 @@ complementary** — they defeat disjoint attacker capabilities.
 and flags an inconsistency; **solution-separation RAIM** compares full-set vs. subset position
 solutions; both then perform **fault detection and exclusion (FDE)** to identify and drop the
 offending satellite
-([Parkinson & Axelrad, "Autonomous GPS Integrity Monitoring Using the Pseudorange Residual," *NAVIGATION* 35(2):255–274, 1988](https://www.ion.org/publications/abstract.cfm?articleID=100547);
+([Parkinson & Axelrad, "Autonomous GPS Integrity Monitoring Using the Pseudorange Residual," *NAVIGATION* 35(2):255–274, 1988](https://www.ion.org/publications/abstract.cfm?articleID=100323);
 survey: [*A survey of GNSS RAIM: research status and opportunities*, Frontiers in Physics, 2025](https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2025.1567301/full);
-robust extension: [modified residual-based RAIM, *Sensors* 2020](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7570696/)).
+robust extension: [modified residual-based RAIM, *Sensors* 2020](https://pmc.ncbi.nlm.nih.gov/articles/PMC7570696/)).
 
 **Threat model.** A single (classically) faulty measurement, under a **known geometry matrix** and a
 **known measurement model**; extensions handle multiple simultaneous faults and use robust
@@ -441,7 +442,7 @@ may layer several of them rather than treat this document as a deployment rankin
 Most sources in this document are cited inline. The one shared bracket key, [Hallyburton2022], is
 defined in [`PAPER.md` §References](PAPER.md#references). This document additionally defines:
 
-- **[ParkinsonAxelrad1988]** B. W. Parkinson, P. Axelrad. "Autonomous GPS Integrity Monitoring Using the Pseudorange Residual." *NAVIGATION* **35**(2):255–274, 1988. [ION](https://www.ion.org/publications/abstract.cfm?articleID=100547).
+- **[ParkinsonAxelrad1988]** B. W. Parkinson, P. Axelrad. "Autonomous GPS Integrity Monitoring Using the Pseudorange Residual." *NAVIGATION* **35**(2):255–274, 1988. [ION](https://www.ion.org/publications/abstract.cfm?articleID=100323).
 - **[RAIMsurvey2025]** "A survey of GNSS receiver autonomous integrity monitoring: research status and opportunities." *Frontiers in Physics,* 2025. [link](https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2025.1567301/full).
 - **[GNSSspoofSurvey2022]** "A Survey of GNSS Spoofing and Anti-Spoofing Technology." *Remote Sensing* **14**(19):4826, 2022. [MDPI](https://www.mdpi.com/2072-4292/14/19/4826).
 - **[SpatialProcessing2021]** "GNSS spoofing detection through spatial processing." *NAVIGATION: J. Inst. Navigation* **68**(2):243, 2021. [link](https://navi.ion.org/content/68/2/243).

@@ -19,3 +19,5 @@ workspace = true
 galadriel-core = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }

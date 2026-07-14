@@ -21,8 +21,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
-# ncp-core is light (serde + serde_json only); the workspace root pins the released
-# NCP 0.8 crates by the exact public v0.8.0 commit.
+# ncp-core is light (serde + serde_json only); the workspace root pins the exact
+# commit selected by the public annotated NCP v0.8.0 tag.
 ncp-core = { workspace = true }
 # The live named-perception tap (feature `zenoh`) pulls the full Zenoh + tokio stack;
 # the JSONL ingest path needs none of it, so it is strictly optional.

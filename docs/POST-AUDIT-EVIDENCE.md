@@ -13,7 +13,9 @@ cargo run --locked -p galadriel-eval --release --bin galadriel-evidence -- \
 The output directory must not already exist. This prevents a new run from silently
 mixing with or overwriting earlier evidence. Publication runs also require a clean
 Git worktree. `--allow-dirty` exists only for development smoke runs and is recorded
-in the manifest.
+in the manifest. The CLI spelling is converted immediately to the closed
+`PublicationSourcePolicy::{RequireClean, PermitDirtyWithAudit}` choice; the accepted
+runner does not retain a configuration Boolean.
 
 ## Published research snapshot
 
@@ -21,6 +23,9 @@ The repository includes a clean-source reference run at
 [`evidence/results/post-audit-v1-8a0084f`](../evidence/results/post-audit-v1-8a0084f).
 Its manifest binds the artifacts to commit `8a0084f`, records `dirty=false`, and hashes
 the configuration, lockfile, recorded fixture, runner binary, and every output file.
+That retained diagnostic snapshot uses the historical trial-v1 numeric-seed wire. It is
+not a trial-v3 artifact; the current runner's exact-string schema applies only to newly
+generated output.
 
 This is not a pass/fail acceptance artifact. The independent clean arm reports 26.26
 alert episodes/hour and a 0.9167 mission probability of any alert; positive
@@ -32,11 +37,15 @@ current pointwise defaults are not stream-calibrated for operational use.
 
 One command writes:
 
-- `config.json`: the complete, normalized run configuration;
-- `trials.jsonl`: one machine-readable record per track and detector, including
-  the seed, truth, run-length verdict trace, alert episodes, abstentions, extraction
-  status, pre-onset-alert flag, conditional delay, attribution result, and lossless
-  hexadecimal forms of every `u64` seed and track identifier;
+- `config.json`: the complete, normalized accepted run configuration. `base_seed` and
+  `base_seed_decimal` are the same canonical unsigned-decimal string, while
+  `base_seed_hex` is its fixed-width lowercase `0x` plus 16-hex-digit form;
+- `trials.jsonl`: one `galadriel.evidence.trial.v3` record per track and detector,
+  including truth, run-length verdict trace, alert episodes, abstentions, extraction
+  status, pre-onset-alert flag, conditional delay, and attribution result. Synthetic
+  rows encode `seed` as an exact unsigned-decimal JSON string and `seed_hex` as fixed-
+  width lowercase hexadecimal; recorded-fixture rows use `null` for both. `track_id`
+  remains a JSON-safe integer and `track_id_hex` is its fixed-width hexadecimal mirror;
 - `summary.json`: calibration diagnostics and holdout results kept in separate
   arrays, with point estimates and boundary-safe 95% intervals;
 - `report.md`: a compact holdout report and interpretation limits;
@@ -46,7 +55,16 @@ One command writes:
 
 Relative fixture paths are resolved against the configuration file's directory.
 The runner rejects unknown configuration fields, invalid ranges, excessive work,
-and a fixture whose SHA-256 does not match the declared value.
+duplicate keys, and a fixture whose SHA-256 does not match the declared value. The
+raw file DTO is consumed once into an immutable accepted configuration containing
+the release suite, bounded vectors, verified fixture bytes, work estimates, and a
+canonical digest.
+
+New candidate input files must write `base_seed` as an exact unsigned-decimal JSON
+string. The strict decoder still accepts a JSON unsigned-integer token for the retained
+historical configuration, then normalizes every newly serialized accepted configuration
+to the string form above. That compatibility path does not make binary64 parsing safe;
+JavaScript and similar consumers must use the decimal or hexadecimal string fields.
 
 ## Study design
 
@@ -65,8 +83,10 @@ The covariance sensitivity grid must include the exact `1.0` reference, and ever
 non-reference scale must differ from it by at least `0.01` (a one-percent declared
 covariance shift). Exact normalized IEEE-754 bits are part of each floating-point
 condition identifier, so close valid arms cannot collide. Hexadecimal seed and
-track strings are the lossless form for JavaScript and other consumers whose JSON
-number path cannot represent every `u64` exactly.
+track mirrors remain available, but trial schema v3's primary `seed` is already a
+lossless decimal string. The accepted configuration likewise exposes lossless decimal
+and hexadecimal base-seed strings. Numeric track IDs are separately constrained to
+Galadriel's JSON-safe integer domain.
 
 False-alert evidence is reported as alert episodes per pooled exposure hour,
 mission probability of any alert, and finite-horizon restricted ARL0 with its
@@ -85,11 +105,12 @@ Only a subsequent explicit nominal assessment clears it. This avoids turning an
 evidence outage into artificial alert recoveries and repeat episodes.
 
 Bootstrap resampling always samples complete tracks. It never resamples frames as
-if autocorrelated observations were independent. Track-level proportions use Wilson
-score intervals, and episode rates use exact Garwood Poisson intervals with their
-homogeneous-rate assumption labeled. When at least 80% of requested whole-track
-bootstrap replicates are usable, the runner conservatively envelopes those analytic
-intervals with the bootstrap interval. Restricted ARL0 and post-warm-up abstention
+if autocorrelated observations were independent. Per-track binomial proportions other
+than the pooled post-warm-up abstention estimate use Wilson score intervals, and episode
+rates use exact Garwood Poisson intervals with their homogeneous-rate assumption labeled.
+When at least 80% of requested whole-track bootstrap replicates are usable, the runner
+conservatively envelopes those analytic intervals with the bootstrap interval. Restricted
+ARL0 and post-warm-up abstention
 also use distribution-free bounded-track Hoeffding intervals, preventing all-censored
 or all-zero samples from collapsing to false population certainty. Delay uses the
 whole-track bootstrap directly. Sparse delay medians keep a descriptive point value

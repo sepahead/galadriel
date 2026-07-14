@@ -71,6 +71,12 @@ fn encoded(event_seq: u64) -> Vec<u8> {
         .expect("test monitor envelope encodes")
 }
 
+fn encoded_with_string_claim(event_seq: u64, field: &str, value: &str) -> Vec<u8> {
+    let mut raw = serde_json::to_value(envelope(event_seq)).expect("test envelope becomes JSON");
+    raw[field] = serde_json::Value::String(value.to_owned());
+    serde_json::to_vec(&raw).expect("modified wire envelope encodes")
+}
+
 async fn publish(bus: &ZenohBus, bytes: &[u8]) {
     let key =
         galadriel_ncp::monitor::monitor_key(REALM, SESSION_ID).expect("test monitor key is valid");
@@ -120,7 +126,7 @@ async fn live_monitor_tap_reorders_and_delivers_ordered_receipts() {
     let completed = Instant::now().into_std();
 
     assert_eq!(
-        (first.envelope.event_seq, second.envelope.event_seq),
+        (first.envelope.event_seq(), second.envelope.event_seq()),
         (1, 2)
     );
     assert!(first.received_at >= started && first.received_at <= completed);
@@ -185,14 +191,9 @@ async fn provenance_mismatch_faults_the_epoch_and_delivers_nothing() {
         .subscribe_channel(SESSION_ID, PRODUCER_ID)
         .await
         .expect("subscribe monitor channel");
-    let mut wrong = envelope(1);
-    wrong.producer_id = "other-producer".to_string();
+    let wrong = encoded_with_string_claim(1, "producer_id", "other-producer");
 
-    publish(
-        &publisher,
-        &serde_json::to_vec(&wrong).expect("wrong-provenance envelope encodes"),
-    )
-    .await;
+    publish(&publisher, &wrong).await;
 
     let fault = wait_for_fault(&health).await;
     assert_eq!(fault, MonitorIngressFault::ProvenanceMismatch);
@@ -340,7 +341,7 @@ async fn receiver_close_undeclares_only_its_selector_and_stops_its_gap_timer() {
         .expect("restarted receipt before deadline")
         .expect("restarted monitor stream stays healthy")
         .expect("restarted receipt exists");
-    assert_eq!(restarted.envelope.event_seq, 1);
+    assert_eq!(restarted.envelope.event_seq(), 1);
     assert_eq!(restarted_health.payloads_received(), 1);
     assert_eq!(health.payloads_received(), 1);
 
@@ -357,25 +358,11 @@ async fn advisory_contract_hash_mismatch_is_counted_and_delivered() {
         .subscribe_channel(SESSION_ID, PRODUCER_ID)
         .await
         .expect("subscribe monitor channel");
-    let mut first_drifted = envelope(1);
-    first_drifted.contract_hash = "deadbeefdeadbeef".to_string();
-    let mut second_drifted = envelope(2);
-    second_drifted.contract_hash = "deadbeefdeadbeef".to_string();
+    let first_drifted = encoded_with_string_claim(1, "contract_hash", "deadbeefdeadbeef");
+    let second_drifted = encoded_with_string_claim(2, "contract_hash", "deadbeefdeadbeef");
 
-    publish(
-        &publisher,
-        &first_drifted
-            .encode()
-            .expect("first advisory mismatch remains valid"),
-    )
-    .await;
-    publish(
-        &publisher,
-        &second_drifted
-            .encode()
-            .expect("second advisory mismatch remains valid"),
-    )
-    .await;
+    publish(&publisher, &first_drifted).await;
+    publish(&publisher, &second_drifted).await;
 
     let first = timeout(DEADLINE, receiver.recv())
         .await
@@ -388,7 +375,7 @@ async fn advisory_contract_hash_mismatch_is_counted_and_delivered() {
         .expect("advisory drift does not fault")
         .expect("second receipt exists");
     assert_eq!(
-        (first.envelope.event_seq, second.envelope.event_seq),
+        (first.envelope.event_seq(), second.envelope.event_seq()),
         (1, 2)
     );
     assert_eq!(health.contract_hash_mismatches(), 2);

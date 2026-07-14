@@ -21,7 +21,7 @@
 
 use std::collections::BTreeMap;
 use std::num::NonZeroU64;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
@@ -29,11 +29,14 @@ use ncp_core::{ContractStatus, Keys, DEFAULT_REALM};
 use ncp_zenoh::{ZenohBus, ZenohError};
 use tokio::sync::{mpsc, watch};
 
-use crate::live::TransportMode;
+use crate::live::{BusOwnership, TransportMode};
 use crate::monitor::{
     monitor_key, MonitorEnvelope, MonitorError, MAX_MONITOR_EVENT_BYTES, MAX_MONITOR_QUEUE_EVENTS,
 };
-use crate::{valid_realm, MAX_ID_SEGMENT_BYTES};
+use crate::{
+    config_identity::ConfigurationIdentityBuilder, valid_realm, ConfigurationIdentity,
+    MAX_ID_SEGMENT_BYTES,
+};
 
 /// Default number of contiguous monitor receipts retained for a consumer.
 pub const DEFAULT_MONITOR_HANDOFF_CAPACITY: usize = 1_024;
@@ -55,14 +58,64 @@ pub const MAX_MONITOR_REORDER_DISTANCE: u64 = MAX_MONITOR_QUEUE_EVENTS as u64;
 
 /// Hard ceiling for a monitor sequence gap to remain unresolved.
 pub const MAX_MONITOR_REORDER_DEADLINE: Duration = Duration::from_secs(60);
+/// Hard ceiling for aggregate bytes represented by handoff and reorder slots.
+pub const MAX_MONITOR_INGRESS_STATE_BYTES: usize =
+    2 * MAX_MONITOR_INGRESS_ITEMS * MAX_MONITOR_EVENT_BYTES;
 
-/// Bounded monitor-ingress configuration.
+/// Untrusted raw monitor-ingress parameters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MonitorLiveParams {
+    /// Maximum contiguous receipts waiting for the consumer.
+    pub handoff_capacity: usize,
+    /// Maximum out-of-order receipts retained for a gap.
+    pub reorder_capacity: usize,
+    /// Maximum forward distance from the required event sequence.
+    pub max_reorder_distance: u64,
+    /// Maximum monotonic duration of an unresolved gap.
+    pub reorder_deadline: Duration,
+}
+
+/// Named, reviewed monitor-ingress profiles for release 0.9.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum MonitorLiveProfile {
+    /// Bounded fail-stop monitor ingress shipped in 0.9.
+    BoundedV0_9,
+}
+
+impl MonitorLiveProfile {
+    /// Return this profile's frozen raw parameters.
+    #[must_use]
+    pub const fn params(self) -> MonitorLiveParams {
+        match self {
+            Self::BoundedV0_9 => MonitorLiveParams {
+                handoff_capacity: DEFAULT_MONITOR_HANDOFF_CAPACITY,
+                reorder_capacity: DEFAULT_MONITOR_REORDER_CAPACITY,
+                max_reorder_distance: DEFAULT_MONITOR_REORDER_DISTANCE,
+                reorder_deadline: DEFAULT_MONITOR_REORDER_DEADLINE,
+            },
+        }
+    }
+
+    /// Validate this profile and return its immutable capability.
+    pub fn try_config(self) -> Result<MonitorLiveConfig, MonitorLiveConfigError> {
+        MonitorLiveConfig::try_from(self.params())
+    }
+}
+
+/// Bounded, validated monitor-ingress configuration.
+///
+/// ```compile_fail
+/// use galadriel_ncp::monitor_live::MonitorLiveConfig;
+/// let _ = MonitorLiveConfig::default();
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MonitorLiveConfig {
     handoff_capacity: usize,
     reorder_capacity: usize,
     max_reorder_distance: u64,
     reorder_deadline: Duration,
+    identity: ConfigurationIdentity,
 }
 
 impl MonitorLiveConfig {
@@ -77,19 +130,7 @@ impl MonitorLiveConfig {
         reorder_capacity: usize,
         max_reorder_distance: u64,
     ) -> Result<Self, MonitorLiveConfigError> {
-        validate_item_capacity("handoff", handoff_capacity)?;
-        validate_item_capacity("reorder", reorder_capacity)?;
-        if max_reorder_distance == 0 {
-            return Err(MonitorLiveConfigError::ZeroReorderDistance);
-        }
-        if max_reorder_distance > MAX_MONITOR_REORDER_DISTANCE {
-            return Err(MonitorLiveConfigError::ReorderDistanceTooLarge {
-                distance: max_reorder_distance,
-                maximum: MAX_MONITOR_REORDER_DISTANCE,
-            });
-        }
-        validate_capacity_relationship(handoff_capacity, reorder_capacity)?;
-        Ok(Self {
+        Self::try_from(MonitorLiveParams {
             handoff_capacity,
             reorder_capacity,
             max_reorder_distance,
@@ -104,12 +145,15 @@ impl MonitorLiveConfig {
     /// Returns [`MonitorLiveConfigError`] when `reorder_deadline` is zero or
     /// exceeds [`MAX_MONITOR_REORDER_DEADLINE`].
     pub fn with_reorder_deadline(
-        mut self,
+        self,
         reorder_deadline: Duration,
     ) -> Result<Self, MonitorLiveConfigError> {
-        validate_reorder_deadline(reorder_deadline)?;
-        self.reorder_deadline = reorder_deadline;
-        Ok(self)
+        Self::try_from(MonitorLiveParams {
+            handoff_capacity: self.handoff_capacity,
+            reorder_capacity: self.reorder_capacity,
+            max_reorder_distance: self.max_reorder_distance,
+            reorder_deadline,
+        })
     }
 
     /// Maximum contiguous receipts waiting for the consumer.
@@ -131,17 +175,79 @@ impl MonitorLiveConfig {
     pub fn reorder_deadline(self) -> Duration {
         self.reorder_deadline
     }
+
+    /// Canonical identity of this validated monitor-ingress policy.
+    #[must_use]
+    pub const fn identity(self) -> ConfigurationIdentity {
+        self.identity
+    }
 }
 
+impl TryFrom<MonitorLiveParams> for MonitorLiveConfig {
+    type Error = MonitorLiveConfigError;
+
+    fn try_from(params: MonitorLiveParams) -> Result<Self, Self::Error> {
+        validate_item_capacity("handoff", params.handoff_capacity)?;
+        validate_item_capacity("reorder", params.reorder_capacity)?;
+        if params.max_reorder_distance == 0 {
+            return Err(MonitorLiveConfigError::ZeroReorderDistance);
+        }
+        if params.max_reorder_distance > MAX_MONITOR_REORDER_DISTANCE {
+            return Err(MonitorLiveConfigError::ReorderDistanceTooLarge {
+                distance: params.max_reorder_distance,
+                maximum: MAX_MONITOR_REORDER_DISTANCE,
+            });
+        }
+        validate_capacity_relationship(params.handoff_capacity, params.reorder_capacity)?;
+        validate_reorder_deadline(params.reorder_deadline)?;
+        let slots = params
+            .handoff_capacity
+            .checked_add(params.reorder_capacity)
+            .ok_or(MonitorLiveConfigError::AggregateStateTooLarge {
+                bytes: usize::MAX,
+                maximum: MAX_MONITOR_INGRESS_STATE_BYTES,
+            })?;
+        let bytes = slots.checked_mul(MAX_MONITOR_EVENT_BYTES).ok_or(
+            MonitorLiveConfigError::AggregateStateTooLarge {
+                bytes: usize::MAX,
+                maximum: MAX_MONITOR_INGRESS_STATE_BYTES,
+            },
+        )?;
+        if bytes > MAX_MONITOR_INGRESS_STATE_BYTES {
+            return Err(MonitorLiveConfigError::AggregateStateTooLarge {
+                bytes,
+                maximum: MAX_MONITOR_INGRESS_STATE_BYTES,
+            });
+        }
+        let deadline_ms = params.reorder_deadline.as_millis() as u64;
+        Ok(Self {
+            handoff_capacity: params.handoff_capacity,
+            reorder_capacity: params.reorder_capacity,
+            max_reorder_distance: params.max_reorder_distance,
+            reorder_deadline: params.reorder_deadline,
+            identity: ConfigurationIdentityBuilder::new("monitor-live")
+                .u64("handoff_capacity", params.handoff_capacity as u64)
+                .u64("reorder_capacity", params.reorder_capacity as u64)
+                .u64("max_reorder_distance", params.max_reorder_distance)
+                .u64("reorder_deadline_ms", deadline_ms)
+                .finish(),
+        })
+    }
+}
+
+#[cfg(test)]
 impl Default for MonitorLiveConfig {
     fn default() -> Self {
-        Self {
-            handoff_capacity: DEFAULT_MONITOR_HANDOFF_CAPACITY,
-            reorder_capacity: DEFAULT_MONITOR_REORDER_CAPACITY,
-            max_reorder_distance: DEFAULT_MONITOR_REORDER_DISTANCE,
-            reorder_deadline: DEFAULT_MONITOR_REORDER_DEADLINE,
-        }
+        MonitorLiveProfile::BoundedV0_9
+            .try_config()
+            .expect("the compiled monitor-live test profile is valid")
     }
+}
+
+fn bounded_monitor_live_config() -> Result<MonitorLiveConfig, ZenohError> {
+    MonitorLiveProfile::BoundedV0_9
+        .try_config()
+        .map_err(|error| ZenohError(error.to_string()))
 }
 
 fn validate_capacity_relationship(
@@ -167,6 +273,9 @@ fn validate_reorder_deadline(deadline: Duration) -> Result<(), MonitorLiveConfig
             deadline,
             maximum: MAX_MONITOR_REORDER_DEADLINE,
         });
+    }
+    if !deadline.subsec_nanos().is_multiple_of(1_000_000) {
+        return Err(MonitorLiveConfigError::FractionalMillisecondReorderDeadline);
     }
     Ok(())
 }
@@ -225,6 +334,12 @@ pub enum MonitorLiveConfigError {
         deadline: Duration,
         maximum: Duration,
     },
+    /// The deadline must use exact millisecond precision for canonical identity.
+    #[error("monitor reorder deadline must be an exact millisecond duration")]
+    FractionalMillisecondReorderDeadline,
+    /// Aggregate represented queue/reorder bytes exceeded the hard cap.
+    #[error("monitor ingress represented bytes {bytes} exceed maximum {maximum}")]
+    AggregateStateTooLarge { bytes: usize, maximum: usize },
 }
 
 /// Stable category for one terminal monitor-ingress fault.
@@ -257,6 +372,20 @@ pub enum MonitorIngressFaultKind {
     InternalSequenceFailure,
     /// The owned monotonic gap-deadline task terminated unexpectedly.
     TimerTaskFailed,
+    /// A mutex protecting ingress, telemetry, or tap lifecycle state was poisoned.
+    InternalStatePoisoned,
+}
+
+/// Production state whose mutex was poisoned by a panic in its critical section.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum MonitorPoisonedState {
+    /// Serialized sequence, reorder, deadline, and terminal-fault state.
+    Ingress,
+    /// Last-receipt timestamp telemetry.
+    ReceiptTelemetry,
+    /// Tap close and active-receiver lifecycle accounting.
+    TapLifecycle,
 }
 
 /// First terminal failure of one monitor subscription.
@@ -315,6 +444,9 @@ pub enum MonitorIngressFault {
     /// The owned monotonic gap-deadline task terminated unexpectedly.
     #[error("monitor gap-deadline task terminated unexpectedly")]
     TimerTaskFailed,
+    /// A mutex-protected production state was poisoned.
+    #[error("monitor {state:?} state was poisoned")]
+    InternalStatePoisoned { state: MonitorPoisonedState },
 }
 
 impl MonitorIngressFault {
@@ -342,11 +474,16 @@ impl MonitorIngressFault {
             Self::HandoffClosed { .. } => MonitorIngressFaultKind::HandoffClosed,
             Self::InternalSequenceFailure => MonitorIngressFaultKind::InternalSequenceFailure,
             Self::TimerTaskFailed => MonitorIngressFaultKind::TimerTaskFailed,
+            Self::InternalStatePoisoned { .. } => MonitorIngressFaultKind::InternalStatePoisoned,
         }
     }
 }
 
-/// Snapshot of terminal fault counts.
+/// Snapshot of detected fault-category counts.
+///
+/// A normal epoch records one terminal category. If a mutex is poisoned after an
+/// earlier terminal fault, the earlier fault remains authoritative while the poison
+/// category is additionally counted so neither item of evidence is lost.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct MonitorIngressFaultCounts {
@@ -376,6 +513,8 @@ pub struct MonitorIngressFaultCounts {
     pub internal_sequence_failure: u64,
     /// Unexpected deadline-task termination faults.
     pub timer_task_failed: u64,
+    /// Poisoned mutex state detected at a fail-closed boundary.
+    pub internal_state_poisoned: u64,
 }
 
 impl MonitorIngressFaultCounts {
@@ -399,10 +538,11 @@ impl MonitorIngressFaultCounts {
             MonitorIngressFaultKind::HandoffClosed => self.handoff_closed,
             MonitorIngressFaultKind::InternalSequenceFailure => self.internal_sequence_failure,
             MonitorIngressFaultKind::TimerTaskFailed => self.timer_task_failed,
+            MonitorIngressFaultKind::InternalStatePoisoned => self.internal_state_poisoned,
         }
     }
 
-    /// Total terminal faults represented by this snapshot.
+    /// Saturating total of detected fault-category events.
     pub fn total(self) -> u64 {
         self.payload_too_large
             .saturating_add(self.malformed_json)
@@ -417,6 +557,7 @@ impl MonitorIngressFaultCounts {
             .saturating_add(self.handoff_closed)
             .saturating_add(self.internal_sequence_failure)
             .saturating_add(self.timer_task_failed)
+            .saturating_add(self.internal_state_poisoned)
     }
 }
 
@@ -442,6 +583,7 @@ struct IngressCounters {
     events_reordered: AtomicU64,
     events_enqueued: AtomicU64,
     events_delivered: AtomicU64,
+    events_discarded: AtomicU64,
     contract_hash_mismatches: AtomicU64,
     last_contiguous_event_seq: AtomicU64,
     pending_reorder_events: AtomicU64,
@@ -458,6 +600,7 @@ struct IngressCounters {
     handoff_closed: AtomicU64,
     internal_sequence_failure: AtomicU64,
     timer_task_failed: AtomicU64,
+    internal_state_poisoned: AtomicU64,
     last_payload_received_at: Mutex<Option<Instant>>,
 }
 
@@ -485,14 +628,8 @@ impl IngressCounters {
             handoff_closed: self.handoff_closed.load(Ordering::Relaxed),
             internal_sequence_failure: self.internal_sequence_failure.load(Ordering::Relaxed),
             timer_task_failed: self.timer_task_failed.load(Ordering::Relaxed),
+            internal_state_poisoned: self.internal_state_poisoned.load(Ordering::Relaxed),
         }
-    }
-
-    fn last_payload_received_at(&self) -> Option<Instant> {
-        *self
-            .last_payload_received_at
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
     }
 }
 
@@ -515,6 +652,7 @@ fn fault_counter(counters: &IngressCounters, kind: MonitorIngressFaultKind) -> &
         MonitorIngressFaultKind::HandoffClosed => &counters.handoff_closed,
         MonitorIngressFaultKind::InternalSequenceFailure => &counters.internal_sequence_failure,
         MonitorIngressFaultKind::TimerTaskFailed => &counters.timer_task_failed,
+        MonitorIngressFaultKind::InternalStatePoisoned => &counters.internal_state_poisoned,
     }
 }
 
@@ -622,14 +760,97 @@ struct IngressEpoch {
     tap_counters: Arc<IngressCounters>,
     subscription_counters: Arc<IngressCounters>,
     state: Arc<Mutex<IngressState>>,
+    state_poison_observed: AtomicBool,
+    tap_lifecycle_poisoned: Arc<AtomicBool>,
     sender: mpsc::Sender<MonitorReceipt>,
     fault_sender: watch::Sender<Option<MonitorIngressFault>>,
     gap_timer: watch::Sender<GapTimerCommand>,
 }
 
 impl IngressEpoch {
+    fn lock_state(&self) -> std::sync::MutexGuard<'_, IngressState> {
+        match self.state.lock() {
+            Ok(mut state) => {
+                self.latch_receipt_telemetry_poison_locked(&mut state);
+                self.latch_tap_lifecycle_poison_locked(&mut state);
+                state
+            }
+            Err(poisoned) => {
+                let mut state = poisoned.into_inner();
+                if !self.state_poison_observed.swap(true, Ordering::AcqRel) {
+                    self.latch_poison_locked(&mut state, MonitorPoisonedState::Ingress);
+                }
+                // The recovered value is permanently terminal and its bounded
+                // reorder state was cleared by `latch_poison_locked`.
+                self.state.clear_poison();
+                state
+            }
+        }
+    }
+
+    fn latch_poison_locked(&self, state: &mut IngressState, poisoned: MonitorPoisonedState) {
+        state.reorder.pending.clear();
+        state.active_gap = None;
+        store_pair(
+            &self.tap_counters.pending_reorder_events,
+            &self.subscription_counters.pending_reorder_events,
+            0,
+        );
+        increment_pair(
+            &self.tap_counters.internal_state_poisoned,
+            &self.subscription_counters.internal_state_poisoned,
+        );
+        self.gap_timer.send_replace(GapTimerCommand::Stop);
+        if state.terminal_fault.is_none() {
+            let fault = MonitorIngressFault::InternalStatePoisoned { state: poisoned };
+            state.terminal_fault = Some(fault.clone());
+            self.fault_sender.send_replace(Some(fault));
+        }
+    }
+
+    fn latch_tap_lifecycle_poison_locked(&self, state: &mut IngressState) {
+        if self.tap_lifecycle_poisoned.load(Ordering::Acquire) && state.terminal_fault.is_none() {
+            self.latch_fault_locked(
+                state,
+                MonitorIngressFault::InternalStatePoisoned {
+                    state: MonitorPoisonedState::TapLifecycle,
+                },
+            );
+        }
+    }
+
+    fn latch_receipt_telemetry_poison_locked(&self, state: &mut IngressState) {
+        let mut poisoned = false;
+        for counters in [&self.tap_counters, &self.subscription_counters] {
+            if counters.last_payload_received_at.is_poisoned()
+                && snapshot_last_received(counters).is_err()
+            {
+                poisoned = true;
+            }
+        }
+        if poisoned {
+            self.latch_poison_locked(state, MonitorPoisonedState::ReceiptTelemetry);
+        }
+    }
+
+    fn last_payload_received_at(&self) -> Option<Instant> {
+        match snapshot_last_received(&self.subscription_counters) {
+            Ok(received_at) => received_at,
+            Err(poisoned) => {
+                let mut state = self.lock_state();
+                if state.terminal_fault.is_none() {
+                    self.latch_fault_locked(
+                        &mut state,
+                        MonitorIngressFault::InternalStatePoisoned { state: poisoned },
+                    );
+                }
+                None
+            }
+        }
+    }
+
     fn process_payload(&self, bytes: &[u8]) {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self.lock_state();
         // The mutex acquisition is the callback's serialized admission point.
         // Timestamping before it would let a callback wait behind another
         // transition, then retroactively anchor a new gap in the past.
@@ -641,13 +862,21 @@ impl IngressEpoch {
             &self.tap_counters.payloads_received,
             &self.subscription_counters.payloads_received,
         );
-        record_last_received(&self.tap_counters, received_at);
-        record_last_received(&self.subscription_counters, received_at);
-
         if state.terminal_fault.is_some() {
             increment_pair(
                 &self.tap_counters.payloads_after_fault,
                 &self.subscription_counters.payloads_after_fault,
+            );
+            return;
+        }
+        if record_last_received_pair(&self.tap_counters, &self.subscription_counters, received_at)
+            .is_err()
+        {
+            self.latch_fault_locked(
+                &mut state,
+                MonitorIngressFault::InternalStatePoisoned {
+                    state: MonitorPoisonedState::ReceiptTelemetry,
+                },
             );
             return;
         }
@@ -668,10 +897,19 @@ impl IngressEpoch {
         let envelope = match serde_json::from_slice::<MonitorEnvelope>(bytes) {
             Ok(envelope) => envelope,
             Err(error) => {
-                let fault = if error.classify() == serde_json::error::Category::Data {
-                    MonitorIngressFault::InvalidEnvelope
-                } else {
-                    MonitorIngressFault::MalformedJson
+                let fault = match error.classify() {
+                    serde_json::error::Category::Data => {
+                        // Custom deserialization validates the immutable envelope,
+                        // which turns typed semantic failures into Serde data errors.
+                        // Re-decode through the bounded typed API only on this error
+                        // path so compatibility/provenance faults retain their public
+                        // taxonomy without introducing a `Value` parser differential.
+                        match MonitorEnvelope::decode(bytes) {
+                            Err(error) => fault_for_monitor_error(&error),
+                            Ok(_) => MonitorIngressFault::InvalidEnvelope,
+                        }
+                    }
+                    _ => MonitorIngressFault::MalformedJson,
                 };
                 self.latch_fault_locked(&mut state, fault);
                 return;
@@ -771,7 +1009,7 @@ impl IngressEpoch {
     }
 
     fn latch_timer_task_failure(&self) {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self.lock_state();
         if state.cancelled {
             return;
         }
@@ -848,7 +1086,7 @@ impl IngressEpoch {
     }
 
     fn expire_gap(&self, generation: u64, now: Instant) -> bool {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self.lock_state();
         if state.cancelled {
             return true;
         }
@@ -866,7 +1104,7 @@ impl IngressEpoch {
     }
 
     fn cancel(&self) {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self.lock_state();
         if state.cancelled {
             return;
         }
@@ -960,6 +1198,7 @@ async fn run_gap_timer(
 pub struct MonitorSubscriptionHealth {
     counters: Arc<IngressCounters>,
     first_fault: watch::Receiver<Option<MonitorIngressFault>>,
+    ingress: Weak<IngressEpoch>,
 }
 
 impl MonitorSubscriptionHealth {
@@ -993,6 +1232,11 @@ impl MonitorSubscriptionHealth {
         self.counters.events_delivered.load(Ordering::Relaxed)
     }
 
+    /// Receipts quarantined from the handoff after a terminal boundary.
+    pub fn events_discarded(&self) -> u64 {
+        self.counters.events_discarded.load(Ordering::Relaxed)
+    }
+
     /// Accepted envelopes carrying an advisory NCP contract-hash mismatch.
     pub fn contract_hash_mismatches(&self) -> u64 {
         self.counters
@@ -1016,7 +1260,18 @@ impl MonitorSubscriptionHealth {
 
     /// Local monotonic time of the most recent serialized ingress admission.
     pub fn last_payload_received_at(&self) -> Option<Instant> {
-        self.counters.last_payload_received_at()
+        if let Some(ingress) = self.ingress.upgrade() {
+            return ingress.last_payload_received_at();
+        }
+        match snapshot_last_received(&self.counters) {
+            Ok(received_at) => received_at,
+            Err(_) => {
+                self.counters
+                    .internal_state_poisoned
+                    .fetch_add(1, Ordering::Relaxed);
+                None
+            }
+        }
     }
 
     /// Retained first terminal ingress fault, if any.
@@ -1062,8 +1317,8 @@ pub struct LiveMonitorReceiver {
     fault_channel_closed: bool,
     tap_counters: Arc<IngressCounters>,
     counters: Arc<IngressCounters>,
-    state: Arc<Mutex<IngressState>>,
-    ingress_owner: Option<Arc<IngressEpoch>>,
+    ingress_owner: Arc<IngressEpoch>,
+    subscription_cancelled: bool,
     subscriber: Option<zenoh::pubsub::Subscriber<()>>,
     gap_timer_task: Option<tokio::task::JoinHandle<()>>,
     lifecycle_lease: Option<MonitorReceiverLease>,
@@ -1095,12 +1350,12 @@ impl LiveMonitorReceiver {
                         }
                         return Ok(None);
                     };
-                    let state = Arc::clone(&self.state);
-                    let state = state
-                        .lock()
-                        .unwrap_or_else(|error| error.into_inner());
-                    if let Some(fault) = &state.terminal_fault {
-                        return Err(fault.clone());
+                    let terminal_fault = {
+                        self.ingress_owner.lock_state().terminal_fault.clone()
+                    };
+                    if let Some(fault) = terminal_fault {
+                        self.quarantine_receipts(1);
+                        return Err(fault);
                     }
                     increment_pair(
                         &self.tap_counters.events_delivered,
@@ -1115,8 +1370,8 @@ impl LiveMonitorReceiver {
                     let _ = task.await;
                 }, if self.gap_timer_task.is_some() => {
                     self.gap_timer_task.take();
-                    if let Some(ingress) = &self.ingress_owner {
-                        ingress.latch_timer_task_failure();
+                    if !self.subscription_cancelled {
+                        self.ingress_owner.latch_timer_task_failure();
                     }
                 }
             }
@@ -1139,10 +1394,10 @@ impl LiveMonitorReceiver {
                 return Err(MonitorTryRecvError::Closed);
             }
         };
-        let state = Arc::clone(&self.state);
-        let state = state.lock().unwrap_or_else(|error| error.into_inner());
-        if let Some(fault) = &state.terminal_fault {
-            return Err(fault.clone().into());
+        let terminal_fault = { self.ingress_owner.lock_state().terminal_fault.clone() };
+        if let Some(fault) = terminal_fault {
+            self.quarantine_receipts(1);
+            return Err(fault.into());
         }
         increment_pair(
             &self.tap_counters.events_delivered,
@@ -1166,23 +1421,35 @@ impl LiveMonitorReceiver {
         self.receiver.is_closed()
     }
 
-    fn terminal_state(&self) -> MonitorTerminalState {
-        match self
-            .state
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .terminal_fault
-            .clone()
-        {
-            Some(fault) => MonitorTerminalState::Fault(fault),
+    fn terminal_state(&mut self) -> MonitorTerminalState {
+        let fault = self.ingress_owner.lock_state().terminal_fault.clone();
+        match fault {
+            Some(fault) => {
+                self.quarantine_receipts(0);
+                MonitorTerminalState::Fault(fault)
+            }
             None => MonitorTerminalState::Healthy,
         }
     }
 
+    fn quarantine_receipts(&mut self, already_removed: u64) {
+        self.receiver.close();
+        let mut discarded = already_removed;
+        while self.receiver.try_recv().is_ok() {
+            discarded = discarded.saturating_add(1);
+        }
+        increment_pair_by(
+            &self.tap_counters.events_discarded,
+            &self.counters.events_discarded,
+            discarded,
+        );
+    }
+
     fn cancel_subscription(&mut self) {
         self.supervise_finished_gap_timer();
-        if let Some(ingress) = self.ingress_owner.take() {
-            ingress.cancel();
+        if !self.subscription_cancelled {
+            self.ingress_owner.cancel();
+            self.subscription_cancelled = true;
         }
         if let Some(task) = self.gap_timer_task.take() {
             task.abort();
@@ -1198,8 +1465,8 @@ impl LiveMonitorReceiver {
             .is_some_and(tokio::task::JoinHandle::is_finished)
         {
             self.gap_timer_task.take();
-            if let Some(ingress) = &self.ingress_owner {
-                ingress.latch_timer_task_failure();
+            if !self.subscription_cancelled {
+                self.ingress_owner.latch_timer_task_failure();
             }
         }
     }
@@ -1220,22 +1487,46 @@ struct MonitorTapLifecycle {
 
 struct MonitorReceiverLease {
     lifecycle: Arc<Mutex<MonitorTapLifecycle>>,
+    lifecycle_poisoned: Arc<AtomicBool>,
 }
 
 impl Drop for MonitorReceiverLease {
     fn drop(&mut self) {
-        let mut lifecycle = self
-            .lifecycle
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
+        let mut lifecycle = match self.lifecycle.lock() {
+            Ok(lifecycle) => lifecycle,
+            Err(poisoned) => {
+                self.lifecycle_poisoned.store(true, Ordering::Release);
+                let mut lifecycle = poisoned.into_inner();
+                lifecycle.close_started = true;
+                self.lifecycle.clear_poison();
+                lifecycle
+            }
+        };
         lifecycle.active_receivers = lifecycle.active_receivers.saturating_sub(1);
     }
 }
 
 fn reserve_monitor_receiver(
     lifecycle: &Arc<Mutex<MonitorTapLifecycle>>,
+    lifecycle_poisoned: &Arc<AtomicBool>,
 ) -> Result<MonitorReceiverLease, ZenohError> {
-    let mut state = lifecycle.lock().unwrap_or_else(|error| error.into_inner());
+    if lifecycle_poisoned.load(Ordering::Acquire) {
+        return Err(ZenohError(
+            "monitor tap lifecycle is terminal after mutex poison".to_owned(),
+        ));
+    }
+    let mut state = match lifecycle.lock() {
+        Ok(state) => state,
+        Err(poisoned) => {
+            lifecycle_poisoned.store(true, Ordering::Release);
+            let mut state = poisoned.into_inner();
+            state.close_started = true;
+            lifecycle.clear_poison();
+            return Err(ZenohError(
+                "monitor tap lifecycle mutex was poisoned".to_owned(),
+            ));
+        }
+    };
     if state.close_started {
         return Err(ZenohError(
             "cannot subscribe after monitor tap close has started".to_owned(),
@@ -1248,6 +1539,7 @@ fn reserve_monitor_receiver(
     drop(state);
     Ok(MonitorReceiverLease {
         lifecycle: Arc::clone(lifecycle),
+        lifecycle_poisoned: Arc::clone(lifecycle_poisoned),
     })
 }
 
@@ -1257,14 +1549,15 @@ pub struct MonitorTap {
     realm: String,
     config: MonitorLiveConfig,
     counters: Arc<IngressCounters>,
-    owns_bus: bool,
+    ownership: BusOwnership,
     lifecycle: Arc<Mutex<MonitorTapLifecycle>>,
+    lifecycle_poisoned: Arc<AtomicBool>,
 }
 
 impl MonitorTap {
     /// Open a default-realm tap with explicit transport-security intent.
     pub async fn open(mode: TransportMode) -> Result<Self, ZenohError> {
-        Self::open_with_config(mode, MonitorLiveConfig::default()).await
+        Self::open_with_config(mode, bounded_monitor_live_config()?).await
     }
 
     /// Open a default-realm tap with explicit security intent and ingress bounds.
@@ -1274,7 +1567,7 @@ impl MonitorTap {
     ) -> Result<Self, ZenohError> {
         let keys = Keys::default();
         let bus = open_bus(keys, mode).await?;
-        Self::from_parts(bus, DEFAULT_REALM.to_string(), config, true)
+        Self::from_parts(bus, DEFAULT_REALM.to_string(), config, BusOwnership::Owned)
     }
 
     /// Open an explicit-realm tap with explicit transport-security intent.
@@ -1282,7 +1575,7 @@ impl MonitorTap {
         realm: impl Into<String>,
         mode: TransportMode,
     ) -> Result<Self, ZenohError> {
-        Self::open_realm_with_config(realm, mode, MonitorLiveConfig::default()).await
+        Self::open_realm_with_config(realm, mode, bounded_monitor_live_config()?).await
     }
 
     /// Open an explicit-realm tap with explicit security intent and ingress bounds.
@@ -1295,7 +1588,7 @@ impl MonitorTap {
         let keys = Keys::try_new(&realm)
             .map_err(|error| ZenohError(format!("invalid NCP realm: {error}")))?;
         let bus = open_bus(keys, mode).await?;
-        Self::from_parts(bus, realm, config, true)
+        Self::from_parts(bus, realm, config, BusOwnership::Owned)
     }
 
     /// Wrap a host-owned bus and derive the exact realm from it.
@@ -1304,7 +1597,7 @@ impl MonitorTap {
     /// that the shared session used mTLS, the required read-only ACL, or a bounded
     /// transport receive-size limit before payload materialization.
     pub fn from_bus(bus: ZenohBus) -> Result<Self, ZenohError> {
-        Self::from_bus_with_config(bus, MonitorLiveConfig::default())
+        Self::from_bus_with_config(bus, bounded_monitor_live_config()?)
     }
 
     /// Wrap a host-owned bus with caller-supplied ingress bounds.
@@ -1313,14 +1606,14 @@ impl MonitorTap {
         config: MonitorLiveConfig,
     ) -> Result<Self, ZenohError> {
         let realm = bus.keys().realm().to_owned();
-        Self::from_parts(bus, realm, config, false)
+        Self::from_parts(bus, realm, config, BusOwnership::HostOwned)
     }
 
     fn from_parts(
         bus: ZenohBus,
         realm: String,
         config: MonitorLiveConfig,
-        owns_bus: bool,
+        ownership: BusOwnership,
     ) -> Result<Self, ZenohError> {
         if !valid_realm(&realm) {
             return Err(ZenohError(format!(
@@ -1332,8 +1625,9 @@ impl MonitorTap {
             realm,
             config,
             counters: Arc::new(IngressCounters::default()),
-            owns_bus,
+            ownership,
             lifecycle: Arc::new(Mutex::new(MonitorTapLifecycle::default())),
+            lifecycle_poisoned: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -1351,17 +1645,13 @@ impl MonitorTap {
         let key = monitor_key(&self.realm, session_id)
             .ok_or_else(|| ZenohError(format!("invalid NCP session id segment: {session_id:?}")))?;
         validate_monitor_producer_id(producer_id)?;
-        let lifecycle_lease = reserve_monitor_receiver(&self.lifecycle)?;
+        let lifecycle_lease = reserve_monitor_receiver(&self.lifecycle, &self.lifecycle_poisoned)?;
 
         let (sender, receiver) = mpsc::channel(self.config.handoff_capacity);
         let (fault_sender, fault_receiver) = watch::channel(None);
         let (gap_timer, gap_commands) = watch::channel(GapTimerCommand::Idle);
         let subscription_counters = Arc::new(IngressCounters::default());
         let state = Arc::new(Mutex::new(IngressState::default()));
-        let health = MonitorSubscriptionHealth {
-            counters: Arc::clone(&subscription_counters),
-            first_fault: fault_receiver.clone(),
-        };
         let ingress = Arc::new(IngressEpoch {
             expected_session_id: session_id.to_owned(),
             expected_producer_id: producer_id.to_owned(),
@@ -1369,10 +1659,17 @@ impl MonitorTap {
             tap_counters: Arc::clone(&self.counters),
             subscription_counters: Arc::clone(&subscription_counters),
             state: Arc::clone(&state),
+            state_poison_observed: AtomicBool::new(false),
+            tap_lifecycle_poisoned: Arc::clone(&self.lifecycle_poisoned),
             sender,
             fault_sender,
             gap_timer,
         });
+        let health = MonitorSubscriptionHealth {
+            counters: Arc::clone(&subscription_counters),
+            first_fault: fault_receiver.clone(),
+            ingress: Arc::downgrade(&ingress),
+        };
         let gap_timer_task = tokio::spawn(run_gap_timer(gap_commands, Arc::downgrade(&ingress)));
         let callback_ingress = Arc::downgrade(&ingress);
         let subscriber = self
@@ -1398,8 +1695,8 @@ impl MonitorTap {
             fault_channel_closed: false,
             tap_counters: Arc::clone(&self.counters),
             counters: Arc::clone(&subscription_counters),
-            state: Arc::clone(&state),
-            ingress_owner: Some(ingress),
+            ingress_owner: ingress,
+            subscription_cancelled: false,
             subscriber: Some(subscriber),
             gap_timer_task: Some(gap_timer_task),
             lifecycle_lease: Some(lifecycle_lease),
@@ -1427,6 +1724,11 @@ impl MonitorTap {
         self.counters.events_delivered.load(Ordering::Relaxed)
     }
 
+    /// Receipts quarantined across subscriptions after terminal boundaries.
+    pub fn events_discarded(&self) -> u64 {
+        self.counters.events_discarded.load(Ordering::Relaxed)
+    }
+
     /// Accepted advisory contract-hash mismatches across subscriptions.
     pub fn contract_hash_mismatches(&self) -> u64 {
         self.counters
@@ -1437,6 +1739,18 @@ impl MonitorTap {
     /// Snapshot terminal faults across subscriptions.
     pub fn fault_counts(&self) -> MonitorIngressFaultCounts {
         self.counters.fault_counts()
+    }
+
+    /// Typed tap-wide internal fault, if lifecycle accounting was poisoned.
+    pub fn internal_fault(&self) -> Option<MonitorPoisonedState> {
+        self.lifecycle_poisoned
+            .load(Ordering::Acquire)
+            .then_some(MonitorPoisonedState::TapLifecycle)
+    }
+
+    /// Number of tap-wide lifecycle poison transitions (zero or one).
+    pub fn internal_faults(&self) -> u64 {
+        u64::from(self.lifecycle_poisoned.load(Ordering::Acquire))
     }
 
     /// Underlying bus for a host that owns or shares the transport lifecycle.
@@ -1456,17 +1770,30 @@ impl MonitorTap {
     /// including when close is cancelled or returns an error and must be retried.
     /// Owned-session close errors are propagated from `ncp-zenoh`.
     pub async fn close(&self) -> Result<(), ZenohError> {
-        if !self.owns_bus {
+        if self.ownership != BusOwnership::Owned {
             return Err(ZenohError(
                 "refusing to close a host-owned bus: this monitor tap was created with from_bus"
                     .to_string(),
             ));
         }
+        if self.lifecycle_poisoned.load(Ordering::Acquire) {
+            return Err(ZenohError(
+                "monitor tap lifecycle is terminal after mutex poison".to_owned(),
+            ));
+        }
         {
-            let mut lifecycle = self
-                .lifecycle
-                .lock()
-                .unwrap_or_else(|error| error.into_inner());
+            let mut lifecycle = match self.lifecycle.lock() {
+                Ok(lifecycle) => lifecycle,
+                Err(poisoned) => {
+                    self.lifecycle_poisoned.store(true, Ordering::Release);
+                    let mut lifecycle = poisoned.into_inner();
+                    lifecycle.close_started = true;
+                    self.lifecycle.clear_poison();
+                    return Err(ZenohError(
+                        "monitor tap lifecycle mutex was poisoned".to_owned(),
+                    ));
+                }
+            };
             if lifecycle.close_complete {
                 return Ok(());
             }
@@ -1481,10 +1808,18 @@ impl MonitorTap {
             }
         }
         self.bus.close().await?;
-        self.lifecycle
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .close_complete = true;
+        match self.lifecycle.lock() {
+            Ok(mut lifecycle) => lifecycle.close_complete = true,
+            Err(poisoned) => {
+                self.lifecycle_poisoned.store(true, Ordering::Release);
+                let mut lifecycle = poisoned.into_inner();
+                lifecycle.close_started = true;
+                self.lifecycle.clear_poison();
+                return Err(ZenohError(
+                    "monitor tap lifecycle mutex was poisoned".to_owned(),
+                ));
+            }
+        }
         Ok(())
     }
 }
@@ -1518,19 +1853,55 @@ fn validate_monitor_producer_id(producer_id: &str) -> Result<(), ZenohError> {
     Ok(())
 }
 
-fn record_last_received(counters: &IngressCounters, received_at: Instant) {
-    let mut last = counters
-        .last_payload_received_at
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
+fn record_last_received(
+    counters: &IngressCounters,
+    received_at: Instant,
+) -> Result<(), MonitorPoisonedState> {
+    let mut last = match counters.last_payload_received_at.lock() {
+        Ok(last) => last,
+        Err(poisoned) => {
+            let mut last = poisoned.into_inner();
+            *last = None;
+            counters.last_payload_received_at.clear_poison();
+            return Err(MonitorPoisonedState::ReceiptTelemetry);
+        }
+    };
     if last.is_none_or(|previous| received_at >= previous) {
         *last = Some(received_at);
+    }
+    Ok(())
+}
+
+fn record_last_received_pair(
+    tap: &IngressCounters,
+    subscription: &IngressCounters,
+    received_at: Instant,
+) -> Result<(), MonitorPoisonedState> {
+    record_last_received(tap, received_at)?;
+    record_last_received(subscription, received_at)
+}
+
+fn snapshot_last_received(
+    counters: &IngressCounters,
+) -> Result<Option<Instant>, MonitorPoisonedState> {
+    match counters.last_payload_received_at.lock() {
+        Ok(last) => Ok(*last),
+        Err(poisoned) => {
+            let mut last = poisoned.into_inner();
+            *last = None;
+            counters.last_payload_received_at.clear_poison();
+            Err(MonitorPoisonedState::ReceiptTelemetry)
+        }
     }
 }
 
 fn increment_pair(tap: &AtomicU64, subscription: &AtomicU64) {
-    tap.fetch_add(1, Ordering::Relaxed);
-    subscription.fetch_add(1, Ordering::Relaxed);
+    increment_pair_by(tap, subscription, 1);
+}
+
+fn increment_pair_by(tap: &AtomicU64, subscription: &AtomicU64, amount: u64) {
+    tap.fetch_add(amount, Ordering::Relaxed);
+    subscription.fetch_add(amount, Ordering::Relaxed);
 }
 
 fn store_pair(tap: &AtomicU64, subscription: &AtomicU64, value: u64) {
@@ -1547,7 +1918,7 @@ mod tests {
     use super::*;
     use crate::assembler::{
         AssemblerLimits, AssemblyEvent, CrossRouteAssembler, FrameIdentity,
-        RegistryOpportunityPolicy, RegistryVerifier, RegistryViolation,
+        RegistryOpportunityParams, RegistryOpportunityPolicy, RegistryVerifier, RegistryViolation,
     };
     use crate::monitor::{
         Heartbeat, ProducerEvent, QueueHealth, MAX_ACTIVE_TRACKS, MAX_FRAME_ITEMS,
@@ -1561,13 +1932,14 @@ mod tests {
 
     impl RegistryVerifier for TimestampTestRegistry {
         fn opportunity_policy(&self) -> Result<RegistryOpportunityPolicy, RegistryViolation> {
-            Ok(RegistryOpportunityPolicy {
+            RegistryOpportunityPolicy::try_new(RegistryOpportunityParams {
                 max_active_tracks: MAX_ACTIVE_TRACKS,
                 max_frame_inputs: MAX_FRAME_ITEMS,
                 max_attempts_per_track_modality: MAX_FRAME_ITEMS,
                 max_outcomes_per_frame: MAX_FRAME_ITEMS,
                 max_monitor_queue_events: MAX_MONITOR_QUEUE_EVENTS,
             })
+            .map_err(|_| RegistryViolation::InvalidOpportunityPolicy)
         }
 
         fn verify_summary(
@@ -1585,17 +1957,21 @@ mod tests {
             modality: Modality,
             projection: &ConsistencyProjection,
         ) -> Result<(), RegistryViolation> {
-            if projection.frame_id != identity.frame_id
-                || projection.context_id != identity.context_id
-                || projection.prior_id != identity.prior_id
+            let projection_identity = projection.identity();
+            let frame_id = projection_identity.frame_id().get();
+            let context_id = projection_identity.context_id().get();
+            let prior_id = projection_identity.frozen_prior_id().get();
+            if frame_id != identity.frame_id
+                || context_id != identity.context_id
+                || prior_id != identity.prior_id
             {
                 return Err(RegistryViolation::ProjectionIdentityMismatch {
                     expected_frame_id: identity.frame_id,
-                    received_frame_id: projection.frame_id,
+                    received_frame_id: frame_id,
                     expected_context_id: identity.context_id,
-                    received_context_id: projection.context_id,
+                    received_context_id: context_id,
                     expected_prior_id: identity.prior_id,
-                    received_prior_id: projection.prior_id,
+                    received_prior_id: prior_id,
                 });
             }
             if modality != Modality::Visual {
@@ -1604,11 +1980,11 @@ mod tests {
                     modality,
                 });
             }
-            if projection.dimensions != 3 {
+            if projection.dimensions() != 3 {
                 return Err(RegistryViolation::ProjectionDimensionMismatch {
                     context_id: identity.context_id,
                     expected: 3,
-                    received: projection.dimensions,
+                    received: projection.dimensions(),
                 });
             }
             Ok(())
@@ -1621,6 +1997,7 @@ mod tests {
         receiver: LiveMonitorReceiver,
         fault_receiver: watch::Receiver<Option<MonitorIngressFault>>,
         gap_commands: Option<watch::Receiver<GapTimerCommand>>,
+        lifecycle_poisoned: Arc<AtomicBool>,
     }
 
     impl Harness {
@@ -1631,6 +2008,7 @@ mod tests {
             let tap_counters = Arc::new(IngressCounters::default());
             let counters = Arc::new(IngressCounters::default());
             let state = Arc::new(Mutex::new(IngressState::default()));
+            let lifecycle_poisoned = Arc::new(AtomicBool::new(false));
             let ingress = Arc::new(IngressEpoch {
                 expected_session_id: SESSION_ID.to_string(),
                 expected_producer_id: PRODUCER_ID.to_string(),
@@ -1638,6 +2016,8 @@ mod tests {
                 tap_counters: Arc::clone(&tap_counters),
                 subscription_counters: Arc::clone(&counters),
                 state: Arc::clone(&state),
+                state_poison_observed: AtomicBool::new(false),
+                tap_lifecycle_poisoned: Arc::clone(&lifecycle_poisoned),
                 sender,
                 fault_sender,
                 gap_timer,
@@ -1648,8 +2028,8 @@ mod tests {
                 fault_channel_closed: false,
                 tap_counters,
                 counters: Arc::clone(&counters),
-                state,
-                ingress_owner: Some(Arc::clone(&ingress)),
+                ingress_owner: Arc::clone(&ingress),
+                subscription_cancelled: false,
                 subscriber: None,
                 gap_timer_task: None,
                 lifecycle_lease: None,
@@ -1660,6 +2040,7 @@ mod tests {
                 receiver: live_receiver,
                 fault_receiver,
                 gap_commands: Some(gap_commands),
+                lifecycle_poisoned,
             }
         }
 
@@ -1739,6 +2120,10 @@ mod tests {
                 .with_reorder_deadline(MAX_MONITOR_REORDER_DEADLINE + Duration::from_millis(1)),
             Err(MonitorLiveConfigError::ReorderDeadlineTooLarge { .. })
         ));
+        assert!(matches!(
+            MonitorLiveConfig::default().with_reorder_deadline(Duration::from_nanos(1)),
+            Err(MonitorLiveConfigError::FractionalMillisecondReorderDeadline)
+        ));
     }
 
     #[test]
@@ -1764,6 +2149,16 @@ mod tests {
     }
 
     #[test]
+    fn bounded_monitor_profile_has_a_stable_identity() {
+        let config = MonitorLiveProfile::BoundedV0_9.try_config().unwrap();
+
+        assert_eq!(
+            config.identity().to_hex(),
+            "0992de8500ae1c43573d875162b74f65089d3e9c3ac202da98ad5e7ddd11722f"
+        );
+    }
+
+    #[test]
     fn fault_count_snapshot_maps_every_category_and_total() {
         let counts = MonitorIngressFaultCounts {
             payload_too_large: 2,
@@ -1779,6 +2174,7 @@ mod tests {
             handoff_closed: 12,
             internal_sequence_failure: 13,
             timer_task_failed: 14,
+            internal_state_poisoned: 15,
         };
         for (kind, expected) in [
             (MonitorIngressFaultKind::PayloadTooLarge, 2),
@@ -1794,10 +2190,11 @@ mod tests {
             (MonitorIngressFaultKind::HandoffClosed, 12),
             (MonitorIngressFaultKind::InternalSequenceFailure, 13),
             (MonitorIngressFaultKind::TimerTaskFailed, 14),
+            (MonitorIngressFaultKind::InternalStatePoisoned, 15),
         ] {
             assert_eq!(counts.count(kind), expected);
         }
-        assert_eq!(counts.total(), 104);
+        assert_eq!(counts.total(), 119);
     }
 
     #[test]
@@ -1827,6 +2224,7 @@ mod tests {
         let health = MonitorSubscriptionHealth {
             counters: Arc::clone(&counters),
             first_fault,
+            ingress: Weak::new(),
         };
 
         assert_eq!(
@@ -1866,10 +2264,10 @@ mod tests {
         let counters = IngressCounters::default();
         let earlier = Instant::now();
         let later = earlier + Duration::from_millis(1);
-        record_last_received(&counters, later);
-        assert_eq!(counters.last_payload_received_at(), Some(later));
-        record_last_received(&counters, earlier);
-        assert_eq!(counters.last_payload_received_at(), Some(later));
+        record_last_received(&counters, later).expect("telemetry lock is healthy");
+        assert_eq!(snapshot_last_received(&counters), Ok(Some(later)));
+        record_last_received(&counters, earlier).expect("telemetry lock remains healthy");
+        assert_eq!(snapshot_last_received(&counters), Ok(Some(later)));
         assert_eq!(usize_to_u64(2), 2);
     }
 
@@ -2648,6 +3046,165 @@ mod tests {
         assert_eq!(
             harness.first_fault(),
             Some(MonitorIngressFault::ProvenanceMismatch)
+        );
+    }
+
+    fn poison_ingress_mutex(ingress: &Arc<IngressEpoch>) {
+        let ingress = Arc::clone(ingress);
+        assert!(std::thread::spawn(move || {
+            let _state = ingress.state.lock().expect("test ingress starts healthy");
+            panic!("deterministic monitor ingress poison");
+        })
+        .join()
+        .is_err());
+    }
+
+    fn poison_receipt_telemetry(counters: &Arc<IngressCounters>) {
+        let counters = Arc::clone(counters);
+        assert!(std::thread::spawn(move || {
+            let _last = counters
+                .last_payload_received_at
+                .lock()
+                .expect("test telemetry starts healthy");
+            panic!("deterministic monitor telemetry poison");
+        })
+        .join()
+        .is_err());
+    }
+
+    #[test]
+    fn poisoned_ingress_from_timer_boundary_latches_and_quarantines_handoff() {
+        let mut harness = Harness::new(MonitorLiveConfig::default());
+        harness.process(&encoded(1));
+        poison_ingress_mutex(&harness.ingress);
+
+        harness.ingress.latch_timer_task_failure();
+
+        assert_eq!(
+            harness.first_fault(),
+            Some(MonitorIngressFault::InternalStatePoisoned {
+                state: MonitorPoisonedState::Ingress,
+            })
+        );
+        assert!(matches!(
+            harness.receiver.try_recv(),
+            Err(MonitorTryRecvError::Fault(
+                MonitorIngressFault::InternalStatePoisoned {
+                    state: MonitorPoisonedState::Ingress
+                }
+            ))
+        ));
+        assert_eq!(harness.counters.events_delivered.load(Ordering::Relaxed), 0);
+        assert_eq!(harness.counters.events_discarded.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            harness
+                .counters
+                .fault_count(MonitorIngressFaultKind::InternalStatePoisoned),
+            1
+        );
+        assert_eq!(
+            harness
+                .counters
+                .fault_count(MonitorIngressFaultKind::TimerTaskFailed),
+            0
+        );
+    }
+
+    #[test]
+    fn poisoned_receipt_telemetry_faults_before_validation_or_delivery() {
+        let mut harness = Harness::new(MonitorLiveConfig::default());
+        poison_receipt_telemetry(&harness.counters);
+
+        harness.process(&encoded(1));
+
+        assert_eq!(
+            harness.first_fault(),
+            Some(MonitorIngressFault::InternalStatePoisoned {
+                state: MonitorPoisonedState::ReceiptTelemetry,
+            })
+        );
+        assert_eq!(harness.counters.events_validated.load(Ordering::Relaxed), 0);
+        assert_eq!(harness.counters.events_enqueued.load(Ordering::Relaxed), 0);
+        assert!(matches!(
+            harness.receiver.try_recv(),
+            Err(MonitorTryRecvError::Fault(
+                MonitorIngressFault::InternalStatePoisoned {
+                    state: MonitorPoisonedState::ReceiptTelemetry
+                }
+            ))
+        ));
+    }
+
+    #[test]
+    fn poisoned_receipt_telemetry_quarantines_previously_queued_receipt() {
+        let mut harness = Harness::new(MonitorLiveConfig::default());
+        harness.process(&encoded(1));
+        poison_receipt_telemetry(&harness.counters);
+
+        assert!(matches!(
+            harness.receiver.try_recv(),
+            Err(MonitorTryRecvError::Fault(
+                MonitorIngressFault::InternalStatePoisoned {
+                    state: MonitorPoisonedState::ReceiptTelemetry
+                }
+            ))
+        ));
+        assert_eq!(harness.counters.events_delivered.load(Ordering::Relaxed), 0);
+        assert_eq!(harness.counters.events_discarded.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn poisoned_tap_lifecycle_refuses_reservation_and_fences_existing_receiver() {
+        let mut harness = Harness::new(MonitorLiveConfig::default());
+        harness.process(&encoded(1));
+        let lifecycle = Arc::new(Mutex::new(MonitorTapLifecycle::default()));
+        let poisoned_lifecycle = Arc::clone(&lifecycle);
+        assert!(std::thread::spawn(move || {
+            let _lifecycle = poisoned_lifecycle
+                .lock()
+                .expect("test lifecycle starts healthy");
+            panic!("deterministic monitor lifecycle poison");
+        })
+        .join()
+        .is_err());
+
+        assert!(reserve_monitor_receiver(&lifecycle, &harness.lifecycle_poisoned).is_err());
+        assert!(harness.lifecycle_poisoned.load(Ordering::Acquire));
+        assert!(matches!(
+            harness.receiver.try_recv(),
+            Err(MonitorTryRecvError::Fault(
+                MonitorIngressFault::InternalStatePoisoned {
+                    state: MonitorPoisonedState::TapLifecycle
+                }
+            ))
+        ));
+        assert_eq!(harness.counters.events_delivered.load(Ordering::Relaxed), 0);
+        assert_eq!(harness.counters.events_discarded.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn ingress_poison_metric_preserves_an_earlier_terminal_fault() {
+        let harness = Harness::new(MonitorLiveConfig::default());
+        harness.process(b"{not-json");
+        poison_ingress_mutex(&harness.ingress);
+
+        harness.ingress.latch_timer_task_failure();
+
+        assert_eq!(
+            harness.first_fault(),
+            Some(MonitorIngressFault::MalformedJson)
+        );
+        assert_eq!(
+            harness
+                .counters
+                .fault_count(MonitorIngressFaultKind::InternalStatePoisoned),
+            1
+        );
+        assert_eq!(
+            harness
+                .counters
+                .fault_count(MonitorIngressFaultKind::MalformedJson),
+            1
         );
     }
 }

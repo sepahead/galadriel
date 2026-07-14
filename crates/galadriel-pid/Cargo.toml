@@ -17,8 +17,10 @@ workspace = true
 
 [dependencies]
 galadriel-core = { workspace = true }
-# pid-core is pinned to the exact public 1.0.0 main revision in the workspace root.
+# pid-core is pinned to the exact public revision whose manifest declares 1.0.0;
+# no public v1 tag or published 1.x artifact is claimed here.
 pid-core = { workspace = true }
+sha2 = { workspace = true }
 
 [dev-dependencies]
 galadriel-sim = { workspace = true }

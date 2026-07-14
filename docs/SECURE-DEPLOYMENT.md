@@ -3,7 +3,9 @@
 Status: runnable component implementation and external evidence procedure. The
 repository supplies checked configuration artifacts, a secure observer command,
 and bounded receiver components; it does not claim that the example identities
-have been deployed or that CI loopback tests prove remote mTLS authorization.
+have been deployed or that CI loopback tests prove remote mTLS authorization. A
+current reciprocal Crebain pin and cross-repository qualification remain
+`NOT_CLAIMED`.
 
 ## Identity and epoch handoff
 
@@ -28,15 +30,16 @@ to `session/*` is not a recovery mechanism.
 
 The profile's `producer_id` binds application validation, while its exact producer
 certificate CN binds transport authorization. Zenoh does not inspect the JSON
-claim, so both checks are required: any certificate accepted by the configured CA
-and carrying the profiled CN can write the two routes, while Galadriel rejects an
-envelope whose `producer_id` does not equal the configured expectation. The ACL does
-not bind a unique leaf fingerprint. The issuing CA must reserve each role CN, prevent
-unintended duplicate issuance, and record every authorized leaf serial/fingerprint.
+claim, so both checks are required: any client certificate accepted by the router's
+configured client-authentication CA and carrying the profiled CN can write the two
+routes, while Galadriel rejects an envelope whose `producer_id` does not equal the
+configured expectation. The ACL does not bind a unique leaf fingerprint. The issuing
+CA must reserve each role CN, prevent unintended duplicate issuance, and record every
+authorized leaf serial/fingerprint.
 
 The profile also records `registry_canonical_sha256`. It is not rendered into the
 router ACL, because the router cannot interpret application registry semantics; it
-is the deployment handoff value that must exactly match Crebain's registry pin,
+is the deployment handoff value that must exactly match the intended producer's registry pin,
 Galadriel's `--registry-sha256`, and every frame summary. The generated nonsecret
 `galadriel-handoff.json` binds that digest to the realm, epoch, producer ID, and both
 client CNs; its digest is included in `SHA256SUMS`.
@@ -53,8 +56,28 @@ before use. The security invariants are:
 | Producer authority | send `put` ingress only; two exact realm/epoch sensor keys; one exact producer certificate CN |
 | Observer authority | send `declare_subscriber` ingress and receive matching `put` egress only; the same two exact keys; a distinct exact observer certificate CN |
 | Default behavior | deny; no wildcard epoch/sensor grant and no command, action, lease, query/RPC, delete, or control grant |
-| Client transport | explicit TLS router, connector-side mTLS/client-certificate presentation enabled, no listeners/discovery, hostname verification and certificate-expiration closure enabled |
+| Client transport | exactly one bare `tls/` router endpoint with no endpoint-local `#` configuration or `?` metadata suffix; connector-side mTLS/client-certificate presentation enabled; no listeners/discovery; hostname verification and certificate-expiration closure enabled; server-auth roots are the built-in public WebPKI set plus the configured deployment CA |
 | Receive allocation | 131,072-byte Zenoh message limit on router and both clients; 65,536-byte application envelope limits remain active |
+
+### TLS server-authentication limitation
+
+The pinned Zenoh 1.9 client initializes its server-authentication root store from
+the public `webpki_roots` set and then adds `root_ca_certificate`. The configured
+deployment CA is therefore an additional trust anchor, not an exclusive router-CA
+pin. A time-valid certificate issued by a built-in public root for the exact router
+hostname can satisfy client-side server authentication even when it was not issued
+by the deployment CA. Hostname and expiration verification still apply. Router-side
+authentication of producer and observer client certificates remains constrained by
+the router's configured client-authentication CA and ACL.
+
+The pinned dependency exposes no Galadriel configuration switch that removes those
+built-in roots. `SecureZenohCapability` proves the checked local profile, not
+exclusive router-certificate or SPKI pinning; that exclusivity is `NOT_CLAIMED`.
+Until the dependency offers an exclusive-root mode, use a private router hostname
+that is not eligible for public CA issuance and keep its name resolution under the
+deployment's control, or add an external connection layer that enforces the exact
+router certificate/SPKI. Recording the presented fingerprint is necessary evidence
+but does not itself enforce a pin.
 
 The 128 KiB transport value allows bounded framing overhead around a maximum 64 KiB
 application envelope. Increasing it is a security-profile change and intentionally
@@ -71,19 +94,43 @@ to existing regular files. Keep the profile/configs outside broadly readable loc
 The committed references are strict JSON (and therefore valid JSON5) so review and digest
 calculation do not depend on a permissive parser.
 
+The runtime secure opener accepts only a standalone regular-file configuration. It reads
+at most 262,144 bytes inclusive before parsing, requires strict JSON content even when the
+filename uses Zenoh's `.json5` convention, and rejects a `__config__` external-include key
+at any nesting depth. Each configured CA, public-certificate, and private-key file must be
+at most 1,048,576 bytes inclusive at validation time. One byte beyond either ceiling is a
+typed startup error. These checks bound the local pre-open read and reject unreviewed
+include expansion; they do not eliminate the later credential-file replacement race.
+
+Runtime validation returns a typed `SecureConfigError` and an opaque
+`SecureZenohCapability`; only the foreign bus-opening boundary maps that error to Zenoh's
+type. Endpoint discovery stops as soon as a second connect endpoint or any listen endpoint
+is seen, and each recursive endpoint extraction is capped at 256 JSON nodes and depth 16.
+The sole connect endpoint rejects both Zenoh `#` endpoint-local configuration and `?`
+metadata suffixes. Fragment configuration merges after the validated global TLS settings
+and could downgrade them; query metadata can also alter transport behavior such as
+reliability. The accepted secure profile therefore requires the exact bare endpoint rather
+than trying to maintain a second allowlist inside Zenoh's endpoint grammar. The capability
+identity binds the validated endpoint, allocation ceiling, and canonical credential-path
+strings. It does not hash credential contents, freeze later filesystem state, eliminate
+credential-file replacement races, or attest the remote router. Deployment evidence must
+record leaf fingerprints/serials and protect the credential directory independently.
+
 ## Startup and health sequence
 
-1. Record the Galadriel and Crebain commit IDs, registry SHA-256, profile digest,
-   handoff digest, generated config digests, and leaf certificate serial/fingerprint
-   metadata.
-2. Start the secure Zenoh router and confirm that it loaded mTLS and access control.
+1. Record the Galadriel and selected external-producer commit IDs, registry SHA-256,
+   profile digest, handoff digest, generated config digests, endpoint hostname and
+   name-resolution control, and leaf certificate serial/fingerprint metadata. Record
+   the external pinning control if the hostname is eligible for public CA issuance.
+2. Start the secure Zenoh router and confirm that it loaded mTLS and access control;
+   record the router certificate actually presented to each client.
 3. Start the Galadriel observer for the exact realm/epoch/producer and pinned
    registry. A library opened on a caller-provided bus inherits that bus's security;
    use the explicit secure client path for acceptance evidence. Receiver activation
    starts a finite 30 s first-heartbeat grace period.
-4. Start Crebain with the exact deployment-supplied epoch and producer identity within
+4. Start the selected external producer with the exact deployment-supplied epoch and producer identity within
    that grace period (or use an orchestrator that makes the handoff atomic).
-   Starting Crebain before the exact ACL exists risks an unobservable initial
+   Starting the producer before the exact ACL exists risks an unobservable initial
    prefix and is not accepted.
 5. Require monitor heartbeat progression before treating traffic as live. Observation
    traffic alone does not prove lifecycle completeness. A later heartbeat cannot
@@ -103,18 +150,19 @@ receipt deadline, plus a 1 s reorder deadline and 5 s frame deadline):
 export NCP_ZENOH_CONFIG=/secure/config/galadriel-epoch/zenoh-observer.json5
 cargo run --locked --features ncp-live --bin galadriel -- observe \
   --realm engram/ncp \
-  --epoch "$CREBAIN_GALADRIEL_EPOCH" \
-  --producer-id "$CREBAIN_GALADRIEL_PRODUCER_ID" \
-  --registry "$CREBAIN_GALADRIEL_REGISTRY_PATH" \
-  --registry-sha256 "$CREBAIN_GALADRIEL_REGISTRY_DIGEST"
+  --epoch "$GALADRIEL_DEPLOYMENT_EPOCH" \
+  --producer-id "$GALADRIEL_PRODUCER_ID" \
+  --registry "$GALADRIEL_REGISTRY_PATH" \
+  --registry-sha256 "$GALADRIEL_REGISTRY_DIGEST"
 ```
 
 The epoch is required input, not minted by this command. The same exact value must
 be present in the router ACL and producer environment before either application
 starts. Every Galadriel secure live path loads the configuration once, validates
 connector-side mTLS plus the other strict client invariants, and opens that same parsed
-value; only the external drills below can show that the remote router loaded and
-enforced its policy.
+value. This prevents a configuration reparse mismatch but does not freeze external
+credential files; only the external drills below can show which credentials were used and
+that the remote router loaded and enforced its policy.
 
 ## Authorization and fault drill
 
@@ -129,8 +177,11 @@ logs. Redact paths if necessary; never retain keys or credential bytes.
 | Observer CN subscribes to both exact keys | subscription succeeds |
 | Observer CN puts either exact key or any control key | router denies operation |
 | Untrusted, wrong-CN, missing, or expired client certificate | TLS connection/authorization fails |
+| Router certificate has the wrong hostname, is expired, or chains to neither configured nor built-in roots | client TLS fails |
+| Exact-hostname router certificate chains only to a built-in public root | pinned Zenoh client can accept it; do not record this as exclusive custom-CA authentication |
 | Payload identity differs from configured producer/session | receiver rejects it even if transport delivery occurred |
 | Message exceeds 128 KiB transport cap | transport drops/rejects before application decode allocation |
+| Connect endpoint carries a `#` configuration or `?` metadata suffix | local secure-config validation rejects it before opening Zenoh |
 | Envelope exceeds 64 KiB application cap | tap rejects it and latches a visible fault |
 | Duplicate, gap, excessive reorder, queue overflow, or frame deadline | affected frame/suffix is invalidated; never `Nominal` |
 | Heartbeats stop | liveness fault occurs at the configured monotonic receipt-time deadline |
@@ -141,9 +192,11 @@ The repository's in-process Zenoh tests validate exact keys, bounded handoff, an
 codec/sequence behavior. They do not replace the wrong-cert/no-cert/ACL tests above,
 because an isolated loopback session has no external router principal to attest.
 
-This profile configures CA trust and certificate-expiration handling, but no CRL or
-OCSP revocation mechanism. Do not claim a revoked-yet-unexpired leaf is rejected unless
-the deployment adds and records an external revocation/CA-rotation control and tests it.
+Router-side client authentication uses the configured deployment CA, while client-side
+router authentication uses the combined public-plus-deployment root set described above.
+The profile configures expiration handling but no CRL or OCSP revocation mechanism. Do
+not claim a revoked-yet-unexpired leaf is rejected unless the deployment adds and records
+an external revocation/CA-rotation control and tests it.
 
 ## Evidence interpretation
 

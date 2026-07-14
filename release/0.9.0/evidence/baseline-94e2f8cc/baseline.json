@@ -1,0 +1,181 @@
+{
+  "artifacts": {
+    "baseline.log": {
+      "bytes": 762531,
+      "sha256": "d7b8da1c96383dcfb732a994a54cf716e3feebf3ed4a53076068fef576313ac4"
+    },
+    "cargo-metadata.json": {
+      "bytes": 679450,
+      "sha256": "d1b99a3e34af18e19419dba5dbdd8efde298282791abe83d898704997f1021d2"
+    }
+  },
+  "baseline": {
+    "commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",
+    "tree": "9d9b3f9c2eaa26f50ffcc7ab16c0d38652a9f6c0"
+  },
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain=v1"
+      ],
+      "ended_utc": "2026-07-14T15:25:09.501+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "git-status-before",
+      "started_utc": "2026-07-14T15:25:09.434+00:00"
+    },
+    {
+      "argv": [
+        "git",
+        "show",
+        "--show-signature",
+        "--no-patch",
+        "HEAD"
+      ],
+      "ended_utc": "2026-07-14T15:25:19.666+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "git-show-signature",
+      "started_utc": "2026-07-14T15:25:09.501+00:00"
+    },
+    {
+      "argv": [
+        "rustc",
+        "-Vv"
+      ],
+      "ended_utc": "2026-07-14T15:25:19.705+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "rustc-version",
+      "started_utc": "2026-07-14T15:25:19.666+00:00"
+    },
+    {
+      "argv": [
+        "cargo",
+        "-Vv"
+      ],
+      "ended_utc": "2026-07-14T15:25:19.765+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "cargo-version",
+      "started_utc": "2026-07-14T15:25:19.705+00:00"
+    },
+    {
+      "argv": [
+        "cargo",
+        "metadata",
+        "--locked",
+        "--format-version=1"
+      ],
+      "ended_utc": "2026-07-14T15:25:19.972+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "cargo-metadata",
+      "started_utc": "2026-07-14T15:25:19.765+00:00"
+    },
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "ended_utc": "2026-07-14T15:25:20.403+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "format",
+      "started_utc": "2026-07-14T15:25:19.972+00:00"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--all-features",
+        "--locked"
+      ],
+      "ended_utc": "2026-07-14T15:38:18.036+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "tests-all-features",
+      "started_utc": "2026-07-14T15:25:20.403+00:00"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--all-features",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "ended_utc": "2026-07-14T15:39:25.097+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "clippy-all-features",
+      "started_utc": "2026-07-14T15:38:18.036+00:00"
+    },
+    {
+      "argv": [
+        "cargo",
+        "doc",
+        "--workspace",
+        "--all-features",
+        "--no-deps",
+        "--locked"
+      ],
+      "ended_utc": "2026-07-14T15:39:50.933+00:00",
+      "exit_code": 0,
+      "extra_env": {
+        "RUSTDOCFLAGS": "-Dwarnings"
+      },
+      "name": "docs-all-features",
+      "started_utc": "2026-07-14T15:39:25.097+00:00"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--exit-code",
+        "--"
+      ],
+      "ended_utc": "2026-07-14T15:39:50.986+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "git-diff-after",
+      "started_utc": "2026-07-14T15:39:50.934+00:00"
+    },
+    {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain=v1"
+      ],
+      "ended_utc": "2026-07-14T15:39:51.025+00:00",
+      "exit_code": 0,
+      "extra_env": {},
+      "name": "git-status-after",
+      "started_utc": "2026-07-14T15:39:50.986+00:00"
+    }
+  ],
+  "ended_utc": "2026-07-14T15:39:51.025+00:00",
+  "environment": {
+    "cargo_target_isolated": true,
+    "cargo_term_color": "never",
+    "source_date_epoch": 1784022472
+  },
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6 (main, Jun 10 2026, 10:03:53) [Clang 21.0.0 (clang-2100.0.123.102)]"
+  },
+  "passed": true,
+  "schema": "galadriel.baseline-reproduction.v1",
+  "started_utc": "2026-07-14T15:25:09.379+00:00"
+}

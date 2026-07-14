@@ -24,10 +24,12 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROFILE = ROOT / "deploy" / "galadriel-security-profile.example.json"
+ENDPOINT_CORPUS = ROOT / "deploy" / "secure-client-endpoint-corpus.json"
 REFERENCE_DIR = ROOT / "deploy" / "reference"
 PROFILE_VERSION = "1"
 APPLICATION_MAX_MESSAGE_BYTES = 65_536
 TRANSPORT_MAX_MESSAGE_BYTES = 131_072
+ZENOH_ENDPOINT_MAX_BYTES = 255
 OUTPUT_NAMES = {
     "router": "zenoh-router.json5",
     "producer": "zenoh-producer.json5",
@@ -163,6 +165,10 @@ def _require_sha256(value: object, label: str) -> str:
 def _require_tls_endpoint(value: object, label: str, *, listener: bool) -> str:
     if not isinstance(value, str) or not value.startswith("tls/"):
         raise ProfileError(f"{label} must be one explicit tls/ endpoint")
+    if not value.isascii() or len(value) > ZENOH_ENDPOINT_MAX_BYTES:
+        raise ProfileError(
+            f"{label} must be ASCII and at most {ZENOH_ENDPOINT_MAX_BYTES} bytes"
+        )
     if value != value.strip() or _has_forbidden_control(value) or any(c in value for c in "*$#?"):
         raise ProfileError(f"{label} contains an unsafe character")
     authority = value.removeprefix("tls/")
@@ -820,6 +826,18 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
             "invalid connect port",
             lambda p: p.update(router_connect_endpoint="tls/router:notaport"),
         ),
+        (
+            "endpoint-local TLS override",
+            lambda p: p.update(
+                router_connect_endpoint=(
+                    "tls/router:7447#verify_name_on_connect=false"
+                )
+            ),
+        ),
+        (
+            "endpoint-local transport metadata",
+            lambda p: p.update(router_connect_endpoint="tls/router:7447?rel=0"),
+        ),
         ("loose receive cap", lambda p: p.update(transport_max_message_bytes=1_073_741_824)),
         ("uppercase registry digest", lambda p: p.update(registry_canonical_sha256="A" * 64)),
         (
@@ -843,6 +861,30 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
         except ProfileError:
             continue
         raise ProfileError(f"profile mutation guard failed open: {label}")
+
+    endpoint_corpus = _require_exact_fields(
+        _load_json(ENDPOINT_CORPUS), {"valid", "invalid"}, "endpoint corpus"
+    )
+    for classification in ["valid", "invalid"]:
+        values = endpoint_corpus[classification]
+        if not isinstance(values, list) or not values or not all(
+            isinstance(value, str) for value in values
+        ):
+            raise ProfileError(f"endpoint corpus {classification} set must be non-empty strings")
+        if len(values) != len(set(values)):
+            raise ProfileError(f"endpoint corpus {classification} set contains duplicates")
+    for endpoint in endpoint_corpus["valid"]:
+        candidate = copy.deepcopy(profile)
+        candidate["router_connect_endpoint"] = endpoint
+        validate_profile(candidate)
+    for endpoint in endpoint_corpus["invalid"]:
+        candidate = copy.deepcopy(profile)
+        candidate["router_connect_endpoint"] = endpoint
+        try:
+            validate_profile(candidate)
+        except ProfileError:
+            continue
+        raise ProfileError(f"shared invalid endpoint passed profile validation: {endpoint!r}")
 
     production_profile = copy.deepcopy(profile)
     private_key_fixtures = [
@@ -982,6 +1024,8 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
     return (
         len(mutations)
         + len(invalid_profiles)
+        + len(endpoint_corpus["valid"])
+        + len(endpoint_corpus["invalid"])
         + len(invalid_render_paths)
         + len(handoff_mutations)
         + 5
