@@ -43,8 +43,10 @@ cargo build -p galadriel-core --no-default-features --locked
 cargo deny --all-features --locked check
 ```
 
-The pinned workspace MSRV is **Rust 1.89**. All packages currently set
-`publish = false`; changing that is a release decision, not a routine metadata edit.
+The pinned workspace MSRV is **Rust 1.89**. Version 0.9.x freezes the public
+`galadriel-core` source surface recorded in `docs/API-SURFACE.md`; supporting crates
+remain experimental. All packages set `publish = false`; changing that is a release
+decision, not a routine metadata edit.
 
 ## Commit / PR hygiene
 

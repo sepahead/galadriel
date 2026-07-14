@@ -7,6 +7,24 @@ may contain breaking changes.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-14
+
+### Release contract
+
+- Establish the first supervisor-review release under author Sepehr Mahmoudian, with
+  an explicit GitHub-source-only scope and no DOI, Zenodo, crates.io, deployment, or
+  production-support claim.
+- Preserve the standalone 1.0 implementation handoff byte-for-byte while adapting its
+  complete technical and evidence obligations to the requested 0.9.0 identity.
+- Add a generated immutable audit manifest, four-tier claims matrix, exact statistical
+  contract, threat model, stable-core API policy, requirement/evidence ledger, and
+  protected-main change-control policy.
+- Add a verdict-independent authority-effect validator proving record-only and
+  monotonically restrict-only consumer transitions; `Nominal` cannot grant authority,
+  relax a limit, extend TTL/lease, refresh a watchdog, or change capabilities.
+- Remove the accidental public chi-square implementation module; consumers use typed
+  detector reports rather than binding to a numerical backend.
+
 ### Security
 
 - Add a deterministic exact-epoch Zenoh profile renderer/checker: mTLS-only clients,

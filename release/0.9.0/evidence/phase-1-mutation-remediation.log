@@ -1,0 +1,8 @@
+$ git rev-parse HEAD
+c67506e683116bd9a022377a5fe74b3c1e3edbd7
+$ cargo mutants --version
+cargo-mutants 27.1.0
+$ cargo mutants --workspace --no-shuffle --in-diff /tmp/galadriel-phase1-mutation.diff --exclude crates/galadriel-eval/** --exclude crates/galadriel-justify/** --timeout 120 --jobs 4 --all-features
+Found 33 mutants to test
+ok       Unmutated baseline in 78s build + 0s test
+33 mutants tested in 2m: 30 caught, 3 unviable

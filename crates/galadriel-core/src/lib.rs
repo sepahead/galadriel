@@ -38,8 +38,9 @@
 //! distinguish every attack from benign decorrelation. See the repository's
 //! `docs/JUSTIFICATION.md` and `docs/EVALUATION.md`.
 
+pub mod authority;
 pub mod baseline;
-pub mod chi2;
+mod chi2;
 pub mod config;
 pub mod correlation;
 pub mod cusum;
@@ -49,6 +50,7 @@ pub mod fusion;
 pub mod observation;
 pub mod window;
 
+pub use authority::{validate_advisory_effect, AdvisoryPolicy, AuthoritySnapshot, Authorization};
 pub use config::{
     DetectorConfig, MAX_ALIGNMENT_SEQ_GAP, MAX_ALIGNMENT_TIMESTAMP_SKEW_MS, MAX_INTER_SAMPLE_GAP_MS,
 };

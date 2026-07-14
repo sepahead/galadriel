@@ -1,0 +1,134 @@
+test_abbreviated_or_oversized_repository_revision_is_rejected (test_release_audit.ReleaseAuditTests.test_abbreviated_or_oversized_repository_revision_is_rejected) ... ok
+test_build_is_deterministic_and_covers_all_tasks (test_release_audit.ReleaseAuditTests.test_build_is_deterministic_and_covers_all_tasks) ... ok
+test_canonical_json_is_order_independent_and_idempotent (test_release_audit.ReleaseAuditTests.test_canonical_json_is_order_independent_and_idempotent) ... ok
+test_complete_task_without_machine_evidence_is_rejected (test_release_audit.ReleaseAuditTests.test_complete_task_without_machine_evidence_is_rejected) ... ok
+test_duplicate_json_keys_are_rejected (test_release_audit.ReleaseAuditTests.test_duplicate_json_keys_are_rejected) ... ok
+test_every_claim_has_a_frozen_tier_and_limit (test_release_audit.ReleaseAuditTests.test_every_claim_has_a_frozen_tier_and_limit) ... ok
+test_handoff_task_chain_is_complete_and_contiguous (test_release_audit.ReleaseAuditTests.test_handoff_task_chain_is_complete_and_contiguous) ... ok
+test_project_doi_or_zenodo_claim_is_rejected (test_release_audit.ReleaseAuditTests.test_project_doi_or_zenodo_claim_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.147s
+
+OK
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running unittests src/lib.rs (target/debug/deps/galadriel_core-67aed9f3caa87c01)
+
+running 102 tests
+test authority::tests::record_only_accepts_exactly_unchanged_policy ... ok
+test authority::tests::nominal_cannot_turn_deny_into_allow_or_widen_each_limit ... ok
+test authority::tests::record_only_rejects_even_a_restriction ... ok
+test authority::tests::restrict_only_accepts_monotonic_reduction_and_zero_boundary ... ok
+test authority::tests::restrict_only_rejects_capability_substitution_and_watchdog_refresh ... ok
+test baseline::tests::consistent_nis_is_not_elevated ... ok
+test baseline::tests::inflated_nis_is_elevated ... ok
+test baseline::tests::finite_extreme_nis_is_an_anomaly_not_a_numeric_error ... ok
+test baseline::tests::rejects_invalid_alpha ... ok
+test chi2::tests::chi2_critical_values ... ok
+test chi2::tests::distribution_boundaries_are_defined ... ok
+test chi2::tests::ln_gamma_known_values ... ok
+test chi2::tests::survival_function_preserves_small_upper_tail_probabilities ... ok
+test config::tests::accepts_the_inclusive_boundaries ... ok
+test config::tests::default_config_validates ... ok
+test config::tests::rejects_out_of_range_fields ... ok
+test chi2::tests::remains_calibrated_at_large_degrees_of_freedom ... ok
+test correlation::tests::configuration_rejects_alpha_that_underflows_during_fused_correction ... ok
+test correlation::tests::fewer_than_three_channels_is_insufficient_evidence ... ok
+test correlation::tests::constant_outlier_is_unassessable_not_decoupled ... ok
+test correlation::tests::finite_scaling_is_stable_and_nonfinite_input_errors ... ok
+test correlation::tests::disconnected_equal_dyads_are_ambiguous ... ok
+test correlation::tests::correlated_channels_with_one_outsider_are_decoupled ... ok
+test correlation::tests::degenerate_significance_floor_abstains_instead_of_scoring ... ok
+test correlation::tests::pearson_basics ... ok
+test correlation::tests::no_linear_consensus_fails_closed ... ok
+test correlation::tests::sign_flip_is_a_decoupling_not_corroboration ... ok
+test cusum::tests::finite_extreme_updates_saturate_into_alarm_instead_of_erroring ... ok
+test correlation::tests::outsider_bridged_to_one_consensus_member_is_ambiguous ... ok
+test cusum::tests::fires_on_sustained_step_down_via_the_lower_arm ... ok
+test cusum::tests::fires_quickly_on_step_up ... ok
+test cusum::tests::invalid_values_do_not_poison_state ... ok
+test cusum::tests::reset_clears_both_arms ... ok
+test decision::tests::cross_modal_timestamp_skew_fails_closed ... ok
+test decision::tests::duplicate_out_of_order_and_dof_changes_are_rejected_without_mutation ... ok
+test decision::tests::frozen_timestamps_are_rejected_without_mutating_state ... ok
+test decision::tests::cusum_operating_point_is_comparable_across_degrees_of_freedom ... ok
+test decision::tests::large_forward_timestamp_holes_reset_contiguous_evidence ... ok
+test decision::tests::retained_tracks_are_bounded_and_explicitly_reclaimable ... ok
+test decision::tests::large_sequence_holes_reset_contiguous_evidence ... ok
+test decision::tests::too_few_samples_fails_closed ... ok
+test decision::tests::all_channels_inflation_is_broad_degradation ... ok
+test decision::tests::stale_or_missing_expected_channels_fail_closed ... ok
+test decision::tests::verdict_deserialization_accepts_legacy_causal_tags ... ok
+test decision::tests::verdict_serialization_uses_evidence_neutral_tags ... ok
+test decision::tests::all_consistent_is_nominal ... ok
+test fusion::tests::baseline_attributed_inconsistency_with_intact_consistency_stays_attributed ... ok
+test fusion::tests::baseline_broad_degradation_with_intact_consistency_stays_broad ... ok
+test fusion::tests::both_insufficient_fails_closed ... ok
+test cusum::tests::stays_quiet_on_target ... ok
+test fusion::tests::broad_degradation_and_partial_consistency_attributions_fail_closed ... ok
+test fusion::tests::decoupling_with_in_covariance_nis_is_attributed_inconsistency ... ok
+test fusion::tests::decoupling_with_elevated_nis_is_attributed_inconsistency ... ok
+test decision::tests::single_channel_inflation_is_attributed_inconsistency ... ok
+test fusion::tests::default_assessment_rejects_invalid_correlation_config_without_projection ... ok
+test fusion::tests::disagreeing_positive_attributions_fail_closed ... ok
+test fusion::tests::empty_positive_axis_verdict_fails_closed_instead_of_becoming_intact ... ok
+test fusion::tests::empty_positive_consistency_attribution_is_rejected ... ok
+test fusion::tests::insufficient_baseline_with_decoupling_still_attributes_inconsistency ... ok
+test fusion::tests::insufficient_baseline_without_decoupling_fails_closed_not_nominal ... ok
+test fusion::tests::nominal_baseline_cannot_hide_insufficient_consistency_evidence ... ok
+test fusion::tests::nominal_when_nothing_flagged ... ok
+test fusion::tests::projection_axes_with_different_positive_attributions_conflict ... ok
+test fusion::tests::source_conflict_fails_closed_without_a_contradictory_boolean_state ... ok
+test observation::tests::consistency_projection_requires_bounded_active_axes_and_provenance ... ok
+test observation::tests::covariance_validation_accepts_roundoff_and_returns_a_symmetric_matrix ... ok
+test observation::tests::covariance_validation_rejects_material_asymmetry_at_tiny_scale ... ok
+test observation::tests::modality_serde_tags_match_crebain ... ok
+test observation::tests::validation_rejects_terminal_sequence_and_timestamp_values ... ok
+test observation::tests::validation_rejects_values_that_can_poison_numeric_state ... ok
+test observation::tests::scalar_observation_omits_research_fields ... ok
+test scalar_channel_tests::alignment_rejects_frozen_timestamps ... ok
+test scalar_channel_tests::alignment_resets_after_a_dropped_sequence ... ok
+test scalar_channel_tests::consistency_input_work_is_explicitly_bounded ... ok
+test scalar_channel_tests::alignment_does_not_reuse_stale_research_after_fields_disappear ... ok
+test scalar_channel_tests::extraction_accepts_inclusive_temporal_limit_boundaries ... ok
+test scalar_channel_tests::alignment_rejects_timestamp_regression_and_resets_on_skew ... ok
+test scalar_channel_tests::alignment_resets_after_a_large_forward_timestamp_gap ... ok
+test scalar_channel_tests::extraction_rejects_different_frozen_priors_within_one_sequence ... ok
+test scalar_channel_tests::extraction_rejects_disabled_or_unbounded_temporal_limits_even_when_empty ... ok
+test scalar_channel_tests::extraction_rejects_prior_reuse_across_sequences ... ok
+test scalar_channel_tests::extraction_rejects_prior_reuse_after_frame_and_context_change ... ok
+test scalar_channel_tests::extraction_rejects_prior_reuse_on_unrequested_modalities ... ok
+test scalar_channel_tests::extraction_returns_every_attested_axis ... ok
+test scalar_channel_tests::legacy_native_innovations_are_not_used_as_consistency_projections ... ok
+test window::tests::evicts_oldest_at_capacity ... ok
+test scalar_channel_tests::rejects_ambiguous_track_order_and_axis_inputs ... ok
+test window::tests::finite_extreme_samples_have_a_saturated_sum_and_finite_mean ... ok
+test window::tests::rejects_invalid_samples_and_allocations ... ok
+test window::tests::rolling_summary_recovers_small_values_after_a_dominant_eviction ... ok
+test window::tests::rolling_summary_stays_close_to_the_retained_values ... ok
+test fusion::tests::default_assessment_does_not_fall_back_to_native_innovations ... ok
+test fusion::tests::default_assessment_checks_all_axes_and_rejects_conflicting_attribution ... ok
+test authority::tests::any_single_limit_increase_is_rejected ... ok
+test authority::tests::arbitrary_non_increasing_limits_are_accepted ... ok
+test chi2::tests::cdf_is_a_probability ... ok
+test chi2::tests::survival_complements_cdf ... ok
+test chi2::tests::cdf_is_monotone_in_x ... ok
+test correlation::prop_tests::abs_pearson_self_correlation_is_one ... ok
+test correlation::prop_tests::abs_pearson_is_a_unit_symmetric_magnitude ... ok
+test correlation::tests::configuration_and_actual_pair_work_are_bounded ... ok
+test scalar_channel_tests::prior_reuse_is_rejected_after_the_original_frame_leaves_the_tail ... ok
+
+test result: ok. 102 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+   Doc-tests galadriel_core
+
+running 1 test
+test crates/galadriel-core/src/fusion.rs - fusion::NonEmptyModalities (line 67) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.73s
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.07s
+   Generated /Users/torusprime/Development/sepahead-github/galadriel/target/doc/galadriel_core/index.html
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+release audit verified

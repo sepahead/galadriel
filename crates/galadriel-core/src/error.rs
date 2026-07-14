@@ -30,6 +30,11 @@ pub enum GaladrielError {
     /// A configuration value was out of range.
     #[error("invalid configuration: {0}")]
     InvalidConfig(String),
+
+    /// A proposed downstream advisory effect would grant, widen, or otherwise
+    /// mutate authority outside the selected record/restrict-only policy.
+    #[error("advisory authority violation: {0}")]
+    AuthorityViolation(&'static str),
 }
 
 /// Convenience result alias.

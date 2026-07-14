@@ -1,0 +1,187 @@
+--- release/0.9.0/api/galadriel-core.baseline.txt	2026-07-14 10:10:32
++++ release/0.9.0/api/galadriel-core.0.9.0.txt	2026-07-14 10:27:48
+@@ -1,4 +1,70 @@
+ pub mod galadriel_core
++pub mod galadriel_core::authority
++pub enum galadriel_core::authority::AdvisoryPolicy
++pub galadriel_core::authority::AdvisoryPolicy::RecordOnly
++pub galadriel_core::authority::AdvisoryPolicy::RestrictOnly
++impl core::clone::Clone for galadriel_core::authority::AdvisoryPolicy
++pub fn galadriel_core::authority::AdvisoryPolicy::clone(&self) -> galadriel_core::authority::AdvisoryPolicy
++impl core::cmp::Eq for galadriel_core::authority::AdvisoryPolicy
++impl core::cmp::PartialEq for galadriel_core::authority::AdvisoryPolicy
++pub fn galadriel_core::authority::AdvisoryPolicy::eq(&self, &galadriel_core::authority::AdvisoryPolicy) -> bool
++impl core::fmt::Debug for galadriel_core::authority::AdvisoryPolicy
++pub fn galadriel_core::authority::AdvisoryPolicy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::marker::Copy for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::StructuralPartialEq for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::Freeze for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::Send for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::Sync for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::Unpin for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::UnsafeUnpin for galadriel_core::authority::AdvisoryPolicy
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::AdvisoryPolicy
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::AdvisoryPolicy
++pub enum galadriel_core::authority::Authorization
++pub galadriel_core::authority::Authorization::Allow
++pub galadriel_core::authority::Authorization::Deny
++impl core::clone::Clone for galadriel_core::authority::Authorization
++pub fn galadriel_core::authority::Authorization::clone(&self) -> galadriel_core::authority::Authorization
++impl core::cmp::Eq for galadriel_core::authority::Authorization
++impl core::cmp::PartialEq for galadriel_core::authority::Authorization
++pub fn galadriel_core::authority::Authorization::eq(&self, &galadriel_core::authority::Authorization) -> bool
++impl core::fmt::Debug for galadriel_core::authority::Authorization
++pub fn galadriel_core::authority::Authorization::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::marker::Copy for galadriel_core::authority::Authorization
++impl core::marker::StructuralPartialEq for galadriel_core::authority::Authorization
++impl core::marker::Freeze for galadriel_core::authority::Authorization
++impl core::marker::Send for galadriel_core::authority::Authorization
++impl core::marker::Sync for galadriel_core::authority::Authorization
++impl core::marker::Unpin for galadriel_core::authority::Authorization
++impl core::marker::UnsafeUnpin for galadriel_core::authority::Authorization
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::Authorization
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::Authorization
++pub struct galadriel_core::authority::AuthoritySnapshot
++impl galadriel_core::authority::AuthoritySnapshot
++pub const fn galadriel_core::authority::AuthoritySnapshot::authorization(&self) -> galadriel_core::authority::Authorization
++pub const fn galadriel_core::authority::AuthoritySnapshot::capability_digest(&self) -> &[u8; 32]
++pub const fn galadriel_core::authority::AuthoritySnapshot::command_ttl_ms(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::lease_expiry_ms(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::new(galadriel_core::authority::Authorization, u64, u64, u64, u64, u64, [u8; 32]) -> Self
++pub const fn galadriel_core::authority::AuthoritySnapshot::slew_limit_units(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::velocity_limit_units(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::watchdog_epoch(&self) -> u64
++impl core::clone::Clone for galadriel_core::authority::AuthoritySnapshot
++pub fn galadriel_core::authority::AuthoritySnapshot::clone(&self) -> galadriel_core::authority::AuthoritySnapshot
++impl core::cmp::Eq for galadriel_core::authority::AuthoritySnapshot
++impl core::cmp::PartialEq for galadriel_core::authority::AuthoritySnapshot
++pub fn galadriel_core::authority::AuthoritySnapshot::eq(&self, &galadriel_core::authority::AuthoritySnapshot) -> bool
++impl core::fmt::Debug for galadriel_core::authority::AuthoritySnapshot
++pub fn galadriel_core::authority::AuthoritySnapshot::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::marker::Copy for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::StructuralPartialEq for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::Freeze for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::Send for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::Sync for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::Unpin for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::UnsafeUnpin for galadriel_core::authority::AuthoritySnapshot
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::AuthoritySnapshot
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::AuthoritySnapshot
++pub fn galadriel_core::authority::validate_advisory_effect(galadriel_core::authority::AdvisoryPolicy, &galadriel_core::authority::AuthoritySnapshot, &galadriel_core::authority::AuthoritySnapshot) -> galadriel_core::error::Result<()>
+ pub mod galadriel_core::baseline
+ pub struct galadriel_core::baseline::NisStat
+ pub galadriel_core::baseline::NisStat::dof: u8
+@@ -22,12 +88,6 @@
+ impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::baseline::NisStat
+ impl core::panic::unwind_safe::UnwindSafe for galadriel_core::baseline::NisStat
+ pub fn galadriel_core::baseline::nis_consistency(&galadriel_core::window::NisWindow, f64) -> galadriel_core::error::Result<galadriel_core::baseline::NisStat>
+-pub mod galadriel_core::chi2
+-pub use galadriel_core::chi2::ln_gamma
+-pub fn galadriel_core::chi2::chi2_cdf(f64, f64) -> f64
+-pub fn galadriel_core::chi2::chi2_sf(f64, f64) -> f64
+-pub fn galadriel_core::chi2::gammp(f64, f64) -> f64
+-pub fn galadriel_core::chi2::gammq(f64, f64) -> f64
+ pub mod galadriel_core::config
+ pub struct galadriel_core::config::DetectorConfig
+ pub galadriel_core::config::DetectorConfig::cusum_slack: f64
+@@ -265,6 +325,7 @@
+ impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::MirrorReport
+ pub mod galadriel_core::error
+ pub enum galadriel_core::error::GaladrielError
++pub galadriel_core::error::GaladrielError::AuthorityViolation(&'static str)
+ pub galadriel_core::error::GaladrielError::InsufficientSamples
+ pub galadriel_core::error::GaladrielError::InsufficientSamples::have: usize
+ pub galadriel_core::error::GaladrielError::InsufficientSamples::need: usize
+@@ -529,6 +590,44 @@
+ impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::window::NisWindow
+ impl core::panic::unwind_safe::UnwindSafe for galadriel_core::window::NisWindow
+ pub const galadriel_core::window::MAX_WINDOW_LEN: usize
++pub enum galadriel_core::AdvisoryPolicy
++pub galadriel_core::AdvisoryPolicy::RecordOnly
++pub galadriel_core::AdvisoryPolicy::RestrictOnly
++impl core::clone::Clone for galadriel_core::authority::AdvisoryPolicy
++pub fn galadriel_core::authority::AdvisoryPolicy::clone(&self) -> galadriel_core::authority::AdvisoryPolicy
++impl core::cmp::Eq for galadriel_core::authority::AdvisoryPolicy
++impl core::cmp::PartialEq for galadriel_core::authority::AdvisoryPolicy
++pub fn galadriel_core::authority::AdvisoryPolicy::eq(&self, &galadriel_core::authority::AdvisoryPolicy) -> bool
++impl core::fmt::Debug for galadriel_core::authority::AdvisoryPolicy
++pub fn galadriel_core::authority::AdvisoryPolicy::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::marker::Copy for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::StructuralPartialEq for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::Freeze for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::Send for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::Sync for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::Unpin for galadriel_core::authority::AdvisoryPolicy
++impl core::marker::UnsafeUnpin for galadriel_core::authority::AdvisoryPolicy
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::AdvisoryPolicy
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::AdvisoryPolicy
++pub enum galadriel_core::Authorization
++pub galadriel_core::Authorization::Allow
++pub galadriel_core::Authorization::Deny
++impl core::clone::Clone for galadriel_core::authority::Authorization
++pub fn galadriel_core::authority::Authorization::clone(&self) -> galadriel_core::authority::Authorization
++impl core::cmp::Eq for galadriel_core::authority::Authorization
++impl core::cmp::PartialEq for galadriel_core::authority::Authorization
++pub fn galadriel_core::authority::Authorization::eq(&self, &galadriel_core::authority::Authorization) -> bool
++impl core::fmt::Debug for galadriel_core::authority::Authorization
++pub fn galadriel_core::authority::Authorization::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::marker::Copy for galadriel_core::authority::Authorization
++impl core::marker::StructuralPartialEq for galadriel_core::authority::Authorization
++impl core::marker::Freeze for galadriel_core::authority::Authorization
++impl core::marker::Send for galadriel_core::authority::Authorization
++impl core::marker::Sync for galadriel_core::authority::Authorization
++impl core::marker::Unpin for galadriel_core::authority::Authorization
++impl core::marker::UnsafeUnpin for galadriel_core::authority::Authorization
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::Authorization
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::Authorization
+ #[non_exhaustive] pub enum galadriel_core::ConsistencyEvidence
+ pub galadriel_core::ConsistencyEvidence::Conflicted(alloc::vec::Vec<galadriel_core::observation::Modality>)
+ pub galadriel_core::ConsistencyEvidence::Decoupled(galadriel_core::fusion::NonEmptyModalities)
+@@ -594,6 +693,7 @@
+ impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::FusedVerdict
+ impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::FusedVerdict
+ pub enum galadriel_core::GaladrielError
++pub galadriel_core::GaladrielError::AuthorityViolation(&'static str)
+ pub galadriel_core::GaladrielError::InsufficientSamples
+ pub galadriel_core::GaladrielError::InsufficientSamples::have: usize
+ pub galadriel_core::GaladrielError::InsufficientSamples::need: usize
+@@ -699,6 +799,32 @@
+ impl core::marker::UnsafeUnpin for galadriel_core::decision::Verdict
+ impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::Verdict
+ impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::Verdict
++pub struct galadriel_core::AuthoritySnapshot
++impl galadriel_core::authority::AuthoritySnapshot
++pub const fn galadriel_core::authority::AuthoritySnapshot::authorization(&self) -> galadriel_core::authority::Authorization
++pub const fn galadriel_core::authority::AuthoritySnapshot::capability_digest(&self) -> &[u8; 32]
++pub const fn galadriel_core::authority::AuthoritySnapshot::command_ttl_ms(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::lease_expiry_ms(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::new(galadriel_core::authority::Authorization, u64, u64, u64, u64, u64, [u8; 32]) -> Self
++pub const fn galadriel_core::authority::AuthoritySnapshot::slew_limit_units(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::velocity_limit_units(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::watchdog_epoch(&self) -> u64
++impl core::clone::Clone for galadriel_core::authority::AuthoritySnapshot
++pub fn galadriel_core::authority::AuthoritySnapshot::clone(&self) -> galadriel_core::authority::AuthoritySnapshot
++impl core::cmp::Eq for galadriel_core::authority::AuthoritySnapshot
++impl core::cmp::PartialEq for galadriel_core::authority::AuthoritySnapshot
++pub fn galadriel_core::authority::AuthoritySnapshot::eq(&self, &galadriel_core::authority::AuthoritySnapshot) -> bool
++impl core::fmt::Debug for galadriel_core::authority::AuthoritySnapshot
++pub fn galadriel_core::authority::AuthoritySnapshot::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::marker::Copy for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::StructuralPartialEq for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::Freeze for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::Send for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::Sync for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::Unpin for galadriel_core::authority::AuthoritySnapshot
++impl core::marker::UnsafeUnpin for galadriel_core::authority::AuthoritySnapshot
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::AuthoritySnapshot
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::AuthoritySnapshot
+ pub struct galadriel_core::AxisCorrelationReport
+ pub galadriel_core::AxisCorrelationReport::axis: usize
+ pub galadriel_core::AxisCorrelationReport::report: galadriel_core::correlation::CorrReport
+@@ -1037,5 +1163,6 @@
+ pub fn galadriel_core::scalar_channels(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], usize) -> galadriel_core::error::Result<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
+ pub fn galadriel_core::scalar_channels_with_limits(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], usize, u64, u64) -> galadriel_core::error::Result<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
+ pub fn galadriel_core::scalar_channels_with_temporal_limits(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], usize, u64, u64, u64) -> galadriel_core::error::Result<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
++pub fn galadriel_core::validate_advisory_effect(galadriel_core::authority::AdvisoryPolicy, &galadriel_core::authority::AuthoritySnapshot, &galadriel_core::authority::AuthoritySnapshot) -> galadriel_core::error::Result<()>
+ pub fn galadriel_core::validate_and_symmetrize_covariance([[f64; 3]; 3]) -> galadriel_core::error::Result<[[f64; 3]; 3]>
+ pub type galadriel_core::Result<T> = core::result::Result<T, galadriel_core::error::GaladrielError>

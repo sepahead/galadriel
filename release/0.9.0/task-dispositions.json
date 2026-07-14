@@ -1,0 +1,347 @@
+{
+  "schema": "galadriel.task-dispositions.v1",
+  "release": "0.9.0",
+  "overrides": [
+    {
+      "task_id": "T000",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-AUD-001"],
+      "requirements": [
+        "The release SHALL generate a canonical audit manifest for every repository, toolchain, Git dependency, dataset, fixture, evidence input, normative document, and external source used for qualification, and SHALL NOT accept mutable or abbreviated repository identities."
+      ],
+      "evidence": [
+        "release/0.9.0/audit-inputs.json",
+        "release/0.9.0/audit-manifest.json",
+        "release/0.9.0/handoff/GALADRIEL_V1_0_ARTIFACT_SHA256SUMS.txt",
+        "release/0.9.0/evidence/phase-1-ci-remediation.log",
+        "release/0.9.0/reviews/phase-1.md"
+      ],
+      "tests": [
+        "scripts/tests/test_release_audit.py",
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "The baseline commit/tree, 120-task chain, inputs and artifact hashes are validated exactly.",
+        "safety_and_failure_behavior": "Missing, malformed or mutable identities fail the audit instead of degrading to an inferred pass.",
+        "security_and_adversarial_behavior": "Duplicate keys, substituted DOI metadata and abbreviated/oversized revisions have negative tests.",
+        "determinism_and_reproducibility": "Canonical JSON is order-independent and idempotent; toolchains and source revisions are frozen.",
+        "performance_and_bounded_resources": "Hashing is streamed in fixed chunks over a finite reviewed inventory.",
+        "api_schema_and_compatibility": "The v1 audit schema rejects missing and unexpected keys and records the API inventories.",
+        "observability_and_provenance": "Every local audit artifact has path, purpose, size and SHA-256 plus repository/tool identities.",
+        "testing_and_independent_evidence": "Positive integration, malformed, boundary, adversarial and metamorphic auditor tests pass.",
+        "documentation_and_operator_usability": "The release README documents deterministic generation and verification commands.",
+        "ecosystem_composition_and_governance": "Selected, reciprocal and unclaimed ecosystem repositories are separated by qualification state."
+      },
+      "residual_risk": "Remote heads can advance after the dated snapshot; only recorded commits qualify. GitHub-only storage is not an independent archive."
+    },
+    {
+      "task_id": "T001",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-CLM-001", "GLD-090-CLM-002", "GLD-090-CLM-003", "GLD-090-CLM-004"],
+      "requirements": [
+        "Every 0.9.0 public claim SHALL be classified as IMPLEMENTED, VALIDATED, DEPLOYMENT_QUALIFIED, or NOT_CLAIMED.",
+        "Component or synthetic evidence SHALL NOT be represented as deployment qualification, and unsupported behavior SHALL remain NOT_CLAIMED with a concrete limitation."
+      ],
+      "evidence": [
+        "release/0.9.0/claims.json",
+        "docs/CLAIMS.md",
+        "release/0.9.0/audit-manifest.json",
+        "release/0.9.0/reviews/phase-1.md"
+      ],
+      "tests": [
+        "scripts/tests/test_release_audit.py",
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "Eleven scoped claims use exactly one frozen tier and an explicit limitation.",
+        "safety_and_failure_behavior": "No deployment-qualified claim exists and all unsafe inference boundaries are explicit non-claims.",
+        "security_and_adversarial_behavior": "Truth, intent, policy and secured-deployment claims are denied rather than inferred.",
+        "determinism_and_reproducibility": "The canonical claims object is embedded in the generated audit manifest.",
+        "performance_and_bounded_resources": "Claims introduce no runtime work or unbounded state.",
+        "api_schema_and_compatibility": "The verifier rejects unknown tiers, duplicate IDs, missing fields and affirmative evidence on NOT_CLAIMED entries.",
+        "observability_and_provenance": "Affirmative claim evidence paths are required to exist and are retained with the release.",
+        "testing_and_independent_evidence": "The auditor proves all claims are tiered/limited and deployment qualification remains empty.",
+        "documentation_and_operator_usability": "The human claims page explains tiers without expanding the machine contract.",
+        "ecosystem_composition_and_governance": "NCP 1.0, upstream pid-rs release and downstream consumers remain explicitly unclaimed."
+      },
+      "residual_risk": "Claim evidence is maintainer-generated component evidence; it does not establish field or independent validation."
+    },
+    {
+      "task_id": "T002",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-STAT-001", "GLD-090-STAT-002", "GLD-090-STAT-003"],
+      "requirements": [
+        "Every stable and optional report scalar and verdict SHALL have the exact estimand, ordered decision functional, assumptions and scope documented in the statistical contract.",
+        "A report SHALL NOT be interpreted as sensor truth, malicious intent, causal attack class, calibrated posterior, or unlimited-stream error guarantee."
+      ],
+      "evidence": [
+        "docs/STATISTICAL-CONTRACT.md",
+        "crates/galadriel-core/src/decision.rs",
+        "crates/galadriel-core/src/correlation.rs",
+        "crates/galadriel-core/src/fusion.rs",
+        "crates/galadriel-pid/src/engine.rs",
+        "release/0.9.0/evidence/phase-1-ci-remediation.log",
+        "release/0.9.0/reviews/phase-1.md"
+      ],
+      "tests": [
+        "scripts/tests/test_release_audit.py",
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "NIS, CUSUM, correlation, fusion and optional PID fields map to the implementation's exact equations and ordered branches.",
+        "safety_and_failure_behavior": "Insufficiency, unclassified evidence and malformed input remain distinct from nominal evidence.",
+        "security_and_adversarial_behavior": "The contract names censoring, coordinated statistics-preserving evasion and provenance limitations.",
+        "determinism_and_reproducibility": "Inputs, configuration and deterministic decision order fully identify the report functional.",
+        "performance_and_bounded_resources": "The contract records retained windows and estimator work as bounded inputs, not implicit populations.",
+        "api_schema_and_compatibility": "The auditor checks representative fields from every report family and both fused/PID verdict vocabularies.",
+        "observability_and_provenance": "Identity fields and non-normative note fields are separated from statistical estimands.",
+        "testing_and_independent_evidence": "Core/PID unit, property and workspace tests exercise the documented scalar and verdict branches.",
+        "documentation_and_operator_usability": "Equations, thresholds, branch precedence and assumption boundaries are in one normative document.",
+        "ecosystem_composition_and_governance": "Producer/transport authenticity and downstream policy remain outside the statistical claim."
+      },
+      "residual_risk": "Repeated-look calibration, missingness identification and field-population validity are not established and remain later blockers/non-claims."
+    },
+    {
+      "task_id": "T003",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-THR-001", "GLD-090-THR-002", "GLD-090-THR-003"],
+      "requirements": [
+        "Invalid, stale, missing, replayed, contradictory, incomparable or resource-excess evidence SHALL NOT become Nominal.",
+        "The threat model SHALL cover spoofing, correlated compromise, missingness, timing faults, route confusion and denial of service with required behavior and residual risk."
+      ],
+      "evidence": [
+        "docs/THREAT-MODEL.md",
+        "SECURITY.md",
+        "docs/SECURE-DEPLOYMENT.md",
+        "release/0.9.0/reviews/phase-1.md"
+      ],
+      "tests": [
+        "scripts/tests/test_release_audit.py",
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "Assets, trust boundaries, adversaries and safe-failure states are explicitly enumerated.",
+        "safety_and_failure_behavior": "Malformed inputs error, unidentifiable evidence abstains, and transport integrity faults stop the epoch.",
+        "security_and_adversarial_behavior": "Single/colluding spoof, replay, route confusion, malformed data, overload, substitution and policy misuse are covered.",
+        "determinism_and_reproducibility": "Each threat maps to deterministic required behavior and a visible residual non-claim.",
+        "performance_and_bounded_resources": "Memory, payload, track, queue, replay and estimator-work exhaustion are explicit threat classes.",
+        "api_schema_and_compatibility": "The model distinguishes application decode limits from pre-materialization transport limits.",
+        "observability_and_provenance": "Health/fault evidence and authenticated versus merely claimed provenance are separated.",
+        "testing_and_independent_evidence": "The auditor verifies all six handoff threat classes; the workspace exercises detailed negative cases.",
+        "documentation_and_operator_usability": "A compact threat table provides required response and residual risk per class.",
+        "ecosystem_composition_and_governance": "External deployment and consumer responsibilities are not laundered into component claims."
+      },
+      "residual_risk": "Statistics-preserving coordinated attacks and privileged producer/config compromise remain capable of evasion; deployment controls are independently required."
+    },
+    {
+      "task_id": "T004",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-AUTH-001", "GLD-090-AUTH-002"],
+      "requirements": [
+        "Galadriel output SHALL remain advisory and SHALL NOT grant authority, widen a limit, extend TTL or lease, refresh a watchdog, add capabilities, or erase an independent fault.",
+        "Record-only handling SHALL preserve the entire policy snapshot and restrict-only handling SHALL be monotonically non-widening."
+      ],
+      "evidence": [
+        "crates/galadriel-core/src/authority.rs",
+        "docs/ADVISORY-BOUNDARY.md",
+        "release/0.9.0/api/galadriel-core.0.9.0.txt",
+        "release/0.9.0/evidence/phase-1-mutation-remediation.log",
+        "release/0.9.0/reviews/phase-1.md"
+      ],
+      "tests": [
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log",
+        "release/0.9.0/evidence/phase-1-mutation-remediation.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "A pure fixed-integer snapshot comparator implements exact equality and partial-order checks.",
+        "safety_and_failure_behavior": "Record-only rejects even restrictions; restrict-only admits Allow-to-Deny and non-increasing limits only.",
+        "security_and_adversarial_behavior": "Deny-to-Allow, each scalar increase, capability substitution and watchdog refresh are negative-tested.",
+        "determinism_and_reproducibility": "The validator has no clock, IO, randomness, floating point or mutable global state.",
+        "performance_and_bounded_resources": "Validation is constant-time over one fixed-size snapshot and 32-byte digest.",
+        "api_schema_and_compatibility": "Private fields and getters prevent unvalidated alternate representations; types are in the stable core inventory.",
+        "observability_and_provenance": "Typed AuthorityViolation errors retain the exact rejected invariant without applying policy.",
+        "testing_and_independent_evidence": "Positive, negative, equality/zero/MAX boundary, getter round-trip, adversarial and proptest cases pass; all 30 viable changed-line mutants are caught.",
+        "documentation_and_operator_usability": "The API explains consumer-selected units and verdict-independent behavior, including Nominal.",
+        "ecosystem_composition_and_governance": "No downstream adapter or control credential is introduced; consumer qualification remains separate."
+      },
+      "residual_risk": "The model cannot force an external consumer to call it or prove that its capability digest covers an external policy; no consumer is qualified."
+    },
+    {
+      "task_id": "T005",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-API-001", "GLD-090-API-002", "GLD-090-API-003", "GLD-090-API-004"],
+      "requirements": [
+        "Only galadriel-core SHALL be a stable 0.9.x source API; supporting crates, features and wire adapters SHALL remain experimental.",
+        "Numerical implementation helpers SHALL NOT be public, and the pure default graph SHALL NOT enable optional PID or NCP features."
+      ],
+      "evidence": [
+        "docs/API-SURFACE.md",
+        "release/0.9.0/api/galadriel-core.baseline.txt",
+        "release/0.9.0/api/galadriel-core.0.9.0.txt",
+        "release/0.9.0/evidence/galadriel-core-api.diff",
+        "release/0.9.0/reviews/phase-1.md"
+      ],
+      "tests": [
+        "scripts/tests/test_release_audit.py",
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "The stable crate and all experimental supporting surfaces are named without ambiguity.",
+        "safety_and_failure_behavior": "Stable API status does not imply scientific or deployment qualification.",
+        "security_and_adversarial_behavior": "Optional heavy/network features stay outside the default graph and cannot silently expand attack surface.",
+        "determinism_and_reproducibility": "Before/after public API snapshots are generated with pinned cargo-public-api 0.52.0.",
+        "performance_and_bounded_resources": "The no-default core build proves the selected stable surface retains its light graph.",
+        "api_schema_and_compatibility": "The accidental chi2 module is removed and intentional authority surface is shown in the retained diff.",
+        "observability_and_provenance": "API snapshots, tool identity and exact baseline commit are part of the audit record.",
+        "testing_and_independent_evidence": "The auditor rejects a final snapshot exposing chi2; clippy/tests/docs/no-default and full gates pass.",
+        "documentation_and_operator_usability": "Compatibility scope, breaking-change rule and non-crates.io status are public.",
+        "ecosystem_composition_and_governance": "pid-rs/NCP adapters are not promoted into the stable source contract."
+      },
+      "residual_risk": "All code phases may still intentionally add stable core items before final 0.9.0 freeze; a final API snapshot/diff is required."
+    },
+    {
+      "task_id": "T006",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-REL-003", "GLD-090-REL-004", "GLD-090-META-001", "GLD-090-META-002"],
+      "requirements": [
+        "Release metadata SHALL identify version 0.9.0 and author Sepehr Mahmoudian and SHALL NOT claim a project DOI, Zenodo record, crates.io publication or production support.",
+        "Security reports SHALL use a private advisory channel or the named maintainer contact and SHALL NOT be filed publicly while undisclosed."
+      ],
+      "evidence": [
+        "Cargo.toml",
+        "CITATION.cff",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "SUPPORT.md",
+        "SECURITY.md",
+        "release/0.9.0/VERSION-ADAPTATION.md"
+      ],
+      "tests": [
+        "scripts/tests/test_release_audit.py",
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "Cargo, CFF, license and release records agree on author, version and dual license.",
+        "safety_and_failure_behavior": "Support limits and absence of production/archival guarantees are explicit.",
+        "security_and_adversarial_behavior": "A private vulnerability channel, exact contact and public-disclosure prohibition are documented.",
+        "determinism_and_reproducibility": "The auditor machine-checks version, author, publish=false and absence of project DOI/Zenodo metadata.",
+        "performance_and_bounded_resources": "Metadata changes introduce no runtime cost.",
+        "api_schema_and_compatibility": "CFF 1.2 and SemVer 0.9.0 are used without inventing an identifier.",
+        "observability_and_provenance": "Citation requests exact version and Git commit; author ownership is unambiguous.",
+        "testing_and_independent_evidence": "Negative DOI substitution and full metadata integration checks pass.",
+        "documentation_and_operator_usability": "Support and security routes are separated and response expectations are plain.",
+        "ecosystem_composition_and_governance": "Assistants are prohibited as co-authors and no ecosystem project is assigned release ownership."
+      },
+      "residual_risk": "The GitHub source release has no independent preservation identifier; the author will add DOI/Zenodo metadata later."
+    },
+    {
+      "task_id": "T007",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-PIN-001", "GLD-090-PIN-002", "GLD-090-PIN-003", "GLD-090-PIN-004"],
+      "requirements": [
+        "Every qualified Git dependency SHALL name and resolve a full immutable revision; qualification commands SHALL use the checksummed Cargo.lock and pinned Rust toolchain.",
+        "An upstream version declaration without a release artifact SHALL NOT be represented as a released integration."
+      ],
+      "evidence": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "deny.toml",
+        "docs/DEPENDENCY-POLICY.md",
+        "release/0.9.0/evidence/phase-1-ci-remediation.log",
+        "release/0.9.0/audit-manifest.json"
+      ],
+      "tests": [
+        "scripts/tests/test_release_audit.py",
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "Cargo.lock resolves pid-rs and NCP packages to the declared full revisions.",
+        "safety_and_failure_behavior": "Unreleased upstream status narrows claims instead of silently accepting a floating version label.",
+        "security_and_adversarial_behavior": "Unknown sources/wildcards are denied and mutable/invalid revisions are rejected.",
+        "determinism_and_reproducibility": "Rust 1.89.0, Cargo.lock checksums and exact Git commits identify the qualification graph.",
+        "performance_and_bounded_resources": "Default features remain light; optional dependency work stays opt-in.",
+        "api_schema_and_compatibility": "NCP scope is v0.8.0 and pid-rs is an immutable component input, not an inferred release promise.",
+        "observability_and_provenance": "The generated manifest lists each Git package/version/source/commit.",
+        "testing_and_independent_evidence": "Abbreviated/oversized revision tests, locked full gates and cargo-deny source checks pass.",
+        "documentation_and_operator_usability": "The distinction between manifest ranges, lock identity and upstream release status is documented.",
+        "ecosystem_composition_and_governance": "No sibling checkout or cross-repo mutation was used to qualify the pins."
+      },
+      "residual_risk": "cargo deny reports yanked/duplicate transitive warnings from the pinned Zenoh graph; later supply-chain tasks must disposition them."
+    },
+    {
+      "task_id": "T008",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-LED-001"],
+      "requirements": [
+        "The ledger SHALL contain exactly T000 through T119 in dependency order and SHALL NOT mark a task COMPLETE without SHALL-language, tests, machine evidence, all ten review lenses and residual risk."
+      ],
+      "evidence": [
+        "release/0.9.0/handoff/tasks.json",
+        "release/0.9.0/task-dispositions.json",
+        "release/0.9.0/requirements-ledger.json",
+        "release/0.9.0/reviews/phase-1.md"
+      ],
+      "tests": [
+        "scripts/tests/test_release_audit.py",
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "All 120 source tasks and their strict predecessor dependencies are losslessly indexed.",
+        "safety_and_failure_behavior": "OPEN remains the default and unsupported closure must be explicit NOT_CLAIMED with reason.",
+        "security_and_adversarial_behavior": "Duplicate IDs/keys, skipped dependencies, unknown status and evidence-free completion are rejected.",
+        "determinism_and_reproducibility": "Source YAML hash and canonical generated ledger prevent unnoticed handoff/task drift.",
+        "performance_and_bounded_resources": "The fixed 120-entry pass is bounded and deterministic.",
+        "api_schema_and_compatibility": "Source, disposition and generated-ledger schemas have closed required key sets.",
+        "observability_and_provenance": "Every closure exposes requirement IDs, exact files/logs, reviews and residual risk.",
+        "testing_and_independent_evidence": "A direct adversarial test proves prose-only completion fails; chain/count integration tests pass.",
+        "documentation_and_operator_usability": "The release README explains the source/override/generated separation and verify command.",
+        "ecosystem_composition_and_governance": "Strict order prevents later ecosystem/publication claims from bypassing core qualification."
+      },
+      "residual_risk": "The ledger proves documented review/evidence presence, not the truth of external deployment claims; those remain independently audited."
+    },
+    {
+      "task_id": "T009",
+      "status": "COMPLETE",
+      "requirement_ids": ["GLD-090-CTL-001", "GLD-090-CTL-002", "GLD-090-CTL-003", "GLD-090-CTL-004", "GLD-090-CTL-005"],
+      "requirements": [
+        "Protected main SHALL be the sole 0.9.0 candidate line under the release owner's instruction, and every freeze change SHALL identify affected requirements, tests, evidence, claims and risks.",
+        "Commits SHALL be professionally messaged, signed and authored by Sepehr Mahmoudian; cross-repository edits SHALL NOT exceed claimed integration scope or overwrite concurrent work."
+      ],
+      "evidence": [
+        "RELEASE-POLICY.md",
+        "release/0.9.0/VERSION-ADAPTATION.md",
+        "release/0.9.0/reviews/phase-1.md",
+        "release/0.9.0/evidence/phase-1-full-gates.log",
+        "release/0.9.0/evidence/phase-1-ci-remediation.log"
+      ],
+      "tests": [
+        "scripts/tests/test_release_audit.py",
+        "release/0.9.0/evidence/phase-1-component-gates.log",
+        "release/0.9.0/evidence/phase-1-full-gates.log"
+      ],
+      "review": {
+        "correctness_and_invariants": "The owner-requested main candidate, freeze start/end and candidate/publication gates are explicit.",
+        "safety_and_failure_behavior": "Only release-blocking exceptions enter freeze and every substantive change invalidates affected evidence.",
+        "security_and_adversarial_behavior": "Signed commits, protected checks, credential-scope limits and non-erasing withdrawal records are required.",
+        "determinism_and_reproducibility": "A candidate requires clean tree, immutable graph, verified ledger and retained full commands.",
+        "performance_and_bounded_resources": "Change control adds review gates without changing runtime resources.",
+        "api_schema_and_compatibility": "Stable API/schema changes require explicit compatibility disposition during freeze.",
+        "observability_and_provenance": "Every exception/change must name requirements, tests, evidence, claims and residual risk.",
+        "testing_and_independent_evidence": "The complete phase/full gates are retained before freeze declaration; later changes must rerun them.",
+        "documentation_and_operator_usability": "Candidate, publication, emergency, old-tag and cross-repo rules are in one root policy.",
+        "ecosystem_composition_and_governance": "Cross-repo authority is narrow and concurrent agent/user work must be preserved."
+      },
+      "residual_risk": "Branch protection may require PR-mediated updates even though main is the candidate; remote protected checks remain authoritative after push."
+    }
+  ]
+}

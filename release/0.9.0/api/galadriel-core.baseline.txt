@@ -1,0 +1,1041 @@
+pub mod galadriel_core
+pub mod galadriel_core::baseline
+pub struct galadriel_core::baseline::NisStat
+pub galadriel_core::baseline::NisStat::dof: u8
+pub galadriel_core::baseline::NisStat::elevated: bool
+pub galadriel_core::baseline::NisStat::mean_nis: f64
+pub galadriel_core::baseline::NisStat::n: usize
+pub galadriel_core::baseline::NisStat::p_right: f64
+pub galadriel_core::baseline::NisStat::sum_nis: f64
+impl core::clone::Clone for galadriel_core::baseline::NisStat
+pub fn galadriel_core::baseline::NisStat::clone(&self) -> galadriel_core::baseline::NisStat
+impl core::cmp::PartialEq for galadriel_core::baseline::NisStat
+pub fn galadriel_core::baseline::NisStat::eq(&self, &galadriel_core::baseline::NisStat) -> bool
+impl core::fmt::Debug for galadriel_core::baseline::NisStat
+pub fn galadriel_core::baseline::NisStat::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::baseline::NisStat
+impl core::marker::Freeze for galadriel_core::baseline::NisStat
+impl core::marker::Send for galadriel_core::baseline::NisStat
+impl core::marker::Sync for galadriel_core::baseline::NisStat
+impl core::marker::Unpin for galadriel_core::baseline::NisStat
+impl core::marker::UnsafeUnpin for galadriel_core::baseline::NisStat
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::baseline::NisStat
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::baseline::NisStat
+pub fn galadriel_core::baseline::nis_consistency(&galadriel_core::window::NisWindow, f64) -> galadriel_core::error::Result<galadriel_core::baseline::NisStat>
+pub mod galadriel_core::chi2
+pub use galadriel_core::chi2::ln_gamma
+pub fn galadriel_core::chi2::chi2_cdf(f64, f64) -> f64
+pub fn galadriel_core::chi2::chi2_sf(f64, f64) -> f64
+pub fn galadriel_core::chi2::gammp(f64, f64) -> f64
+pub fn galadriel_core::chi2::gammq(f64, f64) -> f64
+pub mod galadriel_core::config
+pub struct galadriel_core::config::DetectorConfig
+pub galadriel_core::config::DetectorConfig::cusum_slack: f64
+pub galadriel_core::config::DetectorConfig::cusum_threshold: f64
+pub galadriel_core::config::DetectorConfig::jam_fraction: f64
+pub galadriel_core::config::DetectorConfig::max_inter_sample_gap_ms: u64
+pub galadriel_core::config::DetectorConfig::max_seq_gap: u64
+pub galadriel_core::config::DetectorConfig::max_timestamp_skew_ms: u64
+pub galadriel_core::config::DetectorConfig::max_tracks: usize
+pub galadriel_core::config::DetectorConfig::min_channels: usize
+pub galadriel_core::config::DetectorConfig::min_samples: usize
+pub galadriel_core::config::DetectorConfig::nis_alpha: f64
+pub galadriel_core::config::DetectorConfig::window_len: usize
+impl galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::validate(&self) -> galadriel_core::error::Result<()>
+impl core::clone::Clone for galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::clone(&self) -> galadriel_core::config::DetectorConfig
+impl core::cmp::PartialEq for galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::eq(&self, &galadriel_core::config::DetectorConfig) -> bool
+impl core::default::Default for galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::default() -> Self
+impl core::fmt::Debug for galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::config::DetectorConfig
+impl core::marker::Freeze for galadriel_core::config::DetectorConfig
+impl core::marker::Send for galadriel_core::config::DetectorConfig
+impl core::marker::Sync for galadriel_core::config::DetectorConfig
+impl core::marker::Unpin for galadriel_core::config::DetectorConfig
+impl core::marker::UnsafeUnpin for galadriel_core::config::DetectorConfig
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::config::DetectorConfig
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::config::DetectorConfig
+pub const galadriel_core::config::MAX_ALIGNMENT_SEQ_GAP: u64
+pub const galadriel_core::config::MAX_ALIGNMENT_TIMESTAMP_SKEW_MS: u64
+pub const galadriel_core::config::MAX_INTER_SAMPLE_GAP_MS: u64
+pub const galadriel_core::config::MAX_RETAINED_NIS_SAMPLES: usize
+pub mod galadriel_core::correlation
+pub enum galadriel_core::correlation::CorrVerdict
+pub galadriel_core::correlation::CorrVerdict::Decoupled(alloc::vec::Vec<galadriel_core::observation::Modality>)
+pub galadriel_core::correlation::CorrVerdict::InsufficientEvidence
+pub galadriel_core::correlation::CorrVerdict::Nominal
+impl core::clone::Clone for galadriel_core::correlation::CorrVerdict
+pub fn galadriel_core::correlation::CorrVerdict::clone(&self) -> galadriel_core::correlation::CorrVerdict
+impl core::cmp::PartialEq for galadriel_core::correlation::CorrVerdict
+pub fn galadriel_core::correlation::CorrVerdict::eq(&self, &galadriel_core::correlation::CorrVerdict) -> bool
+impl core::fmt::Debug for galadriel_core::correlation::CorrVerdict
+pub fn galadriel_core::correlation::CorrVerdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::correlation::CorrVerdict
+impl core::marker::Freeze for galadriel_core::correlation::CorrVerdict
+impl core::marker::Send for galadriel_core::correlation::CorrVerdict
+impl core::marker::Sync for galadriel_core::correlation::CorrVerdict
+impl core::marker::Unpin for galadriel_core::correlation::CorrVerdict
+impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrVerdict
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrVerdict
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrVerdict
+pub struct galadriel_core::correlation::CorrChannel
+pub galadriel_core::correlation::CorrChannel::corroboration: core::option::Option<f64>
+pub galadriel_core::correlation::CorrChannel::decoupled: bool
+pub galadriel_core::correlation::CorrChannel::modality: galadriel_core::observation::Modality
+pub galadriel_core::correlation::CorrChannel::n: usize
+impl core::clone::Clone for galadriel_core::correlation::CorrChannel
+pub fn galadriel_core::correlation::CorrChannel::clone(&self) -> galadriel_core::correlation::CorrChannel
+impl core::fmt::Debug for galadriel_core::correlation::CorrChannel
+pub fn galadriel_core::correlation::CorrChannel::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::correlation::CorrChannel
+impl core::marker::Send for galadriel_core::correlation::CorrChannel
+impl core::marker::Sync for galadriel_core::correlation::CorrChannel
+impl core::marker::Unpin for galadriel_core::correlation::CorrChannel
+impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrChannel
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrChannel
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrChannel
+pub struct galadriel_core::correlation::CorrConfig
+pub galadriel_core::correlation::CorrConfig::corr_floor: f64
+pub galadriel_core::correlation::CorrConfig::decouple_ratio: f64
+pub galadriel_core::correlation::CorrConfig::family_alpha: f64
+pub galadriel_core::correlation::CorrConfig::min_samples: usize
+pub galadriel_core::correlation::CorrConfig::window: usize
+impl galadriel_core::correlation::CorrConfig
+pub fn galadriel_core::correlation::CorrConfig::validate(&self) -> galadriel_core::error::Result<()>
+impl core::clone::Clone for galadriel_core::correlation::CorrConfig
+pub fn galadriel_core::correlation::CorrConfig::clone(&self) -> galadriel_core::correlation::CorrConfig
+impl core::default::Default for galadriel_core::correlation::CorrConfig
+pub fn galadriel_core::correlation::CorrConfig::default() -> Self
+impl core::fmt::Debug for galadriel_core::correlation::CorrConfig
+pub fn galadriel_core::correlation::CorrConfig::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::correlation::CorrConfig
+impl core::marker::Send for galadriel_core::correlation::CorrConfig
+impl core::marker::Sync for galadriel_core::correlation::CorrConfig
+impl core::marker::Unpin for galadriel_core::correlation::CorrConfig
+impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrConfig
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrConfig
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrConfig
+pub struct galadriel_core::correlation::CorrReport
+pub galadriel_core::correlation::CorrReport::channels: alloc::vec::Vec<galadriel_core::correlation::CorrChannel>
+pub galadriel_core::correlation::CorrReport::note: alloc::string::String
+pub galadriel_core::correlation::CorrReport::verdict: galadriel_core::correlation::CorrVerdict
+impl core::clone::Clone for galadriel_core::correlation::CorrReport
+pub fn galadriel_core::correlation::CorrReport::clone(&self) -> galadriel_core::correlation::CorrReport
+impl core::fmt::Debug for galadriel_core::correlation::CorrReport
+pub fn galadriel_core::correlation::CorrReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::correlation::CorrReport
+impl core::marker::Send for galadriel_core::correlation::CorrReport
+impl core::marker::Sync for galadriel_core::correlation::CorrReport
+impl core::marker::Unpin for galadriel_core::correlation::CorrReport
+impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrReport
+pub const galadriel_core::correlation::MAX_CORRELATION_PAIR_SAMPLES: usize
+pub const galadriel_core::correlation::MAX_CORRELATION_WINDOW: usize
+pub fn galadriel_core::correlation::abs_pearson(&[f64], &[f64]) -> galadriel_core::error::Result<f64>
+pub fn galadriel_core::correlation::analyze(&[(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)], &galadriel_core::correlation::CorrConfig) -> galadriel_core::error::Result<galadriel_core::correlation::CorrReport>
+pub fn galadriel_core::correlation::pearson(&[f64], &[f64]) -> galadriel_core::error::Result<f64>
+pub mod galadriel_core::cusum
+pub struct galadriel_core::cusum::Cusum
+impl galadriel_core::cusum::Cusum
+pub fn galadriel_core::cusum::Cusum::alarm(&self) -> bool
+pub fn galadriel_core::cusum::Cusum::hi(&self) -> f64
+pub fn galadriel_core::cusum::Cusum::high_alarm(&self) -> bool
+pub fn galadriel_core::cusum::Cusum::lo(&self) -> f64
+pub fn galadriel_core::cusum::Cusum::low_alarm(&self) -> bool
+pub fn galadriel_core::cusum::Cusum::new(f64, f64, f64) -> galadriel_core::error::Result<Self>
+pub fn galadriel_core::cusum::Cusum::reset(&mut self)
+pub fn galadriel_core::cusum::Cusum::update(&mut self, f64) -> galadriel_core::error::Result<bool>
+impl core::clone::Clone for galadriel_core::cusum::Cusum
+pub fn galadriel_core::cusum::Cusum::clone(&self) -> galadriel_core::cusum::Cusum
+impl core::fmt::Debug for galadriel_core::cusum::Cusum
+pub fn galadriel_core::cusum::Cusum::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::cusum::Cusum
+impl core::marker::Send for galadriel_core::cusum::Cusum
+impl core::marker::Sync for galadriel_core::cusum::Cusum
+impl core::marker::Unpin for galadriel_core::cusum::Cusum
+impl core::marker::UnsafeUnpin for galadriel_core::cusum::Cusum
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::cusum::Cusum
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::cusum::Cusum
+pub mod galadriel_core::decision
+pub enum galadriel_core::decision::Verdict
+pub galadriel_core::decision::Verdict::AttributedInconsistency
+pub galadriel_core::decision::Verdict::AttributedInconsistency::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
+pub galadriel_core::decision::Verdict::BroadDegradation
+pub galadriel_core::decision::Verdict::InsufficientEvidence
+pub galadriel_core::decision::Verdict::Nominal
+pub galadriel_core::decision::Verdict::UnclassifiedAnomaly
+pub galadriel_core::decision::Verdict::UnclassifiedAnomaly::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
+impl core::clone::Clone for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::clone(&self) -> galadriel_core::decision::Verdict
+impl core::cmp::PartialEq for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::eq(&self, &galadriel_core::decision::Verdict) -> bool
+impl core::fmt::Debug for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::decision::Verdict
+impl serde_core::ser::Serialize for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::decision::Verdict
+impl core::marker::Send for galadriel_core::decision::Verdict
+impl core::marker::Sync for galadriel_core::decision::Verdict
+impl core::marker::Unpin for galadriel_core::decision::Verdict
+impl core::marker::UnsafeUnpin for galadriel_core::decision::Verdict
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::Verdict
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::Verdict
+pub struct galadriel_core::decision::ChannelReport
+pub galadriel_core::decision::ChannelReport::cusum_high_alarm: bool
+pub galadriel_core::decision::ChannelReport::cusum_low_alarm: bool
+pub galadriel_core::decision::ChannelReport::elevated: bool
+pub galadriel_core::decision::ChannelReport::fresh: bool
+pub galadriel_core::decision::ChannelReport::last_seq: core::option::Option<u64>
+pub galadriel_core::decision::ChannelReport::last_timestamp_ms: core::option::Option<u64>
+pub galadriel_core::decision::ChannelReport::mean_nis: f64
+pub galadriel_core::decision::ChannelReport::modality: galadriel_core::observation::Modality
+pub galadriel_core::decision::ChannelReport::n: usize
+pub galadriel_core::decision::ChannelReport::p_right: f64
+pub galadriel_core::decision::ChannelReport::ready: bool
+impl galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::anomalous(&self) -> bool
+pub fn galadriel_core::decision::ChannelReport::high_anomalous(&self) -> bool
+impl core::clone::Clone for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::clone(&self) -> galadriel_core::decision::ChannelReport
+impl core::cmp::PartialEq for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::eq(&self, &galadriel_core::decision::ChannelReport) -> bool
+impl core::fmt::Debug for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::decision::ChannelReport
+impl serde_core::ser::Serialize for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::decision::ChannelReport
+impl core::marker::Send for galadriel_core::decision::ChannelReport
+impl core::marker::Sync for galadriel_core::decision::ChannelReport
+impl core::marker::Unpin for galadriel_core::decision::ChannelReport
+impl core::marker::UnsafeUnpin for galadriel_core::decision::ChannelReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::ChannelReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::ChannelReport
+pub struct galadriel_core::decision::Mirror
+impl galadriel_core::decision::Mirror
+pub fn galadriel_core::decision::Mirror::assess(&self, u64, u64) -> galadriel_core::error::Result<galadriel_core::decision::MirrorReport>
+pub fn galadriel_core::decision::Mirror::clear(&mut self)
+pub fn galadriel_core::decision::Mirror::config(&self) -> &galadriel_core::config::DetectorConfig
+pub fn galadriel_core::decision::Mirror::ingest(&mut self, &galadriel_core::observation::PidObservation) -> galadriel_core::error::Result<()>
+pub fn galadriel_core::decision::Mirror::ingest_and_assess(&mut self, &galadriel_core::observation::PidObservation) -> galadriel_core::error::Result<galadriel_core::decision::MirrorReport>
+pub fn galadriel_core::decision::Mirror::new(galadriel_core::config::DetectorConfig) -> galadriel_core::error::Result<Self>
+pub fn galadriel_core::decision::Mirror::remove_track(&mut self, u64) -> bool
+pub fn galadriel_core::decision::Mirror::track_count(&self) -> usize
+pub fn galadriel_core::decision::Mirror::with_modalities(galadriel_core::config::DetectorConfig, &[galadriel_core::observation::Modality]) -> galadriel_core::error::Result<Self>
+impl core::marker::Freeze for galadriel_core::decision::Mirror
+impl core::marker::Send for galadriel_core::decision::Mirror
+impl core::marker::Sync for galadriel_core::decision::Mirror
+impl core::marker::Unpin for galadriel_core::decision::Mirror
+impl core::marker::UnsafeUnpin for galadriel_core::decision::Mirror
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::Mirror
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::Mirror
+pub struct galadriel_core::decision::MirrorReport
+pub galadriel_core::decision::MirrorReport::channels: alloc::vec::Vec<galadriel_core::decision::ChannelReport>
+pub galadriel_core::decision::MirrorReport::note: alloc::string::String
+pub galadriel_core::decision::MirrorReport::seq: u64
+pub galadriel_core::decision::MirrorReport::track_id: u64
+pub galadriel_core::decision::MirrorReport::verdict: galadriel_core::decision::Verdict
+impl core::clone::Clone for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::clone(&self) -> galadriel_core::decision::MirrorReport
+impl core::cmp::PartialEq for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::eq(&self, &galadriel_core::decision::MirrorReport) -> bool
+impl core::fmt::Debug for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::decision::MirrorReport
+impl serde_core::ser::Serialize for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::decision::MirrorReport
+impl core::marker::Send for galadriel_core::decision::MirrorReport
+impl core::marker::Sync for galadriel_core::decision::MirrorReport
+impl core::marker::Unpin for galadriel_core::decision::MirrorReport
+impl core::marker::UnsafeUnpin for galadriel_core::decision::MirrorReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::MirrorReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::MirrorReport
+pub mod galadriel_core::error
+pub enum galadriel_core::error::GaladrielError
+pub galadriel_core::error::GaladrielError::InsufficientSamples
+pub galadriel_core::error::GaladrielError::InsufficientSamples::have: usize
+pub galadriel_core::error::GaladrielError::InsufficientSamples::need: usize
+pub galadriel_core::error::GaladrielError::InvalidChannels(alloc::string::String)
+pub galadriel_core::error::GaladrielError::InvalidConfig(alloc::string::String)
+pub galadriel_core::error::GaladrielError::InvalidObservation(alloc::string::String)
+pub galadriel_core::error::GaladrielError::NonFinite(&'static str)
+pub galadriel_core::error::GaladrielError::TrackLimit
+pub galadriel_core::error::GaladrielError::TrackLimit::limit: usize
+impl core::clone::Clone for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::clone(&self) -> galadriel_core::error::GaladrielError
+impl core::cmp::PartialEq for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::eq(&self, &galadriel_core::error::GaladrielError) -> bool
+impl core::error::Error for galadriel_core::error::GaladrielError
+impl core::fmt::Debug for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::error::GaladrielError
+impl core::marker::Freeze for galadriel_core::error::GaladrielError
+impl core::marker::Send for galadriel_core::error::GaladrielError
+impl core::marker::Sync for galadriel_core::error::GaladrielError
+impl core::marker::Unpin for galadriel_core::error::GaladrielError
+impl core::marker::UnsafeUnpin for galadriel_core::error::GaladrielError
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::error::GaladrielError
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::error::GaladrielError
+pub type galadriel_core::error::Result<T> = core::result::Result<T, galadriel_core::error::GaladrielError>
+pub mod galadriel_core::fusion
+#[non_exhaustive] pub enum galadriel_core::fusion::ConsistencyEvidence
+pub galadriel_core::fusion::ConsistencyEvidence::Conflicted(alloc::vec::Vec<galadriel_core::observation::Modality>)
+pub galadriel_core::fusion::ConsistencyEvidence::Decoupled(galadriel_core::fusion::NonEmptyModalities)
+pub galadriel_core::fusion::ConsistencyEvidence::Insufficient
+pub galadriel_core::fusion::ConsistencyEvidence::Intact
+impl galadriel_core::fusion::ConsistencyEvidence
+pub fn galadriel_core::fusion::ConsistencyEvidence::conflicted(&[galadriel_core::observation::Modality]) -> galadriel_core::error::Result<Self>
+pub fn galadriel_core::fusion::ConsistencyEvidence::decoupled(&[galadriel_core::observation::Modality]) -> galadriel_core::error::Result<Self>
+impl core::clone::Clone for galadriel_core::fusion::ConsistencyEvidence
+pub fn galadriel_core::fusion::ConsistencyEvidence::clone(&self) -> galadriel_core::fusion::ConsistencyEvidence
+impl core::cmp::Eq for galadriel_core::fusion::ConsistencyEvidence
+impl core::cmp::PartialEq for galadriel_core::fusion::ConsistencyEvidence
+pub fn galadriel_core::fusion::ConsistencyEvidence::eq(&self, &galadriel_core::fusion::ConsistencyEvidence) -> bool
+impl core::fmt::Debug for galadriel_core::fusion::ConsistencyEvidence
+pub fn galadriel_core::fusion::ConsistencyEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::Freeze for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::Send for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::Sync for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::Unpin for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::ConsistencyEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::ConsistencyEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::ConsistencyEvidence
+pub enum galadriel_core::fusion::FusedVerdict
+pub galadriel_core::fusion::FusedVerdict::AttributedInconsistency
+pub galadriel_core::fusion::FusedVerdict::AttributedInconsistency::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
+pub galadriel_core::fusion::FusedVerdict::AttributedInconsistency::magnitude: galadriel_core::fusion::MagnitudeEvidence
+pub galadriel_core::fusion::FusedVerdict::BroadDegradation
+pub galadriel_core::fusion::FusedVerdict::InsufficientEvidence
+pub galadriel_core::fusion::FusedVerdict::Nominal
+pub galadriel_core::fusion::FusedVerdict::UnclassifiedAnomaly
+pub galadriel_core::fusion::FusedVerdict::UnclassifiedAnomaly::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
+impl core::clone::Clone for galadriel_core::fusion::FusedVerdict
+pub fn galadriel_core::fusion::FusedVerdict::clone(&self) -> galadriel_core::fusion::FusedVerdict
+impl core::cmp::PartialEq for galadriel_core::fusion::FusedVerdict
+pub fn galadriel_core::fusion::FusedVerdict::eq(&self, &galadriel_core::fusion::FusedVerdict) -> bool
+impl core::fmt::Debug for galadriel_core::fusion::FusedVerdict
+pub fn galadriel_core::fusion::FusedVerdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::fusion::FusedVerdict
+impl core::marker::Freeze for galadriel_core::fusion::FusedVerdict
+impl core::marker::Send for galadriel_core::fusion::FusedVerdict
+impl core::marker::Sync for galadriel_core::fusion::FusedVerdict
+impl core::marker::Unpin for galadriel_core::fusion::FusedVerdict
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::FusedVerdict
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::FusedVerdict
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::FusedVerdict
+pub enum galadriel_core::fusion::MagnitudeEvidence
+pub galadriel_core::fusion::MagnitudeEvidence::Elevated
+pub galadriel_core::fusion::MagnitudeEvidence::InCovariance
+pub galadriel_core::fusion::MagnitudeEvidence::Insufficient
+pub galadriel_core::fusion::MagnitudeEvidence::Mixed
+impl core::clone::Clone for galadriel_core::fusion::MagnitudeEvidence
+pub fn galadriel_core::fusion::MagnitudeEvidence::clone(&self) -> galadriel_core::fusion::MagnitudeEvidence
+impl core::cmp::Eq for galadriel_core::fusion::MagnitudeEvidence
+impl core::cmp::PartialEq for galadriel_core::fusion::MagnitudeEvidence
+pub fn galadriel_core::fusion::MagnitudeEvidence::eq(&self, &galadriel_core::fusion::MagnitudeEvidence) -> bool
+impl core::fmt::Debug for galadriel_core::fusion::MagnitudeEvidence
+pub fn galadriel_core::fusion::MagnitudeEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::StructuralPartialEq for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::Freeze for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::Send for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::Sync for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::Unpin for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::MagnitudeEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::MagnitudeEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::MagnitudeEvidence
+pub struct galadriel_core::fusion::AxisCorrelationReport
+pub galadriel_core::fusion::AxisCorrelationReport::axis: usize
+pub galadriel_core::fusion::AxisCorrelationReport::report: galadriel_core::correlation::CorrReport
+impl core::clone::Clone for galadriel_core::fusion::AxisCorrelationReport
+pub fn galadriel_core::fusion::AxisCorrelationReport::clone(&self) -> galadriel_core::fusion::AxisCorrelationReport
+impl core::fmt::Debug for galadriel_core::fusion::AxisCorrelationReport
+pub fn galadriel_core::fusion::AxisCorrelationReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::fusion::AxisCorrelationReport
+impl core::marker::Send for galadriel_core::fusion::AxisCorrelationReport
+impl core::marker::Sync for galadriel_core::fusion::AxisCorrelationReport
+impl core::marker::Unpin for galadriel_core::fusion::AxisCorrelationReport
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::AxisCorrelationReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::AxisCorrelationReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::AxisCorrelationReport
+pub struct galadriel_core::fusion::DefaultReport
+pub galadriel_core::fusion::DefaultReport::baseline: galadriel_core::decision::MirrorReport
+pub galadriel_core::fusion::DefaultReport::correlations: alloc::vec::Vec<galadriel_core::fusion::AxisCorrelationReport>
+pub galadriel_core::fusion::DefaultReport::note: alloc::string::String
+pub galadriel_core::fusion::DefaultReport::verdict: galadriel_core::fusion::FusedVerdict
+impl core::clone::Clone for galadriel_core::fusion::DefaultReport
+pub fn galadriel_core::fusion::DefaultReport::clone(&self) -> galadriel_core::fusion::DefaultReport
+impl core::fmt::Debug for galadriel_core::fusion::DefaultReport
+pub fn galadriel_core::fusion::DefaultReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::fusion::DefaultReport
+impl core::marker::Send for galadriel_core::fusion::DefaultReport
+impl core::marker::Sync for galadriel_core::fusion::DefaultReport
+impl core::marker::Unpin for galadriel_core::fusion::DefaultReport
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::DefaultReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::DefaultReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::DefaultReport
+pub struct galadriel_core::fusion::NonEmptyModalities(_)
+impl galadriel_core::fusion::NonEmptyModalities
+pub fn galadriel_core::fusion::NonEmptyModalities::as_slice(&self) -> &[galadriel_core::observation::Modality]
+pub fn galadriel_core::fusion::NonEmptyModalities::into_vec(self) -> alloc::vec::Vec<galadriel_core::observation::Modality>
+pub fn galadriel_core::fusion::NonEmptyModalities::new(&[galadriel_core::observation::Modality]) -> galadriel_core::error::Result<Self>
+impl core::clone::Clone for galadriel_core::fusion::NonEmptyModalities
+pub fn galadriel_core::fusion::NonEmptyModalities::clone(&self) -> galadriel_core::fusion::NonEmptyModalities
+impl core::cmp::Eq for galadriel_core::fusion::NonEmptyModalities
+impl core::cmp::PartialEq for galadriel_core::fusion::NonEmptyModalities
+pub fn galadriel_core::fusion::NonEmptyModalities::eq(&self, &galadriel_core::fusion::NonEmptyModalities) -> bool
+impl core::fmt::Debug for galadriel_core::fusion::NonEmptyModalities
+pub fn galadriel_core::fusion::NonEmptyModalities::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::Freeze for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::Send for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::Sync for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::Unpin for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::NonEmptyModalities
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::NonEmptyModalities
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::NonEmptyModalities
+pub fn galadriel_core::fusion::assess_default(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], &galadriel_core::config::DetectorConfig, &galadriel_core::correlation::CorrConfig) -> galadriel_core::error::Result<galadriel_core::fusion::DefaultReport>
+pub fn galadriel_core::fusion::combine(&galadriel_core::decision::MirrorReport, galadriel_core::fusion::ConsistencyEvidence) -> (galadriel_core::fusion::FusedVerdict, alloc::string::String)
+pub fn galadriel_core::fusion::combine_correlation_axes(&galadriel_core::decision::MirrorReport, &[galadriel_core::fusion::AxisCorrelationReport]) -> (galadriel_core::fusion::FusedVerdict, alloc::string::String)
+pub mod galadriel_core::observation
+pub enum galadriel_core::observation::Modality
+pub galadriel_core::observation::Modality::Acoustic
+pub galadriel_core::observation::Modality::Lidar
+pub galadriel_core::observation::Modality::Radar
+pub galadriel_core::observation::Modality::RadioFrequency
+pub galadriel_core::observation::Modality::Thermal
+pub galadriel_core::observation::Modality::Visual
+impl galadriel_core::observation::Modality
+pub const galadriel_core::observation::Modality::ALL: [galadriel_core::observation::Modality; 6]
+pub fn galadriel_core::observation::Modality::label(self) -> &'static str
+impl core::clone::Clone for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::clone(&self) -> galadriel_core::observation::Modality
+impl core::cmp::Eq for galadriel_core::observation::Modality
+impl core::cmp::PartialEq for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::eq(&self, &galadriel_core::observation::Modality) -> bool
+impl core::fmt::Debug for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for galadriel_core::observation::Modality
+impl core::marker::StructuralPartialEq for galadriel_core::observation::Modality
+impl serde_core::ser::Serialize for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::observation::Modality
+impl core::marker::Send for galadriel_core::observation::Modality
+impl core::marker::Sync for galadriel_core::observation::Modality
+impl core::marker::Unpin for galadriel_core::observation::Modality
+impl core::marker::UnsafeUnpin for galadriel_core::observation::Modality
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::Modality
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::Modality
+pub struct galadriel_core::observation::ConsistencyProjection
+pub galadriel_core::observation::ConsistencyProjection::context_id: u64
+pub galadriel_core::observation::ConsistencyProjection::dimensions: u8
+pub galadriel_core::observation::ConsistencyProjection::frame_id: u64
+pub galadriel_core::observation::ConsistencyProjection::prior_id: u64
+pub galadriel_core::observation::ConsistencyProjection::values: [f64; 3]
+impl galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::validate(&self) -> galadriel_core::error::Result<()>
+impl core::clone::Clone for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::clone(&self) -> galadriel_core::observation::ConsistencyProjection
+impl core::cmp::PartialEq for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::eq(&self, &galadriel_core::observation::ConsistencyProjection) -> bool
+impl core::fmt::Debug for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_core::observation::ConsistencyProjection
+impl core::marker::StructuralPartialEq for galadriel_core::observation::ConsistencyProjection
+impl serde_core::ser::Serialize for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::observation::ConsistencyProjection
+impl core::marker::Send for galadriel_core::observation::ConsistencyProjection
+impl core::marker::Sync for galadriel_core::observation::ConsistencyProjection
+impl core::marker::Unpin for galadriel_core::observation::ConsistencyProjection
+impl core::marker::UnsafeUnpin for galadriel_core::observation::ConsistencyProjection
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::ConsistencyProjection
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::ConsistencyProjection
+pub struct galadriel_core::observation::PidObservation
+pub galadriel_core::observation::PidObservation::consistency_projection: core::option::Option<galadriel_core::observation::ConsistencyProjection>
+pub galadriel_core::observation::PidObservation::dof: u8
+pub galadriel_core::observation::PidObservation::innovation: core::option::Option<[f64; 3]>
+pub galadriel_core::observation::PidObservation::innovation_cov: core::option::Option<[[f64; 3]; 3]>
+pub galadriel_core::observation::PidObservation::modality: galadriel_core::observation::Modality
+pub galadriel_core::observation::PidObservation::nis: f64
+pub galadriel_core::observation::PidObservation::seq: u64
+pub galadriel_core::observation::PidObservation::timestamp_ms: u64
+pub galadriel_core::observation::PidObservation::track_id: u64
+impl galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::scalar(u64, u64, u64, galadriel_core::observation::Modality, f64, u8) -> Self
+pub fn galadriel_core::observation::PidObservation::validate(&self) -> galadriel_core::error::Result<()>
+impl core::clone::Clone for galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::clone(&self) -> galadriel_core::observation::PidObservation
+impl core::fmt::Debug for galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl serde_core::ser::Serialize for galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::observation::PidObservation
+impl core::marker::Send for galadriel_core::observation::PidObservation
+impl core::marker::Sync for galadriel_core::observation::PidObservation
+impl core::marker::Unpin for galadriel_core::observation::PidObservation
+impl core::marker::UnsafeUnpin for galadriel_core::observation::PidObservation
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::PidObservation
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::PidObservation
+pub const galadriel_core::observation::COVARIANCE_SYMMETRY_RELATIVE_TOLERANCE: f64
+pub const galadriel_core::observation::MAX_CONSISTENCY_PROJECTION_AXES: usize
+pub fn galadriel_core::observation::validate_and_symmetrize_covariance([[f64; 3]; 3]) -> galadriel_core::error::Result<[[f64; 3]; 3]>
+pub mod galadriel_core::window
+pub struct galadriel_core::window::NisWindow
+impl galadriel_core::window::NisWindow
+pub fn galadriel_core::window::NisWindow::capacity(&self) -> usize
+pub fn galadriel_core::window::NisWindow::dof(&self) -> u8
+pub fn galadriel_core::window::NisWindow::is_empty(&self) -> bool
+pub fn galadriel_core::window::NisWindow::is_full(&self) -> bool
+pub fn galadriel_core::window::NisWindow::len(&self) -> usize
+pub fn galadriel_core::window::NisWindow::mean(&self) -> galadriel_core::error::Result<f64>
+pub fn galadriel_core::window::NisWindow::new(usize, u8) -> galadriel_core::error::Result<Self>
+pub fn galadriel_core::window::NisWindow::push(&mut self, f64) -> galadriel_core::error::Result<()>
+pub fn galadriel_core::window::NisWindow::sum(&self) -> galadriel_core::error::Result<f64>
+pub fn galadriel_core::window::NisWindow::values(&self) -> impl core::iter::traits::iterator::Iterator<Item = f64> + '_
+impl core::clone::Clone for galadriel_core::window::NisWindow
+pub fn galadriel_core::window::NisWindow::clone(&self) -> galadriel_core::window::NisWindow
+impl core::fmt::Debug for galadriel_core::window::NisWindow
+pub fn galadriel_core::window::NisWindow::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::window::NisWindow
+impl core::marker::Send for galadriel_core::window::NisWindow
+impl core::marker::Sync for galadriel_core::window::NisWindow
+impl core::marker::Unpin for galadriel_core::window::NisWindow
+impl core::marker::UnsafeUnpin for galadriel_core::window::NisWindow
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::window::NisWindow
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::window::NisWindow
+pub const galadriel_core::window::MAX_WINDOW_LEN: usize
+#[non_exhaustive] pub enum galadriel_core::ConsistencyEvidence
+pub galadriel_core::ConsistencyEvidence::Conflicted(alloc::vec::Vec<galadriel_core::observation::Modality>)
+pub galadriel_core::ConsistencyEvidence::Decoupled(galadriel_core::fusion::NonEmptyModalities)
+pub galadriel_core::ConsistencyEvidence::Insufficient
+pub galadriel_core::ConsistencyEvidence::Intact
+impl galadriel_core::fusion::ConsistencyEvidence
+pub fn galadriel_core::fusion::ConsistencyEvidence::conflicted(&[galadriel_core::observation::Modality]) -> galadriel_core::error::Result<Self>
+pub fn galadriel_core::fusion::ConsistencyEvidence::decoupled(&[galadriel_core::observation::Modality]) -> galadriel_core::error::Result<Self>
+impl core::clone::Clone for galadriel_core::fusion::ConsistencyEvidence
+pub fn galadriel_core::fusion::ConsistencyEvidence::clone(&self) -> galadriel_core::fusion::ConsistencyEvidence
+impl core::cmp::Eq for galadriel_core::fusion::ConsistencyEvidence
+impl core::cmp::PartialEq for galadriel_core::fusion::ConsistencyEvidence
+pub fn galadriel_core::fusion::ConsistencyEvidence::eq(&self, &galadriel_core::fusion::ConsistencyEvidence) -> bool
+impl core::fmt::Debug for galadriel_core::fusion::ConsistencyEvidence
+pub fn galadriel_core::fusion::ConsistencyEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::Freeze for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::Send for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::Sync for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::Unpin for galadriel_core::fusion::ConsistencyEvidence
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::ConsistencyEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::ConsistencyEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::ConsistencyEvidence
+pub enum galadriel_core::CorrVerdict
+pub galadriel_core::CorrVerdict::Decoupled(alloc::vec::Vec<galadriel_core::observation::Modality>)
+pub galadriel_core::CorrVerdict::InsufficientEvidence
+pub galadriel_core::CorrVerdict::Nominal
+impl core::clone::Clone for galadriel_core::correlation::CorrVerdict
+pub fn galadriel_core::correlation::CorrVerdict::clone(&self) -> galadriel_core::correlation::CorrVerdict
+impl core::cmp::PartialEq for galadriel_core::correlation::CorrVerdict
+pub fn galadriel_core::correlation::CorrVerdict::eq(&self, &galadriel_core::correlation::CorrVerdict) -> bool
+impl core::fmt::Debug for galadriel_core::correlation::CorrVerdict
+pub fn galadriel_core::correlation::CorrVerdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::correlation::CorrVerdict
+impl core::marker::Freeze for galadriel_core::correlation::CorrVerdict
+impl core::marker::Send for galadriel_core::correlation::CorrVerdict
+impl core::marker::Sync for galadriel_core::correlation::CorrVerdict
+impl core::marker::Unpin for galadriel_core::correlation::CorrVerdict
+impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrVerdict
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrVerdict
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrVerdict
+pub enum galadriel_core::FusedVerdict
+pub galadriel_core::FusedVerdict::AttributedInconsistency
+pub galadriel_core::FusedVerdict::AttributedInconsistency::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
+pub galadriel_core::FusedVerdict::AttributedInconsistency::magnitude: galadriel_core::fusion::MagnitudeEvidence
+pub galadriel_core::FusedVerdict::BroadDegradation
+pub galadriel_core::FusedVerdict::InsufficientEvidence
+pub galadriel_core::FusedVerdict::Nominal
+pub galadriel_core::FusedVerdict::UnclassifiedAnomaly
+pub galadriel_core::FusedVerdict::UnclassifiedAnomaly::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
+impl core::clone::Clone for galadriel_core::fusion::FusedVerdict
+pub fn galadriel_core::fusion::FusedVerdict::clone(&self) -> galadriel_core::fusion::FusedVerdict
+impl core::cmp::PartialEq for galadriel_core::fusion::FusedVerdict
+pub fn galadriel_core::fusion::FusedVerdict::eq(&self, &galadriel_core::fusion::FusedVerdict) -> bool
+impl core::fmt::Debug for galadriel_core::fusion::FusedVerdict
+pub fn galadriel_core::fusion::FusedVerdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::fusion::FusedVerdict
+impl core::marker::Freeze for galadriel_core::fusion::FusedVerdict
+impl core::marker::Send for galadriel_core::fusion::FusedVerdict
+impl core::marker::Sync for galadriel_core::fusion::FusedVerdict
+impl core::marker::Unpin for galadriel_core::fusion::FusedVerdict
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::FusedVerdict
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::FusedVerdict
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::FusedVerdict
+pub enum galadriel_core::GaladrielError
+pub galadriel_core::GaladrielError::InsufficientSamples
+pub galadriel_core::GaladrielError::InsufficientSamples::have: usize
+pub galadriel_core::GaladrielError::InsufficientSamples::need: usize
+pub galadriel_core::GaladrielError::InvalidChannels(alloc::string::String)
+pub galadriel_core::GaladrielError::InvalidConfig(alloc::string::String)
+pub galadriel_core::GaladrielError::InvalidObservation(alloc::string::String)
+pub galadriel_core::GaladrielError::NonFinite(&'static str)
+pub galadriel_core::GaladrielError::TrackLimit
+pub galadriel_core::GaladrielError::TrackLimit::limit: usize
+impl core::clone::Clone for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::clone(&self) -> galadriel_core::error::GaladrielError
+impl core::cmp::PartialEq for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::eq(&self, &galadriel_core::error::GaladrielError) -> bool
+impl core::error::Error for galadriel_core::error::GaladrielError
+impl core::fmt::Debug for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::error::GaladrielError
+impl core::marker::Freeze for galadriel_core::error::GaladrielError
+impl core::marker::Send for galadriel_core::error::GaladrielError
+impl core::marker::Sync for galadriel_core::error::GaladrielError
+impl core::marker::Unpin for galadriel_core::error::GaladrielError
+impl core::marker::UnsafeUnpin for galadriel_core::error::GaladrielError
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::error::GaladrielError
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::error::GaladrielError
+pub enum galadriel_core::MagnitudeEvidence
+pub galadriel_core::MagnitudeEvidence::Elevated
+pub galadriel_core::MagnitudeEvidence::InCovariance
+pub galadriel_core::MagnitudeEvidence::Insufficient
+pub galadriel_core::MagnitudeEvidence::Mixed
+impl core::clone::Clone for galadriel_core::fusion::MagnitudeEvidence
+pub fn galadriel_core::fusion::MagnitudeEvidence::clone(&self) -> galadriel_core::fusion::MagnitudeEvidence
+impl core::cmp::Eq for galadriel_core::fusion::MagnitudeEvidence
+impl core::cmp::PartialEq for galadriel_core::fusion::MagnitudeEvidence
+pub fn galadriel_core::fusion::MagnitudeEvidence::eq(&self, &galadriel_core::fusion::MagnitudeEvidence) -> bool
+impl core::fmt::Debug for galadriel_core::fusion::MagnitudeEvidence
+pub fn galadriel_core::fusion::MagnitudeEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::StructuralPartialEq for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::Freeze for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::Send for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::Sync for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::Unpin for galadriel_core::fusion::MagnitudeEvidence
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::MagnitudeEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::MagnitudeEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::MagnitudeEvidence
+pub enum galadriel_core::Modality
+pub galadriel_core::Modality::Acoustic
+pub galadriel_core::Modality::Lidar
+pub galadriel_core::Modality::Radar
+pub galadriel_core::Modality::RadioFrequency
+pub galadriel_core::Modality::Thermal
+pub galadriel_core::Modality::Visual
+impl galadriel_core::observation::Modality
+pub const galadriel_core::observation::Modality::ALL: [galadriel_core::observation::Modality; 6]
+pub fn galadriel_core::observation::Modality::label(self) -> &'static str
+impl core::clone::Clone for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::clone(&self) -> galadriel_core::observation::Modality
+impl core::cmp::Eq for galadriel_core::observation::Modality
+impl core::cmp::PartialEq for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::eq(&self, &galadriel_core::observation::Modality) -> bool
+impl core::fmt::Debug for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for galadriel_core::observation::Modality
+impl core::marker::StructuralPartialEq for galadriel_core::observation::Modality
+impl serde_core::ser::Serialize for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::observation::Modality
+pub fn galadriel_core::observation::Modality::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::observation::Modality
+impl core::marker::Send for galadriel_core::observation::Modality
+impl core::marker::Sync for galadriel_core::observation::Modality
+impl core::marker::Unpin for galadriel_core::observation::Modality
+impl core::marker::UnsafeUnpin for galadriel_core::observation::Modality
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::Modality
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::Modality
+pub enum galadriel_core::Verdict
+pub galadriel_core::Verdict::AttributedInconsistency
+pub galadriel_core::Verdict::AttributedInconsistency::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
+pub galadriel_core::Verdict::BroadDegradation
+pub galadriel_core::Verdict::InsufficientEvidence
+pub galadriel_core::Verdict::Nominal
+pub galadriel_core::Verdict::UnclassifiedAnomaly
+pub galadriel_core::Verdict::UnclassifiedAnomaly::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
+impl core::clone::Clone for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::clone(&self) -> galadriel_core::decision::Verdict
+impl core::cmp::PartialEq for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::eq(&self, &galadriel_core::decision::Verdict) -> bool
+impl core::fmt::Debug for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::decision::Verdict
+impl serde_core::ser::Serialize for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::decision::Verdict
+pub fn galadriel_core::decision::Verdict::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::decision::Verdict
+impl core::marker::Send for galadriel_core::decision::Verdict
+impl core::marker::Sync for galadriel_core::decision::Verdict
+impl core::marker::Unpin for galadriel_core::decision::Verdict
+impl core::marker::UnsafeUnpin for galadriel_core::decision::Verdict
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::Verdict
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::Verdict
+pub struct galadriel_core::AxisCorrelationReport
+pub galadriel_core::AxisCorrelationReport::axis: usize
+pub galadriel_core::AxisCorrelationReport::report: galadriel_core::correlation::CorrReport
+impl core::clone::Clone for galadriel_core::fusion::AxisCorrelationReport
+pub fn galadriel_core::fusion::AxisCorrelationReport::clone(&self) -> galadriel_core::fusion::AxisCorrelationReport
+impl core::fmt::Debug for galadriel_core::fusion::AxisCorrelationReport
+pub fn galadriel_core::fusion::AxisCorrelationReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::fusion::AxisCorrelationReport
+impl core::marker::Send for galadriel_core::fusion::AxisCorrelationReport
+impl core::marker::Sync for galadriel_core::fusion::AxisCorrelationReport
+impl core::marker::Unpin for galadriel_core::fusion::AxisCorrelationReport
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::AxisCorrelationReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::AxisCorrelationReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::AxisCorrelationReport
+pub struct galadriel_core::ChannelReport
+pub galadriel_core::ChannelReport::cusum_high_alarm: bool
+pub galadriel_core::ChannelReport::cusum_low_alarm: bool
+pub galadriel_core::ChannelReport::elevated: bool
+pub galadriel_core::ChannelReport::fresh: bool
+pub galadriel_core::ChannelReport::last_seq: core::option::Option<u64>
+pub galadriel_core::ChannelReport::last_timestamp_ms: core::option::Option<u64>
+pub galadriel_core::ChannelReport::mean_nis: f64
+pub galadriel_core::ChannelReport::modality: galadriel_core::observation::Modality
+pub galadriel_core::ChannelReport::n: usize
+pub galadriel_core::ChannelReport::p_right: f64
+pub galadriel_core::ChannelReport::ready: bool
+impl galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::anomalous(&self) -> bool
+pub fn galadriel_core::decision::ChannelReport::high_anomalous(&self) -> bool
+impl core::clone::Clone for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::clone(&self) -> galadriel_core::decision::ChannelReport
+impl core::cmp::PartialEq for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::eq(&self, &galadriel_core::decision::ChannelReport) -> bool
+impl core::fmt::Debug for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::decision::ChannelReport
+impl serde_core::ser::Serialize for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::decision::ChannelReport
+pub fn galadriel_core::decision::ChannelReport::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::decision::ChannelReport
+impl core::marker::Send for galadriel_core::decision::ChannelReport
+impl core::marker::Sync for galadriel_core::decision::ChannelReport
+impl core::marker::Unpin for galadriel_core::decision::ChannelReport
+impl core::marker::UnsafeUnpin for galadriel_core::decision::ChannelReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::ChannelReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::ChannelReport
+pub struct galadriel_core::ConsistencyChannels
+pub galadriel_core::ConsistencyChannels::axes: alloc::vec::Vec<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
+pub galadriel_core::ConsistencyChannels::context_id: u64
+pub galadriel_core::ConsistencyChannels::frame_id: u64
+impl core::clone::Clone for galadriel_core::ConsistencyChannels
+pub fn galadriel_core::ConsistencyChannels::clone(&self) -> galadriel_core::ConsistencyChannels
+impl core::fmt::Debug for galadriel_core::ConsistencyChannels
+pub fn galadriel_core::ConsistencyChannels::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::ConsistencyChannels
+impl core::marker::Send for galadriel_core::ConsistencyChannels
+impl core::marker::Sync for galadriel_core::ConsistencyChannels
+impl core::marker::Unpin for galadriel_core::ConsistencyChannels
+impl core::marker::UnsafeUnpin for galadriel_core::ConsistencyChannels
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::ConsistencyChannels
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::ConsistencyChannels
+pub struct galadriel_core::ConsistencyProjection
+pub galadriel_core::ConsistencyProjection::context_id: u64
+pub galadriel_core::ConsistencyProjection::dimensions: u8
+pub galadriel_core::ConsistencyProjection::frame_id: u64
+pub galadriel_core::ConsistencyProjection::prior_id: u64
+pub galadriel_core::ConsistencyProjection::values: [f64; 3]
+impl galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::validate(&self) -> galadriel_core::error::Result<()>
+impl core::clone::Clone for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::clone(&self) -> galadriel_core::observation::ConsistencyProjection
+impl core::cmp::PartialEq for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::eq(&self, &galadriel_core::observation::ConsistencyProjection) -> bool
+impl core::fmt::Debug for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_core::observation::ConsistencyProjection
+impl core::marker::StructuralPartialEq for galadriel_core::observation::ConsistencyProjection
+impl serde_core::ser::Serialize for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::observation::ConsistencyProjection
+pub fn galadriel_core::observation::ConsistencyProjection::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::observation::ConsistencyProjection
+impl core::marker::Send for galadriel_core::observation::ConsistencyProjection
+impl core::marker::Sync for galadriel_core::observation::ConsistencyProjection
+impl core::marker::Unpin for galadriel_core::observation::ConsistencyProjection
+impl core::marker::UnsafeUnpin for galadriel_core::observation::ConsistencyProjection
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::ConsistencyProjection
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::ConsistencyProjection
+pub struct galadriel_core::CorrChannel
+pub galadriel_core::CorrChannel::corroboration: core::option::Option<f64>
+pub galadriel_core::CorrChannel::decoupled: bool
+pub galadriel_core::CorrChannel::modality: galadriel_core::observation::Modality
+pub galadriel_core::CorrChannel::n: usize
+impl core::clone::Clone for galadriel_core::correlation::CorrChannel
+pub fn galadriel_core::correlation::CorrChannel::clone(&self) -> galadriel_core::correlation::CorrChannel
+impl core::fmt::Debug for galadriel_core::correlation::CorrChannel
+pub fn galadriel_core::correlation::CorrChannel::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::correlation::CorrChannel
+impl core::marker::Send for galadriel_core::correlation::CorrChannel
+impl core::marker::Sync for galadriel_core::correlation::CorrChannel
+impl core::marker::Unpin for galadriel_core::correlation::CorrChannel
+impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrChannel
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrChannel
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrChannel
+pub struct galadriel_core::CorrConfig
+pub galadriel_core::CorrConfig::corr_floor: f64
+pub galadriel_core::CorrConfig::decouple_ratio: f64
+pub galadriel_core::CorrConfig::family_alpha: f64
+pub galadriel_core::CorrConfig::min_samples: usize
+pub galadriel_core::CorrConfig::window: usize
+impl galadriel_core::correlation::CorrConfig
+pub fn galadriel_core::correlation::CorrConfig::validate(&self) -> galadriel_core::error::Result<()>
+impl core::clone::Clone for galadriel_core::correlation::CorrConfig
+pub fn galadriel_core::correlation::CorrConfig::clone(&self) -> galadriel_core::correlation::CorrConfig
+impl core::default::Default for galadriel_core::correlation::CorrConfig
+pub fn galadriel_core::correlation::CorrConfig::default() -> Self
+impl core::fmt::Debug for galadriel_core::correlation::CorrConfig
+pub fn galadriel_core::correlation::CorrConfig::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::correlation::CorrConfig
+impl core::marker::Send for galadriel_core::correlation::CorrConfig
+impl core::marker::Sync for galadriel_core::correlation::CorrConfig
+impl core::marker::Unpin for galadriel_core::correlation::CorrConfig
+impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrConfig
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrConfig
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrConfig
+pub struct galadriel_core::CorrReport
+pub galadriel_core::CorrReport::channels: alloc::vec::Vec<galadriel_core::correlation::CorrChannel>
+pub galadriel_core::CorrReport::note: alloc::string::String
+pub galadriel_core::CorrReport::verdict: galadriel_core::correlation::CorrVerdict
+impl core::clone::Clone for galadriel_core::correlation::CorrReport
+pub fn galadriel_core::correlation::CorrReport::clone(&self) -> galadriel_core::correlation::CorrReport
+impl core::fmt::Debug for galadriel_core::correlation::CorrReport
+pub fn galadriel_core::correlation::CorrReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::correlation::CorrReport
+impl core::marker::Send for galadriel_core::correlation::CorrReport
+impl core::marker::Sync for galadriel_core::correlation::CorrReport
+impl core::marker::Unpin for galadriel_core::correlation::CorrReport
+impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrReport
+pub struct galadriel_core::Cusum
+impl galadriel_core::cusum::Cusum
+pub fn galadriel_core::cusum::Cusum::alarm(&self) -> bool
+pub fn galadriel_core::cusum::Cusum::hi(&self) -> f64
+pub fn galadriel_core::cusum::Cusum::high_alarm(&self) -> bool
+pub fn galadriel_core::cusum::Cusum::lo(&self) -> f64
+pub fn galadriel_core::cusum::Cusum::low_alarm(&self) -> bool
+pub fn galadriel_core::cusum::Cusum::new(f64, f64, f64) -> galadriel_core::error::Result<Self>
+pub fn galadriel_core::cusum::Cusum::reset(&mut self)
+pub fn galadriel_core::cusum::Cusum::update(&mut self, f64) -> galadriel_core::error::Result<bool>
+impl core::clone::Clone for galadriel_core::cusum::Cusum
+pub fn galadriel_core::cusum::Cusum::clone(&self) -> galadriel_core::cusum::Cusum
+impl core::fmt::Debug for galadriel_core::cusum::Cusum
+pub fn galadriel_core::cusum::Cusum::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::cusum::Cusum
+impl core::marker::Send for galadriel_core::cusum::Cusum
+impl core::marker::Sync for galadriel_core::cusum::Cusum
+impl core::marker::Unpin for galadriel_core::cusum::Cusum
+impl core::marker::UnsafeUnpin for galadriel_core::cusum::Cusum
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::cusum::Cusum
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::cusum::Cusum
+pub struct galadriel_core::DefaultReport
+pub galadriel_core::DefaultReport::baseline: galadriel_core::decision::MirrorReport
+pub galadriel_core::DefaultReport::correlations: alloc::vec::Vec<galadriel_core::fusion::AxisCorrelationReport>
+pub galadriel_core::DefaultReport::note: alloc::string::String
+pub galadriel_core::DefaultReport::verdict: galadriel_core::fusion::FusedVerdict
+impl core::clone::Clone for galadriel_core::fusion::DefaultReport
+pub fn galadriel_core::fusion::DefaultReport::clone(&self) -> galadriel_core::fusion::DefaultReport
+impl core::fmt::Debug for galadriel_core::fusion::DefaultReport
+pub fn galadriel_core::fusion::DefaultReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::fusion::DefaultReport
+impl core::marker::Send for galadriel_core::fusion::DefaultReport
+impl core::marker::Sync for galadriel_core::fusion::DefaultReport
+impl core::marker::Unpin for galadriel_core::fusion::DefaultReport
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::DefaultReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::DefaultReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::DefaultReport
+pub struct galadriel_core::DetectorConfig
+pub galadriel_core::DetectorConfig::cusum_slack: f64
+pub galadriel_core::DetectorConfig::cusum_threshold: f64
+pub galadriel_core::DetectorConfig::jam_fraction: f64
+pub galadriel_core::DetectorConfig::max_inter_sample_gap_ms: u64
+pub galadriel_core::DetectorConfig::max_seq_gap: u64
+pub galadriel_core::DetectorConfig::max_timestamp_skew_ms: u64
+pub galadriel_core::DetectorConfig::max_tracks: usize
+pub galadriel_core::DetectorConfig::min_channels: usize
+pub galadriel_core::DetectorConfig::min_samples: usize
+pub galadriel_core::DetectorConfig::nis_alpha: f64
+pub galadriel_core::DetectorConfig::window_len: usize
+impl galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::validate(&self) -> galadriel_core::error::Result<()>
+impl core::clone::Clone for galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::clone(&self) -> galadriel_core::config::DetectorConfig
+impl core::cmp::PartialEq for galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::eq(&self, &galadriel_core::config::DetectorConfig) -> bool
+impl core::default::Default for galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::default() -> Self
+impl core::fmt::Debug for galadriel_core::config::DetectorConfig
+pub fn galadriel_core::config::DetectorConfig::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::config::DetectorConfig
+impl core::marker::Freeze for galadriel_core::config::DetectorConfig
+impl core::marker::Send for galadriel_core::config::DetectorConfig
+impl core::marker::Sync for galadriel_core::config::DetectorConfig
+impl core::marker::Unpin for galadriel_core::config::DetectorConfig
+impl core::marker::UnsafeUnpin for galadriel_core::config::DetectorConfig
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::config::DetectorConfig
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::config::DetectorConfig
+pub struct galadriel_core::Mirror
+impl galadriel_core::decision::Mirror
+pub fn galadriel_core::decision::Mirror::assess(&self, u64, u64) -> galadriel_core::error::Result<galadriel_core::decision::MirrorReport>
+pub fn galadriel_core::decision::Mirror::clear(&mut self)
+pub fn galadriel_core::decision::Mirror::config(&self) -> &galadriel_core::config::DetectorConfig
+pub fn galadriel_core::decision::Mirror::ingest(&mut self, &galadriel_core::observation::PidObservation) -> galadriel_core::error::Result<()>
+pub fn galadriel_core::decision::Mirror::ingest_and_assess(&mut self, &galadriel_core::observation::PidObservation) -> galadriel_core::error::Result<galadriel_core::decision::MirrorReport>
+pub fn galadriel_core::decision::Mirror::new(galadriel_core::config::DetectorConfig) -> galadriel_core::error::Result<Self>
+pub fn galadriel_core::decision::Mirror::remove_track(&mut self, u64) -> bool
+pub fn galadriel_core::decision::Mirror::track_count(&self) -> usize
+pub fn galadriel_core::decision::Mirror::with_modalities(galadriel_core::config::DetectorConfig, &[galadriel_core::observation::Modality]) -> galadriel_core::error::Result<Self>
+impl core::marker::Freeze for galadriel_core::decision::Mirror
+impl core::marker::Send for galadriel_core::decision::Mirror
+impl core::marker::Sync for galadriel_core::decision::Mirror
+impl core::marker::Unpin for galadriel_core::decision::Mirror
+impl core::marker::UnsafeUnpin for galadriel_core::decision::Mirror
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::Mirror
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::Mirror
+pub struct galadriel_core::MirrorReport
+pub galadriel_core::MirrorReport::channels: alloc::vec::Vec<galadriel_core::decision::ChannelReport>
+pub galadriel_core::MirrorReport::note: alloc::string::String
+pub galadriel_core::MirrorReport::seq: u64
+pub galadriel_core::MirrorReport::track_id: u64
+pub galadriel_core::MirrorReport::verdict: galadriel_core::decision::Verdict
+impl core::clone::Clone for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::clone(&self) -> galadriel_core::decision::MirrorReport
+impl core::cmp::PartialEq for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::eq(&self, &galadriel_core::decision::MirrorReport) -> bool
+impl core::fmt::Debug for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::decision::MirrorReport
+impl serde_core::ser::Serialize for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::decision::MirrorReport
+pub fn galadriel_core::decision::MirrorReport::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::decision::MirrorReport
+impl core::marker::Send for galadriel_core::decision::MirrorReport
+impl core::marker::Sync for galadriel_core::decision::MirrorReport
+impl core::marker::Unpin for galadriel_core::decision::MirrorReport
+impl core::marker::UnsafeUnpin for galadriel_core::decision::MirrorReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::MirrorReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::MirrorReport
+pub struct galadriel_core::NisWindow
+impl galadriel_core::window::NisWindow
+pub fn galadriel_core::window::NisWindow::capacity(&self) -> usize
+pub fn galadriel_core::window::NisWindow::dof(&self) -> u8
+pub fn galadriel_core::window::NisWindow::is_empty(&self) -> bool
+pub fn galadriel_core::window::NisWindow::is_full(&self) -> bool
+pub fn galadriel_core::window::NisWindow::len(&self) -> usize
+pub fn galadriel_core::window::NisWindow::mean(&self) -> galadriel_core::error::Result<f64>
+pub fn galadriel_core::window::NisWindow::new(usize, u8) -> galadriel_core::error::Result<Self>
+pub fn galadriel_core::window::NisWindow::push(&mut self, f64) -> galadriel_core::error::Result<()>
+pub fn galadriel_core::window::NisWindow::sum(&self) -> galadriel_core::error::Result<f64>
+pub fn galadriel_core::window::NisWindow::values(&self) -> impl core::iter::traits::iterator::Iterator<Item = f64> + '_
+impl core::clone::Clone for galadriel_core::window::NisWindow
+pub fn galadriel_core::window::NisWindow::clone(&self) -> galadriel_core::window::NisWindow
+impl core::fmt::Debug for galadriel_core::window::NisWindow
+pub fn galadriel_core::window::NisWindow::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_core::window::NisWindow
+impl core::marker::Send for galadriel_core::window::NisWindow
+impl core::marker::Sync for galadriel_core::window::NisWindow
+impl core::marker::Unpin for galadriel_core::window::NisWindow
+impl core::marker::UnsafeUnpin for galadriel_core::window::NisWindow
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::window::NisWindow
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::window::NisWindow
+pub struct galadriel_core::NonEmptyModalities(_)
+impl galadriel_core::fusion::NonEmptyModalities
+pub fn galadriel_core::fusion::NonEmptyModalities::as_slice(&self) -> &[galadriel_core::observation::Modality]
+pub fn galadriel_core::fusion::NonEmptyModalities::into_vec(self) -> alloc::vec::Vec<galadriel_core::observation::Modality>
+pub fn galadriel_core::fusion::NonEmptyModalities::new(&[galadriel_core::observation::Modality]) -> galadriel_core::error::Result<Self>
+impl core::clone::Clone for galadriel_core::fusion::NonEmptyModalities
+pub fn galadriel_core::fusion::NonEmptyModalities::clone(&self) -> galadriel_core::fusion::NonEmptyModalities
+impl core::cmp::Eq for galadriel_core::fusion::NonEmptyModalities
+impl core::cmp::PartialEq for galadriel_core::fusion::NonEmptyModalities
+pub fn galadriel_core::fusion::NonEmptyModalities::eq(&self, &galadriel_core::fusion::NonEmptyModalities) -> bool
+impl core::fmt::Debug for galadriel_core::fusion::NonEmptyModalities
+pub fn galadriel_core::fusion::NonEmptyModalities::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::Freeze for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::Send for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::Sync for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::Unpin for galadriel_core::fusion::NonEmptyModalities
+impl core::marker::UnsafeUnpin for galadriel_core::fusion::NonEmptyModalities
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::NonEmptyModalities
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::NonEmptyModalities
+pub struct galadriel_core::PidObservation
+pub galadriel_core::PidObservation::consistency_projection: core::option::Option<galadriel_core::observation::ConsistencyProjection>
+pub galadriel_core::PidObservation::dof: u8
+pub galadriel_core::PidObservation::innovation: core::option::Option<[f64; 3]>
+pub galadriel_core::PidObservation::innovation_cov: core::option::Option<[[f64; 3]; 3]>
+pub galadriel_core::PidObservation::modality: galadriel_core::observation::Modality
+pub galadriel_core::PidObservation::nis: f64
+pub galadriel_core::PidObservation::seq: u64
+pub galadriel_core::PidObservation::timestamp_ms: u64
+pub galadriel_core::PidObservation::track_id: u64
+impl galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::scalar(u64, u64, u64, galadriel_core::observation::Modality, f64, u8) -> Self
+pub fn galadriel_core::observation::PidObservation::validate(&self) -> galadriel_core::error::Result<()>
+impl core::clone::Clone for galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::clone(&self) -> galadriel_core::observation::PidObservation
+impl core::fmt::Debug for galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl serde_core::ser::Serialize for galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::observation::PidObservation
+pub fn galadriel_core::observation::PidObservation::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::observation::PidObservation
+impl core::marker::Send for galadriel_core::observation::PidObservation
+impl core::marker::Sync for galadriel_core::observation::PidObservation
+impl core::marker::Unpin for galadriel_core::observation::PidObservation
+impl core::marker::UnsafeUnpin for galadriel_core::observation::PidObservation
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::PidObservation
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::PidObservation
+pub const galadriel_core::COVARIANCE_SYMMETRY_RELATIVE_TOLERANCE: f64
+pub const galadriel_core::DEFAULT_ALIGNMENT_MAX_INTER_SAMPLE_GAP_MS: u64
+pub const galadriel_core::DEFAULT_ALIGNMENT_MAX_SEQ_GAP: u64
+pub const galadriel_core::DEFAULT_ALIGNMENT_MAX_TIMESTAMP_SKEW_MS: u64
+pub const galadriel_core::MAX_ALIGNMENT_SEQ_GAP: u64
+pub const galadriel_core::MAX_ALIGNMENT_TIMESTAMP_SKEW_MS: u64
+pub const galadriel_core::MAX_CONSISTENCY_INPUT_OBSERVATIONS: usize
+pub const galadriel_core::MAX_CONSISTENCY_PROJECTION_AXES: usize
+pub const galadriel_core::MAX_CONSISTENCY_RETAINED_FRAMES: usize
+pub const galadriel_core::MAX_INTER_SAMPLE_GAP_MS: u64
+pub fn galadriel_core::assess_default(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], &galadriel_core::config::DetectorConfig, &galadriel_core::correlation::CorrConfig) -> galadriel_core::error::Result<galadriel_core::fusion::DefaultReport>
+pub fn galadriel_core::combine(&galadriel_core::decision::MirrorReport, galadriel_core::fusion::ConsistencyEvidence) -> (galadriel_core::fusion::FusedVerdict, alloc::string::String)
+pub fn galadriel_core::combine_correlation_axes(&galadriel_core::decision::MirrorReport, &[galadriel_core::fusion::AxisCorrelationReport]) -> (galadriel_core::fusion::FusedVerdict, alloc::string::String)
+pub fn galadriel_core::consistency_channels_with_temporal_limits(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], u64, u64, u64) -> galadriel_core::error::Result<core::option::Option<galadriel_core::ConsistencyChannels>>
+pub fn galadriel_core::scalar_channels(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], usize) -> galadriel_core::error::Result<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
+pub fn galadriel_core::scalar_channels_with_limits(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], usize, u64, u64) -> galadriel_core::error::Result<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
+pub fn galadriel_core::scalar_channels_with_temporal_limits(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], usize, u64, u64, u64) -> galadriel_core::error::Result<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
+pub fn galadriel_core::validate_and_symmetrize_covariance([[f64; 3]; 3]) -> galadriel_core::error::Result<[[f64; 3]; 3]>
+pub type galadriel_core::Result<T> = core::result::Result<T, galadriel_core::error::GaladrielError>

@@ -5,15 +5,18 @@
 //! `1 - CDF` cancellation. These wrappers use `statrs`' checked regularized-gamma
 //! implementation and define the distribution boundaries explicitly.
 
-use statrs::function::gamma::{checked_gamma_lr, checked_gamma_ur};
+#[cfg(test)]
+use statrs::function::gamma::checked_gamma_lr;
+use statrs::function::gamma::checked_gamma_ur;
 
-/// Natural log of the gamma function.
-pub use statrs::function::gamma::ln_gamma;
+#[cfg(test)]
+use statrs::function::gamma::ln_gamma;
 
 /// Regularized lower incomplete gamma `P(a, x) = γ(a,x) / Γ(a)`.
 ///
 /// Returns NaN outside `a > 0, x >= 0` or for NaN input.
-pub fn gammp(a: f64, x: f64) -> f64 {
+#[cfg(test)]
+fn gammp(a: f64, x: f64) -> f64 {
     if a.is_nan() || x.is_nan() || a <= 0.0 || x < 0.0 || a == f64::INFINITY {
         return f64::NAN;
     }
@@ -30,7 +33,7 @@ pub fn gammp(a: f64, x: f64) -> f64 {
 ///
 /// This evaluates the upper tail directly instead of subtracting the CDF.
 /// Returns NaN outside `a > 0, x >= 0` or for NaN input.
-pub fn gammq(a: f64, x: f64) -> f64 {
+fn gammq(a: f64, x: f64) -> f64 {
     if a.is_nan() || x.is_nan() || a <= 0.0 || x < 0.0 || a == f64::INFINITY {
         return f64::NAN;
     }
@@ -44,12 +47,13 @@ pub fn gammq(a: f64, x: f64) -> f64 {
 }
 
 /// CDF of the χ² distribution with `k` degrees of freedom at `x`.
-pub fn chi2_cdf(x: f64, k: f64) -> f64 {
+#[cfg(test)]
+fn chi2_cdf(x: f64, k: f64) -> f64 {
     gammp(k / 2.0, x / 2.0)
 }
 
 /// Survival function (right tail) of χ²(`k`) at `x`.
-pub fn chi2_sf(x: f64, k: f64) -> f64 {
+pub(crate) fn chi2_sf(x: f64, k: f64) -> f64 {
     gammq(k / 2.0, x / 2.0)
 }
 
