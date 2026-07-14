@@ -271,6 +271,10 @@ def validate_project_metadata(inputs: dict[str, Any]) -> dict[str, Any]:
         manifest = tomllib.loads((ROOT / member / "Cargo.toml").read_text(encoding="utf-8"))
         if manifest["package"].get("publish") is not False:
             raise AuditError(f"{member} must remain publish=false for the GitHub-only 0.9.0")
+    fuzz = tomllib.loads((ROOT / "fuzz/Cargo.toml").read_text(encoding="utf-8"))
+    for dependency in ("galadriel-core", "galadriel-ncp"):
+        if fuzz["dependencies"][dependency].get("version") != VERSION:
+            raise AuditError(f"fuzz dependency {dependency} must track release {VERSION}")
     return {
         "authors": package["authors"],
         "license": package["license"],

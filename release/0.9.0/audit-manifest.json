@@ -116,6 +116,18 @@
       "size_bytes": 3847421
     },
     {
+      "path": "fuzz/Cargo.lock",
+      "purpose": "locked software/toolchain input",
+      "sha256": "6343784b8ce340df01d13442168739a4de0d65beb822e606be3a3601e8c61af3",
+      "size_bytes": 8500
+    },
+    {
+      "path": "fuzz/Cargo.toml",
+      "purpose": "locked software/toolchain input",
+      "sha256": "30d159ec8fb02b0d80b5e6d6e94b4171c2c15ff29748a61e2bc9b395c84db3cb",
+      "size_bytes": 702
+    },
+    {
       "path": "release/0.9.0/api/galadriel-core.0.9.0.txt",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "cae95242175c43e8f1360dfebaf006fbdd0f0d36635bf1fb10ee0735126216af",
@@ -852,8 +864,8 @@
     {
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "f8b1a74cb4b38ca38e7cf1e955e4f75457608f94756059e5ee7528f20e8116fb",
-      "size_bytes": 8448
+      "sha256": "4999dd48d39c098faf680ba09c5db75b4b41815d9a4fcce61954719277a39325",
+      "size_bytes": 8613
     },
     {
       "path": "docs/THREAT-MODEL.md",

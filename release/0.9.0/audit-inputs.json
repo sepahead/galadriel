@@ -117,6 +117,8 @@
       "purpose": "locked software/toolchain input",
       "patterns": [
         "Cargo.lock",
+        "fuzz/Cargo.lock",
+        "fuzz/Cargo.toml",
         "rust-toolchain.toml",
         "deny.toml"
       ]

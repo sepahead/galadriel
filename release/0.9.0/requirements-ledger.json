@@ -14,6 +14,7 @@
         "release/0.9.0/audit-inputs.json",
         "release/0.9.0/audit-manifest.json",
         "release/0.9.0/handoff/GALADRIEL_V1_0_ARTIFACT_SHA256SUMS.txt",
+        "release/0.9.0/evidence/phase-1-ci-remediation.log",
         "release/0.9.0/reviews/phase-1.md"
       ],
       "id": "T000",
@@ -102,6 +103,7 @@
         "crates/galadriel-core/src/correlation.rs",
         "crates/galadriel-core/src/fusion.rs",
         "crates/galadriel-pid/src/engine.rs",
+        "release/0.9.0/evidence/phase-1-ci-remediation.log",
         "release/0.9.0/reviews/phase-1.md"
       ],
       "id": "T002",
@@ -328,6 +330,7 @@
         "rust-toolchain.toml",
         "deny.toml",
         "docs/DEPENDENCY-POLICY.md",
+        "release/0.9.0/evidence/phase-1-ci-remediation.log",
         "release/0.9.0/audit-manifest.json"
       ],
       "id": "T007",
@@ -414,7 +417,8 @@
         "RELEASE-POLICY.md",
         "release/0.9.0/VERSION-ADAPTATION.md",
         "release/0.9.0/reviews/phase-1.md",
-        "release/0.9.0/evidence/phase-1-full-gates.log"
+        "release/0.9.0/evidence/phase-1-full-gates.log",
+        "release/0.9.0/evidence/phase-1-ci-remediation.log"
       ],
       "id": "T009",
       "phase": 1,

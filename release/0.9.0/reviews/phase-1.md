@@ -8,6 +8,15 @@ Tasks: T000–T009
 
 Decision: phase component and full workspace gates pass
 
+Post-push remediation: GitHub PR #23 detected that the standalone fuzz workspace
+still required the pre-release `0.1.0` package versions. Both fuzz manifest and
+lockfile now use `0.9.0`, the audit includes and validates them, and the exact CI
+dependency-policy and two 5,000-run fuzz commands pass in
+`evidence/phase-1-ci-remediation.log`. The same review corrected two documentation
+mismatches found independently: the tested CUSUM boundary is inclusive (`>=`), and
+the overflow-safe window mean remains the true finite mean rather than a quotient
+of the saturated sum. Neither correction changes runtime behavior or claim tier.
+
 Reviewed inputs include all ten unaltered handoff artifacts, all current repository
 source/docs/tests, the baseline public API, Cargo metadata/lockfile, CI/security
 configuration, retained evidence, and the exact ecosystem revisions in
@@ -85,9 +94,10 @@ Eight standard-library auditor tests cover positive integration, malformed input
 boundaries, adversarial substitutions and deterministic metamorphic behavior. The
 core suite contains 102 unit/property tests plus a compile-fail doctest; phase-1
 clippy/docs/no-default builds pass. The complete 0.9.0 workspace all-features suite,
-documentation and supply-chain policy also pass; `cargo deny` reports non-fatal
-duplicate/yanked transitive warnings that remain inputs to the later supply-chain
-phase. These are maintainer-run component results, not independent field evidence.
+documentation, root/fuzz supply-chain policies and bounded fuzz smoke also pass;
+root `cargo deny` reports non-fatal duplicate/yanked transitive warnings that remain
+inputs to the later supply-chain phase. These are maintainer-run component results,
+not independent field evidence.
 
 ## Documentation and operator usability
 

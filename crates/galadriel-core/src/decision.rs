@@ -14,7 +14,8 @@ use crate::window::NisWindow;
 ///
 /// This is **advisory** (`calibrated_posterior = false` in the ecosystem's terms):
 /// a magnitude anomaly is equally consistent with an attack, a genuine unique
-/// detection, or an estimator artifact. It softens; it never vetoes.
+/// detection, or an estimator artifact. Galadriel applies no policy itself; a
+/// downstream consumer remains subject to the record/restrict-only authority contract.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "verdict", rename_all = "snake_case")]
 pub enum Verdict {

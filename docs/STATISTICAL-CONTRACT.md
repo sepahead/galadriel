@@ -33,9 +33,11 @@ For one modality's retained contiguous window `q₁,…,qₙ`:
 
 - `n` is the exact retained sample count.
 - `dof` is the immutable `d` declared for that track/modality epoch.
-- `sum_nis = min(Σ qᵢ, f64::MAX)` and `mean_nis = sum_nis / n` for `n>0`
-  (`0` for an absent expected channel in `ChannelReport`). Saturation prevents a
-  finite extreme anomaly from becoming a numeric error.
+- `sum_nis = min(Σ qᵢ, f64::MAX)`. When the sum is representable,
+  `mean_nis = sum_nis / n`; otherwise the mean is evaluated by scaling every
+  sample by the window maximum before summation, so the finite mathematical mean
+  remains representable. Both are `0` for an absent expected channel.
+  Saturation prevents a finite extreme anomaly from becoming a numeric error.
 - `p_right = Pr[X ≥ sum_nis]` for `X ~ χ²(n d)`, evaluated directly as an
   upper tail. For `n=0`, it is `1`.
 - The per-channel threshold is `nis_alpha / C`, where `C` is the number of known
@@ -43,7 +45,7 @@ For one modality's retained contiguous window `q₁,…,qₙ`:
   `n>0 && p_right < nis_alpha/C`; equality is not elevated.
 - The two CUSUM inputs are `x=q/sqrt(2d)` and target `μ=d/sqrt(2d)`. After each
   sample, `hi=max(0, hi+x-μ-k)` and `lo=max(0, lo+μ-x-k)`, with configured
-  slack `k`; an arm alarms when its accumulator is strictly greater than threshold
+  slack `k`; an arm alarms when its accumulator is greater than or equal to threshold
   `h`. `cusum_high_alarm` and `cusum_low_alarm` are exactly those arm predicates.
   The state is historical sequential evidence, not a p-value.
 - `last_seq` and `last_timestamp_ms` are the newest accepted identities;
