@@ -152,6 +152,30 @@
       "size_bytes": 14998
     },
     {
+      "path": "release/0.9.0/evidence/phase-1-ci-remediation.log",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "72edc55414ed560bc43fb8ca2dd5ac8364a844c114447aad36717c625d6f4a91",
+      "size_bytes": 19473
+    },
+    {
+      "path": "release/0.9.0/evidence/phase-1-component-gates.log",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "1feb61d4981738f7b99b469f4b722d52fc6c18d99e6d8750e0823a22c8b6b4b2",
+      "size_bytes": 10084
+    },
+    {
+      "path": "release/0.9.0/evidence/phase-1-full-gates.log",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "4965a72bca672104c1479393a381ea504141aec3ee88b593d35a8abcb03707e5",
+      "size_bytes": 227154
+    },
+    {
+      "path": "release/0.9.0/evidence/phase-1-mutation-remediation.log",
+      "purpose": "retained baseline, migration, calibration and public-API evidence",
+      "sha256": "3606565e4950d167f2ed59ac591278ba2dd8ed1d67bdb10539a66984078754f3",
+      "size_bytes": 430
+    },
+    {
       "path": "release/0.9.0/handoff/GALADRIEL_V1_0_AGENT_TASK_LEDGER.yaml",
       "purpose": "unaltered supervisor handoff and derived task inventory",
       "sha256": "f654ec83d2da6b3761f9922dd7ea130a6e1dd011012e72a7e113d52af1c37e58",

@@ -16,6 +16,12 @@ dependency-policy and two 5,000-run fuzz commands pass in
 mismatches found independently: the tested CUSUM boundary is inclusive (`>=`), and
 the overflow-safe window mean remains the true finite mean rather than a quotient
 of the saturated sum. Neither correction changes runtime behavior or claim tier.
+The first remote mutation run then exposed 15 surviving authority-test mutants,
+covering getter constants, authorization conjunction, and strict-versus-inclusive
+limit boundaries. Two focused tests now close those omissions. Against signed code
+commit `c67506e683116bd9a022377a5fe74b3c1e3edbd7`, cargo-mutants 27.1.0 reports
+33 mutants tested: 30 caught, three unviable, zero missed or timed out; the complete
+result is retained in `evidence/phase-1-mutation-remediation.log`.
 
 Reviewed inputs include all ten unaltered handoff artifacts, all current repository
 source/docs/tests, the baseline public API, Cargo metadata/lockfile, CI/security
@@ -92,7 +98,7 @@ absent until the author creates them later.
 
 Eight standard-library auditor tests cover positive integration, malformed input,
 boundaries, adversarial substitutions and deterministic metamorphic behavior. The
-core suite contains 102 unit/property tests plus a compile-fail doctest; phase-1
+core suite now contains 104 unit/property tests plus a compile-fail doctest; phase-1
 clippy/docs/no-default builds pass. The complete 0.9.0 workspace all-features suite,
 documentation, root/fuzz supply-chain policies and bounded fuzz smoke also pass;
 root `cargo deny` reports non-fatal duplicate/yanked transitive warnings that remain

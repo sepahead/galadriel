@@ -149,11 +149,13 @@
         "crates/galadriel-core/src/authority.rs",
         "docs/ADVISORY-BOUNDARY.md",
         "release/0.9.0/api/galadriel-core.0.9.0.txt",
+        "release/0.9.0/evidence/phase-1-mutation-remediation.log",
         "release/0.9.0/reviews/phase-1.md"
       ],
       "tests": [
         "release/0.9.0/evidence/phase-1-component-gates.log",
-        "release/0.9.0/evidence/phase-1-full-gates.log"
+        "release/0.9.0/evidence/phase-1-full-gates.log",
+        "release/0.9.0/evidence/phase-1-mutation-remediation.log"
       ],
       "review": {
         "correctness_and_invariants": "A pure fixed-integer snapshot comparator implements exact equality and partial-order checks.",
@@ -163,7 +165,7 @@
         "performance_and_bounded_resources": "Validation is constant-time over one fixed-size snapshot and 32-byte digest.",
         "api_schema_and_compatibility": "Private fields and getters prevent unvalidated alternate representations; types are in the stable core inventory.",
         "observability_and_provenance": "Typed AuthorityViolation errors retain the exact rejected invariant without applying policy.",
-        "testing_and_independent_evidence": "Positive, negative, zero/MAX boundary, adversarial and proptest cases pass in component/full suites.",
+        "testing_and_independent_evidence": "Positive, negative, equality/zero/MAX boundary, getter round-trip, adversarial and proptest cases pass; all 30 viable changed-line mutants are caught.",
         "documentation_and_operator_usability": "The API explains consumer-selected units and verdict-independent behavior, including Nominal.",
         "ecosystem_composition_and_governance": "No downstream adapter or control credential is introduced; consumer qualification remains separate."
       },

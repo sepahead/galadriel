@@ -101,7 +101,7 @@
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "patterns": [
         "evidence/**/*",
-        "release/0.9.0/evidence/baseline-workspace-all-features.log",
+        "release/0.9.0/evidence/*.log",
         "release/0.9.0/evidence/galadriel-core-api.diff",
         "release/0.9.0/api/*"
       ]
