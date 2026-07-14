@@ -141,15 +141,12 @@ impl LifecycleDetector {
         detector_config: DetectorConfig,
         correlation_config: CorrConfig,
     ) -> Result<Self, LifecycleDetectorError> {
-        detector_config
-            .validate()
-            .map_err(|error| LifecycleDetectorError::InvalidConfiguration(error.to_string()))?;
         correlation_config
             .validate()
             .map_err(|error| LifecycleDetectorError::InvalidConfiguration(error.to_string()))?;
-        let history_frames = detector_config.window_len.max(correlation_config.window);
+        let history_frames = detector_config.window_len().max(correlation_config.window);
         let retained_observations = history_frames
-            .checked_mul(detector_config.max_tracks)
+            .checked_mul(detector_config.max_tracks())
             .and_then(|samples| samples.checked_mul(Modality::ALL.len()))
             .ok_or_else(|| {
                 LifecycleDetectorError::InvalidConfiguration(
@@ -231,19 +228,19 @@ impl LifecycleDetector {
         }
         let modalities = &frame.summary.expected_modalities;
         validate_canonical_modalities(modalities)?;
-        if modalities.len() < self.detector_config.min_channels {
+        if modalities.len() < self.detector_config.min_channels() {
             return Err(LifecycleDetectorError::InvalidFrame(format!(
                 "{} expected modalities cannot satisfy detector min_channels {}",
                 modalities.len(),
-                self.detector_config.min_channels
+                self.detector_config.min_channels()
             )));
         }
 
         let frozen_tracks = frozen_track_ids(frame);
-        if frozen_tracks.len() > self.detector_config.max_tracks {
+        if frozen_tracks.len() > self.detector_config.max_tracks() {
             return Err(LifecycleDetectorError::TrackCapacity {
                 actual: frozen_tracks.len(),
-                maximum: self.detector_config.max_tracks,
+                maximum: self.detector_config.max_tracks(),
             });
         }
         let mut observations_by_track =
@@ -259,8 +256,8 @@ impl LifecycleDetector {
                 .copied()
                 .filter(|modality| {
                     !observations.iter().any(|observation| {
-                        observation.modality == *modality
-                            && observation.consistency_projection.is_some()
+                        observation.modality() == *modality
+                            && observation.consistency_projection().is_some()
                     })
                 })
                 .collect::<Vec<_>>();
@@ -354,7 +351,7 @@ impl LifecycleDetector {
                     .identity
                     .fusion_timestamp_ms
                     .checked_sub(history.last_fusion_timestamp_ms)
-                    .is_some_and(|gap| gap > self.detector_config.max_inter_sample_gap_ms)
+                    .is_some_and(|gap| gap > self.detector_config.max_inter_sample_gap_ms())
         })
     }
 }
@@ -428,56 +425,53 @@ fn validate_observation_ledger(
     let mut by_track: HashMap<u64, Vec<galadriel_core::PidObservation>> =
         HashMap::with_capacity(frozen_tracks.len());
     for observation in &frame.observations {
-        observation.validate().map_err(|error| {
-            LifecycleDetectorError::InvalidFrame(format!(
-                "track {} / {:?} observation is invalid: {error}",
-                observation.track_id, observation.modality,
-            ))
-        })?;
-        if !frozen_tracks.contains(&observation.track_id) {
+        let track_id = observation.track_id().get();
+        let modality = observation.modality();
+        if !frozen_tracks.contains(&track_id) {
             return Err(LifecycleDetectorError::InvalidFrame(format!(
                 "observation track {} is absent from the frozen frame ledger",
-                observation.track_id,
+                track_id,
             )));
         }
-        if !modalities.contains(&observation.modality) {
+        if !modalities.contains(&modality) {
             return Err(LifecycleDetectorError::InvalidFrame(format!(
                 "track {} has observation for unexpected modality {:?}",
-                observation.track_id, observation.modality,
+                track_id, modality,
             )));
         }
-        if !pairs.insert((observation.track_id, observation.modality)) {
+        if !pairs.insert((track_id, modality)) {
             return Err(LifecycleDetectorError::InvalidFrame(format!(
                 "duplicate observation for track {} / {:?}",
-                observation.track_id, observation.modality,
+                track_id, modality,
             )));
         }
-        if observation.seq != frame.identity.fusion_seq
-            || observation.timestamp_ms != frame.identity.fusion_timestamp_ms
+        if observation.sequence().get() != frame.identity.fusion_seq
+            || observation.timestamp_ms().get() != frame.identity.fusion_timestamp_ms
         {
             return Err(LifecycleDetectorError::InvalidFrame(format!(
                 "track {} / {:?} observation sequence or timestamp differs from frame {}",
-                observation.track_id, observation.modality, frame.identity.fusion_seq,
+                track_id, modality, frame.identity.fusion_seq,
             )));
         }
-        if let Some(projection) = observation.consistency_projection {
-            if projection.frame_id != frame.identity.frame_id
-                || projection.context_id != frame.identity.context_id
-                || projection.prior_id != frame.identity.prior_id
+        if let Some(projection) = observation.consistency_projection() {
+            let identity = projection.identity();
+            if identity.frame_id().get() != frame.identity.frame_id
+                || identity.context_id().get() != frame.identity.context_id
+                || identity.frozen_prior_id().get() != frame.identity.prior_id
             {
                 return Err(LifecycleDetectorError::InvalidFrame(format!(
                     "track {} / {:?} projection provenance differs from frame {}",
-                    observation.track_id, observation.modality, frame.identity.fusion_seq,
+                    track_id, modality, frame.identity.fusion_seq,
                 )));
             }
         }
         by_track
-            .entry(observation.track_id)
+            .entry(track_id)
             .or_default()
             .push(observation.clone());
     }
     for observations in by_track.values_mut() {
-        observations.sort_by_key(|observation| modality_rank(observation.modality));
+        observations.sort_by_key(|observation| modality_rank(observation.modality()));
     }
     Ok(by_track)
 }
@@ -495,7 +489,7 @@ fn modality_rank(modality: Modality) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use galadriel_core::{ConsistencyProjection, FusedVerdict, PidObservation};
+    use galadriel_core::{ConsistencyProjection, DetectorParams, FusedVerdict, PidObservation};
 
     use super::*;
     use crate::assembler::FrameIdentity;
@@ -508,12 +502,13 @@ mod tests {
 
     fn detector() -> LifecycleDetector {
         LifecycleDetector::new(
-            DetectorConfig {
+            DetectorConfig::try_new(DetectorParams {
                 window_len: 4,
                 min_samples: 4,
                 min_channels: 2,
-                ..DetectorConfig::default()
-            },
+                ..DetectorParams::standalone_advisory_v0_9()
+            })
+            .expect("test detector config is valid"),
             CorrConfig {
                 window: 4,
                 min_samples: 4,
@@ -526,13 +521,14 @@ mod tests {
     #[test]
     fn aggregate_history_bound_rejects_cross_config_state_explosion() {
         let error = LifecycleDetector::new(
-            DetectorConfig {
+            DetectorConfig::try_new(DetectorParams {
                 window_len: 1,
                 min_samples: 1,
                 min_channels: 2,
                 max_tracks: 4,
-                ..DetectorConfig::default()
-            },
+                ..DetectorParams::standalone_advisory_v0_9()
+            })
+            .expect("test detector config is valid"),
             CorrConfig {
                 window: galadriel_core::correlation::MAX_CORRELATION_WINDOW,
                 min_samples: 4,
@@ -564,22 +560,38 @@ mod tests {
             Modality::Radar => 0.1,
             _ => 0.2,
         };
-        PidObservation {
-            track_id: 1,
-            timestamp_ms: identity.fusion_timestamp_ms,
-            seq: identity.fusion_seq,
+        let projection = ConsistencyProjection::try_new_raw(
+            [identity.fusion_seq as f64 + offset, 0.0, 0.0],
+            1,
+            identity.frame_id,
+            identity.context_id,
+            identity.prior_id,
+        )
+        .expect("test projection is valid");
+        test_observation(
+            1,
+            identity.fusion_timestamp_ms,
+            identity.fusion_seq,
             modality,
-            nis: 3.0,
-            dof: 3,
-            innovation: None,
-            innovation_cov: None,
-            consistency_projection: Some(ConsistencyProjection {
-                values: [identity.fusion_seq as f64 + offset, 0.0, 0.0],
-                dimensions: 1,
-                frame_id: identity.frame_id,
-                context_id: identity.context_id,
-                prior_id: identity.prior_id,
-            }),
+            3.0,
+            Some(projection),
+        )
+    }
+
+    fn test_observation(
+        track_id: u64,
+        timestamp_ms: u64,
+        sequence: u64,
+        modality: Modality,
+        nis: f64,
+        projection: Option<ConsistencyProjection>,
+    ) -> PidObservation {
+        let observation =
+            PidObservation::try_scalar_raw(track_id, timestamp_ms, sequence, modality, nis, 3)
+                .expect("test observation is valid");
+        match projection {
+            Some(projection) => observation.with_consistency_projection(projection),
+            None => observation,
         }
     }
 
@@ -603,7 +615,9 @@ mod tests {
                 d2: 1.0,
                 threshold: 7.0,
             }),
-            consistency_projection: observation(identity, modality).consistency_projection,
+            consistency_projection: observation(identity, modality)
+                .consistency_projection()
+                .cloned(),
         })
     }
 
@@ -686,7 +700,14 @@ mod tests {
         frame.identity.fusion_timestamp_ms = timestamp_ms;
         frame.summary.fusion_timestamp_ms = timestamp_ms;
         for observation in &mut frame.observations {
-            observation.timestamp_ms = timestamp_ms;
+            *observation = test_observation(
+                observation.track_id().get(),
+                timestamp_ms,
+                observation.sequence().get(),
+                observation.modality(),
+                observation.nis(),
+                observation.consistency_projection().cloned(),
+            );
         }
         for event in &mut frame.monitor_events {
             match event {
@@ -729,7 +750,15 @@ mod tests {
     #[test]
     fn observation_for_track_outside_frozen_ledger_is_terminal() {
         let mut frame = complete_frame(1, 11);
-        frame.observations[1].track_id = 2;
+        let previous = &frame.observations[1];
+        frame.observations[1] = test_observation(
+            2,
+            previous.timestamp_ms().get(),
+            previous.sequence().get(),
+            previous.modality(),
+            previous.nis(),
+            previous.consistency_projection().cloned(),
+        );
 
         assert_invalid_frame(frame, "absent from the frozen frame ledger");
     }
@@ -737,46 +766,98 @@ mod tests {
     #[test]
     fn duplicate_or_unexpected_observation_modality_is_terminal() {
         let mut duplicate = complete_frame(1, 11);
-        duplicate.observations[1].modality = Modality::Visual;
+        duplicate.observations[1] = observation(duplicate.identity, Modality::Visual);
         assert_invalid_frame(duplicate, "duplicate observation");
 
         let mut unexpected = complete_frame(1, 11);
-        unexpected.observations[1].modality = Modality::Thermal;
+        unexpected.observations[1] = observation(unexpected.identity, Modality::Thermal);
         assert_invalid_frame(unexpected, "unexpected modality");
     }
 
     #[test]
     fn observation_identity_or_projection_provenance_mismatch_is_terminal() {
         let mut wrong_sequence = complete_frame(1, 11);
-        wrong_sequence.observations[0].seq = 2;
+        let previous = &wrong_sequence.observations[0];
+        wrong_sequence.observations[0] = test_observation(
+            previous.track_id().get(),
+            previous.timestamp_ms().get(),
+            2,
+            previous.modality(),
+            previous.nis(),
+            previous.consistency_projection().cloned(),
+        );
         assert_invalid_frame(wrong_sequence, "sequence or timestamp differs");
 
         let mut wrong_timestamp = complete_frame(1, 11);
-        wrong_timestamp.observations[0].timestamp_ms += 1;
+        let previous = &wrong_timestamp.observations[0];
+        wrong_timestamp.observations[0] = test_observation(
+            previous.track_id().get(),
+            previous.timestamp_ms().get() + 1,
+            previous.sequence().get(),
+            previous.modality(),
+            previous.nis(),
+            previous.consistency_projection().cloned(),
+        );
         assert_invalid_frame(wrong_timestamp, "sequence or timestamp differs");
 
         let mut wrong_projection_frame = complete_frame(1, 11);
-        wrong_projection_frame.observations[0]
-            .consistency_projection
-            .as_mut()
-            .expect("complete fixture has projection")
-            .frame_id += 1;
+        wrong_projection_frame.observations[0] = test_observation(
+            1,
+            wrong_projection_frame.identity.fusion_timestamp_ms,
+            wrong_projection_frame.identity.fusion_seq,
+            Modality::Visual,
+            3.0,
+            Some(
+                ConsistencyProjection::try_new_raw(
+                    [1.0, 0.0, 0.0],
+                    1,
+                    wrong_projection_frame.identity.frame_id + 1,
+                    wrong_projection_frame.identity.context_id,
+                    wrong_projection_frame.identity.prior_id,
+                )
+                .expect("mismatched projection remains structurally valid"),
+            ),
+        );
         assert_invalid_frame(wrong_projection_frame, "projection provenance differs");
 
         let mut wrong_projection_context = complete_frame(1, 11);
-        wrong_projection_context.observations[0]
-            .consistency_projection
-            .as_mut()
-            .expect("complete fixture has projection")
-            .context_id += 1;
+        wrong_projection_context.observations[0] = test_observation(
+            1,
+            wrong_projection_context.identity.fusion_timestamp_ms,
+            wrong_projection_context.identity.fusion_seq,
+            Modality::Visual,
+            3.0,
+            Some(
+                ConsistencyProjection::try_new_raw(
+                    [1.0, 0.0, 0.0],
+                    1,
+                    wrong_projection_context.identity.frame_id,
+                    wrong_projection_context.identity.context_id + 1,
+                    wrong_projection_context.identity.prior_id,
+                )
+                .expect("mismatched projection remains structurally valid"),
+            ),
+        );
         assert_invalid_frame(wrong_projection_context, "projection provenance differs");
 
         let mut wrong_projection_prior = complete_frame(1, 11);
-        wrong_projection_prior.observations[0]
-            .consistency_projection
-            .as_mut()
-            .expect("complete fixture has projection")
-            .prior_id += 1;
+        wrong_projection_prior.observations[0] = test_observation(
+            1,
+            wrong_projection_prior.identity.fusion_timestamp_ms,
+            wrong_projection_prior.identity.fusion_seq,
+            Modality::Visual,
+            3.0,
+            Some(
+                ConsistencyProjection::try_new_raw(
+                    [1.0, 0.0, 0.0],
+                    1,
+                    wrong_projection_prior.identity.frame_id,
+                    wrong_projection_prior.identity.context_id,
+                    wrong_projection_prior.identity.prior_id + 1,
+                )
+                .expect("mismatched projection remains structurally valid"),
+            ),
+        );
         assert_invalid_frame(wrong_projection_prior, "projection provenance differs");
     }
 
@@ -804,11 +885,8 @@ mod tests {
     }
 
     #[test]
-    fn individually_invalid_observation_is_terminal_before_assessment() {
-        let mut frame = complete_frame(1, 11);
-        frame.observations[0].nis = f64::NAN;
-
-        assert_invalid_frame(frame, "observation is invalid");
+    fn individually_invalid_observation_cannot_cross_construction_boundary() {
+        assert!(PidObservation::try_scalar_raw(1, 100, 1, Modality::Visual, f64::NAN, 3,).is_err());
     }
 
     #[test]
@@ -864,12 +942,13 @@ mod tests {
     #[test]
     fn expected_modalities_below_the_detector_minimum_are_terminal() {
         let mut detector = LifecycleDetector::new(
-            DetectorConfig {
+            DetectorConfig::try_new(DetectorParams {
                 window_len: 4,
                 min_samples: 4,
                 min_channels: 3,
-                ..DetectorConfig::default()
-            },
+                ..DetectorParams::standalone_advisory_v0_9()
+            })
+            .expect("test detector config is valid"),
             CorrConfig {
                 window: 4,
                 min_samples: 4,
@@ -894,13 +973,14 @@ mod tests {
     #[test]
     fn track_capacity_boundary_is_inclusive() {
         let mut detector = LifecycleDetector::new(
-            DetectorConfig {
+            DetectorConfig::try_new(DetectorParams {
                 window_len: 4,
                 min_samples: 4,
                 min_channels: 2,
                 max_tracks: 1,
-                ..DetectorConfig::default()
-            },
+                ..DetectorParams::standalone_advisory_v0_9()
+            })
+            .expect("test detector config is valid"),
             CorrConfig {
                 window: 4,
                 min_samples: 4,
@@ -1028,7 +1108,7 @@ mod tests {
     #[test]
     fn forward_timestamp_gap_resets_only_above_the_configured_boundary() {
         let mut detector = detector();
-        let maximum_gap = detector.detector_config.max_inter_sample_gap_ms;
+        let maximum_gap = detector.detector_config.max_inter_sample_gap_ms();
         let first_timestamp = 100_u64;
         let boundary_timestamp = first_timestamp
             .checked_add(maximum_gap)
@@ -1092,23 +1172,25 @@ mod tests {
     }
 
     #[test]
-    fn terminal_timestamp_value_remains_a_terminal_adapter_error() {
+    fn exact_timestamp_boundary_is_valid_and_larger_values_cannot_be_constructed() {
         let mut detector = detector();
+        let maximum = galadriel_core::TimestampMillis::MAX;
         let mut first = complete_frame(1, 11);
-        set_fusion_timestamp(&mut first, u64::MAX - 1);
+        set_fusion_timestamp(&mut first, maximum - 1);
         detector
             .assess_frame(&first)
-            .expect("largest nonterminal timestamp evaluates");
+            .expect("timestamp immediately below the domain maximum evaluates");
         let mut terminal = complete_frame(2, 11);
-        set_fusion_timestamp(&mut terminal, u64::MAX);
+        set_fusion_timestamp(&mut terminal, maximum);
 
-        let error = detector
+        detector
             .assess_frame(&terminal)
-            .expect_err("terminal timestamp must not be converted into a reset");
+            .expect("the exact timestamp domain maximum evaluates");
 
-        assert!(matches!(error, LifecycleDetectorError::InvalidFrame(_)));
-        assert_eq!(detector.fault(), Some(&error));
-        assert_eq!(detector.retained_tracks(), 0);
+        assert!(
+            PidObservation::try_scalar_raw(1, maximum + 1, 3, Modality::Visual, 1.0, 3,).is_err()
+        );
+        assert_eq!(detector.fault(), None);
     }
 
     #[test]

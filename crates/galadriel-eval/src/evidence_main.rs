@@ -15,7 +15,8 @@ use std::process::Command;
 use galadriel_core::{
     combine_correlation_axes, consistency_channels_with_temporal_limits, correlation,
     AxisCorrelationReport, ConsistencyProjection, CorrConfig, CorrVerdict, DetectorConfig,
-    FusedVerdict, Mirror, Modality, PidObservation, Verdict,
+    DetectorParams, FusedVerdict, Mirror, Modality, PidObservation, Sequence, TimestampMillis,
+    TrackId, Verdict, JSON_SAFE_INTEGER_MAX,
 };
 use galadriel_eval::wilson_ci;
 use rand::rngs::StdRng;
@@ -82,8 +83,8 @@ struct DetectorConfigFile {
 }
 
 impl DetectorConfigFile {
-    fn runtime(&self) -> DetectorConfig {
-        DetectorConfig {
+    fn runtime(&self) -> AppResult<DetectorConfig> {
+        DetectorConfig::try_new(DetectorParams {
             window_len: self.window_len,
             min_samples: self.min_samples,
             min_channels: self.min_channels,
@@ -95,7 +96,8 @@ impl DetectorConfigFile {
             cusum_slack: self.cusum_slack,
             cusum_threshold: self.cusum_threshold,
             jam_fraction: self.jam_fraction,
-        }
+        })
+        .map_err(|error| error.to_string())
     }
 }
 
@@ -244,10 +246,7 @@ impl EvidenceConfig {
         {
             return Err("recorded fixture path and 64-digit SHA-256 are required".into());
         }
-        self.detector
-            .runtime()
-            .validate()
-            .map_err(|error| error.to_string())?;
+        self.detector.runtime()?;
         if self.detector.min_channels > DEFAULT_MODALITIES.len() {
             return Err(format!(
                 "detector.min_channels must be <= {} for this three-modality study",
@@ -548,6 +547,11 @@ fn mix64(mut value: u64) -> u64 {
     value ^ (value >> 31)
 }
 
+fn synthetic_track_id(seed: u64) -> AppResult<TrackId> {
+    let value = mix64(seed ^ 0x7a6b_1d3e_51c9_4f02) % JSON_SAFE_INTEGER_MAX + 1;
+    TrackId::new(value).map_err(|error| error.to_string())
+}
+
 fn trial_seed(config: &EvidenceConfig, spec: &ExperimentSpec, role: Role, trial: usize) -> u64 {
     let role_domain = match role {
         Role::Calibration => 0xca11_ba7e_0000_0001,
@@ -575,7 +579,7 @@ fn generate_stream(
     config: &EvidenceConfig,
     spec: &ExperimentSpec,
     seed: u64,
-    track_id: u64,
+    track_id: TrackId,
 ) -> AppResult<Vec<PidObservation>> {
     let mut rng = StdRng::seed_from_u64(seed);
     let standard = Normal::new(0.0, 1.0).map_err(|error| error.to_string())?;
@@ -608,6 +612,12 @@ fn generate_stream(
     let mut stream = Vec::with_capacity(capacity);
 
     for frame in 0..config.frames {
+        let raw_sequence = frame as u64;
+        let sequence = Sequence::new(raw_sequence).map_err(|error| error.to_string())?;
+        let raw_timestamp = raw_sequence
+            .checked_mul(config.dt_ms)
+            .ok_or_else(|| "timestamp overflowed".to_string())?;
+        let timestamp = TimestampMillis::new(raw_timestamp).map_err(|error| error.to_string())?;
         if frame > 0 {
             for axis in 0..3 {
                 common[axis] = spec.phi * common[axis] + ar_noise * standard.sample(&mut rng);
@@ -646,33 +656,31 @@ fn generate_stream(
             let nis = innovation.iter().map(|value| value * value).sum::<f64>() / declared_variance;
             let projection = match spec.perturbation {
                 Perturbation::MissingProjection => None,
-                _ => Some(ConsistencyProjection {
-                    values: innovation,
-                    dimensions: 3,
-                    frame_id: 1,
-                    context_id: 1,
-                    prior_id: if spec.perturbation == Perturbation::InvalidProvenance
-                        && modality == Modality::Acoustic
-                    {
-                        1_000_000_u64.saturating_add(frame as u64)
-                    } else {
-                        frame as u64 + 1
-                    },
-                }),
+                _ => Some(
+                    ConsistencyProjection::try_new_raw(
+                        innovation,
+                        3,
+                        1,
+                        1,
+                        if spec.perturbation == Perturbation::InvalidProvenance
+                            && modality == Modality::Acoustic
+                        {
+                            1_000_000_u64.saturating_add(raw_sequence)
+                        } else {
+                            raw_sequence + 1
+                        },
+                    )
+                    .map_err(|error| error.to_string())?,
+                ),
             };
-            stream.push(PidObservation {
-                track_id,
-                timestamp_ms: (frame as u64)
-                    .checked_mul(config.dt_ms)
-                    .ok_or_else(|| "timestamp overflowed".to_string())?,
-                seq: frame as u64,
-                modality,
-                nis,
-                dof: 3,
-                innovation: Some(innovation),
-                innovation_cov: Some(covariance),
-                consistency_projection: projection,
-            });
+            let mut observation =
+                PidObservation::try_scalar(track_id, timestamp, sequence, modality, nis, 3)
+                    .and_then(|observation| observation.try_with_research(innovation, covariance))
+                    .map_err(|error| error.to_string())?;
+            if let Some(projection) = projection {
+                observation = observation.with_consistency_projection(projection);
+            }
+            stream.push(observation);
         }
     }
     Ok(stream)
@@ -1139,18 +1147,18 @@ fn evaluate_track(
             meta.spec.id
         ));
     }
-    let detector_cfg = meta.config.detector.runtime();
+    let detector_cfg = meta.config.detector.runtime()?;
     let corr_cfg = meta.config.correlation.runtime();
-    let mut mirror = if modalities.len() >= detector_cfg.min_channels {
+    let mut mirror = if modalities.len() >= detector_cfg.min_channels() {
         Mirror::with_modalities(detector_cfg.clone(), modalities)
     } else {
         Mirror::new(detector_cfg.clone())
     }
     .map_err(|error| error.to_string())?;
-    let track_id = stream[0].track_id;
+    let track_id = stream[0].track_id();
     if stream
         .iter()
-        .any(|observation| observation.track_id != track_id)
+        .any(|observation| observation.track_id() != track_id)
     {
         return Err("evaluate_track requires exactly one track".into());
     }
@@ -1162,9 +1170,9 @@ fn evaluate_track(
     let mut frame_start = 0usize;
     let mut frame_index = 0usize;
     while frame_start < stream.len() {
-        let seq = stream[frame_start].seq;
+        let seq = stream[frame_start].sequence();
         let mut frame_end = frame_start + 1;
-        while frame_end < stream.len() && stream[frame_end].seq == seq {
+        while frame_end < stream.len() && stream[frame_end].sequence() == seq {
             frame_end += 1;
         }
         for observation in &stream[frame_start..frame_end] {
@@ -1189,15 +1197,15 @@ fn evaluate_track(
             let tail_start = frame_starts.front().copied().unwrap_or(frame_start);
             let mut correlations = Vec::<AxisCorrelationReport>::new();
             let mut rejected_input = false;
-            if modalities.len() < detector_cfg.min_channels {
+            if modalities.len() < detector_cfg.min_channels() {
                 consistency.too_few_modalities += 1;
             } else {
                 match consistency_channels_with_temporal_limits(
                     &stream[tail_start..frame_end],
                     modalities,
-                    detector_cfg.max_seq_gap,
-                    detector_cfg.max_timestamp_skew_ms,
-                    detector_cfg.max_inter_sample_gap_ms,
+                    detector_cfg.max_seq_gap(),
+                    detector_cfg.max_timestamp_skew_ms(),
+                    detector_cfg.max_inter_sample_gap_ms(),
                 ) {
                     Ok(Some(projection)) => {
                         let axis_count = projection.axes.len();
@@ -1239,13 +1247,15 @@ fn evaluate_track(
             let (fused, _) = combine_correlation_axes(&baseline, &correlations);
             let timestamp_ms = stream[frame_start..frame_end]
                 .iter()
-                .map(|observation| observation.timestamp_ms)
+                .map(PidObservation::timestamp_ms)
                 .max()
-                .unwrap_or(0);
+                .ok_or_else(|| {
+                    "assessment frame unexpectedly contained no observations".to_string()
+                })?;
             baseline_trace.observe(
                 frame_index,
-                seq,
-                timestamp_ms,
+                seq.get(),
+                timestamp_ms.get(),
                 baseline_label(&baseline.verdict),
                 meta.config.mission_frames,
                 monitoring_start_frame(meta.config, DetectorId::NisBaseline),
@@ -1257,8 +1267,8 @@ fn evaluate_track(
             };
             fused_trace.observe(
                 frame_index,
-                seq,
-                timestamp_ms,
+                seq.get(),
+                timestamp_ms.get(),
                 fused_outcome,
                 meta.config.mission_frames,
                 monitoring_start_frame(meta.config, DetectorId::DefaultCorrelationFusion),
@@ -1273,7 +1283,7 @@ fn evaluate_track(
         .map(|&modality| {
             let observations = stream
                 .iter()
-                .filter(|observation| observation.modality == modality)
+                .filter(|observation| observation.modality() == modality)
                 .count();
             RealizedModalityCount {
                 modality,
@@ -1285,7 +1295,7 @@ fn evaluate_track(
     let baseline = baseline_trace.finish(FinishContext {
         meta,
         detector: DetectorId::NisBaseline,
-        track_id,
+        track_id: track_id.get(),
         modalities,
         consistency: ConsistencyCounts::default(),
         frame_count: frame_index,
@@ -1294,7 +1304,7 @@ fn evaluate_track(
     let fused = fused_trace.finish(FinishContext {
         meta,
         detector: DetectorId::DefaultCorrelationFusion,
-        track_id,
+        track_id: track_id.get(),
         modalities,
         consistency,
         frame_count: frame_index,
@@ -1339,7 +1349,7 @@ fn run_synthetic(config: &EvidenceConfig) -> AppResult<Vec<TrialRecord>> {
         for &(role, trials) in roles {
             for trial_index in 0..trials {
                 let seed = trial_seed(config, spec, role, trial_index);
-                let track_id = mix64(seed ^ 0x7a6b_1d3e_51c9_4f02);
+                let track_id = synthetic_track_id(seed)?;
                 let stream = generate_stream(config, spec, seed, track_id)?;
                 let duration_ms = (config.frames.saturating_sub(1) as u64)
                     .checked_mul(config.dt_ms)
@@ -1385,19 +1395,19 @@ fn preflight_recorded_work(
     let mut correlation_work = 0usize;
     let mut track_start = 0usize;
     while track_start < observations.len() {
-        let track_id = observations[track_start].track_id;
+        let track_id = observations[track_start].track_id();
         let mut track_end = track_start + 1;
-        while track_end < observations.len() && observations[track_end].track_id == track_id {
+        while track_end < observations.len() && observations[track_end].track_id() == track_id {
             track_end += 1;
         }
         let stream = &observations[track_start..track_end];
         let frames = 1 + stream
             .windows(2)
-            .filter(|pair| pair[0].seq != pair[1].seq)
+            .filter(|pair| pair[0].sequence() != pair[1].sequence())
             .count();
         let modality_count = stream
             .iter()
-            .map(|observation| observation.modality)
+            .map(PidObservation::modality)
             .collect::<HashSet<_>>()
             .len();
         let modality_pairs = modality_count * modality_count.saturating_sub(1) / 2;
@@ -1480,15 +1490,15 @@ fn run_recorded(
     }
     observations.sort_by_key(|observation| {
         (
-            observation.track_id,
-            observation.seq,
-            observation.modality as u8,
+            observation.track_id(),
+            observation.sequence(),
+            observation.modality() as u8,
         )
     });
     preflight_recorded_work(&observations, config)?;
     let projection_observations = observations
         .iter()
-        .filter(|observation| observation.consistency_projection.is_some())
+        .filter(|observation| observation.consistency_projection().is_some())
         .count();
     let spec = ExperimentSpec {
         id: "recorded_crebain_clean".into(),
@@ -1504,20 +1514,20 @@ fn run_recorded(
     let mut trial_index = 0usize;
     let mut all_reasons = Vec::<String>::new();
     while track_start < observations.len() {
-        let track_id = observations[track_start].track_id;
+        let track_id = observations[track_start].track_id();
         let mut track_end = track_start + 1;
-        while track_end < observations.len() && observations[track_end].track_id == track_id {
+        while track_end < observations.len() && observations[track_end].track_id() == track_id {
             track_end += 1;
         }
         let stream = &observations[track_start..track_end];
         let minimum_timestamp = stream
             .iter()
-            .map(|observation| observation.timestamp_ms)
+            .map(|observation| observation.timestamp_ms().get())
             .min()
             .unwrap_or(0);
         let maximum_timestamp = stream
             .iter()
-            .map(|observation| observation.timestamp_ms)
+            .map(|observation| observation.timestamp_ms().get())
             .max()
             .unwrap_or(minimum_timestamp);
         let duration_ms = maximum_timestamp - minimum_timestamp;
@@ -1531,14 +1541,14 @@ fn run_recorded(
         }
         let missing_projection = stream
             .iter()
-            .all(|observation| observation.consistency_projection.is_none());
+            .all(|observation| observation.consistency_projection().is_none());
         if missing_projection {
             reasons.push("missing_consistency_projection".into());
         }
         all_reasons.extend(reasons.iter().cloned());
         let mut modalities = stream
             .iter()
-            .map(|observation| observation.modality)
+            .map(PidObservation::modality)
             .collect::<Vec<_>>();
         modalities.sort_by_key(|modality| *modality as u8);
         modalities.dedup();
@@ -3272,7 +3282,15 @@ mod tests {
         let recorded = (0..8_000_u64)
             .flat_map(|seq| {
                 DEFAULT_MODALITIES.map(|modality| {
-                    PidObservation::scalar(1, seq.saturating_mul(100), seq, modality, 3.0, 3)
+                    PidObservation::try_scalar_raw(
+                        1,
+                        seq.saturating_mul(100),
+                        seq,
+                        modality,
+                        3.0,
+                        3,
+                    )
+                    .expect("recorded-work fixture coordinates are valid")
                 })
             })
             .collect::<Vec<_>>();

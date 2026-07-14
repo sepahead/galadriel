@@ -50,6 +50,11 @@
       "minimum": 0,
       "maximum": 9007199254740991
     },
+    "positiveSafeUnsignedInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
     "finiteNumber": {
       "type": "number"
     },
@@ -75,9 +80,7 @@
       "required": [
         "values",
         "dimensions",
-        "frame_id",
-        "context_id",
-        "prior_id"
+        "identity"
       ],
       "properties": {
         "values": {
@@ -88,14 +91,28 @@
           "minimum": 1,
           "maximum": 3
         },
+        "identity": {
+          "$ref": "#/$defs/projectionIdentity"
+        }
+      }
+    },
+    "projectionIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame_id",
+        "context_id",
+        "frozen_prior_id"
+      ],
+      "properties": {
         "frame_id": {
-          "$ref": "#/$defs/safeUnsignedInteger"
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
         },
         "context_id": {
-          "$ref": "#/$defs/safeUnsignedInteger"
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
         },
-        "prior_id": {
-          "$ref": "#/$defs/safeUnsignedInteger"
+        "frozen_prior_id": {
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
         }
       }
     },
@@ -112,7 +129,7 @@
       ],
       "properties": {
         "track_id": {
-          "$ref": "#/$defs/safeUnsignedInteger"
+          "$ref": "#/$defs/positiveSafeUnsignedInteger"
         },
         "timestamp_ms": {
           "$ref": "#/$defs/safeUnsignedInteger"

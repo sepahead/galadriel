@@ -292,8 +292,10 @@ async fn observe_epoch(
     // Validate the immutable statistical policy before acquiring transport
     // resources. A configuration failure must not leave a live subscription
     // waiting for drop-based cleanup.
-    let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
-        .context("default lifecycle detector policy is invalid")?;
+    let detector_config = DetectorConfig::standalone_advisory_v0_9()
+        .context("standalone-advisory lifecycle detector policy is invalid")?;
+    let mut detector = LifecycleDetector::new(detector_config, Default::default())
+        .context("standalone-advisory lifecycle detector policy is invalid")?;
     let mut receiver = OperationalLiveReceiver::open_secure(
         keys,
         epoch,
@@ -476,27 +478,14 @@ mod observe_cli_tests {
     }
 
     fn projection(prior_id: u64) -> ConsistencyProjection {
-        ConsistencyProjection {
-            values: [1.0, 2.0, 3.0],
-            dimensions: 3,
-            frame_id: 10,
-            context_id: 20,
-            prior_id,
-        }
+        ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, 10, 20, prior_id)
+            .expect("test projection provenance is valid")
     }
 
     fn observation(modality: Modality) -> PidObservation {
-        PidObservation {
-            track_id: 7,
-            timestamp_ms: 1_001,
-            seq: 1,
-            modality,
-            nis: 1.0,
-            dof: 3,
-            innovation: None,
-            innovation_cov: None,
-            consistency_projection: Some(projection(101)),
-        }
+        PidObservation::try_scalar_raw(7, 1_001, 1, modality, 1.0, 3)
+            .expect("test observation coordinates are valid")
+            .with_consistency_projection(projection(101))
     }
 
     fn outcome(modality: Modality, measurement_index: u32) -> ModalityOutcome {
@@ -673,8 +662,10 @@ mod observe_cli_tests {
 
     #[test]
     fn observe_event_handler_renders_frame_and_both_assessment_shapes() {
-        let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
-            .expect("default lifecycle detector is valid");
+        let detector_config = DetectorConfig::standalone_advisory_v0_9()
+            .expect("standalone-advisory detector config is valid");
+        let mut detector = LifecycleDetector::new(detector_config, Default::default())
+            .expect("standalone-advisory lifecycle detector is valid");
         let output = handle_observe_event(assembled_frame_event(), &mut detector, telemetry())
             .expect("complete frame is assessed");
         assert_eq!(output.stderr, Vec::<String>::new());
@@ -696,8 +687,10 @@ mod observe_cli_tests {
 
     #[test]
     fn observe_event_handler_reports_exact_heartbeat_and_contract_advisory() {
-        let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
-            .expect("default lifecycle detector is valid");
+        let detector_config = DetectorConfig::standalone_advisory_v0_9()
+            .expect("standalone-advisory detector config is valid");
+        let mut detector = LifecycleDetector::new(detector_config, Default::default())
+            .expect("standalone-advisory lifecycle detector is valid");
         let heartbeat = handle_observe_event(
             AssemblyEvent::HeartbeatAccepted {
                 event_seq: 11,
@@ -729,8 +722,10 @@ mod observe_cli_tests {
 
     #[test]
     fn observe_event_handler_fails_closed_if_receiver_fault_lifting_regresses() {
-        let mut detector = LifecycleDetector::new(DetectorConfig::default(), Default::default())
-            .expect("default lifecycle detector is valid");
+        let detector_config = DetectorConfig::standalone_advisory_v0_9()
+            .expect("standalone-advisory detector config is valid");
+        let mut detector = LifecycleDetector::new(detector_config, Default::default())
+            .expect("standalone-advisory lifecycle detector is valid");
         let error = handle_observe_event(
             AssemblyEvent::Fault(AssemblyFault {
                 kind: AssemblyFaultKind::HeartbeatDeadlineExpired,
@@ -856,22 +851,23 @@ fn run_case(
         stream.len().is_multiple_of(mods.len()),
         "demo stream has an incomplete fusion frame"
     );
-    let mut mirror = Mirror::with_modalities(DetectorConfig::default(), mods)?;
-    let track = stream[0].track_id;
+    let detector_config = DetectorConfig::standalone_advisory_v0_9()?;
+    let mut mirror = Mirror::with_modalities(detector_config, mods)?;
+    let track = stream[0].track_id();
     let mut history: HashMap<Modality, Vec<f64>> = HashMap::new();
     let mut report = None;
 
     for chunk in stream.chunks(mods.len()) {
         anyhow::ensure!(
-            chunk
-                .iter()
-                .all(|observation| observation.track_id == track && observation.seq == chunk[0].seq),
+            chunk.iter().all(|observation| {
+                observation.track_id() == track && observation.sequence() == chunk[0].sequence()
+            }),
             "demo stream is not grouped into one track and sequence per fusion frame"
         );
         for o in chunk {
             mirror.ingest(o)?;
         }
-        let r = mirror.assess(track, chunk[0].seq)?;
+        let r = mirror.assess(track, chunk[0].sequence())?;
         for ch in &r.channels {
             history.entry(ch.modality).or_default().push(ch.mean_nis);
         }
@@ -1084,7 +1080,7 @@ fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::R
     let report = assess_default(
         &stream,
         &mods,
-        &DetectorConfig::default(),
+        &DetectorConfig::standalone_advisory_v0_9()?,
         &CorrConfig::default(),
     )?;
 
@@ -1452,11 +1448,11 @@ fn run_replay(
     };
 
     let color = std::io::stdout().is_terminal();
-    let detector_cfg = DetectorConfig::default();
+    let detector_cfg = DetectorConfig::standalone_advisory_v0_9()?;
     anyhow::ensure!(
-        (1..=detector_cfg.max_tracks).contains(&max_report_tracks),
+        (1..=detector_cfg.max_tracks()).contains(&max_report_tracks),
         "max-report-tracks must be in 1..={}",
-        detector_cfg.max_tracks
+        detector_cfg.max_tracks()
     );
     #[cfg(feature = "pid")]
     anyhow::ensure!(
@@ -1471,17 +1467,17 @@ fn run_replay(
     // preprocessing plus a single linear replay pass.
     obs.sort_by_key(|observation| {
         (
-            observation.track_id,
-            observation.seq,
-            observation.modality as u8,
+            observation.track_id(),
+            observation.sequence(),
+            observation.modality() as u8,
         )
     });
-    let track_ranges = contiguous_ranges_by_key(&obs, |observation| observation.track_id);
+    let track_ranges = contiguous_ranges_by_key(&obs, PidObservation::track_id);
     let track_count = track_ranges.len();
     anyhow::ensure!(
-        track_count <= detector_cfg.max_tracks,
+        track_count <= detector_cfg.max_tracks(),
         "capture contains {track_count} tracks; detector maximum is {}",
-        detector_cfg.max_tracks
+        detector_cfg.max_tracks()
     );
 
     println!();
@@ -1500,12 +1496,12 @@ fn run_replay(
     let mut suppressed = SuppressedReplayStats::default();
     for (track_index, track_range) in track_ranges.iter().enumerate() {
         let track_obs = &obs[track_range.clone()];
-        let track_id = track_obs[0].track_id;
-        let mut mods: Vec<Modality> = track_obs.iter().map(|o| o.modality).collect();
+        let track_id = track_obs[0].track_id();
+        let mut mods: Vec<Modality> = track_obs.iter().map(PidObservation::modality).collect();
         mods.sort_by_key(|modality| *modality as u8);
         mods.dedup();
 
-        let modalities_ready = has_required_modalities(mods.len(), detector_cfg.min_channels);
+        let modalities_ready = has_required_modalities(mods.len(), detector_cfg.min_channels());
         let mut mirror = if modalities_ready {
             Mirror::with_modalities(detector_cfg.clone(), &mods)?
         } else {
@@ -1517,15 +1513,15 @@ fn run_replay(
         let mut baseline_terminal = None;
         let mut default_terminal: Option<(FusedVerdict, String)> = None;
 
-        let frame_ranges = contiguous_ranges_by_key(track_obs, |observation| observation.seq);
+        let frame_ranges = contiguous_ranges_by_key(track_obs, PidObservation::sequence);
         for (frame_index, frame_range) in frame_ranges.iter().enumerate() {
-            let seq = track_obs[frame_range.start].seq;
+            let seq = track_obs[frame_range.start].sequence();
             for observation in &track_obs[frame_range.clone()] {
                 mirror.ingest(observation)?;
             }
             let baseline = mirror.assess(track_id, seq)?;
             baseline_history.observe(
-                seq,
+                seq.get(),
                 baseline_alarm(&baseline.verdict),
                 matches!(&baseline.verdict, Verdict::InsufficientEvidence),
                 None,
@@ -1537,9 +1533,9 @@ fn run_replay(
                 match consistency_channels_with_temporal_limits(
                     &track_obs[window_range],
                     &mods,
-                    detector_cfg.max_seq_gap,
-                    detector_cfg.max_timestamp_skew_ms,
-                    detector_cfg.max_inter_sample_gap_ms,
+                    detector_cfg.max_seq_gap(),
+                    detector_cfg.max_timestamp_skew_ms(),
+                    detector_cfg.max_inter_sample_gap_ms(),
                 ) {
                     Ok(Some(projection)) => {
                         let axis_count = projection.axes.len();
@@ -1594,7 +1590,7 @@ fn run_replay(
             };
             let (fused, fusion_note) = combine_correlation_axes(&baseline, &correlations);
             default_history.observe(
-                seq,
+                seq.get(),
                 fused_alarm(&fused),
                 matches!(&fused, FusedVerdict::InsufficientEvidence),
                 Some(consistency_status),
@@ -1736,7 +1732,7 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
     let report = assess_stream(
         &stream,
         &mods,
-        &DetectorConfig::default(),
+        &DetectorConfig::standalone_advisory_v0_9()?,
         &PidConfig::default(),
     )?;
 

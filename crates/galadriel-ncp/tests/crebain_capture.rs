@@ -35,22 +35,34 @@ fn crebain_capture_parses_with_full_modality_coverage_and_sane_nis() {
     assert!(stream.len() > 400, "rich capture, got {}", stream.len());
 
     for modality in [Modality::Visual, Modality::Radar, Modality::Acoustic] {
-        let n = stream.iter().filter(|o| o.modality == modality).count();
+        let n = stream
+            .iter()
+            .filter(|observation| observation.modality() == modality)
+            .count();
         assert!(n > 150, "{modality:?}: {n} records");
     }
-    assert!(stream.iter().all(|o| o.dof == 3));
-    assert!(stream.iter().all(|o| o.nis.is_finite() && o.nis >= 0.0));
+    assert!(stream.iter().all(|observation| observation.dof() == 3));
+    assert!(stream
+        .iter()
+        .all(|observation| observation.nis().is_finite() && observation.nis() >= 0.0));
     // Native research fields are present, but no common consistency projection is.
     assert!(stream
         .iter()
-        .all(|o| o.innovation.is_some() && o.innovation_cov.is_some()));
+        .all(|observation| observation.innovation().is_some()
+            && observation.innovation_covariance().is_some()));
     assert!(
-        stream.iter().all(|o| o.consistency_projection.is_none()),
+        stream
+            .iter()
+            .all(|observation| observation.consistency_projection().is_none()),
         "legacy crebain capture must not be silently treated as common-frame data"
     );
     // Healthy-filter capture: mean NIS ≈ dof (χ²(3)); a gross model mismatch
     // between the repos would show up here first.
-    let mean_nis = stream.iter().map(|o| o.nis).sum::<f64>() / stream.len() as f64;
+    let mean_nis = stream
+        .iter()
+        .map(|observation| observation.nis())
+        .sum::<f64>()
+        / stream.len() as f64;
     assert!(
         (mean_nis - 3.0).abs() < 0.6,
         "mean NIS {mean_nis:.2} should be ≈ dof for a matched filter"
@@ -63,15 +75,26 @@ fn crebain_clean_capture_keeps_insufficient_correlation_fail_closed() {
     let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
 
     // The NIS χ² baseline.
-    let mut mirror = Mirror::new(DetectorConfig::default()).expect("valid default config");
+    let mut mirror = Mirror::new(
+        DetectorConfig::standalone_advisory_v0_9().expect("valid release configuration"),
+    )
+    .expect("valid release config");
     for observation in &stream {
         mirror
             .ingest(observation)
             .expect("fixture remains valid and ordered");
     }
-    let last = stream.iter().map(|o| o.seq).max().unwrap_or(0);
+    let last = stream
+        .iter()
+        .map(|observation| observation.sequence())
+        .max()
+        .expect("fixture contains observations");
+    let track_id = stream
+        .first()
+        .expect("fixture contains observations")
+        .track_id();
     let report = mirror
-        .assess(1, last)
+        .assess(track_id, last)
         .expect("baseline assessment succeeds");
     assert!(
         !matches!(
@@ -87,7 +110,7 @@ fn crebain_clean_capture_keeps_insufficient_correlation_fail_closed() {
     let fused = assess_default(
         &stream,
         &modalities,
-        &DetectorConfig::default(),
+        &DetectorConfig::standalone_advisory_v0_9().expect("valid release configuration"),
         &CorrConfig::default(),
     )
     .expect("fused assessment succeeds");
@@ -116,5 +139,5 @@ fn current_crebain_record_roundtrips_inside_the_live_v1_envelope() {
         .validate_for("crebain-capture-epoch-1", "crebain")
         .expect("version and provenance match")
         .is_match());
-    assert!(decoded.observation.consistency_projection.is_none());
+    assert!(decoded.observation.consistency_projection().is_none());
 }

@@ -22,7 +22,10 @@
 
 use std::collections::HashSet;
 
-use galadriel_core::{ConsistencyProjection, GaladrielError, Modality, PidObservation, Result};
+use galadriel_core::{
+    ConsistencyProjection, FrozenPriorId, GaladrielError, Modality, PidObservation, Result,
+    Sequence, TimestampMillis, TrackId,
+};
 use rand_distr::{Distribution, Normal};
 
 use crate::rng;
@@ -78,6 +81,9 @@ impl ScenarioConfig {
     /// outside its supported range, modalities are empty or duplicated, or the
     /// requested stream cannot be represented within the simulator's bounds.
     pub fn validate(&self) -> Result<()> {
+        TrackId::new(self.track_id).map_err(|error| {
+            GaladrielError::InvalidConfig(format!("invalid scenario track_id: {error}"))
+        })?;
         if !self.sigma.is_finite() || self.sigma <= 0.0 {
             return Err(GaladrielError::InvalidConfig(
                 "scenario sigma must be finite and > 0".into(),
@@ -134,11 +140,26 @@ impl ScenarioConfig {
             let last_timestamp = last_frame.checked_mul(self.dt_ms).ok_or_else(|| {
                 GaladrielError::InvalidConfig("scenario timestamp arithmetic overflows u64".into())
             })?;
-            if last_timestamp == u64::MAX {
-                return Err(GaladrielError::InvalidConfig(
-                    "scenario terminal timestamp must be less than u64::MAX".into(),
-                ));
-            }
+            Sequence::new(last_frame).map_err(|error| {
+                GaladrielError::InvalidConfig(format!(
+                    "invalid scenario terminal sequence: {error}"
+                ))
+            })?;
+            TimestampMillis::new(last_timestamp).map_err(|error| {
+                GaladrielError::InvalidConfig(format!(
+                    "invalid scenario terminal timestamp: {error}"
+                ))
+            })?;
+            FrozenPriorId::new(last_frame.checked_add(1).ok_or_else(|| {
+                GaladrielError::InvalidConfig(
+                    "scenario frozen-prior identity arithmetic overflows u64".into(),
+                )
+            })?)
+            .map_err(|error| {
+                GaladrielError::InvalidConfig(format!(
+                    "invalid scenario terminal frozen-prior identity: {error}"
+                ))
+            })?;
         }
 
         let variance = self.sigma * self.sigma;
@@ -318,23 +339,18 @@ fn generate_inner(
                     "scenario sampling produced a non-finite NIS".into(),
                 ));
             }
-            out.push(PidObservation {
-                track_id: cfg.track_id,
+            let projection = ConsistencyProjection::try_new_raw(y, 3, 1, 1, frame + 1)?;
+            let observation = PidObservation::try_scalar_raw(
+                cfg.track_id,
                 timestamp_ms,
-                seq: frame,
+                frame,
                 modality,
                 nis,
-                dof: 3,
-                innovation: Some(y),
-                innovation_cov: Some(cov),
-                consistency_projection: Some(ConsistencyProjection {
-                    values: y,
-                    dimensions: 3,
-                    frame_id: 1,
-                    context_id: 1,
-                    prior_id: frame + 1,
-                }),
-            });
+                3,
+            )?
+            .try_with_research(y, cov)?
+            .with_consistency_projection(projection);
+            out.push(observation);
         }
     }
     Ok(out)
@@ -414,8 +430,8 @@ mod tests {
     fn mean_nis(s: &[PidObservation], m: Modality) -> f64 {
         let v: Vec<f64> = s
             .iter()
-            .filter(|o| o.modality == m)
-            .map(|o| o.nis)
+            .filter(|o| o.modality() == m)
+            .map(PidObservation::nis)
             .collect();
         v.iter().sum::<f64>() / v.len() as f64
     }
@@ -427,7 +443,7 @@ mod tests {
             ..Default::default()
         };
         let s = generate(&cfg).expect("valid clean scenario");
-        let mean: f64 = s.iter().map(|o| o.nis).sum::<f64>() / s.len() as f64;
+        let mean: f64 = s.iter().map(PidObservation::nis).sum::<f64>() / s.len() as f64;
         assert!((mean - 3.0).abs() < 0.3, "mean NIS = {mean}");
     }
 
@@ -455,19 +471,17 @@ mod tests {
         let mut prior_ids = HashSet::new();
         for frame in stream.chunks(cfg.modalities.len()) {
             let first = frame[0]
-                .consistency_projection
+                .consistency_projection()
                 .expect("simulator projection");
             assert!(frame.iter().all(|observation| {
                 observation
-                    .consistency_projection
+                    .consistency_projection()
                     .is_some_and(|projection| {
-                        projection.dimensions == first.dimensions
-                            && projection.frame_id == first.frame_id
-                            && projection.context_id == first.context_id
-                            && projection.prior_id == first.prior_id
+                        projection.dimensions() == first.dimensions()
+                            && projection.identity() == first.identity()
                     })
             }));
-            assert!(prior_ids.insert(first.prior_id));
+            assert!(prior_ids.insert(first.identity().frozen_prior_id()));
         }
     }
 
@@ -663,6 +677,8 @@ mod tests {
             ..Default::default()
         };
         let stream = generate(&cfg).expect("large finite variance remains representable");
-        assert!(stream.iter().all(|observation| observation.nis.is_finite()));
+        assert!(stream
+            .iter()
+            .all(|observation| observation.nis().is_finite()));
     }
 }

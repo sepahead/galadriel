@@ -77,17 +77,21 @@ impl RegistryVerifier for TestRegistry {
         modality: Modality,
         projection: &ConsistencyProjection,
     ) -> Result<(), RegistryViolation> {
-        if projection.frame_id != identity.frame_id
-            || projection.context_id != identity.context_id
-            || projection.prior_id != identity.prior_id
+        let projection_identity = projection.identity();
+        let frame_id = projection_identity.frame_id().get();
+        let context_id = projection_identity.context_id().get();
+        let prior_id = projection_identity.frozen_prior_id().get();
+        if frame_id != identity.frame_id
+            || context_id != identity.context_id
+            || prior_id != identity.prior_id
         {
             return Err(RegistryViolation::ProjectionIdentityMismatch {
                 expected_frame_id: identity.frame_id,
-                received_frame_id: projection.frame_id,
+                received_frame_id: frame_id,
                 expected_context_id: identity.context_id,
-                received_context_id: projection.context_id,
+                received_context_id: context_id,
                 expected_prior_id: identity.prior_id,
-                received_prior_id: projection.prior_id,
+                received_prior_id: prior_id,
             });
         }
         if modality != Modality::Visual {
@@ -96,11 +100,11 @@ impl RegistryVerifier for TestRegistry {
                 modality,
             });
         }
-        if projection.dimensions != 3 {
+        if projection.dimensions() != 3 {
             return Err(RegistryViolation::ProjectionDimensionMismatch {
                 context_id: identity.context_id,
                 expected: 3,
-                received: projection.dimensions,
+                received: projection.dimensions(),
             });
         }
         Ok(())
@@ -160,27 +164,14 @@ async fn receiver_with(
 }
 
 fn projection(prior_id: u64) -> ConsistencyProjection {
-    ConsistencyProjection {
-        values: [1.0, 2.0, 3.0],
-        dimensions: 3,
-        frame_id: 10,
-        context_id: 20,
-        prior_id,
-    }
+    ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, 10, 20, prior_id)
+        .expect("test projection is valid")
 }
 
 fn observation(fusion_seq: u64, prior_id: u64) -> PidObservation {
-    PidObservation {
-        track_id: 7,
-        timestamp_ms: 1_000 + fusion_seq,
-        seq: fusion_seq,
-        modality: Modality::Visual,
-        nis: 1.0,
-        dof: 3,
-        innovation: None,
-        innovation_cov: None,
-        consistency_projection: Some(projection(prior_id)),
-    }
+    PidObservation::try_scalar_raw(7, 1_000 + fusion_seq, fusion_seq, Modality::Visual, 1.0, 3)
+        .expect("test observation is valid")
+        .with_consistency_projection(projection(prior_id))
 }
 
 fn outcome(fusion_seq: u64, prior_id: u64) -> ModalityOutcome {

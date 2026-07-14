@@ -29,57 +29,55 @@ pub const MAX_INTER_SAMPLE_GAP_MS: u64 = 86_400_000;
 /// Tunables for the baseline [`crate::Mirror`] detector.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DetectorConfig {
+    pub(crate) window_len: usize,
+    pub(crate) min_samples: usize,
+    pub(crate) min_channels: usize,
+    pub(crate) max_seq_gap: u64,
+    pub(crate) max_timestamp_skew_ms: u64,
+    pub(crate) max_inter_sample_gap_ms: u64,
+    pub(crate) max_tracks: usize,
+    pub(crate) nis_alpha: f64,
+    pub(crate) cusum_slack: f64,
+    pub(crate) cusum_threshold: f64,
+    pub(crate) jam_fraction: f64,
+}
+
+/// Unvalidated boundary values for constructing a [`DetectorConfig`].
+///
+/// This value is not accepted detector configuration. Call
+/// [`DetectorConfig::try_new`] to validate the complete aggregate before use.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DetectorParams {
     /// Per-`(track, modality)` sliding-window length, in observations.
     pub window_len: usize,
-    /// Minimum samples a channel window must hold before its verdict is trusted;
-    /// below this the channel is treated as not-ready (fail closed).
+    /// Minimum samples required before one channel is ready.
     pub min_samples: usize,
-    /// Minimum number of ready channels before any non-`InsufficientEvidence`
-    /// verdict is issued.
+    /// Minimum number of ready channels required for an evidence verdict.
     pub min_channels: usize,
-    /// Maximum allowed fusion-sequence gap between successive channel samples and
-    /// between assessment and a channel's newest observation. A larger ingest gap
-    /// starts a new evidence window; a larger assessment gap makes the channel
-    /// stale. `1` tolerates normal within-frame arrival ordering while catching a
-    /// feed that stops producing after an association-gate miss.
+    /// Largest accepted fusion-sequence gap.
     pub max_seq_gap: u64,
-    /// Maximum timestamp span across otherwise-ready modalities at assessment.
-    /// A larger span means the records do not describe one comparable fusion
-    /// instant and therefore cannot support a nominal or attributed verdict.
-    /// Zero requests exact timestamp equality; it never disables the check.
+    /// Largest timestamp span across an aligned frame.
     pub max_timestamp_skew_ms: u64,
-    /// Maximum forward timestamp gap between successive observations of one
-    /// `(track, modality)`. A larger gap starts a new evidence window.
+    /// Largest timestamp gap between successive samples of one modality.
     pub max_inter_sample_gap_ms: u64,
-    /// Maximum number of track ids retained at once. New tracks are rejected once
-    /// this limit is reached until a caller removes stale state with
-    /// [`crate::Mirror::remove_track`] or [`crate::Mirror::clear`].
+    /// Maximum number of track identities retained at once.
     pub max_tracks: usize,
-    /// Per-assessment family-wise significance for the right-tailed windowed NIS
-    /// χ² tests. [`crate::Mirror`] Bonferroni-divides this across assessed channels.
+    /// Per-assessment family-wise NIS significance.
     pub nis_alpha: f64,
-    /// CUSUM slack `k` in null-standard-deviation units after scaling NIS by
-    /// `sqrt(2*dof)`. This keeps one configuration comparable across dimensions.
-    ///
-    /// The slack applies symmetrically to both arms. At the default `k = 3/sqrt(6)`
-    /// and the fusion core's `dof = 3`, the scaled target `dof/sqrt(2*dof)` equals the
-    /// slack, so the below-target (lower) arm can never accumulate: a *below*-target
-    /// NIS shift — an over-conservative filter, or a replay/frozen sensor whose
-    /// innovations match the prediction too closely — is intentionally not flagged at
-    /// `dof <= 3`. The lower arm becomes active for `dof > 3`, or for a configured `k`
-    /// strictly below the scaled target. Treating a below-target shift as an attack is
-    /// a design choice deferred to a study, not an oversight.
+    /// Two-sided CUSUM slack in scaled null-standard-deviation units.
     pub cusum_slack: f64,
-    /// CUSUM alarm threshold `h` in accumulated null-standard-deviation units.
+    /// Two-sided CUSUM alarm threshold in scaled units.
     pub cusum_threshold: f64,
-    /// Fraction of ready channels that must be anomalous to call [`crate::Verdict::BroadDegradation`]
-    /// (broad degradation evidence) rather than
-    /// [`crate::Verdict::AttributedInconsistency`] (localized magnitude evidence).
+    /// Fraction of ready channels required for broad-degradation evidence.
     pub jam_fraction: f64,
 }
 
-impl Default for DetectorConfig {
-    fn default() -> Self {
+impl DetectorParams {
+    /// Returns the explicitly named 0.9 standalone-advisory release values.
+    ///
+    /// These values are an input template, not deployment qualification. They
+    /// still pass through [`DetectorConfig::try_new`] before use.
+    pub fn standalone_advisory_v0_9() -> Self {
         Self {
             window_len: 64,
             min_samples: 32,
@@ -99,8 +97,97 @@ impl Default for DetectorConfig {
 }
 
 impl DetectorConfig {
+    /// Validates a complete boundary input and constructs an immutable config.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`crate::GaladrielError::InvalidConfig`] when any field or
+    /// aggregate retained-state bound is invalid.
+    pub fn try_new(input: DetectorParams) -> crate::Result<Self> {
+        let config = Self {
+            window_len: input.window_len,
+            min_samples: input.min_samples,
+            min_channels: input.min_channels,
+            max_seq_gap: input.max_seq_gap,
+            max_timestamp_skew_ms: input.max_timestamp_skew_ms,
+            max_inter_sample_gap_ms: input.max_inter_sample_gap_ms,
+            max_tracks: input.max_tracks,
+            nis_alpha: input.nis_alpha,
+            cusum_slack: input.cusum_slack,
+            cusum_threshold: input.cusum_threshold,
+            jam_fraction: input.jam_fraction,
+        };
+        config.validate()?;
+        Ok(config)
+    }
+
+    /// Constructs the explicitly named 0.9 standalone-advisory release values.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a future invariant change makes the retained template
+    /// invalid rather than silently falling back to different values.
+    pub fn standalone_advisory_v0_9() -> crate::Result<Self> {
+        Self::try_new(DetectorParams::standalone_advisory_v0_9())
+    }
+
+    /// Per-channel window length.
+    pub const fn window_len(&self) -> usize {
+        self.window_len
+    }
+
+    /// Minimum samples required for channel readiness.
+    pub const fn min_samples(&self) -> usize {
+        self.min_samples
+    }
+
+    /// Minimum ready channels required for an evidence verdict.
+    pub const fn min_channels(&self) -> usize {
+        self.min_channels
+    }
+
+    /// Largest accepted fusion-sequence gap.
+    pub const fn max_seq_gap(&self) -> u64 {
+        self.max_seq_gap
+    }
+
+    /// Largest timestamp span across an aligned frame.
+    pub const fn max_timestamp_skew_ms(&self) -> u64 {
+        self.max_timestamp_skew_ms
+    }
+
+    /// Largest timestamp gap between successive samples of one modality.
+    pub const fn max_inter_sample_gap_ms(&self) -> u64 {
+        self.max_inter_sample_gap_ms
+    }
+
+    /// Maximum retained track identities.
+    pub const fn max_tracks(&self) -> usize {
+        self.max_tracks
+    }
+
+    /// Per-assessment family-wise NIS significance.
+    pub const fn nis_alpha(&self) -> f64 {
+        self.nis_alpha
+    }
+
+    /// Scaled CUSUM slack.
+    pub const fn cusum_slack(&self) -> f64 {
+        self.cusum_slack
+    }
+
+    /// Scaled CUSUM threshold.
+    pub const fn cusum_threshold(&self) -> f64 {
+        self.cusum_threshold
+    }
+
+    /// Broad-degradation channel fraction.
+    pub const fn jam_fraction(&self) -> f64 {
+        self.jam_fraction
+    }
+
     /// Validate the configuration, returning an error describing the first problem.
-    pub fn validate(&self) -> crate::Result<()> {
+    pub(crate) fn validate(&self) -> crate::Result<()> {
         use crate::GaladrielError::InvalidConfig;
         if self.window_len == 0 {
             return Err(InvalidConfig("window_len must be > 0".into()));
@@ -207,21 +294,21 @@ mod tests {
     use super::*;
     use crate::GaladrielError;
 
-    fn is_invalid(r: crate::Result<()>) -> bool {
+    fn is_invalid(r: crate::Result<DetectorConfig>) -> bool {
         matches!(r, Err(GaladrielError::InvalidConfig(_)))
     }
 
     #[test]
-    fn default_config_validates() {
-        assert!(DetectorConfig::default().validate().is_ok());
+    fn named_standalone_advisory_profile_validates_at_construction() {
+        assert!(DetectorConfig::standalone_advisory_v0_9().is_ok());
     }
 
     #[test]
     fn rejects_out_of_range_fields() {
-        let bad = |f: fn(&mut DetectorConfig)| {
-            let mut c = DetectorConfig::default();
-            f(&mut c);
-            is_invalid(c.validate())
+        let bad = |f: fn(&mut DetectorParams)| {
+            let mut input = DetectorParams::standalone_advisory_v0_9();
+            f(&mut input);
+            is_invalid(DetectorConfig::try_new(input))
         };
         assert!(bad(|c| c.window_len = 0), "window_len 0");
         assert!(
@@ -285,25 +372,58 @@ mod tests {
     fn accepts_the_inclusive_boundaries() {
         // jam_fraction = 1.0 is valid; nis_alpha remains strictly below one.
         for jam_fraction in [f64::MIN_POSITIVE, 1.0] {
-            let c = DetectorConfig {
+            let input = DetectorParams {
                 nis_alpha: 1.0 - f64::EPSILON,
                 jam_fraction,
-                ..Default::default()
+                ..DetectorParams::standalone_advisory_v0_9()
             };
-            assert!(c.validate().is_ok(), "jam_fraction {jam_fraction}");
+            assert!(
+                DetectorConfig::try_new(input).is_ok(),
+                "jam_fraction {jam_fraction}"
+            );
         }
 
         for max_timestamp_skew_ms in [0, MAX_ALIGNMENT_TIMESTAMP_SKEW_MS] {
-            let c = DetectorConfig {
+            let input = DetectorParams {
                 max_seq_gap: MAX_ALIGNMENT_SEQ_GAP,
                 max_timestamp_skew_ms,
                 max_inter_sample_gap_ms: MAX_INTER_SAMPLE_GAP_MS,
-                ..Default::default()
+                ..DetectorParams::standalone_advisory_v0_9()
             };
             assert!(
-                c.validate().is_ok(),
+                DetectorConfig::try_new(input).is_ok(),
                 "timestamp skew boundary {max_timestamp_skew_ms}"
             );
         }
+    }
+
+    #[test]
+    fn getters_preserve_every_validated_input_field() {
+        let input = DetectorParams {
+            window_len: 12,
+            min_samples: 7,
+            min_channels: 3,
+            max_seq_gap: 4,
+            max_timestamp_skew_ms: 5,
+            max_inter_sample_gap_ms: 6,
+            max_tracks: 8,
+            nis_alpha: 0.02,
+            cusum_slack: 0.5,
+            cusum_threshold: 2.5,
+            jam_fraction: 0.75,
+        };
+        let config = DetectorConfig::try_new(input).unwrap();
+
+        assert_eq!(config.window_len(), 12);
+        assert_eq!(config.min_samples(), 7);
+        assert_eq!(config.min_channels(), 3);
+        assert_eq!(config.max_seq_gap(), 4);
+        assert_eq!(config.max_timestamp_skew_ms(), 5);
+        assert_eq!(config.max_inter_sample_gap_ms(), 6);
+        assert_eq!(config.max_tracks(), 8);
+        assert_eq!(config.nis_alpha(), 0.02);
+        assert_eq!(config.cusum_slack(), 0.5);
+        assert_eq!(config.cusum_threshold(), 2.5);
+        assert_eq!(config.jam_fraction(), 0.75);
     }
 }

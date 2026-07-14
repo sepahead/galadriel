@@ -522,12 +522,22 @@ impl DetectorEvidence {
 /// magnitude evidence; score = the strongest per-channel terminal-window surprise
 /// `1 − min_c p_right`, ranked above all non-alarms when a CUSUM-only alarm fires.
 fn baseline_eval(stream: &[PidObservation]) -> CoreResult<DetectorEvidence> {
-    let mut m = Mirror::with_modalities(DetectorConfig::default(), &MODALITIES)?;
+    let detector_config = DetectorConfig::standalone_advisory_v0_9()?;
+    let mut m = Mirror::with_modalities(detector_config, &MODALITIES)?;
     for o in stream {
         m.ingest(o)?;
     }
-    let last = stream.iter().map(|o| o.seq).max().unwrap_or(0);
-    let rep = m.assess(1, last)?;
+    let first = stream.first().ok_or_else(|| {
+        GaladrielError::InvalidObservation("baseline evaluation requires observations".into())
+    })?;
+    let last = stream
+        .iter()
+        .map(PidObservation::sequence)
+        .max()
+        .ok_or_else(|| {
+            GaladrielError::InvalidObservation("baseline evaluation requires observations".into())
+        })?;
+    let rep = m.assess(first.track_id(), last)?;
     let alarm = match rep.verdict {
         Verdict::InsufficientEvidence => None,
         Verdict::AttributedInconsistency { .. }
@@ -645,7 +655,7 @@ fn fused_eval(stream: &[PidObservation]) -> CoreResult<Option<bool>> {
     let r = assess_stream(
         stream,
         &MODALITIES,
-        &DetectorConfig::default(),
+        &DetectorConfig::standalone_advisory_v0_9()?,
         &PidConfig::default(),
     )?;
     Ok(match r.verdict {
@@ -1492,8 +1502,8 @@ fn fused_innovation(stream: &[PidObservation]) -> Vec<f64> {
                 .iter()
                 .filter_map(|observation| {
                     observation
-                        .consistency_projection
-                        .map(|projection| projection.values[0])
+                        .consistency_projection()
+                        .map(|projection| projection.values()[0])
                 })
                 .fold((0.0, 0usize), |(s, c), v| (s + v, c + 1));
             if cnt == 0 {

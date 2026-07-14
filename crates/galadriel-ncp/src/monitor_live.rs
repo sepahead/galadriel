@@ -1585,17 +1585,21 @@ mod tests {
             modality: Modality,
             projection: &ConsistencyProjection,
         ) -> Result<(), RegistryViolation> {
-            if projection.frame_id != identity.frame_id
-                || projection.context_id != identity.context_id
-                || projection.prior_id != identity.prior_id
+            let projection_identity = projection.identity();
+            let frame_id = projection_identity.frame_id().get();
+            let context_id = projection_identity.context_id().get();
+            let prior_id = projection_identity.frozen_prior_id().get();
+            if frame_id != identity.frame_id
+                || context_id != identity.context_id
+                || prior_id != identity.prior_id
             {
                 return Err(RegistryViolation::ProjectionIdentityMismatch {
                     expected_frame_id: identity.frame_id,
-                    received_frame_id: projection.frame_id,
+                    received_frame_id: frame_id,
                     expected_context_id: identity.context_id,
-                    received_context_id: projection.context_id,
+                    received_context_id: context_id,
                     expected_prior_id: identity.prior_id,
-                    received_prior_id: projection.prior_id,
+                    received_prior_id: prior_id,
                 });
             }
             if modality != Modality::Visual {
@@ -1604,11 +1608,11 @@ mod tests {
                     modality,
                 });
             }
-            if projection.dimensions != 3 {
+            if projection.dimensions() != 3 {
                 return Err(RegistryViolation::ProjectionDimensionMismatch {
                     context_id: identity.context_id,
                     expected: 3,
-                    received: projection.dimensions,
+                    received: projection.dimensions(),
                 });
             }
             Ok(())

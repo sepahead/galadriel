@@ -65,12 +65,15 @@ pub struct FrameIdentity {
 
 impl FrameIdentity {
     fn from_observation(observation: &PidObservation) -> Option<Self> {
-        observation.consistency_projection.map(|projection| Self {
-            fusion_seq: observation.seq,
-            fusion_timestamp_ms: observation.timestamp_ms,
-            frame_id: projection.frame_id,
-            context_id: projection.context_id,
-            prior_id: projection.prior_id,
+        observation.consistency_projection().map(|projection| {
+            let identity = projection.identity();
+            Self {
+                fusion_seq: observation.sequence().get(),
+                fusion_timestamp_ms: observation.timestamp_ms().get(),
+                frame_id: identity.frame_id().get(),
+                context_id: identity.context_id().get(),
+                prior_id: identity.frozen_prior_id().get(),
+            }
         })
     }
 
@@ -942,7 +945,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
                         AssemblyFaultKind::InvalidEnvelope {
                             route: EvidenceRoute::Observation,
                         },
-                        Some(envelope.observation.seq),
+                        Some(envelope.observation.sequence().get()),
                         received_at,
                     ));
                 }
@@ -967,7 +970,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
                 AssemblyFaultKind::PayloadTooLarge {
                     route: EvidenceRoute::Observation,
                 },
-                Some(envelope.observation.seq),
+                Some(envelope.observation.sequence().get()),
                 received_at,
             ));
             return events;
@@ -985,28 +988,19 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             });
         }
         let observation = envelope.observation;
-        let fusion_seq = observation.seq;
-        if observation.track_id == 0 {
-            events.push(self.fail(
-                AssemblyFaultKind::InvalidEnvelope {
-                    route: EvidenceRoute::Observation,
-                },
-                Some(fusion_seq),
-                received_at,
-            ));
-            return events;
-        }
-        if let Some(projection) = &observation.consistency_projection {
+        let fusion_seq = observation.sequence().get();
+        if let Some(projection) = observation.consistency_projection() {
+            let projection_identity = projection.identity();
             let identity = FrameIdentity {
                 fusion_seq,
-                fusion_timestamp_ms: observation.timestamp_ms,
-                frame_id: projection.frame_id,
-                context_id: projection.context_id,
-                prior_id: projection.prior_id,
+                fusion_timestamp_ms: observation.timestamp_ms().get(),
+                frame_id: projection_identity.frame_id().get(),
+                context_id: projection_identity.context_id().get(),
+                prior_id: projection_identity.frozen_prior_id().get(),
             };
             if let Err(error) =
                 self.registry
-                    .verify_projection(identity, observation.modality, projection)
+                    .verify_projection(identity, observation.modality(), projection)
             {
                 events.push(self.fail(
                     AssemblyFaultKind::Registry(error),
@@ -1027,7 +1021,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             ));
             return events;
         }
-        let stream = (observation.track_id, observation.modality);
+        let stream = (observation.track_id().get(), observation.modality());
         if let Some(previous) = self.observation_high_water.get(&stream).copied() {
             if fusion_seq <= previous {
                 events.push(self.fail(
@@ -1093,7 +1087,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             ));
             return events;
         }
-        if !frame.track_ids.contains(&observation.track_id)
+        if !frame.track_ids.contains(&observation.track_id().get())
             && frame.track_ids.len() >= self.limits.max_tracks_per_frame
         {
             events.push(self.fail(
@@ -1138,7 +1132,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             ));
             return events;
         };
-        frame.track_ids.insert(observation.track_id);
+        frame.track_ids.insert(observation.track_id().get());
         frame.buffered_bytes = frame.buffered_bytes.saturating_add(encoded_bytes);
         frame
             .observations
@@ -1604,7 +1598,10 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
                 .map(|stored| stored.observation)
                 .collect::<Vec<_>>();
             observations.sort_by_key(|observation| {
-                (observation.track_id, modality_rank(observation.modality))
+                (
+                    observation.track_id().get(),
+                    modality_rank(observation.modality()),
+                )
             });
             self.last_finalized_fusion_seq = Some(fusion_seq);
             events.push(AssemblyEvent::FrameReady(AssembledFrame {
@@ -1765,8 +1762,8 @@ fn validate_observation_join(
     expected: &HashMap<(u64, Modality), Option<ConsistencyProjection>>,
     observation: &PidObservation,
 ) -> Result<(), AssemblyFaultKind> {
-    let track_id = observation.track_id;
-    let modality = observation.modality;
+    let track_id = observation.track_id().get();
+    let modality = observation.modality();
     let Some(expected_projection) = expected.get(&(track_id, modality)) else {
         return Err(AssemblyFaultKind::UnexpectedObservation {
             fusion_seq: identity.fusion_seq,
@@ -1774,14 +1771,14 @@ fn validate_observation_join(
             modality,
         });
     };
-    if observation.timestamp_ms != identity.fusion_timestamp_ms {
+    if observation.timestamp_ms().get() != identity.fusion_timestamp_ms {
         return Err(AssemblyFaultKind::ObservationTimestampMismatch {
             fusion_seq: identity.fusion_seq,
             track_id,
             modality,
         });
     }
-    if &observation.consistency_projection != expected_projection {
+    if observation.consistency_projection() != expected_projection.as_ref() {
         return Err(AssemblyFaultKind::ObservationProjectionMismatch {
             fusion_seq: identity.fusion_seq,
             track_id,
@@ -1912,7 +1909,7 @@ fn validate_frame_ledger(
                     && expected_observations
                         .insert(
                             (outcome.track_id, outcome.modality),
-                            outcome.consistency_projection,
+                            outcome.consistency_projection.clone(),
                         )
                         .is_some()
                 {
@@ -2223,19 +2220,20 @@ mod tests {
         projection: &ConsistencyProjection,
         expected_modalities: &[Modality],
     ) -> Result<(), RegistryViolation> {
-        if (
-            projection.frame_id,
-            projection.context_id,
-            projection.prior_id,
-        ) != (identity.frame_id, identity.context_id, identity.prior_id)
+        let projection_identity = projection.identity();
+        let frame_id = projection_identity.frame_id().get();
+        let context_id = projection_identity.context_id().get();
+        let prior_id = projection_identity.frozen_prior_id().get();
+        if (frame_id, context_id, prior_id)
+            != (identity.frame_id, identity.context_id, identity.prior_id)
         {
             return Err(RegistryViolation::ProjectionIdentityMismatch {
                 expected_frame_id: identity.frame_id,
-                received_frame_id: projection.frame_id,
+                received_frame_id: frame_id,
                 expected_context_id: identity.context_id,
-                received_context_id: projection.context_id,
+                received_context_id: context_id,
                 expected_prior_id: identity.prior_id,
-                received_prior_id: projection.prior_id,
+                received_prior_id: prior_id,
             });
         }
         if !expected_modalities.contains(&modality) {
@@ -2244,11 +2242,11 @@ mod tests {
                 modality,
             });
         }
-        if projection.dimensions != 3 {
+        if projection.dimensions() != 3 {
             return Err(RegistryViolation::ProjectionDimensionMismatch {
                 context_id: identity.context_id,
                 expected: 3,
-                received: projection.dimensions,
+                received: projection.dimensions(),
             });
         }
         Ok(())
@@ -2364,13 +2362,8 @@ mod tests {
     }
 
     fn projection(prior_id: u64) -> ConsistencyProjection {
-        ConsistencyProjection {
-            values: [1.0, 2.0, 3.0],
-            dimensions: 3,
-            frame_id: 10,
-            context_id: 20,
-            prior_id,
-        }
+        ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, 10, 20, prior_id)
+            .expect("test projection is valid")
     }
 
     fn outcome(seq: u64, prior_id: u64) -> ModalityOutcome {
@@ -2543,37 +2536,37 @@ mod tests {
     }
 
     fn observation(seq: u64, prior_id: u64) -> PidObservation {
-        PidObservation {
-            track_id: 7,
-            timestamp_ms: 1_000 + seq,
+        test_observation(
+            7,
+            1_000 + seq,
             seq,
-            modality: Modality::Visual,
-            nis: 1.0,
-            dof: 3,
-            innovation: None,
-            innovation_cov: None,
-            consistency_projection: Some(projection(prior_id)),
+            Modality::Visual,
+            1.0,
+            Some(projection(prior_id)),
+        )
+    }
+
+    fn test_observation(
+        track_id: u64,
+        timestamp_ms: u64,
+        sequence: u64,
+        modality: Modality,
+        nis: f64,
+        projection: Option<ConsistencyProjection>,
+    ) -> PidObservation {
+        let observation =
+            PidObservation::try_scalar_raw(track_id, timestamp_ms, sequence, modality, nis, 3)
+                .expect("test observation is valid");
+        match projection {
+            Some(projection) => observation.with_consistency_projection(projection),
+            None => observation,
         }
     }
 
     fn one_dimensional_registry_observation() -> PidObservation {
-        PidObservation {
-            track_id: 7,
-            timestamp_ms: 1_100,
-            seq: 1,
-            modality: Modality::Visual,
-            nis: 1.0,
-            dof: 3,
-            innovation: None,
-            innovation_cov: None,
-            consistency_projection: Some(ConsistencyProjection {
-                values: [1.0, 0.0, 0.0],
-                dimensions: 1,
-                frame_id: 17,
-                context_id: 23,
-                prior_id: 101,
-            }),
-        }
+        let projection = ConsistencyProjection::try_new_raw([1.0, 0.0, 0.0], 1, 17, 23, 101)
+            .expect("one-dimensional test projection is valid");
+        test_observation(7, 1_100, 1, Modality::Visual, 1.0, Some(projection))
     }
 
     fn one_dimensional_registry_outcome() -> ModalityOutcome {
@@ -2596,7 +2589,9 @@ mod tests {
                 d2: 1.0,
                 threshold: 7.815,
             }),
-            consistency_projection: one_dimensional_registry_observation().consistency_projection,
+            consistency_projection: one_dimensional_registry_observation()
+                .consistency_projection()
+                .cloned(),
         }
     }
 
@@ -3468,8 +3463,7 @@ mod tests {
     fn assembler_establishes_observation_projection_identity_before_monitor() {
         let start = Instant::now();
         let mut assembler = assembler(start);
-        let mut bad = observation(1, 101);
-        bad.consistency_projection = Some(projection(999));
+        let bad = test_observation(7, 1_001, 1, Modality::Visual, 1.0, Some(projection(999)));
         assembler.ingest_observation_bytes(&observation_bytes(bad), start);
         let events = assembler.ingest_monitor_bytes(
             &monitor_bytes(1, ProducerEvent::ModalityOutcome(outcome(1, 101))),
@@ -3618,8 +3612,8 @@ mod tests {
         );
         assert!(!partial.ready);
 
-        let mut unexpected = observation(1, 101);
-        unexpected.track_id = 8;
+        let unexpected =
+            test_observation(8, 1_001, 1, Modality::Visual, 1.0, Some(projection(101)));
         let events = assembler.ingest_observation_bytes(&observation_bytes(unexpected), start);
         assert!(matches!(
             fault_kind(&events),
@@ -3635,8 +3629,8 @@ mod tests {
     fn assembler_rejects_observation_without_v1_expected_key() {
         let start = Instant::now();
         let mut assembler = assembler(start);
-        let mut unexpected = observation(1, 101);
-        unexpected.track_id = 8;
+        let unexpected =
+            test_observation(8, 1_001, 1, Modality::Visual, 1.0, Some(projection(101)));
         assembler.ingest_observation_bytes(&observation_bytes(unexpected), start);
         assembler.ingest_monitor_bytes(
             &monitor_bytes(1, ProducerEvent::ModalityOutcome(outcome(1, 101))),
@@ -3709,8 +3703,7 @@ mod tests {
         let mut assembler = assembler(start);
         assembler.ingest_observation_bytes(&observation_bytes(observation(2, 101)), start);
 
-        let mut earlier = observation(1, 101);
-        earlier.track_id = 8;
+        let earlier = test_observation(8, 1_001, 1, Modality::Visual, 1.0, Some(projection(101)));
         let events = assembler.ingest_observation_bytes(&observation_bytes(earlier), start);
 
         let fault = fault(&events).expect("observation prior reuse faults immediately");
@@ -4077,8 +4070,8 @@ mod tests {
             &assembler.ingest_observation_bytes(&observation_bytes(observation(1, 101)), start,)
         )
         .is_none());
-        let mut second_track = observation(1, 101);
-        second_track.track_id = 8;
+        let second_track =
+            test_observation(8, 1_001, 1, Modality::Visual, 1.0, Some(projection(101)));
 
         let events = assembler.ingest_observation_bytes(&observation_bytes(second_track), start);
 

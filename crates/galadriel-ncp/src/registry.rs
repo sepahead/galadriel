@@ -315,17 +315,21 @@ impl RegistryVerifier for DeploymentRegistry {
         if !self.deployment_pin_verified() {
             return Err(RegistryViolation::RegistryNotPinned);
         }
-        if projection.frame_id != identity.frame_id
-            || projection.context_id != identity.context_id
-            || projection.prior_id != identity.prior_id
+        let projection_identity = projection.identity();
+        let frame_id = projection_identity.frame_id().get();
+        let context_id = projection_identity.context_id().get();
+        let prior_id = projection_identity.frozen_prior_id().get();
+        if frame_id != identity.frame_id
+            || context_id != identity.context_id
+            || prior_id != identity.prior_id
         {
             return Err(RegistryViolation::ProjectionIdentityMismatch {
                 expected_frame_id: identity.frame_id,
-                received_frame_id: projection.frame_id,
+                received_frame_id: frame_id,
                 expected_context_id: identity.context_id,
-                received_context_id: projection.context_id,
+                received_context_id: context_id,
                 expected_prior_id: identity.prior_id,
-                received_prior_id: projection.prior_id,
+                received_prior_id: prior_id,
             });
         }
 
@@ -362,11 +366,11 @@ impl RegistryVerifier for DeploymentRegistry {
         }
 
         let expected = context.output_dimensions();
-        if projection.dimensions != expected {
+        if projection.dimensions() != expected {
             return Err(RegistryViolation::ProjectionDimensionMismatch {
                 context_id: identity.context_id,
                 expected,
-                received: projection.dimensions,
+                received: projection.dimensions(),
             });
         }
 
@@ -2288,21 +2292,18 @@ mod tests {
             context_id: CONTEXT_ID,
             prior_id: 31,
         };
-        let projection = ConsistencyProjection {
-            values: [1.0, 2.0, 3.0],
-            dimensions: 3,
-            frame_id: FRAME_ID,
-            context_id: CONTEXT_ID,
-            prior_id: 31,
-        };
+        let projection =
+            ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, FRAME_ID, CONTEXT_ID, 31)
+                .expect("test projection is valid");
 
         assert_eq!(
             registry.verify_projection(identity, Modality::Visual, &projection),
             Ok(())
         );
 
-        let mut wrong_frame = projection;
-        wrong_frame.frame_id = FRAME_ID + 1;
+        let wrong_frame =
+            ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, FRAME_ID + 1, CONTEXT_ID, 31)
+                .expect("mismatched test projection remains structurally valid");
         assert!(matches!(
             registry.verify_projection(identity, Modality::Visual, &wrong_frame),
             Err(RegistryViolation::ProjectionIdentityMismatch {
@@ -2312,8 +2313,9 @@ mod tests {
             }) if received_frame_id == FRAME_ID + 1
         ));
 
-        let mut wrong_context = projection;
-        wrong_context.context_id = CONTEXT_ID + 1;
+        let wrong_context =
+            ConsistencyProjection::try_new_raw([1.0, 2.0, 3.0], 3, FRAME_ID, CONTEXT_ID + 1, 31)
+                .expect("mismatched test projection remains structurally valid");
         assert!(matches!(
             registry.verify_projection(identity, Modality::Visual, &wrong_context),
             Err(RegistryViolation::ProjectionIdentityMismatch {
@@ -2323,9 +2325,9 @@ mod tests {
             }) if received_context_id == CONTEXT_ID + 1
         ));
 
-        let mut wrong_dimensions = projection;
-        wrong_dimensions.values = [1.0, 0.0, 0.0];
-        wrong_dimensions.dimensions = 1;
+        let wrong_dimensions =
+            ConsistencyProjection::try_new_raw([1.0, 0.0, 0.0], 1, FRAME_ID, CONTEXT_ID, 31)
+                .expect("one-dimensional test projection is valid");
         assert_eq!(
             registry.verify_projection(identity, Modality::Visual, &wrong_dimensions),
             Err(RegistryViolation::ProjectionDimensionMismatch {

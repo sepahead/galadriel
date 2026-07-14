@@ -423,19 +423,23 @@ pub fn assess_default(
     let projection = crate::consistency_channels_with_temporal_limits(
         stream,
         modalities,
-        baseline_cfg.max_seq_gap,
-        baseline_cfg.max_timestamp_skew_ms,
-        baseline_cfg.max_inter_sample_gap_ms,
+        baseline_cfg.max_seq_gap(),
+        baseline_cfg.max_timestamp_skew_ms(),
+        baseline_cfg.max_inter_sample_gap_ms(),
     )?;
     for observation in stream {
         mirror.ingest(observation)?;
     }
-    let track = stream.first().map_or(0, |observation| observation.track_id);
+    let Some(first) = stream.first() else {
+        return Err(crate::GaladrielError::InvalidChannels(
+            "default assessment requires at least one observation".into(),
+        ));
+    };
+    let track = first.track_id();
     let last_seq = stream
         .iter()
-        .map(|observation| observation.seq)
-        .max()
-        .unwrap_or(0);
+        .map(PidObservation::sequence)
+        .fold(first.sequence(), std::cmp::max);
     let baseline = mirror.assess(track, last_seq)?;
 
     let mut correlations = Vec::new();
@@ -463,14 +467,43 @@ pub fn assess_default(
 mod tests {
     use super::*;
     use crate::decision::ChannelReport;
-    use crate::ConsistencyProjection;
+    use crate::{ConsistencyProjection, ProjectionIdentity, Sequence, TimestampMillis, TrackId};
+
+    fn scalar(
+        track_id: u64,
+        timestamp_ms: u64,
+        sequence: u64,
+        modality: Modality,
+        nis: f64,
+        dof: u8,
+    ) -> PidObservation {
+        scalar_typed(
+            TrackId::new(track_id).unwrap(),
+            TimestampMillis::new(timestamp_ms).unwrap(),
+            Sequence::new(sequence).unwrap(),
+            modality,
+            nis,
+            dof,
+        )
+    }
+
+    fn scalar_typed(
+        track_id: TrackId,
+        timestamp_ms: TimestampMillis,
+        sequence: Sequence,
+        modality: Modality,
+        nis: f64,
+        dof: u8,
+    ) -> PidObservation {
+        PidObservation::try_scalar(track_id, timestamp_ms, sequence, modality, nis, dof).unwrap()
+    }
 
     fn ch(modality: Modality, elevated: bool) -> ChannelReport {
         ChannelReport {
             modality,
             n: 64,
-            last_seq: Some(100),
-            last_timestamp_ms: Some(10_000),
+            last_seq: Some(Sequence::new(100).unwrap()),
+            last_timestamp_ms: Some(TimestampMillis::new(10_000).unwrap()),
             mean_nis: if elevated { 20.0 } else { 3.0 },
             p_right: if elevated { 1e-9 } else { 0.5 },
             elevated,
@@ -484,8 +517,8 @@ mod tests {
     fn baseline(verdict: Verdict, elevated: &[Modality]) -> MirrorReport {
         let all = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         MirrorReport {
-            track_id: 1,
-            seq: 100,
+            track_id: TrackId::new(1).unwrap(),
+            seq: Sequence::new(100).unwrap(),
             verdict,
             channels: all.iter().map(|&m| ch(m, elevated.contains(&m))).collect(),
             note: String::new(),
@@ -732,16 +765,17 @@ mod tests {
                 ],
             ];
             for (modality, projection_values) in modalities.iter().zip(values) {
-                let mut observation =
-                    PidObservation::scalar(1, sequence * 100, sequence, *modality, 3.0, 3);
-                observation.consistency_projection = Some(ConsistencyProjection {
-                    values: projection_values,
-                    dimensions: 3,
-                    frame_id: 1,
-                    context_id: 1,
-                    prior_id: sequence + 1,
-                });
-                stream.push(observation);
+                stream.push(
+                    scalar(1, sequence * 100, sequence, *modality, 3.0, 3)
+                        .with_consistency_projection(
+                            ConsistencyProjection::try_new(
+                                projection_values,
+                                3,
+                                ProjectionIdentity::try_new(1, 1, sequence + 1).unwrap(),
+                            )
+                            .unwrap(),
+                        ),
+                );
             }
         }
         stream
@@ -753,7 +787,7 @@ mod tests {
         let report = assess_default(
             &projected_stream(),
             &modalities,
-            &DetectorConfig::default(),
+            &DetectorConfig::standalone_advisory_v0_9().unwrap(),
             &CorrConfig::default(),
         )
         .unwrap();
@@ -770,16 +804,31 @@ mod tests {
     #[test]
     fn default_assessment_does_not_fall_back_to_native_innovations() {
         let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
-        let mut stream = projected_stream();
-        for observation in &mut stream {
-            let projection = observation.consistency_projection.take().unwrap();
-            observation.innovation = Some(projection.values);
-            observation.innovation_cov = Some([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
-        }
+        let stream = projected_stream()
+            .iter()
+            .map(|observation| {
+                scalar_typed(
+                    observation.track_id(),
+                    observation.timestamp_ms(),
+                    observation.sequence(),
+                    observation.modality(),
+                    observation.nis(),
+                    observation.dof(),
+                )
+                .try_with_research(
+                    observation
+                        .consistency_projection()
+                        .unwrap()
+                        .padded_values(),
+                    [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                )
+                .unwrap()
+            })
+            .collect::<Vec<_>>();
         let report = assess_default(
             &stream,
             &modalities,
-            &DetectorConfig::default(),
+            &DetectorConfig::standalone_advisory_v0_9().unwrap(),
             &CorrConfig::default(),
         )
         .unwrap();
@@ -793,15 +842,19 @@ mod tests {
         let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         let stream = modalities
             .iter()
-            .map(|&modality| PidObservation::scalar(1, 1, 1, modality, 3.0, 3))
+            .map(|&modality| scalar(1, 1, 1, modality, 3.0, 3))
             .collect::<Vec<_>>();
         let corr_cfg = CorrConfig {
             family_alpha: 0.0,
             ..CorrConfig::default()
         };
 
-        assert!(
-            assess_default(&stream, &modalities, &DetectorConfig::default(), &corr_cfg,).is_err()
-        );
+        assert!(assess_default(
+            &stream,
+            &modalities,
+            &DetectorConfig::standalone_advisory_v0_9().unwrap(),
+            &corr_cfg,
+        )
+        .is_err());
     }
 }

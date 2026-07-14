@@ -119,9 +119,7 @@
       "required": [
         "values",
         "dimensions",
-        "frame_id",
-        "context_id",
-        "prior_id"
+        "identity"
       ],
       "properties": {
         "values": {
@@ -132,13 +130,27 @@
           "minimum": 1,
           "maximum": 3
         },
+        "identity": {
+          "$ref": "#/$defs/projectionIdentity"
+        }
+      }
+    },
+    "projectionIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame_id",
+        "context_id",
+        "frozen_prior_id"
+      ],
+      "properties": {
         "frame_id": {
           "$ref": "#/$defs/positiveSafeUnsignedInteger"
         },
         "context_id": {
           "$ref": "#/$defs/positiveSafeUnsignedInteger"
         },
-        "prior_id": {
+        "frozen_prior_id": {
           "$ref": "#/$defs/positiveSafeUnsignedInteger"
         }
       }

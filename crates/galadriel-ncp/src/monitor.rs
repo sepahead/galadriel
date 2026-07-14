@@ -672,11 +672,12 @@ impl ModalityOutcome {
         if let Some(evidence) = self.gate_evidence {
             evidence.validate()?;
         }
-        if let Some(projection) = self.consistency_projection {
-            validate_projection(&projection)?;
-            if projection.frame_id != self.frame_id
-                || projection.context_id != self.context_id
-                || projection.prior_id != self.prior_id
+        if let Some(projection) = self.consistency_projection.as_ref() {
+            validate_projection(projection)?;
+            let identity = projection.identity();
+            if identity.frame_id().get() != self.frame_id
+                || identity.context_id().get() != self.context_id
+                || identity.frozen_prior_id().get() != self.prior_id
             {
                 return Err(MonitorError::EventCoherence(
                     "consistency projection provenance must match the outcome frame",
@@ -955,15 +956,19 @@ fn validate_frame_identity(
 }
 
 fn validate_projection(projection: &ConsistencyProjection) -> Result<(), MonitorError> {
-    projection
-        .validate()
-        .map_err(|error| MonitorError::InvalidConsistencyProjection(error.to_string()))?;
-    validate_json_integer("event.consistency_projection.frame_id", projection.frame_id)?;
+    let identity = projection.identity();
+    validate_json_integer(
+        "event.consistency_projection.frame_id",
+        identity.frame_id().get(),
+    )?;
     validate_json_integer(
         "event.consistency_projection.context_id",
-        projection.context_id,
+        identity.context_id().get(),
     )?;
-    validate_json_integer("event.consistency_projection.prior_id", projection.prior_id)
+    validate_json_integer(
+        "event.consistency_projection.prior_id",
+        identity.frozen_prior_id().get(),
+    )
 }
 
 fn validate_gate_value(field: &'static str, value: f64) -> Result<(), MonitorError> {
@@ -1083,13 +1088,12 @@ mod tests {
     }
 
     fn projection() -> ConsistencyProjection {
-        ConsistencyProjection {
-            values: [1.0, -2.0, 0.0],
-            dimensions: 2,
-            frame_id: 17,
-            context_id: 23,
-            prior_id: 29,
-        }
+        projection_for(17, 23, 29)
+    }
+
+    fn projection_for(frame_id: u64, context_id: u64, prior_id: u64) -> ConsistencyProjection {
+        ConsistencyProjection::try_new_raw([1.0, -2.0, 0.0], 2, frame_id, context_id, prior_id)
+            .expect("test projection is structurally valid")
     }
 
     fn outcome(kind: ModalityOutcomeKind) -> ModalityOutcome {
@@ -1165,7 +1169,8 @@ mod tests {
             r#""measurement_index":3,"outcome":"updated","v1_expected":true,"candidate_count":2,"#,
             r#""in_gate_count":1,"gate_evidence":{"method":"mahalanobis","d2":2.5,"#,
             r#""threshold":7.815},"consistency_projection":{"values":[1.0,-2.0,0.0],"#,
-            r#""dimensions":2,"frame_id":17,"context_id":23,"prior_id":29}}}}"#
+            r#""dimensions":2,"identity":{"frame_id":17,"context_id":23,"#,
+            r#""frozen_prior_id":29}}}}}"#
         );
 
         assert_eq!(serde_json::to_string(&envelope).unwrap(), expected);
@@ -1644,30 +1649,18 @@ mod tests {
 
     #[test]
     fn outcome_rejects_invalid_or_unsafe_projection() {
-        let mut invalid = outcome(ModalityOutcomeKind::Updated);
-        invalid.consistency_projection.as_mut().unwrap().dimensions = 0;
-        assert!(matches!(
-            invalid.validate(),
-            Err(MonitorError::InvalidConsistencyProjection(_))
-        ));
-
-        let mut unsafe_id = outcome(ModalityOutcomeKind::Updated);
-        unsafe_id.consistency_projection.as_mut().unwrap().prior_id =
-            JSON_SAFE_INTEGER_MAX as u64 + 1;
-        assert!(matches!(
-            unsafe_id.validate(),
-            Err(MonitorError::IntegerOutOfRange {
-                field: "event.consistency_projection.prior_id",
-                ..
-            })
-        ));
+        assert!(ConsistencyProjection::try_new_raw([1.0, 0.0, 0.0], 0, 17, 23, 29).is_err());
+        assert!(ConsistencyProjection::try_new_raw(
+            [1.0, 0.0, 0.0],
+            1,
+            17,
+            23,
+            JSON_SAFE_INTEGER_MAX as u64 + 1,
+        )
+        .is_err());
 
         let mut wrong_frame = outcome(ModalityOutcomeKind::Updated);
-        wrong_frame
-            .consistency_projection
-            .as_mut()
-            .unwrap()
-            .frame_id += 1;
+        wrong_frame.consistency_projection = Some(projection_for(18, 23, 29));
         assert_eq!(
             wrong_frame.validate(),
             Err(MonitorError::EventCoherence(
@@ -1676,11 +1669,7 @@ mod tests {
         );
 
         let mut wrong_context = outcome(ModalityOutcomeKind::Updated);
-        wrong_context
-            .consistency_projection
-            .as_mut()
-            .unwrap()
-            .context_id += 1;
+        wrong_context.consistency_projection = Some(projection_for(17, 24, 29));
         assert_eq!(
             wrong_context.validate(),
             Err(MonitorError::EventCoherence(
@@ -1689,11 +1678,7 @@ mod tests {
         );
 
         let mut wrong_prior = outcome(ModalityOutcomeKind::Updated);
-        wrong_prior
-            .consistency_projection
-            .as_mut()
-            .unwrap()
-            .prior_id += 1;
+        wrong_prior.consistency_projection = Some(projection_for(17, 23, 30));
         assert_eq!(
             wrong_prior.validate(),
             Err(MonitorError::EventCoherence(
@@ -1930,6 +1915,18 @@ mod tests {
         assert_eq!(
             schema["$defs"]["modalityMiss"]["properties"]["reason"]["enum"],
             miss_values
+        );
+        assert_eq!(
+            schema["$defs"]["consistencyProjection"]["required"],
+            serde_json::json!(["values", "dimensions", "identity"])
+        );
+        assert_eq!(
+            schema["$defs"]["consistencyProjection"]["properties"]["identity"]["$ref"],
+            "#/$defs/projectionIdentity"
+        );
+        assert_eq!(
+            schema["$defs"]["projectionIdentity"]["required"],
+            serde_json::json!(["frame_id", "context_id", "frozen_prior_id"])
         );
 
         let rules = schema["$defs"]["modalityOutcome"]["allOf"]

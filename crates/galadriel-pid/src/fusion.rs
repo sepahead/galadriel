@@ -257,19 +257,24 @@ pub fn assess_stream_with_correlation(
     let projection = galadriel_core::consistency_channels_with_temporal_limits(
         stream,
         modalities,
-        baseline_cfg.max_seq_gap,
-        baseline_cfg.max_timestamp_skew_ms,
-        baseline_cfg.max_inter_sample_gap_ms,
+        baseline_cfg.max_seq_gap(),
+        baseline_cfg.max_timestamp_skew_ms(),
+        baseline_cfg.max_inter_sample_gap_ms(),
     )?;
     for observation in stream {
         mirror.ingest(observation)?;
     }
-    let track = stream.first().map_or(0, |observation| observation.track_id);
+    let first = stream.first().ok_or_else(|| {
+        galadriel_core::GaladrielError::InvalidChannels(
+            "stream assessment requires at least one observation".into(),
+        )
+    })?;
+    let track = first.track_id();
     let last_seq = stream
         .iter()
-        .map(|observation| observation.seq)
+        .map(PidObservation::sequence)
         .max()
-        .unwrap_or(0);
+        .expect("non-empty stream checked above");
     let baseline = mirror.assess(track, last_seq)?;
 
     let mut correlations = Vec::new();
@@ -319,11 +324,31 @@ mod tests {
         }
     }
 
+    fn without_projection(source: &PidObservation) -> PidObservation {
+        let mut observation = PidObservation::try_scalar(
+            source.track_id(),
+            source.timestamp_ms(),
+            source.sequence(),
+            source.modality(),
+            source.nis(),
+            source.dof(),
+        )
+        .unwrap();
+        if let (Some(innovation), Some(covariance)) =
+            (source.innovation(), source.innovation_covariance())
+        {
+            observation = observation
+                .try_with_research(innovation, covariance)
+                .unwrap();
+        }
+        observation
+    }
+
     fn fused(stream: &[PidObservation]) -> FusedVerdict {
         assess_stream(
             stream,
             &MODALITIES,
-            &DetectorConfig::default(),
+            &DetectorConfig::standalone_advisory_v0_9().unwrap(),
             &PidConfig::default(),
         )
         .unwrap()
@@ -360,7 +385,7 @@ mod tests {
         let report = assess_stream(
             &generate(&scenario()).unwrap(),
             &MODALITIES,
-            &DetectorConfig::default(),
+            &DetectorConfig::standalone_advisory_v0_9().unwrap(),
             &PidConfig::default(),
         )
         .unwrap();
@@ -374,12 +399,12 @@ mod tests {
     fn stream_assessment_never_falls_back_to_native_innovations() {
         let mut stream = generate(&scenario()).unwrap();
         for observation in &mut stream {
-            observation.consistency_projection = None;
+            *observation = without_projection(observation);
         }
         let report = assess_stream(
             &stream,
             &MODALITIES,
-            &DetectorConfig::default(),
+            &DetectorConfig::standalone_advisory_v0_9().unwrap(),
             &PidConfig::default(),
         )
         .unwrap();
@@ -402,7 +427,7 @@ mod tests {
         let report = assess_stream(
             &stream,
             &MODALITIES,
-            &DetectorConfig::default(),
+            &DetectorConfig::standalone_advisory_v0_9().unwrap(),
             &PidConfig::default(),
         )
         .unwrap();
@@ -784,7 +809,7 @@ mod tests {
     #[test]
     fn multi_axis_confirmation_resolution_is_rejected_before_pid_estimation() {
         let stream = generate(&scenario()).unwrap();
-        let baseline = DetectorConfig::default();
+        let baseline = DetectorConfig::standalone_advisory_v0_9().unwrap();
         let projection = galadriel_core::consistency_channels_with_temporal_limits(
             &stream,
             &MODALITIES,
@@ -822,7 +847,7 @@ mod tests {
         let report = assess_stream_with_correlation(
             &stream,
             &MODALITIES,
-            &DetectorConfig::default(),
+            &DetectorConfig::standalone_advisory_v0_9().unwrap(),
             &corr_cfg,
             &PidConfig::default(),
         )

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::baseline;
 use crate::config::DetectorConfig;
 use crate::cusum::Cusum;
+use crate::domain::{Sequence, TimestampMillis, TrackId};
 use crate::observation::{Modality, PidObservation};
 use crate::window::NisWindow;
 
@@ -23,14 +24,11 @@ pub enum Verdict {
     Nominal,
     /// One or a minority of channels has localized NIS inconsistency. This names
     /// statistical evidence, not an attack cause.
-    #[serde(alias = "spoof")]
     AttributedInconsistency { channels: Vec<Modality> },
     /// Most/all channels have broad NIS inflation consistent with degradation.
-    #[serde(alias = "jam")]
     BroadDegradation,
     /// Positive anomaly evidence exists, but missing/stale peers or a below-target
     /// shift prevents a narrower statistical classification.
-    #[serde(alias = "anomaly")]
     UnclassifiedAnomaly { channels: Vec<Modality> },
     /// Too few ready channels or samples to decide. **Fail closed** — never
     /// silently upgraded to `Nominal`.
@@ -46,10 +44,10 @@ pub struct ChannelReport {
     pub n: usize,
     /// Newest fusion sequence accepted for this channel, or `None` if an expected
     /// channel has not produced an observation.
-    pub last_seq: Option<u64>,
+    pub last_seq: Option<Sequence>,
     /// Timestamp of the newest accepted measurement, or `None` for a missing
     /// expected channel.
-    pub last_timestamp_ms: Option<u64>,
+    pub last_timestamp_ms: Option<TimestampMillis>,
     /// Mean NIS over the window (≈ `dof` when healthy).
     pub mean_nis: f64,
     /// Right-tail p-value of the windowed NIS sum.
@@ -82,9 +80,9 @@ impl ChannelReport {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MirrorReport {
     /// Track this report concerns.
-    pub track_id: u64,
+    pub track_id: TrackId,
     /// Fusion frame counter at assessment time.
-    pub seq: u64,
+    pub seq: Sequence,
     /// The advisory verdict.
     pub verdict: Verdict,
     /// Per-channel detail, in stable modality order.
@@ -99,7 +97,7 @@ pub struct MirrorReport {
 /// [`Mirror::assess`], or do both with [`Mirror::ingest_and_assess`].
 pub struct Mirror {
     cfg: DetectorConfig,
-    tracks: HashMap<u64, HashMap<Modality, ChannelState>>,
+    tracks: HashMap<TrackId, HashMap<Modality, ChannelState>>,
     expected_modalities: Vec<Modality>,
 }
 
@@ -107,8 +105,8 @@ pub struct Mirror {
 struct ChannelState {
     window: NisWindow,
     cusum: Cusum,
-    last_seq: u64,
-    last_timestamp_ms: u64,
+    last_seq: Sequence,
+    last_timestamp_ms: TimestampMillis,
 }
 
 impl ChannelState {
@@ -118,16 +116,16 @@ impl ChannelState {
     }
 
     fn from_observation(cfg: &DetectorConfig, obs: &PidObservation) -> crate::Result<Self> {
-        let mut window = NisWindow::new(cfg.window_len, obs.dof)?;
-        window.push(obs.nis)?;
-        let (target, value) = Self::cusum_coordinates(obs.dof, obs.nis);
-        let mut cusum = Cusum::new(target, cfg.cusum_slack, cfg.cusum_threshold)?;
+        let mut window = NisWindow::new(cfg.window_len(), obs.dof())?;
+        window.push(obs.nis())?;
+        let (target, value) = Self::cusum_coordinates(obs.dof(), obs.nis());
+        let mut cusum = Cusum::new(target, cfg.cusum_slack(), cfg.cusum_threshold())?;
         cusum.update(value)?;
         Ok(Self {
             window,
             cusum,
-            last_seq: obs.seq,
-            last_timestamp_ms: obs.timestamp_ms,
+            last_seq: obs.sequence(),
+            last_timestamp_ms: obs.timestamp_ms(),
         })
     }
 }
@@ -163,11 +161,11 @@ impl Mirror {
                 "expected modalities must be unique".into(),
             ));
         }
-        if expected_modalities.len() < cfg.min_channels {
+        if expected_modalities.len() < cfg.min_channels() {
             return Err(crate::GaladrielError::InvalidConfig(format!(
                 "expected modality count ({}) must be >= min_channels ({})",
                 expected_modalities.len(),
-                cfg.min_channels
+                cfg.min_channels()
             )));
         }
         let mut mirror = Self::new(cfg)?;
@@ -182,51 +180,53 @@ impl Mirror {
 
     /// Update per-channel state with one observation.
     pub fn ingest(&mut self, obs: &PidObservation) -> crate::Result<()> {
-        obs.validate()?;
-        if !self.expected_modalities.is_empty() && !self.expected_modalities.contains(&obs.modality)
-        {
+        let track_id = obs.track_id();
+        let modality = obs.modality();
+        let sequence = obs.sequence();
+        let timestamp_ms = obs.timestamp_ms();
+        if !self.expected_modalities.is_empty() && !self.expected_modalities.contains(&modality) {
             return Err(crate::GaladrielError::InvalidObservation(format!(
                 "unexpected modality {} for this detector",
-                obs.modality.label()
+                modality.label()
             )));
         }
 
         if let Some(channel) = self
             .tracks
-            .get_mut(&obs.track_id)
-            .and_then(|channels| channels.get_mut(&obs.modality))
+            .get_mut(&track_id)
+            .and_then(|channels| channels.get_mut(&modality))
         {
-            if obs.seq <= channel.last_seq {
+            if sequence <= channel.last_seq {
                 return Err(crate::GaladrielError::InvalidObservation(format!(
                     "sequence must increase strictly for track {} / {} (last {}, got {})",
-                    obs.track_id,
-                    obs.modality.label(),
+                    track_id,
+                    modality.label(),
                     channel.last_seq,
-                    obs.seq
+                    sequence
                 )));
             }
-            if obs.dof != channel.window.dof() {
+            if obs.dof() != channel.window.dof() {
                 return Err(crate::GaladrielError::InvalidObservation(format!(
                     "dof changed for track {} / {} (expected {}, got {}); reset the track first",
-                    obs.track_id,
-                    obs.modality.label(),
+                    track_id,
+                    modality.label(),
                     channel.window.dof(),
-                    obs.dof
+                    obs.dof()
                 )));
             }
-            if obs.timestamp_ms <= channel.last_timestamp_ms {
+            if timestamp_ms <= channel.last_timestamp_ms {
                 return Err(crate::GaladrielError::InvalidObservation(format!(
                     "timestamp must increase strictly for track {} / {} (last {}, got {})",
-                    obs.track_id,
-                    obs.modality.label(),
+                    track_id,
+                    modality.label(),
                     channel.last_timestamp_ms,
-                    obs.timestamp_ms
+                    timestamp_ms
                 )));
             }
-            let sequence_gap = obs.seq - channel.last_seq;
-            let timestamp_gap = obs.timestamp_ms - channel.last_timestamp_ms;
-            if sequence_gap > self.cfg.max_seq_gap
-                || timestamp_gap > self.cfg.max_inter_sample_gap_ms
+            let sequence_gap = sequence.get() - channel.last_seq.get();
+            let timestamp_gap = timestamp_ms.get() - channel.last_timestamp_ms.get();
+            if sequence_gap > self.cfg.max_seq_gap()
+                || timestamp_gap > self.cfg.max_inter_sample_gap_ms()
             {
                 // A large sequence or wall-clock hole means the retained samples
                 // are no longer a contiguous monitoring window. Reset this channel
@@ -238,31 +238,31 @@ impl Mirror {
             // Validate the only stateful arithmetic on a tiny clone first. A
             // validated window push is then infallible without cloning its buffer.
             let mut next_cusum = channel.cusum.clone();
-            let (_, value) = ChannelState::cusum_coordinates(obs.dof, obs.nis);
+            let (_, value) = ChannelState::cusum_coordinates(obs.dof(), obs.nis());
             next_cusum.update(value)?;
-            channel.window.push(obs.nis)?;
+            channel.window.push(obs.nis())?;
             channel.cusum = next_cusum;
-            channel.last_seq = obs.seq;
-            channel.last_timestamp_ms = obs.timestamp_ms;
+            channel.last_seq = sequence;
+            channel.last_timestamp_ms = timestamp_ms;
             return Ok(());
         }
 
-        if !self.tracks.contains_key(&obs.track_id) && self.tracks.len() >= self.cfg.max_tracks {
+        if !self.tracks.contains_key(&track_id) && self.tracks.len() >= self.cfg.max_tracks() {
             return Err(crate::GaladrielError::TrackLimit {
-                limit: self.cfg.max_tracks,
+                limit: self.cfg.max_tracks(),
             });
         }
 
         let state = ChannelState::from_observation(&self.cfg, obs)?;
         self.tracks
-            .entry(obs.track_id)
+            .entry(track_id)
             .or_default()
-            .insert(obs.modality, state);
+            .insert(modality, state);
         Ok(())
     }
 
     /// Compute the current advisory report for `track_id`.
-    pub fn assess(&self, track_id: u64, seq: u64) -> crate::Result<MirrorReport> {
+    pub fn assess(&self, track_id: TrackId, sequence: Sequence) -> crate::Result<MirrorReport> {
         let mut channels: Vec<ChannelReport> = Vec::new();
         let known = self.tracks.get(&track_id);
         let total_channels = known
@@ -274,11 +274,12 @@ impl Mirror {
             .max(1);
         // `nis_alpha` is a per-assessment family-wise bound. Bonferroni keeps the
         // probability of any channel's window test false-alarming at or below it.
-        let channel_alpha = self.cfg.nis_alpha / total_channels as f64;
+        let channel_alpha = self.cfg.nis_alpha() / total_channels as f64;
         for (&modality, state) in self.tracks.get(&track_id).into_iter().flatten() {
-            let fresh = seq
-                .checked_sub(state.last_seq)
-                .is_some_and(|gap| gap <= self.cfg.max_seq_gap);
+            let fresh = sequence
+                .get()
+                .checked_sub(state.last_seq.get())
+                .is_some_and(|gap| gap <= self.cfg.max_seq_gap());
             let stat = baseline::nis_consistency(&state.window, channel_alpha)?;
             channels.push(ChannelReport {
                 modality,
@@ -291,7 +292,7 @@ impl Mirror {
                 cusum_high_alarm: state.cusum.high_alarm(),
                 cusum_low_alarm: state.cusum.low_alarm(),
                 fresh,
-                ready: stat.n >= self.cfg.min_samples && fresh,
+                ready: stat.n >= self.cfg.min_samples() && fresh,
             });
         }
         for &modality in &self.expected_modalities {
@@ -332,17 +333,18 @@ impl Mirror {
             .iter()
             .filter_map(|channel| channel.last_timestamp_ms)
             .fold(None::<(u64, u64)>, |range, timestamp| {
+                let timestamp = timestamp.get();
                 Some(match range {
                     Some((minimum, maximum)) => (minimum.min(timestamp), maximum.max(timestamp)),
                     None => (timestamp, timestamp),
                 })
             })
             .map_or(0, |(minimum, maximum)| maximum - minimum);
-        let timestamps_coherent = timestamp_span <= self.cfg.max_timestamp_skew_ms;
+        let timestamps_coherent = timestamp_span <= self.cfg.max_timestamp_skew_ms();
 
         let all_channels_ready = !channels.is_empty() && ready.len() == channels.len();
         let enough_complete_evidence =
-            ready.len() >= self.cfg.min_channels && all_channels_ready && timestamps_coherent;
+            ready.len() >= self.cfg.min_channels() && all_channels_ready && timestamps_coherent;
         let (verdict, note) = if !all_anomalous.is_empty()
             && (!enough_complete_evidence || has_low_alarm)
         {
@@ -366,8 +368,8 @@ impl Mirror {
                     "only {}/{} channels sampled/fresh/temporally coherent (need at least {}, every known/expected channel ready, and timestamp span <= {} ms; observed span {} ms); failing closed",
                     ready.len(),
                     channels.len(),
-                    self.cfg.min_channels,
-                    self.cfg.max_timestamp_skew_ms,
+                    self.cfg.min_channels(),
+                    self.cfg.max_timestamp_skew_ms(),
                     timestamp_span
                 ),
             )
@@ -380,7 +382,7 @@ impl Mirror {
                 ),
             )
         } else if high_anomalous.len() >= 2
-            && high_anomalous.len() as f64 >= self.cfg.jam_fraction * ready.len() as f64
+            && high_anomalous.len() as f64 >= self.cfg.jam_fraction() * ready.len() as f64
         {
             (
                 Verdict::BroadDegradation,
@@ -407,7 +409,7 @@ impl Mirror {
 
         Ok(MirrorReport {
             track_id,
-            seq,
+            seq: sequence,
             verdict,
             channels,
             note,
@@ -417,11 +419,11 @@ impl Mirror {
     /// Ingest one observation and return the resulting report for its track.
     pub fn ingest_and_assess(&mut self, obs: &PidObservation) -> crate::Result<MirrorReport> {
         self.ingest(obs)?;
-        self.assess(obs.track_id, obs.seq)
+        self.assess(obs.track_id(), obs.sequence())
     }
 
     /// Remove all retained state for one track. Returns whether the track existed.
-    pub fn remove_track(&mut self, track_id: u64) -> bool {
+    pub fn remove_track(&mut self, track_id: TrackId) -> bool {
         self.tracks.remove(&track_id).is_some()
     }
 
@@ -439,15 +441,57 @@ impl Mirror {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::DetectorParams;
+
+    fn detector_config() -> DetectorConfig {
+        DetectorConfig::standalone_advisory_v0_9().unwrap()
+    }
+
+    fn detector_config_with(change: impl FnOnce(&mut DetectorParams)) -> DetectorConfig {
+        let mut params = DetectorParams::standalone_advisory_v0_9();
+        change(&mut params);
+        DetectorConfig::try_new(params).unwrap()
+    }
+
+    fn track_id(value: u64) -> TrackId {
+        TrackId::new(value).unwrap()
+    }
+
+    fn sequence(value: u64) -> Sequence {
+        Sequence::new(value).unwrap()
+    }
+
+    fn observation(
+        track: u64,
+        timestamp_ms: u64,
+        sequence_number: u64,
+        modality: Modality,
+        nis: f64,
+        dof: u8,
+    ) -> PidObservation {
+        PidObservation::try_scalar(
+            track_id(track),
+            TimestampMillis::new(timestamp_ms).unwrap(),
+            sequence(sequence_number),
+            modality,
+            nis,
+            dof,
+        )
+        .unwrap()
+    }
+
+    fn assess(mirror: &Mirror, track: u64, sequence_number: u64) -> MirrorReport {
+        mirror
+            .assess(track_id(track), sequence(sequence_number))
+            .unwrap()
+    }
 
     fn feed(mirror: &mut Mirror, track: u64, mods: &[Modality], nis: &[f64], frames: usize) {
         // `nis[i]` is the constant NIS for channel `mods[i]`.
         for f in 0..frames {
             for (i, &m) in mods.iter().enumerate() {
                 mirror
-                    .ingest(&PidObservation::scalar(
-                        track, f as u64, f as u64, m, nis[i], 3,
-                    ))
+                    .ingest(&observation(track, f as u64, f as u64, m, nis[i], 3))
                     .unwrap();
             }
         }
@@ -455,18 +499,18 @@ mod tests {
 
     #[test]
     fn all_consistent_is_nominal() {
-        let mut m = Mirror::new(DetectorConfig::default()).unwrap();
+        let mut m = Mirror::new(detector_config()).unwrap();
         let mods = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         feed(&mut m, 1, &mods, &[3.0, 3.0, 3.0], 64);
-        assert_eq!(m.assess(1, 64).unwrap().verdict, Verdict::Nominal);
+        assert_eq!(assess(&m, 1, 64).verdict, Verdict::Nominal);
     }
 
     #[test]
     fn single_channel_inflation_is_attributed_inconsistency() {
-        let mut m = Mirror::new(DetectorConfig::default()).unwrap();
+        let mut m = Mirror::new(detector_config()).unwrap();
         let mods = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         feed(&mut m, 1, &mods, &[3.0, 3.0, 20.0], 64);
-        match m.assess(1, 64).unwrap().verdict {
+        match assess(&m, 1, 64).verdict {
             Verdict::AttributedInconsistency { channels } => {
                 assert_eq!(channels, vec![Modality::Acoustic]);
             }
@@ -476,10 +520,10 @@ mod tests {
 
     #[test]
     fn all_channels_inflation_is_broad_degradation() {
-        let mut m = Mirror::new(DetectorConfig::default()).unwrap();
+        let mut m = Mirror::new(detector_config()).unwrap();
         let mods = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         feed(&mut m, 1, &mods, &[20.0, 20.0, 20.0], 64);
-        assert_eq!(m.assess(1, 64).unwrap().verdict, Verdict::BroadDegradation);
+        assert_eq!(assess(&m, 1, 64).verdict, Verdict::BroadDegradation);
     }
 
     #[test]
@@ -515,86 +559,62 @@ mod tests {
     }
 
     #[test]
-    fn verdict_deserialization_accepts_legacy_causal_tags() {
-        let cases = [
-            (
-                serde_json::json!({"verdict": "spoof", "channels": ["acoustic"]}),
-                Verdict::AttributedInconsistency {
-                    channels: vec![Modality::Acoustic],
-                },
-            ),
-            (
-                serde_json::json!({"verdict": "jam"}),
-                Verdict::BroadDegradation,
-            ),
-            (
-                serde_json::json!({"verdict": "anomaly", "channels": ["radar"]}),
-                Verdict::UnclassifiedAnomaly {
-                    channels: vec![Modality::Radar],
-                },
-            ),
+    fn verdict_deserialization_rejects_legacy_causal_tags() {
+        let legacy = [
+            serde_json::json!({"verdict": "spoof", "channels": ["acoustic"]}),
+            serde_json::json!({"verdict": "jam"}),
+            serde_json::json!({"verdict": "anomaly", "channels": ["radar"]}),
         ];
 
-        for (legacy, expected) in cases {
-            assert_eq!(serde_json::from_value::<Verdict>(legacy).unwrap(), expected);
-        }
+        assert!(legacy
+            .into_iter()
+            .all(|value| serde_json::from_value::<Verdict>(value).is_err()));
     }
 
     #[test]
     fn too_few_samples_fails_closed() {
-        let mut m = Mirror::new(DetectorConfig::default()).unwrap();
+        let mut m = Mirror::new(detector_config()).unwrap();
         let mods = [Modality::Visual, Modality::Radar];
         // Below min_samples (32).
         feed(&mut m, 1, &mods, &[3.0, 3.0], 10);
-        assert_eq!(
-            m.assess(1, 10).unwrap().verdict,
-            Verdict::InsufficientEvidence
-        );
+        assert_eq!(assess(&m, 1, 10).verdict, Verdict::InsufficientEvidence);
     }
 
     #[test]
     fn duplicate_out_of_order_and_dof_changes_are_rejected_without_mutation() {
-        let mut mirror = Mirror::new(DetectorConfig::default()).unwrap();
-        let first = PidObservation::scalar(1, 100, 5, Modality::Radar, 3.0, 3);
+        let mut mirror = Mirror::new(detector_config()).unwrap();
+        let first = observation(1, 100, 5, Modality::Radar, 3.0, 3);
         mirror.ingest(&first).unwrap();
 
         assert!(
             mirror.ingest(&first).is_err(),
             "duplicate must not advance readiness"
         );
-        let older = PidObservation::scalar(1, 90, 4, Modality::Radar, 3.0, 3);
+        let older = observation(1, 90, 4, Modality::Radar, 3.0, 3);
         assert!(mirror.ingest(&older).is_err());
-        let changed_dof = PidObservation::scalar(1, 110, 6, Modality::Radar, 3.0, 2);
+        let changed_dof = observation(1, 110, 6, Modality::Radar, 3.0, 2);
         assert!(mirror.ingest(&changed_dof).is_err());
-        let regressed_time = PidObservation::scalar(1, 99, 6, Modality::Radar, 3.0, 3);
+        let regressed_time = observation(1, 99, 6, Modality::Radar, 3.0, 3);
         assert!(mirror.ingest(&regressed_time).is_err());
 
-        let report = mirror.assess(1, 6).unwrap();
+        let report = assess(&mirror, 1, 6);
         assert_eq!(report.channels[0].n, 1);
     }
 
     #[test]
     fn large_sequence_holes_reset_contiguous_evidence() {
-        let cfg = DetectorConfig {
-            min_samples: 2,
-            window_len: 4,
-            ..DetectorConfig::default()
-        };
+        let cfg = detector_config_with(|params| {
+            params.min_samples = 2;
+            params.window_len = 4;
+        });
         let mut mirror = Mirror::new(cfg).unwrap();
         mirror
-            .ingest(&PidObservation::scalar(1, 0, 0, Modality::Radar, 3.0, 3))
+            .ingest(&observation(1, 0, 0, Modality::Radar, 3.0, 3))
             .unwrap();
         mirror
-            .ingest(&PidObservation::scalar(
-                1,
-                10_000,
-                100,
-                Modality::Radar,
-                3.0,
-                3,
-            ))
+            .ingest(&observation(1, 10_000, 100, Modality::Radar, 3.0, 3))
             .unwrap();
-        let report = mirror.assess(1, 100).unwrap();
+        let report = assess(&mirror, 1, 100);
         assert_eq!(
             report.channels[0].n, 1,
             "pre-gap evidence must be discarded"
@@ -604,83 +624,77 @@ mod tests {
 
     #[test]
     fn frozen_timestamps_are_rejected_without_mutating_state() {
-        let cfg = DetectorConfig {
-            min_samples: 2,
-            window_len: 4,
-            ..DetectorConfig::default()
-        };
+        let cfg = detector_config_with(|params| {
+            params.min_samples = 2;
+            params.window_len = 4;
+        });
         let mut mirror = Mirror::new(cfg).unwrap();
         mirror
-            .ingest(&PidObservation::scalar(1, 100, 0, Modality::Radar, 3.0, 3))
+            .ingest(&observation(1, 100, 0, Modality::Radar, 3.0, 3))
             .unwrap();
 
         assert!(mirror
-            .ingest(&PidObservation::scalar(1, 100, 1, Modality::Radar, 3.0, 3))
+            .ingest(&observation(1, 100, 1, Modality::Radar, 3.0, 3))
             .is_err());
-        assert_eq!(mirror.assess(1, 1).unwrap().channels[0].n, 1);
+        assert_eq!(assess(&mirror, 1, 1).channels[0].n, 1);
     }
 
     #[test]
     fn large_forward_timestamp_holes_reset_contiguous_evidence() {
-        let cfg = DetectorConfig {
-            min_samples: 2,
-            window_len: 4,
-            max_inter_sample_gap_ms: 100,
-            ..DetectorConfig::default()
-        };
+        let cfg = detector_config_with(|params| {
+            params.min_samples = 2;
+            params.window_len = 4;
+            params.max_inter_sample_gap_ms = 100;
+        });
         let mut mirror = Mirror::new(cfg).unwrap();
         mirror
-            .ingest(&PidObservation::scalar(1, 100, 0, Modality::Radar, 3.0, 3))
+            .ingest(&observation(1, 100, 0, Modality::Radar, 3.0, 3))
             .unwrap();
         mirror
-            .ingest(&PidObservation::scalar(1, 201, 1, Modality::Radar, 3.0, 3))
+            .ingest(&observation(1, 201, 1, Modality::Radar, 3.0, 3))
             .unwrap();
 
-        let report = mirror.assess(1, 1).unwrap();
+        let report = assess(&mirror, 1, 1);
         assert_eq!(report.channels[0].n, 1);
         assert_eq!(report.verdict, Verdict::InsufficientEvidence);
     }
 
     #[test]
     fn retained_tracks_are_bounded_and_explicitly_reclaimable() {
-        let cfg = DetectorConfig {
-            max_tracks: 1,
-            ..DetectorConfig::default()
-        };
+        let cfg = detector_config_with(|params| params.max_tracks = 1);
         let mut mirror = Mirror::new(cfg).unwrap();
         mirror
-            .ingest(&PidObservation::scalar(1, 0, 0, Modality::Visual, 3.0, 3))
+            .ingest(&observation(1, 0, 0, Modality::Visual, 3.0, 3))
             .unwrap();
         assert!(mirror
-            .ingest(&PidObservation::scalar(2, 0, 0, Modality::Visual, 3.0, 3,))
+            .ingest(&observation(2, 0, 0, Modality::Visual, 3.0, 3))
             .is_err());
-        assert!(mirror.remove_track(1));
+        assert!(mirror.remove_track(track_id(1)));
         assert_eq!(mirror.track_count(), 0);
     }
 
     #[test]
     fn stale_or_missing_expected_channels_fail_closed() {
-        let cfg = DetectorConfig {
-            min_samples: 1,
-            window_len: 4,
-            ..DetectorConfig::default()
-        };
+        let cfg = detector_config_with(|params| {
+            params.min_samples = 1;
+            params.window_len = 4;
+        });
         let modalities = [Modality::Visual, Modality::Radar];
         let mut mirror = Mirror::with_modalities(cfg, &modalities).unwrap();
         mirror
-            .ingest(&PidObservation::scalar(1, 0, 0, Modality::Visual, 3.0, 3))
+            .ingest(&observation(1, 0, 0, Modality::Visual, 3.0, 3))
             .unwrap();
         assert_eq!(
-            mirror.assess(1, 0).unwrap().verdict,
+            assess(&mirror, 1, 0).verdict,
             Verdict::InsufficientEvidence,
             "the missing expected radar channel must block Nominal"
         );
         mirror
-            .ingest(&PidObservation::scalar(1, 0, 0, Modality::Radar, 3.0, 3))
+            .ingest(&observation(1, 0, 0, Modality::Radar, 3.0, 3))
             .unwrap();
-        assert_eq!(mirror.assess(1, 1).unwrap().verdict, Verdict::Nominal);
+        assert_eq!(assess(&mirror, 1, 1).verdict, Verdict::Nominal);
         assert_eq!(
-            mirror.assess(1, 2).unwrap().verdict,
+            assess(&mirror, 1, 2).verdict,
             Verdict::InsufficientEvidence,
             "retained windows must not stay nominal after their feeds go stale"
         );
@@ -688,36 +702,31 @@ mod tests {
 
     #[test]
     fn cross_modal_timestamp_skew_fails_closed() {
-        let cfg = DetectorConfig {
-            min_samples: 1,
-            window_len: 4,
-            max_timestamp_skew_ms: 10,
-            ..DetectorConfig::default()
-        };
+        let cfg = detector_config_with(|params| {
+            params.min_samples = 1;
+            params.window_len = 4;
+            params.max_timestamp_skew_ms = 10;
+        });
         let modalities = [Modality::Visual, Modality::Radar];
         let mut mirror = Mirror::with_modalities(cfg, &modalities).unwrap();
         mirror
-            .ingest(&PidObservation::scalar(1, 0, 0, Modality::Visual, 3.0, 3))
+            .ingest(&observation(1, 0, 0, Modality::Visual, 3.0, 3))
             .unwrap();
         mirror
-            .ingest(&PidObservation::scalar(1, 100, 0, Modality::Radar, 3.0, 3))
+            .ingest(&observation(1, 100, 0, Modality::Radar, 3.0, 3))
             .unwrap();
-        assert_eq!(
-            mirror.assess(1, 0).unwrap().verdict,
-            Verdict::InsufficientEvidence
-        );
+        assert_eq!(assess(&mirror, 1, 0).verdict, Verdict::InsufficientEvidence);
     }
 
     #[test]
     fn cusum_operating_point_is_comparable_across_degrees_of_freedom() {
-        let cfg = DetectorConfig {
-            min_samples: 1,
-            window_len: 4,
-            cusum_slack: 1.0,
-            cusum_threshold: 4.0,
-            max_tracks: 2,
-            ..DetectorConfig::default()
-        };
+        let cfg = detector_config_with(|params| {
+            params.min_samples = 1;
+            params.window_len = 4;
+            params.cusum_slack = 1.0;
+            params.cusum_threshold = 4.0;
+            params.max_tracks = 2;
+        });
         let mut mirror = Mirror::new(cfg).unwrap();
         for (track, dof) in [(1, 1_u8), (2, 12_u8)] {
             let null_sigma = (2.0 * f64::from(dof)).sqrt();
@@ -726,7 +735,7 @@ mod tests {
             // floating-point equality at `hi == threshold`.
             for seq in 0..3 {
                 mirror
-                    .ingest(&PidObservation::scalar(
+                    .ingest(&observation(
                         track,
                         seq + 1,
                         seq,
@@ -737,7 +746,7 @@ mod tests {
                     .unwrap();
             }
             assert!(
-                mirror.assess(track, 2).unwrap().channels[0].cusum_high_alarm,
+                assess(&mirror, track, 2).channels[0].cusum_high_alarm,
                 "a sustained three-sigma shift should cross the same CUSUM threshold for dof={dof}"
             );
         }

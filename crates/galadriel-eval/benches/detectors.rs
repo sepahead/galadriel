@@ -10,7 +10,8 @@ use std::hint::black_box;
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use galadriel_core::{
-    assess_default, correlation, CorrConfig, DetectorConfig, Mirror, Modality, PidObservation,
+    assess_default, correlation, CorrConfig, DetectorConfig, DetectorParams, Mirror, Modality,
+    PidObservation, Sequence, TrackId,
 };
 use galadriel_pid::{analyze, assess_stream, scalar_channels, PidConfig};
 use galadriel_sim::scenario::{generate_spoofed, ScenarioConfig, StealthySpoof};
@@ -40,18 +41,28 @@ fn stream(frames: usize) -> Vec<PidObservation> {
 fn bench_detectors(c: &mut Criterion) {
     let s = stream(300);
     let channels = scalar_channels(&s, &MODS, 0).expect("valid benchmark channels");
-    let last_seq = s.iter().map(|o| o.seq).max().unwrap_or(0);
+    let track_id = s.first().expect("benchmark stream is non-empty").track_id();
+    let last_seq = s
+        .iter()
+        .map(PidObservation::sequence)
+        .max()
+        .expect("benchmark stream is non-empty");
+    let detector_config = DetectorConfig::standalone_advisory_v0_9()
+        .expect("standalone-advisory benchmark config is valid");
     let mut g = c.benchmark_group("detectors");
 
     // The cheap magnitude yardstick.
     g.bench_function("baseline_nis_chi2", |b| {
         b.iter(|| {
-            let mut m = Mirror::with_modalities(DetectorConfig::default(), &MODS)
+            let mut m = Mirror::with_modalities(detector_config.clone(), &MODS)
                 .expect("valid benchmark detector");
             for o in &s {
                 m.ingest(o).expect("valid benchmark observation");
             }
-            black_box(m.assess(1, last_seq).expect("valid benchmark assessment"))
+            black_box(
+                m.assess(track_id, last_seq)
+                    .expect("valid benchmark assessment"),
+            )
         })
     });
 
@@ -61,7 +72,7 @@ fn bench_detectors(c: &mut Criterion) {
             black_box(assess_default(
                 &s,
                 &MODS,
-                &DetectorConfig::default(),
+                &detector_config,
                 &CorrConfig::default(),
             ))
         })
@@ -78,7 +89,7 @@ fn bench_detectors(c: &mut Criterion) {
             black_box(assess_stream(
                 &s,
                 &MODS,
-                &DetectorConfig::default(),
+                &detector_config,
                 &PidConfig::default(),
             ))
         })
@@ -128,24 +139,29 @@ fn bench_cost_vs_window(c: &mut Criterion) {
 fn bench_streaming_baseline(c: &mut Criterion) {
     let mut group = c.benchmark_group("streaming_baseline_window");
     for &window_len in &[64usize, 4_096, 65_536] {
-        let cfg = DetectorConfig {
+        let cfg = DetectorConfig::try_new(DetectorParams {
             window_len,
             min_samples: window_len,
             max_tracks: 1,
-            ..DetectorConfig::default()
-        };
+            ..DetectorParams::standalone_advisory_v0_9()
+        })
+        .expect("streaming benchmark config is valid");
+        let track_id = TrackId::new(1).expect("benchmark track identity is valid");
         let mut mirror = Mirror::with_modalities(cfg, &MODS).expect("valid streaming benchmark");
         for seq in 0..window_len as u64 {
             for modality in MODS {
                 mirror
-                    .ingest(&PidObservation::scalar(
-                        1,
-                        seq.saturating_mul(100),
-                        seq,
-                        modality,
-                        3.0,
-                        3,
-                    ))
+                    .ingest(
+                        &PidObservation::try_scalar_raw(
+                            1,
+                            seq.saturating_mul(100),
+                            seq,
+                            modality,
+                            3.0,
+                            3,
+                        )
+                        .expect("benchmark warmup coordinates are valid"),
+                    )
                     .expect("valid benchmark warmup");
             }
         }
@@ -157,17 +173,24 @@ fn bench_streaming_baseline(c: &mut Criterion) {
                 b.iter(|| {
                     for modality in MODS {
                         mirror
-                            .ingest(&PidObservation::scalar(
-                                1,
-                                seq.saturating_mul(100),
-                                seq,
-                                modality,
-                                3.0,
-                                3,
-                            ))
+                            .ingest(
+                                &PidObservation::try_scalar_raw(
+                                    1,
+                                    seq.saturating_mul(100),
+                                    seq,
+                                    modality,
+                                    3.0,
+                                    3,
+                                )
+                                .expect("benchmark sample coordinates are valid"),
+                            )
                             .expect("valid benchmark sample");
                     }
-                    let report = mirror.assess(1, seq).expect("valid benchmark assessment");
+                    let assessment_sequence =
+                        Sequence::new(seq).expect("benchmark sequence is valid");
+                    let report = mirror
+                        .assess(track_id, assessment_sequence)
+                        .expect("valid benchmark assessment");
                     seq += 1;
                     black_box(report)
                 })

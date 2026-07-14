@@ -20,7 +20,7 @@
 //!     .await?;
 //! assert_eq!(health.payloads_received(), 0);
 //! if let Some(obs) = observations.recv().await {
-//!     let _ = obs.nis;
+//!     let _ = obs.nis();
 //! }
 //! # Ok(()) }
 //! ```
@@ -34,7 +34,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
-use galadriel_core::observation::{Modality, PidObservation};
+use galadriel_core::{Modality, PidObservation, Sequence, TrackId};
 use ncp_core::{ContractStatus, Keys, DEFAULT_REALM};
 use ncp_zenoh::{ZenohBus, ZenohError};
 use tokio::sync::mpsc;
@@ -320,10 +320,10 @@ pub struct LastAcceptedObservation {
 impl From<&PidObservation> for LastAcceptedObservation {
     fn from(observation: &PidObservation) -> Self {
         Self {
-            track_id: observation.track_id,
-            modality: observation.modality,
-            sequence: observation.seq,
-            timestamp_ms: observation.timestamp_ms,
+            track_id: observation.track_id().get(),
+            modality: observation.modality(),
+            sequence: observation.sequence().get(),
+            timestamp_ms: observation.timestamp_ms().get(),
         }
     }
 }
@@ -981,7 +981,7 @@ impl Drop for CallbackGuard {
     }
 }
 
-type SequenceKey = (u64, Modality);
+type SequenceKey = (TrackId, Modality);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SequenceRejection {
@@ -1004,7 +1004,7 @@ impl From<SequenceRejection> for RejectionReason {
 
 #[derive(Debug, Default)]
 struct LiveSequenceTracker {
-    states: HashMap<SequenceKey, u64>,
+    states: HashMap<SequenceKey, Sequence>,
 }
 
 impl LiveSequenceTracker {
@@ -1024,16 +1024,17 @@ impl LiveSequenceTracker {
             return Err(SequenceRejection::StateFailure);
         }
 
-        let key = (observation.track_id, observation.modality);
+        let key = (observation.track_id(), observation.modality());
+        let sequence = observation.sequence();
         if let Some(last) = self.states.get(&key).copied() {
-            if observation.seq <= last {
+            if sequence <= last {
                 return Err(SequenceRejection::DuplicateOrRegressed);
             }
-            let gap = observation.seq - last;
+            let gap = sequence.get() - last.get();
             if gap > max_forward_gap {
                 return Err(SequenceRejection::ExcessiveForwardGap);
             }
-            self.states.insert(key, observation.seq);
+            self.states.insert(key, sequence);
             return Ok(());
         }
 
@@ -1043,7 +1044,7 @@ impl LiveSequenceTracker {
         self.states
             .try_reserve(1)
             .map_err(|_| SequenceRejection::StateFailure)?;
-        self.states.insert(key, observation.seq);
+        self.states.insert(key, sequence);
         Ok(())
     }
 
@@ -1887,8 +1888,20 @@ mod tests {
         }
     }
 
+    fn test_observation(
+        track_id: u64,
+        timestamp_ms: u64,
+        sequence: u64,
+        modality: Modality,
+        nis: f64,
+        dof: u8,
+    ) -> PidObservation {
+        PidObservation::try_scalar_raw(track_id, timestamp_ms, sequence, modality, nis, dof)
+            .expect("test observation is valid")
+    }
+
     fn encoded(track_id: u64, sequence: u64) -> Vec<u8> {
-        serde_json::to_vec(&envelope(PidObservation::scalar(
+        serde_json::to_vec(&envelope(test_observation(
             track_id,
             sequence,
             sequence,
@@ -2024,7 +2037,7 @@ mod tests {
         assert_eq!(harness.tap_counters.callback_latency().samples, 2);
 
         let delivered = harness.receiver().try_recv().unwrap();
-        assert_eq!(delivered.seq, 1);
+        assert_eq!(delivered.sequence().get(), 1);
         let drained = harness.health.handoff_metrics().unwrap();
         assert_eq!(drained.queue_depth, 0);
         assert_eq!(drained.delivered, 1);
@@ -2041,7 +2054,7 @@ mod tests {
 
         let first = harness.receiver().try_recv().unwrap();
         let second = harness.receiver().try_recv().unwrap();
-        assert_eq!((first.seq, second.seq), (1, 2));
+        assert_eq!((first.sequence().get(), second.sequence().get()), (1, 2));
 
         harness.push(1, 3);
 
@@ -2077,7 +2090,7 @@ mod tests {
         let delivery_boundary = Arc::clone(&harness.delivery_boundary);
         thread::spawn(move || {
             let _delivery = delivery_boundary.begin_delivery();
-            handoff.enqueue(PidObservation::scalar(1, 2, 2, Modality::Radar, 3.0, 3));
+            handoff.enqueue(test_observation(1, 2, 2, Modality::Radar, 3.0, 3));
         })
         .join()
         .unwrap();
@@ -2089,7 +2102,7 @@ mod tests {
 
         let first = harness.receiver().finish_dequeue(queued).unwrap();
         let second = harness.receiver().try_recv().unwrap();
-        assert_eq!((first.seq, second.seq), (1, 2));
+        assert_eq!((first.sequence().get(), second.sequence().get()), (1, 2));
     }
 
     #[test]
@@ -2117,7 +2130,7 @@ mod tests {
 
         let delivered = harness.receiver().try_recv().unwrap();
 
-        assert_eq!(delivered.seq, 1);
+        assert_eq!(delivered.sequence().get(), 1);
         assert_eq!(harness.health.handoff_stale_generation_drops(), 1);
         assert_eq!(harness.health.handoff_delivered(), 1);
         assert_eq!(harness.health.handoff_metrics().unwrap().generation, 1);
@@ -2137,7 +2150,7 @@ mod tests {
 
         // The caller owns this value now. This is why a cross-task reset must
         // first pause the consumer and wait for its downstream work to finish.
-        assert_eq!(already_returned.seq, 1);
+        assert_eq!(already_returned.sequence().get(), 1);
         assert_eq!(harness.health.handoff_delivered(), 1);
         assert_eq!(harness.health.handoff_stale_generation_drops(), 0);
     }
@@ -2257,16 +2270,12 @@ mod tests {
     }
 
     #[test]
-    fn process_payload_rejects_invalid_observation_values() {
-        let invalid = serde_json::to_vec(&envelope(PidObservation::scalar(
-            1,
-            0,
-            1,
-            Modality::Radar,
-            -0.1,
-            3,
-        )))
-        .unwrap();
+    fn process_payload_rejects_invalid_observation_during_typed_envelope_decode() {
+        let mut invalid =
+            serde_json::to_value(envelope(test_observation(1, 0, 1, Modality::Radar, 1.0, 3)))
+                .unwrap();
+        invalid["observation"]["nis"] = serde_json::json!(-0.1);
+        let invalid = serde_json::to_vec(&invalid).unwrap();
         let delivery_boundary = DeliveryBoundary::default();
         let sequences = Mutex::new(LiveSequenceTracker::default());
         let tap = IngestCounters::default();
@@ -2287,7 +2296,7 @@ mod tests {
 
         assert_eq!(subscription.decode_failures.load(Ordering::Relaxed), 1);
         assert_eq!(
-            subscription.rejection_count(RejectionReason::InvalidObservation),
+            subscription.rejection_count(RejectionReason::InvalidEnvelope),
             1
         );
         assert_eq!(callbacks.load(Ordering::Relaxed), 0);
@@ -2296,9 +2305,8 @@ mod tests {
     #[test]
     fn process_payload_rejects_unversioned_legacy_payload_and_wrong_provenance() {
         let legacy =
-            serde_json::to_vec(&PidObservation::scalar(1, 0, 1, Modality::Radar, 3.0, 3)).unwrap();
-        let mut wrong_provenance =
-            envelope(PidObservation::scalar(1, 0, 2, Modality::Radar, 3.0, 3));
+            serde_json::to_vec(&test_observation(1, 0, 1, Modality::Radar, 3.0, 3)).unwrap();
+        let mut wrong_provenance = envelope(test_observation(1, 0, 2, Modality::Radar, 3.0, 3));
         wrong_provenance.session_id = "other-session".to_string();
         let wrong_provenance = serde_json::to_vec(&wrong_provenance).unwrap();
         let delivery_boundary = DeliveryBoundary::default();
@@ -2334,10 +2342,10 @@ mod tests {
 
     #[test]
     fn process_payload_rejects_incompatible_version_and_surfaces_hash_advisory() {
-        let mut wrong_version = envelope(PidObservation::scalar(1, 0, 1, Modality::Radar, 3.0, 3));
+        let mut wrong_version = envelope(test_observation(1, 0, 1, Modality::Radar, 3.0, 3));
         wrong_version.ncp_version = "0.6".to_string();
         let wrong_version = serde_json::to_vec(&wrong_version).unwrap();
-        let mut drifted = envelope(PidObservation::scalar(1, 0, 2, Modality::Radar, 3.0, 3));
+        let mut drifted = envelope(test_observation(1, 0, 2, Modality::Radar, 3.0, 3));
         drifted.contract_hash = "deadbeefdeadbeef".to_string();
         let drifted = serde_json::to_vec(&drifted).unwrap();
         let delivery_boundary = DeliveryBoundary::default();
@@ -2571,11 +2579,7 @@ mod tests {
         sequences
             .lock()
             .unwrap()
-            .accept(
-                &PidObservation::scalar(1, 0, 1, Modality::Radar, 3.0, 3),
-                2,
-                10,
-            )
+            .accept(&test_observation(1, 0, 1, Modality::Radar, 3.0, 3), 2, 10)
             .unwrap();
         let counters = Arc::new(IngestCounters::default());
         *counters.last_accepted.lock().unwrap() = Some(LastAcceptedObservation {

@@ -35,7 +35,7 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, Cursor, Read, Write};
 use std::path::Path;
 
-use galadriel_core::observation::{Modality, PidObservation};
+use galadriel_core::{Modality, PidObservation, Sequence, TrackId};
 use ncp_core::{
     contract_status, valid_id_segment, ContractStatus, Keys, CONTRACT_HASH, DEFAULT_REALM,
     JSON_SAFE_INTEGER_MAX, NCP_VERSION,
@@ -93,8 +93,9 @@ pub const SIDECAR_SCHEMA_VERSION: &str = "1.0";
 
 /// Machine-readable JSON Schema for [`SIDECAR_SCHEMA_VERSION`]. Semantic checks
 /// that JSON Schema cannot express (paired research fields, covariance positive
-/// definiteness, inactive projection axes, and provenance binding) remain enforced
-/// by [`SidecarEnvelope::validate_for`].
+/// definiteness, and inactive projection axes) are enforced while constructing or
+/// decoding the typed observation; [`SidecarEnvelope::validate_for`] additionally
+/// binds the envelope's transport provenance.
 pub const SIDECAR_SCHEMA_JSON: &str =
     include_str!("../schemas/galadriel-pid-envelope-v1.schema.json");
 
@@ -234,24 +235,25 @@ impl SidecarEnvelope {
                 self.producer_id.clone(),
             ));
         }
-        self.observation
-            .validate()
-            .map_err(|error| SidecarEnvelopeError::InvalidObservation(error.to_string()))?;
-        self.validate_json_integer("observation.track_id", self.observation.track_id)?;
-        self.validate_json_integer("observation.timestamp_ms", self.observation.timestamp_ms)?;
-        self.validate_json_integer("observation.seq", self.observation.seq)?;
-        if let Some(projection) = self.observation.consistency_projection {
+        self.validate_json_integer("observation.track_id", self.observation.track_id().get())?;
+        self.validate_json_integer(
+            "observation.timestamp_ms",
+            self.observation.timestamp_ms().get(),
+        )?;
+        self.validate_json_integer("observation.seq", self.observation.sequence().get())?;
+        if let Some(projection) = self.observation.consistency_projection() {
+            let identity = projection.identity();
             self.validate_json_integer(
                 "observation.consistency_projection.frame_id",
-                projection.frame_id,
+                identity.frame_id().get(),
             )?;
             self.validate_json_integer(
                 "observation.consistency_projection.context_id",
-                projection.context_id,
+                identity.context_id().get(),
             )?;
             self.validate_json_integer(
                 "observation.consistency_projection.prior_id",
-                projection.prior_id,
+                identity.frozen_prior_id().get(),
             )?;
         }
         Ok(contract_status(Some(&self.contract_hash)))
@@ -424,7 +426,7 @@ pub fn default_sidecar_key(session_id: &str) -> Option<String> {
 
 #[derive(Debug, Default)]
 pub(crate) struct SequenceTracker {
-    last: HashMap<(u64, Modality), u64>,
+    last: HashMap<(TrackId, Modality), Sequence>,
 }
 
 impl SequenceTracker {
@@ -433,15 +435,15 @@ impl SequenceTracker {
         observation: &PidObservation,
         max_streams: usize,
     ) -> Result<(), String> {
-        let key = (observation.track_id, observation.modality);
+        let key = (observation.track_id(), observation.modality());
         match self.last.get(&key).copied() {
-            Some(last) if observation.seq <= last => {
+            Some(last) if observation.sequence() <= last => {
                 return Err(format!(
                     "sequence {} is not newer than {} for track {} / {}",
-                    observation.seq,
+                    observation.sequence(),
                     last,
-                    observation.track_id,
-                    observation.modality.label()
+                    observation.track_id(),
+                    observation.modality().label()
                 ));
             }
             _ => {}
@@ -456,7 +458,7 @@ impl SequenceTracker {
                 .try_reserve(1)
                 .map_err(|error| format!("cannot reserve sequence state: {error}"))?;
         }
-        self.last.insert(key, observation.seq);
+        self.last.insert(key, observation.sequence());
         Ok(())
     }
 }
@@ -552,9 +554,6 @@ fn parse_jsonl_reader<R: BufRead>(
 
         let observation: PidObservation = serde_json::from_str(text)
             .map_err(|error| invalid_data(format!("line {line_number}: {error}")))?;
-        observation
-            .validate()
-            .map_err(|error| invalid_data(format!("line {line_number}: {error}")))?;
         sequences
             .accept(&observation, limits.max_records)
             .map_err(|error| invalid_data(format!("line {line_number}: {error}")))?;
@@ -616,9 +615,6 @@ fn validate_serialization(
     let mut total_bytes = 0_usize;
     for (index, observation) in observations.iter().enumerate() {
         let record_number = index + 1;
-        observation
-            .validate()
-            .map_err(|error| invalid_data(format!("record {record_number}: {error}")))?;
         sequences
             .accept(observation, limits.max_records)
             .map_err(|error| invalid_data(format!("record {record_number}: {error}")))?;
@@ -696,22 +692,34 @@ mod tests {
     use galadriel_core::observation::{ConsistencyProjection, Modality};
     use std::{fs, process, thread};
 
+    fn test_observation(
+        track_id: u64,
+        timestamp_ms: u64,
+        sequence: u64,
+        modality: Modality,
+        nis: f64,
+        dof: u8,
+    ) -> PidObservation {
+        PidObservation::try_scalar_raw(track_id, timestamp_ms, sequence, modality, nis, dof)
+            .expect("test observation is valid")
+    }
+
     #[test]
     fn jsonl_roundtrips() {
         let obs = vec![
-            PidObservation::scalar(1, 0, 0, Modality::Radar, 3.1, 3),
-            PidObservation::scalar(1, 100, 1, Modality::Acoustic, 4.2, 3),
+            test_observation(1, 0, 0, Modality::Radar, 3.1, 3),
+            test_observation(1, 100, 1, Modality::Acoustic, 4.2, 3),
         ];
         let encoded = to_jsonl(&obs).unwrap();
         let back = parse_jsonl(&encoded).unwrap();
         assert_eq!(back.len(), 2);
-        assert_eq!(back[1].modality, Modality::Acoustic);
-        assert!((back[0].nis - 3.1).abs() < 1e-12);
+        assert_eq!(back[1].modality(), Modality::Acoustic);
+        assert!((back[0].nis() - 3.1).abs() < 1e-12);
     }
 
     #[test]
     fn parse_jsonl_skips_blanks_and_reports_bad_lines() {
-        let good = to_jsonl(&[PidObservation::scalar(1, 0, 0, Modality::Visual, 2.0, 3)]).unwrap();
+        let good = to_jsonl(&[test_observation(1, 0, 0, Modality::Visual, 2.0, 3)]).unwrap();
         assert_eq!(parse_jsonl(&format!("\n{good}\n\n")).unwrap().len(), 1);
         let err = parse_jsonl("{not valid json}").unwrap_err();
         assert!(err.to_string().contains("line 1"));
@@ -719,10 +727,10 @@ mod tests {
 
     #[test]
     fn parse_jsonl_rejects_invalid_observation_values() {
-        let invalid = PidObservation::scalar(1, 0, 0, Modality::Visual, -0.1, 3);
-        let encoded = serde_json::to_string(&invalid).unwrap();
+        let encoded =
+            r#"{"track_id":1,"timestamp_ms":0,"seq":0,"modality":"visual","nis":-0.1,"dof":3}"#;
 
-        let error = parse_jsonl(&encoded).unwrap_err();
+        let error = parse_jsonl(encoded).unwrap_err();
 
         assert!(error.to_string().contains("nis must be >= 0"));
     }
@@ -730,8 +738,8 @@ mod tests {
     #[test]
     fn parse_jsonl_rejects_duplicate_sequences() {
         let observations = [
-            PidObservation::scalar(1, 0, 4, Modality::Visual, 2.0, 3),
-            PidObservation::scalar(1, 1, 4, Modality::Visual, 2.0, 3),
+            test_observation(1, 0, 4, Modality::Visual, 2.0, 3),
+            test_observation(1, 1, 4, Modality::Visual, 2.0, 3),
         ];
         let encoded = observations
             .iter()
@@ -747,8 +755,8 @@ mod tests {
     #[test]
     fn parse_jsonl_rejects_regressed_sequences() {
         let observations = [
-            PidObservation::scalar(1, 0, 4, Modality::Visual, 2.0, 3),
-            PidObservation::scalar(1, 1, 3, Modality::Visual, 2.0, 3),
+            test_observation(1, 0, 4, Modality::Visual, 2.0, 3),
+            test_observation(1, 1, 3, Modality::Visual, 2.0, 3),
         ];
         let encoded = observations
             .iter()
@@ -764,8 +772,8 @@ mod tests {
     #[test]
     fn parse_jsonl_enforces_line_and_record_limits() {
         let observations = [
-            PidObservation::scalar(1, 0, 0, Modality::Visual, 2.0, 3),
-            PidObservation::scalar(1, 1, 1, Modality::Visual, 2.0, 3),
+            test_observation(1, 0, 0, Modality::Visual, 2.0, 3),
+            test_observation(1, 1, 1, Modality::Visual, 2.0, 3),
         ];
         let encoded = observations
             .iter()
@@ -784,7 +792,7 @@ mod tests {
 
     #[test]
     fn parse_jsonl_enforces_aggregate_byte_limit_including_blank_lines() {
-        let observation = PidObservation::scalar(1, 0, 0, Modality::Visual, 2.0, 3);
+        let observation = test_observation(1, 0, 0, Modality::Visual, 2.0, 3);
         let encoded = format!("\n\n{}", serde_json::to_string(&observation).unwrap());
         let limits = JsonlLimits::with_total_bytes(
             DEFAULT_MAX_JSONL_LINE_BYTES,
@@ -801,8 +809,8 @@ mod tests {
     #[test]
     fn serialization_enforces_aggregate_byte_limit() {
         let observations = [
-            PidObservation::scalar(1, 0, 0, Modality::Visual, 2.0, 3),
-            PidObservation::scalar(1, 1, 1, Modality::Visual, 2.0, 3),
+            test_observation(1, 0, 0, Modality::Visual, 2.0, 3),
+            test_observation(1, 1, 1, Modality::Visual, 2.0, 3),
         ];
         let encoded = observations
             .iter()
@@ -825,7 +833,7 @@ mod tests {
 
     #[test]
     fn aggregate_byte_limit_is_inclusive() {
-        let observations = [PidObservation::scalar(1, 0, 0, Modality::Visual, 2.0, 3)];
+        let observations = [test_observation(1, 0, 0, Modality::Visual, 2.0, 3)];
         let encoded = serde_json::to_string(&observations[0]).unwrap();
         let limits = JsonlLimits::with_total_bytes(
             DEFAULT_MAX_JSONL_LINE_BYTES,
@@ -838,7 +846,7 @@ mod tests {
         let serialized = to_jsonl_with_limits(&observations, limits).unwrap();
 
         assert_eq!(parsed.len(), 1);
-        assert_eq!(parsed[0].seq, observations[0].seq);
+        assert_eq!(parsed[0].sequence(), observations[0].sequence());
         assert_eq!(serialized, encoded);
     }
 
@@ -850,7 +858,7 @@ mod tests {
             thread::current().id()
         ));
         fs::write(&path, b"sentinel").unwrap();
-        let observations = [PidObservation::scalar(1, 0, 0, Modality::Visual, 2.0, 3)];
+        let observations = [test_observation(1, 0, 0, Modality::Visual, 2.0, 3)];
         let limits = JsonlLimits::with_total_bytes(
             DEFAULT_MAX_JSONL_LINE_BYTES,
             DEFAULT_MAX_JSONL_RECORDS,
@@ -875,26 +883,17 @@ mod tests {
     }
 
     #[test]
-    fn serialization_is_fallible_and_validated() {
-        let invalid = [PidObservation::scalar(
-            1,
-            0,
-            0,
-            Modality::Visual,
-            f64::INFINITY,
-            3,
-        )];
+    fn invalid_observation_cannot_cross_construction_boundary() {
+        let invalid = PidObservation::try_scalar_raw(1, 0, 0, Modality::Visual, f64::INFINITY, 3);
 
-        let error = to_jsonl(&invalid).unwrap_err();
-
-        assert!(error.to_string().contains("non-finite"));
+        assert!(invalid.is_err());
     }
 
     #[test]
     fn serialization_rejects_out_of_order_records() {
         let observations = [
-            PidObservation::scalar(1, 0, 2, Modality::Radar, 3.0, 3),
-            PidObservation::scalar(1, 1, 1, Modality::Radar, 3.0, 3),
+            test_observation(1, 0, 2, Modality::Radar, 3.0, 3),
+            test_observation(1, 1, 1, Modality::Radar, 3.0, 3),
         ];
 
         let error = to_jsonl(&observations).unwrap_err();
@@ -910,30 +909,22 @@ mod tests {
     /// (and every affected producer updated), never by accident.
     #[test]
     fn sidecar_payload_contract_is_frozen() {
-        let full = PidObservation {
-            track_id: 42,
-            timestamp_ms: 1_700_000_000_000,
-            seq: 7,
-            modality: Modality::Radar,
-            nis: 2.75,
-            dof: 3,
-            innovation: Some([1.0, -2.5, 0.25]),
-            innovation_cov: Some([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
-            consistency_projection: Some(ConsistencyProjection {
-                values: [1.0, -2.5, 0.25],
-                dimensions: 3,
-                frame_id: 17,
-                context_id: 23,
-                prior_id: 29,
-            }),
-        };
+        let projection = ConsistencyProjection::try_new_raw([1.0, -2.5, 0.25], 3, 17, 23, 29)
+            .expect("test projection is valid");
+        let full = test_observation(42, 1_700_000_000_000, 7, Modality::Radar, 2.75, 3)
+            .try_with_research(
+                [1.0, -2.5, 0.25],
+                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            )
+            .expect("test research fields are valid")
+            .with_consistency_projection(projection);
         let expect_full = concat!(
             r#"{"track_id":42,"timestamp_ms":1700000000000,"seq":7,"#,
             r#""modality":"radar","nis":2.75,"dof":3,"#,
             r#""innovation":[1.0,-2.5,0.25],"#,
             r#""innovation_cov":[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]],"#,
             r#""consistency_projection":{"values":[1.0,-2.5,0.25],"dimensions":3,"#,
-            r#""frame_id":17,"context_id":23,"prior_id":29}}"#
+            r#""identity":{"frame_id":17,"context_id":23,"frozen_prior_id":29}}}"#
         );
         assert_eq!(serde_json::to_string(&full).unwrap(), expect_full);
 
@@ -941,16 +932,15 @@ mod tests {
         let minimal =
             r#"{"track_id":1,"timestamp_ms":0,"seq":0,"modality":"acoustic","nis":3.1,"dof":3}"#;
         let obs: PidObservation = serde_json::from_str(minimal).expect("minimal contract parses");
-        assert_eq!(obs.modality, Modality::Acoustic);
-        assert!(obs.innovation.is_none() && obs.innovation_cov.is_none());
+        assert_eq!(obs.modality(), Modality::Acoustic);
+        assert!(obs.innovation().is_none() && obs.innovation_covariance().is_none());
         // And byte-for-byte back out (skip_serializing_if drops the None fields):
         assert_eq!(serde_json::to_string(&obs).unwrap(), minimal);
     }
 
     #[test]
     fn sidecar_envelope_contract_is_frozen_and_bound_to_provenance() {
-        let observation =
-            PidObservation::scalar(42, 1_700_000_000_000, 7, Modality::Radar, 2.75, 3);
+        let observation = test_observation(42, 1_700_000_000_000, 7, Modality::Radar, 2.75, 3);
         let envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
         let expected = concat!(
             r#"{"kind":"galadriel_pid_observation","schema_version":"1.0","#,
@@ -990,11 +980,27 @@ mod tests {
             schema["$defs"]["ncpKeySegment"]["pattern"],
             r"^[^/\*\$#\?\s\u0000-\u001F\u007F-\u009F\uFEFF]+$"
         );
+        assert_eq!(
+            schema["$defs"]["pidObservation"]["properties"]["track_id"]["$ref"],
+            "#/$defs/positiveSafeUnsignedInteger"
+        );
+        assert_eq!(
+            schema["$defs"]["consistencyProjection"]["required"],
+            serde_json::json!(["values", "dimensions", "identity"])
+        );
+        assert_eq!(
+            schema["$defs"]["consistencyProjection"]["properties"]["identity"]["$ref"],
+            "#/$defs/projectionIdentity"
+        );
+        assert_eq!(
+            schema["$defs"]["projectionIdentity"]["required"],
+            serde_json::json!(["frame_id", "context_id", "frozen_prior_id"])
+        );
     }
 
     #[test]
     fn sidecar_envelope_rejects_oversized_identity_segments() {
-        let observation = PidObservation::scalar(1, 1, 1, Modality::Visual, 1.0, 3);
+        let observation = test_observation(1, 1, 1, Modality::Visual, 1.0, 3);
         let oversized = "x".repeat(MAX_ID_SEGMENT_BYTES + 1);
         let at_bound = "x".repeat(MAX_ID_SEGMENT_BYTES);
 
@@ -1013,7 +1019,7 @@ mod tests {
 
     #[test]
     fn sidecar_envelope_rejects_unknown_nested_observation_fields() {
-        let observation = PidObservation::scalar(1, 1, 1, Modality::Visual, 1.0, 3);
+        let observation = test_observation(1, 1, 1, Modality::Visual, 1.0, 3);
         let envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
         let mut value = serde_json::to_value(envelope).unwrap();
         value["observation"]["undeclared_future_meaning"] = serde_json::json!(true);
@@ -1023,7 +1029,7 @@ mod tests {
 
     #[test]
     fn sidecar_envelope_rejects_wrong_version_and_provenance() {
-        let observation = PidObservation::scalar(1, 1, 1, Modality::Visual, 1.0, 3);
+        let observation = test_observation(1, 1, 1, Modality::Visual, 1.0, 3);
         let mut envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
         envelope.ncp_version = "0.6".to_string();
         assert!(matches!(
@@ -1056,7 +1062,7 @@ mod tests {
 
     #[test]
     fn sidecar_envelope_surfaces_contract_drift_but_rejects_unsafe_integers() {
-        let observation = PidObservation::scalar(1, 1, 1, Modality::Visual, 1.0, 3);
+        let observation = test_observation(1, 1, 1, Modality::Visual, 1.0, 3);
         let mut envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
         envelope.contract_hash = "deadbeefdeadbeef".to_string();
         assert!(matches!(
@@ -1064,14 +1070,10 @@ mod tests {
             ContractStatus::Mismatch { .. }
         ));
 
-        envelope.observation.track_id = JSON_SAFE_INTEGER_MAX as u64 + 1;
-        assert!(matches!(
-            envelope.validate(),
-            Err(SidecarEnvelopeError::IntegerOutOfRange {
-                field: "observation.track_id",
-                ..
-            })
-        ));
+        let mut unsafe_envelope = serde_json::to_value(&envelope).unwrap();
+        unsafe_envelope["observation"]["track_id"] =
+            serde_json::json!(JSON_SAFE_INTEGER_MAX as u64 + 1);
+        assert!(serde_json::from_value::<SidecarEnvelope>(unsafe_envelope).is_err());
     }
 
     #[test]
@@ -1107,14 +1109,7 @@ mod tests {
         let envelope = SidecarEnvelope::try_new(
             "uav3",
             "crebain",
-            galadriel_core::PidObservation::scalar(
-                1,
-                100,
-                0,
-                galadriel_core::Modality::Radar,
-                3.2,
-                3,
-            ),
+            test_observation(1, 100, 0, Modality::Radar, 3.2, 3),
         )
         .expect("valid envelope");
         let json = serde_json::to_string(&envelope).expect("serializable envelope");
