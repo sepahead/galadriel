@@ -5,7 +5,7 @@
 //! requires a unique strict-majority clique. PID atoms remain advisory diagnostics
 //! and never drive the verdict.
 
-use std::{collections::HashSet, error::Error, fmt, sync::Arc};
+use std::{cmp::Ordering, collections::HashSet, error::Error, fmt, sync::Arc};
 
 use galadriel_core::{GaladrielError, Modality};
 use pid_core::experimental::continuous::raw_scalars::ksg_mi;
@@ -807,7 +807,7 @@ fn quadratic_fit_work(
         .checked_mul(window)
         .and_then(|distance_pairs| distance_pairs.checked_mul(fit_count))
         .ok_or(PidConfigError::WorkEstimateOverflow)?;
-    if work > MAX_QUADRATIC_FIT_WORK {
+    if matches!(work.cmp(&MAX_QUADRATIC_FIT_WORK), Ordering::Greater) {
         return Err(PidConfigError::WorkEstimateExceedsLimit {
             requested: work,
             maximum: MAX_QUADRATIC_FIT_WORK,
@@ -854,8 +854,6 @@ pub struct PidEstimatorEvidence {
     atom_isx_k: usize,
     /// Fixed upstream metric selected for all kNN estimators.
     estimator_metric: &'static str,
-    /// Fixed strict-radius compatibility value selected upstream.
-    tie_epsilon: f64,
     /// Fixed upstream finite-sample negative-MI policy.
     negative_handling: &'static str,
     /// Fixed upstream shared-exclusions method.
@@ -897,7 +895,6 @@ impl PidEstimatorEvidence {
             atom_ksg_k: PID_KSG_NEIGHBORS,
             atom_isx_k: PID_ISX_NEIGHBORS,
             estimator_metric: "chebyshev",
-            tie_epsilon: 0.0,
             negative_handling: "allow",
             atom_method: "ehrlich_ksg",
             observation_noise_model:
@@ -986,7 +983,7 @@ impl PidEstimatorEvidence {
 
     /// Fixed strict-radius compatibility value selected upstream.
     pub const fn tie_epsilon(&self) -> f64 {
-        self.tie_epsilon
+        0.0
     }
 
     /// Upstream finite-sample negative-MI policy.
@@ -1406,7 +1403,7 @@ pub fn analyze(
         ));
     }
     let failed_pairs = pair_failures.iter().map(Vec::len).sum::<usize>() / 2;
-    if failed_pairs > 0 {
+    if has_pair_estimator_failures(failed_pairs) {
         return Ok(PidReport::new(
             estimator,
             reports,
@@ -1421,7 +1418,7 @@ pub fn analyze(
         .iter()
         .filter_map(|report| report.corroboration)
         .fold(0.0_f64, f64::max);
-    if reference < cfg.mi_floor() {
+    if below_mi_floor(reference, cfg.mi_floor()) {
         return Ok(PidReport::new(
             estimator,
             reports,
@@ -1435,7 +1432,7 @@ pub fn analyze(
     let threshold = cfg.mi_floor().max(cfg.decouple_ratio() * reference);
 
     let (largest_size, largest_cliques) = largest_consensus_cliques(&mi, threshold);
-    if largest_size * 2 <= c || largest_cliques.len() != 1 {
+    if !has_unique_strict_majority(largest_size, largest_cliques.len(), c) {
         return Ok(PidReport::new(
             estimator,
             reports,
@@ -1529,6 +1526,22 @@ pub fn analyze(
     ))
 }
 
+fn has_pair_estimator_failures(failed_pairs: usize) -> bool {
+    failed_pairs != 0
+}
+
+fn below_mi_floor(reference: f64, floor: f64) -> bool {
+    matches!(reference.total_cmp(&floor), Ordering::Less)
+}
+
+fn has_unique_strict_majority(
+    largest_size: usize,
+    clique_count: usize,
+    channel_count: usize,
+) -> bool {
+    largest_size > channel_count / 2 && clique_count == 1
+}
+
 fn standardize(values: &[f64], modality: &str) -> galadriel_core::Result<Vec<f64>> {
     let (minimum, maximum) = values.iter().copied().fold(
         (f64::INFINITY, f64::NEG_INFINITY),
@@ -1608,10 +1621,6 @@ fn intrinsic_dimension_config(cfg: &PidConfig) -> IntrinsicDimConfig {
         .with_metric(Metric::Chebyshev)
 }
 
-fn distance_concentration_config() -> DistanceConcentrationConfig {
-    DistanceConcentrationConfig::default().with_metric(Metric::Chebyshev)
-}
-
 fn ksg_estimator_config() -> KsgConfig {
     KsgConfig::assume_regular_full_dimensional()
         .with_k(PID_KSG_NEIGHBORS)
@@ -1651,20 +1660,21 @@ fn pair_mi(
         noised_matrix_and_columns(&[first, second], cfg.observation_noise_std(), seed)?;
     let id = intrinsic_dimension_levina_bickel(joint.as_ref(), &intrinsic_dimension_config(cfg))
         .map_err(|error| format!("intrinsic-dimension estimator failed: {error}"))?;
-    if !id.is_finite() || id > cfg.id_max() {
+    if intrinsic_dimension_gate_failed(id, cfg.id_max()) {
         return Err(format!(
             "intrinsic dimension {id:.3} exceeds {:.3}",
             cfg.id_max()
         ));
     }
     let concentration =
-        distance_concentration_stats(joint.as_ref(), &distance_concentration_config())
+        distance_concentration_stats(joint.as_ref(), &DistanceConcentrationConfig::default())
             .map_err(|error| format!("distance-concentration estimator failed: {error}"))?;
-    if !concentration.pairwise_cv.is_finite()
-        || !concentration.nn_over_pairwise_mean.is_finite()
-        || concentration.pairwise_cv < cfg.cv_min()
-        || concentration.nn_over_pairwise_mean > cfg.nn_ratio_max()
-    {
+    if geometry_gate_failed(
+        concentration.pairwise_cv,
+        concentration.nn_over_pairwise_mean,
+        cfg.cv_min(),
+        cfg.nn_ratio_max(),
+    ) {
         return Err(format!(
             "geometry gate failed (cv {:.4}, nn/pair {:.4})",
             concentration.pairwise_cv, concentration.nn_over_pairwise_mean
@@ -1678,6 +1688,22 @@ fn pair_mi(
         &columns[0],
         &columns[1],
     )
+}
+
+fn intrinsic_dimension_gate_failed(intrinsic_dimension: f64, maximum: f64) -> bool {
+    !intrinsic_dimension.is_finite() || intrinsic_dimension > maximum
+}
+
+fn geometry_gate_failed(
+    pairwise_cv: f64,
+    nn_over_pairwise_mean: f64,
+    cv_min: f64,
+    nn_ratio_max: f64,
+) -> bool {
+    !pairwise_cv.is_finite()
+        || !nn_over_pairwise_mean.is_finite()
+        || pairwise_cv < cv_min
+        || nn_over_pairwise_mean > nn_ratio_max
 }
 
 fn canonical_pair<'a>(
@@ -2044,21 +2070,15 @@ fn delete_block_plans(
         .confirmation()
         .circular_delete_block()
         .ok_or_else(|| "circular delete-block confirmation was not configured".to_string())?;
-    if confirmation.block_size() >= n
-        || n - confirmation.block_size() <= cfg.geom_k()
-        || confirmation.resamples() > n
-    {
-        return Err("invalid circular delete-block dimensions".into());
-    }
+    let retained = valid_delete_block_dimensions(
+        n,
+        confirmation.block_size(),
+        cfg.geom_k(),
+        confirmation.resamples(),
+    )
+    .ok_or_else(|| "invalid circular delete-block dimensions".to_string())?;
 
-    let mut modality_keys: Vec<u64> = channels
-        .iter()
-        .map(|(modality, _)| modality_key(*modality))
-        .collect();
-    modality_keys.sort_unstable();
-    let set_tag = modality_keys
-        .into_iter()
-        .fold(0x6a09_e667_f3bc_c909_u64, |tag, key| mix64(tag ^ key));
+    let set_tag = modality_set_tag(channels);
     let mut rng = SplitMix64::new(domain_seed(cfg.seed(), ROLE_BOOT_PLAN, set_tag, n as u64));
     let mut starts: Vec<usize> = (0..n).collect();
     for index in (1..starts.len()).rev() {
@@ -2068,15 +2088,52 @@ fn delete_block_plans(
     starts.truncate(confirmation.resamples());
     let mut plans = Vec::with_capacity(confirmation.resamples());
     for start in starts {
-        let plan: Vec<usize> = (0..n)
-            .filter(|&index| {
-                let circular_offset = (index + n - start) % n;
-                circular_offset >= confirmation.block_size()
-            })
-            .collect();
+        let plan = circular_retained_plan(n, start, confirmation.block_size());
+        debug_assert_eq!(plan.len(), retained);
         plans.push(plan);
     }
     Ok(plans)
+}
+
+fn valid_delete_block_dimensions(
+    n: usize,
+    block_size: usize,
+    geom_k: usize,
+    resamples: usize,
+) -> Option<usize> {
+    let retained = n.checked_sub(block_size)?;
+    if retained <= geom_k {
+        return None;
+    }
+    if resamples > n {
+        return None;
+    }
+    Some(retained)
+}
+
+fn modality_set_tag(channels: &[(Modality, Vec<f64>)]) -> u64 {
+    let mut keys: Vec<u64> = channels
+        .iter()
+        .map(|(modality, _)| modality_key(*modality))
+        .collect();
+    keys.sort_unstable();
+    keys.into_iter()
+        .fold(0x6a09_e667_f3bc_c909_u64, |tag, key| {
+            domain_seed(tag, ROLE_BOOT_PLAN, key, 0)
+        })
+}
+
+fn circular_retained_plan(n: usize, start: usize, block_size: usize) -> Vec<usize> {
+    (0..n)
+        .filter(|&index| {
+            let circular_offset = if index >= start {
+                index - start
+            } else {
+                n - (start - index)
+            };
+            circular_offset >= block_size
+        })
+        .collect()
 }
 
 /// Evaluate one edge over common deterministic circular delete-block plans. Every
@@ -2097,21 +2154,23 @@ fn bootstrap_mi_series(
     let (first_modality, first, second_modality, second) =
         canonical_pair(a_modality, a, b_modality, b);
     let n = first.len();
-    if n != second.len()
-        || plans.len() != confirmation.resamples()
-        || plans.iter().any(|plan| {
-            plan.len() != n - confirmation.block_size() || plan.iter().any(|&index| index >= n)
-        })
-    {
+    let Some(retained) = n.checked_sub(confirmation.block_size()) else {
+        return Err("invalid circular delete-block dimensions".into());
+    };
+    if !valid_bootstrap_plan_family(n, second.len(), retained, confirmation.resamples(), plans) {
         return Err("invalid circular delete-block dimensions".into());
     }
-    let pair_tag = (modality_key(first_modality) << 32) | modality_key(second_modality);
     let mut estimates = Vec::with_capacity(confirmation.resamples());
     for (replicate, plan) in plans.iter().enumerate() {
         let resampled_a: Vec<f64> = plan.iter().map(|&index| first[index]).collect();
         let resampled_b: Vec<f64> = plan.iter().map(|&index| second[index]).collect();
 
-        let seed = domain_seed(cfg.seed(), ROLE_BOOT_JITTER, pair_tag, replicate as u64);
+        let seed = bootstrap_jitter_seed(
+            cfg.seed(),
+            first_modality,
+            second_modality,
+            replicate as u64,
+        );
         let (_, columns) = noised_matrix_and_columns(
             &[&resampled_a, &resampled_b],
             cfg.observation_noise_std(),
@@ -2120,6 +2179,40 @@ fn bootstrap_mi_series(
         estimates.push(estimate_mi(&columns[0], &columns[1])?);
     }
     Ok(estimates)
+}
+
+fn valid_bootstrap_plan_family(
+    first_len: usize,
+    second_len: usize,
+    retained: usize,
+    resamples: usize,
+    plans: &[Vec<usize>],
+) -> bool {
+    if first_len != second_len {
+        return false;
+    }
+    if plans.len() != resamples {
+        return false;
+    }
+    for plan in plans {
+        if plan.len() != retained {
+            return false;
+        }
+        if plan.iter().any(|&index| index >= first_len) {
+            return false;
+        }
+    }
+    true
+}
+
+fn bootstrap_jitter_seed(base: u64, first: Modality, second: Modality, replicate: u64) -> u64 {
+    let pair = domain_seed(
+        0,
+        ROLE_BOOT_JITTER,
+        modality_key(first),
+        modality_key(second),
+    );
+    domain_seed(base, ROLE_BOOT_JITTER, pair, replicate)
 }
 
 fn bootstrap_margins(
@@ -2272,6 +2365,87 @@ mod tests {
                 2.0 * bits as f64 / ((1_u64 << 53) as f64) - 1.0
             })
             .collect()
+    }
+
+    #[test]
+    fn deterministic_seed_derivation_has_locked_domain_separation() {
+        assert_eq!(mix64(0), 0);
+        assert_eq!(mix64(1), 0x5692_161d_100b_05e5);
+        assert_eq!(mix64(u64::MAX), 0xb4d0_55fc_f2cb_bd7b);
+        assert_eq!(domain_seed(7, ROLE_PAIR_POINT, 2, 5), 0x14bd_8450_bac7_a166);
+
+        let mut rng = SplitMix64::new(7);
+        assert_eq!(rng.next_u64(), 0x63cb_e1e4_5932_0dd7);
+        assert_eq!(rng.next_u64(), 0x044c_3cd7_f43c_661c);
+        assert_eq!(rng.next_u64(), 0xe698_4080_bab1_2a02);
+
+        assert_eq!(
+            bootstrap_jitter_seed(7, Modality::Visual, Modality::Radar, 0),
+            0xcfd7_eb37_7a97_0aff
+        );
+        assert_eq!(
+            bootstrap_jitter_seed(7, Modality::Visual, Modality::Radar, 1),
+            0x794c_3a49_4de2_40fd
+        );
+        assert_eq!(
+            bootstrap_jitter_seed(7, Modality::Visual, Modality::Radar, 17),
+            0xe343_990d_b80e_ef16
+        );
+    }
+
+    #[test]
+    fn delete_block_dimension_and_plan_boundaries_are_exact() {
+        assert_eq!(valid_delete_block_dimensions(5, 2, 2, 5), Some(3));
+        assert_eq!(valid_delete_block_dimensions(5, 2, 3, 5), None);
+        assert_eq!(valid_delete_block_dimensions(5, 5, 0, 1), None);
+        assert_eq!(valid_delete_block_dimensions(5, 6, 0, 1), None);
+        assert_eq!(valid_delete_block_dimensions(5, 2, 2, 6), None);
+
+        assert_eq!(circular_retained_plan(5, 0, 2), [2, 3, 4]);
+        assert_eq!(circular_retained_plan(5, 1, 2), [0, 3, 4]);
+        assert_eq!(circular_retained_plan(5, 2, 2), [0, 1, 4]);
+        assert_eq!(circular_retained_plan(5, 3, 2), [0, 1, 2]);
+        assert_eq!(circular_retained_plan(5, 4, 2), [1, 2, 3]);
+    }
+
+    #[test]
+    fn bootstrap_plan_family_rejects_each_shape_failure_independently() {
+        let valid = vec![vec![0, 1, 2], vec![2, 3, 4]];
+        assert!(valid_bootstrap_plan_family(5, 5, 3, 2, &valid));
+        assert!(!valid_bootstrap_plan_family(5, 4, 3, 2, &valid));
+        assert!(!valid_bootstrap_plan_family(5, 5, 3, 1, &valid));
+
+        let wrong_length = vec![vec![0, 1], vec![2, 3, 4]];
+        assert!(!valid_bootstrap_plan_family(5, 5, 3, 2, &wrong_length));
+        let out_of_range = vec![vec![0, 1, 5], vec![2, 3, 4]];
+        assert!(!valid_bootstrap_plan_family(5, 5, 3, 2, &out_of_range));
+    }
+
+    #[test]
+    fn modality_set_tag_is_order_independent_and_value_locked() {
+        let channels = vec![
+            (Modality::Visual, Vec::new()),
+            (Modality::Radar, Vec::new()),
+            (Modality::Acoustic, Vec::new()),
+        ];
+        let mut reordered = channels.clone();
+        reordered.rotate_left(1);
+        assert_eq!(modality_set_tag(&channels), 0xdde1_98a6_3727_1174);
+        assert_eq!(modality_set_tag(&channels), modality_set_tag(&reordered));
+    }
+
+    #[test]
+    fn named_delete_block_plan_order_is_seed_locked() {
+        let channels = vec![
+            (Modality::Visual, Vec::new()),
+            (Modality::Radar, Vec::new()),
+            (Modality::Acoustic, Vec::new()),
+        ];
+        let plans = delete_block_plans(&confirmed_config(), 128, &channels).unwrap();
+        assert_eq!(plans.len(), 100);
+        for (plan, start) in plans.iter().zip([77, 0, 107, 6, 56]) {
+            assert_eq!(plan, &circular_retained_plan(128, start, 8));
+        }
     }
 
     #[test]
@@ -2668,6 +2842,26 @@ mod tests {
 
     #[test]
     fn seven_channels_are_rejected_before_modality_or_column_scans() {
+        let exact_closed_vocabulary = Modality::ALL
+            .into_iter()
+            .map(|modality| (modality, Vec::new()))
+            .collect::<Vec<_>>();
+        let exact_report = analyze(&exact_closed_vocabulary, &confirmed_config())
+            .expect("the exact closed modality vocabulary is admissible");
+        assert_eq!(exact_report.verdict(), &PidVerdict::InsufficientEvidence);
+
+        let point = point_config();
+        let constant = vec![1.0; point.required_samples()];
+        let exact_readiness_boundary = vec![
+            (Modality::Visual, constant.clone()),
+            (Modality::Radar, constant.clone()),
+            (Modality::Acoustic, constant),
+        ];
+        assert!(matches!(
+            analyze(&exact_readiness_boundary, &point),
+            Err(GaladrielError::InvalidChannels(_))
+        ));
+
         let channels = vec![
             (Modality::Visual, Vec::new()),
             (Modality::Thermal, Vec::new()),
@@ -2685,6 +2879,28 @@ mod tests {
             GaladrielError::InvalidChannels(ref message)
                 if message == "PID accepts at most 6 channels, got 7"
         ));
+    }
+
+    #[test]
+    fn pair_failure_and_mi_floor_predicates_preserve_strict_boundaries() {
+        assert!(!has_pair_estimator_failures(0));
+        assert!(has_pair_estimator_failures(1));
+        assert!(below_mi_floor(0.02, 0.03));
+        assert!(!below_mi_floor(0.03, 0.03));
+        assert!(!below_mi_floor(0.04, 0.03));
+        assert!(has_unique_strict_majority(4, 1, 6));
+        assert!(has_unique_strict_majority(3, 1, 5));
+        assert!(!has_unique_strict_majority(3, 1, 6));
+        assert!(!has_unique_strict_majority(4, 2, 6));
+        assert!(!geometry_gate_failed(0.02, 0.8, 0.02, 0.8));
+        assert!(geometry_gate_failed(f64::NAN, 0.8, 0.02, 0.8));
+        assert!(geometry_gate_failed(0.02, f64::NAN, 0.02, 0.8));
+        assert!(geometry_gate_failed(0.019, 0.8, 0.02, 0.8));
+        assert!(geometry_gate_failed(0.02, 0.801, 0.02, 0.8));
+        assert!(!intrinsic_dimension_gate_failed(9.0, 10.0));
+        assert!(!intrinsic_dimension_gate_failed(10.0, 10.0));
+        assert!(intrinsic_dimension_gate_failed(10.1, 10.0));
+        assert!(intrinsic_dimension_gate_failed(f64::NAN, 10.0));
     }
 
     #[test]
@@ -2773,6 +2989,51 @@ mod tests {
 
     #[test]
     fn invalid_confirmation_configuration_is_rejected_at_construction() {
+        let mut accepted = confirmed_params();
+        accepted.confirmation = PidConfirmationParams::CircularDeleteBlock {
+            resamples: 100,
+            block_size: 16,
+            family_alpha: 0.10,
+        };
+        let accepted = PidConfig::try_new(accepted)
+            .expect("retaining more than geom_k samples is valid regardless of the size ratio");
+        assert_eq!(
+            accepted
+                .confirmation()
+                .circular_delete_block()
+                .expect("the requested confirmation mode is retained")
+                .block_size(),
+            16
+        );
+
+        let mut exact_resample_ceiling = confirmed_params();
+        exact_resample_ceiling.confirmation = PidConfirmationParams::CircularDeleteBlock {
+            resamples: exact_resample_ceiling.window,
+            block_size: 8,
+            family_alpha: 0.10,
+        };
+        let exact_resample_ceiling = PidConfig::try_new(exact_resample_ceiling)
+            .expect("one resample per retained window position is valid");
+        assert_eq!(
+            exact_resample_ceiling
+                .confirmation()
+                .circular_delete_block()
+                .expect("the requested confirmation mode is retained")
+                .resamples(),
+            exact_resample_ceiling.window()
+        );
+
+        let mut params = confirmed_params();
+        params.confirmation = PidConfirmationParams::CircularDeleteBlock {
+            resamples: 100,
+            block_size: 0,
+            family_alpha: 0.10,
+        };
+        assert_eq!(
+            PidConfig::try_new(params).unwrap_err(),
+            PidConfigError::ConfirmationBlockSizeInvalid
+        );
+
         let mut params = confirmed_params();
         params.confirmation = PidConfirmationParams::CircularDeleteBlock {
             resamples: 0,
@@ -2983,6 +3244,157 @@ mod tests {
     }
 
     #[test]
+    fn custom_pid_config_accessors_preserve_every_accepted_scalar() {
+        let params = PidParams {
+            window: 140,
+            min_samples: 70,
+            observation_noise_std: 0.002,
+            seed: 42,
+            geom_k: 6,
+            id_max: 9.0,
+            cv_min: 0.02,
+            nn_ratio_max: 0.8,
+            decouple_ratio: 0.3,
+            mi_floor: 0.04,
+            confirmation: PidConfirmationParams::PointEstimateOnly,
+        };
+        let config = PidConfig::try_new(params).unwrap();
+
+        assert_eq!(config.window(), 140);
+        assert_eq!(config.min_samples(), 70);
+        assert_eq!(config.required_samples(), 70);
+        assert_eq!(config.observation_noise_std(), 0.002);
+        assert_eq!(config.seed(), 42);
+        assert_eq!(config.geom_k(), 6);
+        assert_eq!(config.id_max(), 9.0);
+        assert_eq!(config.cv_min(), 0.02);
+        assert_eq!(config.nn_ratio_max(), 0.8);
+        assert_eq!(config.decouple_ratio(), 0.3);
+        assert_eq!(config.mi_floor(), 0.04);
+        assert_eq!(config.confirmation(), &PidConfirmation::PointEstimateOnly);
+        assert_eq!(config.source_profile(), None);
+        assert_eq!(config.axis_family_count(), 1);
+        assert!(!config.axis_family_was_derived());
+        assert_eq!(
+            config.classification(),
+            PidResearchClassification::CustomAcceptedResearch
+        );
+
+        let evidence = PidEstimatorEvidence::from_config(&config);
+        assert_eq!(evidence.observation_noise_std(), 0.002);
+        assert_eq!(evidence.seed(), 42);
+        assert_eq!(evidence.geom_k(), 6);
+        assert_eq!(evidence.research_profile(), "custom");
+        assert_eq!(
+            evidence.classification(),
+            PidResearchClassification::CustomAcceptedResearch
+        );
+    }
+
+    #[test]
+    fn estimator_channel_and_report_accessors_preserve_complete_evidence() {
+        let config = confirmed_config().try_for_axis_family(3).unwrap();
+        let evidence = PidEstimatorEvidence::from_config(&config);
+
+        assert_eq!(evidence.config_identity(), config.identity());
+        assert_eq!(
+            evidence.classification(),
+            PidResearchClassification::NamedResearchProfile
+        );
+        assert_eq!(evidence.pid_rs_version(), PID_RS_VERSION);
+        assert_eq!(evidence.pid_rs_revision(), PID_RS_REVISION);
+        assert_eq!(
+            evidence.pairwise_estimator(),
+            "KSG MI (report-first point gate; raw-scalar circular-resample confirmation)"
+        );
+        assert_eq!(
+            evidence.pairwise_scientific_status(),
+            "conditional_continuous/restricted_domain point; experimental circular delete-block pipeline"
+        );
+        assert_eq!(
+            evidence.atom_estimator(),
+            "continuous shared-exclusions PID2 (Ehrlich KSG)"
+        );
+        assert_eq!(
+            evidence.atom_scientific_status(),
+            "experimental_restricted_domain"
+        );
+        assert_eq!(
+            evidence.support_contract(),
+            "caller-declared regular full-dimensional continuous law"
+        );
+        assert_eq!(evidence.pairwise_ksg_k(), PID_KSG_NEIGHBORS);
+        assert_eq!(evidence.atom_ksg_k(), PID_KSG_NEIGHBORS);
+        assert_eq!(evidence.atom_isx_k(), PID_ISX_NEIGHBORS);
+        assert_eq!(evidence.estimator_metric(), "chebyshev");
+        assert_eq!(evidence.tie_epsilon(), 0.0);
+        assert_eq!(evidence.negative_handling(), "allow");
+        assert_eq!(evidence.atom_method(), "ehrlich_ksg");
+        assert_eq!(
+            evidence.observation_noise_model(),
+            "seeded additive Gaussian noise after per-column standardisation"
+        );
+        assert_eq!(evidence.observation_noise_std(), 1e-4);
+        assert_eq!(evidence.seed(), 1);
+        assert_eq!(evidence.geom_k(), 5);
+        assert_eq!(evidence.research_profile(), "circular_delete_block_v0_9");
+        assert_eq!(evidence.confirmation(), "circular_delete_block");
+        assert_eq!(evidence.axis_family_count(), 3);
+        assert!(evidence.axis_family_was_derived());
+        assert_eq!(evidence.confirmation_family_alpha(), Some(0.10 / 3.0));
+        assert!(evidence.pairwise_reports().is_empty());
+
+        let channel = ChannelPid::new(
+            Modality::Thermal,
+            73,
+            true,
+            "exact gate note".to_owned(),
+            Some(0.7),
+            Some(0.2),
+            Some(0.3),
+            true,
+            Some((-0.4, -0.1)),
+        );
+        assert_eq!(channel.modality(), Modality::Thermal);
+        assert_eq!(channel.n(), 73);
+        assert!(channel.gate_ok());
+        assert_eq!(channel.gate_note(), "exact gate note");
+        assert_eq!(channel.corroboration(), Some(0.7));
+        assert_eq!(channel.redundancy(), Some(0.2));
+        assert_eq!(channel.synergy(), Some(0.3));
+        assert!(channel.is_decoupled());
+        assert_eq!(channel.confirmation_interval(), Some((-0.4, -0.1)));
+
+        let rejected_gate = ChannelPid::new(
+            Modality::Radar,
+            2,
+            false,
+            "independent rejected gate".to_owned(),
+            None,
+            None,
+            None,
+            false,
+            None,
+        );
+        assert_eq!(rejected_gate.n(), 2);
+        assert!(!rejected_gate.gate_ok());
+        assert_eq!(rejected_gate.gate_note(), "independent rejected gate");
+
+        let verdict = PidVerdict::Decoupled(vec![Modality::Thermal]);
+        let report = PidReport::new(
+            evidence.clone(),
+            vec![channel],
+            verdict.clone(),
+            "exact PID report note".to_owned(),
+        );
+        assert_eq!(report.estimator(), &evidence);
+        assert_eq!(report.channels().len(), 1);
+        assert_eq!(report.channels()[0].modality(), Modality::Thermal);
+        assert_eq!(report.verdict(), &verdict);
+        assert_eq!(report.note(), "exact PID report note");
+    }
+
+    #[test]
     fn pid_configuration_identity_is_complete_and_profile_distinct() {
         let named = confirmed_config();
         let named_identity = named.identity();
@@ -3064,6 +3476,11 @@ mod tests {
             point.confirmation(),
             PidConfirmation::PointEstimateOnly
         ));
+        assert_eq!(point.confirmation().name(), "point_estimate_only");
+        assert_eq!(
+            confirmed_config().confirmation().name(),
+            "circular_delete_block"
+        );
         assert_eq!(point.required_samples(), point.min_samples());
         assert_eq!(point.confirmation_tail_rank(), None);
         assert!(!point.axis_family_was_derived());
@@ -3094,8 +3511,13 @@ mod tests {
         assert_eq!(intrinsic.k, 5);
         assert_eq!(intrinsic.metric, Metric::Chebyshev);
 
-        let concentration = distance_concentration_config();
+        let concentration = DistanceConcentrationConfig::default();
         assert_eq!(concentration.metric, Metric::Chebyshev);
+
+        let mut custom_params = PidResearchProfile::PointEstimateOnlyV0_9.params();
+        custom_params.geom_k = 6;
+        let custom = PidConfig::try_new(custom_params).unwrap();
+        assert_eq!(intrinsic_dimension_config(&custom).k, 6);
 
         let ksg = ksg_estimator_config();
         assert_eq!(ksg.k, PID_KSG_NEIGHBORS);

@@ -1261,6 +1261,12 @@ struct DeliveryBoundaryState {
     pending_resets: usize,
 }
 
+impl DeliveryBoundaryState {
+    fn blocks_delivery(&self) -> bool {
+        self.delivery_active || self.reset_active || self.pending_resets != 0
+    }
+}
+
 #[derive(Debug)]
 struct DeliveryBoundary {
     state: Mutex<DeliveryBoundaryState>,
@@ -1322,7 +1328,7 @@ impl DeliveryBoundary {
 
     fn begin_delivery(&self) -> Result<DeliveryGuard<'_>, LiveInternalFault> {
         let mut state = self.lock_state()?;
-        while state.delivery_active || state.reset_active || state.pending_resets > 0 {
+        while state.blocks_delivery() {
             state = self.wait_for_change(state)?;
         }
         state.delivery_active = true;
@@ -1500,7 +1506,10 @@ impl LiveSequenceTracker {
             if sequence <= last {
                 return Err(SequenceRejection::DuplicateOrRegressed);
             }
-            let gap = sequence.get() - last.get();
+            let gap = sequence
+                .get()
+                .checked_sub(last.get())
+                .ok_or(SequenceRejection::DuplicateOrRegressed)?;
             if gap > max_forward_gap {
                 return Err(SequenceRejection::ExcessiveForwardGap);
             }
@@ -2673,10 +2682,24 @@ mod tests {
     }
 
     #[test]
+    fn handoff_config_accepts_the_exact_capacity_and_aggregate_byte_boundaries() {
+        let config = HandoffConfig::new(MAX_LIVE_HANDOFF_CAPACITY)
+            .expect("the exact handoff capacity ceiling is inclusive");
+
+        assert_eq!(config.capacity(), MAX_LIVE_HANDOFF_CAPACITY);
+        assert_eq!(
+            config.capacity() * DEFAULT_MAX_LIVE_PAYLOAD_BYTES,
+            MAX_LIVE_HANDOFF_STATE_BYTES
+        );
+        assert_eq!(config.overflow_policy(), HandoffOverflowPolicy::DropNewest);
+    }
+
+    #[test]
     fn release_live_profiles_have_stable_identities() {
         let handoff = HandoffProfile::BoundedV0_9.try_config().unwrap();
         let limits = LiveLimitsProfile::BoundedV0_9.try_limits().unwrap();
 
+        assert_eq!(MAX_LIVE_CONFIGURED_WORK_UNITS, 4_194_304);
         assert_eq!(
             handoff.identity().to_hex(),
             "8102d551625d24f8cae73f7e467c8bf8bb5c5e1a3b8747c50b1a4ef6aaed70b3"
@@ -2705,6 +2728,32 @@ mod tests {
         assert!(matches!(
             LiveLimits::with_sequence_policy(MAX_LIVE_PAYLOAD_BYTES, MAX_LIVE_SEQUENCE_STREAMS, 1,),
             Err(LiveLimitsError::AggregateWorkTooLarge { .. })
+        ));
+
+        let streams_at_exact_work_ceiling = (MAX_LIVE_CONFIGURED_WORK_UNITS
+            - MAX_LIVE_PAYLOAD_BYTES)
+            / LIVE_SEQUENCE_STATE_WORK_UNITS;
+        let exact = LiveLimits::with_sequence_policy(
+            MAX_LIVE_PAYLOAD_BYTES,
+            streams_at_exact_work_ceiling,
+            1,
+        )
+        .expect("the exact configured-work ceiling is inclusive");
+        assert_eq!(
+            exact.max_sequence_streams() * LIVE_SEQUENCE_STATE_WORK_UNITS
+                + exact.max_payload_bytes(),
+            MAX_LIVE_CONFIGURED_WORK_UNITS
+        );
+        assert!(matches!(
+            LiveLimits::with_sequence_policy(
+                MAX_LIVE_PAYLOAD_BYTES,
+                streams_at_exact_work_ceiling + 1,
+                1,
+            ),
+            Err(LiveLimitsError::AggregateWorkTooLarge {
+                value,
+                maximum: MAX_LIVE_CONFIGURED_WORK_UNITS,
+            }) if value == MAX_LIVE_CONFIGURED_WORK_UNITS + LIVE_SEQUENCE_STATE_WORK_UNITS
         ));
 
         let mut changed = LiveLimitsProfile::BoundedV0_9.params();
@@ -3197,6 +3246,39 @@ mod tests {
     }
 
     #[test]
+    fn forward_gap_is_relative_to_the_retained_nonzero_high_water_mark() {
+        let limits = LiveLimits::with_sequence_policy(DEFAULT_MAX_LIVE_PAYLOAD_BYTES, 1, 10)
+            .expect("valid limits");
+        let delivery_boundary = DeliveryBoundary::default();
+        let sequences = Mutex::new(LiveSequenceTracker::default());
+        let tap = IngestCounters::default();
+        let subscription = IngestCounters::default();
+        let callbacks = AtomicU64::new(0);
+
+        for payload in [encoded(1, 50), encoded(1, 60), encoded(1, 71)] {
+            process_payload(
+                &payload,
+                limits,
+                &delivery_boundary,
+                &sequences,
+                &tap,
+                &subscription,
+                &|_| {
+                    callbacks.fetch_add(1, Ordering::Relaxed);
+                },
+            );
+        }
+
+        assert_eq!(callbacks.load(Ordering::Relaxed), 2);
+        assert_eq!(
+            subscription.rejection_count(RejectionReason::ExcessiveForwardSequenceGap),
+            1
+        );
+        let retained = sequences.lock().unwrap();
+        assert_eq!(retained.states.values().next().unwrap().get(), 60);
+    }
+
+    #[test]
     fn process_payload_rejects_new_stream_at_capacity_without_forgetting_replay_state() {
         let limits = LiveLimits::with_sequence_policy(DEFAULT_MAX_LIVE_PAYLOAD_BYTES, 2, 10)
             .expect("valid limits");
@@ -3366,6 +3448,195 @@ mod tests {
         );
         assert_eq!(health.retained_sequence_streams(), 1);
         assert_eq!(health.sequence_resets(), 0);
+    }
+
+    #[test]
+    fn sequence_reset_errors_have_exact_operator_diagnostics() {
+        let cases = [
+            (
+                SequenceResetError::CalledFromCallback,
+                "sequence reset cannot run from inside on_obs",
+            ),
+            (
+                SequenceResetError::DeliveryInProgress,
+                "sequence reset cannot run while delivery is in progress",
+            ),
+            (
+                SequenceResetError::TooManyPendingResets,
+                "too many concurrent sequence reset requests",
+            ),
+            (
+                SequenceResetError::GenerationExhausted,
+                "live delivery generation is exhausted",
+            ),
+            (
+                SequenceResetError::InternalStateFault {
+                    fault: LiveInternalFault::SequenceStatePoisoned,
+                },
+                "live epoch has terminal internal fault SequenceStatePoisoned",
+            ),
+        ];
+
+        for (error, expected) in cases {
+            assert_eq!(error.to_string(), expected);
+        }
+    }
+
+    #[test]
+    fn subscription_health_accessors_preserve_every_counter_and_snapshot() {
+        let counters = Arc::new(IngestCounters::default());
+        let tap_counters = Arc::new(IngestCounters::default());
+        counters.payloads_received.store(2, Ordering::Relaxed);
+        counters.observations_accepted.store(3, Ordering::Relaxed);
+        counters.decode_failures.store(4, Ordering::Relaxed);
+        counters.callback_panics.store(5, Ordering::Relaxed);
+        counters.sequence_evictions.store(6, Ordering::Relaxed);
+        counters.sequence_resets.store(7, Ordering::Relaxed);
+        counters
+            .contract_hash_mismatches
+            .store(8, Ordering::Relaxed);
+        counters.handoff_enqueued.store(9, Ordering::Relaxed);
+        counters.handoff_delivered.store(10, Ordering::Relaxed);
+        counters.handoff_full_drops.store(11, Ordering::Relaxed);
+        counters.handoff_closed_drops.store(12, Ordering::Relaxed);
+        counters
+            .handoff_stale_generation_drops
+            .store(13, Ordering::Relaxed);
+        counters
+            .handoff_abandoned_drops
+            .store(14, Ordering::Relaxed);
+        *counters.last_accepted.lock().unwrap() = Some(LastAcceptedObservation {
+            track_id: 17,
+            modality: Modality::Thermal,
+            sequence: 19,
+            timestamp_ms: 23,
+        });
+
+        let sequences = Arc::new(Mutex::new(LiveSequenceTracker::default()));
+        let delivery_boundary = Arc::new(DeliveryBoundary::new(
+            Arc::clone(&tap_counters),
+            Arc::clone(&counters),
+        ));
+        let health = SubscriptionHealth {
+            counters: Arc::clone(&counters),
+            tap_counters: Arc::clone(&tap_counters),
+            sequences,
+            delivery_boundary,
+            handoff: None,
+        };
+
+        assert_eq!(health.payloads_received(), 2);
+        assert_eq!(health.observations_accepted(), 3);
+        assert_eq!(health.decode_failures(), 4);
+        assert_eq!(health.callback_panics(), 5);
+        assert_eq!(
+            health.last_accepted(),
+            Some(LastAcceptedObservation {
+                track_id: 17,
+                modality: Modality::Thermal,
+                sequence: 19,
+                timestamp_ms: 23,
+            })
+        );
+        assert_eq!(health.sequence_evictions(), 6);
+        assert_eq!(health.sequence_resets(), 7);
+        assert_eq!(health.contract_hash_mismatches(), 8);
+        assert_eq!(health.handoff_enqueued(), 9);
+        assert_eq!(health.handoff_delivered(), 10);
+        assert_eq!(health.handoff_full_drops(), 11);
+        assert_eq!(health.handoff_closed_drops(), 12);
+        assert_eq!(health.handoff_stale_generation_drops(), 13);
+        assert_eq!(health.handoff_abandoned_drops(), 14);
+        assert_eq!(health.handoff_drops(), 50);
+        assert_eq!(health.handoff_metrics(), None);
+        assert_eq!(health.retained_sequence_streams(), 0);
+        assert_eq!(health.internal_fault(), None);
+        assert_eq!(health.internal_faults(), 0);
+
+        latch_internal_fault_pair(
+            &tap_counters,
+            &counters,
+            LiveInternalFault::CallbackPanicked,
+        );
+        assert_eq!(
+            health.internal_fault(),
+            Some(LiveInternalFault::CallbackPanicked)
+        );
+        assert_eq!(health.internal_faults(), 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn sidecar_tap_fault_accessors_preserve_the_latched_terminal_fault() {
+        let realm = format!("galadriel/test/tap-health-{}", std::process::id());
+        let tap = SidecarTap::open_realm(realm, TransportMode::QuietDevelopment)
+            .await
+            .expect("the isolated quiet-development tap opens");
+
+        assert_eq!(tap.internal_fault(), None);
+        assert_eq!(tap.internal_faults(), 0);
+        latch_internal_fault(&tap.counters, LiveInternalFault::CallbackPanicked);
+        assert_eq!(
+            tap.internal_fault(),
+            Some(LiveInternalFault::CallbackPanicked)
+        );
+        assert_eq!(tap.internal_faults(), 1);
+
+        tap.close().await.expect("the owned test tap closes");
+    }
+
+    #[test]
+    fn each_delivery_boundary_state_independently_blocks_delivery() {
+        let open = DeliveryBoundaryState::default();
+        assert!(!open.blocks_delivery());
+
+        let delivery = DeliveryBoundaryState {
+            delivery_active: true,
+            ..DeliveryBoundaryState::default()
+        };
+        assert!(delivery.blocks_delivery());
+
+        let reset = DeliveryBoundaryState {
+            reset_active: true,
+            ..DeliveryBoundaryState::default()
+        };
+        assert!(reset.blocks_delivery());
+
+        let pending = DeliveryBoundaryState {
+            pending_resets: 1,
+            ..DeliveryBoundaryState::default()
+        };
+        assert!(pending.blocks_delivery());
+    }
+
+    #[test]
+    fn delivery_and_reset_guards_release_their_exact_boundary_state() {
+        let delivery_boundary = DeliveryBoundary::default();
+        {
+            let _delivery = delivery_boundary.begin_delivery().unwrap();
+            let state = delivery_boundary.state.lock().unwrap();
+            assert!(state.delivery_active);
+            assert!(!state.reset_active);
+            assert_eq!(state.pending_resets, 0);
+        }
+        {
+            let state = delivery_boundary.state.lock().unwrap();
+            assert!(!state.delivery_active);
+            assert!(!state.reset_active);
+            assert_eq!(state.pending_resets, 0);
+        }
+
+        let reset_boundary = DeliveryBoundary::default();
+        {
+            let _reset = reset_boundary.begin_reset().unwrap();
+            let state = reset_boundary.state.lock().unwrap();
+            assert!(!state.delivery_active);
+            assert!(state.reset_active);
+            assert_eq!(state.pending_resets, 0);
+        }
+        let state = reset_boundary.state.lock().unwrap();
+        assert!(!state.delivery_active);
+        assert!(!state.reset_active);
+        assert_eq!(state.pending_resets, 0);
     }
 
     #[test]

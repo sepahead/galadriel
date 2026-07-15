@@ -394,6 +394,18 @@ impl ModalityContract {
     }
 }
 
+fn bonferroni_channel_alpha(family_alpha: f64, channel_count: usize) -> f64 {
+    family_alpha / channel_count.max(1) as f64
+}
+
+fn broad_degradation_criteria(
+    high_anomalous: usize,
+    ready_channels: usize,
+    jam_fraction: f64,
+) -> bool {
+    high_anomalous >= 2 && high_anomalous as f64 >= jam_fraction * ready_channels as f64
+}
+
 #[derive(Debug, Clone)]
 struct ChannelState {
     window: NisWindow,
@@ -643,7 +655,7 @@ impl Mirror {
             .max(1);
         // `nis_alpha` is a per-assessment family-wise bound. Bonferroni keeps the
         // probability of any channel's window test false-alarming at or below it.
-        let channel_alpha = self.cfg.nis_alpha() / total_channels as f64;
+        let channel_alpha = bonferroni_channel_alpha(self.cfg.nis_alpha(), total_channels);
         for (&modality, state) in self.tracks.get(&track_id).into_iter().flatten() {
             let fresh = sequence
                 .get()
@@ -758,9 +770,11 @@ impl Mirror {
                     ready.len()
                 ),
             )
-        } else if high_anomalous.len() >= 2
-            && high_anomalous.len() as f64 >= self.cfg.jam_fraction() * ready.len() as f64
-        {
+        } else if broad_degradation_criteria(
+            high_anomalous.len(),
+            ready.len(),
+            self.cfg.jam_fraction(),
+        ) {
             (
                 Verdict::BroadDegradation,
                 format!(
@@ -849,6 +863,216 @@ mod tests {
     use proptest::prelude::*;
 
     use super::*;
+
+    fn outcome_channel(
+        sequence: Option<Sequence>,
+        n: usize,
+        fresh: bool,
+        ready: bool,
+        low_alarm: bool,
+    ) -> ChannelReport {
+        ChannelReport {
+            modality: Modality::Radar,
+            n,
+            dof: 3,
+            sum_nis: 9.0,
+            last_seq: sequence,
+            last_timestamp_ms: Some(TimestampMillis::new(10).unwrap()),
+            mean_nis: 3.0,
+            p_right: 0.5,
+            channel_alpha: 0.01,
+            elevated: false,
+            cusum_high_alarm: false,
+            cusum_low_alarm: low_alarm,
+            fresh,
+            ready,
+        }
+    }
+
+    #[test]
+    fn channel_report_accessors_preserve_every_evidence_field() {
+        let sequence = Sequence::new(37).unwrap();
+        let timestamp = TimestampMillis::new(12_345).unwrap();
+        let channel = ChannelReport {
+            modality: Modality::Lidar,
+            n: 29,
+            dof: 7,
+            sum_nis: 203.5,
+            last_seq: Some(sequence),
+            last_timestamp_ms: Some(timestamp),
+            mean_nis: 7.017_241_379_310_345,
+            p_right: 0.0125,
+            channel_alpha: 0.0025,
+            elevated: false,
+            cusum_high_alarm: true,
+            cusum_low_alarm: false,
+            fresh: false,
+            ready: true,
+        };
+
+        assert_eq!(channel.modality(), Modality::Lidar);
+        assert_eq!(channel.n(), 29);
+        assert_eq!(channel.dof(), 7);
+        assert_eq!(channel.sum_nis(), 203.5);
+        assert_eq!(channel.last_seq(), Some(sequence));
+        assert_eq!(channel.last_timestamp_ms(), Some(timestamp));
+        assert_eq!(channel.mean_nis(), 7.017_241_379_310_345);
+        assert_eq!(channel.p_right(), 0.0125);
+        assert_eq!(channel.channel_alpha(), 0.0025);
+        assert!(!channel.elevated());
+        assert!(channel.cusum_high_alarm());
+        assert!(!channel.cusum_low_alarm());
+        assert!(!channel.fresh());
+        assert!(channel.ready());
+        assert!(channel.high_anomalous());
+        assert!(channel.anomalous());
+
+        let not_ready = ChannelReport {
+            ready: false,
+            ..channel.clone()
+        };
+        assert!(!not_ready.high_anomalous());
+        assert!(!not_ready.anomalous());
+
+        let low_only = ChannelReport {
+            elevated: false,
+            cusum_high_alarm: false,
+            cusum_low_alarm: true,
+            ready: true,
+            ..channel
+        };
+        assert!(!low_only.high_anomalous());
+        assert!(low_only.anomalous());
+    }
+
+    #[test]
+    fn mirror_report_accessors_preserve_complete_sealed_evidence() {
+        let channel = ChannelReport::test_ready(Modality::Thermal, true);
+        let report = MirrorReport::test_fixture(Verdict::BroadDegradation, vec![channel.clone()]);
+
+        assert_eq!(report.track_id(), TrackId::new(1).unwrap());
+        assert_eq!(report.sequence(), Sequence::new(100).unwrap());
+        assert_eq!(report.verdict(), &Verdict::BroadDegradation);
+        assert_eq!(report.channels(), &[channel]);
+        assert_eq!(report.note(), "test fixture");
+        assert_eq!(
+            report.classification(),
+            AssessmentClassification::ExploratoryResearch(
+                crate::ExploratoryResearchProfile::SubsetMagnitudeV0_9,
+            )
+        );
+        assert_eq!(
+            report.config_identity(),
+            DetectorConfig::standalone_advisory_v0_9()
+                .unwrap()
+                .identity()
+        );
+        assert_eq!(
+            report.validated_outcome(),
+            AssessmentOutcome::Anomaly(AnomalyEvidence::BroadDegradation)
+        );
+        assert_eq!(report.assessment_binding(), None);
+    }
+
+    #[test]
+    fn accepted_outcome_distinguishes_every_insufficiency_and_low_side_predicate() {
+        let current = Sequence::new(10).unwrap();
+
+        let zero = outcome_channel(Some(current), 0, true, true, false);
+        assert_eq!(
+            accepted_outcome(&Verdict::InsufficientEvidence, &[zero], current).unwrap(),
+            AssessmentOutcome::Insufficient(Insufficiency::Empty(EmptyReason::NoCompleteFrame))
+        );
+
+        let missing = outcome_channel(None, 1, true, true, false);
+        let AssessmentOutcome::Insufficient(Insufficiency::Unavailable(reasons)) =
+            accepted_outcome(&Verdict::InsufficientEvidence, &[missing], current).unwrap()
+        else {
+            panic!("missing modalities must be typed unavailable evidence");
+        };
+        assert_eq!(
+            reasons.as_slice(),
+            &[UnavailabilityReason::MissingModalities]
+        );
+
+        for stale in [
+            outcome_channel(Some(current), 1, false, true, false),
+            outcome_channel(Some(Sequence::new(9).unwrap()), 1, true, true, false),
+        ] {
+            let AssessmentOutcome::Insufficient(Insufficiency::Unavailable(reasons)) =
+                accepted_outcome(&Verdict::InsufficientEvidence, &[stale], current).unwrap()
+            else {
+                panic!("stale evidence must be typed unavailable evidence");
+            };
+            assert_eq!(
+                reasons.as_slice(),
+                &[UnavailabilityReason::StaleRetainedEvidence]
+            );
+        }
+
+        let collecting = outcome_channel(Some(current), 1, true, false, false);
+        assert_eq!(
+            accepted_outcome(&Verdict::InsufficientEvidence, &[collecting], current).unwrap(),
+            AssessmentOutcome::Insufficient(Insufficiency::Collecting(
+                CollectingReason::InsufficientSamples,
+            ))
+        );
+
+        let ready = outcome_channel(Some(current), 1, true, true, false);
+        let AssessmentOutcome::Insufficient(Insufficiency::Unavailable(reasons)) =
+            accepted_outcome(&Verdict::InsufficientEvidence, &[ready], current).unwrap()
+        else {
+            panic!("a ready magnitude-only report still lacks its prerequisite");
+        };
+        assert_eq!(
+            reasons.as_slice(),
+            &[UnavailabilityReason::UnavailablePrerequisite]
+        );
+
+        for (ready, low_alarm, expected_reasons) in [
+            (false, true, vec![AnomalyReason::AmbiguousAttribution]),
+            (true, false, vec![AnomalyReason::AmbiguousAttribution]),
+            (
+                true,
+                true,
+                vec![
+                    AnomalyReason::LowSideShift,
+                    AnomalyReason::AmbiguousAttribution,
+                ],
+            ),
+        ] {
+            let channel = outcome_channel(Some(current), 1, true, ready, low_alarm);
+            let verdict = Verdict::UnclassifiedAnomaly {
+                channels: vec![Modality::Radar],
+            };
+            let AssessmentOutcome::Anomaly(AnomalyEvidence::Unclassified(anomaly)) =
+                accepted_outcome(&verdict, &[channel], current).unwrap()
+            else {
+                panic!("unclassified verdict must retain typed anomaly evidence");
+            };
+            assert_eq!(anomaly.affected_modalities(), &[Modality::Radar]);
+            assert_eq!(anomaly.reasons(), expected_reasons);
+        }
+    }
+
+    #[test]
+    fn modality_contract_exposes_only_release_modalities() {
+        let expected = [Modality::Visual, Modality::Radar];
+        assert_eq!(
+            ModalityContract::Release(expected.to_vec()).expected(),
+            Some(expected.as_slice())
+        );
+        assert_eq!(ModalityContract::ExploratorySubset.expected(), None);
+
+        assert_eq!(bonferroni_channel_alpha(0.03, 0), 0.03);
+        assert_eq!(bonferroni_channel_alpha(0.03, 1), 0.03);
+        assert_eq!(bonferroni_channel_alpha(0.03, 3), 0.03 / 3.0);
+        assert_ne!(bonferroni_channel_alpha(0.03, 3), 0.03);
+
+        assert!(broad_degradation_criteria(2, 4, 0.5));
+        assert!(!broad_degradation_criteria(1, 2, 0.5));
+        assert!(!broad_degradation_criteria(2, 6, 0.5));
+    }
     use crate::config::{
         DetectorParams, ExploratoryResearchProfile, ProducerAxisFamilyPolicy, ReleaseSuiteParams,
     };
@@ -1194,6 +1418,43 @@ mod tests {
             .ingest(&observation(1, 100, 0, Modality::Radar, 3.0, 3))
             .unwrap();
         assert_eq!(assess(&mirror, 1, 0).verdict, Verdict::InsufficientEvidence);
+    }
+
+    #[test]
+    fn inter_sample_sequence_and_timestamp_gap_ceilings_are_inclusive() {
+        let cfg = detector_config_with(|params| {
+            params.min_samples = 1;
+            params.window_len = 4;
+            params.max_seq_gap = 10;
+            params.max_inter_sample_gap_ms = 100;
+        });
+        let mut mirror = exploratory_mirror(cfg);
+        mirror
+            .ingest(&observation(1, 100, 5, Modality::Radar, 3.0, 3))
+            .unwrap();
+        mirror
+            .ingest(&observation(1, 200, 15, Modality::Radar, 3.0, 3))
+            .expect("both exact inter-sample ceilings are inclusive");
+
+        let sequence_failure = mirror
+            .ingest_checked(&observation(1, 201, 26, Modality::Radar, 3.0, 3))
+            .unwrap_err();
+        assert_eq!(sequence_failure.code(), FailureCode::ResetRequired);
+
+        let timestamp_failure = mirror
+            .ingest_checked(&observation(1, 301, 16, Modality::Radar, 3.0, 3))
+            .unwrap_err();
+        assert_eq!(timestamp_failure.code(), FailureCode::ResetRequired);
+
+        let report = assess(&mirror, 1, 15);
+        assert_eq!(
+            report.channels()[0].last_seq(),
+            Some(Sequence::new(15).unwrap())
+        );
+        assert_eq!(
+            report.channels()[0].last_timestamp_ms(),
+            Some(TimestampMillis::new(200).unwrap())
+        );
     }
 
     #[test]

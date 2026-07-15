@@ -1137,6 +1137,32 @@ mod tests {
         stream
     }
 
+    fn one_axis_projected_stream() -> Vec<PidObservation> {
+        projected_stream()
+            .into_iter()
+            .map(|observation| {
+                let projection = observation
+                    .consistency_projection()
+                    .expect("the projected fixture has an attested projection");
+                let one_axis = ConsistencyProjection::try_new(
+                    [projection.values()[0], 0.0, 0.0],
+                    1,
+                    projection.identity(),
+                )
+                .unwrap();
+                scalar_typed(
+                    observation.track_id(),
+                    observation.timestamp_ms(),
+                    observation.sequence(),
+                    observation.modality(),
+                    observation.nis(),
+                    observation.dof(),
+                )
+                .with_consistency_projection(one_axis)
+            })
+            .collect()
+    }
+
     fn same_shape_different_stream() -> Vec<PidObservation> {
         let mut stream = projected_stream();
         let source = &stream[0];
@@ -1158,20 +1184,53 @@ mod tests {
     }
 
     #[test]
+    fn prepared_release_assessment_exposes_every_bound_component() {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
+        let stream = projected_stream();
+        let prepared = prepare_release_assessment(&stream, &suite).unwrap();
+        let projection = prepared
+            .projection()
+            .expect("the projected fixture retains a common projection");
+
+        assert_eq!(projection.axes.len(), 3);
+        assert_eq!(prepared.correlations().len(), projection.axes.len());
+        assert_eq!(
+            prepared.baseline().assessment_binding(),
+            Some(prepared.assessment_binding())
+        );
+        assert!(prepared
+            .correlations()
+            .iter()
+            .all(|axis| { axis.assessment_binding() == Some(prepared.assessment_binding()) }));
+        assert!(prepared.assessment_binding().verifies(&stream, &suite));
+    }
+
+    #[test]
     fn default_assessment_checks_all_axes_and_rejects_conflicting_attribution() {
         let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
         let report = assess_default(&projected_stream(), &suite).unwrap();
 
         assert_eq!(report.correlations().len(), 3);
+        assert_eq!(report.suite_identity(), suite.identity());
+        assert_eq!(
+            report.classification(),
+            AssessmentClassification::NamedRelease(suite.source_profile().unwrap())
+        );
+        assert_eq!(
+            report.note(),
+            "projection axes positively attribute different channels; consistency evidence is conflicting or incomplete; failing closed"
+        );
         assert_eq!(
             report.baseline().assessment_binding(),
             Some(report.assessment_binding())
         );
-        assert!(report
-            .correlations()
-            .iter()
-            .all(|axis| { axis.assessment_binding() == Some(report.assessment_binding()) }));
+        for (expected_axis, axis) in report.correlations().iter().enumerate() {
+            assert_eq!(axis.axis(), expected_axis);
+            assert_eq!(axis.report().config_identity(), axis.config_identity());
+            assert_eq!(axis.assessment_binding(), Some(report.assessment_binding()));
+        }
         assert!(report
             .assessment_binding()
             .verifies(&projected_stream(), &suite));
@@ -1181,6 +1240,22 @@ mod tests {
                 channels: vec![Modality::Acoustic, Modality::Radar]
             }
         );
+    }
+
+    #[test]
+    fn default_assessment_accepts_a_single_attested_projection_axis() {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
+        let stream = one_axis_projected_stream();
+        let report = assess_default(&stream, &suite).unwrap();
+
+        assert_eq!(report.correlations().len(), 1);
+        assert_eq!(report.correlations()[0].axis(), 0);
+        assert_eq!(
+            report.correlations()[0].assessment_binding(),
+            Some(report.assessment_binding())
+        );
+        assert!(report.assessment_binding().verifies(&stream, &suite));
     }
 
     #[test]

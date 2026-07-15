@@ -300,6 +300,15 @@ pub enum OperationalLiveOpenError {
     InternalStatePoisoned,
 }
 
+fn startup_open_error(fault: &OperationalLiveFault) -> OperationalLiveOpenError {
+    match fault {
+        OperationalLiveFault::Ingress(OperationalIngressFault::EvidenceBeforeReady { .. }) => {
+            OperationalLiveOpenError::EvidenceBeforeReady
+        }
+        _ => OperationalLiveOpenError::InternalStatePoisoned,
+    }
+}
+
 /// Coherent point-in-time counters for one operational receiver.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OperationalLiveHealthSnapshot {
@@ -1132,15 +1141,7 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
             let state = lock_state(&shared);
             if let Some(fault) = &state.health.first_fault {
                 shared.phase.store(INGRESS_CLOSED, Ordering::Release);
-                return Err(match fault {
-                    OperationalLiveFault::Ingress(
-                        OperationalIngressFault::EvidenceBeforeReady { .. },
-                    ) => OperationalLiveOpenError::EvidenceBeforeReady,
-                    OperationalLiveFault::Ingress(
-                        OperationalIngressFault::InternalStatePoisoned { .. },
-                    ) => OperationalLiveOpenError::InternalStatePoisoned,
-                    _ => OperationalLiveOpenError::InternalStatePoisoned,
-                });
+                return Err(startup_open_error(fault));
             }
             // Anchor heartbeat and monotonic-order enforcement at the same
             // serialized boundary that first admits callback evidence.
@@ -1552,19 +1553,21 @@ enum ReceiverWake {
 mod tests {
     use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
     use std::sync::{Arc, Mutex};
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     use tokio::sync::{mpsc, Notify};
 
     use super::{
         accept_payload, begin_startup_activation, classify_callback_phase,
         discard_buffered_on_boundary, enter_callback, lifecycle_cleanup_complete, lock_state,
-        receipt_precedes_deadline, startup_callbacks_drained, take_deadline_ingress,
-        CallbackPayload, CallbackPhase, IngressCloseGuard, IngressState, OperationalLiveConfig,
-        OperationalLiveConfigError, OperationalLiveHealthSnapshot, OperationalLiveProfile,
-        OperationalTransportSecurity, PriorityIngressBudget, RawIngress, SharedIngress,
-        StartupActivationGuard, INGRESS_ACTIVATING, INGRESS_ACTIVE, INGRESS_CLOSED,
-        INGRESS_STARTING, MAX_OPERATIONAL_INGRESS_CAPACITY,
+        receipt_precedes_deadline, startup_callbacks_drained, startup_open_error,
+        take_deadline_ingress, CallbackPayload, CallbackPhase, IngressCloseGuard, IngressState,
+        OperationalIngressFault, OperationalLiveConfig, OperationalLiveConfigError,
+        OperationalLiveFault, OperationalLiveHealthSnapshot, OperationalLiveOpenError,
+        OperationalLiveProfile, OperationalTransportSecurity, PriorityIngressBudget, RawIngress,
+        SharedIngress, StartupActivationGuard, INGRESS_ACTIVATING, INGRESS_ACTIVE, INGRESS_CLOSED,
+        INGRESS_STARTING, MAX_MONITOR_EVENT_BYTES, MAX_OPERATIONAL_INGRESS_CAPACITY,
+        MAX_OPERATIONAL_INGRESS_STATE_BYTES,
     };
     use crate::assembler::EvidenceRoute;
 
@@ -1618,6 +1621,46 @@ mod tests {
             OperationalLiveConfig::new(MAX_OPERATIONAL_INGRESS_CAPACITY + 1),
             Err(OperationalLiveConfigError::IngressCapacityTooLarge { .. })
         ));
+        let exact = OperationalLiveConfig::new(MAX_OPERATIONAL_INGRESS_CAPACITY)
+            .expect("the documented ingress capacity ceiling is inclusive");
+        assert_eq!(exact.ingress_capacity(), MAX_OPERATIONAL_INGRESS_CAPACITY);
+        assert_eq!(
+            MAX_OPERATIONAL_INGRESS_STATE_BYTES,
+            MAX_OPERATIONAL_INGRESS_CAPACITY
+                .checked_mul(MAX_MONITOR_EVENT_BYTES)
+                .expect("the platform represents the operational byte ceiling")
+        );
+    }
+
+    #[test]
+    fn startup_fault_mapping_preserves_the_distinct_readiness_boundary() {
+        let detected_at = Instant::now();
+        let evidence =
+            OperationalLiveFault::Ingress(OperationalIngressFault::EvidenceBeforeReady {
+                route: EvidenceRoute::Observation,
+                detected_at,
+            });
+        assert!(matches!(
+            startup_open_error(&evidence),
+            OperationalLiveOpenError::EvidenceBeforeReady
+        ));
+
+        for fault in [
+            OperationalLiveFault::Ingress(OperationalIngressFault::InternalStatePoisoned {
+                detected_at,
+            }),
+            OperationalLiveFault::Ingress(OperationalIngressFault::UnexpectedKey {
+                route: EvidenceRoute::Monitor,
+                expected: "expected".to_owned(),
+                received: "received".to_owned(),
+                detected_at,
+            }),
+        ] {
+            assert!(matches!(
+                startup_open_error(&fault),
+                OperationalLiveOpenError::InternalStatePoisoned
+            ));
+        }
     }
 
     #[test]

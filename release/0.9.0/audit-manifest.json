@@ -49,7 +49,7 @@
     {
       "path": ".github/workflows/deep-quality.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "4498de967a9470afb420108af3b59ab2552c7ae1df78b565f983a5271516e37d",
+      "sha256": "314312bc85e9d7823aeca912f3804af165b72576437ea978d2b987c523f61cd0",
       "size_bytes": 8499
     },
     {
@@ -181,8 +181,8 @@
     {
       "path": "crates/galadriel-cli/src/main.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "4086943da250942e7404ecbec9d6fa9d22ec8572c812a649d4ba6d2edce5a9ca",
-      "size_bytes": 86561
+      "sha256": "bcb28639144fea4831c392e3557ff5042dbd237f0c23184c9cc3bccbfcacf429",
+      "size_bytes": 88804
     },
     {
       "path": "crates/galadriel-cli/tests/demo_output.rs",
@@ -241,14 +241,14 @@
     {
       "path": "crates/galadriel-core/src/config.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "778d611cf2d79e7f72e357604d868f5c918f1deb80f8d0201533cfd977651379",
-      "size_bytes": 38283
+      "sha256": "9c470580fdb94cc97a46aedbda44e2aae1f5dcd8f6c532199bc1bcdf178ef84b",
+      "size_bytes": 43575
     },
     {
       "path": "crates/galadriel-core/src/correlation.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "1f73b6f16c4a514d42c2feab7499245c6681275d5bcb53fd494f2823144706d1",
-      "size_bytes": 51739
+      "sha256": "e07cfa892633145594e0f1d7c639054d82994a3a6eadd3eca28e204b96109e22",
+      "size_bytes": 58377
     },
     {
       "path": "crates/galadriel-core/src/cusum.rs",
@@ -259,8 +259,8 @@
     {
       "path": "crates/galadriel-core/src/decision.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "3796df156043b013c2d0fa5cbf6afb0d5df6e55320043488aa06353ff9109111",
-      "size_bytes": 53772
+      "sha256": "20ff862f9c3a741e4f773f57d86afe508faa1fa8170dd9c7174a6e39b58b73ce",
+      "size_bytes": 63418
     },
     {
       "path": "crates/galadriel-core/src/domain.rs",
@@ -277,26 +277,26 @@
     {
       "path": "crates/galadriel-core/src/fusion.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "c4fb460eeca372b5797ca2498448864f1f769d6f3aa71280f0cb2bd02f0cb9f6",
-      "size_bytes": 48973
+      "sha256": "c9311d32a2bc21763244de9401423dbfb5dbfc69a78a834feb99cf2ccd7bbc90",
+      "size_bytes": 52166
     },
     {
       "path": "crates/galadriel-core/src/identity.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "4c60e030084914450ca5f7ae2140059d9dcf7d217b6770d570ebb4283cd1b5f9",
-      "size_bytes": 16455
+      "sha256": "38bb336771c7ee6af6c9b61f44573e8a50154b5147cb9b69a72ac0a9e377e664",
+      "size_bytes": 18555
     },
     {
       "path": "crates/galadriel-core/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "2de53692d664cb4f70a644cce72365fb0bd116a6d25717381097e9cd8ee0514b",
-      "size_bytes": 32329
+      "sha256": "17d64d89b0ba5d05312524356a359256e4681af7612ca2661f9aae28c30882c6",
+      "size_bytes": 33694
     },
     {
       "path": "crates/galadriel-core/src/numeric.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "5ed9869ab7963ebfab081ebc5290ecb1e08cd7045b4c690b4b653f8a2e3f135b",
-      "size_bytes": 7619
+      "sha256": "6f4db49f4b697b325a72fce47e5e8ca73715ee861d68092494e24329df0a7db5",
+      "size_bytes": 9039
     },
     {
       "path": "crates/galadriel-core/src/observation.rs",
@@ -307,14 +307,14 @@
     {
       "path": "crates/galadriel-core/src/outcome.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "b86b2ecb6b091df24cdbbbaea71ca6f463ead8605390514c2a5e5357aab589bb",
-      "size_bytes": 40315
+      "sha256": "6380d0b3aceacdf4aa4a88c259acb6feac732bdf66a47fb0bda87a80dbefdb73",
+      "size_bytes": 41822
     },
     {
       "path": "crates/galadriel-core/src/window.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "53e9ed1b0a525ee0f9777df4716b020b38e380eed229a04637a03615b036607e",
-      "size_bytes": 9933
+      "sha256": "67e8109095cf427b97a730c6f754373520b440d425e11f4e20c31be78f9decbc",
+      "size_bytes": 10280
     },
     {
       "path": "crates/galadriel-eval/Cargo.toml",
@@ -385,8 +385,8 @@
     {
       "path": "crates/galadriel-ncp/src/assembler.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "cdc4048651f212cec07f6fb55e5d78302fe64cc41c65cef331f5e125ee7d18d6",
-      "size_bytes": 190247
+      "sha256": "a38f4a991444c3de405a119f891957741328979ccdd5310ad3672a106b5dc65d",
+      "size_bytes": 196503
     },
     {
       "path": "crates/galadriel-ncp/src/config_identity.rs",
@@ -397,50 +397,50 @@
     {
       "path": "crates/galadriel-ncp/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "3c15aa3d2e82c6ba4e31d2f220b27d34f2d898642e591fa149ac0e71f4cd994d",
-      "size_bytes": 54740
+      "sha256": "6ecfaa526a3e0a01904c197a00421d0eb67616cabda8644aeb720bc534be7ccd",
+      "size_bytes": 57234
     },
     {
       "path": "crates/galadriel-ncp/src/lifecycle.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "b3e38fd23233babea68f00d97393f0dec457fe461e0a05aafdb5c5d5870f5942",
-      "size_bytes": 124848
+      "sha256": "20b9b41f5a6a092366d13cba0fdab856322a9b1ac701ad22c1496747009ff49c",
+      "size_bytes": 141784
     },
     {
       "path": "crates/galadriel-ncp/src/live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "dc2ef3c70d5343fa3978b13f24013691cc191f18c029154f69f84f0efd55ef8b",
-      "size_bytes": 142660
+      "sha256": "c762a4be6f3a2d5c354a8c30617c3c39456b283d28f240479c6b74b8416dff28",
+      "size_bytes": 152866
     },
     {
       "path": "crates/galadriel-ncp/src/monitor.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "af3c755b549aebb36801d8d549e172e9d32b539d4eb4769607f347654a665287",
-      "size_bytes": 78783
+      "sha256": "b0a3e6f95cdcc1a23176ab19da661aa96fb4d415ad53d8036444f27fb3be5d01",
+      "size_bytes": 78955
     },
     {
       "path": "crates/galadriel-ncp/src/monitor_live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "040866cfe3e972fd350ce632d2e2008ab76f757f2f2b7f5f5f3d714a97d1350b",
-      "size_bytes": 119055
+      "sha256": "c5f9297415e423138063eab13e6ca677e2d83ba0c0899b3331898c9c14182a7a",
+      "size_bytes": 121113
     },
     {
       "path": "crates/galadriel-ncp/src/operational_live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "0bb18910d61d3dab3c722cdc6ec3e8e7653b26cd0248449815334a103516698a",
-      "size_bytes": 76000
+      "sha256": "845fef1e70641fe1e1962611ee07a37869b204fe34f923f586a334dea7c970ef",
+      "size_bytes": 77622
     },
     {
       "path": "crates/galadriel-ncp/src/registry.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "9a5b7299d4b41d10630c0f8d6880357e21897d065110103a15f93e353e6afcdb",
-      "size_bytes": 96062
+      "sha256": "3313e6474ca0b9635882383ae813a9e03a435092be7091023abdd8078899bf96",
+      "size_bytes": 96567
     },
     {
       "path": "crates/galadriel-ncp/src/secure_live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "89bf6a964b349188f157373571f43ff2932080b9c13cbdd0e513242ded62f7be",
-      "size_bytes": 37057
+      "sha256": "6361ba3be08357f4025ac6be31dee97399d2e076dedd39d249cc0cc33a980f24",
+      "size_bytes": 43262
     },
     {
       "path": "crates/galadriel-ncp/tests/crebain_capture.rs",
@@ -505,14 +505,14 @@
     {
       "path": "crates/galadriel-pid/src/engine.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "e4630725e53b25f286a907ee74e4fb68ed73f1b53c4f6f5fe2e58df60d9629f7",
-      "size_bytes": 122133
+      "sha256": "199afe40dd60fff71eadd654e3902846980a80fd6fa0fc52e53f0f5639dab983",
+      "size_bytes": 137588
     },
     {
       "path": "crates/galadriel-pid/src/fusion.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "69eb697265e27f17aa955fb5042239a1d85ed43b5386ae8132cb633d1b8594d3",
-      "size_bytes": 45559
+      "sha256": "684f38358241b9604d50e64fc25af29206d2deec841a6712bc9b3dd7a0bfd69c",
+      "size_bytes": 46835
     },
     {
       "path": "crates/galadriel-pid/src/identity.rs",
@@ -529,8 +529,8 @@
     {
       "path": "crates/galadriel-pid/src/suite.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "7e5b5bd191fcfc7e73a0a22ebfde36e6fc6fd54e8dbbcd0f4585010982391aa4",
-      "size_bytes": 14106
+      "sha256": "ef3a11d4345c1cc347b126b1d3378c5d379b95a1f0e775ef6e4e9a3602fe9aea",
+      "size_bytes": 16396
     },
     {
       "path": "crates/galadriel-sim/Cargo.toml",
@@ -541,8 +541,8 @@
     {
       "path": "crates/galadriel-sim/src/injection.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "d27a245450afd799d10e0ae239ae3ad7d0df0296e2c0fb7a2e261ccca893e17a",
-      "size_bytes": 32083
+      "sha256": "69b1b40337a1119ea19f6dd663798ad065371b71ab1f43439d56a9e6a642b624",
+      "size_bytes": 32937
     },
     {
       "path": "crates/galadriel-sim/src/lib.rs",
@@ -559,8 +559,8 @@
     {
       "path": "crates/galadriel-sim/src/scenario.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "f9ca480b43739f67fbe9942f4e06e94a8715b6398e97c23e9db7efd970c8fc0f",
-      "size_bytes": 37074
+      "sha256": "6570390a688fe6b185fa890f60f3480fd11ec19e03ecda0b5993510287050425",
+      "size_bytes": 48313
     },
     {
       "path": "deny.toml",
@@ -637,8 +637,8 @@
     {
       "path": "docs/CONFIGURATION-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d0566f2302dbbf1dff9eb3a8b00dc2127704be591d4a2519f286f597abd93976",
-      "size_bytes": 31009
+      "sha256": "49f6b9261654133f2353d078be587b258d7673ec64af5b3c3fd149abe02f35c3",
+      "size_bytes": 31007
     },
     {
       "path": "docs/CORE-CONTRACT.md",
@@ -715,8 +715,8 @@
     {
       "path": "docs/STATE-MACHINE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8598e38632e406220d0097303c3ee6a1cf186e3caba5a71010e40ac4c3cedd60",
-      "size_bytes": 13090
+      "sha256": "8bc8fb6594dced270011a2d2edc1777e41e5bf8bcc4d83af8521c447845e31b6",
+      "size_bytes": 13088
     },
     {
       "path": "docs/STATISTICAL-CONTRACT.md",
@@ -1087,7 +1087,7 @@
     {
       "path": "repo_work/prepare_mutation_evidence.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1c348352d9e5a508ebd26b97e00346dd18922c22f5732981fa123104f158ac1d",
+      "sha256": "5ca00206950ec68cd7ad8f51b67593dcc574a093267d8e5c02f2fef9dfbd95d8",
       "size_bytes": 9679
     },
     {
@@ -1099,7 +1099,7 @@
     {
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f93c020480e00cc0fb2e2ab54cabba1bd401ea6c057a13ad422904805b077bbe",
+      "sha256": "38e11d2261712de0315a810c3592560d2f499c7192cf906c49b8ddb8e66e8a8a",
       "size_bytes": 63080
     },
     {

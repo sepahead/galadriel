@@ -728,6 +728,42 @@ mod tests {
     }
 
     #[test]
+    fn maneuver_validation_rejects_each_invalid_parameter_family_directly() {
+        assert!(Maneuver {
+            start_frame: 0,
+            duration: 1,
+            magnitude: f64::NAN,
+            lag_step: 0,
+        }
+        .validate()
+        .is_err());
+        assert!(Maneuver {
+            start_frame: 0,
+            duration: 1,
+            magnitude: 1.0,
+            lag_step: u64::MAX,
+        }
+        .validate()
+        .is_err());
+        assert!(Maneuver {
+            start_frame: u64::MAX,
+            duration: 1,
+            magnitude: 1.0,
+            lag_step: 0,
+        }
+        .validate()
+        .is_err());
+        assert!(Maneuver {
+            start_frame: 0,
+            duration: 0,
+            magnitude: 1.0,
+            lag_step: u64::MAX,
+        }
+        .validate()
+        .is_ok());
+    }
+
+    #[test]
     fn stream_injection_is_transactional_on_late_failure() {
         struct FailAfterFirstFrame;
 

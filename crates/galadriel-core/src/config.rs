@@ -296,7 +296,10 @@ impl DetectorConfig {
             .max_tracks
             .checked_mul(Modality::ALL.len())
             .ok_or(DetectorConfigError::StateEstimateOverflow)?;
-        if retained_channel_states > MAX_DETECTOR_CHANNEL_STATES {
+        if matches!(
+            retained_channel_states.cmp(&MAX_DETECTOR_CHANNEL_STATES),
+            std::cmp::Ordering::Greater
+        ) {
             return Err(DetectorConfigError::ChannelStateLimitExceeded {
                 requested: retained_channel_states,
                 maximum: MAX_DETECTOR_CHANNEL_STATES,
@@ -305,7 +308,10 @@ impl DetectorConfig {
         let retained_samples = retained_channel_states
             .checked_mul(params.window_len)
             .ok_or(DetectorConfigError::StateEstimateOverflow)?;
-        if retained_samples > MAX_RETAINED_NIS_SAMPLES {
+        if matches!(
+            retained_samples.cmp(&MAX_RETAINED_NIS_SAMPLES),
+            std::cmp::Ordering::Greater
+        ) {
             return Err(DetectorConfigError::RetainedSampleLimitExceeded {
                 requested: retained_samples,
                 maximum: MAX_RETAINED_NIS_SAMPLES,
@@ -321,7 +327,10 @@ impl DetectorConfig {
         let retained_state_bytes = sample_bytes
             .checked_add(fixed_channel_bytes)
             .ok_or(DetectorConfigError::StateEstimateOverflow)?;
-        if retained_state_bytes > MAX_DETECTOR_STATE_BYTES {
+        if matches!(
+            retained_state_bytes.cmp(&MAX_DETECTOR_STATE_BYTES),
+            std::cmp::Ordering::Greater
+        ) {
             return Err(DetectorConfigError::RetainedByteLimitExceeded {
                 requested: retained_state_bytes,
                 maximum: MAX_DETECTOR_STATE_BYTES,
@@ -636,7 +645,10 @@ impl ReleaseSuite {
             .checked_mul(expected_modalities.len())
             .and_then(|channels| channels.checked_mul(lifecycle_window))
             .ok_or(ReleaseSuiteError::AggregateOverflow)?;
-        if lifecycle_sample_units > MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS {
+        if matches!(
+            lifecycle_sample_units.cmp(&MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS),
+            std::cmp::Ordering::Greater
+        ) {
             return Err(ReleaseSuiteError::LifecycleWorkLimitExceeded {
                 requested: lifecycle_sample_units,
                 maximum: MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS,
@@ -660,7 +672,10 @@ impl ReleaseSuite {
             .checked_add(aligned_tail_bytes)
             .and_then(|bytes| bytes.checked_add(pair_work_bytes))
             .ok_or(ReleaseSuiteError::AggregateOverflow)?;
-        if state_bytes > MAX_RELEASE_SUITE_STATE_BYTES {
+        if matches!(
+            state_bytes.cmp(&MAX_RELEASE_SUITE_STATE_BYTES),
+            std::cmp::Ordering::Greater
+        ) {
             return Err(ReleaseSuiteError::StateByteLimitExceeded {
                 requested: state_bytes,
                 maximum: MAX_RELEASE_SUITE_STATE_BYTES,
@@ -828,6 +843,10 @@ mod tests {
         let config = DetectorConfig::standalone_advisory_v0_9().unwrap();
 
         assert_eq!(
+            DetectorProfile::StandaloneAdvisoryV0_9.name(),
+            "standalone_advisory_v0_9"
+        );
+        assert_eq!(
             config.source_profile(),
             Some(DetectorProfile::StandaloneAdvisoryV0_9)
         );
@@ -906,6 +925,43 @@ mod tests {
     }
 
     #[test]
+    fn detector_accessors_preserve_every_exact_validated_value() {
+        let params = DetectorParams {
+            window_len: 65,
+            min_samples: 31,
+            min_channels: 3,
+            max_seq_gap: 2,
+            max_timestamp_skew_ms: 999,
+            max_inter_sample_gap_ms: 9_999,
+            max_tracks: 1_023,
+            nis_alpha: 0.02,
+            cusum_slack: 0.4,
+            cusum_threshold: 5.0,
+            jam_fraction: 0.7,
+        };
+        let config = DetectorConfig::try_new(params).expect("custom accessor fixture is valid");
+
+        assert_eq!(config.window_len(), 65);
+        assert_eq!(config.min_samples(), 31);
+        assert_eq!(config.min_channels(), 3);
+        assert_eq!(config.max_seq_gap(), 2);
+        assert_eq!(config.max_timestamp_skew_ms(), 999);
+        assert_eq!(config.max_inter_sample_gap_ms(), 9_999);
+        assert_eq!(config.max_tracks(), 1_023);
+        assert_eq!(config.nis_alpha(), 0.02);
+        assert_eq!(config.cusum_slack(), 0.4);
+        assert_eq!(config.cusum_threshold(), 5.0);
+        assert_eq!(config.jam_fraction(), 0.7);
+        assert_eq!(config.source_profile(), None);
+        assert_eq!(config.classification(), ConfigurationClass::CustomAccepted);
+        assert_eq!(
+            config.retained_channel_states(),
+            1_023 * Modality::ALL.len()
+        );
+        assert!(config.retained_state_bytes() > config.retained_channel_states());
+    }
+
+    #[test]
     fn fixed_track_ceiling_closes_small_window_overhead_hole() {
         let mut params = custom_params();
         params.window_len = 1;
@@ -933,8 +989,20 @@ mod tests {
         ])
         .unwrap();
 
+        assert_eq!(
+            ReleaseProfile::StandaloneAdvisoryV0_9.name(),
+            "standalone_advisory_v0_9"
+        );
         assert_eq!(left.identity(), right.identity());
         assert_eq!(left.expected_modalities(), right.expected_modalities());
+        let expected_lifecycle_units = left.detector().max_tracks()
+            * left.expected_modalities().len()
+            * left.correlation().window();
+        let expected_state_bytes = left.detector().retained_state_bytes()
+            + expected_lifecycle_units * std::mem::size_of::<f64>()
+            + 3 * left.correlation().window() * std::mem::size_of::<f64>();
+        assert_eq!(left.lifecycle_sample_units(), expected_lifecycle_units);
+        assert_eq!(left.state_bytes(), expected_state_bytes);
         assert_eq!(
             left.source_profile(),
             Some(ReleaseProfile::StandaloneAdvisoryV0_9)
@@ -955,6 +1023,15 @@ mod tests {
         assert_eq!(
             identity,
             "6e88f0907af330ddd0919738e241038e2bc912076bda873c90fdd63bab9c756a"
+        );
+
+        let complete_identity = ReleaseSuite::standalone_advisory_v0_9(&Modality::ALL)
+            .unwrap()
+            .identity()
+            .to_hex();
+        assert_eq!(
+            complete_identity,
+            "56eb8e1ad87119000e5eba4c63b537ea031470f1922c7ce7b5f00038ae68ed26"
         );
     }
 
@@ -1007,5 +1084,68 @@ mod tests {
             DetectorConfig::try_new(invalid),
             Err(DetectorConfigError::NisAlphaInvalid { .. })
         ));
+    }
+
+    #[test]
+    fn detector_numeric_domains_enforce_each_independent_boundary() {
+        for alpha in [MIN_NIS_FAMILY_ALPHA / 2.0, 1.0] {
+            let mut params = custom_params();
+            params.nis_alpha = alpha;
+            assert!(matches!(
+                DetectorConfig::try_new(params),
+                Err(DetectorConfigError::NisAlphaInvalid { .. })
+            ));
+        }
+
+        for slack in [f64::NAN, -f64::EPSILON] {
+            let mut params = custom_params();
+            params.cusum_slack = slack;
+            assert!(matches!(
+                DetectorConfig::try_new(params),
+                Err(DetectorConfigError::CusumSlackInvalid)
+            ));
+        }
+        let mut zero_slack = custom_params();
+        zero_slack.cusum_slack = -0.0;
+        let accepted = DetectorConfig::try_new(zero_slack).expect("signed zero is admitted");
+        assert_eq!(accepted.cusum_slack(), 0.0);
+        assert!(!accepted.cusum_slack().is_sign_negative());
+
+        for threshold in [f64::NAN, 0.0] {
+            let mut params = custom_params();
+            params.cusum_threshold = threshold;
+            assert!(matches!(
+                DetectorConfig::try_new(params),
+                Err(DetectorConfigError::CusumThresholdInvalid)
+            ));
+        }
+
+        for jam_fraction in [f64::NAN, 0.0, 1.0 + f64::EPSILON] {
+            let mut params = custom_params();
+            params.jam_fraction = jam_fraction;
+            assert!(matches!(
+                DetectorConfig::try_new(params),
+                Err(DetectorConfigError::JamFractionInvalid)
+            ));
+        }
+        let mut exact_jam_boundary = custom_params();
+        exact_jam_boundary.jam_fraction = 1.0;
+        assert_eq!(
+            DetectorConfig::try_new(exact_jam_boundary)
+                .expect("unit jam fraction is inclusive")
+                .jam_fraction(),
+            1.0
+        );
+
+        let mut exact_channel_boundary = custom_params();
+        exact_channel_boundary.window_len = 1;
+        exact_channel_boundary.min_samples = 1;
+        exact_channel_boundary.max_tracks = MAX_DETECTOR_TRACKS;
+        assert_eq!(
+            DetectorConfig::try_new(exact_channel_boundary)
+                .expect("the fixed track ceiling is inclusive")
+                .retained_channel_states(),
+            MAX_DETECTOR_CHANNEL_STATES
+        );
     }
 }

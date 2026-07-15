@@ -29,7 +29,9 @@ impl ExactMagnitude {
         let (significand, shift) = if exponent == 0 {
             (fraction, 0)
         } else {
-            ((1_u64 << FRACTION_BITS) | fraction, exponent - 1)
+            // The hidden bit and stored fraction are disjoint; arithmetic addition
+            // makes that canonical composition explicit.
+            ((1_u64 << FRACTION_BITS) + fraction, exponent - 1)
         };
         if significand == 0 {
             return;
@@ -115,8 +117,10 @@ impl ExactMagnitude {
     }
 
     fn exceeds_f64_max_at(&self, highest_bit: usize) -> bool {
-        if highest_bit != MAX_FINITE_HIGH_BIT {
-            return highest_bit > MAX_FINITE_HIGH_BIT;
+        match highest_bit.cmp(&MAX_FINITE_HIGH_BIT) {
+            std::cmp::Ordering::Less => return false,
+            std::cmp::Ordering::Greater => return true,
+            std::cmp::Ordering::Equal => {}
         }
         let significand = self.extract_significand(MAX_FINITE_SHIFT);
         significand == MAX_SIGNIFICAND && self.any_bits_below(MAX_FINITE_SHIFT)
@@ -136,11 +140,10 @@ impl ExactMagnitude {
         if self.exceeds_f64_max_at(highest_bit) {
             return f64::MAX;
         }
-        if highest_bit < FRACTION_BITS as usize {
+        let Some(shift) = highest_bit.checked_sub(FRACTION_BITS as usize) else {
             return f64::from_bits(self.0[0]);
-        }
+        };
 
-        let shift = highest_bit - FRACTION_BITS as usize;
         let mut significand = self.extract_significand(shift);
         if shift != 0 {
             let round_bit = self.bit(shift - 1);
@@ -157,7 +160,8 @@ impl ExactMagnitude {
         let exponent = (highest_bit - 51) as u64;
         debug_assert!((1..=2_046).contains(&exponent));
         let fraction = significand - (1_u64 << FRACTION_BITS);
-        f64::from_bits((exponent << FRACTION_BITS) | fraction)
+        // The exponent field and stored fraction occupy disjoint bit ranges.
+        f64::from_bits((exponent << FRACTION_BITS) + fraction)
     }
 }
 
@@ -194,6 +198,10 @@ mod tests {
             exact_sum(&[1.0 + f64::EPSILON, half_ulp_at_one]).saturating_f64(),
             1.0 + 2.0 * f64::EPSILON
         );
+        assert_eq!(
+            exact_sum(&[f64::from_bits(2.0_f64.to_bits() - 1), half_ulp_at_one]).saturating_f64(),
+            2.0
+        );
     }
 
     #[test]
@@ -213,5 +221,36 @@ mod tests {
         let overflow = exact_sum(&[f64::MAX, f64::from_bits(1)]);
         assert!(overflow.exceeds_f64_max());
         assert_eq!(overflow.saturating_f64(), f64::MAX);
+    }
+
+    #[test]
+    fn partial_limb_queries_use_the_exact_remainder() {
+        let mut limbs = [0_u64; EXACT_SUM_LIMBS];
+        limbs[1] = 0b10;
+        let magnitude = ExactMagnitude(limbs);
+
+        assert!(!magnitude.any_bits_below(65));
+        assert!(magnitude.any_bits_below(66));
+    }
+
+    #[test]
+    fn significand_extraction_crosses_only_into_the_immediate_next_limb() {
+        let mut limbs = [0_u64; EXACT_SUM_LIMBS];
+        limbs[2] = 1_u64 << 63;
+        limbs[3] = 0b101;
+        let magnitude = ExactMagnitude(limbs);
+
+        assert_eq!(
+            magnitude.extract_significand(2 * u64::BITS as usize + 63),
+            0b1011
+        );
+
+        let mut final_limb = [0_u64; EXACT_SUM_LIMBS];
+        final_limb[EXACT_SUM_LIMBS - 1] = 0b110;
+        let final_magnitude = ExactMagnitude(final_limb);
+        assert_eq!(
+            final_magnitude.extract_significand((EXACT_SUM_LIMBS - 1) * u64::BITS as usize + 1),
+            0b11
+        );
     }
 }

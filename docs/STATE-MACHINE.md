@@ -39,7 +39,7 @@ The current bounds are:
 | Retained state | 0.9 bound | Exhaustion behavior |
 | --- | ---: | --- |
 | logical lifecycle lanes | configuration-derived, hard maximum 64 | reject and latch; do not evict another lane |
-| aggregate retained observations | 1,000,000 | configuration/admission failure |
+| aggregate retained observations | 983,040 | configuration/admission failure |
 | recent frame fingerprints per lane | 4,096 | oldest fingerprint may leave the diagnostic cache; an older arrival is then conservatively `Reordered` |
 | used epoch identities per lane | 1,024 | reject and latch; never forget an epoch to permit reuse |
 | in-memory receipts | 65,536 | evict the oldest receipt while advancing the public anchor and eviction count |

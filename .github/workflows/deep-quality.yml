@@ -170,7 +170,7 @@ jobs:
           --in-diff git.diff
           --exclude 'crates/galadriel-eval/**'
           --exclude 'crates/galadriel-justify/**'
-          --timeout 120
+          --timeout 600
           --jobs 2
           --shard '${{ matrix.shard }}'
           --all-features

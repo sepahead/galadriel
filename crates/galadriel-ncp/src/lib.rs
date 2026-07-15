@@ -1086,6 +1086,59 @@ mod tests {
     }
 
     #[test]
+    fn jsonl_limits_accept_each_exact_hard_maximum() {
+        let exact =
+            JsonlLimits::with_total_bytes(MAX_JSONL_LINE_BYTES, MAX_JSONL_RECORDS, MAX_JSONL_BYTES)
+                .expect("every exact compiled JSONL maximum is inclusive");
+
+        assert_eq!(exact.max_line_bytes(), MAX_JSONL_LINE_BYTES);
+        assert_eq!(exact.max_records(), MAX_JSONL_RECORDS);
+        assert_eq!(exact.max_total_bytes(), MAX_JSONL_BYTES);
+
+        for (field, result, value, maximum) in [
+            (
+                "max_line_bytes",
+                JsonlLimits::with_total_bytes(
+                    MAX_JSONL_LINE_BYTES + 1,
+                    MAX_JSONL_RECORDS,
+                    MAX_JSONL_BYTES,
+                ),
+                MAX_JSONL_LINE_BYTES + 1,
+                MAX_JSONL_LINE_BYTES,
+            ),
+            (
+                "max_records",
+                JsonlLimits::with_total_bytes(
+                    MAX_JSONL_LINE_BYTES,
+                    MAX_JSONL_RECORDS + 1,
+                    MAX_JSONL_BYTES,
+                ),
+                MAX_JSONL_RECORDS + 1,
+                MAX_JSONL_RECORDS,
+            ),
+            (
+                "max_total_bytes",
+                JsonlLimits::with_total_bytes(
+                    MAX_JSONL_LINE_BYTES,
+                    MAX_JSONL_RECORDS,
+                    MAX_JSONL_BYTES + 1,
+                ),
+                MAX_JSONL_BYTES + 1,
+                MAX_JSONL_BYTES,
+            ),
+        ] {
+            assert_eq!(
+                result.unwrap_err(),
+                JsonlLimitsError::ExceedsHardMaximum {
+                    field,
+                    value,
+                    maximum,
+                }
+            );
+        }
+    }
+
+    #[test]
     fn bounded_jsonl_profile_has_a_stable_identity() {
         let limits = JsonlProfile::BoundedV0_9.try_limits().unwrap();
 
@@ -1111,7 +1164,30 @@ mod tests {
 
         let error = to_jsonl(&observations).unwrap_err();
 
-        assert!(error.to_string().contains("sequence 1 is not newer than 2"));
+        assert_eq!(
+            error.to_string(),
+            "record 2: sequence 1 is not newer than 2 for track 1 / radar"
+        );
+    }
+
+    #[test]
+    fn default_file_writer_creates_the_exact_validated_jsonl_document() {
+        let path = std::env::temp_dir().join(format!(
+            "galadriel-ncp-default-write-{}-{:?}.jsonl",
+            process::id(),
+            thread::current().id()
+        ));
+        let observations = [
+            test_observation(1, 0, 0, Modality::Visual, 2.0, 3),
+            test_observation(1, 1, 1, Modality::Visual, 2.5, 3),
+        ];
+        let expected = to_jsonl(&observations).unwrap();
+
+        write_jsonl(&path, &observations).unwrap();
+        let observed = fs::read_to_string(&path).unwrap();
+        fs::remove_file(path).unwrap();
+
+        assert_eq!(observed, expected);
     }
 
     /// The **frozen sidecar payload contract** for a producer that opts into every

@@ -12,7 +12,7 @@
 //! confirmation procedures differ, so their scores are comparable only within the
 //! explicitly documented evaluation protocol (see `galadriel-eval`).
 
-use std::{error::Error, fmt};
+use std::{cmp::Ordering, error::Error, fmt};
 
 use serde::Serialize;
 
@@ -449,7 +449,10 @@ impl CorrConfig {
         let pair_samples = pair_count
             .checked_mul(window)
             .ok_or(CorrConfigError::WorkEstimateOverflow)?;
-        if pair_samples > MAX_CORRELATION_PAIR_SAMPLES {
+        if matches!(
+            pair_samples.cmp(&MAX_CORRELATION_PAIR_SAMPLES),
+            Ordering::Greater
+        ) {
             return Err(CorrConfigError::WorkEstimateExceedsLimit {
                 requested: pair_samples,
                 maximum: MAX_CORRELATION_PAIR_SAMPLES,
@@ -476,14 +479,37 @@ fn validate_family_resolution(
         &statrs::distribution::Normal::standard(),
         quantile_probability,
     );
-    let fisher_floor = (z / (min_samples as f64 - 3.0).sqrt()).tanh();
-    if !z.is_finite() || !fisher_floor.is_finite() || fisher_floor >= 1.0 {
+    // `min_samples >= 4`, and the largest finite inverse-normal value reachable
+    // from an f64 probability below one is about 8.21. Therefore a finite `z`
+    // also proves that `tanh(z / sqrt(min_samples - 3))` is finite and strictly
+    // below one; repeating that derived calculation here adds no independent gate.
+    if !z.is_finite() {
         return Err(CorrConfigError::FamilyAlphaResolutionInsufficient {
             correction_count,
             min_samples,
         });
     }
     Ok(())
+}
+
+fn corrected_pair_alpha(family_alpha: f64, pair_count: usize) -> f64 {
+    family_alpha / pair_count.max(1) as f64
+}
+
+fn significance_floor_is_usable(significance_floor: f64) -> bool {
+    significance_floor.is_finite() && significance_floor < 1.0
+}
+
+fn relative_decoupling_floor(decouple_ratio: f64, reference: f64) -> f64 {
+    decouple_ratio * reference
+}
+
+fn is_unique_strict_majority(
+    largest_size: usize,
+    channel_count: usize,
+    tied_largest_cliques: usize,
+) -> bool {
+    largest_size > channel_count / 2 && tied_largest_cliques == 1
 }
 
 impl TryFrom<CorrParams> for CorrConfig {
@@ -807,7 +833,7 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
         ));
     }
 
-    let pair_alpha = cfg.family_alpha() / pair_count.max(1) as f64;
+    let pair_alpha = corrected_pair_alpha(cfg.family_alpha(), pair_count);
     let z = statrs::distribution::ContinuousCDF::inverse_cdf(
         &statrs::distribution::Normal::standard(),
         1.0 - pair_alpha,
@@ -818,7 +844,7 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
     // to exactly rho = 1.0 and would still "clear" it, so a degenerate floor could fabricate
     // a consensus or an attribution. Abstain instead of scoring.
     let significance_floor = (z / (w as f64 - 3.0).sqrt()).tanh();
-    if !significance_floor.is_finite() || significance_floor >= 1.0 {
+    if !significance_floor_is_usable(significance_floor) {
         return Ok(CorrReport::new(
             reports,
             CorrVerdict::InsufficientEvidence,
@@ -832,7 +858,7 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
     let threshold = cfg
         .corr_floor()
         .max(significance_floor)
-        .max(cfg.decouple_ratio() * reference);
+        .max(relative_decoupling_floor(cfg.decouple_ratio(), reference));
 
     if reference < threshold {
         return Ok(CorrReport::new(
@@ -870,7 +896,7 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
         }
         largest_cliques.push(members);
     }
-    if largest_size * 2 <= c || largest_cliques.len() != 1 {
+    if !is_unique_strict_majority(largest_size, c, largest_cliques.len()) {
         return Ok(CorrReport::new(
             reports,
             CorrVerdict::InsufficientEvidence,
@@ -946,6 +972,17 @@ mod tests {
     fn named_profile_preserves_exact_values_and_identity() {
         let config = release_corr();
 
+        assert_eq!(MAX_CORRELATION_PAIRS, 15);
+        assert_eq!(
+            CorrConfigError::WindowOutOfRange.to_string(),
+            format!(
+                "correlation window must be in {MIN_CORRELATION_WINDOW}..={MAX_CORRELATION_WINDOW}"
+            )
+        );
+        assert_eq!(
+            CorrProfile::StandaloneAdvisoryV0_9.name(),
+            "standalone_advisory_v0_9"
+        );
         assert_eq!(
             (
                 config.window(),
@@ -968,6 +1005,60 @@ mod tests {
                 false,
             )
         );
+    }
+
+    #[test]
+    fn channel_evidence_accessors_preserve_every_field() {
+        let channel = CorrChannel {
+            modality: Modality::Radar,
+            n: 37,
+            corroboration: Some(-0.25),
+            decoupled: true,
+        };
+
+        assert_eq!(channel.modality(), Modality::Radar);
+        assert_eq!(channel.n(), 37);
+        assert_eq!(channel.corroboration(), Some(-0.25));
+        assert!(channel.decoupled());
+        assert_eq!(
+            serde_json::to_value(&channel).unwrap(),
+            serde_json::json!({
+                "modality": "radar",
+                "n": 37,
+                "corroboration": -0.25,
+                "decoupled": true,
+            })
+        );
+    }
+
+    #[test]
+    fn report_accessors_preserve_complete_derived_evidence() {
+        let config = release_corr().try_for_axis_family(3).unwrap();
+        let channel = CorrChannel {
+            modality: Modality::Lidar,
+            n: 41,
+            corroboration: Some(0.75),
+            decoupled: true,
+        };
+        let verdict = CorrVerdict::Decoupled(vec![Modality::Lidar]);
+        let report = CorrReport::new(
+            vec![channel.clone()],
+            verdict.clone(),
+            "exact report note".to_owned(),
+            &config,
+        );
+
+        assert_eq!(report.channels(), &[channel]);
+        assert_eq!(report.verdict(), &verdict);
+        assert_eq!(report.note(), "exact report note");
+        assert_eq!(report.config_identity(), config.identity());
+        assert_eq!(report.classification(), config.classification());
+        assert_eq!(
+            report.source_profile(),
+            Some(CorrProfile::StandaloneAdvisoryV0_9)
+        );
+        assert_eq!(report.axis_family_count(), 3);
+        assert!(report.axis_family_was_derived());
     }
 
     #[test]
@@ -1118,6 +1209,13 @@ mod tests {
         let config = CorrConfig::try_new(params).unwrap();
         assert_eq!(
             config
+                .preflight_assessment(MAX_CORRELATION_CHANNELS, MAX_CORRELATION_WINDOW)
+                .unwrap(),
+            (MAX_CORRELATION_WINDOW, MAX_CORRELATION_PAIRS)
+        );
+        assert_eq!(MAX_CORRELATION_PAIRS * MAX_CORRELATION_WINDOW, 983_040);
+        assert_eq!(
+            config
                 .preflight_assessment(MAX_CORRELATION_CHANNELS + 1, MAX_CORRELATION_WINDOW)
                 .unwrap_err(),
             CorrConfigError::WorkEstimateExceedsLimit {
@@ -1131,6 +1229,74 @@ mod tests {
                 .unwrap_err(),
             CorrConfigError::WorkEstimateOverflow
         );
+    }
+
+    #[test]
+    fn pairwise_family_budget_is_divided_by_the_exact_pair_count() {
+        assert_eq!(corrected_pair_alpha(0.01, 0), 0.01);
+        assert_eq!(corrected_pair_alpha(0.01, 1), 0.01);
+        assert_eq!(corrected_pair_alpha(0.01, 3), 0.01 / 3.0);
+        assert_ne!(corrected_pair_alpha(0.01, 3), 0.01);
+
+        assert!(significance_floor_is_usable(0.999));
+        assert!(!significance_floor_is_usable(1.0));
+        assert!(!significance_floor_is_usable(f64::INFINITY));
+        assert!(!significance_floor_is_usable(f64::NAN));
+
+        assert_eq!(relative_decoupling_floor(0.4, 0.8), 0.4_f64 * 0.8);
+        assert_ne!(relative_decoupling_floor(0.4, 0.8), 0.5);
+
+        assert!(is_unique_strict_majority(3, 4, 1));
+        assert!(is_unique_strict_majority(2, 3, 1));
+        assert!(!is_unique_strict_majority(2, 4, 1));
+        assert!(!is_unique_strict_majority(1, 3, 1));
+        assert!(!is_unique_strict_majority(3, 4, 2));
+    }
+
+    #[test]
+    fn correlation_floor_comparison_is_strict_at_the_measured_reference() {
+        use std::f64::consts::PI;
+
+        let n = 120;
+        let channels = vec![
+            (
+                Modality::Visual,
+                series(n, |i| (2.0 * PI * i as f64 / n as f64).sin()),
+            ),
+            (
+                Modality::Radar,
+                series(n, |i| {
+                    let phase = 2.0 * PI * i as f64 / n as f64;
+                    0.5 * phase.sin() + (3.0_f64.sqrt() / 2.0) * phase.cos()
+                }),
+            ),
+            (
+                Modality::Acoustic,
+                series(n, |i| (2.0 * PI * i as f64 / n as f64).cos()),
+            ),
+        ];
+        let reference = [
+            pearson(&channels[0].1, &channels[1].1).unwrap(),
+            pearson(&channels[0].1, &channels[2].1).unwrap(),
+            pearson(&channels[1].1, &channels[2].1).unwrap(),
+        ]
+        .into_iter()
+        .fold(f64::MIN, f64::max);
+        assert!(reference > 0.0 && reference < 1.0);
+
+        let mut exact_params = CorrParams::standalone_advisory_v0_9();
+        exact_params.corr_floor = reference;
+        let exact = analyze(&channels, &CorrConfig::try_new(exact_params).unwrap()).unwrap();
+        assert!(!exact
+            .note()
+            .starts_with("no coherent positive linear consensus"));
+
+        let mut above_params = CorrParams::standalone_advisory_v0_9();
+        above_params.corr_floor = f64::from_bits(reference.to_bits() + 1);
+        let above = analyze(&channels, &CorrConfig::try_new(above_params).unwrap()).unwrap();
+        assert!(above
+            .note()
+            .starts_with("no coherent positive linear consensus"));
     }
 
     #[test]
@@ -1187,9 +1353,21 @@ mod tests {
         let a = series(n, |i| (i as f64).sin());
         let b = series(n, |i| (i as f64).sin() + 0.05);
         let two = vec![(Modality::Visual, a), (Modality::Radar, b)];
+        let report = analyze(&two, &release_corr()).unwrap();
+        assert_eq!(report.verdict(), &CorrVerdict::InsufficientEvidence);
+        assert!(report.channels().is_empty());
         assert_eq!(
-            analyze(&two, &release_corr()).unwrap().verdict,
-            CorrVerdict::InsufficientEvidence
+            report.note(),
+            "need ≥3 channels and ≥64 aligned samples (have 2 channels, w=128)"
+        );
+
+        let one = vec![(Modality::Visual, series(n, |i| (i as f64).cos()))];
+        let report = analyze(&one, &release_corr()).unwrap();
+        assert_eq!(report.verdict(), &CorrVerdict::InsufficientEvidence);
+        assert!(report.channels().is_empty());
+        assert_eq!(
+            report.note(),
+            "need ≥3 channels and ≥64 aligned samples (have 1 channels, w=128)"
         );
     }
 

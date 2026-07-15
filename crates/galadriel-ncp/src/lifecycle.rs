@@ -29,7 +29,7 @@ use crate::monitor::{ModalityOutcomeKind, MAX_FRAME_ITEMS, REGISTRY_DIGEST_HEX_L
 
 /// Aggregate ceiling for common-projection observations retained by one
 /// lifecycle adapter across every track, modality, and history frame.
-pub const MAX_LIFECYCLE_RETAINED_OBSERVATIONS: usize = 1_000_000;
+pub const MAX_LIFECYCLE_RETAINED_OBSERVATIONS: usize = 960 * 1_024;
 
 /// Hard ceiling for independently keyed lifecycle streams in one detector.
 pub const MAX_LIFECYCLE_STREAMS: usize = 64;
@@ -173,7 +173,7 @@ impl LifecycleResetReasons {
     /// Detector-created values are never empty; this method supports generic
     /// collection inspection without exposing construction.
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        false
     }
 }
 
@@ -2015,6 +2015,24 @@ mod tests {
 
     #[test]
     fn aggregate_history_bound_rejects_cross_config_state_explosion() {
+        let exact = LifecycleDetector::new(
+            DetectorConfig::try_new(DetectorParams {
+                window_len: 40,
+                min_samples: 1,
+                min_channels: 2,
+                max_tracks: galadriel_core::config::MAX_DETECTOR_TRACKS,
+                ..DetectorParams::standalone_advisory_v0_9()
+            })
+            .expect("exact aggregate-bound detector config is valid"),
+            correlation(40, 4),
+        )
+        .expect("the exact lifecycle aggregate ceiling is inclusive");
+        assert_eq!(exact.max_streams(), 1);
+        assert_eq!(
+            40 * galadriel_core::config::MAX_DETECTOR_TRACKS * Modality::ALL.len(),
+            MAX_LIFECYCLE_RETAINED_OBSERVATIONS
+        );
+
         let error = LifecycleDetector::new(
             DetectorConfig::try_new(DetectorParams {
                 window_len: 1,
@@ -2033,6 +2051,122 @@ mod tests {
             LifecycleDetectorError::InvalidConfiguration(reason)
                 if reason.contains("may retain")
         ));
+    }
+
+    #[test]
+    fn lifecycle_stream_ceiling_is_exposed_exactly() {
+        let detector = detector();
+
+        assert_eq!(detector.max_streams(), 40);
+        assert!(detector.max_streams() < MAX_LIFECYCLE_STREAMS);
+        assert!(detector.max_streams() > 1);
+    }
+
+    #[test]
+    fn lifecycle_eviction_counter_is_exposed_exactly() {
+        let mut detector = detector();
+        detector.evicted_receipts = 7;
+
+        assert_eq!(detector.evicted_receipts(), 7);
+    }
+
+    #[test]
+    fn lifecycle_receipt_index_accepts_the_json_safe_boundary_only() {
+        let mut detector = detector();
+        let frame = complete_frame(1, 11);
+        detector.next_receipt_index = galadriel_core::JSON_SAFE_INTEGER_MAX;
+        let receipt = detector
+            .commit_receipt(
+                ProducerId::new("crebain").expect("test producer is valid"),
+                positioned(&frame, 0),
+                LifecycleTransition::Rejected {
+                    reason: LifecycleIngressRejection::UnknownStream,
+                },
+                None,
+                None,
+            )
+            .expect("the exact JSON-safe receipt index is inclusive");
+        assert_eq!(receipt.index(), galadriel_core::JSON_SAFE_INTEGER_MAX);
+        let encoded = serde_json::to_vec(&receipt).expect("boundary receipt serializes");
+        assert_eq!(
+            LifecycleReceipt::decode_and_verify(&encoded)
+                .expect("the exact JSON-safe receipt index decodes")
+                .index(),
+            galadriel_core::JSON_SAFE_INTEGER_MAX
+        );
+        assert_eq!(
+            detector
+                .commit_receipt(
+                    ProducerId::new("crebain").expect("test producer is valid"),
+                    positioned(&frame, 0),
+                    LifecycleTransition::Initialized,
+                    None,
+                    None,
+                )
+                .unwrap_err(),
+            LifecycleDetectorError::ReceiptIndexExhausted
+        );
+    }
+
+    #[test]
+    fn frame_sidecar_cardinality_rejects_each_identity_bound_independently() {
+        let cases = [
+            (String::new(), "crebain".to_owned()),
+            (
+                "s".repeat(crate::MAX_ID_SEGMENT_BYTES + 1),
+                "crebain".to_owned(),
+            ),
+            ("epoch-1".to_owned(), String::new()),
+            (
+                "epoch-1".to_owned(),
+                "p".repeat(crate::MAX_ID_SEGMENT_BYTES + 1),
+            ),
+        ];
+
+        for (session_id, producer_id) in cases {
+            let mut frame = complete_frame(1, 11);
+            frame.session_id = session_id;
+            frame.producer_id = producer_id;
+            assert!(matches!(
+                validate_frame_cardinality(&frame, 1),
+                Err(LifecycleDetectorError::InvalidFrame(reason))
+                    if reason.contains("bounded sidecar domain")
+            ));
+        }
+    }
+
+    #[test]
+    fn frame_cardinality_bounds_are_inclusive_and_reject_one_more_directly() {
+        let mut exact = complete_frame(1, 11);
+        exact.session_id = "s".repeat(crate::MAX_ID_SEGMENT_BYTES);
+        exact.producer_id = "p".repeat(crate::MAX_ID_SEGMENT_BYTES);
+        exact.summary.expected_modalities = Modality::ALL.to_vec();
+        exact.monitor_events = vec![exact.monitor_events[0].clone(); MAX_FRAME_ITEMS as usize];
+        assert!(validate_frame_cardinality(&exact, 1).is_ok());
+
+        let mut too_many_modalities = complete_frame(1, 11);
+        too_many_modalities.summary.expected_modalities = Modality::ALL.to_vec();
+        too_many_modalities
+            .summary
+            .expected_modalities
+            .push(Modality::Visual);
+        assert!(validate_frame_cardinality(&too_many_modalities, 1).is_err());
+
+        let mut too_many_events = complete_frame(1, 11);
+        too_many_events.monitor_events =
+            vec![too_many_events.monitor_events[0].clone(); MAX_FRAME_ITEMS as usize + 1];
+        assert!(validate_frame_cardinality(&too_many_events, 1).is_err());
+
+        let mut exact_observations = complete_frame(1, 11);
+        exact_observations.observations =
+            vec![exact_observations.observations[0].clone(); Modality::ALL.len()];
+        assert!(validate_frame_cardinality(&exact_observations, 1).is_ok());
+
+        let mut too_many_observations = exact_observations;
+        too_many_observations
+            .observations
+            .push(too_many_observations.observations[0].clone());
+        assert!(validate_frame_cardinality(&too_many_observations, 1).is_err());
     }
 
     fn identity(fusion_seq: u64, context_id: u64) -> FrameIdentity {
@@ -2488,6 +2622,30 @@ mod tests {
         );
         assert!(left_first.receipt().verifies());
         assert!(left_second.receipt().follows(left_first.receipt()));
+        assert_eq!(left_second.receipt().index(), 1);
+        assert_eq!(
+            left_second.receipt().previous_digest(),
+            left_first.receipt().digest()
+        );
+        assert_eq!(left_second.receipt().producer_id().as_str(), "crebain");
+        assert_eq!(left_second.receipt().position().sequence().get(), 2);
+        assert!(matches!(
+            left_second.receipt().transition(),
+            LifecycleTransition::Advanced
+        ));
+        assert!(left_second.receipt().frame_digest().is_some());
+        assert!(left_second.receipt().assessment_digest().is_some());
+        let encoded_second = serde_json::to_vec(left_second.receipt())
+            .expect("non-origin lifecycle receipt serializes");
+        assert_eq!(
+            LifecycleReceipt::decode_and_verify(&encoded_second)
+                .expect("non-origin lifecycle receipt decodes")
+                .digest(),
+            left_second.receipt().digest()
+        );
+        assert_eq!(left.retained_streams(), 1);
+        assert_eq!(left.receipts().len(), 2);
+        assert_eq!(left.last_receipt(), Some(left_second.receipt()));
         assert_eq!(left.receipt_anchor(), LifecycleDigest::ZERO);
         assert_eq!(left.evicted_receipts(), 0);
     }
@@ -2495,6 +2653,12 @@ mod tests {
     #[test]
     fn frozen_receipt_golden_vector_decodes_and_verifies_independently() {
         let encoded = include_bytes!("../tests/fixtures/lifecycle-receipt-v0.9.json");
+        assert_eq!(
+            MAX_LIFECYCLE_RECEIPT_BYTES,
+            16_usize
+                .checked_mul(1_024)
+                .expect("the platform represents the receipt byte ceiling")
+        );
         let receipt = LifecycleReceipt::decode_and_verify(encoded)
             .expect("frozen receipt vector must decode and verify");
 
@@ -2510,6 +2674,124 @@ mod tests {
         );
         let canonical = serde_json::to_vec(&receipt).expect("decoded receipt reserializes");
         assert_eq!(encoded.strip_suffix(b"\n").unwrap_or(encoded), canonical);
+
+        let mut invalid_chain_origin = receipt.clone();
+        invalid_chain_origin.previous_digest = LifecycleDigest([1; 32]);
+        assert!(!invalid_chain_origin.has_valid_detector_shape());
+
+        let mut initialized_without_assessment = receipt.clone();
+        initialized_without_assessment.assessment_digest = None;
+        assert!(!initialized_without_assessment.has_valid_detector_shape());
+
+        let mut valid_reset = receipt.clone();
+        valid_reset.transition = LifecycleTransition::Reset {
+            reasons: LifecycleResetReasons::new(vec![LifecycleResetReason::Explicit]),
+        };
+        assert!(valid_reset.has_valid_detector_shape());
+
+        let mut empty_fault_reason = receipt.clone();
+        empty_fault_reason.transition = LifecycleTransition::Faulted {
+            reason: String::new(),
+        };
+        empty_fault_reason.assessment_digest = None;
+        assert!(!empty_fault_reason.has_valid_detector_shape());
+
+        let mut missing_fault_frame = receipt.clone();
+        missing_fault_frame.transition = LifecycleTransition::Faulted {
+            reason: "exact fault".to_owned(),
+        };
+        missing_fault_frame.frame_digest = None;
+        missing_fault_frame.assessment_digest = None;
+        assert!(!missing_fault_frame.has_valid_detector_shape());
+
+        let mut valid_fault = receipt.clone();
+        valid_fault.transition = LifecycleTransition::Faulted {
+            reason: "exact fault".to_owned(),
+        };
+        valid_fault.assessment_digest = None;
+        assert!(valid_fault.has_valid_detector_shape());
+
+        let mut exact_ceiling = canonical.clone();
+        exact_ceiling.resize(MAX_LIFECYCLE_RECEIPT_BYTES, b' ');
+        assert!(LifecycleReceipt::decode_and_verify(&exact_ceiling).is_ok());
+        let mut one_over = exact_ceiling;
+        one_over.push(b' ');
+        assert!(matches!(
+            LifecycleReceipt::decode_and_verify(&one_over),
+            Err(LifecycleReceiptDecodeError::TooLarge { actual })
+                if actual == MAX_LIFECYCLE_RECEIPT_BYTES + 1
+        ));
+    }
+
+    #[test]
+    fn lifecycle_transition_history_semantics_cover_every_variant() {
+        assert!(LifecycleTransition::Initialized.resets_history());
+        assert!(LifecycleTransition::Reset {
+            reasons: LifecycleResetReasons::new(vec![LifecycleResetReason::Explicit]),
+        }
+        .resets_history());
+        assert!(LifecycleTransition::EpochRolledOver {
+            previous_epoch_id: EpochId::new("epoch-1").unwrap(),
+        }
+        .resets_history());
+        assert!(!LifecycleTransition::Advanced.resets_history());
+        assert!(!LifecycleTransition::Rejected {
+            reason: LifecycleIngressRejection::UnknownStream,
+        }
+        .resets_history());
+        assert!(!LifecycleTransition::Faulted {
+            reason: "exact fault".to_owned(),
+        }
+        .resets_history());
+    }
+
+    #[test]
+    fn lifecycle_digest_shape_rejects_length_and_alphabet_independently() {
+        let short_lowercase = format!("\"{}\"", "a".repeat(63));
+        let exact_length_nonhex = format!("\"{}g\"", "a".repeat(63));
+        let exact_length_uppercase = format!("\"{}A\"", "a".repeat(63));
+
+        assert!(serde_json::from_str::<LifecycleDigest>(&short_lowercase).is_err());
+        assert!(serde_json::from_str::<LifecycleDigest>(&exact_length_nonhex).is_err());
+        assert!(serde_json::from_str::<LifecycleDigest>(&exact_length_uppercase).is_err());
+    }
+
+    #[test]
+    fn lifecycle_reset_reason_accessors_preserve_multiple_reasons() {
+        let reasons = LifecycleResetReasons::new(vec![
+            LifecycleResetReason::Explicit,
+            LifecycleResetReason::Timeout,
+        ]);
+
+        assert_eq!(reasons.len(), 2);
+        assert!(!reasons.is_empty());
+        assert_eq!(
+            reasons.as_slice(),
+            &[
+                LifecycleResetReason::Explicit,
+                LifecycleResetReason::Timeout,
+            ]
+        );
+
+        let explicit = serde_json::from_str::<LifecycleResetReasons>(r#"[{"kind":"explicit"}]"#)
+            .expect("the explicit singleton is a canonical reset-reason set");
+        assert_eq!(explicit.len(), 1);
+        assert_eq!(explicit.as_slice(), &[LifecycleResetReason::Explicit]);
+        assert!(serde_json::from_str::<LifecycleResetReasons>("[]").is_err());
+
+        let canonical_multi = serde_json::from_str::<LifecycleResetReasons>(
+            r#"[{"kind":"projection_frame_changed"},{"kind":"projection_context_changed"}]"#,
+        )
+        .expect("ordered structural reasons form a canonical set");
+        assert_eq!(canonical_multi.len(), 2);
+        assert!(serde_json::from_str::<LifecycleResetReasons>(
+            r#"[{"kind":"explicit"},{"kind":"projection_frame_changed"}]"#,
+        )
+        .is_err());
+        assert!(serde_json::from_str::<LifecycleResetReasons>(
+            r#"[{"kind":"projection_frame_changed"},{"kind":"projection_frame_changed"}]"#,
+        )
+        .is_err());
     }
 
     #[test]
@@ -2564,6 +2846,13 @@ mod tests {
         assert!(outcome
             .receipt()
             .verifies_assessments(&release_suite, outcome.assessments()));
+        let alternate_suite = detector_with_nis_alpha(0.02)
+            .release_suite_for(&[Modality::Visual, Modality::Radar])
+            .expect("alternate fixture modalities form a release suite");
+        assert!(!outcome
+            .receipt()
+            .verifies_assessments(&alternate_suite, outcome.assessments()));
+        assert!(!outcome.receipt().verifies_assessments(&release_suite, &[]));
 
         let encoded = serde_json::to_vec(outcome.assessments())
             .expect("detector-created assessments serialize");
@@ -2837,6 +3126,58 @@ mod tests {
     }
 
     #[test]
+    fn positioned_admission_enforces_exact_explicit_and_required_generations() {
+        let first = complete_frame(1, 11);
+
+        let mut explicit = detector();
+        explicit
+            .assess_positioned_frame(positioned(&first, 0), &first)
+            .expect("first explicit-reset fixture frame commits");
+        let next = complete_frame(2, 11);
+        let reset = explicit
+            .assess_positioned_frame(positioned(&next, 1), &next)
+            .expect("exact successor generation is an explicit reset");
+        assert!(matches!(
+            reset.receipt().transition(),
+            LifecycleTransition::Reset { reasons }
+                if reasons.as_slice() == [LifecycleResetReason::Explicit]
+        ));
+
+        let mut skipped = detector();
+        skipped
+            .assess_positioned_frame(positioned(&first, 0), &first)
+            .expect("first skipped-generation fixture frame commits");
+        let error = skipped
+            .assess_positioned_frame(positioned(&next, 2), &next)
+            .expect_err("an unrequired generation skip must fail closed");
+        assert!(matches!(
+            error,
+            LifecycleDetectorError::Ingress(LifecycleIngressRejection::StateGenerationMismatch {
+                current: 0,
+                received: 2,
+                required: 0
+            })
+        ));
+
+        let mut required = detector();
+        required
+            .assess_positioned_frame(positioned(&first, 0), &first)
+            .expect("first required-reset fixture frame commits");
+        let changed_context = complete_frame(2, 12);
+        let error = required
+            .assess_positioned_frame(positioned(&changed_context, 2), &changed_context)
+            .expect_err("a continuity reset requires exactly the next generation");
+        assert!(matches!(
+            error,
+            LifecycleDetectorError::Ingress(LifecycleIngressRejection::StateGenerationMismatch {
+                current: 0,
+                received: 2,
+                required: 1
+            })
+        ));
+    }
+
+    #[test]
     fn explicit_timeout_is_receipted_without_claiming_a_wall_clock() {
         let mut detector = detector();
         let first = complete_frame(1, 11);
@@ -2896,6 +3237,40 @@ mod tests {
     }
 
     #[test]
+    fn epoch_rollover_rejects_each_nonzero_origin_coordinate_independently() {
+        for (sequence, state_generation) in [(1, 0), (0, 1)] {
+            let mut detector = detector();
+            let first = complete_frame(1, 11);
+            detector
+                .assess_positioned_frame(positioned(&first, 0), &first)
+                .expect("first rollover-boundary fixture frame commits");
+            let rollover = StreamPosition::try_new(
+                "mission-1",
+                "epoch-2",
+                "fusion",
+                state_generation,
+                sequence,
+                first.identity.fusion_timestamp_ms + 1,
+                ClockDomain::MonotonicProcess,
+            )
+            .expect("nonzero-origin rollover fixture is structurally valid");
+
+            let error = detector
+                .rollover_at("crebain", rollover)
+                .expect_err("either nonzero origin coordinate must fail closed");
+            assert!(matches!(
+                error,
+                LifecycleDetectorError::Ingress(
+                    LifecycleIngressRejection::InvalidRolloverOrigin {
+                        sequence: observed_sequence,
+                        state_generation: observed_generation,
+                    }
+                ) if observed_sequence == sequence && observed_generation == state_generation
+            ));
+        }
+    }
+
+    #[test]
     fn positioned_rollover_frame_is_assessed_inside_the_rollover_transition() {
         let mut detector = detector();
         let first = complete_frame(1, 11);
@@ -2922,6 +3297,46 @@ mod tests {
                 ..
             }]
         ));
+    }
+
+    #[test]
+    fn positioned_frame_rejects_each_coordinate_mismatch_independently() {
+        let frame = complete_frame(1, 11);
+        let cases = [
+            StreamPosition::try_new(
+                "mission-1",
+                frame.session_id(),
+                "fusion",
+                0,
+                frame.identity.fusion_seq + 1,
+                frame.identity.fusion_timestamp_ms,
+                ClockDomain::MonotonicProcess,
+            )
+            .expect("sequence-mismatch position is structurally valid"),
+            StreamPosition::try_new(
+                "mission-1",
+                frame.session_id(),
+                "fusion",
+                0,
+                frame.identity.fusion_seq,
+                frame.identity.fusion_timestamp_ms + 1,
+                ClockDomain::MonotonicProcess,
+            )
+            .expect("timestamp-mismatch position is structurally valid"),
+        ];
+
+        for position in cases {
+            let mut detector = detector();
+            let error = detector
+                .assess_positioned_frame(position, &frame)
+                .expect_err("either coordinate mismatch must fail closed");
+            assert!(matches!(
+                &error,
+                LifecycleDetectorError::InvalidPosition(reason)
+                    if reason.contains("differs from assembled frame")
+            ));
+            assert_eq!(detector.fault(), Some(&error));
+        }
     }
 
     #[test]

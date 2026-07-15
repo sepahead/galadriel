@@ -936,6 +936,20 @@ mod tests {
     }
 
     #[test]
+    fn unclassified_anomaly_exposes_nonempty_modalities_in_canonical_order() {
+        let evidence = UnclassifiedAnomaly::try_new(
+            [Modality::Radar, Modality::Visual],
+            [AnomalyReason::AmbiguousAttribution],
+        )
+        .unwrap();
+
+        assert_eq!(
+            evidence.affected_modalities(),
+            &[Modality::Visual, Modality::Radar]
+        );
+    }
+
+    #[test]
     fn unclassified_anomaly_rejects_empty_reasons() {
         assert_eq!(
             UnclassifiedAnomaly::try_new([Modality::Visual], []),
@@ -1065,6 +1079,19 @@ mod tests {
     }
 
     #[test]
+    fn failure_diagnostic_sanitization_has_exact_character_and_length_semantics() {
+        assert_eq!(Diagnostic::sanitized("alpha").as_str(), "alpha");
+        assert_eq!(Diagnostic::sanitized("a\u{00a0}b").as_str(), "a b");
+        assert_eq!(Diagnostic::sanitized("a\u{1b}b").as_str(), "a b");
+        assert_eq!(Diagnostic::sanitized("a\u{03b2}b").as_str(), "a?b");
+
+        let oversized = "x".repeat(MAX_DIAGNOSTIC_BYTES + 17);
+        let bounded = Diagnostic::sanitized(&oversized);
+        assert_eq!(bounded.as_str().len(), MAX_DIAGNOSTIC_BYTES);
+        assert!(bounded.as_str().bytes().all(|byte| byte == b'x'));
+    }
+
+    #[test]
     fn failure_diagnostics_do_not_change_machine_equality_or_display() {
         let left = AssessmentFailure::with_diagnostic(
             FailureCode::UnsupportedProtocol,
@@ -1074,6 +1101,18 @@ mod tests {
 
         assert_eq!(left, right);
         assert_eq!(left.to_string(), "unsupported_protocol");
+    }
+
+    #[test]
+    fn failure_equality_and_debug_expose_the_exact_machine_contract() {
+        let failure = AssessmentFailure::with_diagnostic(FailureCode::InvalidObservation, "alpha");
+        let other = AssessmentFailure::new(FailureCode::UnsupportedProtocol);
+
+        assert_ne!(failure, other);
+        assert_eq!(
+            format!("{failure:?}"),
+            "AssessmentFailure { code: InvalidObservation, diagnostic: \"alpha\" }"
+        );
     }
 
     #[test]

@@ -24,6 +24,9 @@ pub const SECURE_TRANSPORT_MAX_MESSAGE_BYTES: usize = 128 * 1_024;
 /// Maximum bytes read from the standalone secure Zenoh client document.
 pub const MAX_SECURE_CONFIG_BYTES: u64 = 256 * 1_024;
 
+/// One-byte-over read ceiling used to detect growth after the metadata check.
+const MAX_SECURE_CONFIG_READ_BYTES: u64 = 262_145;
+
 /// Maximum bytes admitted for each CA, certificate, or private-key file.
 pub const MAX_SECURE_CREDENTIAL_BYTES: u64 = 1_024 * 1_024;
 
@@ -485,7 +488,7 @@ fn validate_credential_file(
     )?;
     let mut digest = Sha256::new();
     let mut bytes = 0_u64;
-    let mut buffer = [0_u8; 8 * 1_024];
+    let mut buffer = [0_u8; 8_192];
     loop {
         let read = file
             .read(&mut buffer)
@@ -532,7 +535,10 @@ fn collect_endpoints_inner<'a>(
     remaining_nodes: &mut usize,
     depth: usize,
 ) -> bool {
-    if depth > MAX_SECURE_ENDPOINT_TRAVERSAL_DEPTH || *remaining_nodes == 0 {
+    if depth > MAX_SECURE_ENDPOINT_TRAVERSAL_DEPTH {
+        return false;
+    }
+    if *remaining_nodes == 0 {
         return false;
     }
     *remaining_nodes -= 1;
@@ -543,7 +549,13 @@ fn collect_endpoints_inner<'a>(
         }
         serde_json::Value::Array(values) => {
             for value in values {
-                if !collect_endpoints_inner(value, output, stop_at, remaining_nodes, depth + 1) {
+                if !collect_endpoints_inner(
+                    value,
+                    output,
+                    stop_at,
+                    remaining_nodes,
+                    depth.saturating_add(1),
+                ) {
                     return false;
                 }
             }
@@ -551,7 +563,13 @@ fn collect_endpoints_inner<'a>(
         }
         serde_json::Value::Object(values) => {
             for value in values.values() {
-                if !collect_endpoints_inner(value, output, stop_at, remaining_nodes, depth + 1) {
+                if !collect_endpoints_inner(
+                    value,
+                    output,
+                    stop_at,
+                    remaining_nodes,
+                    depth.saturating_add(1),
+                ) {
                     return false;
                 }
             }
@@ -559,6 +577,21 @@ fn collect_endpoints_inner<'a>(
         }
         _ => true,
     }
+}
+
+fn single_secure_client_endpoint(value: &serde_json::Value) -> Option<&str> {
+    let mut endpoints = Vec::with_capacity(2);
+    let complete = collect_endpoints(value, &mut endpoints, 2);
+    if complete && endpoints.len() == 1 && valid_secure_client_endpoint(endpoints[0]) {
+        Some(endpoints[0])
+    } else {
+        None
+    }
+}
+
+fn secure_client_listeners_disabled(value: &serde_json::Value) -> bool {
+    let mut listeners = Vec::with_capacity(1);
+    collect_endpoints(value, &mut listeners, 1) && listeners.is_empty()
 }
 
 fn contains_external_config_include(value: &serde_json::Value) -> bool {
@@ -593,17 +626,14 @@ fn valid_dns_host(host: &str) -> bool {
 }
 
 fn valid_client_authority(authority: &str) -> bool {
-    let (host, port, parsed_ip) = if let Some(bracketed) = authority.strip_prefix('[') {
+    let (port, parsed_ip) = if let Some(bracketed) = authority.strip_prefix('[') {
         let Some((host, port)) = bracketed.split_once("]:") else {
             return false;
         };
-        if host.contains(']') || port.contains(':') {
-            return false;
-        }
         let Ok(address) = host.parse::<std::net::Ipv6Addr>() else {
             return false;
         };
-        (host, port, Some(std::net::IpAddr::V6(address)))
+        (port, Some(std::net::IpAddr::V6(address)))
     } else {
         if authority.matches(':').count() != 1 {
             return false;
@@ -615,11 +645,8 @@ fn valid_client_authority(authority: &str) -> bool {
         if parsed_ip.is_none() && !valid_dns_host(host) {
             return false;
         }
-        (host, port, parsed_ip)
+        (port, parsed_ip)
     };
-    if host.is_empty() || port.is_empty() || !port.bytes().all(|byte| byte.is_ascii_digit()) {
-        return false;
-    }
     let Ok(port) = port.parse::<u16>() else {
         return false;
     };
@@ -629,24 +656,44 @@ fn valid_client_authority(authority: &str) -> bool {
     parsed_ip.is_none_or(|address| !address.is_unspecified())
 }
 
+fn secure_endpoint_text_is_canonical(value: &str) -> bool {
+    if value.len() > MAX_SECURE_ENDPOINT_BYTES {
+        return false;
+    }
+    if value != value.trim() {
+        return false;
+    }
+    for character in value.chars() {
+        if character.is_control() {
+            return false;
+        }
+        if character.is_whitespace() {
+            return false;
+        }
+        if matches!(character, '*' | '$' | '#' | '?') {
+            return false;
+        }
+    }
+    true
+}
+
 fn valid_secure_client_endpoint(value: &str) -> bool {
-    if value.len() > MAX_SECURE_ENDPOINT_BYTES
-        || value != value.trim()
-        || value.chars().any(|character| {
-            character.is_control()
-                || character.is_whitespace()
-                || matches!(character, '*' | '$' | '#' | '?')
-        })
-    {
+    if !secure_endpoint_text_is_canonical(value) {
         return false;
     }
     let Ok(endpoint) = value.parse::<zenoh::config::EndPoint>() else {
         return false;
     };
-    endpoint.protocol().as_str() == "tls"
-        && endpoint.metadata().is_empty()
-        && endpoint.config().is_empty()
-        && valid_client_authority(endpoint.address().as_str())
+    if endpoint.protocol().as_str() != "tls" {
+        return false;
+    }
+    if !endpoint.metadata().is_empty() {
+        return false;
+    }
+    if !endpoint.config().is_empty() {
+        return false;
+    }
+    valid_client_authority(endpoint.address().as_str())
 }
 
 fn load_bounded_secure_config(path: &Path) -> Result<ZenohConfig, SecureConfigError> {
@@ -670,7 +717,7 @@ fn load_bounded_secure_config(path: &Path) -> Result<ZenohConfig, SecureConfigEr
     }
 
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
-    file.take(MAX_SECURE_CONFIG_BYTES + 1)
+    file.take(MAX_SECURE_CONFIG_READ_BYTES)
         .read_to_end(&mut bytes)
         .map_err(|source| SecureConfigError::ReadConfig {
             path: path.to_path_buf(),
@@ -723,23 +770,15 @@ pub fn validate_secure_client_config(
     }
 
     let endpoints_value = config_value(config, "connect/endpoints")?;
-    let mut endpoints = Vec::with_capacity(2);
-    let endpoints_complete = collect_endpoints(&endpoints_value, &mut endpoints, 2);
-    if !endpoints_complete
-        || endpoints.len() != 1
-        // Parsing and authority validation intentionally duplicate the profile
-        // renderer's narrow client grammar. Zenoh's own endpoint parser accepts
-        // endpoint-local suffixes and broader authorities that are outside the
-        // reviewed secure profile.
-        || !valid_secure_client_endpoint(endpoints[0])
-    {
-        return Err(SecureConfigError::InvalidConnectEndpoints);
-    }
+    // Parsing and authority validation intentionally duplicate the profile
+    // renderer's narrow client grammar. Zenoh's own endpoint parser accepts
+    // endpoint-local suffixes and broader authorities that are outside the
+    // reviewed secure profile.
+    let endpoint = single_secure_client_endpoint(&endpoints_value)
+        .ok_or(SecureConfigError::InvalidConnectEndpoints)?;
 
     let listeners_value = config_value(config, "listen/endpoints")?;
-    let mut listeners = Vec::with_capacity(1);
-    let listeners_complete = collect_endpoints(&listeners_value, &mut listeners, 1);
-    if !listeners_complete || !listeners.is_empty() {
+    if !secure_client_listeners_disabled(&listeners_value) {
         return Err(SecureConfigError::ListenEndpoints);
     }
 
@@ -786,7 +825,7 @@ pub fn validate_secure_client_config(
     }
     let mut identity = ConfigurationIdentityBuilder::new("secure-zenoh-client")
         .bytes("mode", b"client")
-        .bytes("connect_endpoint", endpoints[0].as_bytes())
+        .bytes("connect_endpoint", endpoint.as_bytes())
         .u64(
             "transport_max_message_bytes",
             SECURE_TRANSPORT_MAX_MESSAGE_BYTES as u64,
@@ -891,6 +930,49 @@ mod tests {
     }
 
     #[test]
+    fn secure_endpoint_selection_requires_each_independent_invariant() {
+        let valid = "tls/router.example.invalid:7447";
+        assert_eq!(
+            single_secure_client_endpoint(&serde_json::json!([valid])),
+            Some(valid)
+        );
+        assert_eq!(single_secure_client_endpoint(&serde_json::json!([])), None);
+        assert_eq!(
+            single_secure_client_endpoint(&serde_json::json!([
+                valid,
+                "tls/router2.example.invalid:7447"
+            ])),
+            None
+        );
+        assert_eq!(
+            single_secure_client_endpoint(&serde_json::json!(["tcp/router.invalid:7447"])),
+            None
+        );
+
+        let mut incomplete = vec![serde_json::Value::Null; MAX_SECURE_ENDPOINT_TRAVERSAL_NODES];
+        incomplete[0] = serde_json::Value::String(valid.to_owned());
+        assert_eq!(
+            single_secure_client_endpoint(&serde_json::Value::Array(incomplete)),
+            None,
+            "one valid string is insufficient when bounded traversal is incomplete"
+        );
+    }
+
+    #[test]
+    fn secure_listener_selection_requires_complete_empty_traversal() {
+        assert!(secure_client_listeners_disabled(&serde_json::json!([])));
+        assert!(!secure_client_listeners_disabled(&serde_json::json!([
+            "tls/0.0.0.0:7448"
+        ])));
+
+        let incomplete = serde_json::Value::Array(vec![
+            serde_json::Value::Null;
+            MAX_SECURE_ENDPOINT_TRAVERSAL_NODES
+        ]);
+        assert!(!secure_client_listeners_disabled(&incomplete));
+    }
+
+    #[test]
     fn nested_listener_endpoint_collection_stops_at_one_entry() {
         let value = serde_json::json!({
             "outer": [{
@@ -924,6 +1006,24 @@ mod tests {
     }
 
     #[test]
+    fn endpoint_collection_depth_ceiling_is_inclusive_and_one_more_is_rejected() {
+        let endpoint = "tls/router.example.invalid:7447";
+        let mut exact = serde_json::Value::String(endpoint.to_owned());
+        for _ in 0..MAX_SECURE_ENDPOINT_TRAVERSAL_DEPTH {
+            exact = serde_json::Value::Array(vec![exact]);
+        }
+        {
+            let mut endpoints = Vec::with_capacity(2);
+            assert!(collect_endpoints(&exact, &mut endpoints, 2));
+            assert_eq!(endpoints, [endpoint]);
+        }
+        let one_more = serde_json::Value::Array(vec![exact]);
+        let mut endpoints = Vec::with_capacity(2);
+        assert!(!collect_endpoints(&one_more, &mut endpoints, 2));
+        assert!(endpoints.is_empty());
+    }
+
+    #[test]
     fn endpoint_collection_rejects_many_empty_nodes_at_fixed_work_budget() {
         let value = serde_json::Value::Array(vec![
             serde_json::Value::Null;
@@ -939,6 +1039,30 @@ mod tests {
 
     #[test]
     fn secure_config_byte_ceiling_accepts_exact_boundary_and_rejects_one_more() {
+        assert_eq!(
+            SECURE_TRANSPORT_MAX_MESSAGE_BYTES,
+            128_usize
+                .checked_mul(1_024)
+                .expect("the platform represents the transport byte ceiling")
+        );
+        assert_eq!(
+            MAX_SECURE_CONFIG_BYTES,
+            256_u64
+                .checked_mul(1_024)
+                .expect("the platform represents the config byte ceiling")
+        );
+        assert_eq!(
+            MAX_SECURE_CONFIG_READ_BYTES,
+            MAX_SECURE_CONFIG_BYTES
+                .checked_add(1)
+                .expect("the config read sentinel is representable")
+        );
+        assert_eq!(
+            MAX_SECURE_CREDENTIAL_BYTES,
+            1_024_u64
+                .checked_mul(1_024)
+                .expect("the platform represents the credential byte ceiling")
+        );
         let path = config_fixture_path();
         let mut exact = vec![b' '; MAX_SECURE_CONFIG_BYTES as usize];
         exact[..2].copy_from_slice(b"{}");
@@ -978,6 +1102,72 @@ mod tests {
         ));
 
         std::fs::remove_file(path).expect("include fixture cleans up");
+    }
+
+    #[test]
+    fn external_include_detection_traverses_arrays_and_ignores_clean_values() {
+        let nested = serde_json::json!([
+            null,
+            {"transport": [{"__config__": "external.json5"}]}
+        ]);
+        assert!(contains_external_config_include(&nested));
+
+        let clean = serde_json::json!([
+            null,
+            {"transport": [{"config": "inline"}, true, 7]}
+        ]);
+        assert!(!contains_external_config_include(&clean));
+    }
+
+    #[test]
+    fn endpoint_text_gate_checks_each_canonicality_rule() {
+        let valid = "tls/router.example.invalid:7447";
+        assert!(secure_endpoint_text_is_canonical(valid));
+        assert!(!secure_endpoint_text_is_canonical(
+            &"x".repeat(MAX_SECURE_ENDPOINT_BYTES + 1)
+        ));
+        assert!(!secure_endpoint_text_is_canonical(&format!(" {valid}")));
+        assert!(!secure_endpoint_text_is_canonical(&format!("{valid} ")));
+        assert!(!secure_endpoint_text_is_canonical(
+            "tls/router\0.example.invalid:7447"
+        ));
+        assert!(!secure_endpoint_text_is_canonical(
+            "tls/router\u{00a0}.example.invalid:7447"
+        ));
+        for prohibited in ['*', '$', '#', '?'] {
+            assert!(!secure_endpoint_text_is_canonical(&format!(
+                "tls/router{prohibited}.example.invalid:7447"
+            )));
+        }
+    }
+
+    #[test]
+    fn authority_gate_rejects_each_invalid_host_and_port_family() {
+        for authority in [
+            "router.example.invalid:7447",
+            "router-1:1",
+            "127.0.0.1:65535",
+            "[2001:db8::1]:7447",
+        ] {
+            assert!(valid_client_authority(authority), "{authority:?}");
+        }
+        for authority in [
+            "",
+            ":7447",
+            "router.example.invalid:",
+            "router.example.invalid:notaport",
+            "router.example.invalid:0",
+            "router.example.invalid:65536",
+            "router..example.invalid:7447",
+            "-router.example.invalid:7447",
+            "0.0.0.0:7447",
+            "[::]:7447",
+            "[127.0.0.1]:7447",
+            "[2001:db8::1]:7447:extra",
+            "2001:db8::1:7447",
+        ] {
+            assert!(!valid_client_authority(authority), "{authority:?}");
+        }
     }
 
     #[cfg(unix)]

@@ -197,6 +197,16 @@ mod tests {
     }
 
     #[test]
+    fn overflow_fallback_preserves_an_unequal_extreme_mean_exactly() {
+        let mut window = NisWindow::new(2, 3).unwrap();
+        window.push(f64::MAX).unwrap();
+        window.push(f64::MAX / 2.0).unwrap();
+
+        assert_eq!(window.sum().unwrap(), f64::MAX);
+        assert_eq!(window.mean().unwrap(), f64::MAX * 0.75);
+    }
+
+    #[test]
     fn rolling_summary_recovers_immediately_after_overflowing_values_are_evicted() {
         let mut window = NisWindow::new(2, 3).unwrap();
         for value in [f64::MAX, f64::MAX, 1.0, 1.0] {

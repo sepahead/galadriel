@@ -203,6 +203,26 @@ pub struct ScenarioConfig {
     canonical_digest: String,
 }
 
+fn validate_common_variance(
+    rho: f64,
+    common_variance: f64,
+) -> std::result::Result<(), ScenarioConfigError> {
+    if rho == 0.0 {
+        return Ok(());
+    }
+    if !common_variance.is_finite() {
+        return Err(ScenarioConfigError::DegenerateComponentVariance {
+            component: "shared-latent",
+        });
+    }
+    if common_variance <= 0.0 {
+        return Err(ScenarioConfigError::DegenerateComponentVariance {
+            component: "shared-latent",
+        });
+    }
+    Ok(())
+}
+
 impl ScenarioConfig {
     /// Accept caller-supplied research parameters.
     ///
@@ -241,17 +261,26 @@ impl ScenarioConfig {
                 return Err(ScenarioConfigError::DuplicateModality { modality });
             }
         }
-        if params.frames > 1 && params.dt_ms == 0 {
+        if matches!((params.frames, params.dt_ms), (2.., 0)) {
             return Err(ScenarioConfigError::ZeroInterval);
         }
-        if !params.sigma.is_finite() || params.sigma <= 0.0 {
+        if !params.sigma.is_finite() {
+            return Err(ScenarioConfigError::InvalidSigma);
+        }
+        if params.sigma <= 0.0 {
             return Err(ScenarioConfigError::InvalidSigma);
         }
         let variance = params.sigma * params.sigma;
-        if !variance.is_finite() || variance <= 0.0 {
+        if !variance.is_finite() {
             return Err(ScenarioConfigError::DegenerateVariance);
         }
-        if !params.rho.is_finite() || !(0.0..1.0).contains(&params.rho) {
+        if variance <= 0.0 {
+            return Err(ScenarioConfigError::DegenerateVariance);
+        }
+        if !params.rho.is_finite() {
+            return Err(ScenarioConfigError::InvalidCorrelation);
+        }
+        if !(0.0..1.0).contains(&params.rho) {
             return Err(ScenarioConfigError::InvalidCorrelation);
         }
         // Positive and negative zero define the same independent regime. Store
@@ -260,17 +289,18 @@ impl ScenarioConfig {
             params.rho = 0.0;
         }
         let noise_variance = (1.0 - params.rho) * variance;
-        if !noise_variance.is_finite() || noise_variance <= 0.0 {
+        if !noise_variance.is_finite() {
+            return Err(ScenarioConfigError::DegenerateComponentVariance {
+                component: "independent-noise",
+            });
+        }
+        if noise_variance <= 0.0 {
             return Err(ScenarioConfigError::DegenerateComponentVariance {
                 component: "independent-noise",
             });
         }
         let common_variance = params.rho * variance;
-        if params.rho > 0.0 && (!common_variance.is_finite() || common_variance <= 0.0) {
-            return Err(ScenarioConfigError::DegenerateComponentVariance {
-                component: "shared-latent",
-            });
-        }
+        validate_common_variance(params.rho, common_variance)?;
 
         let observation_capacity = params
             .frames
@@ -428,6 +458,37 @@ pub struct StealthySpoof {
     pub start_frame: u64,
 }
 
+fn valid_decoupling(decoupling: f64) -> bool {
+    decoupling.is_finite() && (0.0..=1.0).contains(&decoupling)
+}
+
+fn attack_active(is_target: bool, frame: u64, start_frame: u64) -> bool {
+    is_target && frame >= start_frame
+}
+
+fn mix_moment_matched_latents(truth: [f64; 3], phantom: [f64; 3], decoupling: f64) -> [f64; 3] {
+    let truth_weight = (1.0 - decoupling).sqrt();
+    let phantom_weight = decoupling.sqrt();
+    [
+        truth_weight * truth[0] + phantom_weight * phantom[0],
+        truth_weight * truth[1] + phantom_weight * phantom[1],
+        truth_weight * truth[2] + phantom_weight * phantom[2],
+    ]
+}
+
+fn add_axes(left: [f64; 3], right: [f64; 3]) -> [f64; 3] {
+    [left[0] + right[0], left[1] + right[1], left[2] + right[2]]
+}
+
+fn standardized_nis(innovation: [f64; 3], sigma: f64) -> f64 {
+    let normalized = [
+        innovation[0] / sigma,
+        innovation[1] / sigma,
+        innovation[2] / sigma,
+    ];
+    normalized[0] * normalized[0] + normalized[1] * normalized[1] + normalized[2] * normalized[2]
+}
+
 /// The shared generator. `targets` are the spoofed channels; from `start_frame` each
 /// tracks the frame's **shared** phantom latent `p` (mixed via `decoupling`). Because all
 /// targets share the *same* `p`, a set of ≥2 targets **mutually corroborate** — that is the
@@ -445,7 +506,7 @@ fn generate_inner(
             cfg.modalities.len()
         )));
     }
-    if !decoupling.is_finite() || !(0.0..=1.0).contains(&decoupling) {
+    if !valid_decoupling(decoupling) {
         return Err(GaladrielError::InvalidConfig(
             "spoof decoupling must be finite and in [0, 1]".into(),
         ));
@@ -488,14 +549,14 @@ fn generate_inner(
         ))
     })?;
     // Only drawn when rho > 0, so rho == 0 reproduces the independent stream exactly.
-    let common = if rho > 0.0 {
+    let common = if rho == 0.0 {
+        None
+    } else {
         Some(Normal::new(0.0, cfg.common_sd).map_err(|error| {
             GaladrielError::InvalidConfig(format!(
                 "could not construct shared-latent distribution: {error}"
             ))
         })?)
-    } else {
-        None
     };
     let cov = [
         [cfg.variance, 0.0, 0.0],
@@ -537,7 +598,7 @@ fn generate_inner(
             ([0.0; 3], [0.0; 3])
         };
         for &modality in &cfg.modalities {
-            let spoofed = unique_targets.contains(&modality) && frame >= start_frame;
+            let spoofed = attack_active(unique_targets.contains(&modality), frame, start_frame);
             // Partial decoupling: mix the shared truth `m` and the phantom `p` as
             // `√(1−d)·m + √d·p`. Since m and p are independent with equal variance this
             // preserves the marginal variance for *every* d (so the spoof stays
@@ -545,27 +606,20 @@ fn generate_inner(
             // with honest channels scales as √(1−d). d = 1 is full decoupling (base = p);
             // d = 0 is no attack (base = m).
             let base = if spoofed {
-                let (a, b) = ((1.0 - decoupling).sqrt(), decoupling.sqrt());
-                [
-                    a * m[0] + b * p[0],
-                    a * m[1] + b * p[1],
-                    a * m[2] + b * p[2],
-                ]
+                mix_moment_matched_latents(m, p, decoupling)
             } else {
                 m
             };
-            let y = [
-                base[0] + noise.sample(&mut r),
-                base[1] + noise.sample(&mut r),
-                base[2] + noise.sample(&mut r),
+            let sampled_noise = [
+                noise.sample(&mut r),
+                noise.sample(&mut r),
+                noise.sample(&mut r),
             ];
+            let y = add_axes(base, sampled_noise);
             // Standardize before squaring: `y² / sigma²` is algebraically the
             // same quantity, but this ordering cannot overflow merely because a
             // supported sigma is near the upper end of f64.
-            let normalized = [y[0] / cfg.sigma, y[1] / cfg.sigma, y[2] / cfg.sigma];
-            let nis = normalized[0] * normalized[0]
-                + normalized[1] * normalized[1]
-                + normalized[2] * normalized[2];
+            let nis = standardized_nis(y, cfg.sigma);
             if !nis.is_finite() {
                 return Err(GaladrielError::InvalidConfig(
                     "scenario sampling produced a non-finite NIS".into(),
@@ -675,6 +729,180 @@ mod tests {
     }
 
     #[test]
+    fn generator_scalar_helpers_preserve_exact_boundaries_and_algebra() {
+        for valid in [-0.0, 0.0, 0.25, 1.0] {
+            assert!(valid_decoupling(valid));
+        }
+        for invalid in [-0.01, 1.01, f64::NAN, f64::INFINITY] {
+            assert!(!valid_decoupling(invalid));
+        }
+
+        assert!(!attack_active(false, 10, 10));
+        assert!(!attack_active(true, 9, 10));
+        assert!(attack_active(true, 10, 10));
+        assert!(attack_active(true, 11, 10));
+
+        let mixed = mix_moment_matched_latents([1.0, 2.0, 3.0], [4.0, 5.0, 6.0], 0.36);
+        for (actual, expected) in mixed.into_iter().zip([3.2, 4.6, 6.0]) {
+            assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
+        }
+        assert_eq!(
+            mix_moment_matched_latents([1.0, 2.0, 3.0], [4.0, 5.0, 6.0], 0.0),
+            [1.0, 2.0, 3.0]
+        );
+        assert_eq!(
+            mix_moment_matched_latents([1.0, 2.0, 3.0], [4.0, 5.0, 6.0], 1.0),
+            [4.0, 5.0, 6.0]
+        );
+        assert_eq!(add_axes([1.0, 2.0, 3.0], [4.0, 5.0, 6.0]), [5.0, 7.0, 9.0]);
+        assert_eq!(standardized_nis([2.0, 4.0, 6.0], 2.0), 14.0);
+    }
+
+    #[test]
+    fn generator_output_is_bit_reproducible_and_attack_onset_exact() {
+        const INDEPENDENT: [([u64; 3], u64, u64); 4] = [
+            (
+                [
+                    4_604_549_967_519_278_418,
+                    4_610_313_026_538_115_850,
+                    13_833_304_537_364_421_706,
+                ],
+                4_609_398_797_522_576_248,
+                1,
+            ),
+            (
+                [
+                    4_608_624_943_431_547_702,
+                    4_612_005_563_493_744_753,
+                    13_830_688_165_065_875_773,
+                ],
+                4_611_000_602_866_286_242,
+                1,
+            ),
+            (
+                [
+                    13_831_105_433_617_700_379,
+                    4_612_329_707_424_178_502,
+                    4_610_606_928_488_770_383,
+                ],
+                4_612_577_602_895_781_128,
+                2,
+            ),
+            (
+                [
+                    4_609_914_912_758_928_005,
+                    13_841_150_612_863_465_706,
+                    4_608_193_284_857_863_566,
+                ],
+                4_620_885_018_430_812_887,
+                2,
+            ),
+        ];
+        const CORROBORATED: [([u64; 3], u64, u64); 4] = [
+            (
+                [
+                    4_587_618_678_602_697_744,
+                    4_613_061_771_870_225_141,
+                    13_826_182_891_701_525_139,
+                ],
+                4_610_655_425_482_164_463,
+                1,
+            ),
+            (
+                [
+                    4_609_057_212_809_892_016,
+                    13_831_624_553_673_772_336,
+                    13_828_596_535_332_431_956,
+                ],
+                4_607_351_364_535_007_485,
+                1,
+            ),
+            (
+                [
+                    13_841_356_506_719_389_130,
+                    13_834_992_363_279_335_132,
+                    13_834_268_479_082_827_407,
+                ],
+                4_621_617_274_495_232_892,
+                2,
+            ),
+            (
+                [
+                    13_838_111_997_755_712_916,
+                    13_834_653_504_048_501_424,
+                    13_837_455_123_986_240_960,
+                ],
+                4_618_527_049_184_345_753,
+                2,
+            ),
+        ];
+        const PARTIAL: [([u64; 3], u64); 4] = [
+            (CORROBORATED[0].0, CORROBORATED[0].1),
+            (CORROBORATED[1].0, CORROBORATED[1].1),
+            (CORROBORATED[2].0, CORROBORATED[2].1),
+            (
+                [
+                    13_837_155_734_584_725_890,
+                    13_835_118_960_267_942_393,
+                    13_835_159_176_425_865_824,
+                ],
+                4_616_438_607_819_074_600,
+            ),
+        ];
+
+        for (rho, expected) in [(0.0, INDEPENDENT), (0.75, CORROBORATED)] {
+            let cfg = ScenarioConfig::try_new(ScenarioParams {
+                track_id: 42,
+                frames: 2,
+                modalities: vec![Modality::Visual, Modality::Radar],
+                sigma: 2.0,
+                rho,
+                dt_ms: 17,
+                seed: 99,
+            })
+            .unwrap();
+            let clean = generate(&cfg).unwrap();
+            assert_eq!(
+                clean
+                    .iter()
+                    .map(|observation| (
+                        observation.innovation().unwrap().map(f64::to_bits),
+                        observation.nis().to_bits(),
+                        observation
+                            .consistency_projection()
+                            .unwrap()
+                            .identity()
+                            .frozen_prior_id()
+                            .get(),
+                    ))
+                    .collect::<Vec<_>>(),
+                expected
+            );
+            if rho > 0.0 {
+                let partial = generate_spoofed_partial(
+                    &cfg,
+                    StealthySpoof {
+                        target: Modality::Radar,
+                        start_frame: 1,
+                    },
+                    0.36,
+                )
+                .unwrap();
+                assert_eq!(
+                    partial
+                        .iter()
+                        .map(|observation| (
+                            observation.innovation().unwrap().map(f64::to_bits),
+                            observation.nis().to_bits(),
+                        ))
+                        .collect::<Vec<_>>(),
+                    PARTIAL
+                );
+            }
+        }
+    }
+
+    #[test]
     fn clean_stream_is_chi2_3_on_average() {
         let cfg = custom(|params| params.frames = 2000);
         let s = generate(&cfg).expect("valid clean scenario");
@@ -764,6 +992,23 @@ mod tests {
             ScenarioConfig::try_new(underflow).is_err(),
             "derived zero variance must be rejected"
         );
+
+        let mut overflow = ScenarioResearchProfile::SyntheticV0_9.params();
+        overflow.sigma = f64::MAX;
+        assert_eq!(
+            ScenarioConfig::try_new(overflow).unwrap_err(),
+            ScenarioConfigError::DegenerateVariance
+        );
+
+        let mut shared_underflow = ScenarioResearchProfile::SyntheticV0_9.params();
+        shared_underflow.sigma = f64::MIN_POSITIVE.sqrt();
+        shared_underflow.rho = f64::MIN_POSITIVE;
+        assert_eq!(
+            ScenarioConfig::try_new(shared_underflow).unwrap_err(),
+            ScenarioConfigError::DegenerateComponentVariance {
+                component: "shared-latent"
+            }
+        );
     }
 
     #[test]
@@ -783,10 +1028,43 @@ mod tests {
                 modality: Modality::Radar
             }
         );
+
+        let mut exact = ScenarioResearchProfile::SyntheticV0_9.params();
+        exact.modalities = Modality::ALL.to_vec();
+        assert_eq!(
+            ScenarioConfig::try_new(exact)
+                .expect("the complete closed modality set is accepted")
+                .modalities(),
+            Modality::ALL
+        );
+
+        let mut one_more = ScenarioResearchProfile::SyntheticV0_9.params();
+        one_more.modalities = Modality::ALL
+            .iter()
+            .copied()
+            .chain(std::iter::once(Modality::Visual))
+            .collect();
+        assert_eq!(
+            ScenarioConfig::try_new(one_more).unwrap_err(),
+            ScenarioConfigError::TooManyModalities {
+                actual: Modality::ALL.len() + 1,
+                maximum: Modality::ALL.len(),
+            }
+        );
     }
 
     #[test]
     fn config_guards_capacity_and_timestamp_arithmetic() {
+        let mut exact_capacity = ScenarioResearchProfile::SyntheticV0_9.params();
+        exact_capacity.frames = MAX_SCENARIO_OBSERVATIONS;
+        exact_capacity.modalities = vec![Modality::Visual];
+        assert_eq!(
+            ScenarioConfig::try_new(exact_capacity)
+                .expect("the exact observation ceiling is inclusive")
+                .observation_capacity(),
+            MAX_SCENARIO_OBSERVATIONS
+        );
+
         let mut too_many = ScenarioResearchProfile::SyntheticV0_9.params();
         too_many.frames = MAX_SCENARIO_OBSERVATIONS + 1;
         too_many.modalities = vec![Modality::Visual];
@@ -818,6 +1096,47 @@ mod tests {
             ScenarioConfig::try_new(frozen_timestamps).unwrap_err(),
             ScenarioConfigError::ZeroInterval
         );
+
+        let mut exact_timestamp = ScenarioResearchProfile::SyntheticV0_9.params();
+        exact_timestamp.frames = 2;
+        exact_timestamp.modalities = vec![Modality::Visual];
+        exact_timestamp.dt_ms = TimestampMillis::MAX;
+        ScenarioConfig::try_new(exact_timestamp.clone())
+            .expect("the exact JSON-safe terminal timestamp is accepted");
+
+        exact_timestamp.dt_ms = TimestampMillis::MAX + 1;
+        assert!(matches!(
+            ScenarioConfig::try_new(exact_timestamp),
+            Err(ScenarioConfigError::InvalidTerminalTimestamp { .. })
+        ));
+    }
+
+    #[test]
+    fn custom_configuration_preserves_every_scalar_and_derived_quantity() {
+        let params = ScenarioParams {
+            track_id: 42,
+            frames: 5,
+            modalities: vec![Modality::Thermal, Modality::Lidar],
+            sigma: 2.0,
+            rho: 0.75,
+            dt_ms: 17,
+            seed: 99,
+        };
+        let config = ScenarioConfig::try_new(params).unwrap();
+
+        assert_eq!(config.track_id().get(), 42);
+        assert_eq!(config.frames(), 5);
+        assert_eq!(config.modalities(), [Modality::Thermal, Modality::Lidar]);
+        assert_eq!(config.sigma().to_bits(), 2.0_f64.to_bits());
+        assert_eq!(config.rho().to_bits(), 0.75_f64.to_bits());
+        assert_eq!(config.dt_ms(), 17);
+        assert_eq!(config.seed(), 99);
+        assert_eq!(config.observation_capacity(), 10);
+        assert_eq!(config.variance.to_bits(), 4.0_f64.to_bits());
+        assert_eq!(config.noise_sd.to_bits(), 1.0_f64.to_bits());
+        assert_eq!(config.common_sd.to_bits(), 3.0_f64.sqrt().to_bits());
+        assert_eq!(config.origin(), ScenarioConfigOrigin::CustomResearch);
+        assert_eq!(config.canonical_digest().len(), 64);
     }
 
     #[test]
@@ -881,6 +1200,12 @@ mod tests {
         assert!(generate_spoofed(&cfg, absent).is_err());
         assert!(generate_collusion(&cfg, &[], 0).is_err());
         assert!(generate_collusion(&cfg, &[Modality::Radar, Modality::Radar], 0).is_err());
+        assert_eq!(
+            generate_collusion(&cfg, &[Modality::Visual, Modality::Radar], 0)
+                .expect("one target per configured modality is accepted")
+                .len(),
+            cfg.observation_capacity()
+        );
 
         let oversized = [
             Modality::Visual,

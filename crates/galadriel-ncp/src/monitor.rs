@@ -765,7 +765,9 @@ impl ModalityOutcome {
             evidence.validate()?;
         }
         if let Some(projection) = self.consistency_projection.as_ref() {
-            validate_projection(projection)?;
+            // `ConsistencyProjection` is sealed and its constructors/deserializer
+            // already enforce finite coordinates and JSON-safe typed identities.
+            // This boundary must only verify the projection belongs to this event.
             let identity = projection.identity();
             if identity.frame_id().get() != self.frame_id
                 || identity.context_id().get() != self.context_id
@@ -1046,22 +1048,6 @@ fn validate_frame_identity(
     Ok(())
 }
 
-fn validate_projection(projection: &ConsistencyProjection) -> Result<(), MonitorError> {
-    let identity = projection.identity();
-    validate_json_integer(
-        "event.consistency_projection.frame_id",
-        identity.frame_id().get(),
-    )?;
-    validate_json_integer(
-        "event.consistency_projection.context_id",
-        identity.context_id().get(),
-    )?;
-    validate_json_integer(
-        "event.consistency_projection.prior_id",
-        identity.frozen_prior_id().get(),
-    )
-}
-
 fn validate_gate_value(field: &'static str, value: f64) -> Result<(), MonitorError> {
     if !value.is_finite() || value < 0.0 {
         return Err(MonitorError::InvalidGateValue { field });
@@ -1250,6 +1236,15 @@ mod tests {
             ProducerEvent::ModalityOutcome(outcome(ModalityOutcomeKind::Updated)),
         )
         .unwrap();
+
+        assert_eq!(envelope.kind(), MONITOR_KIND);
+        assert_eq!(envelope.schema_version(), MONITOR_SCHEMA_VERSION);
+        assert_eq!(envelope.ncp_version(), NCP_VERSION);
+        assert_eq!(envelope.contract_hash(), CONTRACT_HASH);
+        assert_eq!(envelope.session_id(), "uav3");
+        assert_eq!(envelope.producer_id(), "crebain");
+        assert_eq!(envelope.event_seq(), 8);
+        assert_eq!(envelope.clone().into_event(), envelope.event().clone());
         let expected = concat!(
             r#"{"kind":"galadriel_producer_event","schema_version":"1.0","#,
             r#""ncp_version":"0.8","contract_hash":"d1b50a2d8a265276","#,

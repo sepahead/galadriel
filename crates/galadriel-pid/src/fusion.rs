@@ -201,9 +201,14 @@ fn validate_component_configuration(
         )));
     }
     for (expected_axis, (correlation, pid)) in correlations.iter().zip(pids).enumerate() {
-        if correlation.axis() != expected_axis || pid.axis() != expected_axis {
+        if correlation.axis() != expected_axis {
             return Err(GaladrielError::InvalidChannels(
-                "PID fusion axes must be unique, matching, and contiguous from zero".into(),
+                "PID fusion correlation axes must be unique and contiguous from zero".into(),
+            ));
+        }
+        if pid.axis() != expected_axis {
+            return Err(GaladrielError::InvalidChannels(
+                "PID fusion report axes must be unique and contiguous from zero".into(),
             ));
         }
     }
@@ -505,15 +510,12 @@ pub fn assess_stream(
     let prepared = prepare_release_assessment(stream, release_suite)?;
     let assessment_binding =
         PidAssessmentBinding::new(prepared.assessment_binding(), suite.identity());
-    let adjusted_pid = match prepared.projection() {
-        Some(projection) if projection.axes.is_empty() => {
-            return Err(galadriel_core::GaladrielError::InvalidChannels(
-                "attested consistency projection must expose at least one axis".into(),
-            ));
-        }
-        Some(projection) => Some(suite.try_pid_for_axis_family(projection.axes.len())?),
-        None => None,
-    };
+    // A sealed `ConsistencyProjection` cannot represent zero axes, and the
+    // preparation boundary preserves that invariant.
+    let adjusted_pid = prepared
+        .projection()
+        .map(|projection| suite.try_pid_for_axis_family(projection.axes.len()))
+        .transpose()?;
 
     let mut pids = Vec::new();
     if let (Some(projection), Some(adjusted_pid)) = (prepared.projection(), adjusted_pid) {
@@ -721,6 +723,8 @@ mod tests {
         assert_eq!(report.correlations().len(), 3);
         assert_eq!(report.pids().len(), 3);
         assert_eq!(report.verdict(), &FusedVerdict::Nominal);
+        assert!(report.note().contains("signed correlation:"));
+        assert!(report.note().contains("PID escalation:"));
         assert_eq!(report.suite_identity(), suite.identity());
         assert_eq!(report.classification(), suite.classification());
         assert_eq!(
@@ -1194,6 +1198,33 @@ mod tests {
             ],
         );
         assert!(matches!(result, Err(GaladrielError::InvalidChannels(_))));
+    }
+
+    #[test]
+    fn fusion_checks_correlation_and_pid_axis_contiguity_independently() {
+        let suite = research_suite();
+        let baseline = nominal_baseline();
+        let valid_correlations = vec![axis_correlation(0, None, 2), axis_correlation(1, None, 2)];
+        let valid_pids = vec![
+            axis_pid(0, PidVerdict::Nominal, "axis zero", 2),
+            axis_pid(1, PidVerdict::Nominal, "axis one", 2),
+        ];
+
+        let duplicate_correlations =
+            vec![axis_correlation(0, None, 2), axis_correlation(0, None, 2)];
+        assert!(matches!(
+            fuse_axes_diagnostics(&suite, &baseline, &duplicate_correlations, &valid_pids),
+            Err(GaladrielError::InvalidChannels(_))
+        ));
+
+        let duplicate_pids = vec![
+            axis_pid(0, PidVerdict::Nominal, "axis zero", 2),
+            axis_pid(0, PidVerdict::Nominal, "duplicate axis zero", 2),
+        ];
+        assert!(matches!(
+            fuse_axes_diagnostics(&suite, &baseline, &valid_correlations, &duplicate_pids),
+            Err(GaladrielError::InvalidChannels(_))
+        ));
     }
 
     #[test]

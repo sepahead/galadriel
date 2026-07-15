@@ -43,7 +43,10 @@ pub const MAX_ASSEMBLER_OBSERVATION_STREAMS: usize = 64 * 1024;
 /// Hard ceiling for the aggregate number of per-frame state slots.
 pub const MAX_ASSEMBLER_FRAME_STATE_SLOTS: usize = 16 * 1024 * 1024;
 /// Hard ceiling for aggregate frame, reorder, and replay-index slots.
-pub const MAX_ASSEMBLER_TOTAL_STATE_SLOTS: usize = 32 * 1024 * 1024;
+pub const MAX_ASSEMBLER_TOTAL_STATE_SLOTS: usize = MAX_ASSEMBLER_FRAME_STATE_SLOTS
+    + MAX_ASSEMBLER_REORDER_EVENTS
+    + MAX_ASSEMBLER_PRIOR_IDENTITIES
+    + MAX_ASSEMBLER_OBSERVATION_STREAMS;
 /// Hard ceiling for sequence-window distances admitted by a configuration.
 pub const MAX_ASSEMBLER_SEQUENCE_DISTANCE: u64 = JSON_SAFE_INTEGER_MAX as u64;
 
@@ -3185,6 +3188,34 @@ mod tests {
     }
 
     #[test]
+    fn deadline_anchor_validation_rejects_the_platform_boundary() {
+        let start = Instant::now();
+        let mut accepted_seconds = 0_u64;
+        let mut rejected_seconds = u64::MAX;
+        while accepted_seconds < rejected_seconds {
+            let midpoint = accepted_seconds
+                + (rejected_seconds - accepted_seconds) / 2
+                + (rejected_seconds - accepted_seconds) % 2;
+            if start.checked_add(Duration::from_secs(midpoint)).is_some() {
+                accepted_seconds = midpoint;
+            } else {
+                rejected_seconds = midpoint - 1;
+            }
+        }
+        let terminal_anchor = start
+            .checked_add(Duration::from_secs(accepted_seconds))
+            .expect("binary search retains the largest whole-second anchor");
+
+        assert!(matches!(
+            validate_deadline_anchor(AssemblerLimits::default(), terminal_anchor),
+            Err(AssemblerConfigError::InvalidDuration {
+                field: "frame_deadline",
+                violation: AssemblerDurationViolation::AnchorOverflow,
+            })
+        ));
+    }
+
+    #[test]
     fn initial_heartbeat_grace_expires_exactly_and_then_uses_steady_deadline() {
         let start = Instant::now();
         let limits = AssemblerLimits::default();
@@ -3291,7 +3322,36 @@ mod tests {
     #[test]
     fn release_profiles_have_stable_architecture_independent_identities() {
         let limits = AssemblerProfile::BoundedV0_9.try_limits().unwrap();
+        let params = AssemblerProfile::BoundedV0_9.params();
         let policy = wire_policy();
+
+        assert_eq!(limits.max_open_frames(), params.max_open_frames);
+        assert_eq!(limits.max_events_per_frame(), params.max_events_per_frame);
+        assert_eq!(
+            limits.max_observations_per_frame(),
+            params.max_observations_per_frame
+        );
+        assert_eq!(limits.max_tracks_per_frame(), params.max_tracks_per_frame);
+        assert_eq!(limits.max_reorder_events(), params.max_reorder_events);
+        assert_eq!(limits.max_reorder_distance(), params.max_reorder_distance);
+        assert_eq!(limits.max_buffered_bytes(), params.max_buffered_bytes);
+        assert_eq!(limits.max_prior_identities(), params.max_prior_identities);
+        assert_eq!(
+            limits.max_observation_streams(),
+            params.max_observation_streams
+        );
+        assert_eq!(
+            limits.max_observation_advance(),
+            params.max_observation_advance
+        );
+        assert_eq!(limits.frame_deadline(), params.frame_deadline);
+        assert_eq!(limits.reorder_deadline(), params.reorder_deadline);
+        assert_eq!(limits.heartbeat_interval(), params.heartbeat_interval);
+        assert_eq!(limits.heartbeat_deadline(), params.heartbeat_deadline);
+        assert_eq!(
+            limits.initial_heartbeat_deadline(),
+            params.initial_heartbeat_deadline
+        );
 
         assert_eq!(
             limits.identity().to_hex(),
@@ -3320,6 +3380,34 @@ mod tests {
             Err(AssemblerConfigError::AggregateStateTooLarge { .. })
         ));
 
+        let exact_aggregate = AssemblerLimits {
+            max_open_frames: MAX_ASSEMBLER_OPEN_FRAMES,
+            max_events_per_frame: MAX_FRAME_ITEMS as usize,
+            max_observations_per_frame: MAX_FRAME_ITEMS as usize - 1,
+            max_tracks_per_frame: 1,
+            max_reorder_events: MAX_ASSEMBLER_REORDER_EVENTS,
+            max_prior_identities: MAX_ASSEMBLER_PRIOR_IDENTITIES,
+            max_observation_streams: MAX_ASSEMBLER_OBSERVATION_STREAMS,
+            ..AssemblerLimits::default()
+        };
+        assert!(validate_limits(exact_aggregate, Instant::now()).is_ok());
+        assert_eq!(
+            MAX_ASSEMBLER_TOTAL_STATE_SLOTS,
+            MAX_ASSEMBLER_FRAME_STATE_SLOTS
+                + MAX_ASSEMBLER_REORDER_EVENTS
+                + MAX_ASSEMBLER_PRIOR_IDENTITIES
+                + MAX_ASSEMBLER_OBSERVATION_STREAMS
+        );
+
+        let one_frame_slot_over = AssemblerLimits {
+            max_observations_per_frame: MAX_FRAME_ITEMS as usize,
+            ..exact_aggregate
+        };
+        assert!(matches!(
+            validate_limits(one_frame_slot_over, Instant::now()),
+            Err(AssemblerConfigError::AggregateStateTooLarge { .. })
+        ));
+
         let mut invalid_policy = RegistryOpportunityParams {
             max_active_tracks: MAX_ACTIVE_TRACKS,
             max_frame_inputs: MAX_FRAME_ITEMS,
@@ -3335,6 +3423,25 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn registry_opportunity_policy_preserves_every_pinned_bound() {
+        let params = RegistryOpportunityParams {
+            max_active_tracks: 2,
+            max_frame_inputs: 3,
+            max_attempts_per_track_modality: 4,
+            max_outcomes_per_frame: 5,
+            max_monitor_queue_events: 6,
+        };
+        let policy = RegistryOpportunityPolicy::try_new(params).unwrap();
+
+        assert_eq!(policy.max_active_tracks(), 2);
+        assert_eq!(policy.max_frame_inputs(), 3);
+        assert_eq!(policy.max_attempts_per_track_modality(), 4);
+        assert_eq!(policy.max_outcomes_per_frame(), 5);
+        assert_eq!(policy.max_monitor_queue_events(), 6);
+        assert_ne!(policy.identity().as_bytes(), &[0; 32]);
     }
 
     #[test]
@@ -3370,6 +3477,44 @@ mod tests {
             assert!(matches!(
                 validate_limits(invalid, start),
                 Err(AssemblerConfigError::InvalidSequenceLimit { value: 0, .. })
+            ));
+        }
+
+        for field in ["max_reorder_distance", "max_observation_advance"] {
+            let exact_ceiling = match field {
+                "max_reorder_distance" => AssemblerLimits {
+                    max_reorder_distance: MAX_ASSEMBLER_SEQUENCE_DISTANCE,
+                    ..defaults
+                },
+                "max_observation_advance" => AssemblerLimits {
+                    max_observation_advance: MAX_ASSEMBLER_SEQUENCE_DISTANCE,
+                    ..defaults
+                },
+                _ => unreachable!("the test enumerates every sequence limit"),
+            };
+            assert!(
+                validate_limits(exact_ceiling, start).is_ok(),
+                "{field} accepts the documented exact ceiling"
+            );
+
+            let one_over = match field {
+                "max_reorder_distance" => AssemblerLimits {
+                    max_reorder_distance: MAX_ASSEMBLER_SEQUENCE_DISTANCE + 1,
+                    ..defaults
+                },
+                "max_observation_advance" => AssemblerLimits {
+                    max_observation_advance: MAX_ASSEMBLER_SEQUENCE_DISTANCE + 1,
+                    ..defaults
+                },
+                _ => unreachable!("the test enumerates every sequence limit"),
+            };
+            assert!(matches!(
+                validate_limits(one_over, start),
+                Err(AssemblerConfigError::InvalidSequenceLimit {
+                    field: rejected,
+                    value,
+                    maximum: MAX_ASSEMBLER_SEQUENCE_DISTANCE,
+                }) if rejected == field && value == MAX_ASSEMBLER_SEQUENCE_DISTANCE + 1
             ));
         }
 

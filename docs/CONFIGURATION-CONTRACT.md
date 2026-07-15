@@ -244,7 +244,7 @@ no dormant confirmation payload.
   create one immutable derived config shared by the axis loop. Axis count and the
   derived value are part of configuration identity.
 - Lifecycle composition must check
-  `max(window_len, corr.window) * max_tracks * Modality::ALL.len() <= 1_000_000`
+  `max(window_len, corr.window) * max_tracks * Modality::ALL.len() <= 983_040`
   before retaining track history. Individual component validity does not imply
   this bundle invariant.
 

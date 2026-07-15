@@ -19,6 +19,22 @@ pub const MIN_PID_RESEARCH_MODALITIES: usize = 3;
 /// observations are read or any estimator is entered.
 pub const MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK: usize = 600_000_000;
 
+fn checked_suite_work(
+    component_work: usize,
+    axis_count: usize,
+) -> Result<usize, PidResearchSuiteError> {
+    let requested = component_work
+        .checked_mul(axis_count)
+        .ok_or(PidResearchSuiteError::WorkEstimateOverflow)?;
+    if requested > MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK {
+        return Err(PidResearchSuiteError::WorkLimitExceeded {
+            requested,
+            maximum: MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK,
+        });
+    }
+    Ok(requested)
+}
+
 /// Unvalidated composition parameters for [`PidResearchSuite::try_new`].
 #[derive(Debug, Clone)]
 pub struct PidResearchSuiteParams {
@@ -165,16 +181,10 @@ impl PidResearchSuite {
         let maximum_axis_pid = params
             .pid
             .try_for_axis_family(MAX_CONSISTENCY_PROJECTION_AXES)?;
-        let maximum_quadratic_fit_work = maximum_axis_pid
-            .quadratic_fit_work()
-            .checked_mul(MAX_CONSISTENCY_PROJECTION_AXES)
-            .ok_or(PidResearchSuiteError::WorkEstimateOverflow)?;
-        if maximum_quadratic_fit_work > MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK {
-            return Err(PidResearchSuiteError::WorkLimitExceeded {
-                requested: maximum_quadratic_fit_work,
-                maximum: MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK,
-            });
-        }
+        let maximum_quadratic_fit_work = checked_suite_work(
+            maximum_axis_pid.quadratic_fit_work(),
+            MAX_CONSISTENCY_PROJECTION_AXES,
+        )?;
 
         let mut identity = IdentityBuilder::new(b"galadriel-pid-research-suite-v1");
         identity.u8(
@@ -269,17 +279,7 @@ impl PidResearchSuite {
         &self,
         axis_count: usize,
     ) -> Result<PidConfig, PidResearchSuiteError> {
-        let work = self
-            .pid
-            .quadratic_fit_work()
-            .checked_mul(axis_count)
-            .ok_or(PidResearchSuiteError::WorkEstimateOverflow)?;
-        if work > MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK {
-            return Err(PidResearchSuiteError::WorkLimitExceeded {
-                requested: work,
-                maximum: MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK,
-            });
-        }
+        checked_suite_work(self.pid.quadratic_fit_work(), axis_count)?;
         Ok(self.pid.try_for_axis_family(axis_count)?)
     }
 }
@@ -299,8 +299,21 @@ mod tests {
             suite.classification(),
             PidResearchClassification::NamedResearchProfile
         );
+        assert_eq!(
+            suite.source_profile(),
+            Some(PidResearchProfile::CircularDeleteBlockV0_9)
+        );
         assert_eq!(suite.identity(), repeated.identity());
-        assert!(suite.maximum_quadratic_fit_work() <= MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK);
+        let expected_work = suite
+            .pid_config()
+            .try_for_axis_family(MAX_CONSISTENCY_PROJECTION_AXES)
+            .unwrap()
+            .quadratic_fit_work()
+            .checked_mul(MAX_CONSISTENCY_PROJECTION_AXES)
+            .unwrap();
+        assert_eq!(suite.maximum_quadratic_fit_work(), expected_work);
+        assert!(expected_work > 1);
+        assert!(expected_work <= MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK);
         assert_eq!(
             suite.identity().to_hex(),
             "4c0b4c91a1e26f08715329aabd2dcf955876d5a751ac8e16821076ebf421331b"
@@ -333,6 +346,11 @@ mod tests {
         .unwrap();
         let named = PidResearchSuite::circular_delete_block_v0_9(&MODALITIES).unwrap();
         assert_ne!(custom.identity(), named.identity());
+        assert_eq!(custom.source_profile(), None);
+        assert_eq!(
+            custom.classification(),
+            PidResearchClassification::CustomAcceptedResearch
+        );
 
         let error = PidResearchSuite::try_new(PidResearchSuiteParams {
             release_suite,
@@ -359,5 +377,51 @@ mod tests {
                 minimum: 3
             }
         );
+    }
+
+    #[test]
+    fn suite_work_ceiling_is_inclusive_and_checked_before_composition() {
+        let per_axis = MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK
+            .checked_div(MAX_CONSISTENCY_PROJECTION_AXES)
+            .unwrap();
+        assert_eq!(
+            checked_suite_work(per_axis, MAX_CONSISTENCY_PROJECTION_AXES).unwrap(),
+            MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK
+        );
+        assert_eq!(
+            checked_suite_work(per_axis + 1, MAX_CONSISTENCY_PROJECTION_AXES).unwrap_err(),
+            PidResearchSuiteError::WorkLimitExceeded {
+                requested: MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK
+                    + MAX_CONSISTENCY_PROJECTION_AXES,
+                maximum: MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK,
+            }
+        );
+        assert_eq!(
+            checked_suite_work(usize::MAX, 2).unwrap_err(),
+            PidResearchSuiteError::WorkEstimateOverflow
+        );
+    }
+
+    #[test]
+    fn suite_errors_expose_exact_display_and_nested_source() {
+        let inner = PidConfigError::WindowOutOfRange;
+        let error = PidResearchSuiteError::PidConfig(inner.clone());
+        assert_eq!(
+            error.to_string(),
+            "invalid PID config: PID window must be in 4..=512 (estimators are quadratic)"
+        );
+        let source = error.source().expect("PID configuration error is retained");
+        assert!(source.is::<PidConfigError>());
+        assert_eq!(source.to_string(), inner.to_string());
+
+        let terminal = PidResearchSuiteError::WorkLimitExceeded {
+            requested: 600_000_001,
+            maximum: 600_000_000,
+        };
+        assert_eq!(
+            terminal.to_string(),
+            "PID research suite requests 600000001 quadratic fit-units; maximum is 600000000"
+        );
+        assert!(terminal.source().is_none());
     }
 }

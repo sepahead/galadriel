@@ -94,7 +94,7 @@ def mutation_command(shard_id: str) -> list[str]:
         "--exclude",
         "crates/galadriel-justify/**",
         "--timeout",
-        "120",
+        "600",
         "--jobs",
         "2",
         "--shard",

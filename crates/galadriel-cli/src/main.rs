@@ -1407,6 +1407,11 @@ fn replay_track_uses_pid(track_index: usize, max_pid_tracks: usize) -> bool {
 }
 
 #[cfg(all(feature = "ncp", feature = "pid"))]
+fn replay_has_required_pid_modalities(modality_count: usize) -> bool {
+    modality_count >= galadriel_pid::MIN_PID_RESEARCH_MODALITIES
+}
+
+#[cfg(all(feature = "ncp", feature = "pid"))]
 fn replay_generation_observation_range(
     frame_ranges: &[Range<usize>],
     generation_start_frame: usize,
@@ -1447,6 +1452,19 @@ fn replay_window_observation_range(
     debug_assert!(frame_index < frame_ranges.len(), "frame index must exist");
     let start_frame = frame_index.saturating_add(1).saturating_sub(window);
     frame_ranges[start_frame].start..frame_ranges[frame_index].end
+}
+
+#[cfg(feature = "ncp")]
+fn replay_generation_frame_index(
+    frame_index: usize,
+    generation_start_frame: usize,
+) -> Option<usize> {
+    frame_index.checked_sub(generation_start_frame)
+}
+
+#[cfg(feature = "ncp")]
+fn replay_ingest_requires_reset(code: galadriel_core::FailureCode) -> bool {
+    code == galadriel_core::FailureCode::ResetRequired
 }
 
 #[cfg(feature = "ncp")]
@@ -1570,7 +1588,7 @@ fn run_replay(
                 .iter()
                 .try_for_each(|observation| mirror.ingest_checked(observation))
             {
-                if error.code() != galadriel_core::FailureCode::ResetRequired {
+                if !replay_ingest_requires_reset(error.code()) {
                     return Err(anyhow::anyhow!(
                         "track {track_id} ingest at sequence {seq}: {error}"
                     ));
@@ -1597,9 +1615,13 @@ fn run_replay(
             );
 
             let generation_ranges = &frame_ranges[generation_start_frame..=frame_index];
+            let generation_frame_index =
+                replay_generation_frame_index(frame_index, generation_start_frame).ok_or_else(
+                    || anyhow::anyhow!("generation start follows the current replay frame"),
+                )?;
             let window_range = replay_window_observation_range(
                 generation_ranges,
-                frame_index - generation_start_frame,
+                generation_frame_index,
                 corr_cfg.window(),
             );
             let (correlations, consistency_status, consistency_note) = if modalities_ready {
@@ -1709,9 +1731,9 @@ fn run_replay(
 
         #[cfg(feature = "pid")]
         if replay_track_uses_pid(track_index, max_pid_tracks) {
-            use galadriel_pid::{assess_stream, PidResearchSuite, MIN_PID_RESEARCH_MODALITIES};
+            use galadriel_pid::{assess_stream, PidResearchSuite};
 
-            if mods.len() < MIN_PID_RESEARCH_MODALITIES {
+            if !replay_has_required_pid_modalities(mods.len()) {
                 if verbose {
                     println!(
                         "│  PID      · track {track_id}: {}  {}",
@@ -1891,6 +1913,8 @@ mod replay_history_tests {
         let values = (0..config.min_samples())
             .map(|index| (index as f64 * 0.17).sin())
             .collect::<Vec<_>>();
+        assert_eq!(values[0], 0.0);
+        assert_eq!(values[1], 0.17_f64.sin());
         let channels = [
             (Modality::Visual, values.clone()),
             (Modality::Radar, values.clone()),
@@ -1950,6 +1974,40 @@ mod replay_history_tests {
             replay_window_observation_range(&frame_ranges, 128, 128),
             2..135
         );
+    }
+
+    #[test]
+    fn generation_relative_index_is_exact_and_never_wraps() {
+        assert_eq!(replay_generation_frame_index(5, 2), Some(3));
+        assert_eq!(replay_generation_frame_index(7, 7), Some(0));
+        assert_eq!(replay_generation_frame_index(2, 5), None);
+    }
+
+    #[test]
+    fn only_reset_required_failures_enter_the_replay_reset_path() {
+        assert!(replay_ingest_requires_reset(
+            galadriel_core::FailureCode::ResetRequired
+        ));
+        assert!(!replay_ingest_requires_reset(
+            galadriel_core::FailureCode::InvalidObservation
+        ));
+    }
+
+    #[test]
+    fn replay_rejects_an_absent_capture_instead_of_reporting_success() {
+        let path = std::env::temp_dir().join(format!(
+            "galadriel-replay-absent-{}-{}.jsonl",
+            std::process::id(),
+            line!()
+        ));
+        let _ = std::fs::remove_file(&path);
+        let path = path.to_string_lossy();
+        #[cfg(feature = "pid")]
+        let result = run_replay(&path, 1, 0);
+        #[cfg(not(feature = "pid"))]
+        let result = run_replay(&path, 1);
+
+        assert!(result.is_err(), "an absent capture must fail before replay");
     }
 
     #[cfg(feature = "pid")]
@@ -2021,6 +2079,12 @@ mod replay_history_tests {
             (replay_track_is_verbose(1, 1), replay_track_uses_pid(1, 4)),
             (false, true)
         );
+        assert!(!replay_has_required_pid_modalities(
+            galadriel_pid::MIN_PID_RESEARCH_MODALITIES - 1
+        ));
+        assert!(replay_has_required_pid_modalities(
+            galadriel_pid::MIN_PID_RESEARCH_MODALITIES
+        ));
     }
 
     #[test]

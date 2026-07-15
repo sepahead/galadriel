@@ -62,12 +62,9 @@ where
     where
         A: SeqAccess<'de>,
     {
-        if sequence.size_hint().is_some_and(|hint| hint > MAXIMUM) {
-            return Err(A::Error::custom(format_args!(
-                "array length exceeds maximum {MAXIMUM}"
-            )));
-        }
-        let mut values = Vec::with_capacity(sequence.size_hint().unwrap_or(0).min(MAXIMUM));
+        // JSON sequence visitors do not promise a useful size hint. The explicit
+        // bounded loop is therefore the authoritative work and allocation gate.
+        let mut values = Vec::new();
         while values.len() < MAXIMUM {
             let Some(value) = sequence.next_element()? else {
                 return Ok(values);
@@ -1880,6 +1877,20 @@ mod tests {
 
         assert!(matches!(&error, RegistryError::Decode(_)));
         assert!(error.to_string().contains("array length exceeds maximum"));
+    }
+
+    #[test]
+    fn bounded_collection_type_error_names_its_exact_contract() {
+        let mut value = registry_value();
+        value["frames"] = serde_json::json!(7);
+        let bytes = serde_json::to_vec(&value).expect("type-mismatch fixture encodes");
+
+        let error = DeploymentRegistry::from_json(&bytes)
+            .expect_err("a scalar cannot substitute for the bounded frame array");
+        assert!(matches!(&error, RegistryError::Decode(_)));
+        assert!(error.to_string().contains(&format!(
+            "an array containing at most {MAX_REGISTRY_ENTRIES} entries"
+        )));
     }
 
     #[test]

@@ -495,6 +495,19 @@ mod scalar_channel_tests {
         ));
     }
 
+    #[test]
+    fn complete_closed_modality_vocabulary_is_admitted_at_the_exact_boundary() {
+        let result = consistency_channels_with_temporal_limits(
+            &[],
+            &Modality::ALL,
+            MAX_ALIGNMENT_SEQ_GAP,
+            MAX_ALIGNMENT_TIMESTAMP_SKEW_MS,
+            MAX_INTER_SAMPLE_GAP_MS,
+        );
+
+        assert!(matches!(result, Ok(None)));
+    }
+
     #[expect(
         clippy::too_many_arguments,
         reason = "test fixture names every wire coordinate"
@@ -656,6 +669,39 @@ mod scalar_channel_tests {
         .unwrap();
         assert_eq!(channels[0].1, vec![2.0]);
         assert_eq!(channels[1].1, vec![2.0]);
+    }
+
+    #[test]
+    fn alignment_retains_the_exact_inclusive_inter_sample_gap_boundary() {
+        let modalities = [Modality::Visual, Modality::Radar];
+        let mut stream = Vec::new();
+        for sequence in 0..3 {
+            let timestamp_ms = sequence * 100;
+            for modality in modalities {
+                stream.push(research_with(
+                    1,
+                    timestamp_ms,
+                    sequence,
+                    modality,
+                    sequence as f64,
+                    1,
+                    1,
+                    sequence + 1,
+                ));
+            }
+        }
+
+        let channels = scalar_channels_with_temporal_limits(
+            &stream,
+            &modalities,
+            0,
+            1,
+            DEFAULT_ALIGNMENT_MAX_TIMESTAMP_SKEW_MS,
+            100,
+        )
+        .unwrap();
+        assert_eq!(channels[0].1, vec![0.0, 1.0, 2.0]);
+        assert_eq!(channels[1].1, vec![0.0, 1.0, 2.0]);
     }
 
     #[test]

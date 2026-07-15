@@ -60,7 +60,7 @@ pub const MAX_MONITOR_REORDER_DISTANCE: u64 = MAX_MONITOR_QUEUE_EVENTS as u64;
 pub const MAX_MONITOR_REORDER_DEADLINE: Duration = Duration::from_secs(60);
 /// Hard ceiling for aggregate bytes represented by handoff and reorder slots.
 pub const MAX_MONITOR_INGRESS_STATE_BYTES: usize =
-    2 * MAX_MONITOR_INGRESS_ITEMS * MAX_MONITOR_EVENT_BYTES;
+    (2 * MAX_MONITOR_INGRESS_ITEMS - 1) * MAX_MONITOR_EVENT_BYTES;
 
 /// Untrusted raw monitor-ingress parameters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -822,9 +822,7 @@ impl IngressEpoch {
     fn latch_receipt_telemetry_poison_locked(&self, state: &mut IngressState) {
         let mut poisoned = false;
         for counters in [&self.tap_counters, &self.subscription_counters] {
-            if counters.last_payload_received_at.is_poisoned()
-                && snapshot_last_received(counters).is_err()
-            {
+            if snapshot_last_received(counters).is_err() {
                 poisoned = true;
             }
         }
@@ -2146,6 +2144,20 @@ mod tests {
         assert!(MonitorLiveConfig::default()
             .with_reorder_deadline(MAX_MONITOR_REORDER_DEADLINE)
             .is_ok());
+        assert_eq!(
+            MAX_MONITOR_INGRESS_STATE_BYTES,
+            MAX_MONITOR_INGRESS_ITEMS
+                .checked_mul(2)
+                .and_then(|slots| slots.checked_sub(1))
+                .and_then(|slots| slots.checked_mul(MAX_MONITOR_EVENT_BYTES))
+                .expect("the platform represents the documented ingress ceiling")
+        );
+        assert!(MonitorLiveConfig::new(
+            MAX_MONITOR_INGRESS_ITEMS,
+            MAX_MONITOR_INGRESS_ITEMS - 1,
+            MAX_MONITOR_REORDER_DISTANCE,
+        )
+        .is_ok());
     }
 
     #[test]
@@ -2206,6 +2218,7 @@ mod tests {
         counters.events_reordered.store(5, Ordering::Relaxed);
         counters.events_enqueued.store(6, Ordering::Relaxed);
         counters.events_delivered.store(7, Ordering::Relaxed);
+        counters.events_discarded.store(13, Ordering::Relaxed);
         counters
             .contract_hash_mismatches
             .store(8, Ordering::Relaxed);
@@ -2235,12 +2248,13 @@ mod tests {
                 health.events_reordered(),
                 health.events_enqueued(),
                 health.events_delivered(),
+                health.events_discarded(),
                 health.contract_hash_mismatches(),
                 health.last_contiguous_event_seq(),
                 health.pending_reorder_events(),
                 health.last_payload_received_at(),
             ),
-            (2, 3, 4, 5, 6, 7, 8, Some(9), 10, Some(received_at),)
+            (2, 3, 4, 5, 6, 7, 13, 8, Some(9), 10, Some(received_at),)
         );
         assert_eq!(
             health.first_fault(),
@@ -2257,6 +2271,16 @@ mod tests {
             .last_contiguous_event_seq
             .store(0, Ordering::Relaxed);
         assert_eq!(health.last_contiguous_event_seq(), None);
+
+        let harness = Harness::new(MonitorLiveConfig::default());
+        harness.process(&encoded(1));
+        let exact_ingress_receipt = snapshot_last_received(&harness.counters)
+            .expect("healthy receipt telemetry is readable")
+            .expect("processed payload records its ingress time");
+        assert_eq!(
+            harness.ingress.last_payload_received_at(),
+            Some(exact_ingress_receipt)
+        );
     }
 
     #[test]
@@ -3047,6 +3071,29 @@ mod tests {
             harness.first_fault(),
             Some(MonitorIngressFault::ProvenanceMismatch)
         );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn monitor_tap_accessors_preserve_discard_and_internal_fault_state() {
+        let realm = format!("galadriel/test/monitor-tap-health-{}", std::process::id());
+        let tap = MonitorTap::open_realm(realm, TransportMode::QuietDevelopment)
+            .await
+            .expect("the isolated quiet-development monitor tap opens");
+
+        assert_eq!(tap.events_discarded(), 0);
+        assert_eq!(tap.internal_fault(), None);
+        assert_eq!(tap.internal_faults(), 0);
+        tap.counters.events_discarded.store(13, Ordering::Relaxed);
+        tap.lifecycle_poisoned.store(true, Ordering::Release);
+        assert_eq!(tap.events_discarded(), 13);
+        assert_eq!(
+            tap.internal_fault(),
+            Some(MonitorPoisonedState::TapLifecycle)
+        );
+        assert_eq!(tap.internal_faults(), 1);
+
+        tap.lifecycle_poisoned.store(false, Ordering::Release);
+        tap.close().await.expect("the owned test tap closes");
     }
 
     fn poison_ingress_mutex(ingress: &Arc<IngressEpoch>) {

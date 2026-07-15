@@ -322,6 +322,59 @@ mod tests {
         assert_ne!(left.finish(), right.finish());
     }
 
+    #[test]
+    fn digest_and_binding_observables_have_exact_canonical_forms() {
+        let bytes = std::array::from_fn(|index| index as u8);
+        let expected = "000102030405060708090a0b0c0d0e0f\
+                        101112131415161718191a1b1c1d1e1f";
+        let config = ConfigDigest(bytes);
+        let assessment = AssessmentDigest(bytes);
+
+        assert_eq!(config.as_bytes(), &bytes);
+        assert_eq!(config.to_hex(), expected);
+        assert_eq!(format!("{config}"), expected);
+        assert_eq!(
+            format!("{config:?}"),
+            format!("ConfigDigest(\"{expected}\")")
+        );
+        assert_eq!(
+            serde_json::to_string(&config).expect("serialize config digest"),
+            format!("\"{expected}\"")
+        );
+
+        assert_eq!(assessment.as_bytes(), &bytes);
+        assert_eq!(assessment.to_hex(), expected);
+        assert_eq!(format!("{assessment}"), expected);
+        assert_eq!(
+            format!("{assessment:?}"),
+            format!("AssessmentDigest(\"{expected}\")")
+        );
+        assert_eq!(
+            serde_json::to_string(&assessment).expect("serialize assessment digest"),
+            format!("\"{expected}\"")
+        );
+
+        let binding = AssessmentBinding {
+            digest: assessment,
+            suite_identity: config,
+            observation_count: 7,
+        };
+        assert_eq!(binding.digest(), assessment);
+        assert_eq!(binding.suite_identity(), config);
+        assert_eq!(binding.observation_count(), 7);
+        assert_eq!(
+            format!("{binding:?}"),
+            format!(
+                "AssessmentBinding {{ digest: AssessmentDigest(\"{expected}\"), \
+                 suite_identity: ConfigDigest(\"{expected}\"), observation_count: 7 }}"
+            )
+        );
+        assert_eq!(
+            serde_json::to_string(&binding).expect("serialize assessment binding"),
+            format!("\"{expected}\"")
+        );
+    }
+
     fn suite() -> ReleaseSuite {
         ReleaseSuite::standalone_advisory_v0_9(&[
             Modality::Visual,
@@ -371,6 +424,10 @@ mod tests {
         let base = scalar(1, 100, 7, Modality::Visual, 3.0, 3);
         let base_binding =
             AssessmentBinding::for_release_stream(std::slice::from_ref(&base), &suite);
+        assert_eq!(
+            base_binding.digest().to_hex(),
+            "541c2a9a6f7f058e4c130894c71c4ce8a86cbe6a82fafceca8b46ef116eeda48"
+        );
         let mutations = [
             scalar(2, 100, 7, Modality::Visual, 3.0, 3),
             scalar(1, 101, 7, Modality::Visual, 3.0, 3),
