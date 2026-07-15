@@ -736,7 +736,7 @@ def validate_ledger(
         status: sum(item["status"] == status for item in ledger_tasks)
         for status in VALID_STATUSES
     }
-    if counts != {"OPEN": 109, "COMPLETE": 0, "NOT_CLAIMED": 7}:
+    if counts != {"OPEN": 107, "COMPLETE": 0, "NOT_CLAIMED": 9}:
         raise AuditError(f"source ledger has an unexpected closure count: {counts}")
     return {
         "schema": "galadriel.requirements-ledger.v2",

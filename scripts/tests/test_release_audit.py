@@ -52,7 +52,7 @@ class ReleaseAuditTests(unittest.TestCase):
         )
         self.assertEqual(
             ledger["status_counts"],
-            {"OPEN": 109, "COMPLETE": 0, "NOT_CLAIMED": 7},
+            {"OPEN": 107, "COMPLETE": 0, "NOT_CLAIMED": 9},
         )
         self.assertTrue(
             all(

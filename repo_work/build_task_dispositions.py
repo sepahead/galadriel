@@ -34,6 +34,8 @@ CLAIM_ID = re.compile(r"CLM-\d{3}\Z")
 LENSES = tuple(f"L{number:02d}" for number in range(1, 21))
 
 NOT_CLAIMED_TASKS: dict[str, tuple[str, ...]] = {
+    "T096": ("CLM-013",),
+    "T097": ("CLM-013",),
     "T101": ("CLM-014",),
     "T105": ("CLM-008",),
     "T106": ("CLM-012",),
@@ -397,7 +399,7 @@ def verify() -> None:
     claims = validate_claims()
     validate_plan(tasks, claims)
     validate_source_dispositions()
-    print("byte-bound task-closure plan verified; 109 tasks remain post-commit and 7 are NOT_CLAIMED")
+    print("byte-bound task-closure plan verified; 107 tasks remain post-commit and 9 are NOT_CLAIMED")
 
 
 def main() -> int:

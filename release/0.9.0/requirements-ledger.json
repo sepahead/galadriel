@@ -4,11 +4,11 @@
   "schema": "galadriel.requirements-ledger.v2",
   "source_dispositions_state": "AWAITING_POST_COMMIT_REVIEW",
   "source_task_count": 116,
-  "source_task_plan_sha256": "7a99323e691036f07f2c66a19385405b1408350d4710b3985de440f5445576e4",
+  "source_task_plan_sha256": "d82df6c06792820c22643963aa15d5bbb5b21c0dcf9b77ffa55be926b264bb00",
   "status_counts": {
     "COMPLETE": 0,
-    "NOT_CLAIMED": 7,
-    "OPEN": 109
+    "NOT_CLAIMED": 9,
+    "OPEN": 107
   },
   "tasks": [
     {
@@ -18830,7 +18830,9 @@
         "Accept T096 “Choose and justify a sequential-error-control method; calibrate it under serial dependence and estimated covariance.” only after every non-excluded source precondition, procedure, mandatory counterfactual, required-evidence item, completion rule, and exact lens question is addressed with evidence bound to the signed candidate commit and tree.",
         "Accept T096 adaptations only when each excluded source item retains its exact claim-removal link and residual risk; a plan, assignment, path, or command name is not a result."
       ],
-      "claim_removal_links": [],
+      "claim_removal_links": [
+        "CLM-013"
+      ],
       "dependencies": [
         "T095"
       ],
@@ -18945,6 +18947,7 @@
       ],
       "residual_risks": [
         "T096: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
+        "T096: CLM-013 remains NOT_CLAIMED — The release controls stated within-assessment channel and projection-axis families only. It does not convert those thresholds into an anytime-valid, track-wide, or mission-wide false-alarm guarantee.",
         "T096: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
         "T096: future changes to Choose and justify a sequential-error-control method; calibrate it under serial dependence and estimated covariance. can invalidate this exact-candidate closure and require a new review."
       ],
@@ -18970,7 +18973,7 @@
         "L19": "Are naming, docs, examples, runbooks, review roles, incident response, support, deprecation, and withdrawal usable under stress?",
         "L20": "How would a malicious peer, rushed operator, odd-but-simple dataset, future maintainer, or AI-generated patch falsify the intended claim?"
       },
-      "source_plan_status": "PENDING_POST_COMMIT",
+      "source_plan_status": "NOT_CLAIMED",
       "source_projection_sha256": "2897c1a4bb924ff3ed0c05c5a6062a1780a99c77220aa1f95b869aeebdc363f6",
       "source_requirements": {
         "completion_rule": "No prose-only closure. Every acceptance condition and evidence item must pass on the exact candidate; otherwise mark NOT_CLAIMED or NO_GO.",
@@ -19017,7 +19020,7 @@
         ]
       },
       "source_scope": "repository-specific paths named by requirement",
-      "status": "OPEN",
+      "status": "NOT_CLAIMED",
       "subagent_lane": 1,
       "title": "Choose and justify a sequential-error-control method; calibrate it under serial dependence and estimated covariance."
     },
@@ -19026,7 +19029,9 @@
         "Accept T097 “Control multiplicity across channels, axes, directions, windows, tracks, and repeated assessments.” only after every non-excluded source precondition, procedure, mandatory counterfactual, required-evidence item, completion rule, and exact lens question is addressed with evidence bound to the signed candidate commit and tree.",
         "Accept T097 adaptations only when each excluded source item retains its exact claim-removal link and residual risk; a plan, assignment, path, or command name is not a result."
       ],
-      "claim_removal_links": [],
+      "claim_removal_links": [
+        "CLM-013"
+      ],
       "dependencies": [
         "T096"
       ],
@@ -19141,6 +19146,7 @@
       ],
       "residual_risks": [
         "T097: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
+        "T097: CLM-013 remains NOT_CLAIMED — The release controls stated within-assessment channel and projection-axis families only. It does not convert those thresholds into an anytime-valid, track-wide, or mission-wide false-alarm guarantee.",
         "T097: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
         "T097: future changes to Control multiplicity across channels, axes, directions, windows, tracks, and repeated assessments. can invalidate this exact-candidate closure and require a new review."
       ],
@@ -19166,7 +19172,7 @@
         "L19": "Are naming, docs, examples, runbooks, review roles, incident response, support, deprecation, and withdrawal usable under stress?",
         "L20": "How would a malicious peer, rushed operator, odd-but-simple dataset, future maintainer, or AI-generated patch falsify the intended claim?"
       },
-      "source_plan_status": "PENDING_POST_COMMIT",
+      "source_plan_status": "NOT_CLAIMED",
       "source_projection_sha256": "ff32793a58bf9dcd562cb5e601977d4cc0c17115d36c2f340a3e2bccdef5f51e",
       "source_requirements": {
         "completion_rule": "No prose-only closure. Every acceptance condition and evidence item must pass on the exact candidate; otherwise mark NOT_CLAIMED or NO_GO.",
@@ -19213,7 +19219,7 @@
         ]
       },
       "source_scope": "repository-specific paths named by requirement",
-      "status": "OPEN",
+      "status": "NOT_CLAIMED",
       "subagent_lane": 2,
       "title": "Control multiplicity across channels, axes, directions, windows, tracks, and repeated assessments."
     },

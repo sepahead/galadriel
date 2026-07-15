@@ -773,7 +773,7 @@ class DispositionTests(GitFixture):
             source_plan_sha256="2" * 64,
         )
         self.assertEqual(result["total"], 116)
-        self.assertEqual(result["not_claimed"], 7)
+        self.assertEqual(result["not_claimed"], 9)
 
     def test_wrong_commit_and_generic_task_lens_are_rejected(self) -> None:
         plan, claims, document = self.build_document()

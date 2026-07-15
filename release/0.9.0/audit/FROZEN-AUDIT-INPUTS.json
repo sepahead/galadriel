@@ -1076,7 +1076,7 @@
     },
     {
       "path": ".github/workflows/deep-quality.yml",
-      "sha256": "4498de967a9470afb420108af3b59ab2552c7ae1df78b565f983a5271516e37d",
+      "sha256": "314312bc85e9d7823aeca912f3804af165b72576437ea978d2b987c523f61cd0",
       "size_bytes": 8499
     },
     {
@@ -1131,8 +1131,8 @@
     },
     {
       "path": "release/0.9.0/task-closure-plan.json",
-      "sha256": "7a99323e691036f07f2c66a19385405b1408350d4710b3985de440f5445576e4",
-      "size_bytes": 1996960
+      "sha256": "d82df6c06792820c22643963aa15d5bbb5b21c0dcf9b77ffa55be926b264bb00",
+      "size_bytes": 1997492
     },
     {
       "path": "release/0.9.0/task-dispositions.json",
@@ -1141,8 +1141,8 @@
     },
     {
       "path": "release/0.9.0/requirements-ledger.json",
-      "sha256": "f9f49acb4a737a74ac09bf5a59bc96e78bccefb44827f2ce10f653a4a45a13c7",
-      "size_bytes": 1713977
+      "sha256": "b8a993ffbf9562ddb39aa9dfa9cee349391cdc3e0dcaab1948075bbbcd753550",
+      "size_bytes": 1714523
     },
     {
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
@@ -1226,8 +1226,8 @@
     },
     {
       "path": "docs/CONFIGURATION-CONTRACT.md",
-      "sha256": "d0566f2302dbbf1dff9eb3a8b00dc2127704be591d4a2519f286f597abd93976",
-      "size_bytes": 31009
+      "sha256": "49f6b9261654133f2353d078be587b258d7673ec64af5b3c3fd149abe02f35c3",
+      "size_bytes": 31007
     },
     {
       "path": "docs/PRODUCER-CONTRACT.md",
@@ -1246,8 +1246,8 @@
     },
     {
       "path": "docs/STATE-MACHINE.md",
-      "sha256": "8598e38632e406220d0097303c3ee6a1cf186e3caba5a71010e40ac4c3cedd60",
-      "size_bytes": 13090
+      "sha256": "8bc8fb6594dced270011a2d2edc1777e41e5bf8bcc4d83af8521c447845e31b6",
+      "size_bytes": 13088
     },
     {
       "path": "docs/STATISTICAL-CONTRACT.md",
@@ -1266,7 +1266,7 @@
     },
     {
       "path": "scripts/release_audit.py",
-      "sha256": "368fda29287a338ff096bd61e025354ccbc41fd329bf6cbd8606d534138763cf",
+      "sha256": "6e87c620540e5f2fc2c6d7edc0675572bdfc3a9dcb1b30eeb8c46d9568983fc0",
       "size_bytes": 34083
     },
     {
@@ -1286,8 +1286,8 @@
     },
     {
       "path": "repo_work/build_task_dispositions.py",
-      "sha256": "6a4b8163f725033c6d8d47597ef1e82a438f7eb6cfd4a796e6cd547a1421c666",
-      "size_bytes": 17960
+      "sha256": "541bcf5eb3fcd88881dfe692d643b7046b2bcb9945795c71086494d2325814f2",
+      "size_bytes": 18012
     },
     {
       "path": "repo_work/check_feature_graph.py",
@@ -1331,7 +1331,7 @@
     },
     {
       "path": "repo_work/prepare_mutation_evidence.py",
-      "sha256": "1c348352d9e5a508ebd26b97e00346dd18922c22f5732981fa123104f158ac1d",
+      "sha256": "5ca00206950ec68cd7ad8f51b67593dcc574a093267d8e5c02f2fef9dfbd95d8",
       "size_bytes": 9679
     },
     {
@@ -1341,7 +1341,7 @@
     },
     {
       "path": "repo_work/release_assurance.py",
-      "sha256": "f93c020480e00cc0fb2e2ab54cabba1bd401ea6c057a13ad422904805b077bbe",
+      "sha256": "38e11d2261712de0315a810c3592560d2f499c7192cf906c49b8ddb8e66e8a8a",
       "size_bytes": 63080
     },
     {
@@ -1356,7 +1356,7 @@
     },
     {
       "path": "repo_work/tests/test_release_assurance.py",
-      "sha256": "082a6bb891976a597acad88466975365e544c516f17089328a2bd725eb6f4539",
+      "sha256": "517bf734019ed3564f07a3cf8977a4555d919ebc9bec7111b98484029fd62a7f",
       "size_bytes": 46480
     },
     {
@@ -1366,8 +1366,8 @@
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",
-      "sha256": "7117e46ea1d213667ddced07c24f10eaf2a117203b6525b516345939ab8cb443",
-      "size_bytes": 5372
+      "sha256": "2606f49eedb9c49e3a415fc456d41753d3741b128781a699ad0a03ac332dd344",
+      "size_bytes": 5633
     },
     {
       "path": "repo_work/verify_evidence_manifest.py",
@@ -1376,7 +1376,7 @@
     },
     {
       "path": "scripts/tests/test_release_audit.py",
-      "sha256": "1d93d75ee688e085e7bba11436b28d1e29d719bd5003354c46611fa8032d5b40",
+      "sha256": "ff382ecd73e79130f63f1ffcbc7f6aac623d5edc8afbf62f30b5fe18575a91e3",
       "size_bytes": 5756
     }
   ],

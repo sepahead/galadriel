@@ -20,12 +20,16 @@ class TaskClosurePlanTests(unittest.TestCase):
         )
         self.assertEqual(
             sum(entry["status"] == "PENDING_POST_COMMIT" for entry in plan["tasks"]),
-            109,
+            107,
         )
         self.assertEqual(
-            sum(entry["status"] == "NOT_CLAIMED" for entry in plan["tasks"]), 7
+            sum(entry["status"] == "NOT_CLAIMED" for entry in plan["tasks"]), 9
         )
         self.assertNotIn("COMPLETE", {entry["status"] for entry in plan["tasks"]})
+        by_id = {entry["task_id"]: entry for entry in plan["tasks"]}
+        for task_id in ("T096", "T097"):
+            self.assertEqual(by_id[task_id]["status"], "NOT_CLAIMED")
+            self.assertEqual(by_id[task_id]["claim_removal_links"], ["CLM-013"])
 
     def test_plan_contains_questions_not_synthesized_lens_findings(self) -> None:
         plan = build_task_dispositions.validate_plan()

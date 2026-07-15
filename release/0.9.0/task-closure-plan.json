@@ -28219,7 +28219,9 @@
         "Accept T096 “Choose and justify a sequential-error-control method; calibrate it under serial dependence and estimated covariance.” only after every non-excluded source precondition, procedure, mandatory counterfactual, required-evidence item, completion rule, and exact lens question is addressed with evidence bound to the signed candidate commit and tree.",
         "Accept T096 adaptations only when each excluded source item retains its exact claim-removal link and residual risk; a plan, assignment, path, or command name is not a result."
       ],
-      "claim_removal_links": [],
+      "claim_removal_links": [
+        "CLM-013"
+      ],
       "evidence_types": [
         "FILE_REVIEW_LEDGER and requirement traceability updates",
         "complete commands/logs/exit codes",
@@ -28322,6 +28324,7 @@
       ],
       "residual_risks": [
         "T096: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
+        "T096: CLM-013 remains NOT_CLAIMED — The release controls stated within-assessment channel and projection-axis families only. It does not convert those thresholds into an anytime-valid, track-wide, or mission-wide false-alarm guarantee.",
         "T096: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
         "T096: future changes to Choose and justify a sequential-error-control method; calibrate it under serial dependence and estimated covariance. can invalidate this exact-candidate closure and require a new review."
       ],
@@ -28504,7 +28507,7 @@
         }
       },
       "source_projection_sha256": "2897c1a4bb924ff3ed0c05c5a6062a1780a99c77220aa1f95b869aeebdc363f6",
-      "status": "PENDING_POST_COMMIT",
+      "status": "NOT_CLAIMED",
       "task_id": "T096"
     },
     {
@@ -28512,7 +28515,9 @@
         "Accept T097 “Control multiplicity across channels, axes, directions, windows, tracks, and repeated assessments.” only after every non-excluded source precondition, procedure, mandatory counterfactual, required-evidence item, completion rule, and exact lens question is addressed with evidence bound to the signed candidate commit and tree.",
         "Accept T097 adaptations only when each excluded source item retains its exact claim-removal link and residual risk; a plan, assignment, path, or command name is not a result."
       ],
-      "claim_removal_links": [],
+      "claim_removal_links": [
+        "CLM-013"
+      ],
       "evidence_types": [
         "FILE_REVIEW_LEDGER and requirement traceability updates",
         "complete commands/logs/exit codes",
@@ -28615,6 +28620,7 @@
       ],
       "residual_risks": [
         "T097: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
+        "T097: CLM-013 remains NOT_CLAIMED — The release controls stated within-assessment channel and projection-axis families only. It does not convert those thresholds into an anytime-valid, track-wide, or mission-wide false-alarm guarantee.",
         "T097: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
         "T097: future changes to Control multiplicity across channels, axes, directions, windows, tracks, and repeated assessments. can invalidate this exact-candidate closure and require a new review."
       ],
@@ -28797,7 +28803,7 @@
         }
       },
       "source_projection_sha256": "ff32793a58bf9dcd562cb5e601977d4cc0c17115d36c2f340a3e2bccdef5f51e",
-      "status": "PENDING_POST_COMMIT",
+      "status": "NOT_CLAIMED",
       "task_id": "T097"
     },
     {
