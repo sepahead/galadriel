@@ -478,9 +478,9 @@ def verify_qualification(
         commit=commit,
         tree=tree,
     )
-    if len(mutation_artifacts) != 4:
+    if len(mutation_artifacts) != 7:
         raise ReviewError(
-            "qualification tier must contain four exact-diff mutation shards"
+            "qualification tier must contain six mutation outcomes and one run receipt"
         )
 
     qualification = load_json(root / "qualification.json")
@@ -536,6 +536,8 @@ def verify_qualification(
         "candidate",
         "baseline_commit",
         "shards",
+        "focused_checks",
+        "run_receipts",
         "status",
         "artifacts",
     }:
@@ -547,7 +549,13 @@ def verify_qualification(
         != manifest_artifacts["mutation/manifest.json"]["sha256"]
         or mutation_record["candidate"] != {"commit": commit, "tree": tree}
         or mutation_record["baseline_commit"] != mutation_document["baseline_commit"]
+        or any(
+            type(mutation_record[field]) is not int
+            for field in ("shards", "focused_checks", "run_receipts")
+        )
         or mutation_record["shards"] != 4
+        or mutation_record["focused_checks"] != 2
+        or mutation_record["run_receipts"] != 1
         or mutation_record["status"] != "PASS"
         or not isinstance(mutation_record["artifacts"], list)
     ):
@@ -576,7 +584,9 @@ def verify_qualification(
             )
         observed_mutation_paths.add(path)
     if observed_mutation_paths != expected_mutation_paths:
-        raise ReviewError("qualification mutation record omits exact shard outcomes")
+        raise ReviewError(
+            "qualification mutation record omits exact mutation artifacts"
+        )
 
     expected_crates = {
         "galadriel-cli",

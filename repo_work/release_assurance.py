@@ -15,8 +15,9 @@ import re
 import shlex
 import subprocess
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from common import ReviewError, contained_path, git, load_json
 
@@ -44,6 +45,195 @@ MUTATION_DIFF_OPTIONS = (
     "--diff-algorithm=myers",
     "--no-indent-heuristic",
 )
+MUTATION_LIVENESS_EXCLUDE_RES = (
+    r"DeliveryBoundaryState::blocks_delivery -> bool with true$",
+    r"replace != with == in DeliveryBoundaryState::blocks_delivery$",
+    r"replace <impl Drop for (DeliveryGuard|ResetGuard)<'_>>::drop with \(\)$",
+)
+FOCUSED_MUTATION_RECEIPT = "FOCUSED-MUTATION-RUN.json"
+CARGO_MUTANTS_IDENTITY = "cargo-mutants 27.1.0"
+CARGO_IDENTITY = "cargo 1.89.0 (c24e10642 2025-06-23)"
+RUSTC_IDENTITY = "rustc 1.89.0 (29483883e 2025-08-04)"
+
+
+class FocusedMutant(NamedTuple):
+    """One fully identified cargo-mutants transformation at a frozen source span."""
+
+    name: str
+    package: str
+    file: str
+    function_name: str
+    return_type: str
+    function_span: tuple[int, int, int, int]
+    span: tuple[int, int, int, int]
+    replacement: str
+    genre: str
+
+
+MUTATION_LIVENESS_CHECKS = (
+    {
+        "id": "delivery-boundary-state",
+        "examine_re": "DeliveryBoundaryState::blocks_delivery",
+        "test": "live::tests::each_delivery_boundary_state_independently_blocks_delivery",
+        "output": "mutants-delivery-boundary",
+        "required_mutants": (
+            FocusedMutant(
+                "crates/galadriel-ncp/src/live.rs:1266:9: replace "
+                "DeliveryBoundaryState::blocks_delivery -> bool with true",
+                "galadriel-ncp",
+                "crates/galadriel-ncp/src/live.rs",
+                "DeliveryBoundaryState::blocks_delivery",
+                "-> bool",
+                (1265, 5, 1267, 6),
+                (1266, 9, 1266, 78),
+                "true",
+                "FnValue",
+            ),
+            FocusedMutant(
+                "crates/galadriel-ncp/src/live.rs:1266:51: replace || with && in "
+                "DeliveryBoundaryState::blocks_delivery",
+                "galadriel-ncp",
+                "crates/galadriel-ncp/src/live.rs",
+                "DeliveryBoundaryState::blocks_delivery",
+                "-> bool",
+                (1265, 5, 1267, 6),
+                (1266, 51, 1266, 53),
+                "&&",
+                "BinaryOperator",
+            ),
+            FocusedMutant(
+                "crates/galadriel-ncp/src/live.rs:1266:30: replace || with && in "
+                "DeliveryBoundaryState::blocks_delivery",
+                "galadriel-ncp",
+                "crates/galadriel-ncp/src/live.rs",
+                "DeliveryBoundaryState::blocks_delivery",
+                "-> bool",
+                (1265, 5, 1267, 6),
+                (1266, 30, 1266, 32),
+                "&&",
+                "BinaryOperator",
+            ),
+            FocusedMutant(
+                "crates/galadriel-ncp/src/live.rs:1266:74: replace != with == in "
+                "DeliveryBoundaryState::blocks_delivery",
+                "galadriel-ncp",
+                "crates/galadriel-ncp/src/live.rs",
+                "DeliveryBoundaryState::blocks_delivery",
+                "-> bool",
+                (1265, 5, 1267, 6),
+                (1266, 74, 1266, 76),
+                "==",
+                "BinaryOperator",
+            ),
+            FocusedMutant(
+                "crates/galadriel-ncp/src/live.rs:1266:9: replace "
+                "DeliveryBoundaryState::blocks_delivery -> bool with false",
+                "galadriel-ncp",
+                "crates/galadriel-ncp/src/live.rs",
+                "DeliveryBoundaryState::blocks_delivery",
+                "-> bool",
+                (1265, 5, 1267, 6),
+                (1266, 9, 1266, 78),
+                "false",
+                "FnValue",
+            ),
+        ),
+    },
+    {
+        "id": "delivery-boundary-guards",
+        "examine_re": r"<impl Drop for (DeliveryGuard|ResetGuard)",
+        "test": "live::tests::delivery_and_reset_guards_release_their_exact_boundary_state",
+        "output": "mutants-delivery-guards",
+        "required_mutants": (
+            FocusedMutant(
+                "crates/galadriel-ncp/src/live.rs:1396:9: replace "
+                "<impl Drop for DeliveryGuard<'_>>::drop with ()",
+                "galadriel-ncp",
+                "crates/galadriel-ncp/src/live.rs",
+                "<impl Drop for DeliveryGuard<'_>>::drop",
+                "",
+                (1395, 5, 1408, 6),
+                (1396, 9, 1407, 10),
+                "()",
+                "FnValue",
+            ),
+            FocusedMutant(
+                "crates/galadriel-ncp/src/live.rs:1417:9: replace "
+                "<impl Drop for ResetGuard<'_>>::drop with ()",
+                "galadriel-ncp",
+                "crates/galadriel-ncp/src/live.rs",
+                "<impl Drop for ResetGuard<'_>>::drop",
+                "",
+                (1416, 5, 1429, 6),
+                (1417, 9, 1428, 10),
+                "()",
+                "FnValue",
+            ),
+        ),
+    },
+)
+
+
+def broad_mutation_command(shard_id: str) -> list[str]:
+    """Return the exact broad changed-diff mutation command for one shard."""
+
+    command = [
+        "cargo",
+        "mutants",
+        "--no-config",
+        "--workspace",
+        "--no-shuffle",
+        "--in-diff",
+        "git.diff",
+        "--exclude",
+        "crates/galadriel-eval/**",
+        "--exclude",
+        "crates/galadriel-justify/**",
+    ]
+    for pattern in MUTATION_LIVENESS_EXCLUDE_RES:
+        command.extend(("--exclude-re", pattern))
+    command.extend(
+        (
+            "--timeout",
+            "600",
+            "--jobs",
+            "2",
+            "--shard",
+            shard_id,
+            "--all-features",
+        )
+    )
+    return command
+
+
+def focused_liveness_mutation_command(check: dict[str, Any]) -> list[str]:
+    """Return one exact direct-test mutation command for a blocking invariant."""
+
+    return [
+        "cargo",
+        "mutants",
+        "--no-config",
+        "--package",
+        "galadriel-ncp",
+        "--file",
+        "crates/galadriel-ncp/src/live.rs",
+        "--re",
+        str(check["examine_re"]),
+        "--line-col",
+        "true",
+        "--all-features",
+        "--timeout",
+        "120",
+        "--jobs",
+        "2",
+        "--output",
+        str(check["output"]),
+        "--",
+        "--lib",
+        str(check["test"]),
+        "--",
+        "--exact",
+    ]
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -73,6 +263,16 @@ def require_text(value: Any, context: str, *, minimum: int = 1) -> str:
     if not isinstance(value, str) or len(value.strip()) < minimum:
         raise ReviewError(f"{context} must be concrete non-empty text")
     return value.strip()
+
+
+def require_digest_record(value: Any, context: str) -> None:
+    """Require canonical SHA-256 and byte-count fields before comparing bytes."""
+
+    require_keys(value, {"path", "sha256", "size_bytes"}, context)
+    if not isinstance(value["sha256"], str) or not SHA256.fullmatch(value["sha256"]):
+        raise ReviewError(f"{context} has an invalid SHA-256 digest")
+    if type(value["size_bytes"]) is not int or value["size_bytes"] < 0:
+        raise ReviewError(f"{context} has an invalid byte count")
 
 
 def sign_file(document: Path, key: Path, namespace: str) -> Path:
@@ -117,7 +317,9 @@ def derive_external_allowed_signers(signing_key: Path, destination: Path) -> byt
         raise ReviewError(f"cannot read SSH signing key: {error}") from error
     if configured_fields and configured_fields[0] == b"ssh-ed25519":
         try:
-            public_key = [field.decode("ascii", "strict") for field in configured_fields[:2]]
+            public_key = [
+                field.decode("ascii", "strict") for field in configured_fields[:2]
+            ]
         except UnicodeDecodeError as error:
             raise ReviewError("external signing public key is not ASCII") from error
     else:
@@ -681,7 +883,7 @@ def validate_mutation_evidence(
     commit: str,
     tree: str,
 ) -> tuple[dict[str, Any], list[Path]]:
-    """Validate four signed exact-diff mutation shards and their artifacts."""
+    """Validate signed exact-diff shards and focused liveness checks."""
 
     verify_signature(
         manifest_path,
@@ -702,11 +904,13 @@ def validate_mutation_evidence(
             "git_diff_sha256",
             "tool",
             "shards",
+            "focused_run_receipt",
+            "focused_checks",
         },
         "mutation evidence",
     )
     if (
-        document["schema"] != "galadriel.mutation-evidence.v1"
+        document["schema"] != "galadriel.mutation-evidence.v3"
         or document["release"] != VERSION
         or document["author"] != AUTHOR
     ):
@@ -745,25 +949,7 @@ def validate_mutation_evidence(
         command = require_text(
             shard["command"], f"mutation shard {shard['id']} command", minimum=40
         )
-        expected_command = [
-            "cargo",
-            "mutants",
-            "--workspace",
-            "--no-shuffle",
-            "--in-diff",
-            "git.diff",
-            "--exclude",
-            "crates/galadriel-eval/**",
-            "--exclude",
-            "crates/galadriel-justify/**",
-            "--timeout",
-            "600",
-            "--jobs",
-            "2",
-            "--shard",
-            shard["id"],
-            "--all-features",
-        ]
+        expected_command = broad_mutation_command(shard["id"])
         try:
             observed_command = shlex.split(command)
         except ValueError as error:
@@ -775,9 +961,7 @@ def validate_mutation_evidence(
                 f"mutation shard {shard['id']} command differs from the frozen gate"
             )
         artifact = shard["artifact"]
-        require_keys(
-            artifact, {"path", "sha256", "size_bytes"}, "mutation shard artifact"
-        )
+        require_digest_record(artifact, "mutation shard artifact")
         relative = require_text(artifact["path"], "mutation artifact path")
         target = contained_path(manifest_path.parent, relative)
         if target in {manifest_path, signature_path}:
@@ -796,6 +980,106 @@ def validate_mutation_evidence(
         if artifact["sha256"] != digest or artifact["size_bytes"] != size:
             raise ReviewError(f"mutation shard artifact digest mismatch: {relative}")
         validate_mutation_outcomes(target, shard["id"])
+        artifact_paths.add(target)
+        artifacts.append(target)
+
+    receipt_record = document["focused_run_receipt"]
+    require_keys(
+        receipt_record,
+        {"source_shard", "artifact"},
+        "focused mutation run receipt",
+    )
+    if receipt_record["source_shard"] != "2/4":
+        raise ReviewError("focused mutation run receipt came from another shard")
+    receipt_artifact = receipt_record["artifact"]
+    require_digest_record(
+        receipt_artifact,
+        "focused mutation run receipt artifact",
+    )
+    if receipt_artifact["path"] != FOCUSED_MUTATION_RECEIPT:
+        raise ReviewError("focused mutation run receipt has another path")
+    receipt_target = contained_path(manifest_path.parent, FOCUSED_MUTATION_RECEIPT)
+    if (
+        receipt_target in {manifest_path, signature_path}
+        or receipt_target in artifact_paths
+        or not receipt_target.is_file()
+        or receipt_target.is_symlink()
+    ):
+        raise ReviewError("focused mutation run receipt artifact is missing or unsafe")
+    receipt_digest, receipt_size = digest_file(receipt_target)
+    if (
+        receipt_artifact["sha256"] != receipt_digest
+        or receipt_artifact["size_bytes"] != receipt_size
+    ):
+        raise ReviewError("focused mutation run receipt artifact digest mismatch")
+    receipt_document, receipt_outcomes = validate_focused_mutation_receipt(
+        receipt_target,
+        root=manifest_path.parent,
+        commit=commit,
+        tree=tree,
+    )
+    artifact_paths.add(receipt_target)
+    artifacts.append(receipt_target)
+
+    focused_checks = document["focused_checks"]
+    expected_check_ids = [str(check["id"]) for check in MUTATION_LIVENESS_CHECKS]
+    if (
+        not isinstance(focused_checks, list)
+        or [item.get("id") for item in focused_checks if isinstance(item, dict)]
+        != expected_check_ids
+    ):
+        raise ReviewError("mutation evidence lacks the ordered focused liveness checks")
+    for index, (item, check) in enumerate(
+        zip(focused_checks, MUTATION_LIVENESS_CHECKS, strict=True)
+    ):
+        require_keys(
+            item,
+            {"id", "status", "source_shard", "command", "artifact"},
+            "focused mutation check",
+        )
+        check_id = str(check["id"])
+        if item["id"] != check_id or item["status"] != "PASS":
+            raise ReviewError(f"focused mutation check {check_id} did not pass")
+        if item["source_shard"] != "2/4":
+            raise ReviewError(
+                f"focused mutation check {check_id} came from another shard"
+            )
+        command = require_text(
+            item["command"], f"focused mutation check {check_id} command", minimum=40
+        )
+        try:
+            observed_command = shlex.split(command)
+        except ValueError as error:
+            raise ReviewError(
+                f"focused mutation check {check_id} command is not valid shell syntax: {error}"
+            ) from error
+        if (
+            observed_command != focused_liveness_mutation_command(check)
+            or observed_command != receipt_document["checks"][index]["command_argv"]
+        ):
+            raise ReviewError(
+                f"focused mutation check {check_id} differs from the frozen gate"
+            )
+        artifact = item["artifact"]
+        require_digest_record(artifact, "focused mutation artifact")
+        relative = require_text(artifact["path"], "focused mutation artifact path")
+        target = contained_path(manifest_path.parent, relative)
+        if target != receipt_outcomes[check_id]:
+            raise ReviewError(
+                f"focused mutation check {check_id} differs from its run receipt"
+            )
+        if target in {manifest_path, signature_path} or target in artifact_paths:
+            raise ReviewError(
+                f"focused mutation check {check_id} references a duplicate artifact"
+            )
+        if not target.is_file() or target.is_symlink():
+            raise ReviewError(
+                f"focused mutation artifact is missing or unsafe: {relative}"
+            )
+        digest, size = digest_file(target)
+        if artifact["sha256"] != digest or artifact["size_bytes"] != size:
+            raise ReviewError(f"focused mutation artifact digest mismatch: {relative}")
+        validate_focused_liveness_outcomes(target, check)
         artifact_paths.add(target)
         artifacts.append(target)
     return document, artifacts
@@ -827,6 +1111,23 @@ def validate_mutation_outcomes(path: Path, shard_id: str) -> dict[str, int]:
         raise ReviewError(
             f"mutation shard {shard_id} outcomes use another tool version"
         )
+    parsed_times = []
+    for field in ("start_time", "end_time"):
+        timestamp = document[field]
+        if not isinstance(timestamp, str) or not TIMESTAMP.fullmatch(timestamp):
+            raise ReviewError(
+                f"mutation shard {shard_id} has an invalid {field} timestamp"
+            )
+        try:
+            parsed_times.append(
+                datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            )
+        except ValueError as error:
+            raise ReviewError(
+                f"mutation shard {shard_id} has an invalid {field} timestamp"
+            ) from error
+    if parsed_times[1] < parsed_times[0]:
+        raise ReviewError(f"mutation shard {shard_id} ends before it starts")
     counts: dict[str, int] = {}
     for field in (
         "total_mutants",
@@ -890,6 +1191,339 @@ def validate_mutation_outcomes(path: Path, shard_id: str) -> dict[str, int]:
             f"mutation shard {shard_id} outcome details contradict its summary"
         )
     return counts
+
+
+def _focused_span_signature(value: Any, context: str) -> tuple[int, int, int, int]:
+    """Parse one exact cargo-mutants source span without accepting extra fields."""
+
+    require_keys(value, {"start", "end"}, context)
+    coordinates: list[int] = []
+    for endpoint in ("start", "end"):
+        position = value[endpoint]
+        require_keys(position, {"line", "column"}, f"{context} {endpoint}")
+        for coordinate in ("line", "column"):
+            number = position[coordinate]
+            if not isinstance(number, int) or isinstance(number, bool) or number <= 0:
+                raise ReviewError(
+                    f"{context} {endpoint} {coordinate} must be a positive integer"
+                )
+            coordinates.append(number)
+    return coordinates[0], coordinates[1], coordinates[2], coordinates[3]
+
+
+def _focused_exact_text(value: Any, context: str, *, allow_empty: bool = False) -> str:
+    if (
+        not isinstance(value, str)
+        or (not allow_empty and not value)
+        or value != value.strip()
+    ):
+        raise ReviewError(f"{context} must be canonical text")
+    return value
+
+
+def _focused_mutant_signature(value: Any, context: str) -> FocusedMutant:
+    """Parse the complete immutable identity of one focused mutant."""
+
+    require_keys(
+        value,
+        {"name", "package", "file", "function", "span", "replacement", "genre"},
+        context,
+    )
+    function = value["function"]
+    require_keys(
+        function, {"function_name", "return_type", "span"}, f"{context} function"
+    )
+    return FocusedMutant(
+        _focused_exact_text(value["name"], f"{context} name"),
+        _focused_exact_text(value["package"], f"{context} package"),
+        _focused_exact_text(value["file"], f"{context} file"),
+        _focused_exact_text(function["function_name"], f"{context} function name"),
+        _focused_exact_text(
+            function["return_type"],
+            f"{context} function return type",
+            allow_empty=True,
+        ),
+        _focused_span_signature(function["span"], f"{context} function span"),
+        _focused_span_signature(value["span"], f"{context} span"),
+        _focused_exact_text(value["replacement"], f"{context} replacement"),
+        _focused_exact_text(value["genre"], f"{context} genre"),
+    )
+
+
+def _validate_focused_phase(
+    value: Any,
+    *,
+    context: str,
+    expected_phase: str,
+    expected_argv: tuple[str, ...],
+    expected_status: Any,
+    expected_cargo_executable: str | None,
+) -> None:
+    """Bind one cargo-mutants phase to its exact Cargo command and outcome."""
+
+    require_keys(value, {"phase", "duration", "process_status", "argv"}, context)
+    if value["phase"] != expected_phase:
+        raise ReviewError(f"{context} is not the expected {expected_phase} phase")
+    duration = value["duration"]
+    if not isinstance(duration, float) or not math.isfinite(duration) or duration < 0:
+        raise ReviewError(f"{context} has an invalid duration")
+    argv = value["argv"]
+    executable_matches = False
+    if isinstance(argv, list) and argv and isinstance(argv[0], str):
+        executable_matches = (
+            Path(argv[0]).name == "cargo"
+            if expected_cargo_executable is None
+            else argv[0] == expected_cargo_executable
+        )
+    if (
+        not isinstance(argv, list)
+        or not argv
+        or not all(isinstance(argument, str) for argument in argv)
+        or not executable_matches
+        or tuple(argv[1:]) != expected_argv
+    ):
+        raise ReviewError(f"{context} used another Cargo command")
+    process_status = value["process_status"]
+    if expected_status == "Success":
+        status_matches = process_status == "Success" and isinstance(process_status, str)
+    else:
+        status_matches = (
+            isinstance(process_status, dict)
+            and set(process_status) == {"Failure"}
+            and type(process_status["Failure"]) is int
+            and process_status["Failure"] == 101
+        )
+    if not status_matches:
+        raise ReviewError(f"{context} has another process status")
+
+
+def _validate_focused_artifact_path(
+    value: Any, *, context: str, directory: str
+) -> None:
+    relative = _focused_exact_text(value, context)
+    path = Path(relative)
+    if (
+        path.is_absolute()
+        or ".." in path.parts
+        or not relative.startswith(f"{directory}/")
+    ):
+        raise ReviewError(f"{context} is not a contained {directory} path")
+
+
+def validate_focused_liveness_outcomes(
+    path: Path,
+    check: dict[str, Any],
+    *,
+    expected_cargo_executable: str | None = None,
+) -> dict[str, int]:
+    """Require an exact focused mutant set to be caught by one exact direct test."""
+
+    check_id = str(check["id"])
+    counts = validate_mutation_outcomes(path, f"focused/{check_id}")
+    required: Counter[FocusedMutant] = Counter(check["required_mutants"])
+    required_count = sum(required.values())
+    if counts != {
+        "total_mutants": required_count,
+        "missed": 0,
+        "caught": required_count,
+        "timeout": 0,
+        "unviable": 0,
+        "success": 0,
+    }:
+        raise ReviewError(
+            f"focused mutation check {check_id} did not catch its exact mutant set"
+        )
+
+    document = load_json(path)
+    observed: Counter[FocusedMutant] = Counter()
+    expected_build_argv = (
+        "test",
+        "--no-run",
+        "--verbose",
+        "--package=galadriel-ncp@0.9.0",
+        "--all-features",
+    )
+    expected_test_argv = (
+        "test",
+        "--verbose",
+        "--package=galadriel-ncp@0.9.0",
+        "--all-features",
+        "--lib",
+        str(check["test"]),
+        "--",
+        "--exact",
+    )
+    for index, outcome in enumerate(document["outcomes"]):
+        context = f"focused mutation check {check_id} outcome {index}"
+        require_keys(
+            outcome,
+            {"scenario", "summary", "log_path", "diff_path", "phase_results"},
+            context,
+        )
+        phases = outcome["phase_results"]
+        if not isinstance(phases, list) or len(phases) != 2:
+            raise ReviewError(f"{context} must contain exactly Build and Test phases")
+
+        scenario = outcome["scenario"]
+        baseline = scenario == "Baseline"
+        test_status: Any = "Success" if baseline else {"Failure": 101}
+        _validate_focused_phase(
+            phases[0],
+            context=f"{context} build",
+            expected_phase="Build",
+            expected_argv=expected_build_argv,
+            expected_status="Success",
+            expected_cargo_executable=expected_cargo_executable,
+        )
+        _validate_focused_phase(
+            phases[1],
+            context=f"{context} test",
+            expected_phase="Test",
+            expected_argv=expected_test_argv,
+            expected_status=test_status,
+            expected_cargo_executable=expected_cargo_executable,
+        )
+        _validate_focused_artifact_path(
+            outcome["log_path"], context=f"{context} log path", directory="log"
+        )
+
+        if baseline:
+            if outcome["summary"] != "Success":
+                raise ReviewError(f"{context} baseline summary is not successful")
+            if (
+                outcome["log_path"] != "log/baseline.log"
+                or outcome["diff_path"] is not None
+            ):
+                raise ReviewError(f"{context} baseline paths are not canonical")
+            continue
+
+        if outcome["summary"] != "CaughtMutant":
+            raise ReviewError(f"{context} mutant summary is not caught")
+        _validate_focused_artifact_path(
+            outcome["diff_path"], context=f"{context} diff path", directory="diff"
+        )
+        mutant = scenario.get("Mutant") if isinstance(scenario, dict) else None
+        observed[_focused_mutant_signature(mutant, f"{context} mutant")] += 1
+    if observed != required:
+        raise ReviewError(
+            f"focused mutation check {check_id} targets another mutant set"
+        )
+    return counts
+
+
+def validate_focused_mutation_receipt(
+    path: Path,
+    *,
+    root: Path,
+    commit: str,
+    tree: str,
+) -> tuple[dict[str, Any], dict[str, Path]]:
+    """Bind focused outcomes to the exact runner invocation and Rust toolchain."""
+
+    root = root.resolve()
+    if not path.is_file() or path.is_symlink():
+        raise ReviewError("focused mutation run receipt is missing or unsafe")
+    path = path.resolve()
+    if path != root / FOCUSED_MUTATION_RECEIPT:
+        raise ReviewError("focused mutation run receipt is outside its artifact root")
+    document = load_json(path)
+    require_keys(
+        document,
+        {"schema", "candidate", "toolchain", "checks"},
+        "focused mutation run receipt",
+    )
+    if document["schema"] != "galadriel.focused-mutation-run.v1":
+        raise ReviewError("focused mutation run receipt has another schema")
+    if document["candidate"] != {"commit": commit, "tree": tree}:
+        raise ReviewError("focused mutation run receipt targets another candidate")
+    toolchain = document["toolchain"]
+    require_keys(
+        toolchain,
+        {"cargo", "cargo_executable", "cargo_mutants", "rustc"},
+        "focused mutation run toolchain",
+    )
+    cargo_executable = _focused_exact_text(
+        toolchain["cargo_executable"], "focused mutation Cargo executable"
+    )
+    if (
+        not Path(cargo_executable).is_absolute()
+        or Path(cargo_executable).name != "cargo"
+    ):
+        raise ReviewError(
+            "focused mutation Cargo executable is not an absolute cargo path"
+        )
+    if toolchain != {
+        "cargo": CARGO_IDENTITY,
+        "cargo_executable": cargo_executable,
+        "cargo_mutants": CARGO_MUTANTS_IDENTITY,
+        "rustc": RUSTC_IDENTITY,
+    }:
+        raise ReviewError("focused mutation run used another pinned toolchain")
+
+    checks = document["checks"]
+    expected_ids = [str(check["id"]) for check in MUTATION_LIVENESS_CHECKS]
+    if (
+        not isinstance(checks, list)
+        or [item.get("id") for item in checks if isinstance(item, dict)] != expected_ids
+    ):
+        raise ReviewError("focused mutation run receipt lacks the ordered checks")
+    outcomes: dict[str, Path] = {}
+    for item, check in zip(checks, MUTATION_LIVENESS_CHECKS, strict=True):
+        check_id = str(check["id"])
+        require_keys(
+            item,
+            {"id", "status", "command_argv", "counts", "outcomes"},
+            f"focused mutation receipt check {check_id}",
+        )
+        if (
+            item["id"] != check_id
+            or item["status"] != "PASS"
+            or item["command_argv"] != focused_liveness_mutation_command(check)
+        ):
+            raise ReviewError(f"focused mutation receipt check {check_id} drifted")
+        artifact = item["outcomes"]
+        require_digest_record(
+            artifact,
+            f"focused mutation receipt check {check_id} outcomes",
+        )
+        expected_relative = f"{check['output']}/mutants.out/outcomes.json"
+        if artifact["path"] != expected_relative:
+            raise ReviewError(
+                f"focused mutation receipt check {check_id} targets another output"
+            )
+        target = contained_path(root, expected_relative)
+        if target in outcomes.values() or not target.is_file() or target.is_symlink():
+            raise ReviewError(
+                f"focused mutation receipt check {check_id} output is missing or duplicate"
+            )
+        digest, size = digest_file(target)
+        if artifact["sha256"] != digest or artifact["size_bytes"] != size:
+            raise ReviewError(
+                f"focused mutation receipt check {check_id} output digest mismatch"
+            )
+        counts = validate_focused_liveness_outcomes(
+            target,
+            check,
+            expected_cargo_executable=cargo_executable,
+        )
+        recorded_counts = item["counts"]
+        require_keys(
+            recorded_counts,
+            set(counts),
+            f"focused mutation receipt check {check_id} counts",
+        )
+        if any(
+            type(value) is not int or value < 0 for value in recorded_counts.values()
+        ):
+            raise ReviewError(
+                f"focused mutation receipt check {check_id} has noncanonical counts"
+            )
+        if recorded_counts != counts:
+            raise ReviewError(
+                f"focused mutation receipt check {check_id} count record drifted"
+            )
+        outcomes[check_id] = target
+    return document, outcomes
 
 
 def git_tree_inventory(repo: Path, commit: str) -> dict[str, dict[str, Any]]:
@@ -1064,7 +1698,7 @@ def verify_artifact_manifest(
         raise ReviewError("artifact manifest must contain artifacts")
     seen: set[str] = set()
     for item in artifacts:
-        require_keys(item, {"path", "sha256", "size_bytes"}, "manifest artifact")
+        require_digest_record(item, "manifest artifact")
         relative = item["path"]
         if not isinstance(relative, str) or relative in seen:
             raise ReviewError(f"duplicate or invalid manifest path: {relative!r}")
@@ -1073,8 +1707,6 @@ def verify_artifact_manifest(
                 f"self-reference is prohibited in artifact manifest: {relative}"
             )
         seen.add(relative)
-        if not SHA256.fullmatch(item["sha256"]):
-            raise ReviewError(f"invalid artifact digest: {relative}")
         target = contained_path(root, relative)
         if not target.is_file():
             raise ReviewError(f"manifest artifact is missing: {relative}")

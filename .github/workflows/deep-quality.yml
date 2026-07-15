@@ -10,6 +10,9 @@ on:
       - "Cargo.lock"
       - "rust-toolchain.toml"
       - "deny.toml"
+      - "repo_work/check_focused_mutation.py"
+      - "repo_work/common.py"
+      - "repo_work/release_assurance.py"
       - ".github/workflows/deep-quality.yml"
   pull_request:
     paths:
@@ -19,6 +22,9 @@ on:
       - "Cargo.lock"
       - "rust-toolchain.toml"
       - "deny.toml"
+      - "repo_work/check_focused_mutation.py"
+      - "repo_work/common.py"
+      - "repo_work/release_assurance.py"
       - ".github/workflows/deep-quality.yml"
   schedule:
     - cron: "17 3 * * 1"
@@ -121,8 +127,10 @@ jobs:
           git rev-parse "HEAD^{commit}"
           git rev-parse "HEAD^{tree}"
 
-      - name: Install current stable Rust
+      - name: Install release Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: 1.89.0
 
       - name: Restore Cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
@@ -157,19 +165,33 @@ jobs:
             echo "shard=${{ matrix.shard }}"
           } > SUBJECT.txt
 
+      - name: Run exact focused mutation checks
+        if: matrix.shard == '2/4'
+        run: python3 repo_work/check_focused_mutation.py --run
+
+      - name: Validate exact focused mutation outcomes
+        if: matrix.shard == '2/4'
+        run: python3 repo_work/check_focused_mutation.py
+
       - name: Mutate changed Rust
         # The evaluation/justification harnesses contain long Monte Carlo studies,
         # and the evidence publisher deliberately rejects cargo-mutants' temporary
         # dirty worktree. Exclude their source before cargo-mutants computes the
         # baseline package union; all runtime workspace packages, including future
-        # additions, remain in the bounded PR mutation gate.
+        # additions, remain in the bounded PR mutation gate. Four synchronization
+        # mutants are caught above by direct state tests because activating them
+        # blocks unrelated full-suite worker threads after the decisive assertion.
         run: >-
           cargo mutants
+          --no-config
           --workspace
           --no-shuffle
           --in-diff git.diff
           --exclude 'crates/galadriel-eval/**'
           --exclude 'crates/galadriel-justify/**'
+          --exclude-re 'DeliveryBoundaryState::blocks_delivery -> bool with true$'
+          --exclude-re 'replace != with == in DeliveryBoundaryState::blocks_delivery$'
+          --exclude-re "replace <impl Drop for (DeliveryGuard|ResetGuard)<'_>>::drop with \(\)$"
           --timeout 600
           --jobs 2
           --shard '${{ matrix.shard }}'
@@ -183,6 +205,9 @@ jobs:
           if-no-files-found: error
           path: |
             mutants.out
+            mutants-delivery-boundary
+            mutants-delivery-guards
+            FOCUSED-MUTATION-RUN.json
             git.diff
             git.diff.sha256
             SUBJECT.txt
@@ -208,8 +233,10 @@ jobs:
           git rev-parse "HEAD^{commit}"
           git rev-parse "HEAD^{tree}"
 
-      - name: Install current stable Rust
+      - name: Install release Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: 1.89.0
 
       - name: Restore Cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
@@ -221,7 +248,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          cargo mutants --package galadriel-core --file crates/galadriel-core/src/fusion.rs --timeout 120 --jobs 2 --output mutants-core.out
+          cargo mutants --no-config --package galadriel-core --file crates/galadriel-core/src/fusion.rs --timeout 120 --jobs 2 --output mutants-core.out
           status=$?
           if [[ $status -ne 0 && $status -ne 2 ]]; then exit "$status"; fi
           if [[ $status -eq 2 ]]; then echo 'Core missed mutants are recorded for follow-up.'; fi
@@ -230,7 +257,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          cargo mutants --package galadriel-ncp --file crates/galadriel-ncp/src/live.rs --all-features --timeout 120 --jobs 2 --output mutants-ncp.out
+          cargo mutants --no-config --package galadriel-ncp --file crates/galadriel-ncp/src/live.rs --all-features --timeout 120 --jobs 2 --output mutants-ncp.out
           status=$?
           if [[ $status -ne 0 && $status -ne 2 ]]; then exit "$status"; fi
           if [[ $status -eq 2 ]]; then echo 'NCP missed mutants are recorded for follow-up.'; fi

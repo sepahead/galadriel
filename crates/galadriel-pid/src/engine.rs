@@ -2904,6 +2904,74 @@ mod tests {
     }
 
     #[test]
+    fn failed_pair_count_is_reported_once_for_symmetric_evidence() {
+        let shared = pseudo_random_series(128, 0x51);
+        let honest_noise = pseudo_random_series(128, 0x52);
+        let weak_noise = pseudo_random_series(128, 0x53);
+        let radar = shared
+            .iter()
+            .zip(&honest_noise)
+            .map(|(&signal, &noise)| signal + 0.03 * noise)
+            .collect();
+        let acoustic = shared
+            .iter()
+            .zip(&weak_noise)
+            .map(|(&signal, &noise)| 0.5 * signal + noise)
+            .collect();
+        let channels = vec![
+            (Modality::Visual, shared),
+            (Modality::Radar, radar),
+            (Modality::Acoustic, acoustic),
+        ];
+        let base = point_config();
+        let standardized = channels
+            .iter()
+            .map(|(modality, values)| standardize(values, modality.label()).unwrap())
+            .collect::<Vec<_>>();
+        let mut pairwise_cvs = [(0, 1), (0, 2), (1, 2)].map(|(first, second)| {
+            let (first_modality, first_values, second_modality, second_values) = canonical_pair(
+                channels[first].0,
+                &standardized[first],
+                channels[second].0,
+                &standardized[second],
+            );
+            let seed = domain_seed(
+                base.seed(),
+                ROLE_PAIR_POINT,
+                modality_key(first_modality),
+                modality_key(second_modality),
+            );
+            let (joint, _) = noised_matrix_and_columns(
+                &[first_values, second_values],
+                base.observation_noise_std(),
+                seed,
+            )
+            .unwrap();
+            distance_concentration_stats(joint.as_ref(), &DistanceConcentrationConfig::default())
+                .unwrap()
+                .pairwise_cv
+        });
+        pairwise_cvs.sort_by(f64::total_cmp);
+        assert!(pairwise_cvs[0] < pairwise_cvs[1]);
+
+        let mut params = PidResearchProfile::PointEstimateOnlyV0_9.params();
+        params.id_max = f64::MAX;
+        params.nn_ratio_max = 1.0;
+        params.cv_min = pairwise_cvs[0] + (pairwise_cvs[1] - pairwise_cvs[0]) / 2.0;
+        let report = analyze(&channels, &PidConfig::try_new(params).unwrap()).unwrap();
+
+        assert_eq!(
+            (report.verdict(), report.note()),
+            (
+                &PidVerdict::InsufficientEvidence,
+                "1 requested pair estimator(s) failed a geometry or numerical gate",
+            ),
+            "pairwise_cvs={pairwise_cvs:?}, channels={:?}",
+            report.channels()
+        );
+    }
+
+    #[test]
     fn equal_disconnected_dyads_are_insufficient_not_nominal() {
         let first = pseudo_random_series(128, 7);
         let second = pseudo_random_series(128, 19);

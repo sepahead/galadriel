@@ -20,6 +20,7 @@ ROOT = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 
 from common import ReviewError, canonical_json  # noqa: E402
+from check_focused_mutation import assert_new_output_path  # noqa: E402
 from finalize_release import (  # noqa: E402
     validate_candidate_plan_documents,
     validate_qualification_commands,
@@ -34,10 +35,17 @@ from qualify_candidate import (  # noqa: E402
 )
 from prepare_mutation_evidence import mutation_command  # noqa: E402
 from release_assurance import (  # noqa: E402
+    CARGO_IDENTITY,
+    CARGO_MUTANTS_IDENTITY,
+    FOCUSED_MUTATION_RECEIPT,
+    FocusedMutant,
     MUTATION_DIFF_OPTIONS,
+    MUTATION_LIVENESS_CHECKS,
+    RUSTC_IDENTITY,
     assert_tracked_allowed_signer,
     derive_external_allowed_signers,
     evaluate_acceptance,
+    focused_liveness_mutation_command,
     git_tree_inventory,
     sha256_bytes,
     sign_file,
@@ -46,10 +54,156 @@ from release_assurance import (  # noqa: E402
     validate_evidence_config_binding,
     validate_mutation_outcomes,
     validate_mutation_evidence,
+    validate_focused_liveness_outcomes,
+    validate_focused_mutation_receipt,
     validate_reviewed_task_dispositions,
     verify_artifact_manifest,
     verify_signature,
 )
+
+
+def focused_span_document(span: tuple[int, int, int, int]) -> dict[str, object]:
+    start_line, start_column, end_line, end_column = span
+    return {
+        "start": {"line": start_line, "column": start_column},
+        "end": {"line": end_line, "column": end_column},
+    }
+
+
+def focused_mutant_document(mutant: FocusedMutant) -> dict[str, object]:
+    return {
+        "name": mutant.name,
+        "package": mutant.package,
+        "file": mutant.file,
+        "function": {
+            "function_name": mutant.function_name,
+            "return_type": mutant.return_type,
+            "span": focused_span_document(mutant.function_span),
+        },
+        "span": focused_span_document(mutant.span),
+        "replacement": mutant.replacement,
+        "genre": mutant.genre,
+    }
+
+
+def focused_phase_results(
+    check: dict[str, object], *, test_status: object
+) -> list[dict[str, object]]:
+    cargo = "/fixture/toolchain/bin/cargo"
+    return [
+        {
+            "phase": "Build",
+            "duration": 1.0,
+            "process_status": "Success",
+            "argv": [
+                cargo,
+                "test",
+                "--no-run",
+                "--verbose",
+                "--package=galadriel-ncp@0.9.0",
+                "--all-features",
+            ],
+        },
+        {
+            "phase": "Test",
+            "duration": 1.0,
+            "process_status": test_status,
+            "argv": [
+                cargo,
+                "test",
+                "--verbose",
+                "--package=galadriel-ncp@0.9.0",
+                "--all-features",
+                "--lib",
+                str(check["test"]),
+                "--",
+                "--exact",
+            ],
+        },
+    ]
+
+
+def focused_outcomes_document(check: dict[str, object]) -> dict[str, object]:
+    outcomes: list[dict[str, object]] = [
+        {
+            "scenario": "Baseline",
+            "summary": "Success",
+            "log_path": "log/baseline.log",
+            "diff_path": None,
+            "phase_results": focused_phase_results(check, test_status="Success"),
+        }
+    ]
+    required = check["required_mutants"]
+    assert isinstance(required, tuple)
+    for index, mutant in enumerate(required):
+        assert isinstance(mutant, FocusedMutant)
+        outcomes.append(
+            {
+                "scenario": {"Mutant": focused_mutant_document(mutant)},
+                "summary": "CaughtMutant",
+                "log_path": f"log/focused-{index}.log",
+                "diff_path": f"diff/focused-{index}.diff",
+                "phase_results": focused_phase_results(
+                    check, test_status={"Failure": 101}
+                ),
+            }
+        )
+    count = len(required)
+    return {
+        "outcomes": outcomes,
+        "total_mutants": count,
+        "missed": 0,
+        "caught": count,
+        "timeout": 0,
+        "unviable": 0,
+        "success": 0,
+        "start_time": "2026-07-14T00:00:00Z",
+        "end_time": "2026-07-14T00:01:00Z",
+        "cargo_mutants_version": "27.1.0",
+    }
+
+
+def focused_receipt_document(
+    root: Path, *, commit: str, tree: str
+) -> dict[str, object]:
+    records = []
+    for check in MUTATION_LIVENESS_CHECKS:
+        check_id = str(check["id"])
+        relative = f"{check['output']}/mutants.out/outcomes.json"
+        outcomes = root / relative
+        data = outcomes.read_bytes()
+        count = len(check["required_mutants"])
+        records.append(
+            {
+                "id": check_id,
+                "status": "PASS",
+                "command_argv": focused_liveness_mutation_command(check),
+                "counts": {
+                    "total_mutants": count,
+                    "missed": 0,
+                    "caught": count,
+                    "timeout": 0,
+                    "unviable": 0,
+                    "success": 0,
+                },
+                "outcomes": {
+                    "path": relative,
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                    "size_bytes": len(data),
+                },
+            }
+        )
+    return {
+        "schema": "galadriel.focused-mutation-run.v1",
+        "candidate": {"commit": commit, "tree": tree},
+        "toolchain": {
+            "cargo": CARGO_IDENTITY,
+            "cargo_executable": "/fixture/toolchain/bin/cargo",
+            "cargo_mutants": CARGO_MUTANTS_IDENTITY,
+            "rustc": RUSTC_IDENTITY,
+        },
+        "checks": records,
+    }
 
 
 def metric(
@@ -473,11 +627,42 @@ class BindingAndManifestTests(GitFixture):
                     },
                 }
             )
+        focused_checks = []
+        for check in MUTATION_LIVENESS_CHECKS:
+            check_id = str(check["id"])
+            focused = self.root / str(check["output"]) / "mutants.out" / "outcomes.json"
+            focused.parent.mkdir(parents=True)
+            focused.write_bytes(canonical_json(focused_outcomes_document(check)))
+            data = focused.read_bytes()
+            focused_checks.append(
+                {
+                    "id": check_id,
+                    "status": "PASS",
+                    "source_shard": "2/4",
+                    "command": shlex.join(focused_liveness_mutation_command(check)),
+                    "artifact": {
+                        "path": focused.relative_to(self.root).as_posix(),
+                        "sha256": hashlib.sha256(data).hexdigest(),
+                        "size_bytes": len(data),
+                    },
+                }
+            )
+        receipt = self.root / FOCUSED_MUTATION_RECEIPT
+        receipt.write_bytes(
+            canonical_json(
+                focused_receipt_document(
+                    self.root,
+                    commit=repository_commit,
+                    tree=repository_tree,
+                )
+            )
+        )
+        receipt_data = receipt.read_bytes()
         manifest = self.root / "mutation-evidence.json"
         manifest.write_bytes(
             canonical_json(
                 {
-                    "schema": "galadriel.mutation-evidence.v1",
+                    "schema": "galadriel.mutation-evidence.v3",
                     "release": "0.9.0",
                     "author": "Sepehr Mahmoudian",
                     "candidate": {
@@ -489,6 +674,15 @@ class BindingAndManifestTests(GitFixture):
                     "git_diff_sha256": hashlib.sha256(diff).hexdigest(),
                     "tool": {"name": "cargo-mutants", "version": "27.1.0"},
                     "shards": shards,
+                    "focused_run_receipt": {
+                        "source_shard": "2/4",
+                        "artifact": {
+                            "path": FOCUSED_MUTATION_RECEIPT,
+                            "sha256": hashlib.sha256(receipt_data).hexdigest(),
+                            "size_bytes": len(receipt_data),
+                        },
+                    },
+                    "focused_checks": focused_checks,
                 }
             )
         )
@@ -501,7 +695,7 @@ class BindingAndManifestTests(GitFixture):
             commit=repository_commit,
             tree=repository_tree,
         )
-        self.assertEqual(len(artifacts), 4)
+        self.assertEqual(len(artifacts), 7)
 
     def test_tracked_evidence_config_is_bound_to_accepted_output(self) -> None:
         source = json.loads(
@@ -1026,6 +1220,195 @@ class DecisionAndRunnerTests(unittest.TestCase):
             linked.symlink_to(path)
             with self.assertRaisesRegex(ReviewError, "must be outcomes.json"):
                 validate_mutation_outcomes(linked, "0/4")
+
+    def test_focused_mutation_outcomes_bind_the_direct_test_and_exact_set(self) -> None:
+        check = MUTATION_LIVENESS_CHECKS[0]
+        document = focused_outcomes_document(check)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "outcomes.json"
+            path.write_bytes(canonical_json(document))
+            self.assertEqual(
+                validate_focused_liveness_outcomes(path, check)["caught"], 5
+            )
+
+            wrong_command = copy.deepcopy(document)
+            wrong_command["outcomes"][0]["phase_results"][0]["argv"].insert(
+                2, "--quiet"
+            )
+            path.write_bytes(canonical_json(wrong_command))
+            with self.assertRaisesRegex(ReviewError, "another Cargo command"):
+                validate_focused_liveness_outcomes(path, check)
+
+            variants = {}
+            wrong_package = copy.deepcopy(document)
+            wrong_package["outcomes"][1]["scenario"]["Mutant"]["package"] = (
+                "another-package"
+            )
+            variants["package"] = wrong_package
+            wrong_span = copy.deepcopy(document)
+            wrong_span["outcomes"][1]["scenario"]["Mutant"]["span"]["start"][
+                "column"
+            ] += 1
+            variants["span"] = wrong_span
+            duplicate_operator = copy.deepcopy(document)
+            duplicate_operator["outcomes"][3]["scenario"]["Mutant"] = copy.deepcopy(
+                duplicate_operator["outcomes"][2]["scenario"]["Mutant"]
+            )
+            variants["duplicate operator"] = duplicate_operator
+            for name, altered in variants.items():
+                with self.subTest(name=name):
+                    path.write_bytes(canonical_json(altered))
+                    with self.assertRaisesRegex(ReviewError, "another mutant set"):
+                        validate_focused_liveness_outcomes(path, check)
+
+            wrong_status = copy.deepcopy(document)
+            wrong_status["outcomes"][1]["phase_results"][1]["process_status"] = (
+                "Success"
+            )
+            path.write_bytes(canonical_json(wrong_status))
+            with self.assertRaisesRegex(ReviewError, "another process status"):
+                validate_focused_liveness_outcomes(path, check)
+
+            float_status = copy.deepcopy(document)
+            float_status["outcomes"][1]["phase_results"][1]["process_status"] = {
+                "Failure": 101.0
+            }
+            path.write_bytes(canonical_json(float_status))
+            with self.assertRaisesRegex(ReviewError, "another process status"):
+                validate_focused_liveness_outcomes(path, check)
+
+            huge_duration = copy.deepcopy(document)
+            huge_duration["outcomes"][0]["phase_results"][0]["duration"] = 10**4000
+            path.write_bytes(canonical_json(huge_duration))
+            with self.assertRaisesRegex(ReviewError, "invalid duration"):
+                validate_focused_liveness_outcomes(path, check)
+
+            invalid_timestamp = copy.deepcopy(document)
+            invalid_timestamp["start_time"] = ["not", "a", "timestamp"]
+            path.write_bytes(canonical_json(invalid_timestamp))
+            with self.assertRaisesRegex(ReviewError, "invalid start_time"):
+                validate_focused_liveness_outcomes(path, check)
+
+            padded_descriptor = copy.deepcopy(document)
+            padded_descriptor["outcomes"][1]["scenario"]["Mutant"]["package"] = (
+                " galadriel-ncp "
+            )
+            path.write_bytes(canonical_json(padded_descriptor))
+            with self.assertRaisesRegex(ReviewError, "canonical text"):
+                validate_focused_liveness_outcomes(path, check)
+
+    def test_focused_receipt_binds_outer_invocation_and_cargo_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            commit = "1" * 40
+            tree = "2" * 40
+            for check in MUTATION_LIVENESS_CHECKS:
+                outcomes = root / str(check["output"]) / "mutants.out" / "outcomes.json"
+                outcomes.parent.mkdir(parents=True)
+                outcomes.write_bytes(canonical_json(focused_outcomes_document(check)))
+            receipt = root / FOCUSED_MUTATION_RECEIPT
+            valid = focused_receipt_document(root, commit=commit, tree=tree)
+            receipt.write_bytes(canonical_json(valid))
+            _document, artifacts = validate_focused_mutation_receipt(
+                receipt,
+                root=root,
+                commit=commit,
+                tree=tree,
+            )
+            self.assertEqual(len(artifacts), 2)
+
+            wrong_command = copy.deepcopy(valid)
+            wrong_command["checks"][0]["command_argv"][
+                wrong_command["checks"][0]["command_argv"].index("120")
+            ] = "121"
+            receipt.write_bytes(canonical_json(wrong_command))
+            with self.assertRaisesRegex(ReviewError, "receipt check .* drifted"):
+                validate_focused_mutation_receipt(
+                    receipt, root=root, commit=commit, tree=tree
+                )
+
+            wrong_cargo = copy.deepcopy(valid)
+            wrong_cargo["toolchain"]["cargo_executable"] = "/tmp/another/cargo"
+            receipt.write_bytes(canonical_json(wrong_cargo))
+            with self.assertRaisesRegex(ReviewError, "another Cargo command"):
+                validate_focused_mutation_receipt(
+                    receipt, root=root, commit=commit, tree=tree
+                )
+
+            boolean_count = copy.deepcopy(valid)
+            boolean_count["checks"][0]["counts"]["missed"] = False
+            receipt.write_bytes(canonical_json(boolean_count))
+            with self.assertRaisesRegex(ReviewError, "noncanonical counts"):
+                validate_focused_mutation_receipt(
+                    receipt, root=root, commit=commit, tree=tree
+                )
+
+            float_size = copy.deepcopy(valid)
+            float_size["checks"][0]["outcomes"]["size_bytes"] = float(
+                float_size["checks"][0]["outcomes"]["size_bytes"]
+            )
+            receipt.write_bytes(canonical_json(float_size))
+            with self.assertRaisesRegex(ReviewError, "invalid byte count"):
+                validate_focused_mutation_receipt(
+                    receipt, root=root, commit=commit, tree=tree
+                )
+
+    def test_mutation_commands_disable_ambient_configuration(self) -> None:
+        commands = [
+            mutation_command("0/4"),
+            *(
+                focused_liveness_mutation_command(check)
+                for check in MUTATION_LIVENESS_CHECKS
+            ),
+        ]
+        for command in commands:
+            self.assertEqual(command[:3], ["cargo", "mutants", "--no-config"])
+
+    def test_ci_focused_mutation_validator_checks_both_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            commit = "1" * 40
+            tree = "2" * 40
+            for check in MUTATION_LIVENESS_CHECKS:
+                outcomes = root / str(check["output"]) / "mutants.out" / "outcomes.json"
+                outcomes.parent.mkdir(parents=True)
+                outcomes.write_bytes(canonical_json(focused_outcomes_document(check)))
+            (root / FOCUSED_MUTATION_RECEIPT).write_bytes(
+                canonical_json(focused_receipt_document(root, commit=commit, tree=tree))
+            )
+            command = [
+                sys.executable,
+                str(TOOLS / "check_focused_mutation.py"),
+                "--root",
+                str(root),
+                "--candidate-commit",
+                commit,
+                "--candidate-tree",
+                tree,
+            ]
+            valid = subprocess.run(command, capture_output=True, text=True, check=False)
+            self.assertEqual(valid.returncode, 0, valid.stderr)
+
+            first = MUTATION_LIVENESS_CHECKS[0]
+            altered = focused_outcomes_document(first)
+            altered["outcomes"][1]["phase_results"][1]["process_status"] = "Success"
+            target = root / str(first["output"]) / "mutants.out" / "outcomes.json"
+            target.write_bytes(canonical_json(altered))
+            invalid = subprocess.run(
+                command, capture_output=True, text=True, check=False
+            )
+            self.assertEqual(invalid.returncode, 2)
+            self.assertIn("focused mutation validation failed", invalid.stderr)
+
+    def test_focused_runner_rejects_a_dangling_output_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / FOCUSED_MUTATION_RECEIPT
+            output.symlink_to(root / "missing-target")
+            self.assertFalse(output.exists())
+            self.assertTrue(output.is_symlink())
+            with self.assertRaisesRegex(ReviewError, "refusing to replace"):
+                assert_new_output_path(output, "focused mutation receipt")
 
     def test_supply_chain_reports_must_be_nonempty_valid_json(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

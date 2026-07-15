@@ -908,7 +908,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--mutation-evidence",
-        help="signed exact-candidate four-shard mutation manifest",
+        help="signed exact-candidate broad and focused mutation manifest",
     )
     parser.add_argument("--mutation-evidence-signature")
     parser.add_argument(
@@ -1039,6 +1039,8 @@ def main() -> int:
             "candidate": mutation_document["candidate"],
             "baseline_commit": mutation_document["baseline_commit"],
             "shards": len(mutation_document["shards"]),
+            "focused_checks": len(mutation_document["focused_checks"]),
+            "run_receipts": 1,
             "status": "PASS",
             "artifacts": retained_mutation_artifacts,
         }

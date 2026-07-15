@@ -707,9 +707,9 @@ pub enum AssemblerConfigError {
     /// Aggregate configured state exceeded the compiled ceiling.
     #[error("assembler aggregate state {value} exceeds maximum {maximum}")]
     AggregateStateTooLarge {
-        /// Computed state slots, or `usize::MAX` on arithmetic overflow.
+        /// Computed applicable state slots, or `usize::MAX` on arithmetic overflow.
         value: usize,
-        /// Compiled aggregate maximum.
+        /// Applicable compiled state-slot maximum.
         maximum: usize,
     },
     /// The aggregate byte budget cannot admit one maximum route payload.
@@ -2538,12 +2538,18 @@ fn validate_assembler_params(
         .and_then(|value| value.checked_add(limits.max_reorder_events))
         .and_then(|value| value.checked_add(limits.max_prior_identities))
         .and_then(|value| value.checked_add(limits.max_observation_streams));
-    if frame_slots.is_none_or(|value| value > MAX_ASSEMBLER_FRAME_STATE_SLOTS)
-        || total_slots.is_none_or(|value| value > MAX_ASSEMBLER_TOTAL_STATE_SLOTS)
-    {
+    let Some((frame_slots, _)) = frame_slots.zip(total_slots) else {
         return Err(AssemblerConfigError::AggregateStateTooLarge {
-            value: total_slots.unwrap_or(usize::MAX),
+            value: usize::MAX,
             maximum: MAX_ASSEMBLER_TOTAL_STATE_SLOTS,
+        });
+    };
+    // The non-frame terms were independently capped above, and the total ceiling
+    // is exactly the frame ceiling plus those component caps.
+    if frame_slots > MAX_ASSEMBLER_FRAME_STATE_SLOTS {
+        return Err(AssemblerConfigError::AggregateStateTooLarge {
+            value: frame_slots,
+            maximum: MAX_ASSEMBLER_FRAME_STATE_SLOTS,
         });
     }
 
@@ -3401,12 +3407,18 @@ mod tests {
 
         let one_frame_slot_over = AssemblerLimits {
             max_observations_per_frame: MAX_FRAME_ITEMS as usize,
+            max_reorder_events: 1,
+            max_prior_identities: 1,
+            max_observation_streams: 1,
             ..exact_aggregate
         };
-        assert!(matches!(
+        assert_eq!(
             validate_limits(one_frame_slot_over, Instant::now()),
-            Err(AssemblerConfigError::AggregateStateTooLarge { .. })
-        ));
+            Err(AssemblerConfigError::AggregateStateTooLarge {
+                value: MAX_ASSEMBLER_FRAME_STATE_SLOTS + MAX_ASSEMBLER_OPEN_FRAMES,
+                maximum: MAX_ASSEMBLER_FRAME_STATE_SLOTS,
+            })
+        );
 
         let mut invalid_policy = RegistryOpportunityParams {
             max_active_tracks: MAX_ACTIVE_TRACKS,

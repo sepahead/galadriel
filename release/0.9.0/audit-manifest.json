@@ -49,8 +49,8 @@
     {
       "path": ".github/workflows/deep-quality.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "314312bc85e9d7823aeca912f3804af165b72576437ea978d2b987c523f61cd0",
-      "size_bytes": 8499
+      "sha256": "71b4e930fa7824852e57c8edc2f6ecb82f5b076d0183a539cf65d4db49a44fe7",
+      "size_bytes": 9706
     },
     {
       "path": ".gitignore",
@@ -181,8 +181,8 @@
     {
       "path": "crates/galadriel-cli/src/main.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "bcb28639144fea4831c392e3557ff5042dbd237f0c23184c9cc3bccbfcacf429",
-      "size_bytes": 88804
+      "sha256": "a6d4d903da51c37b069415a7ee4f0808a98b042dd7003d0d89721e559f65e055",
+      "size_bytes": 89814
     },
     {
       "path": "crates/galadriel-cli/tests/demo_output.rs",
@@ -247,8 +247,8 @@
     {
       "path": "crates/galadriel-core/src/correlation.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "e07cfa892633145594e0f1d7c639054d82994a3a6eadd3eca28e204b96109e22",
-      "size_bytes": 58377
+      "sha256": "e770fcc3499e445069c29c99d9d899d4f5116606fc986ce8875646fd9478c7cf",
+      "size_bytes": 62940
     },
     {
       "path": "crates/galadriel-core/src/cusum.rs",
@@ -259,8 +259,8 @@
     {
       "path": "crates/galadriel-core/src/decision.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "20ff862f9c3a741e4f773f57d86afe508faa1fa8170dd9c7174a6e39b58b73ce",
-      "size_bytes": 63418
+      "sha256": "16117e7e622fd11368355068362c58fb0facfca4b47dee047acbd7022178a2a2",
+      "size_bytes": 64068
     },
     {
       "path": "crates/galadriel-core/src/domain.rs",
@@ -295,8 +295,8 @@
     {
       "path": "crates/galadriel-core/src/numeric.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "6f4db49f4b697b325a72fce47e5e8ca73715ee861d68092494e24329df0a7db5",
-      "size_bytes": 9039
+      "sha256": "146d87dd13f2e46470fdc59116154fcb3c67ff362d0c9817b1eb4f292091e027",
+      "size_bytes": 9004
     },
     {
       "path": "crates/galadriel-core/src/observation.rs",
@@ -385,8 +385,8 @@
     {
       "path": "crates/galadriel-ncp/src/assembler.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "a38f4a991444c3de405a119f891957741328979ccdd5310ad3672a106b5dc65d",
-      "size_bytes": 196503
+      "sha256": "b7085c01630e512815747348188dbbe289a020a7723f4b09c41812b58f8be8fa",
+      "size_bytes": 197031
     },
     {
       "path": "crates/galadriel-ncp/src/config_identity.rs",
@@ -505,8 +505,8 @@
     {
       "path": "crates/galadriel-pid/src/engine.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "199afe40dd60fff71eadd654e3902846980a80fd6fa0fc52e53f0f5639dab983",
-      "size_bytes": 137588
+      "sha256": "0131cddc19a6e841cf3326a5e2ae5b81b3a77f483635a89e77a76228dd735007",
+      "size_bytes": 140219
     },
     {
       "path": "crates/galadriel-pid/src/fusion.rs",
@@ -889,13 +889,13 @@
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "3ecac02fe27dd85206824689f4f1a674db88a2a2a5c400de5a802b7e405071b1",
-      "size_bytes": 55524
+      "sha256": "b430937f845f507070f9eb4d0a8632869d8a4941a2f326750ae06e35b2c984be",
+      "size_bytes": 55700
     },
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "e8ba1eb29fbeacf66db7c4ec6e563d4ddfbb9ab765d5483a8e896a485b142f77",
+      "sha256": "b0b8d7d8404333c6439ed16c84330370219586970761d39be83d4b959fdcbdd3",
       "size_bytes": 322
     },
     {
@@ -1021,8 +1021,8 @@
     {
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3c8800930996338b9b4c20cde234074f9c2328f0678a5ed8291618eb55342400",
-      "size_bytes": 8157
+      "sha256": "d05699cf44b37c50e3b3b38ee024390f381ba2999d3d4d0b8b1845b95845e3ff",
+      "size_bytes": 8675
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1041,6 +1041,12 @@
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "c800269123c10a8eef8364a4cb2090f73c74e5dfd0185ac9746c9b35c8fea5ac",
       "size_bytes": 4520
+    },
+    {
+      "path": "repo_work/check_focused_mutation.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "47d1d2155a62b8ec28050a7f0c8323df76442ad1c85880b9e6aeeec31d9fa7a5",
+      "size_bytes": 7229
     },
     {
       "path": "repo_work/check_frozen_head.py",
@@ -1069,14 +1075,14 @@
     {
       "path": "repo_work/finalize_release.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f43410d0fe5eb4c0dd1b25ccc14c6202c2606062f8c11ec4d6737a25076ff244",
-      "size_bytes": 49477
+      "sha256": "27458c964afed260d827167936a1fd9fffc12c69e4b701defedc5034f349eb42",
+      "size_bytes": 49809
     },
     {
       "path": "repo_work/freeze_audit_inputs.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0ea6f5772d6c4350f8d8d203342ce93e3aca9aab4ce5df1ab890e01e38cb3843",
-      "size_bytes": 17349
+      "sha256": "c045be49e4c6b7585aa10e2be2ce5f93477334525a3e7083abcecd578518f3d7",
+      "size_bytes": 17752
     },
     {
       "path": "repo_work/make_review_packets.py",
@@ -1087,20 +1093,20 @@
     {
       "path": "repo_work/prepare_mutation_evidence.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5ca00206950ec68cd7ad8f51b67593dcc574a093267d8e5c02f2fef9dfbd95d8",
-      "size_bytes": 9679
+      "sha256": "7d5c3aea176c5776e2ada7ab9e4db3b8c1ffa512dcb9e4e80321af8f531ee998",
+      "size_bytes": 13014
     },
     {
       "path": "repo_work/qualify_candidate.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1516823ff2818933b1f3d43ca90ae832902219ff9e46be88f6ab69d59dc658f5",
-      "size_bytes": 52160
+      "sha256": "7627772924fd3b35c8ac648715c81a2c3ff9f0f9133d395c8f829d7b44246996",
+      "size_bytes": 52270
     },
     {
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "38e11d2261712de0315a810c3592560d2f499c7192cf906c49b8ddb8e66e8a8a",
-      "size_bytes": 63080
+      "sha256": "ad01d1ad1d22aec46ebb4c53dad60d5afc6c2f984dd29aef6eff4d31bfb98e59",
+      "size_bytes": 86901
     },
     {
       "path": "repo_work/reproduce_baseline.py",
@@ -1117,8 +1123,8 @@
     {
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "517bf734019ed3564f07a3cf8977a4555d919ebc9bec7111b98484029fd62a7f",
-      "size_bytes": 46480
+      "sha256": "4f4913067bc2de5faa76ccb0505cb4439befbbd46dddd1a0a62a505925821a38",
+      "size_bytes": 62059
     },
     {
       "path": "repo_work/tests/test_review_tools.py",

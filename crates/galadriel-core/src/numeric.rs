@@ -134,7 +134,7 @@ impl ExactMagnitude {
     /// Round the exact non-negative magnitude to nearest-even binary64, saturating
     /// when the exact real value is outside the finite binary64 range.
     pub(crate) fn saturating_f64(&self) -> f64 {
-        let Some(mut highest_bit) = self.highest_bit() else {
+        let Some(highest_bit) = self.highest_bit() else {
             return 0.0;
         };
         if self.exceeds_f64_max_at(highest_bit) {
@@ -152,16 +152,12 @@ impl ExactMagnitude {
                 significand += 1;
             }
         }
-        if significand == 1_u64 << BINARY64_SIGNIFICAND_BITS {
-            significand >>= 1;
-            highest_bit += 1;
-        }
-
         let exponent = (highest_bit - 51) as u64;
         debug_assert!((1..=2_046).contains(&exponent));
-        let fraction = significand - (1_u64 << FRACTION_BITS);
-        // The exponent field and stored fraction occupy disjoint bit ranges.
-        f64::from_bits((exponent << FRACTION_BITS) + fraction)
+        let rounded_payload = significand - (1_u64 << FRACTION_BITS);
+        // When rounding carries out of the significand, the payload carry advances
+        // the adjacent exponent field and encodes the same normalization directly.
+        f64::from_bits((exponent << FRACTION_BITS) + rounded_payload)
     }
 }
 

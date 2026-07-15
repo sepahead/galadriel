@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble and sign exact-candidate mutation evidence from four CI shards."""
+"""Assemble and sign exact-candidate broad and focused CI mutation evidence."""
 
 from __future__ import annotations
 
@@ -15,14 +15,19 @@ from typing import Any
 from common import ReviewError, canonical_json, git
 from release_assurance import (
     AUTHOR,
+    FOCUSED_MUTATION_RECEIPT,
     MUTATION_DIFF_OPTIONS,
+    MUTATION_LIVENESS_CHECKS,
     SIGNING_PRINCIPAL,
     VERSION,
     assert_tracked_allowed_signer,
+    broad_mutation_command,
     derive_external_allowed_signers,
     digest_file,
+    focused_liveness_mutation_command,
     sign_file,
     validate_mutation_outcomes,
+    validate_focused_mutation_receipt,
     verify_candidate_commit,
     verify_signature,
 )
@@ -82,25 +87,9 @@ def parse_shard_arguments(values: list[str]) -> dict[str, Path]:
 
 
 def mutation_command(shard_id: str) -> list[str]:
-    return [
-        "cargo",
-        "mutants",
-        "--workspace",
-        "--no-shuffle",
-        "--in-diff",
-        "git.diff",
-        "--exclude",
-        "crates/galadriel-eval/**",
-        "--exclude",
-        "crates/galadriel-justify/**",
-        "--timeout",
-        "600",
-        "--jobs",
-        "2",
-        "--shard",
-        shard_id,
-        "--all-features",
-    ]
+    """Compatibility wrapper for the frozen broad-shard command."""
+
+    return broad_mutation_command(shard_id)
 
 
 def validate_ci_shard(
@@ -110,7 +99,7 @@ def validate_ci_shard(
     commit: str,
     tree: str,
     diff: bytes,
-) -> Path:
+) -> tuple[Path, dict[str, Path], Path | None]:
     if not source.is_dir() or source.is_symlink():
         raise ReviewError(f"mutation shard directory is missing or unsafe: {source}")
     subject = parse_subject(source / "SUBJECT.txt")
@@ -141,7 +130,26 @@ def validate_ci_shard(
         raise ReviewError(f"mutation shard {shard_id} diff checksum record is invalid")
     outcomes = source / "mutants.out" / "outcomes.json"
     validate_mutation_outcomes(outcomes, shard_id)
-    return outcomes
+    receipt = source / FOCUSED_MUTATION_RECEIPT
+    if shard_id == "2/4":
+        _document, focused = validate_focused_mutation_receipt(
+            receipt,
+            root=source,
+            commit=commit,
+            tree=tree,
+        )
+        return outcomes, focused, receipt
+    if receipt.exists():
+        raise ReviewError(
+            f"focused mutation receipt was archived by unexpected shard {shard_id}"
+        )
+    for check in MUTATION_LIVENESS_CHECKS:
+        target = source / str(check["output"])
+        if target.exists():
+            raise ReviewError(
+                f"focused mutation output was archived by unexpected shard {shard_id}"
+            )
+    return outcomes, {}, None
 
 
 def main() -> int:
@@ -195,16 +203,35 @@ def main() -> int:
         diff = bytes(git(repo, *diff_argv[1:], text=False))
         if not diff:
             raise ReviewError("candidate has an empty frozen-baseline mutation diff")
-        outcomes = {
-            shard_id: validate_ci_shard(
+        outcomes: dict[str, Path] = {}
+        focused_outcomes: dict[str, Path] = {}
+        focused_receipt: Path | None = None
+        for shard_id, source in shards.items():
+            shard_outcomes, shard_focused, shard_receipt = validate_ci_shard(
                 source,
                 shard_id=shard_id,
                 commit=commit,
                 tree=tree,
                 diff=diff,
             )
-            for shard_id, source in shards.items()
-        }
+            outcomes[shard_id] = shard_outcomes
+            if shard_receipt is not None:
+                if focused_receipt is not None:
+                    raise ReviewError(
+                        "focused mutation receipt appears in multiple shards"
+                    )
+                focused_receipt = shard_receipt
+            for check_id, path in shard_focused.items():
+                if check_id in focused_outcomes:
+                    raise ReviewError(
+                        f"focused mutation check {check_id} appears in multiple shards"
+                    )
+                focused_outcomes[check_id] = path
+        expected_focused = {str(check["id"]) for check in MUTATION_LIVENESS_CHECKS}
+        if set(focused_outcomes) != expected_focused:
+            raise ReviewError("focused mutation evidence is incomplete")
+        if focused_receipt is None:
+            raise ReviewError("focused mutation run receipt is missing")
 
         output.mkdir(parents=True, exist_ok=False)
         shard_records: list[dict[str, Any]] = []
@@ -227,8 +254,39 @@ def main() -> int:
                     },
                 }
             )
+        focused_records: list[dict[str, Any]] = []
+        for check in MUTATION_LIVENESS_CHECKS:
+            check_id = str(check["id"])
+            destination = (
+                output / str(check["output"]) / "mutants.out" / "outcomes.json"
+            )
+            destination.parent.mkdir(parents=True)
+            shutil.copyfile(focused_outcomes[check_id], destination)
+            digest, size = digest_file(destination)
+            focused_records.append(
+                {
+                    "id": check_id,
+                    "status": "PASS",
+                    "source_shard": "2/4",
+                    "command": shlex.join(focused_liveness_mutation_command(check)),
+                    "artifact": {
+                        "path": destination.relative_to(output).as_posix(),
+                        "sha256": digest,
+                        "size_bytes": size,
+                    },
+                }
+            )
+        receipt_destination = output / FOCUSED_MUTATION_RECEIPT
+        shutil.copyfile(focused_receipt, receipt_destination)
+        validate_focused_mutation_receipt(
+            receipt_destination,
+            root=output,
+            commit=commit,
+            tree=tree,
+        )
+        receipt_digest, receipt_size = digest_file(receipt_destination)
         manifest = {
-            "schema": "galadriel.mutation-evidence.v1",
+            "schema": "galadriel.mutation-evidence.v3",
             "release": VERSION,
             "author": AUTHOR,
             "candidate": {"commit": commit, "tree": tree},
@@ -237,6 +295,15 @@ def main() -> int:
             "git_diff_sha256": hashlib.sha256(diff).hexdigest(),
             "tool": {"name": "cargo-mutants", "version": "27.1.0"},
             "shards": shard_records,
+            "focused_run_receipt": {
+                "source_shard": "2/4",
+                "artifact": {
+                    "path": FOCUSED_MUTATION_RECEIPT,
+                    "sha256": receipt_digest,
+                    "size_bytes": receipt_size,
+                },
+            },
+            "focused_checks": focused_records,
         }
         manifest_path = output / "mutation-evidence.json"
         manifest_path.write_bytes(canonical_json(manifest))
