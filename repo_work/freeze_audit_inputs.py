@@ -62,6 +62,7 @@ RELEASE_INPUTS = (
     "repo_work/audit_tracked_files.py",
     "repo_work/build_task_dispositions.py",
     "repo_work/check_feature_graph.py",
+    "repo_work/check_focused_mutation.py",
     "repo_work/check_frozen_head.py",
     "repo_work/check_public_api.py",
     "repo_work/check_vulnerable_features.py",
@@ -117,9 +118,7 @@ def assert_release_tool_coverage(repo: Path) -> None:
         )
     )
     tracked = {
-        path.decode("utf-8", "surrogateescape")
-        for path in raw.split(b"\0")
-        if path
+        path.decode("utf-8", "surrogateescape") for path in raw.split(b"\0") if path
     }
     declared = set(RELEASE_INPUTS)
     missing = sorted(tracked - declared)
@@ -186,14 +185,18 @@ def strict_relative_files(root: Path) -> list[dict[str, Any]]:
                         "path": relative,
                         "kind": "symlink",
                         "target": target,
-                        "sha256": digest_bytes(target.encode("utf-8", "surrogateescape")),
+                        "sha256": digest_bytes(
+                            target.encode("utf-8", "surrogateescape")
+                        ),
                         "size_bytes": len(target.encode("utf-8", "surrogateescape")),
                     }
                 )
                 continue
             resolved = path.resolve()
             if resolved_root not in resolved.parents or not path.is_file():
-                raise ReviewError(f"handoff path is not a contained regular file: {relative}")
+                raise ReviewError(
+                    f"handoff path is not a contained regular file: {relative}"
+                )
             digest, size = digest_file(path)
             rows.append(
                 {
@@ -216,8 +219,12 @@ def locked_git_dependencies(lock_bytes: bytes) -> list[dict[str, str]]:
         if not source.startswith("git+"):
             continue
         revision = source.rsplit("#", 1)[-1]
-        if len(revision) != 40 or any(character not in "0123456789abcdef" for character in revision):
-            raise ReviewError(f"Git dependency is not locked to a full revision: {source}")
+        if len(revision) != 40 or any(
+            character not in "0123456789abcdef" for character in revision
+        ):
+            raise ReviewError(
+                f"Git dependency is not locked to a full revision: {source}"
+            )
         dependencies.append(
             {
                 "name": package["name"],
@@ -226,7 +233,9 @@ def locked_git_dependencies(lock_bytes: bytes) -> list[dict[str, str]]:
                 "commit": revision,
             }
         )
-    return sorted(dependencies, key=lambda item: (item["name"], item["version"], item["source"]))
+    return sorted(
+        dependencies, key=lambda item: (item["name"], item["version"], item["source"])
+    )
 
 
 def tag_inventory(repo: Path) -> list[dict[str, str | None]]:
@@ -301,7 +310,10 @@ def main() -> int:
         else output.parent / "ALLOWED_SIGNERS"
     )
     if output.exists():
-        print(f"audit-input freeze failed: output already exists: {output}", file=sys.stderr)
+        print(
+            f"audit-input freeze failed: output already exists: {output}",
+            file=sys.stderr,
+        )
         return 2
     if allowed_signers.exists():
         print(
@@ -323,7 +335,9 @@ def main() -> int:
         baseline_commit = handoff_source["frozen_commit"]
         declared_baseline = audit_inputs["baseline_repository"]
         if baseline_commit != declared_baseline["commit"]:
-            raise ReviewError("handoff and release inputs disagree on the frozen commit")
+            raise ReviewError(
+                "handoff and release inputs disagree on the frozen commit"
+            )
         baseline_tree = str(git(repo, "rev-parse", f"{baseline_commit}^{{tree}}"))
         baseline_tree = baseline_tree.strip()
         if baseline_tree != declared_baseline["tree"]:
@@ -338,8 +352,9 @@ def main() -> int:
             baseline_files.append(
                 {
                     "path": relative,
-                    "git_blob": str(git(repo, "rev-parse", f"{baseline_commit}:{relative}"))
-                    .strip(),
+                    "git_blob": str(
+                        git(repo, "rev-parse", f"{baseline_commit}:{relative}")
+                    ).strip(),
                     "sha256": digest_bytes(data),
                     "size_bytes": len(data),
                 }
@@ -351,7 +366,9 @@ def main() -> int:
             if not path.is_file():
                 raise ReviewError(f"release audit input is missing: {relative}")
             digest, size = digest_file(path)
-            release_files.append({"path": relative, "sha256": digest, "size_bytes": size})
+            release_files.append(
+                {"path": relative, "sha256": digest, "size_bytes": size}
+            )
 
         handoff_files = strict_relative_files(handoff_root)
         child_archive = next(
@@ -367,7 +384,9 @@ def main() -> int:
             or child_archive["kind"] != "regular"
             or child_archive["sha256"] != handoff_source["child_archive_sha256"]
         ):
-            raise ReviewError("supplied Galadriel child archive does not match its frozen digest")
+            raise ReviewError(
+                "supplied Galadriel child archive does not match its frozen digest"
+            )
         task_ledger_path = (
             "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF/MASTER_TASK_LEDGER.yaml"
         )
@@ -395,7 +414,9 @@ def main() -> int:
             check=False,
         )
         if fingerprint.returncode != 0:
-            raise ReviewError(f"cannot fingerprint signing key: {fingerprint.stderr.strip()}")
+            raise ReviewError(
+                f"cannot fingerprint signing key: {fingerprint.stderr.strip()}"
+            )
         public_key = Path(signing_key).read_text(encoding="utf-8").strip()
         key_fields = public_key.split()
         if len(key_fields) < 2 or not key_fields[0].startswith("ssh-"):
@@ -431,7 +452,9 @@ def main() -> int:
                 "file_count": len(handoff_files),
                 "total_bytes": sum(int(row["size_bytes"]) for row in handoff_files),
                 "files": handoff_files,
-                "galadriel_child_archive_sha256": handoff_source["child_archive_sha256"],
+                "galadriel_child_archive_sha256": handoff_source[
+                    "child_archive_sha256"
+                ],
                 "galadriel_task_ledger_sha256": handoff_source["task_ledger_sha256"],
             },
             "release_input_files": release_files,

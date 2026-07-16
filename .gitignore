@@ -7,6 +7,8 @@
 # Python tooling
 __pycache__/
 *.py[cod]
+.mypy_cache/
+.ruff_cache/
 
 # Editors / OS
 .DS_Store

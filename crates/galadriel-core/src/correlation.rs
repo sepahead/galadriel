@@ -968,6 +968,39 @@ mod tests {
         (0..n).map(f).collect()
     }
 
+    fn equicorrelated_channels(n: usize, rho: f64) -> Vec<(Modality, Vec<f64>)> {
+        use std::f64::consts::PI;
+
+        let first = series(n, |index| (2.0 * PI * index as f64 / n as f64).sin());
+        let second_basis = series(n, |index| (2.0 * PI * index as f64 / n as f64).cos());
+        let third_basis = series(n, |index| (4.0 * PI * index as f64 / n as f64).sin());
+        let second_weight = (1.0 - rho * rho).sqrt();
+        let shared_third_weight = (rho - rho * rho) / second_weight;
+        let independent_third_weight =
+            (1.0 - rho * rho - shared_third_weight * shared_third_weight).sqrt();
+        let second = first
+            .iter()
+            .zip(&second_basis)
+            .map(|(first, basis)| rho * first + second_weight * basis)
+            .collect();
+        let third = first
+            .iter()
+            .zip(&second_basis)
+            .zip(&third_basis)
+            .map(|((first, second_basis), third_basis)| {
+                rho * first
+                    + shared_third_weight * second_basis
+                    + independent_third_weight * third_basis
+            })
+            .collect();
+
+        vec![
+            (Modality::Visual, first),
+            (Modality::Radar, second),
+            (Modality::Acoustic, third),
+        ]
+    }
+
     #[test]
     fn named_profile_preserves_exact_values_and_identity() {
         let config = release_corr();
@@ -1032,6 +1065,18 @@ mod tests {
     }
 
     #[test]
+    fn channel_decoupled_accessor_preserves_false_evidence() {
+        let channel = CorrChannel {
+            modality: Modality::Visual,
+            n: 64,
+            corroboration: Some(0.75),
+            decoupled: false,
+        };
+
+        assert!(!channel.decoupled());
+    }
+
+    #[test]
     fn report_accessors_preserve_complete_derived_evidence() {
         let config = release_corr().try_for_axis_family(3).unwrap();
         let channel = CorrChannel {
@@ -1059,6 +1104,19 @@ mod tests {
         );
         assert_eq!(report.axis_family_count(), 3);
         assert!(report.axis_family_was_derived());
+    }
+
+    #[test]
+    fn report_axis_family_accessor_preserves_underived_evidence() {
+        let config = release_corr();
+        let report = CorrReport::new(
+            Vec::new(),
+            CorrVerdict::InsufficientEvidence,
+            "underived report".to_owned(),
+            &config,
+        );
+
+        assert!(!report.axis_family_was_derived());
     }
 
     #[test]
@@ -1368,6 +1426,82 @@ mod tests {
         assert_eq!(
             report.note(),
             "need ≥3 channels and ≥64 aligned samples (have 1 channels, w=128)"
+        );
+    }
+
+    #[test]
+    fn exact_minimum_sample_count_is_assessed() {
+        let n = release_corr().min_samples();
+        let values = series(n, |index| (index as f64 / 7.0).sin());
+        let channels = vec![
+            (Modality::Visual, values.clone()),
+            (Modality::Radar, values.clone()),
+            (Modality::Acoustic, values),
+        ];
+        let report = analyze(&channels, &release_corr()).unwrap();
+
+        assert_eq!(
+            (report.verdict(), report.note()),
+            (
+                &CorrVerdict::Nominal,
+                "3 channels form one positive-consensus clique (strongest rho 1.000)",
+            )
+        );
+    }
+
+    #[test]
+    fn sample_count_below_minimum_fails_before_scoring() {
+        let n = release_corr().min_samples() - 1;
+        let values = series(n, |index| (index as f64 / 7.0).sin());
+        let channels = vec![
+            (Modality::Visual, values.clone()),
+            (Modality::Radar, values.clone()),
+            (Modality::Acoustic, values),
+        ];
+        let report = analyze(&channels, &release_corr()).unwrap();
+
+        assert_eq!(
+            (report.channels(), report.verdict(), report.note()),
+            (
+                &[] as &[CorrChannel],
+                &CorrVerdict::InsufficientEvidence,
+                "need ≥3 channels and ≥64 aligned samples (have 3 channels, w=63)",
+            )
+        );
+    }
+
+    #[test]
+    fn fisher_floor_uses_the_exact_sample_adjustment() {
+        let report = analyze(&equicorrelated_channels(128, 0.2), &release_corr()).unwrap();
+
+        assert_eq!(
+            (report.verdict(), report.note()),
+            (
+                &CorrVerdict::InsufficientEvidence,
+                "no family-wise-significant positive consensus (strongest rho 0.200, required 0.238)",
+            )
+        );
+    }
+
+    #[test]
+    fn reference_equal_to_relative_threshold_is_admitted() {
+        let n = 128;
+        let values = series(n, |index| (index as f64 / 7.0).sin());
+        let channels = vec![
+            (Modality::Visual, values.clone()),
+            (Modality::Radar, values.clone()),
+            (Modality::Acoustic, values),
+        ];
+        let mut params = CorrParams::standalone_advisory_v0_9();
+        params.decouple_ratio = 1.0;
+        let report = analyze(&channels, &CorrConfig::try_new(params).unwrap()).unwrap();
+
+        assert_eq!(
+            (report.verdict(), report.note()),
+            (
+                &CorrVerdict::Nominal,
+                "3 channels form one positive-consensus clique (strongest rho 1.000)",
+            )
         );
     }
 

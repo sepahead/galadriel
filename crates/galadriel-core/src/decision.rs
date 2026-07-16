@@ -946,6 +946,29 @@ mod tests {
     }
 
     #[test]
+    fn channel_report_boolean_accessors_preserve_complementary_evidence() {
+        let channel = ChannelReport {
+            elevated: true,
+            cusum_high_alarm: false,
+            cusum_low_alarm: true,
+            fresh: true,
+            ready: false,
+            ..outcome_channel(None, 0, false, false, false)
+        };
+
+        assert_eq!(
+            (
+                channel.elevated(),
+                channel.cusum_high_alarm(),
+                channel.cusum_low_alarm(),
+                channel.fresh(),
+                channel.ready(),
+            ),
+            (true, false, true, true, false)
+        );
+    }
+
+    #[test]
     fn mirror_report_accessors_preserve_complete_sealed_evidence() {
         let channel = ChannelReport::test_ready(Modality::Thermal, true);
         let report = MirrorReport::test_fixture(Verdict::BroadDegradation, vec![channel.clone()]);

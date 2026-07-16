@@ -1076,8 +1076,8 @@
     },
     {
       "path": ".github/workflows/deep-quality.yml",
-      "sha256": "314312bc85e9d7823aeca912f3804af165b72576437ea978d2b987c523f61cd0",
-      "size_bytes": 8499
+      "sha256": "71b4e930fa7824852e57c8edc2f6ecb82f5b076d0183a539cf65d4db49a44fe7",
+      "size_bytes": 9706
     },
     {
       "path": "Cargo.toml",
@@ -1276,8 +1276,8 @@
     },
     {
       "path": "repo_work/README.md",
-      "sha256": "3c8800930996338b9b4c20cde234074f9c2328f0678a5ed8291618eb55342400",
-      "size_bytes": 8157
+      "sha256": "d05699cf44b37c50e3b3b38ee024390f381ba2999d3d4d0b8b1845b95845e3ff",
+      "size_bytes": 8675
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1293,6 +1293,11 @@
       "path": "repo_work/check_feature_graph.py",
       "sha256": "c800269123c10a8eef8364a4cb2090f73c74e5dfd0185ac9746c9b35c8fea5ac",
       "size_bytes": 4520
+    },
+    {
+      "path": "repo_work/check_focused_mutation.py",
+      "sha256": "47d1d2155a62b8ec28050a7f0c8323df76442ad1c85880b9e6aeeec31d9fa7a5",
+      "size_bytes": 7229
     },
     {
       "path": "repo_work/check_frozen_head.py",
@@ -1316,13 +1321,13 @@
     },
     {
       "path": "repo_work/finalize_release.py",
-      "sha256": "f43410d0fe5eb4c0dd1b25ccc14c6202c2606062f8c11ec4d6737a25076ff244",
-      "size_bytes": 49477
+      "sha256": "27458c964afed260d827167936a1fd9fffc12c69e4b701defedc5034f349eb42",
+      "size_bytes": 49809
     },
     {
       "path": "repo_work/freeze_audit_inputs.py",
-      "sha256": "0ea6f5772d6c4350f8d8d203342ce93e3aca9aab4ce5df1ab890e01e38cb3843",
-      "size_bytes": 17349
+      "sha256": "c045be49e4c6b7585aa10e2be2ce5f93477334525a3e7083abcecd578518f3d7",
+      "size_bytes": 17752
     },
     {
       "path": "repo_work/make_review_packets.py",
@@ -1331,18 +1336,18 @@
     },
     {
       "path": "repo_work/prepare_mutation_evidence.py",
-      "sha256": "5ca00206950ec68cd7ad8f51b67593dcc574a093267d8e5c02f2fef9dfbd95d8",
-      "size_bytes": 9679
+      "sha256": "7d5c3aea176c5776e2ada7ab9e4db3b8c1ffa512dcb9e4e80321af8f531ee998",
+      "size_bytes": 13014
     },
     {
       "path": "repo_work/qualify_candidate.py",
-      "sha256": "1516823ff2818933b1f3d43ca90ae832902219ff9e46be88f6ab69d59dc658f5",
-      "size_bytes": 52160
+      "sha256": "7627772924fd3b35c8ac648715c81a2c3ff9f0f9133d395c8f829d7b44246996",
+      "size_bytes": 52270
     },
     {
       "path": "repo_work/release_assurance.py",
-      "sha256": "38e11d2261712de0315a810c3592560d2f499c7192cf906c49b8ddb8e66e8a8a",
-      "size_bytes": 63080
+      "sha256": "ad01d1ad1d22aec46ebb4c53dad60d5afc6c2f984dd29aef6eff4d31bfb98e59",
+      "size_bytes": 86901
     },
     {
       "path": "repo_work/reproduce_baseline.py",
@@ -1356,8 +1361,8 @@
     },
     {
       "path": "repo_work/tests/test_release_assurance.py",
-      "sha256": "517bf734019ed3564f07a3cf8977a4555d919ebc9bec7111b98484029fd62a7f",
-      "size_bytes": 46480
+      "sha256": "4f4913067bc2de5faa76ccb0505cb4439befbbd46dddd1a0a62a505925821a38",
+      "size_bytes": 62059
     },
     {
       "path": "repo_work/tests/test_review_tools.py",

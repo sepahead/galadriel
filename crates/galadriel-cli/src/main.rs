@@ -2010,6 +2010,32 @@ mod replay_history_tests {
         assert!(result.is_err(), "an absent capture must fail before replay");
     }
 
+    #[test]
+    fn replay_reports_invalid_ingest_without_entering_the_reset_path() {
+        let path = std::env::temp_dir().join(format!(
+            "galadriel-replay-invalid-ingest-{}-{}.jsonl",
+            std::process::id(),
+            line!()
+        ));
+        let observations = [
+            PidObservation::try_scalar_raw(7, 1_001, 1, Modality::Visual, 1.0, 3).unwrap(),
+            PidObservation::try_scalar_raw(7, 1_002, 2, Modality::Visual, 1.0, 2).unwrap(),
+        ];
+        galadriel_ncp::write_jsonl(&path, &observations).unwrap();
+        let path_text = path.to_string_lossy();
+        #[cfg(feature = "pid")]
+        let result = run_replay(&path_text, 1, 0);
+        #[cfg(not(feature = "pid"))]
+        let result = run_replay(&path_text, 1);
+        std::fs::remove_file(path).unwrap();
+
+        let error = result.unwrap_err().to_string();
+        assert!(
+            error.contains("track 7 ingest at sequence 2"),
+            "unexpected replay error: {error}"
+        );
+    }
+
     #[cfg(feature = "pid")]
     #[test]
     fn terminal_pid_range_excludes_retired_generations() {

@@ -78,8 +78,10 @@ Public-API verification invokes `cargo-public-api` through the exact
 `nightly-2026-06-16` rustdoc toolchain and rejects a different rustc commit.
 
 After all four `mutation-diff` jobs pass for the exact candidate, download and
-inspect their four artifact directories. Assemble them without rewriting the
-candidate or trusting a candidate-provided key:
+inspect their four artifact directories. Shard `2/4` also contains two focused
+direct-test runs for synchronization mutants that intentionally block unrelated
+full-suite tests when active. Assemble all six checked outcome records and their
+run receipt without rewriting the candidate or trusting a candidate-provided key:
 
 ```bash
 python3 repo_work/prepare_mutation_evidence.py \
@@ -93,10 +95,15 @@ python3 repo_work/prepare_mutation_evidence.py \
   --shard 3/4=/downloaded/mutation-diff-results-4-of-4
 ```
 
-The assembler requires each job's exact candidate/tree record, canonical frozen-
-baseline diff and digest, one successful non-vacuous Cargo baseline, at least one
-caught mutant per shard, and no missed or timed-out mutant. It copies only the
-four checked `outcomes.json` files into a signed external evidence directory.
+The workflow disables ambient cargo-mutants configuration and validates the two
+focused outputs before the broad shard runs. The assembler requires each job's
+exact candidate/tree record, canonical frozen-baseline diff and digest, one
+successful non-vacuous Cargo baseline, at least one caught mutant per shard, and
+no missed or timed-out mutant. It also binds the focused runs to the exact Cargo
+build/test commands, process outcomes, complete package/file/function/span mutant
+descriptors, and named non-blocking tests. It copies the six checked
+`outcomes.json` files and their exact-run receipt into a signed external evidence
+directory.
 
 Qualify a final clean signed `main` commit into a new directory outside the
 checkout. The deep form runs the pinned hostile-input campaigns as well as the
