@@ -7,7 +7,7 @@ may contain breaking changes.
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-07-15
+## [0.9.0] - 2026-07-16
 
 ### Release contract
 
