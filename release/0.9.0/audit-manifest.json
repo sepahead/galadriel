@@ -853,8 +853,8 @@
     {
       "path": "release/0.9.0/WITHDRAWN-RELEASES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "5df11556f439a74c42a43e6f63056bdb5917b34a44adf3120ddcaf5f28a63841",
-      "size_bytes": 2027
+      "sha256": "79aa3a12c040e98de601dff879fa4302459b5ecc5b0a36f167013923295568ac",
+      "size_bytes": 3657
     },
     {
       "path": "release/0.9.0/api/galadriel-core.0.9.0.txt",
