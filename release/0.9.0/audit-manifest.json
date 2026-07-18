@@ -91,13 +91,13 @@
     {
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "35a225471eb45d893a911970a155e681f4b015fb159299c1286897a19c003d3a",
+      "sha256": "3fadb314608eb544287daa5297985f1d4d775fa91f19d9b9170d6189c7a3b64e",
       "size_bytes": 32704
     },
     {
       "path": "CITATION.cff",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "6f7ba7d334f7b7719e60d5b09094647eb93af23393c816c5c0b0ef3d6e41fa42",
+      "sha256": "49d27373e694a45fdecf970f9bf3fe8e69911a08b4d9408acd0f95624c78ac33",
       "size_bytes": 753
     },
     {
@@ -889,13 +889,13 @@
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "788a4e929df2db9f1a2196ae121d860f8a8774efdd55f821bbb7de2842e84b10",
+      "sha256": "2229f24e63624dfb6f781d98dbc3934aeed697b1f051d37a67bd6dcc8897a8a8",
       "size_bytes": 55700
     },
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "36a607a2bab755ac79b345e37e956a113391fa1e7c34ca41a93dec4a99cfe814",
+      "sha256": "504877522c24a311e094cc3f8a619821111c823e1bc57c3a38d98aaa2ac12858",
       "size_bytes": 322
     },
     {
