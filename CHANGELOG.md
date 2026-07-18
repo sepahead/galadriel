@@ -249,6 +249,9 @@ may contain breaking changes.
 
 ### Fixed
 
+- Make Wilson binomial intervals contain their point estimate exactly at boundary counts,
+  preventing floating-point roundoff from turning perfect-success arms into malformed
+  acceptance evidence.
 - Make monitor gaps expire after a positive bounded receipt-time deadline even if no
   later sample arrives; preserve raw receipt time while exposing a nondecreasing ordered
   time for direct assembler composition, and serialize fault/handoff state so queued or

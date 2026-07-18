@@ -1393,8 +1393,8 @@ pub fn wilson_ci(k: usize, n: usize) -> (f64, f64) {
     let denom = 1.0 + z2 / nf;
     let center = p + z2 / (2.0 * nf);
     let margin = z * (p * (1.0 - p) / nf + z2 / (4.0 * nf * nf)).sqrt();
-    let lower = ((center - margin) / denom).max(0.0).min(p);
-    let upper = ((center + margin) / denom).min(1.0).max(p);
+    let lower = ((center - margin) / denom).clamp(0.0, p);
+    let upper = ((center + margin) / denom).clamp(p, 1.0);
     (lower, upper)
 }
 

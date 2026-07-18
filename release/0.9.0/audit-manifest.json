@@ -91,8 +91,8 @@
     {
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3fadb314608eb544287daa5297985f1d4d775fa91f19d9b9170d6189c7a3b64e",
-      "size_bytes": 32704
+      "sha256": "150f96773cd0a8162fd059851fe82fd027a5109b05ba23de4e53c46f0967645a",
+      "size_bytes": 32903
     },
     {
       "path": "CITATION.cff",
@@ -337,8 +337,8 @@
     {
       "path": "crates/galadriel-eval/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "728b94324b2ca693756b11d79b4d2849de3038d950976a3d5db639079f991ca0",
-      "size_bytes": 132078
+      "sha256": "af875e18f782234beb96fbe7d65d58230518be8e3685b76fc6c6f5a95292b1dc",
+      "size_bytes": 132074
     },
     {
       "path": "crates/galadriel-eval/src/main.rs",
