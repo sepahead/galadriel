@@ -895,13 +895,13 @@
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "2229f24e63624dfb6f781d98dbc3934aeed697b1f051d37a67bd6dcc8897a8a8",
-      "size_bytes": 55700
+      "sha256": "d01a7fb822570b27bc2c8fdef29985fb23a1eb6f6ce6d5ccb339d87c1854dc1e",
+      "size_bytes": 56176
     },
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "504877522c24a311e094cc3f8a619821111c823e1bc57c3a38d98aaa2ac12858",
+      "sha256": "60d76dad617f4334591471f3fd24e901357f2421bc042100601ee32b7ec9ce20",
       "size_bytes": 322
     },
     {
