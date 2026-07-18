@@ -4660,7 +4660,11 @@ mod tests {
             Err(EvidenceConfigError::FixtureHashMismatch { .. })
         ));
 
-        let malformed = workspace_root().join("target").join(format!(
+        let workspace_target = workspace_root().join("target");
+        let workspace_target_was_absent = !workspace_target.exists();
+        fs::create_dir_all(&workspace_target)
+            .expect("workspace target fixture directory must be creatable");
+        let malformed = workspace_target.join(format!(
             "malformed-evidence-fixture-{}-{}.jsonl",
             std::process::id(),
             TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed)
@@ -4675,6 +4679,10 @@ mod tests {
             Err(EvidenceConfigError::FixtureParse { .. })
         ));
         fs::remove_file(malformed).expect("malformed fixture must be removable");
+        if workspace_target_was_absent {
+            fs::remove_dir(workspace_target)
+                .expect("workspace target fixture directory must be removable");
+        }
 
         let outside = temporary_output().with_extension("jsonl");
         fs::write(&outside, b"{}\n").expect("outside fixture must be writable");
