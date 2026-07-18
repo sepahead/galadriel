@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -15,8 +16,10 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from check_public_api import canonical_core_diff, compare_snapshot
-from common import ReviewError
+from common import ReviewError, canonical_json, load_json, loads_json
+from finalize_release import candidate_json
 from freeze_audit_inputs import assert_release_tool_coverage, strict_relative_files
+from qualify_candidate import capture_report
 
 
 TOOLS = Path(__file__).resolve().parents[1]
@@ -71,6 +74,118 @@ class ReviewToolsTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
+
+    def test_shared_json_helpers_reject_nonfinite_and_oversized_numbers(self) -> None:
+        path = self.root / "strict.json"
+        invalid_documents = {
+            "nan": '{"value": NaN}',
+            "positive infinity": '{"value": Infinity}',
+            "negative infinity": '{"value": -Infinity}',
+            "overflowing exponent": '{"value": 1e1000000}',
+            "underflowing exponent": '{"value": 1e-1000000}',
+            "oversized integer": '{"value": ' + "9" * 5_000 + "}",
+        }
+        for label, document in invalid_documents.items():
+            with self.subTest(label=label):
+                path.write_text(document, encoding="utf-8")
+                with self.assertRaisesRegex(ReviewError, "cannot load"):
+                    load_json(path)
+
+        path.write_text('{"value": 1, "value": 2}', encoding="utf-8")
+        with self.assertRaisesRegex(ReviewError, "duplicate JSON key"):
+            load_json(path)
+
+        with self.assertRaisesRegex(ValueError, "not valid UTF-8"):
+            loads_json(b"\xff")
+
+        path.write_text(
+            '{"finite": 1e308, "zero": 0e1000000, "negative_zero": -0.0, '
+            '"safe_max": 9007199254740991, "safe_min": -9007199254740991, '
+            '"retained_u64_seed": 6840335614489011713}',
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            load_json(path),
+            {
+                "finite": 1e308,
+                "zero": 0.0,
+                "negative_zero": -0.0,
+                "safe_max": 9_007_199_254_740_991,
+                "safe_min": -9_007_199_254_740_991,
+                "retained_u64_seed": 6_840_335_614_489_011_713,
+            },
+        )
+
+        for value in (float("nan"), float("inf"), -float("inf")):
+            with self.subTest(canonical_value=value):
+                with self.assertRaisesRegex(ReviewError, "cannot encode canonical JSON"):
+                    canonical_json({"value": value})
+
+        retained = {"seed": 6_840_335_614_489_011_713}
+        self.assertEqual(loads_json(canonical_json(retained)), retained)
+        retained_evidence = load_json(TOOLS.parent / "evidence/post-audit-v1.json")
+        self.assertEqual(
+            retained_evidence["base_seed"], 6_840_335_614_489_011_713
+        )
+        with self.assertRaisesRegex(ReviewError, "cannot encode canonical JSON"):
+            canonical_json({"value": 10**128})
+
+    def test_evidence_manifest_reports_oversized_integer_without_traceback(self) -> None:
+        manifest = self.root / "manifest.json"
+        manifest.write_text(
+            '{"schema":"galadriel.evidence-manifest.v1","artifacts":[],"value":'
+            + "9" * 5_000
+            + "}",
+            encoding="utf-8",
+        )
+        result = run(
+            str(TOOLS / "verify_evidence_manifest.py"),
+            str(manifest),
+            "--root",
+            ".",
+            cwd=self.root,
+            expected=2,
+        )
+        self.assertIn("cannot load", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_candidate_and_report_parsers_use_strict_json(self) -> None:
+        candidate_input = self.root / "candidate-input.json"
+        candidate_input.write_text('{"value": NaN}', encoding="utf-8")
+        invalid_utf8 = self.root / "invalid-utf8.json"
+        invalid_utf8.write_bytes(b"\xff")
+        subprocess.run(
+            ["git", "add", candidate_input.name, invalid_utf8.name],
+            cwd=self.root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Add parser fixture"],
+            cwd=self.root,
+            check=True,
+        )
+        candidate = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=self.root, text=True
+        ).strip()
+        for relative in (candidate_input.name, invalid_utf8.name):
+            with self.subTest(candidate_input=relative):
+                with self.assertRaisesRegex(ReviewError, "candidate JSON is invalid"):
+                    candidate_json(self.root, candidate, relative)
+
+        report_cases = (
+            (False, '{"value": NaN}'),
+            (True, '{"value": 1, "value": 2}'),
+        )
+        for json_lines, document in report_cases:
+            with self.subTest(json_lines=json_lines):
+                with self.assertRaisesRegex(ReviewError, "invalid JSON evidence"):
+                    capture_report(
+                        [sys.executable, "-c", f"print({document!r})"],
+                        worktree=self.root,
+                        environment=os.environ.copy(),
+                        output=self.root / "reports" / "report.json",
+                        json_lines=json_lines,
+                    )
 
     def test_frozen_head_accepts_exact_clean_checkout(self) -> None:
         process = run(

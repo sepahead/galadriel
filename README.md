@@ -40,6 +40,39 @@ flowchart LR
     F --> V[nominal / anomaly evidence / insufficient]
 ```
 
+## Ecosystem boundaries
+
+Galadriel has one local evidence path and no command-authority path. A dependency pin,
+shared transport, or historical fixture does not by itself prove an authorized or current
+cross-repository integration.
+
+| Repository | Direction relative to Galadriel | Galadriel-side contract and retained evidence | Explicit 0.9.0 boundary |
+| --- | --- | --- | --- |
+| [NCP](https://github.com/sepahead/NCP) | Upstream wire/transport dependency | `ncp-core` and `ncp-zenoh` are pinned to commit `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`, the revision selected for annotated tag `v0.8.0`; `Cargo.lock`, `.ncp-consumer`, bounded adapters, and in-process transport tests bind the local consumer. | The pin does not prove remote authorization, router ACL enforcement, or compatibility with NCP's unreleased wire-1.0 candidate. |
+| [Crebain](https://github.com/sepahead/crebain) | Upstream producer relationship | The two project-owned observation/monitor routes, strict schemas, registry, and lifecycle contract are implemented on the consumer side. The retained registry fixture is byte-identical to the inspected Crebain component. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head. There is no accepted reciprocal pin of this candidate and no final cross-repository or deployment qualification. |
+| [Haldir](https://github.com/sepahead/haldir) | Prospective downstream authorization consumer | [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) defines record-only and monotonically restrict-only effects; `validate_advisory_effect` tests that Galadriel evidence cannot grant or widen authority. | Phase 16 has not started. Galadriel has no Haldir dependency, route, publisher, adapter, command credential, or runtime evidence. |
+| [Prisoma](https://github.com/sepahead/prisoma) | Prospective offline comparator/covariate consumer; no direct Galadriel edge | The route contract keeps Galadriel sidecars project-owned and forbids wrapping or publishing them as normative NCP `SensorFrame`s. Prisoma's current observer accepts only exact base-plane keys and rejects named sensor subkeys. | The relationship remains E0: there is no adapter or qualified behavior, and sharing NCP 0.8 does not imply schema or route compatibility. |
+
+The 2026-07-18 read-only coordination cut inspected NCP
+`10492c81ac671ef1909962a9f1fede33781b9933`, Crebain
+`0a58a5b8dd799884ddb06f1308b1748216fab322`, Haldir remote `main`
+`0e94f61cfd5c78482198a765157571746a256181`, and Prisoma
+`63cff105e0e40281376e6f827d7782e9b351961a`. These mutable repository heads are
+provenance for the inspection, not Galadriel release inputs or reciprocal compatibility
+pins. NCP's wire-1.0 topology remains proposed and incompatible with the current named
+wire-0.8 sidecars; Crebain retains component-level schema-v1 alignment but freezes
+Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input; Haldir has
+no adapter; and Prisoma has no direct sidecar path. Current reciprocal integration and
+final cross-repository qualification remain `NOT_CLAIMED`.
+
+The exact route, lifecycle, and downstream-effect rules are in
+[`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) and
+[`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md). The dated evidence and
+claim-by-claim interpretation are recorded in
+[`docs/ECOSYSTEM-CONNECTIONS.md`](docs/ECOSYSTEM-CONNECTIONS.md). Current external
+repository heads may move independently; 0.9.0 claims only the dependency revisions and
+local evidence named here.
+
 ## Run the verified demo
 
 ```bash
@@ -94,9 +127,9 @@ generated from commit `8a0084f` with `dirty=false`.
   receiver-verified external mTLS/ACL deployment or field study.
 
 The artifact is a diagnostic result, not an acceptance result. In its independent clean
-arm, the current default reports 26.26 alert episodes/hour and a 0.9167 mission probability
+arm, the current default reports 26.26 alert episodes/track-hour and a 0.9167 mission probability
 of at least one alert; the `phi=0.5` and `phi=0.85` autocorrelated arms report 102.95 and
-262.57 episodes/hour. Ordinary acoustic missingness drives 99.35% fused monitoring
+262.57 episodes/track-hour. Ordinary acoustic missingness drives 99.35% fused monitoring
 abstention. These results expose repeated-look and availability calibration work that must
 be completed before any operational use.
 
@@ -297,7 +330,8 @@ Every live payload is a strict `galadriel_pid_observation` schema `1.0` envelope
 `ncp_version`, advisory `contract_hash`, `session_id`, `producer_id`, and the existing
 historically Crebain-compatible `observation`; the exact independent-producer contract is
 [`galadriel-pid-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json)
-(a descriptive snapshot — the runtime `SidecarEnvelope` validation gate is normative).
+(a frozen producer-conformance schema; the runtime `SidecarEnvelope` validation gate is
+the authoritative consumer-acceptance check).
 The observation tap and assembler reject incompatible versions, undeclared fields, malformed
 metadata, cross-session/cross-producer payloads, unsafe JSON integers, invalid observations,
 and replay/sequence violations. Contract-hash drift is advisory and counted. The standalone
@@ -314,7 +348,7 @@ steady monotonic deadline.
 
 Producer lifecycle and liveness use a separate strict
 `galadriel_producer_event` schema `1.0` on
-`{realm}/session/{id}/sensor/galadriel-monitor`. Its bounded codec and adjacent-tagged
+`{realm}/session/{epoch}/sensor/galadriel-monitor`. Its bounded codec and adjacent-tagged
 heartbeat, outcome, miss, and frame-summary types are frozen in
 [`galadriel-monitor-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json).
 The monitor tap, pinned registry, fail-closed assembler, lifecycle adapter, and operational
@@ -408,6 +442,8 @@ external procedure; none of those exclusions is converted into an implementation
 - [`docs/RELATED-WORK.md`](docs/RELATED-WORK.md) — competing and complementary methods.
 - [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) — non-authoritative,
   non-widening downstream use and prohibited control connections.
+- [`docs/ECOSYSTEM-CONNECTIONS.md`](docs/ECOSYSTEM-CONNECTIONS.md) — dated exact-cut
+  provenance and the limits of each NCP, Crebain, Haldir, and Prisoma relationship.
 - [`release/0.9.0/README.md`](release/0.9.0/README.md) — auditable handoff, ledger,
   claims, evidence, and version-adaptation record.
 

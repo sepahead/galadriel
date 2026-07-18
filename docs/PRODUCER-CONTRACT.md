@@ -9,6 +9,22 @@ compatibility fixture only. They do not pin this candidate; current reciprocal i
 final cross-repository qualification, remote-router enforcement, and operational
 calibration are `NOT_CLAIMED`.
 
+The read-only 2026-07-18 inspection of Crebain
+`0a58a5b8dd799884ddb06f1308b1748216fab322` reconfirmed component-level alignment:
+the two exact routes, schema `1.0`, NCP wire `0.8`, contract hash
+`d1b50a2d8a265276`, 64 KiB envelope ceiling, monitor taxonomy, registry bounds, and
+3,053-byte retained registry fixture agree. The fixture's raw SHA-256 is
+`506ce1437acc20ee5d36fd1e3551dd020095cc4d30d22d959c5df3cca81715a6`; its
+canonical SHA-256 is
+`7644ec2bbf0e400303aaad62c647eea36bd919913f1a28a81c52c13e00dd45ba`.
+That inspection establishes byte/schema fixture compatibility only. Crebain's formal
+0.9 boundary still freezes Galadriel
+`94e2f8cc01f352d2bf899b7f656997f143a2588f`; it neither pins the eventual Galadriel
+0.9.0 release object nor supplies the missing secured multi-process campaign. Exact
+current reciprocal pinning and deployed secured interoperability therefore remain
+separate, unmet evidence classes. See
+[`ECOSYSTEM-CONNECTIONS.md`](ECOSYSTEM-CONNECTIONS.md).
+
 ## Decision
 
 Galadriel's consumer contract defines two project-owned, observation-only sensor

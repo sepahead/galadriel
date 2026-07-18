@@ -23,6 +23,12 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from repo_work.common import loads_json, validate_json_number_bounds  # noqa: E402
+
+
 DEFAULT_PROFILE = ROOT / "deploy" / "galadriel-security-profile.example.json"
 ENDPOINT_CORPUS = ROOT / "deploy" / "secure-client-endpoint-corpus.json"
 REFERENCE_DIR = ROOT / "deploy" / "reference"
@@ -597,7 +603,12 @@ def check_rendered(raw_profile: object, rendered: object) -> list[str]:
 
 
 def _json_bytes(value: object) -> bytes:
-    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    try:
+        validate_json_number_bounds(value)
+        encoded = json.dumps(value, indent=2, sort_keys=True, allow_nan=False)
+    except ValueError as error:
+        raise ProfileError(f"cannot encode strict JSON: {error}") from error
+    return (encoded + "\n").encode("utf-8")
 
 
 def _target_exists(path: Path) -> bool:
@@ -694,11 +705,11 @@ def write_rendered(raw_profile: object, output_dir: Path, *, force: bool) -> dic
 
 def _load_json(path: Path) -> object:
     try:
-        return json.loads(
+        return loads_json(
             path.read_text(encoding="utf-8"),
             object_pairs_hook=_reject_duplicate_json_keys,
         )
-    except (OSError, json.JSONDecodeError, DuplicateJsonKeyError) as error:
+    except (OSError, UnicodeError, ValueError) as error:
         raise ProfileError(f"cannot load {path}: {error}") from error
 
 

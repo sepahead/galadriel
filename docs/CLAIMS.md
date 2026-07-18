@@ -27,3 +27,10 @@ attack intent, calibrated posterior probabilities, accepted operational rates,
 NCP 1.0 qualification, a released upstream pid-rs 1.x artifact, a downstream
 policy integration, secured multi-process deployment, crates.io publication,
 production support, a DOI, or a Zenodo record.
+
+The read-only 2026-07-18 ecosystem inspection does not promote any claim tier. Galadriel
+remains pinned to NCP wire 0.8; the inspected Crebain component retains schema-v1 fixture
+alignment without a reciprocal final-candidate pin; Haldir has no runtime adapter; and
+Prisoma has no direct sidecar route. Exact inspected objects and the evidence missing from
+each relationship are listed in
+[`ECOSYSTEM-CONNECTIONS.md`](ECOSYSTEM-CONNECTIONS.md).

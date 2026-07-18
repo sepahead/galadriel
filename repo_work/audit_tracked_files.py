@@ -157,6 +157,7 @@ def criticality(path: str) -> tuple[bool, bool, bool, bool]:
         "crates/galadriel-core/src/authority.rs",
         "crates/galadriel-core/src/fusion.rs",
         "docs/ADVISORY-BOUNDARY.md",
+        "docs/ECOSYSTEM-CONNECTIONS.md",
         "docs/PRODUCER-CONTRACT.md",
     } or path.startswith(("deploy/", "crates/galadriel-ncp/"))
     return public, security, science, authority

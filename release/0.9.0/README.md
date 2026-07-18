@@ -41,7 +41,7 @@ Normative and generated artifacts:
   `task-dispositions.json`, and `requirements-ledger.json` are source-state
   records: they preserve the exact post-commit work still required and do not
   represent future review as complete.
-- `api/` retains the public-source API baseline and eventual 0.9.0 surface.
+- `api/` retains the public-source API baseline and accepted 0.9.0 surface.
 - `evidence/` retains complete command output rather than pass/fail summaries.
 - `reviews/` contains the phase and final multi-lens review records.
 - `reviews/REVIEW-COMMENTS.md` is an uncompleted, non-signoff comment interface

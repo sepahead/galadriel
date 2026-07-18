@@ -4,6 +4,7 @@
 # the immutable release commit rather than trusting a movable tag. Revision rows
 # also record the consumer-declared release label used by the coordinated checker;
 # NCP's repinner derives the commit from the canonical local tag.
-# galadriel depends on ncp-core only under the off-by-default `ncp` feature.
+# galadriel depends on ncp-core under the off-by-default `ncp` and `ncp-live`
+# features; `ncp-live` additionally enables ncp-zenoh.
 cargo_rev       Cargo.toml v0.8.0 2f5bd586d4bb20c90362bb6f5698b7f64057ba4e
 cargo_lock_rev  Cargo.lock v0.8.0 2f5bd586d4bb20c90362bb6f5698b7f64057ba4e

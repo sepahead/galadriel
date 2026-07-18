@@ -20,7 +20,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from common import ReviewError, canonical_json, git, load_json, reject_duplicate_pairs
+from common import ReviewError, canonical_json, git, load_json, loads_json
 from qualify_candidate import BASE_COMMANDS, DEEP_COMMANDS, CommandSpec
 from release_assurance import (
     AUTHOR,
@@ -59,8 +59,8 @@ def utc_now() -> str:
 def candidate_json(repo: Path, commit: str, relative: str) -> dict[str, Any]:
     raw = bytes(git(repo, "show", f"{commit}:{relative}", text=False))
     try:
-        value = json.loads(raw, object_pairs_hook=reject_duplicate_pairs)
-    except (UnicodeError, json.JSONDecodeError) as error:
+        value = loads_json(raw)
+    except (UnicodeError, ValueError) as error:
         raise ReviewError(
             f"candidate JSON is invalid at {relative}: {error}"
         ) from error
@@ -370,8 +370,8 @@ def validate_qualification_commands(
                 f"qualification command output lacks its header: {spec.name}"
             )
         try:
-            header = json.loads(prefix, object_pairs_hook=reject_duplicate_pairs)
-        except (UnicodeError, json.JSONDecodeError) as error:
+            header = loads_json(prefix)
+        except (UnicodeError, ValueError) as error:
             raise ReviewError(
                 f"qualification command header is invalid: {spec.name}: {error}"
             ) from error
@@ -838,7 +838,7 @@ def verify_qualification(
                 f"qualification {field} is not command- and manifest-bound"
             )
     license_documents = [
-        json.loads(line, object_pairs_hook=reject_duplicate_pairs)
+        loads_json(line)
         for line in (root / "reports/license-report.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()

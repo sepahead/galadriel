@@ -17,6 +17,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+if __package__:
+    from .common import loads_json, validate_json_number_bounds
+else:
+    from common import loads_json, validate_json_number_bounds
+
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE = ROOT / "release" / "0.9.0"
@@ -61,23 +66,42 @@ def reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def load_json(path: Path) -> Any:
     try:
-        return json.loads(
-            path.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_pairs
+        return loads_json(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_pairs,
         )
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeError, ValueError) as error:
         raise DispositionError(f"cannot load {relative(path)}: {error}") from error
 
 
 def canonical_bytes(value: Any) -> bytes:
-    return (
-        json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    ).encode("utf-8")
+    try:
+        validate_json_number_bounds(value)
+        encoded = json.dumps(
+            value,
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+    except ValueError as error:
+        raise DispositionError(f"cannot encode canonical JSON: {error}") from error
+    return (encoded + "\n").encode("utf-8")
 
 
 def compact_canonical_bytes(value: Any) -> bytes:
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    try:
+        validate_json_number_bounds(value)
+        encoded = json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+    except ValueError as error:
+        raise DispositionError(f"cannot encode canonical JSON: {error}") from error
+    return encoded.encode("utf-8")
 
 
 def sha256_text(value: str) -> str:

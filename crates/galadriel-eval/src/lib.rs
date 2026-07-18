@@ -1380,12 +1380,30 @@ pub fn auc_diff_ci(
     percentiles(diffs, 0.025, 0.975)
 }
 
-/// Wilson score 95% CI for a binomial proportion `k/n` (a closed-form interval, correct
-/// even at the `k = n` / `k = 0` boundaries where a normal approximation degenerates).
-pub fn wilson_ci(k: usize, n: usize) -> (f64, f64) {
-    if n == 0 || k > n {
-        return (f64::NAN, f64::NAN);
+/// A conservative floating-point enclosure of the exact rational proportion `k/n`.
+///
+/// Integer-to-`f64` conversion can round distinct counts to the same value above `2^53`.
+/// Moving each converted count outward before division, then moving the quotient outward,
+/// preserves an enclosure of the exact rational value for every valid `usize` count.
+fn proportion_enclosure(k: usize, n: usize) -> (f64, f64) {
+    debug_assert!(n > 0 && k <= n);
+    if k == 0 {
+        return (0.0, 0.0);
     }
+    if k == n {
+        return (1.0, 1.0);
+    }
+
+    let kf = k as f64;
+    let nf = n as f64;
+    let lower = (kf.next_down() / nf.next_up()).next_down().max(0.0);
+    let upper = (kf.next_up() / nf.next_down()).next_up().min(1.0);
+    (lower, upper)
+}
+
+/// Direct Wilson calculation for proportions no greater than one half.
+fn wilson_lower_half(k: usize, n: usize) -> (f64, f64) {
+    debug_assert!(n > 0 && k <= n / 2);
     let z = 1.959_964_f64;
     let nf = n as f64;
     let p = k as f64 / nf;
@@ -1393,9 +1411,101 @@ pub fn wilson_ci(k: usize, n: usize) -> (f64, f64) {
     let denom = 1.0 + z2 / nf;
     let center = p + z2 / (2.0 * nf);
     let margin = z * (p * (1.0 - p) / nf + z2 / (4.0 * nf * nf)).sqrt();
-    let lower = ((center - margin) / denom).clamp(0.0, p);
-    let upper = ((center + margin) / denom).clamp(p, 1.0);
+    let (point_lower, point_upper) = proportion_enclosure(k, n);
+    let lower = ((center - margin) / denom).clamp(0.0, 1.0).min(point_lower);
+    let upper = ((center + margin) / denom).clamp(0.0, 1.0).max(point_upper);
     (lower, upper)
+}
+
+/// Return `1 - value` with the exact rounding residual of the subtraction.
+fn one_minus_with_roundoff(value: f64) -> (f64, f64) {
+    let negative = -value;
+    let difference = 1.0 + negative;
+    let virtual_negative = difference - 1.0;
+    let residual = (1.0 - (difference - virtual_negative)) + (negative - virtual_negative);
+    (difference, residual)
+}
+
+fn outward_complement_lower(value: f64) -> f64 {
+    let (difference, residual) = one_minus_with_roundoff(value);
+    if residual < 0.0 {
+        difference.next_down()
+    } else {
+        difference
+    }
+}
+
+fn outward_complement_upper(value: f64) -> f64 {
+    let (difference, residual) = one_minus_with_roundoff(value);
+    if residual > 0.0 {
+        difference.next_up()
+    } else {
+        difference
+    }
+}
+
+/// Wilson score 95% CI for a binomial proportion `k/n` (a closed-form interval, correct
+/// even at the `k = n` / `k = 0` boundaries where a normal approximation degenerates).
+/// The returned floating-point interval conservatively contains the exact rational point
+/// estimate for every valid `usize` count, including counts beyond `f64`'s exact-integer
+/// range.
+pub fn wilson_ci(k: usize, n: usize) -> (f64, f64) {
+    if n == 0 || k > n {
+        return (f64::NAN, f64::NAN);
+    }
+    if k <= n / 2 {
+        return wilson_lower_half(k, n);
+    }
+
+    // Reflect the numerically stable failure-proportion interval. Move a subtraction
+    // outward only when its error-free residual proves that it rounded inward.
+    let (failure_lower, failure_upper) = wilson_lower_half(n - k, n);
+    let (point_lower, point_upper) = proportion_enclosure(k, n);
+    let lower = outward_complement_lower(failure_upper)
+        .max(0.0)
+        .min(point_lower);
+    let upper = outward_complement_upper(failure_lower)
+        .min(1.0)
+        .max(point_upper);
+    (lower, upper)
+}
+
+#[cfg(test)]
+fn compare_f64_to_proportion(value: f64, k: usize, n: usize) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+
+    assert!(n > 0 && k <= n && value.is_finite());
+    if k == 0 {
+        return value.partial_cmp(&0.0).expect("finite values are ordered");
+    }
+    if k == n {
+        return value.partial_cmp(&1.0).expect("finite values are ordered");
+    }
+    if value <= 0.0 {
+        return Ordering::Less;
+    }
+    if value >= 1.0 {
+        return Ordering::Greater;
+    }
+
+    let bits = value.to_bits();
+    let exponent_field = ((bits >> 52) & 0x7ff) as i32;
+    if exponent_field == 0 {
+        // Every positive `usize` ratio is at least 1 / (2^64 - 1), far above the
+        // largest subnormal `f64`, on every Rust target supported today.
+        return Ordering::Less;
+    }
+    let significand = (1_u64 << 52) | (bits & ((1_u64 << 52) - 1));
+    let exponent = exponent_field - 1023;
+    let denominator_shift = (52 - exponent) as u32;
+    let right_bits = 128 - (k as u128).leading_zeros();
+    if right_bits + denominator_shift > 128 {
+        return Ordering::Less;
+    }
+
+    let left = u128::from(significand) * n as u128;
+    let right = (k as u128) << denominator_shift;
+    left.cmp(&right)
 }
 
 /// A bootstrap-CI row for one detector's alarm-ranked ROC-AUC on the stealthy spoof.
@@ -2737,6 +2847,29 @@ pub fn format_latency(rows: &[AttackLatency], trials: usize, step: usize) -> Str
 mod tests {
     use super::*;
 
+    fn assert_contains_exact_proportion(k: usize, n: usize, lower: f64, upper: f64) {
+        use std::cmp::Ordering::{Greater, Less};
+
+        assert!(
+            lower.is_finite() && upper.is_finite() && (0.0..=1.0).contains(&lower),
+            "invalid lower endpoint for {k}/{n}: {lower}"
+        );
+        assert!(
+            (0.0..=1.0).contains(&upper) && lower <= upper,
+            "invalid interval for {k}/{n}: [{lower}, {upper}]"
+        );
+        assert_ne!(
+            compare_f64_to_proportion(lower, k, n),
+            Greater,
+            "lower endpoint exceeds exact {k}/{n}: {lower}"
+        );
+        assert_ne!(
+            compare_f64_to_proportion(upper, k, n),
+            Less,
+            "upper endpoint is below exact {k}/{n}: {upper}"
+        );
+    }
+
     fn config(mut update: impl FnMut(&mut EvalParams)) -> EvalConfig {
         let mut params = EvaluationResearchProfile::SyntheticV0_9.params();
         update(&mut params);
@@ -3356,6 +3489,94 @@ mod tests {
     }
 
     #[test]
+    fn wilson_ci_contains_exact_machine_count_proportions() {
+        let maximum = usize::MAX;
+        let cases = [
+            (0, maximum),
+            (1, maximum),
+            (maximum / 2, maximum),
+            (maximum - 2, maximum),
+            (maximum - 1, maximum),
+            (maximum, maximum),
+        ];
+
+        for (k, n) in cases {
+            let (lower, upper) = wilson_ci(k, n);
+            assert_contains_exact_proportion(k, n, lower, upper);
+        }
+
+        let (lower, upper) = wilson_ci(maximum - 1, maximum);
+        assert!(
+            lower < 1.0 && upper == 1.0,
+            "near-perfect maximum counts must retain visible uncertainty: [{lower}, {upper}]"
+        );
+
+        for n in [29, 34, 35] {
+            let zero = wilson_ci(0, n);
+            let perfect = wilson_ci(n, n);
+            assert_contains_exact_proportion(0, n, zero.0, zero.1);
+            assert_contains_exact_proportion(n, n, perfect.0, perfect.1);
+            assert_eq!(zero.0, 0.0, "zero successes must have an exact lower bound");
+            assert_eq!(
+                perfect.1, 1.0,
+                "perfect successes must have an exact upper bound"
+            );
+        }
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn wilson_ci_contains_exact_proportions_across_f64_integer_boundary() {
+        let exact_integer_limit = 1_usize << 53;
+        for n in [
+            exact_integer_limit - 1,
+            exact_integer_limit,
+            exact_integer_limit + 1,
+        ] {
+            for k in [n - 2, n - 1, n] {
+                let (lower, upper) = wilson_ci(k, n);
+                assert_contains_exact_proportion(k, n, lower, upper);
+            }
+        }
+    }
+
+    #[test]
+    fn wilson_ci_reflects_high_success_counts_conservatively() {
+        for (k, n) in [(0, 29), (1, 34), (17, 35), (2, 200), (1, usize::MAX)] {
+            let low = wilson_ci(k, n);
+            let high = wilson_ci(n - k, n);
+            assert!(
+                high.0 <= 1.0 - low.1 && 1.0 - low.0 <= high.1,
+                "reflected interval for {}/{n} is not conservative: low={low:?}, high={high:?}",
+                n - k
+            );
+        }
+    }
+
+    #[test]
+    fn wilson_ci_is_monotone_across_the_reflection_boundary() {
+        let mut sample_counts = vec![34, 35, 100, 101, usize::MAX];
+        #[cfg(target_pointer_width = "64")]
+        sample_counts.extend([(1_usize << 53) - 1, 1_usize << 53, (1_usize << 53) + 1]);
+
+        for n in sample_counts {
+            let midpoint = n / 2;
+            let start = midpoint.saturating_sub(3);
+            let end = midpoint.saturating_add(4).min(n);
+            let mut previous = wilson_ci(start, n);
+            for k in start + 1..=end {
+                let current = wilson_ci(k, n);
+                assert!(
+                    previous.0 <= current.0 && previous.1 <= current.1,
+                    "Wilson endpoints regressed between {}/{n}={previous:?} and {k}/{n}={current:?}",
+                    k - 1
+                );
+                previous = current;
+            }
+        }
+    }
+
+    #[test]
     fn command_report_suite_preflights_before_work() {
         let cfg = config(|params| params.trials = MIN_INFERENCE_TRIALS);
         let grid = [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05];
@@ -3485,16 +3706,82 @@ mod prop_tests {
             );
         }
 
-        /// The Wilson interval is a sub-interval of [0, 1] that brackets the point estimate.
+        /// The Wilson interval is a sub-interval of [0, 1] that brackets the exact
+        /// rational point estimate.
         #[test]
         fn wilson_ci_brackets_the_estimate(
             (n, k) in (1usize..2000).prop_flat_map(|n| (Just(n), 0usize..=n))
         ) {
             let (lo, hi) = wilson_ci(k, n);
-            let p = k as f64 / n as f64;
             prop_assert!(lo >= -1e-12 && hi <= 1.0 + 1e-12, "wilson [{lo},{hi}] ∉ [0,1]");
             prop_assert!(lo <= hi, "wilson lo {lo} > hi {hi}");
-            prop_assert!(lo <= p && p <= hi, "wilson [{lo},{hi}] misses p̂={p}");
+            prop_assert_ne!(
+                compare_f64_to_proportion(lo, k, n),
+                std::cmp::Ordering::Greater,
+                "wilson lower {} exceeds exact {}/{}",
+                lo,
+                k,
+                n
+            );
+            prop_assert_ne!(
+                compare_f64_to_proportion(hi, k, n),
+                std::cmp::Ordering::Less,
+                "wilson upper {} is below exact {}/{}",
+                hi,
+                k,
+                n
+            );
+        }
+
+        /// Exact-rational containment also holds across the full machine-count domain,
+        /// including integers that collapse during conversion to `f64`.
+        #[test]
+        fn wilson_ci_brackets_full_usize_domain(
+            n in any::<usize>().prop_filter("sample count must be positive", |n| *n != 0),
+            raw_k in any::<usize>(),
+        ) {
+            let k = ((raw_k as u128) % (n as u128 + 1)) as usize;
+            let (lo, hi) = wilson_ci(k, n);
+            prop_assert!((0.0..=1.0).contains(&lo), "wilson lower {lo} ∉ [0,1]");
+            prop_assert!((0.0..=1.0).contains(&hi), "wilson upper {hi} ∉ [0,1]");
+            prop_assert!(lo <= hi, "wilson lo {lo} > hi {hi}");
+            prop_assert_ne!(
+                compare_f64_to_proportion(lo, k, n),
+                std::cmp::Ordering::Greater,
+                "wilson lower {} exceeds exact {}/{}",
+                lo,
+                k,
+                n
+            );
+            prop_assert_ne!(
+                compare_f64_to_proportion(hi, k, n),
+                std::cmp::Ordering::Less,
+                "wilson upper {} is below exact {}/{}",
+                hi,
+                k,
+                n
+            );
+        }
+
+        /// Increasing the success count by one cannot move either Wilson endpoint down.
+        #[test]
+        fn wilson_ci_is_monotone_for_adjacent_machine_counts(
+            n in any::<usize>().prop_filter("sample count must be positive", |n| *n != 0),
+            raw_k in any::<usize>(),
+        ) {
+            let k = ((raw_k as u128) % n as u128) as usize;
+            let current = wilson_ci(k, n);
+            let next = wilson_ci(k + 1, n);
+            prop_assert!(
+                current.0 <= next.0 && current.1 <= next.1,
+                "Wilson endpoints regressed between {}/{}={:?} and {}/{}={:?}",
+                k,
+                n,
+                current,
+                k + 1,
+                n,
+                next
+            );
         }
 
         /// A bootstrap AUC CI is ordered and within [0, 1].

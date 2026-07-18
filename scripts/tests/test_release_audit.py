@@ -3,20 +3,107 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from scripts import release_audit
+from scripts import release_audit, secure_deployment
 
 
 class ReleaseAuditTests(unittest.TestCase):
+    def test_secure_profile_json_parser_and_cli_fail_closed(self) -> None:
+        invalid_documents = (
+            b'{"value": NaN}',
+            b'{"value": Infinity}',
+            b'{"value": -Infinity}',
+            b'{"value": 1e1000000}',
+            b'{"value": 1e-1000000}',
+            b'{"value": ' + b"9" * 5_000 + b"}",
+            b"\xff",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "invalid.json"
+            for document in invalid_documents:
+                with self.subTest(document=document[:40]):
+                    path.write_bytes(document)
+                    with self.assertRaisesRegex(
+                        secure_deployment.ProfileError, "cannot load"
+                    ):
+                        secure_deployment._load_json(path)
+
+            path.write_bytes(b'{"value": 1, "value": 2}')
+            with self.assertRaisesRegex(
+                secure_deployment.ProfileError, "duplicate JSON object key"
+            ):
+                secure_deployment._load_json(path)
+
+            path.write_bytes(b'{"value": ' + b"9" * 5_000 + b"}")
+            output = root / "rendered"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(release_audit.ROOT / "scripts" / "secure_deployment.py"),
+                    "render",
+                    "--profile",
+                    str(path),
+                    "--output-dir",
+                    str(output),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("cannot load", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertFalse(output.exists())
+
+        with self.assertRaisesRegex(
+            secure_deployment.ProfileError, "cannot encode strict JSON"
+        ):
+            secure_deployment._json_bytes({"value": float("nan")})
+        with self.assertRaisesRegex(
+            secure_deployment.ProfileError, "cannot encode strict JSON"
+        ):
+            secure_deployment._json_bytes({"value": 10**128})
+
     def test_duplicate_json_keys_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "duplicate.json"
             path.write_text('{"schema": 1, "schema": 2}\n', encoding="utf-8")
             with self.assertRaisesRegex(release_audit.AuditError, "duplicate JSON key"):
                 release_audit.load_json(path)
+
+    def test_nonfinite_and_oversized_json_numbers_are_rejected(self) -> None:
+        invalid_documents = (
+            '{"value": NaN}',
+            '{"value": Infinity}',
+            '{"value": -Infinity}',
+            '{"value": 1e1000000}',
+            '{"value": 1e-1000000}',
+            '{"value": ' + "9" * 5_000 + "}",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "invalid.json"
+            for document in invalid_documents:
+                with self.subTest(document=document[:40]):
+                    path.write_text(document, encoding="utf-8")
+                    with self.assertRaisesRegex(release_audit.AuditError, "cannot load"):
+                        release_audit.load_json(path)
+
+        for value in (float("nan"), float("inf"), -float("inf")):
+            with self.subTest(canonical_value=value):
+                with self.assertRaisesRegex(
+                    release_audit.AuditError, "cannot encode canonical JSON"
+                ):
+                    release_audit.canonical_bytes({"value": value})
+        with self.assertRaisesRegex(
+            release_audit.AuditError, "cannot encode canonical JSON"
+        ):
+            release_audit.canonical_bytes({"value": 10**128})
 
     def test_canonical_json_is_order_independent_and_idempotent(self) -> None:
         first = {"z": [3, 2, 1], "a": {"right": 2, "left": 1}}

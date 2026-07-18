@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from common import ReviewError, canonical_json, git, load_json
+from common import ReviewError, canonical_json, git, load_json, loads_json
 from release_assurance import (
     assert_tracked_allowed_signer,
     derive_external_allowed_signers,
@@ -600,17 +600,19 @@ def capture_report(
     try:
         if json_lines:
             documents = [
-                json.loads(line) for line in process.stdout.splitlines() if line.strip()
+                loads_json(line)
+                for line in process.stdout.splitlines()
+                if line.strip()
             ]
             if not documents or not all(
                 isinstance(document, dict) for document in documents
             ):
                 raise ValueError("JSONL report must contain at least one object")
         else:
-            document = json.loads(process.stdout)
+            document = loads_json(process.stdout)
             if not isinstance(document, dict):
                 raise ValueError("JSON report must be an object")
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+    except (UnicodeError, ReviewError, ValueError) as error:
         raise ReviewError(
             f"{' '.join(argv)} produced invalid JSON evidence: {error}"
         ) from error
@@ -833,7 +835,7 @@ def reproducible_packages(
                     raise ReviewError(
                         f"cargo package VCS provenance is unreadable: {filename}"
                     )
-                vcs = json.loads(extracted.read())
+                vcs = loads_json(extracted.read())
                 git_identity = vcs.get("git") if isinstance(vcs, dict) else None
                 if (
                     not isinstance(git_identity, dict)
@@ -1211,7 +1213,7 @@ def main() -> int:
                     + metadata.stderr.decode("utf-8", "replace").strip()
                 )
             (output / "cargo-metadata.json").write_bytes(metadata.stdout)
-            metadata_document = json.loads(metadata.stdout)
+            metadata_document = loads_json(metadata.stdout)
             comparison_root = temporary_root / "reproducibility"
             comparison_root.mkdir()
             archive, archive_comparison = reproducible_source_archive(

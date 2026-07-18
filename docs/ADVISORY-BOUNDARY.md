@@ -129,17 +129,36 @@ the resulting selection effects or calibrated the stream.
 - **Input only.** `galadriel-ncp` provides bounded JSONL ingest and a strict two-route
   operational Zenoh receiver. It remains read-only with respect to downstream policy:
   there is no Galadriel→consumer signed advisory *publisher* yet, and verdicts surface
-  only via the CLI / files.
+  only via the CLI / files. Haldir is therefore a downstream contract example, not a
+  qualified integration: Galadriel holds no command credential and cannot call an
+  authorization path.
 - **NCP wire: 0.8.** Galadriel pins `ncp-core`/`ncp-zenoh` to the immutable revision
-  selected by the public `v0.8.0` tag. Crebain
+  selected by the public `v0.8.0` tag. NCP's current wire-1.0 extension topology is an
+  unreleased candidate whose ecosystem ADRs remain proposed with no normative effect.
+  Galadriel's named sensor sidecars are wire-0.8 project surfaces, not native wire-1.0
+  extensions. Crebain
   `4c311900ade5668200a48d56fb191be1916b884a` and Galadriel
   `81437d807ca83b66b45c8353968948e540072d97` form a retained historical sidecar/
   registry compatibility fixture; that pair does not pin or qualify the current candidate.
   Current reciprocal integration and final cross-repository qualification are
   `NOT_CLAIMED`. Prisoma observes normative NCP sensor frames and is not a Galadriel
-  sidecar consumer. Galadriel's live taps and operational join have in-process Zenoh
+  sidecar consumer; Galadriel's project-owned sidecars are forbidden from the normative
+  `SensorFrame` publication path. Galadriel's live taps and operational join have in-process Zenoh
   loopback coverage, but no retained external multi-process mTLS/ACL run between current
   binaries exists.
+- **No downstream runtime edge.** A read-only 2026-07-18 inspection found no Galadriel
+  dependency, route, publisher, subscriber, or adapter in Haldir remote `main`
+  `0e94f61cfd5c78482198a765157571746a256181`; its Galadriel phase remains not started.
+  Any future adapter MUST admit a raw Galadriel verdict into a Haldir-owned record and
+  derive `StateUnusable` and policy eligibility independently. It MUST NOT accept those
+  conclusions as producer assertions. Prisoma
+  `63cff105e0e40281376e6f827d7782e9b351961a` likewise has no direct Galadriel edge:
+  its optional observer accepts only exact base-plane keys and rejects named sensor
+  subkeys. A future offline covariate importer MUST bind exact source/configuration,
+  session/epoch, source window, and receipt time; reject stale, replayed, malformed, and
+  post-treatment inputs; preserve abstention; and remain unable to alter treatment or
+  result logic. Shared `pid-rs` use makes the outputs correlated evidence, not independent
+  replication.
 - Building the signed advisory envelope, retaining the external secured interop campaign,
   and completing an independent recorded calibration study are the ordered prerequisites
   before *any* restrict-only profile in §3.3 is even a candidate.

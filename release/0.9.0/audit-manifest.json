@@ -61,8 +61,8 @@
     {
       "path": ".ncp-consumer",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "907448250cc31872ca6251d38067658a6d6e64a37f34e81e4ee5b9cc2b893870",
-      "size_bytes": 703
+      "sha256": "dbf5ffe683b1279f56c5099ef943b5dbff85deb7234eb8693a712ae1512d29f2",
+      "size_bytes": 759
     },
     {
       "path": ".superstack/build-context.md",
@@ -91,8 +91,8 @@
     {
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "150f96773cd0a8162fd059851fe82fd027a5109b05ba23de4e53c46f0967645a",
-      "size_bytes": 32903
+      "sha256": "e5df4f571e586ef15110c46c01f2c95d025746878b49f5ed380625422598864c",
+      "size_bytes": 34604
     },
     {
       "path": "CITATION.cff",
@@ -145,8 +145,8 @@
     {
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "50bfb0d3dbfcd1db7bf747b3c25f81f64f1386ce32e7788a636b24acf737bc48",
-      "size_bytes": 25434
+      "sha256": "08795d7780e584d25d48f3480578e581a6e7d62d7118ceb5cdd0e2fd90616a8c",
+      "size_bytes": 29188
     },
     {
       "path": "RELEASE-POLICY.md",
@@ -157,8 +157,8 @@
     {
       "path": "SECURITY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d57fa52153de0b002529d481668ea0deaa821de7895d5e75f935bd9fccf4edfe",
-      "size_bytes": 3987
+      "sha256": "52d4d627a74062cbd2174848dcda69f19b316b319799d20618c2ff11b6a9a336",
+      "size_bytes": 4747
     },
     {
       "path": "SUPPORT.md",
@@ -337,8 +337,8 @@
     {
       "path": "crates/galadriel-eval/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "af875e18f782234beb96fbe7d65d58230518be8e3685b76fc6c6f5a95292b1dc",
-      "size_bytes": 132074
+      "sha256": "98d447f471049ac81226d930ce3af1a408e6c576a5906c10419e8a065e37065d",
+      "size_bytes": 142200
     },
     {
       "path": "crates/galadriel-eval/src/main.rs",
@@ -571,8 +571,8 @@
     {
       "path": "deploy/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a9ff3d46d1b43ef766963112126e7dc2de6e5081d30b96fb0266f2b43fb5c674",
-      "size_bytes": 5998
+      "sha256": "81ace63334bda33f821e3e880eba28584e2709c3e6ddb59dd1e3e91cda587a97",
+      "size_bytes": 6336
     },
     {
       "path": "deploy/galadriel-security-profile.example.json",
@@ -619,8 +619,8 @@
     {
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "28c4cb8747eacf30c2b2197cc3a890deb05843e429aa26e1f5c8ba19911d7e6e",
-      "size_bytes": 11523
+      "sha256": "fb8762752a5effbd8a88fa5be1c5adba149998ee5719f8b7378aa33669eb6015",
+      "size_bytes": 13029
     },
     {
       "path": "docs/API-SURFACE.md",
@@ -631,8 +631,8 @@
     {
       "path": "docs/CLAIMS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "fd8c949d7cd6e30420d7d7f5ee5d2cf809e32fd7ea4d9b48d992ef7e3ffd5d43",
-      "size_bytes": 1539
+      "sha256": "c9d6c786546fff7a88de98baf938281da5cea0468b6328b73dd83cffcce280d0",
+      "size_bytes": 1985
     },
     {
       "path": "docs/CONFIGURATION-CONTRACT.md",
@@ -651,6 +651,12 @@
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "303b397dff4bd78fc6bcdcafeed8ad67b3481af7e90f2c5897e98d57b496b5da",
       "size_bytes": 3750
+    },
+    {
+      "path": "docs/ECOSYSTEM-CONNECTIONS.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "13f0662a6da8a4255df25d495b9423103e857cef8faf6acf7c58dc60e59c690f",
+      "size_bytes": 5429
     },
     {
       "path": "docs/EVALUATION.md",
@@ -697,8 +703,8 @@
     {
       "path": "docs/PRODUCER-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2b71558c49d8dd72b0629685fa615fba9da5a3064e66b2aa7ad9a60cc300d88c",
-      "size_bytes": 31282
+      "sha256": "41c884f3e4099f27366d1b5541c8072f5fe068162a2c4a026d05e83e20735dc9",
+      "size_bytes": 32261
     },
     {
       "path": "docs/RELATED-WORK.md",
@@ -835,7 +841,7 @@
     {
       "path": "release/0.9.0/README.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "dd4fd18300f1e3209fceb37c9293194e528733fc9ff189597e1430de6daaf6df",
+      "sha256": "b29fb939efe8013e7b7f0f426748ed8a3edefb48bc552160f50a474ebe534e2e",
       "size_bytes": 4205
     },
     {
@@ -1027,14 +1033,14 @@
     {
       "path": "repo_work/audit_tracked_files.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ed0ef58a2257fe12d7ac35d6283655d7f20b2e719c30a27ffb0f4b1d54f4a9b5",
-      "size_bytes": 14222
+      "sha256": "0ccc63d3ecff1dcaec9e76c7e6ca0e8f814135dc9e63c642506f8fc0d50fad7d",
+      "size_bytes": 14263
     },
     {
       "path": "repo_work/build_task_dispositions.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "541bcf5eb3fcd88881dfe692d643b7046b2bcb9945795c71086494d2325814f2",
-      "size_bytes": 18012
+      "sha256": "57a8dec50d3c1779b5b79e4ad56728a3789f180e052047ad3b1a86d198f36cdb",
+      "size_bytes": 18701
     },
     {
       "path": "repo_work/check_feature_graph.py",
@@ -1069,20 +1075,20 @@
     {
       "path": "repo_work/common.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8ed2f7fe2e09db24b2d14e0400b59792c6bdd761402643d7a9a6ed9d2ddc5ada",
-      "size_bytes": 2857
+      "sha256": "716cc8f82d34545c72e5605b182e29428a1dddbb2129c4ff0c2eddd33d7730a7",
+      "size_bytes": 6025
     },
     {
       "path": "repo_work/finalize_release.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "27458c964afed260d827167936a1fd9fffc12c69e4b701defedc5034f349eb42",
-      "size_bytes": 49809
+      "sha256": "761a12d47ba60ac480f0e640b80cd497cf05195e5119b28c8babbbc41c721f42",
+      "size_bytes": 49651
     },
     {
       "path": "repo_work/freeze_audit_inputs.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "c045be49e4c6b7585aa10e2be2ce5f93477334525a3e7083abcecd578518f3d7",
-      "size_bytes": 17752
+      "sha256": "30c71d1565d561f6be07fe0cd90d4fa1c5018aaefbe36e123fa35b4cedd43109",
+      "size_bytes": 17832
     },
     {
       "path": "repo_work/make_review_packets.py",
@@ -1099,14 +1105,14 @@
     {
       "path": "repo_work/qualify_candidate.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7627772924fd3b35c8ac648715c81a2c3ff9f0f9133d395c8f829d7b44246996",
-      "size_bytes": 52270
+      "sha256": "86978d25eaa026708bfd4d49c4e673ecbf78aaefefb599cfe5a7acaa064d29eb",
+      "size_bytes": 52299
     },
     {
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ad01d1ad1d22aec46ebb4c53dad60d5afc6c2f984dd29aef6eff4d31bfb98e59",
-      "size_bytes": 86901
+      "sha256": "f41d7dffcf493290d43145581c1f95facdab98cb02007985811c8f900cdf8952",
+      "size_bytes": 88392
     },
     {
       "path": "repo_work/reproduce_baseline.py",
@@ -1123,20 +1129,20 @@
     {
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "4f4913067bc2de5faa76ccb0505cb4439befbbd46dddd1a0a62a505925821a38",
-      "size_bytes": 62059
+      "sha256": "c6d9e73b27059dffb655aab496890ff2a32b7cae6d5279c68c40133521f09f70",
+      "size_bytes": 67107
     },
     {
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ae5d508fdcc7c448fd0a421ec0ec57c8f4f3d2e6ef809cf395cbac6f0304c707",
-      "size_bytes": 12150
+      "sha256": "1a8fa027b80bd5c0f7fd9ec601803669a9c334b5eaf46b0b67903527126160e4",
+      "size_bytes": 17001
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2606f49eedb9c49e3a415fc456d41753d3741b128781a699ad0a03ac332dd344",
-      "size_bytes": 5633
+      "sha256": "9d714d77aefb427b611b4be16a4234e59d05307f73f5a8b7b6a0ee9532b3aadd",
+      "size_bytes": 7207
     },
     {
       "path": "repo_work/verify_evidence_manifest.py",
@@ -1153,20 +1159,20 @@
     {
       "path": "scripts/release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "6e87c620540e5f2fc2c6d7edc0675572bdfc3a9dcb1b30eeb8c46d9568983fc0",
-      "size_bytes": 34083
+      "sha256": "ba002de66e037627f60eac47f5bf3c40df1c1ecf65f415fbc5640738299766b3",
+      "size_bytes": 34522
     },
     {
       "path": "scripts/secure_deployment.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "854e01dc45ae19dd7729132f58f30db09a460c89d8d583b401107b97a5c01323",
-      "size_bytes": 43713
+      "sha256": "dcc41fa260b74467caeb91aae7181ca7b163bdb61abec90893681412a97a81da",
+      "size_bytes": 44048
     },
     {
       "path": "scripts/tests/test_release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ff382ecd73e79130f63f1ffcbc7f6aac623d5edc8afbf62f30b5fe18575a91e3",
-      "size_bytes": 5756
+      "sha256": "724a18138a9ce06a910ac46b576729cbc13d3f79a51dca6af21663d26d24e10d",
+      "size_bytes": 9317
     }
   ],
   "audit_date": "2026-07-14",
@@ -1387,15 +1393,39 @@
     },
     {
       "kind": "external_reference",
-      "line": 349,
+      "line": 383,
       "path": "README.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 417,
+      "line": 453,
       "path": "README.md",
       "url": "https://github.com/sepahead"
+    },
+    {
+      "kind": "external_reference",
+      "line": 51,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/NCP"
+    },
+    {
+      "kind": "external_reference",
+      "line": 52,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/crebain"
+    },
+    {
+      "kind": "external_reference",
+      "line": 53,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/haldir"
+    },
+    {
+      "kind": "external_reference",
+      "line": 54,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/prisoma"
     },
     {
       "kind": "external_reference",
@@ -1886,7 +1916,7 @@
     {
       "path": "release/0.9.0/README.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "dd4fd18300f1e3209fceb37c9293194e528733fc9ff189597e1430de6daaf6df",
+      "sha256": "b29fb939efe8013e7b7f0f426748ed8a3edefb48bc552160f50a474ebe534e2e",
       "size_bytes": 4205
     },
     {
@@ -1898,8 +1928,8 @@
     {
       "path": "docs/CLAIMS.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "fd8c949d7cd6e30420d7d7f5ee5d2cf809e32fd7ea4d9b48d992ef7e3ffd5d43",
-      "size_bytes": 1539
+      "sha256": "c9d6c786546fff7a88de98baf938281da5cea0468b6328b73dd83cffcce280d0",
+      "size_bytes": 1985
     },
     {
       "path": "docs/STATISTICAL-CONTRACT.md",
@@ -1916,8 +1946,8 @@
     {
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "28c4cb8747eacf30c2b2197cc3a890deb05843e429aa26e1f5c8ba19911d7e6e",
-      "size_bytes": 11523
+      "sha256": "fb8762752a5effbd8a88fa5be1c5adba149998ee5719f8b7378aa33669eb6015",
+      "size_bytes": 13029
     },
     {
       "path": "docs/API-SURFACE.md",

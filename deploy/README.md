@@ -83,7 +83,12 @@ review fixtures, not credentials or a production deployment.
    certificate fingerprints/serials, and authorization-test results as deployment evidence.
    Never copy private-key bytes or credentials into logs or evidence bundles.
 
-The reference fixture and 37 security regression checks are exercised with:
+The renderer and checker use strict UTF-8 JSON. Duplicate object members, nonstandard
+constants, non-finite/overflowing or nonzero-underflowing floats, and integer tokens above
+the fixed resource bound are rejected before profile validation. Each profile field then
+passes its own closed type, identity, path, endpoint, and size domain.
+
+The reference fixture and 67 security regression checks are exercised with:
 
 ```bash
 python3 scripts/secure_deployment.py check

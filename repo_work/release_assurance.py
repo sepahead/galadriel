@@ -17,7 +17,7 @@ import subprocess
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any, Literal, NamedTuple
 
 from common import ReviewError, contained_path, git, load_json
 
@@ -54,6 +54,15 @@ FOCUSED_MUTATION_RECEIPT = "FOCUSED-MUTATION-RUN.json"
 CARGO_MUTANTS_IDENTITY = "cargo-mutants 27.1.0"
 CARGO_IDENTITY = "cargo 1.89.0 (c24e10642 2025-06-23)"
 RUSTC_IDENTITY = "rustc 1.89.0 (29483883e 2025-08-04)"
+MetricDomain = Literal["probability", "rate", "delay"]
+ACCEPTANCE_METRIC_DOMAINS: dict[str, MetricDomain] = {
+    "false_alerts_per_hour": "rate",
+    "mission_probability_any_alert": "probability",
+    "conditional_detection_probability": "probability",
+    "conditional_delay_p95_ms": "delay",
+    "conditional_attribution_error": "probability",
+    "abstention_fraction": "probability",
+}
 
 
 class FocusedMutant(NamedTuple):
@@ -473,6 +482,16 @@ def _required_row(
     return matches[0]
 
 
+def _is_finite_f64_number(value: Any) -> bool:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        converted = float(value)
+    except (OverflowError, TypeError, ValueError):
+        return False
+    return math.isfinite(converted)
+
+
 def _metric_observation(
     criterion: str,
     row: dict[str, Any],
@@ -481,6 +500,9 @@ def _metric_observation(
     comparison: str,
     threshold: float,
 ) -> dict[str, Any]:
+    metric_domain = ACCEPTANCE_METRIC_DOMAINS.get(metric_name)
+    if metric_domain is None:
+        raise ReviewError(f"internal acceptance metric domain is missing: {metric_name}")
     condition = row.get("condition")
     detector = row.get("detector")
     if not isinstance(condition, str) or not condition or not isinstance(detector, str):
@@ -508,27 +530,31 @@ def _metric_observation(
     if (
         not isinstance(ci, list)
         or len(ci) != 2
-        or not all(
-            isinstance(bound, (int, float))
-            and not isinstance(bound, bool)
-            and math.isfinite(bound)
-            for bound in ci
-        )
+        or not all(_is_finite_f64_number(bound) for bound in ci)
         or ci[0] > ci[1]
     ):
         raise ReviewError(
             f"{criterion}: {metric_name} lacks a finite ordered 95% interval"
         )
     value = metric.get("value")
-    if (
-        not isinstance(value, (int, float))
-        or isinstance(value, bool)
-        or not math.isfinite(value)
-    ):
+    if not _is_finite_f64_number(value):
         raise ReviewError(f"{criterion}: {metric_name} lacks a finite point estimate")
     if not ci[0] <= value <= ci[1]:
         raise ReviewError(
             f"{criterion}: {metric_name} estimate lies outside its interval"
+        )
+    domain_values = (ci[0], value, ci[1])
+    if not all(candidate >= 0.0 for candidate in domain_values):
+        raise ReviewError(
+            f"{criterion}: {metric_name} {metric_domain} estimate or interval "
+            "contains a negative value"
+        )
+    if metric_domain == "probability" and not all(
+        candidate <= 1.0 for candidate in domain_values
+    ):
+        raise ReviewError(
+            f"{criterion}: {metric_name} probability estimate or interval "
+            "lies outside [0, 1]"
         )
     if comparison == "upper_le":
         decision_value = float(ci[1])
@@ -669,7 +695,12 @@ def evaluate_acceptance(
             "GLD-090-ACC-003",
             "lower 95% bound for each declared detector/attack arm is at least 0.90",
             lambda: [
-                (row, "conditional_detection_probability", "lower_ge", 0.90)
+                (
+                    row,
+                    "conditional_detection_probability",
+                    "lower_ge",
+                    0.90,
+                )
                 for row in detection_rows("GLD-090-ACC-003")
             ],
         ),
@@ -685,7 +716,12 @@ def evaluate_acceptance(
             "GLD-090-ACC-005",
             "upper 95% bound for default-fusion attribution error is at most 0.10",
             lambda: [
-                (row, "conditional_attribution_error", "upper_le", 0.10)
+                (
+                    row,
+                    "conditional_attribution_error",
+                    "upper_le",
+                    0.10,
+                )
                 for row in attribution_rows("GLD-090-ACC-005")
             ],
         ),
@@ -727,7 +763,12 @@ def evaluate_acceptance(
         try:
             evaluated = [
                 _metric_observation(
-                    criterion_id, row, metric, minimum, comparison, threshold
+                    criterion_id,
+                    row,
+                    metric,
+                    minimum,
+                    comparison,
+                    threshold,
                 )
                 for row, metric, comparison, threshold in build_observations()
             ]

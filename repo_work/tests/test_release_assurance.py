@@ -35,6 +35,7 @@ from qualify_candidate import (  # noqa: E402
 )
 from prepare_mutation_evidence import mutation_command  # noqa: E402
 from release_assurance import (  # noqa: E402
+    ACCEPTANCE_METRIC_DOMAINS,
     CARGO_IDENTITY,
     CARGO_MUTANTS_IDENTITY,
     FOCUSED_MUTATION_RECEIPT,
@@ -308,6 +309,19 @@ def passing_summary() -> dict[str, object]:
 
 
 class AcceptanceTests(unittest.TestCase):
+    def test_acceptance_metric_domains_are_closed_and_name_derived(self) -> None:
+        self.assertEqual(
+            ACCEPTANCE_METRIC_DOMAINS,
+            {
+                "false_alerts_per_hour": "rate",
+                "mission_probability_any_alert": "probability",
+                "conditional_detection_probability": "probability",
+                "conditional_delay_p95_ms": "delay",
+                "conditional_attribution_error": "probability",
+                "abstention_fraction": "probability",
+            },
+        )
+
     def test_exact_arm_mapping_passes(self) -> None:
         result = evaluate_acceptance(
             passing_summary(), {"min_metric_eligible_tracks": 20}
@@ -326,6 +340,108 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(result["status"], "FAIL")
         self.assertEqual(result["failed_criterion_ids"], ["GLD-090-ACC-001"])
         self.assertIsNone(result["criteria"][0]["evaluation_error"])
+
+    def test_probability_intervals_must_stay_within_unit_interval(self) -> None:
+        for interval in ([-1.0, 0.04], [0.0, 2.0]):
+            with self.subTest(interval=interval):
+                summary = passing_summary()
+                summary["holdout_results"][0]["metrics"][
+                    "mission_probability_any_alert"
+                ]["ci95"] = interval
+                result = evaluate_acceptance(
+                    summary, {"min_metric_eligible_tracks": 20}
+                )
+                criterion = next(
+                    item
+                    for item in result["criteria"]
+                    if item["id"] == "GLD-090-ACC-002"
+                )
+                self.assertEqual(criterion["status"], "FAIL")
+                self.assertIsNotNone(criterion["evaluation_error"])
+
+    def test_oversized_json_integers_are_evaluation_errors(self) -> None:
+        huge_integer = json.loads("1" + "0" * 1_000)
+        for location in ("point", "interval"):
+            with self.subTest(location=location):
+                summary = passing_summary()
+                metric_record = summary["holdout_results"][0]["metrics"][
+                    "mission_probability_any_alert"
+                ]
+                if location == "point":
+                    metric_record["value"] = huge_integer
+                else:
+                    metric_record["ci95"] = [0, huge_integer]
+                result = evaluate_acceptance(
+                    summary, {"min_metric_eligible_tracks": 20}
+                )
+                criterion = next(
+                    item
+                    for item in result["criteria"]
+                    if item["id"] == "GLD-090-ACC-002"
+                )
+                self.assertEqual(criterion["status"], "FAIL")
+                self.assertIn("finite", criterion["evaluation_error"])
+
+    def test_negative_rate_and_delay_metrics_are_evaluation_errors(self) -> None:
+        cases = (
+            (
+                "GLD-090-ACC-001",
+                "false_alerts_per_hour",
+                metric(-1.5, -2.0, -1.0),
+            ),
+            (
+                "GLD-090-ACC-004",
+                "conditional_delay_p95_ms",
+                metric(-1_500.0, -2_000.0, -1_000.0),
+            ),
+        )
+        for criterion_id, metric_name, malformed_metric in cases:
+            with self.subTest(criterion_id=criterion_id):
+                summary = passing_summary()
+                if criterion_id == "GLD-090-ACC-001":
+                    target = summary["holdout_results"][0]
+                else:
+                    target = next(
+                        item
+                        for item in summary["holdout_results"]
+                        if item["condition"] == "attack_loud_acoustic"
+                        and item["detector"] == "nis_baseline"
+                    )
+                target["metrics"][metric_name] = malformed_metric
+                result = evaluate_acceptance(
+                    summary, {"min_metric_eligible_tracks": 20}
+                )
+                criterion = next(
+                    item for item in result["criteria"] if item["id"] == criterion_id
+                )
+                self.assertEqual(criterion["status"], "FAIL")
+                self.assertIn("negative value", criterion["evaluation_error"])
+
+    def test_rate_and_delay_intervals_are_not_probability_bounded(self) -> None:
+        summary = passing_summary()
+        summary["holdout_results"][0]["metrics"]["false_alerts_per_hour"] = metric(
+            1.5, 1.0, 2.0
+        )
+        attack_row = next(
+            item
+            for item in summary["holdout_results"]
+            if item["condition"] == "attack_loud_acoustic"
+            and item["detector"] == "nis_baseline"
+        )
+        attack_row["metrics"]["conditional_delay_p95_ms"] = metric(
+            8_000.0, 7_000.0, 12_000.0
+        )
+        result = evaluate_acceptance(summary, {"min_metric_eligible_tracks": 20})
+        rate_criterion = next(
+            item for item in result["criteria"] if item["id"] == "GLD-090-ACC-001"
+        )
+        delay_criterion = next(
+            item for item in result["criteria"] if item["id"] == "GLD-090-ACC-004"
+        )
+        self.assertEqual(rate_criterion["status"], "FAIL")
+        self.assertIsNone(rate_criterion["evaluation_error"])
+        self.assertEqual(delay_criterion["status"], "PASS")
+        self.assertIsNone(delay_criterion["evaluation_error"])
 
     def test_missing_duplicate_and_underpowered_rows_are_failures(self) -> None:
         for mutation in ("missing", "duplicate", "underpowered"):
@@ -1278,7 +1394,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 validate_focused_liveness_outcomes(path, check)
 
             huge_duration = copy.deepcopy(document)
-            huge_duration["outcomes"][0]["phase_results"][0]["duration"] = 10**4000
+            huge_duration["outcomes"][0]["phase_results"][0]["duration"] = 10**120
             path.write_bytes(canonical_json(huge_duration))
             with self.assertRaisesRegex(ReviewError, "invalid duration"):
                 validate_focused_liveness_outcomes(path, check)

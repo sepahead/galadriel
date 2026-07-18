@@ -3,12 +3,49 @@
 from __future__ import annotations
 
 import copy
+import tempfile
 import unittest
+from pathlib import Path
 
 from repo_work import build_task_dispositions
 
 
 class TaskClosurePlanTests(unittest.TestCase):
+    def test_json_helpers_reject_nonfinite_and_oversized_numbers(self) -> None:
+        target = build_task_dispositions.ROOT / "target"
+        target.mkdir(exist_ok=True)
+        invalid_documents = (
+            '{"value": NaN}',
+            '{"value": 1e1000000}',
+            '{"value": 1e-1000000}',
+            '{"value": ' + "9" * 5_000 + "}",
+        )
+        with tempfile.TemporaryDirectory(dir=target) as directory:
+            path = Path(directory) / "invalid.json"
+            for document in invalid_documents:
+                with self.subTest(document=document[:40]):
+                    path.write_text(document, encoding="utf-8")
+                    with self.assertRaisesRegex(
+                        build_task_dispositions.DispositionError, "cannot load"
+                    ):
+                        build_task_dispositions.load_json(path)
+
+        for encoder in (
+            build_task_dispositions.canonical_bytes,
+            build_task_dispositions.compact_canonical_bytes,
+        ):
+            with self.subTest(encoder=encoder.__name__):
+                with self.assertRaisesRegex(
+                    build_task_dispositions.DispositionError,
+                    "cannot encode canonical JSON",
+                ):
+                    encoder({"value": float("nan")})
+                with self.assertRaisesRegex(
+                    build_task_dispositions.DispositionError,
+                    "cannot encode canonical JSON",
+                ):
+                    encoder({"value": 10**128})
+
     def test_static_plan_covers_t000_through_t115_without_complete_results(self) -> None:
         tasks = build_task_dispositions.validate_tasks()
         claims = build_task_dispositions.validate_claims()

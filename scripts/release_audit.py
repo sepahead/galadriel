@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from repo_work import build_task_dispositions as closure_plan  # noqa: E402
+from repo_work.common import loads_json, validate_json_number_bounds  # noqa: E402
 
 
 RELEASE = ROOT / "release" / "0.9.0"
@@ -77,17 +78,31 @@ def reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def load_json(path: Path) -> Any:
     try:
-        return json.loads(
-            path.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_pairs
+        return loads_json(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_pairs,
         )
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        raise AuditError(f"cannot load {path.relative_to(ROOT)}: {error}") from error
+    except (OSError, UnicodeError, ValueError) as error:
+        try:
+            label = path.relative_to(ROOT)
+        except ValueError:
+            label = path
+        raise AuditError(f"cannot load {label}: {error}") from error
 
 
 def canonical_bytes(value: Any) -> bytes:
-    return (json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode(
-        "utf-8"
-    )
+    try:
+        validate_json_number_bounds(value)
+        encoded = json.dumps(
+            value,
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+    except ValueError as error:
+        raise AuditError(f"cannot encode canonical JSON: {error}") from error
+    return (encoded + "\n").encode("utf-8")
 
 
 def sha256(path: Path) -> str:

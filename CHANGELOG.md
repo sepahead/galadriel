@@ -161,6 +161,11 @@ may contain breaking changes.
   The old commit pair is not a reciprocal pin of the current candidate; current
   cross-repository qualification, a real multi-process mTLS/ACL campaign, and an independent
   recorded stream-calibration study remain `NOT_CLAIMED`.
+- Add a dated exact-cut ecosystem record for NCP, Crebain, Haldir, and Prisoma that
+  separates immutable dependency pins, byte/schema fixture compatibility, mutable audit
+  heads, prospective downstream relationships, and missing reciprocal/deployment
+  qualification. Clarify that NCP wire 1.0 is unreleased/proposed, Haldir has no runtime
+  adapter, and Prisoma's base-route observer rejects Galadriel's named sidecars.
 - Split the unchanged strict changed-Rust mutation set into four deterministic CI shards so
   feature-sized diffs complete within the bounded job window. Add exact lifecycle identity,
   inclusive capacity/channel, history-clear, nested-endpoint, whitespace-path, and Unix
@@ -249,9 +254,18 @@ may contain breaking changes.
 
 ### Fixed
 
-- Make Wilson binomial intervals contain their point estimate exactly at boundary counts,
-  preventing floating-point roundoff from turning perfect-success arms into malformed
-  acceptance evidence.
+- Make Wilson binomial intervals conservatively contain the exact rational point estimate
+  for every valid machine count, including counts beyond `f64`'s exact-integer range; use
+  failure-side symmetry and outward-rounded complements to prevent near-one intervals from
+  collapsing under floating-point roundoff.
+- Fail closed when acceptance evidence supplies a numeric value that cannot be represented
+  as finite binary64, a negative rate or delay, or a probability point estimate or
+  confidence interval outside `[0, 1]`, while preserving the distinct nonnegative domains
+  of rates and delays.
+- Make release and deployment JSON tooling reject duplicate members, nonstandard constants,
+  non-finite or underflowing floats, malformed UTF-8, and resource-exhausting integer
+  tokens through controlled domain errors. Exact retained `u64` provenance remains valid;
+  binary64-safe or narrower integer limits are enforced only by schemas that require them.
 - Make monitor gaps expire after a positive bounded receipt-time deadline even if no
   later sample arrives; preserve raw receipt time while exposing a nondecreasing ordered
   time for direct assembler composition, and serialize fault/handoff state so queued or
@@ -349,6 +363,13 @@ may contain breaking changes.
 
 ### Documentation
 
+- Add an explicit README ecosystem-boundary matrix for NCP, Crebain, Haldir, and Prisoma;
+  distinguish upstream transport/producer relationships, the unimplemented downstream
+  advisory-publisher boundary, and the absence of a direct Prisoma sidecar edge without
+  upgrading any cross-repository claim.
+- Use one `{epoch}` route template, label false-alert exposure consistently per track-hour,
+  and align the NCP feature declaration and accepted API-snapshot wording with the code and
+  retained release records.
 - Replace production-readiness, feature-complete, mutable test-count, private-sibling, and
   split-MSRV claims with the current research-prototype status.
 - Correct the crebain integration claim. Normal `CREBAIN_PID_JSONL` captures do not enable

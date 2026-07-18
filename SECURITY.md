@@ -17,8 +17,10 @@ does not authorize a control action.
   a common coordinate frame, and a common frozen pre-update prior. Historical and
   default Crebain captures do not satisfy that contract: they omit the research
   fields, radar residuals are polar while other residuals are Cartesian, and
-  sequential updates use different priors. Crebain's separately gated operational
-  producer baseline implements the required frozen-prior Cartesian projection.
+  sequential updates use different priors. The retained Crebain component fixture
+  implements the required frozen-prior Cartesian projection, but Crebain's formal 0.9
+  boundary freezes an earlier Galadriel audit head. A current reciprocal pin and secured
+  multi-process qualification remain absent.
 - Crebain's association and chi-square gates censor rejected measurements. A
   successful-update-only stream is selection-biased; a large attack may appear as
   missingness. Historical captures remain subject to that limit; the operational
@@ -47,6 +49,11 @@ three business days; this research release makes no remediation-time SLA.
   `pid-core`, `ncp-core`, and `ncp-zenoh` integrations remain off by default.
 - GitHub Actions are commit-SHA pinned and run with read-only repository contents
   permission. Dependency updates are proposed through Dependabot.
+- Release and deployment JSON is decoded as strict UTF-8: duplicate members,
+  nonstandard constants, non-finite/overflowing or nonzero-underflowing floats, and
+  integer tokens above the fixed 128-decimal-digit resource bound are rejected through
+  controlled errors. Exact retained `u64` provenance remains valid; individual wire and
+  evidence schemas enforce binary64-safe or narrower integer domains where required.
 - The Zenoh `SidecarTap` is not an operational security boundary. It uses the
   ACL-covered NCP named-sensor route `sensor/galadriel-pid`, validates a versioned
   session/producer-bound envelope, and forces an explicit secure versus unverified
@@ -62,3 +69,7 @@ three business days; this research release makes no remediation-time SLA.
   operational two-route receiver for heartbeat/liveness semantics.
 - Workspace packages are `publish = false`; no crate-release security guarantees
   are made.
+
+The dated repository-to-repository status and the distinction between dependency,
+fixture, and deployment evidence are recorded in
+[`docs/ECOSYSTEM-CONNECTIONS.md`](docs/ECOSYSTEM-CONNECTIONS.md).
