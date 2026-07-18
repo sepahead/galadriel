@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Monte-Carlo evaluation harness: the PID engine vs the NIS baseline across attack types."
+description = "Monte-Carlo evaluation of NIS, signed correlation, PID, and fused assessment across attack types."
 publish = false
 
 [lints]

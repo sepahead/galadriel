@@ -31,9 +31,10 @@ for these transitions.
 - Its outputs are **advisory** (`calibrated_posterior = false`): a magnitude anomaly is
   equally consistent with an attack, a genuine unique detection, or an estimator artifact.
   A verdict is not a calibrated probability and must never be treated as one.
-- It is a **read-only observer.** `galadriel-ncp` subscribes to the NCP observation /
-  named-perception plane; it opens no NCP control session, publishes nothing to a control
-  or action plane, and is not a participant in the control loop.
+- It is a **read-only observer.** `OperationalLiveReceiver` subscribes only to
+  Galadriel's two project-owned named-sensor sidecar routes; it does not subscribe to the
+  normative NCP base observation key, opens no NCP control session, publishes nothing to
+  a control or action plane, and is not a participant in the control loop.
 - Its own diagnostic evidence is **not yet fit for restrictive policy use.** The published
   post-audit artifact reports ~26.26 alert episodes/track-hour on the clean arm (102.95 and
   262.57 on the φ=0.5 / φ=0.85 autocorrelated arms), a 0.9167 mission probability of at
@@ -43,19 +44,19 @@ for these transitions.
 
 ## 2. Verdict vocabulary — and what each verdict does *not* license
 
-Galadriel's published verdict enum is exactly: `Nominal`, `AttributedInconsistency`,
-`BroadDegradation`, `UnclassifiedAnomaly`, `InsufficientEvidence`, and `Err(..)` for
-invalid input/configuration. It deliberately does **not** contain a `StateUnusable`
-verdict or any `calibrated_for_policy` self-assertion (see §3.5).
+Galadriel's fused advisory vocabulary is [`FusedVerdict`](../crates/galadriel-core/src/fusion.rs),
+with exactly `Nominal`, `AttributedInconsistency`, `BroadDegradation`,
+`UnclassifiedAnomaly`, and `InsufficientEvidence`. Invalid input or configuration is
+returned as `Err(..)` outside that enum. The vocabulary deliberately contains neither a
+`StateUnusable` verdict nor a `calibrated_for_policy` self-assertion (see §3.5).
 
 | Verdict | Means | Must **not** be read as |
 |---|---|---|
-| `Nominal` | Every configured channel was fresh, ready, and individually χ²-consistent in this assessment. | State is true / sensors uncompromised / controller may act / lease valid / no coordinated spoof / a limit may be relaxed. |
-| `AttributedInconsistency { channels }` | A minority of channels show localized NIS inflation while peers remain usable. | A named attack cause. It is statistical evidence, cause unclassified. |
-| `BroadDegradation` | Most/all channels inflated together (jam-like). | Proof of jamming; cause is unclassified. |
-| `UnclassifiedAnomaly { channels }` | Positive anomaly evidence exists but stale/missing peers or a below-target shift block a narrower class. | Absence of a problem. |
+| `Nominal` | Magnitude evidence is ready and χ²-consistent, and every configured common-projection correlation axis is intact. | State is true / sensors uncompromised / controller may act / lease valid / no coordinated spoof / a limit may be relaxed. |
+| `AttributedInconsistency { channels, magnitude }` | One or more channels have attributed statistical inconsistency from localized NIS elevation, signed-correlation decoupling, or both; `magnitude` records the magnitude evidence. | A named attack cause. It is statistical evidence, cause unclassified. |
+| `BroadDegradation` | A configured broad fraction of ready channels has inflated NIS while cross-channel structure remains intact. | Proof of jamming; cause is unclassified. |
+| `UnclassifiedAnomaly { channels }` | Positive but conflicting, mixed-direction, cross-axis, or otherwise incomplete anomaly evidence prevents a narrower fused class. | Absence of a problem. |
 | `InsufficientEvidence` | Too little / stale / missing / geometrically incomparable evidence. **Fail-closed.** | `Nominal`. It must never be silently upgraded. |
-| `Err(..)` | Invalid input or configuration. | A verdict. It is not converted into one. |
 
 The single most important rule: **`Nominal` cannot widen authority.** For any consumer it
 must be *mechanically impossible* for a `Nominal` (or any) Galadriel verdict to create an
@@ -111,15 +112,17 @@ erase an independent source-health fault.
 
 ## 4. What Galadriel needs from upstream (Crebain) to be meaningful
 
-Galadriel's cross-sensor layers require **pre-association** evidence for one track and
-sequence, in a common coordinate projection derived from a common frozen pre-update prior:
-accepted observations, **rejected** observations, misses, and a producer heartbeat.
+Galadriel's standalone cross-sensor assessment requires accepted observations for one
+track and sequence in a common coordinate projection derived from a common frozen
+pre-update prior. A lifecycle-complete operational two-route deployment additionally
+requires explicit rejected observations, misses, and a producer heartbeat.
 
-Historical/default Crebain captures omit the attested common projection, and their
-successful-update-only stream is downstream of association and a chi-square gate, so
-rejected and missed measurements are censored rather than represented. A consumer must not
-read that gap as safety: with those preconditions absent, Galadriel's correlation and
-fused assessment correctly return `InsufficientEvidence`. A retained historical opt-in
+Historical/default Crebain captures omit the attested common projection, so Galadriel's
+correlation and fused assessment correctly return `InsufficientEvidence` even though the
+NIS baseline remains usable. Their successful-update-only stream is downstream of
+association and a chi-square gate, so rejected and missed measurements are censored rather
+than represented and cannot qualify lifecycle-complete operational availability. A
+consumer must not read either gap as safety. A retained historical opt-in
 producer fixture carried frozen-prior projections plus explicit misses/rejections, but it
 does not qualify a current reciprocal integration. No accepted recorded study has measured
 the resulting selection effects or calibrated the stream.
@@ -128,8 +131,9 @@ the resulting selection effects or calibrated the stream.
 
 - **Input only.** `galadriel-ncp` provides bounded JSONL ingest and a strict two-route
   operational Zenoh receiver. It remains read-only with respect to downstream policy:
-  there is no Galadriel→consumer signed advisory *publisher* yet, and verdicts surface
-  only via the CLI / files. Haldir is therefore a downstream contract example, not a
+  there is no Galadriel→consumer signed advisory *publisher* yet, and reports surface
+  only as in-process library results or through the CLI/files, not an external advisory
+  transport. Haldir is therefore a downstream contract example, not a
   qualified integration: Galadriel holds no command credential and cannot call an
   authorization path.
 - **NCP wire: 0.8.** Galadriel pins `ncp-core`/`ncp-zenoh` to the immutable revision
@@ -148,7 +152,7 @@ the resulting selection effects or calibrated the stream.
   binaries exists.
 - **No downstream runtime edge.** A read-only 2026-07-18 inspection found no Galadriel
   dependency, route, publisher, subscriber, or adapter in Haldir remote `main`
-  `0e94f61cfd5c78482198a765157571746a256181`; its Galadriel phase remains not started.
+  `dd3d8a1c993721f89a1edb04dec5247761c694ad`; its Galadriel phase remains not started.
   Any future adapter MUST admit a raw Galadriel verdict into a Haldir-owned record and
   derive `StateUnusable` and policy eligibility independently. It MUST NOT accept those
   conclusions as producer assertions. Prisoma
@@ -157,8 +161,9 @@ the resulting selection effects or calibrated the stream.
   subkeys. A future offline covariate importer MUST bind exact source/configuration,
   session/epoch, source window, and receipt time; reject stale, replayed, malformed, and
   post-treatment inputs; preserve abstention; and remain unable to alter treatment or
-  result logic. Shared `pid-rs` use makes the outputs correlated evidence, not independent
-  replication.
+  result logic. Shared `pid-rs` use creates a common implementation dependency, so the
+  outputs are not independent-implementation replication; it does not by itself prove
+  statistical dependence between them.
 - Building the signed advisory envelope, retaining the external secured interop campaign,
   and completing an independent recorded calibration study are the ordered prerequisites
   before *any* restrict-only profile in §3.3 is even a candidate.
@@ -178,6 +183,8 @@ the resulting selection effects or calibrated the stream.
 ---
 
 *This boundary is the advisory-evidence complement to the cryptographic ACL/mTLS
-enforcement and plant-side safety governor. Galadriel reports consistency evidence from an
-authenticated producer; it does not authenticate physical truth. Treat every verdict here
+enforcement and plant-side safety governor. When a deployment actually binds transport
+identity and ACLs, Galadriel reports consistency evidence from that authenticated producer;
+the local artifacts do not attest that binding, and `producer_id` alone is asserted
+metadata. Galadriel never authenticates physical truth. Treat every verdict here
 accordingly.*

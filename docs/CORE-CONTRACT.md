@@ -16,7 +16,8 @@ domain value without its fallible constructor or deserializer running.
 **GLD-090-DOM-002 — bounded canonical representation.** Numeric identifiers,
 counters, and millisecond timestamps serialized as JSON numbers **SHALL** be in
 `0..=9_007_199_254_740_991`. `TrackId` **SHALL** preserve that complete range,
-including zero, because it is part of the frozen NCP v1 wire contract. Projection
+including zero, because it is part of the frozen Galadriel/Crebain observation
+schema v1. Projection
 frame, projection context, and frozen-prior identifiers **SHALL** additionally be
 nonzero. Text identities **SHALL** be 1–64 UTF-8 bytes, begin and end with an ASCII
 alphanumeric, and contain only ASCII alphanumerics plus `-_.:`. Unknown clock

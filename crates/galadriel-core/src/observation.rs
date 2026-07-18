@@ -308,14 +308,18 @@ impl Modality {
     }
 }
 
-/// One per-measurement filter-innovation record: emitted by crebain fusion
-/// `update_track` (one per associated measurement) and consumed by galadriel.
+/// One validated, accepted filter-innovation record per `(track, modality, frame)`.
+/// The inspected reference producer emits at most one successfully applied,
+/// NIS-bearing record for that key and accounts for other update opportunities on
+/// its monitor surface.
 ///
 /// `nis` is the Normalized Innovation Squared formed against the **a priori**
-/// (predicted, pre-update) track state:
+/// state entering this particular update. The first co-located update may use the
+/// frozen pre-frame prior, while successful follow-up updates may use sequentially
+/// conditioned priors:
 ///
 /// ```text
-///   y   = z - H x̂⁻      (3-vector; radar: polar residual, az wrapped to [-π,π])
+///   y   = z - H x̂⁻      (3-vector; coordinates are producer/algorithm-specific)
 ///   S   = H P⁻ Hᵀ + R    (3×3)
 ///   NIS = yᵀ S⁻¹ y        (scalar) ~ χ²(dof),  dof = 3 for this fusion core.
 /// ```
@@ -339,8 +343,10 @@ pub struct PidObservation {
     /// Innovation dimension / χ² degrees of freedom (3 for this fusion core).
     dof: u8,
 
-    /// Raw innovation `y = z - H x̂⁻`. Cartesian `[x,y,z]` m for visual/thermal/
-    /// acoustic/lidar; radar polar `[range m, az rad, el rad]`, az wrapped.
+    /// Raw innovation `y = z - H x̂⁻`. The diagnostic frame is producer- and
+    /// algorithm-specific: the reference producer uses Cartesian `[x,y,z]` metres
+    /// for visual/thermal/acoustic/lidar and non-EKF radar, but EKF radar uses
+    /// polar `[range m, az rad, el rad]` with wrapped azimuth.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     innovation: Option<[f64; 3]>,
     /// Innovation covariance `S = H P⁻ Hᵀ + R`, row-major 3×3, same frame as `innovation`.

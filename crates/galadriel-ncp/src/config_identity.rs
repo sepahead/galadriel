@@ -1,9 +1,10 @@
-//! Architecture-independent identities for validated NCP configuration.
+//! Architecture-independent identities for validated galadriel-ncp adapter configuration.
 
 use sha2::{Digest, Sha256};
 use std::fmt;
 
-/// A canonical SHA-256 identity for one fully validated NCP configuration.
+/// A canonical SHA-256 identity for one fully validated Galadriel-side adapter
+/// configuration.
 ///
 /// Identities are derived from a domain-separated, length-prefixed byte stream
 /// containing fixed-width integers. They therefore do not depend on the host's

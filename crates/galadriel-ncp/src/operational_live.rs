@@ -1184,7 +1184,7 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
     pub async fn recv(&mut self) -> Result<AssemblyEvent, OperationalLiveFault> {
         // Give the bounded queue snapshot that existed at call entry priority
         // over already staged events. New arrivals cannot extend this budget, so
-        // an authenticated producer cannot starve delivery indefinitely.
+        // a continuous source cannot starve delivery indefinitely.
         let mut priority_ingress = PriorityIngressBudget::new({
             // Serialize the snapshot with callback admission. Payloads accepted
             // after this lock boundary belong to a later receive call.

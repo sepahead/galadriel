@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Versioned NCP sidecar ingest for Galadriel's Mirror (feature `ncp`)."
+description = "Galadriel sidecar ingest using NCP 0.8 addressing, reached through galadriel-cli's `ncp` feature."
 publish = false
 
 [lints]
@@ -43,7 +43,8 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 
 [features]
 default = []
-# The live Zenoh named-perception tap. Off by default — only `ncp-live` enables it.
+# The live Zenoh named-perception tap is off by default. The CLI's `ncp-live`
+# feature forwards it; direct galadriel-ncp builds may also select it explicitly.
 zenoh = ["dep:ncp-zenoh", "dep:tokio", "dep:zenoh"]
 
 # The live-leg e2e test compiles only when the `zenoh` feature is enabled

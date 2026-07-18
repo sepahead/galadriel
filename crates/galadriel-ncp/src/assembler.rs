@@ -9,8 +9,9 @@
 //! input-class Cartesian ledger because those values are not present on the v1 wire.
 //! It therefore verifies the Cartesian product of the track identities represented
 //! by monitor events, while treating the producer's complete frozen-ledger claim as
-//! authenticated producer evidence. A future wire version is required for independent
-//! receiver re-derivation of that cardinality.
+//! producer-asserted evidence. It is authenticated only when the caller or transport
+//! independently binds the producer identity. A future wire version is required for
+//! independent receiver re-derivation of that cardinality.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::time::{Duration, Instant};

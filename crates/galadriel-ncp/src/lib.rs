@@ -1,23 +1,25 @@
 #![forbid(unsafe_code)]
 //! # galadriel-ncp
 //!
-//! Versioned NCP sidecar ingest for Galadriel's Mirror (feature `ncp`).
+//! Galadriel sidecar ingest using pinned NCP 0.8 addressing, reached through
+//! galadriel-cli's `ncp` feature.
 //!
-//! galadriel is a **read-only** consumer of per-measurement records. Native
+//! galadriel is a **read-only** consumer of accepted innovation records. Native
 //! innovations may be carried for diagnostics, but consistency uses only the
 //! optional producer-attested `consistency_projection` field.
-//! In the ecosystem those ride the NCP observation plane; this crate is the seam
-//! that turns them into [`galadriel_core::PidObservation`]s.
+//! In the ecosystem those ride Galadriel's project-owned named NCP sensor sidecar,
+//! not the normative base observation plane. This crate is the seam that turns
+//! them into [`galadriel_core::PidObservation`]s.
 //! Producer lifecycle, frame closure, and liveness use the separate strict
 //! [`monitor::MonitorEnvelope`] contract on `sensor/galadriel-monitor`; they are
 //! never fabricated as observations on the frozen `galadriel-pid` route.
 //!
 //! ## Transport, honestly scoped
 //!
-//! - **The MVP path is transport-free JSONL** — no Zenoh, no tokio, no network —
-//!   which is a first-class NCP flow (`ncp-observe` and the reference UAV loop both
-//!   emit JSONL). [`read_jsonl`] / [`parse_jsonl`] / [`write_jsonl`] cover it with
-//!   independent per-record, record-count, and aggregate-byte limits.
+//! - **The MVP path is Galadriel-owned, transport-free JSONL** — no Zenoh, no tokio,
+//!   no network, and not an NCP wire flow. [`read_jsonl`] / [`parse_jsonl`] /
+//!   [`write_jsonl`] cover it with independent per-record, record-count, and
+//!   aggregate-byte limits.
 //! - `PidObservation` is **not** an NCP wire message. Live records ride the named
 //!   perception route `Keys::sensor_named(session_id, "galadriel-pid")` inside a
 //!   versioned [`SidecarEnvelope`]. The sidecar remains outside the normative proto
@@ -114,7 +116,7 @@ pub const SIDECAR_SCHEMA_JSON: &str =
 /// of one `session_id`. The sidecar has no session server to issue generations, so a
 /// producer restart must mint a *new* `session_id` (subscribers key on the exact path
 /// segment); carrying a generation field would claim a lifecycle authority this
-/// observation-plane contract does not have.
+/// project-owned sidecar contract does not have.
 #[derive(Debug, Clone, Serialize)]
 pub struct SidecarEnvelope {
     /// Stable discriminator, [`SIDECAR_KIND`].
@@ -597,10 +599,13 @@ pub fn valid_realm(realm: &str) -> bool {
     ncp_core::keys::valid_realm(realm)
 }
 
-/// The canonical NCP observation-plane key for a session:
-/// `{realm}/session/{id}/observation` — the read-only tap galadriel subscribes to.
-/// Returns `None` if the realm is not concrete or `session_id` is not a valid
-/// NCP id segment.
+/// Construct the canonical NCP base observation-plane key for a session.
+///
+/// This interoperability helper returns `{realm}/session/{id}/observation`, but
+/// Galadriel's live receiver does **not** subscribe to it. Operational Galadriel
+/// input uses [`sidecar_key`] so project-owned payloads cannot be confused with
+/// normative base-plane observations. Returns `None` if the realm is not concrete
+/// or `session_id` is not a valid NCP id segment.
 pub fn observation_key(realm: &str, session_id: &str) -> Option<String> {
     Keys::try_new(realm).ok()?.try_observation(session_id).ok()
 }

@@ -924,7 +924,8 @@ impl LifecycleDetector {
     /// session, sidecar session is the epoch, stream is
     /// `"galadriel-fusion"`, and the producer fusion timestamp is treated as a
     /// process-monotonic millisecond coordinate. This mapping does not add fields
-    /// to NCP v1 and is not a claim of wire-level reset or rollover support.
+    /// to Galadriel's sidecar schema v1 and is not a claim of NCP wire-1.0 reset or
+    /// rollover support.
     /// Call [`Self::assess_positioned_frame`] when those identities are available
     /// from an authenticated external control plane.
     pub fn assess_frame_transition(

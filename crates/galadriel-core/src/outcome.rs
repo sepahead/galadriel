@@ -192,7 +192,7 @@ pub enum CollectingReason {
 /// Closed reason for a receiver-owned timeout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimeoutReason {
-    /// The authenticated heartbeat deadline expired.
+    /// The receiver-owned heartbeat deadline expired.
     HeartbeatDeadlineExpired,
     /// The bounded source-reorder deadline expired.
     ReorderDeadlineExpired,
@@ -232,16 +232,18 @@ impl AnomalyReason {
 pub enum UnavailabilityReason {
     /// One or more expected modalities did not complete the fusion frame.
     MissingModalities,
-    /// An authenticated, compatible evidence prerequisite reported no evidence.
+    /// A compatible evidence prerequisite reported no evidence. Any producer
+    /// authentication is an external caller or transport precondition.
     /// Backend execution faults are [`AssessmentFailure`] values instead.
     UnavailablePrerequisite,
     /// Previously retained evidence exceeded its admissible freshness window.
     StaleRetainedEvidence,
     /// Lifecycle closure proved that a required measurement was missed.
     MeasurementMiss,
-    /// Authenticated lifecycle closure proved that a statistical measurement
-    /// opportunity yielded no assessable evidence. Authorization and protocol
-    /// rejections are [`AssessmentFailure`] values instead.
+    /// Lifecycle closure proved that a statistical measurement opportunity yielded
+    /// no assessable evidence. Any producer authentication is an external caller or
+    /// transport precondition; authorization and protocol rejections are
+    /// [`AssessmentFailure`] values instead.
     OpportunityRejected,
 }
 

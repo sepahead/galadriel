@@ -4,8 +4,10 @@
 #
 # The default build is PURE and light: galadriel-core (the cheap NIS chi-squared
 # baseline) + galadriel-sim (synthetic scenarios) + galadriel-cli (the demo).
-# The optional `pid` and `ncp` features are additive and pull heavier deps
-# (pid-core, ncp-core/ncp-zenoh) only when explicitly enabled.
+# For the default-member CLI build, the additive `pid`, `ncp`, and `ncp-live`
+# features opt into pid-core, ncp-core, and ncp-zenoh/Zenoh/Tokio respectively.
+# Direct builds of the adapter, evaluation, or justification workspace members
+# resolve the dependencies declared by those members without going through CLI features.
 [workspace]
 resolver = "2"
 members = [

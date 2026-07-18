@@ -3,11 +3,12 @@
 Thanks for your interest. galadriel is **Galadriel's Mirror** — an
 information-theoretic cross-sensor consistency / spoof detector for multi-sensor
 fusion. It is part of the [`sepahead`](https://github.com/sepahead) ecosystem and
-consumes per-measurement innovation records (`PidObservation`). The bundled historical
-Crebain fixture is a contract/baseline smoke test, not a valid source of cross-modal
-correlation/PID evidence. The operational producer/receiver seam has repository-level
-implementation and tests, but no accepted recorded study establishes field performance,
-calibration, deployed validity, or cross-repository qualification.
+consumes accepted `(track, modality, frame)` innovation records (`PidObservation`).
+The bundled historical Crebain fixture is a contract/baseline smoke test, not a valid
+source of cross-modal correlation/PID evidence. The operational producer/receiver seam
+has repository-level implementation and tests, but no accepted recorded study
+establishes field performance, calibration, deployed validity, or cross-repository
+qualification.
 
 ## Ground rules
 
@@ -29,8 +30,9 @@ calibration, deployed validity, or cross-repository qualification.
   restrict-only policy is a separately reviewed consumer concern. Keep
   `calibrated_posterior = false` semantics.
 - **Pure default build.** The default workspace build has no heavy dependencies.
-  `pid` (pid-core) and `ncp` (ncp-core / ncp-zenoh) are additive, off-by-default
-  features. Never enable them by default or pull Zenoh/tokio into the default graph.
+  `pid` (pid-core) and `ncp` (ncp-core) are additive, off-by-default features;
+  `ncp-live` additionally selects ncp-zenoh, Zenoh, and Tokio. Never enable them by
+  default or pull Zenoh/Tokio into the default graph.
 - **Safe Rust.** Workspace lint policy forbids unsafe code in every target.
 
 ## Before you push

@@ -46,17 +46,18 @@ Galadriel has one local evidence path and no command-authority path. A dependenc
 shared transport, or historical fixture does not by itself prove an authorized or current
 cross-repository integration.
 
-| Repository | Direction relative to Galadriel | Galadriel-side contract and retained evidence | Explicit 0.9.0 boundary |
-| --- | --- | --- | --- |
-| [NCP](https://github.com/sepahead/NCP) | Upstream wire/transport dependency | `ncp-core` and `ncp-zenoh` are pinned to commit `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`, the revision selected for annotated tag `v0.8.0`; `Cargo.lock`, `.ncp-consumer`, bounded adapters, and in-process transport tests bind the local consumer. | The pin does not prove remote authorization, router ACL enforcement, or compatibility with NCP's unreleased wire-1.0 candidate. |
-| [Crebain](https://github.com/sepahead/crebain) | Upstream producer relationship | The two project-owned observation/monitor routes, strict schemas, registry, and lifecycle contract are implemented on the consumer side. The retained registry fixture is byte-identical to the inspected Crebain component. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head. There is no accepted reciprocal pin of this candidate and no final cross-repository or deployment qualification. |
-| [Haldir](https://github.com/sepahead/haldir) | Prospective downstream authorization consumer | [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) defines record-only and monotonically restrict-only effects; `validate_advisory_effect` tests that Galadriel evidence cannot grant or widen authority. | Phase 16 has not started. Galadriel has no Haldir dependency, route, publisher, adapter, command credential, or runtime evidence. |
-| [Prisoma](https://github.com/sepahead/prisoma) | Prospective offline comparator/covariate consumer; no direct Galadriel edge | The route contract keeps Galadriel sidecars project-owned and forbids wrapping or publishing them as normative NCP `SensorFrame`s. Prisoma's current observer accepts only exact base-plane keys and rejects named sensor subkeys. | The relationship remains E0: there is no adapter or qualified behavior, and sharing NCP 0.8 does not imply schema or route compatibility. |
+| Project | Direction | Required or optional | Why connected | Explicit 0.9.0 boundary |
+| --- | --- | --- | --- | --- |
+| [pid-rs](https://github.com/sepahead/pid-rs) | Upstream algorithm library | Not used by the default CLI build; its exact `pid-core` pin is required by the PID, justification, and evaluation crates and by the CLI `pid` feature. It is linked code, not a runtime service. | Supplies restricted-domain KSG mutual-information and PID primitives for additive research diagnostics. | Pin `1cd2424f7967e1752dcc8e53859e8fdad3566f51` declares 1.0.0 and transitively resolves `pid-runlog` 1.0.0 from the same revision; no public v1 tag or published upstream 1.x artifact is claimed. |
+| [NCP](https://github.com/sepahead/NCP) | Upstream wire/transport libraries | Not used by the default CLI build. `ncp-core` is required by `galadriel-ncp`, evaluation, and CLI `ncp`; `ncp-live` additionally pulls `ncp-zenoh`, Zenoh, and Tokio. | Supplies wire-0.8 key/version/contract helpers and the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded offline JSONL, and operational receiver. | Both NCP crates pin `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`; this does not prove remote authorization, ACL enforcement, or wire-1.0 compatibility. |
+| [Crebain](https://github.com/sepahead/crebain) | External upstream producer relationship | No Cargo dependency; not required for demo, simulation, evaluation, or replay. Live operation needs an authorized contract-conforming producer, not necessarily Crebain by code identity. | Provides the inspected reference component for the observation/monitor sidecar contract and byte-identical retained registry fixture. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head; no reciprocal final-candidate or deployment qualification is claimed. |
+| [Haldir](https://github.com/sepahead/haldir) | Prospective downstream authorization consumer | No dependency, adapter, route, or runtime edge in 0.9.0. | Defines the intended future record-only and independently admitted restrict-only boundary; tests ensure Galadriel evidence cannot grant or widen authority. | The integration phase has not started and there is no runtime evidence. |
+| [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator/covariate consumer | No dependency, adapter, route, or runtime edge in 0.9.0. | Documents a possible future immutable offline covariate import and keeps Galadriel sidecars outside normative NCP `SensorFrame`s. | Relationship E0; shared NCP/PID dependencies imply neither schema compatibility nor independent-implementation replication. |
 
 The 2026-07-18 read-only coordination cut inspected NCP
 `10492c81ac671ef1909962a9f1fede33781b9933`, Crebain
 `0a58a5b8dd799884ddb06f1308b1748216fab322`, Haldir remote `main`
-`0e94f61cfd5c78482198a765157571746a256181`, and Prisoma
+`dd3d8a1c993721f89a1edb04dec5247761c694ad`, and Prisoma
 `63cff105e0e40281376e6f827d7782e9b351961a`. These mutable repository heads are
 provenance for the inspection, not Galadriel release inputs or reciprocal compatibility
 pins. NCP's wire-1.0 topology remains proposed and incompatible with the current named
@@ -265,14 +266,22 @@ Author and maintainer: **Sepehr Mahmoudian**.
 The workspace MSRV is **Rust 1.89**. Mutable test totals and benchmark values are not
 treated as project-status claims.
 
-## Features and dependencies
+## CLI features and workspace dependencies
+
+The table describes activation from the default-member CLI. Directly building
+`galadriel-pid`, `galadriel-justify`, or `galadriel-eval` still resolves `pid-core`;
+directly building `galadriel-ncp` or `galadriel-eval` resolves `ncp-core` even without a
+CLI feature. Workspace-wide builds deliberately include those crates.
 
 | Feature | Pulls | Adds |
 |---|---|---|
 | default | no sibling integration crates | core, simulator, CLI |
-| `pid` | exact `pid-core` Git revision whose manifest declares 1.0.0 | experimental KSG-MI/PID research layer; no upstream 1.x release claim |
+| `pid` | exact `pid-core` Git revision whose manifest declares 1.0.0; its upstream default set is empty and `parallel` remains off, while `experimental-pipelines` selects its continuous and mixed-dimension PID3 research surfaces | experimental KSG-MI/PID research layer; no upstream 1.x release claim |
 | `ncp` | `ncp-core` | bounded JSONL ingest; NCP 0.8 key helpers; strict observation and producer-monitor envelopes; the CLI `replay` subcommand |
 | `ncp-live` | `ncp-zenoh`, exact `zenoh` 1.9 guard types, `tokio` | secure `observe` command plus bounded two-route receiver, deadlines, lifecycle gate, and health state |
+
+The pinned `ncp-core` manifest also declares opt-in `schema` and `ts` aliases. Neither
+alias is selected by the audited offline, live, or evaluation dependency graphs.
 
 The public `pid-rs` repository and NCP's `ncp-core`/`ncp-zenoh` crates are pinned by
 exact Git revisions. The pid-rs revision declares 1.0.0 (there is currently no v1 tag),
@@ -443,7 +452,8 @@ external procedure; none of those exclusions is converted into an implementation
 - [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) — non-authoritative,
   non-widening downstream use and prohibited control connections.
 - [`docs/ECOSYSTEM-CONNECTIONS.md`](docs/ECOSYSTEM-CONNECTIONS.md) — dated exact-cut
-  provenance and the limits of each NCP, Crebain, Haldir, and Prisoma relationship.
+  provenance and the limits of each pid-rs, NCP, Crebain, Haldir, and Prisoma
+  relationship.
 - [`release/0.9.0/README.md`](release/0.9.0/README.md) — auditable handoff, ledger,
   claims, evidence, and version-adaptation record.
 

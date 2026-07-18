@@ -32,7 +32,7 @@ routes that a conforming producer must use, with different responsibilities:
 
 | Route | Payload | Responsibility |
 | --- | --- | --- |
-| `{realm}/session/{epoch}/sensor/galadriel-pid` | Frozen `SidecarEnvelope` schema v1 | One real, accepted per-measurement observation suitable for the existing detectors |
+| `{realm}/session/{epoch}/sensor/galadriel-pid` | Frozen `SidecarEnvelope` schema v1 | At most one real accepted observation per `(track, modality, frame)` suitable for the existing detectors |
 | `{realm}/session/{epoch}/sensor/galadriel-monitor` | Strict monitor envelope schema v1 | Measurement lifecycle outcomes, fusion-frame closure, and producer liveness |
 
 The observation route MUST remain byte- and schema-compatible with

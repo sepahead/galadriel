@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "The cross-sensor Partial Information Decomposition engine for Galadriel's Mirror (feature `pid`)."
+description = "The opt-in Partial Information Decomposition engine reached through galadriel-cli's `pid` feature."
 publish = false
 
 [lints]

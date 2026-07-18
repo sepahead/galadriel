@@ -11,8 +11,9 @@ at the boundary with `TrackId`, `ProjectionFrameId`, `ProjectionContextId`,
 `FrozenPriorId`, `Sequence`, `StateGeneration`, and `TimestampMillis`. Values above
 the exact JSON integer ceiling are rejected rather than rounded. Zero remains valid
 for ordinals and timestamps. It also remains valid for `TrackId`, because the frozen
-NCP v1 schema admitted zero; adapters must not silently reinterpret that established
-wire value. Zero is rejected for `ProjectionFrameId`, `ProjectionContextId`, and
+Galadriel/Crebain observation schema v1 admitted zero; adapters must not silently
+reinterpret that established sidecar value. Zero is rejected for `ProjectionFrameId`,
+`ProjectionContextId`, and
 `FrozenPriorId`.
 
 Session, epoch, stream, and producer labels now use separate validated types. The

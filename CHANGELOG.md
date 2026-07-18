@@ -34,7 +34,7 @@ may contain breaking changes.
   bounded transport messages, a hashed application/registry handoff, preflighted and
   individually atomic owner-only output, duplicate-key and credential-path rejection,
   digest manifest, absolute production credential paths, atomic no-replace publication,
-  alias-safe credential identity, owner-only private-key modes, and 37 security regression
+  alias-safe credential identity, owner-only private-key modes, and 67 security regression
   checks. The runbook explicitly keeps real-router wrong/no-certificate and allow/deny
   results as an external evidence gate.
 - Add a secure-only operational observer constructor and CLI. All Galadriel-owned secure
@@ -161,11 +161,13 @@ may contain breaking changes.
   The old commit pair is not a reciprocal pin of the current candidate; current
   cross-repository qualification, a real multi-process mTLS/ACL campaign, and an independent
   recorded stream-calibration study remain `NOT_CLAIMED`.
-- Add a dated exact-cut ecosystem record for NCP, Crebain, Haldir, and Prisoma that
-  separates immutable dependency pins, byte/schema fixture compatibility, mutable audit
-  heads, prospective downstream relationships, and missing reciprocal/deployment
-  qualification. Clarify that NCP wire 1.0 is unreleased/proposed, Haldir has no runtime
-  adapter, and Prisoma's base-route observer rejects Galadriel's named sidecars.
+- Add a dated exact-cut ecosystem record for pid-rs, NCP, Crebain, Haldir, and Prisoma
+  that separates immutable dependency pins, byte/schema fixture compatibility, mutable
+  audit heads, prospective downstream relationships, and missing reciprocal/deployment
+  qualification. Record pid-rs activation, its same-revision `pid-runlog` edge, and the
+  absence of a published upstream 1.x claim. Clarify that NCP wire 1.0 is
+  unreleased/proposed, Haldir has no runtime adapter, and Prisoma's base-route observer
+  rejects Galadriel's named sidecars.
 - Split the unchanged strict changed-Rust mutation set into four deterministic CI shards so
   feature-sized diffs complete within the bounded job window. Add exact lifecycle identity,
   inclusive capacity/channel, history-clear, nested-endpoint, whitespace-path, and Unix
@@ -363,10 +365,10 @@ may contain breaking changes.
 
 ### Documentation
 
-- Add an explicit README ecosystem-boundary matrix for NCP, Crebain, Haldir, and Prisoma;
-  distinguish upstream transport/producer relationships, the unimplemented downstream
-  advisory-publisher boundary, and the absence of a direct Prisoma sidecar edge without
-  upgrading any cross-repository claim.
+- Add an explicit README ecosystem-boundary matrix for pid-rs, NCP, Crebain, Haldir, and
+  Prisoma; distinguish optional build dependencies, upstream transport/producer
+  relationships, the unimplemented downstream advisory-publisher boundary, and the
+  absence of a direct Prisoma sidecar edge without upgrading any cross-repository claim.
 - Use one `{epoch}` route template, label false-alert exposure consistently per track-hour,
   and align the NCP feature declaration and accepted API-snapshot wording with the code and
   retained release records.

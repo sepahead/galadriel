@@ -12,15 +12,18 @@
 //!
 //! ## What it consumes
 //!
-//! A stream of [`PidObservation`] records — one per associated measurement,
-//! carrying the scalar `NIS = yᵀ S⁻¹ y ~ χ²(dof)` formed against the *a priori*
-//! (predicted, pre-update) track state. In the sepahead ecosystem these are
-//! emitted by crebain's fusion `update_track` and delivered over the NCP
-//! observation plane; here they are transport-agnostic plain data.
+//! A stream of [`PidObservation`] records — at most one validated, accepted
+//! innovation per `(track, modality, frame)` under the current producer contract.
+//! Each scalar `NIS = yᵀ S⁻¹ y ~ χ²(dof)` is formed against the *a priori* state
+//! entering that particular update; co-located follow-up updates may therefore use
+//! sequentially conditioned priors. In the sepahead ecosystem these records are
+//! emitted by a contract-conforming producer and may be delivered over
+//! Galadriel's project-owned named NCP sidecar route; here they are
+//! transport-agnostic plain data.
 //! Cross-sensor analysis additionally requires an optional
 //! [`ConsistencyProjection`]: a bounded signed vector plus producer-attested
-//! physical-frame, projection-context, and frozen-prior identifiers. Raw native
-//! innovations are never compared across modalities.
+//! physical-frame, projection-context, and common frozen-pre-update-prior
+//! identifiers. Raw native innovations are never compared across modalities.
 //!
 //! ## The decision, honestly scoped
 //!
@@ -31,7 +34,7 @@
 //! | **most/all** channels have high-direction NIS/CUSUM evidence | [`Verdict::BroadDegradation`] | broad magnitude degradation; cause unclassified |
 //! | too few samples / channels | [`Verdict::InsufficientEvidence`] | **fail closed** — never default to Nominal |
 //!
-//! This is an **advisory** detector. It authenticates *statistical consistency*,
+//! This is an **advisory** detector. It assesses *statistical consistency*,
 //! not truth: a moment-matched spoof that keeps each channel's NIS within its own
 //! covariance passes the baseline — the signed-correlation default and optional PID
 //! escalation can observe some common-projection dependence changes, but cannot
