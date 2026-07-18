@@ -331,8 +331,8 @@
     {
       "path": "crates/galadriel-eval/src/evidence_main.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "b7141adcf07da177116d57fee35919c5a02aa843faa53bda8f5eeb6991ffaf33",
-      "size_bytes": 190134
+      "sha256": "b4b6814054030b9f18b4c20323d7b75892f2589b64655b05275d23dc1ebd4c8c",
+      "size_bytes": 190553
     },
     {
       "path": "crates/galadriel-eval/src/lib.rs",
