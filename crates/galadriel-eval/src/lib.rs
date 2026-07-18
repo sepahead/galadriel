@@ -1393,10 +1393,9 @@ pub fn wilson_ci(k: usize, n: usize) -> (f64, f64) {
     let denom = 1.0 + z2 / nf;
     let center = p + z2 / (2.0 * nf);
     let margin = z * (p * (1.0 - p) / nf + z2 / (4.0 * nf * nf)).sqrt();
-    (
-        ((center - margin) / denom).max(0.0),
-        ((center + margin) / denom).min(1.0),
-    )
+    let lower = ((center - margin) / denom).max(0.0).min(p);
+    let upper = ((center + margin) / denom).min(1.0).max(p);
+    (lower, upper)
 }
 
 /// A bootstrap-CI row for one detector's alarm-ranked ROC-AUC on the stealthy spoof.
@@ -3342,8 +3341,14 @@ mod tests {
         // k = n: upper bound is 1.0, lower bound strictly below 1.
         let (lo, hi) = wilson_ci(200, 200);
         assert!(
-            lo > 0.97 && lo < 1.0 && (hi - 1.0).abs() < 1e-9,
+            lo > 0.97 && lo < 1.0 && hi == 1.0,
             "wilson(200,200)=[{lo:.3},{hi:.3}]"
+        );
+        // k = 0: lower bound is exactly 0.0, despite floating-point roundoff.
+        let (lo, hi) = wilson_ci(0, 200);
+        assert!(
+            lo == 0.0 && hi > 0.0 && hi < 0.03,
+            "wilson(0,200)=[{lo:.3},{hi:.3}]"
         );
         // A p̂ = 0.5 interval is centered near 0.5.
         let (lo, hi) = wilson_ci(50, 100);
@@ -3489,7 +3494,7 @@ mod prop_tests {
             let p = k as f64 / n as f64;
             prop_assert!(lo >= -1e-12 && hi <= 1.0 + 1e-12, "wilson [{lo},{hi}] ∉ [0,1]");
             prop_assert!(lo <= hi, "wilson lo {lo} > hi {hi}");
-            prop_assert!(lo <= p + 1e-9 && p <= hi + 1e-9, "wilson [{lo},{hi}] misses p̂={p}");
+            prop_assert!(lo <= p && p <= hi, "wilson [{lo},{hi}] misses p̂={p}");
         }
 
         /// A bootstrap AUC CI is ordered and within [0, 1].
