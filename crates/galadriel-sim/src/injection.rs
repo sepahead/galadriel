@@ -343,9 +343,14 @@ impl Injection for BroadbandJam {
 }
 
 /// A **benign target maneuver** (not an attack): from `start_frame`, a deterministic
-/// triangular ramp of peak height `magnitude` over `duration` frames is added to every
-/// channel's first innovation axis — but each modality sees it with its own **lag**
+/// continuous triangular ramp with peak parameter `magnitude` over `duration` frames is
+/// sampled and added to every channel's first innovation axis — but each modality sees it
+/// with its own **lag**
 /// (`lag_step` × the modality's stable code), modelling heterogeneous sensor dynamics/latency.
+/// Samples occupy `[start, start + duration)`: the included start and excluded right endpoint
+/// are zero. Even durations sample the exact peak; odd durations have two equal central samples
+/// at `(1 - 1 / duration) * magnitude`. Duration one is rejected because its only sample is zero;
+/// duration zero remains the explicit disabled/no-op form.
 ///
 /// A *synchronized* maneuver (`lag_step = 0`) stays perfectly correlated across channels,
 /// so the consistency detectors should not flag it; the per-channel lag transiently
@@ -378,8 +383,22 @@ impl Maneuver {
         if seq < start || seq >= end {
             return Ok(0.0);
         }
-        let t = (seq - start) as f64 / self.duration as f64; // 0..1
-        let tri = 1.0 - (2.0 * t - 1.0).abs(); // triangular bump: 0 at ends, 1 at centre
+        let offset = seq - start;
+        let tri = if self.duration.is_multiple_of(2) {
+            // Preserve the retained even-duration trace byte-for-byte, including D=90.
+            let t = offset as f64 / self.duration as f64;
+            1.0 - (2.0 * t - 1.0).abs()
+        } else {
+            // Integer mirroring makes both odd-duration central samples bit-identical.
+            let mirrored_offset = self.duration - offset;
+            let numerator = offset.min(mirrored_offset).checked_mul(2).ok_or_else(|| {
+                GaladrielError::InvalidConfig(
+                    "maneuver profile numerator arithmetic overflows u64".into(),
+                )
+            })?;
+            let deficit = self.duration - numerator;
+            1.0 - deficit as f64 / self.duration as f64
+        };
         Ok(self.magnitude * tri)
     }
 }
@@ -397,6 +416,11 @@ impl Injection for Maneuver {
         }
         if self.duration == 0 {
             return Ok(());
+        }
+        if self.duration == 1 {
+            return Err(GaladrielError::InvalidConfig(
+                "maneuver duration must be zero (disabled) or at least 2 frames".into(),
+            ));
         }
 
         let max_modality_code = Modality::ALL
@@ -728,10 +752,73 @@ mod tests {
     }
 
     #[test]
+    fn maneuver_profile_has_explicit_half_open_discrete_sampling() {
+        let even = Maneuver {
+            start_frame: 10,
+            duration: 2,
+            magnitude: 3.0,
+            lag_step: 0,
+        };
+        assert_eq!(even.profile(9, 0).unwrap(), 0.0);
+        assert_eq!(even.profile(10, 0).unwrap(), 0.0);
+        assert_eq!(even.profile(11, 0).unwrap(), 3.0);
+        assert_eq!(even.profile(12, 0).unwrap(), 0.0);
+
+        let odd = Maneuver {
+            start_frame: 10,
+            duration: 3,
+            magnitude: 1.0,
+            lag_step: 0,
+        };
+        let odd_left = odd.profile(11, 0).unwrap();
+        let odd_right = odd.profile(12, 0).unwrap();
+        assert_eq!(odd_left.to_bits(), odd_right.to_bits());
+        assert_eq!(odd_left.to_bits(), (1.0_f64 - 1.0 / 3.0).to_bits());
+        assert_eq!(odd.profile(13, 0).unwrap(), 0.0);
+
+        let large_odd_duration = (1_u64 << 53) + 1;
+        let large_odd = Maneuver {
+            start_frame: 0,
+            duration: large_odd_duration,
+            magnitude: 1.0,
+            lag_step: 0,
+        };
+        let left_center = large_odd_duration / 2;
+        assert_eq!(
+            large_odd.profile(left_center, 0).unwrap().to_bits(),
+            large_odd.profile(left_center + 1, 0).unwrap().to_bits()
+        );
+
+        let retained = Maneuver {
+            start_frame: 10,
+            duration: 90,
+            magnitude: 12.0,
+            lag_step: 0,
+        };
+        for offset in 0..retained.duration {
+            let t = offset as f64 / retained.duration as f64;
+            let expected = retained.magnitude * (1.0 - (2.0 * t - 1.0).abs());
+            assert_eq!(
+                retained.profile(10 + offset, 0).unwrap().to_bits(),
+                expected.to_bits(),
+                "retained D=90 trace changed at offset {offset}"
+            );
+        }
+    }
+
+    #[test]
     fn maneuver_validation_rejects_each_invalid_parameter_family_directly() {
         assert!(Maneuver {
             start_frame: 0,
             duration: 1,
+            magnitude: 1.0,
+            lag_step: 0,
+        }
+        .validate()
+        .is_err());
+        assert!(Maneuver {
+            start_frame: 0,
+            duration: 2,
             magnitude: f64::NAN,
             lag_step: 0,
         }
@@ -739,7 +826,7 @@ mod tests {
         .is_err());
         assert!(Maneuver {
             start_frame: 0,
-            duration: 1,
+            duration: 2,
             magnitude: 1.0,
             lag_step: u64::MAX,
         }
@@ -747,7 +834,7 @@ mod tests {
         .is_err());
         assert!(Maneuver {
             start_frame: u64::MAX,
-            duration: 1,
+            duration: 2,
             magnitude: 1.0,
             lag_step: 0,
         }
@@ -930,5 +1017,41 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(stream[0].nis(), original.nis());
+    }
+
+    #[test]
+    fn one_frame_maneuver_is_rejected_without_mutation() {
+        let original = scalar(1, 0, 0, Modality::Visual, 3.0, 3);
+        let mut stream = vec![original.clone()];
+        let result = inject(
+            &mut stream,
+            &Maneuver {
+                start_frame: 0,
+                duration: 1,
+                magnitude: 2.0,
+                lag_step: 0,
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(stream[0], original);
+    }
+
+    #[test]
+    fn zero_frame_maneuver_is_an_explicit_noop() {
+        let maneuver = Maneuver {
+            start_frame: u64::MAX,
+            duration: 0,
+            magnitude: 2.0,
+            lag_step: u64::MAX,
+        };
+        maneuver
+            .validate()
+            .expect("zero duration disables the maneuver");
+
+        let original = scalar(1, 0, 0, Modality::Visual, 3.0, 3);
+        let mut stream = vec![original.clone()];
+        inject(&mut stream, &maneuver).expect("disabled maneuver is a no-op");
+        assert_eq!(stream[0], original);
     }
 }

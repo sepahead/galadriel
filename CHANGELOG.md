@@ -370,9 +370,21 @@ may contain breaking changes.
   Candidate `base_seed` input is likewise a decimal string; legacy JSON integer input is
   accepted only for the retained historical configuration, and normalized accepted output
   carries canonical decimal and hexadecimal seed strings.
+- Parse the release feature graph as strict UTF-8 from raw subprocess bytes with terminal
+  color disabled explicitly. Reject lone carriage returns, terminal controls, Unicode
+  line/paragraph separators, and other unsafe non-printable characters so ambient terminal
+  settings cannot alter dependency identities.
+- Report exploratory confidence-interval sweeps in both detector-favoring directions and
+  name empty sampled partitions explicitly. Attacker-gain summaries no longer invent a
+  boundary when one class is absent; malformed public formatter rows are disclosed and
+  omitted, and alarm-ranked AUC tests pin half-weight tie handling.
 - Preflight maneuver grids and complete exposure before generation: unique bounded lags,
-  finite positive magnitude, nonzero duration, checked per-modality window ends, and fixed
-  grid/trial/observation work ceilings reject malformed or right-censored studies.
+  finite positive magnitude, duration of at least two frames, checked per-modality window
+  ends, and fixed grid/trial/observation work ceilings reject malformed, zero-exposure, or
+  right-censored studies.
+- Sample odd-duration maneuver profiles through mirrored integer distance so their two
+  central samples are bit-identical, while retaining the established even-duration `D=90`
+  trace exactly.
 
 ### Documentation
 

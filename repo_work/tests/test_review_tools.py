@@ -626,23 +626,50 @@ class ReviewToolsTest(unittest.TestCase):
                 output + "\nncp-core v0.8.0 (locked)|default,schema\n",
             )
 
-        for control in ("\x1b[0m", "\x9b0m", "\x08"):
+        for control in (
+            "\x08",
+            "\x09",
+            "\x0b",
+            "\x0c",
+            "\x1c",
+            "\x1d",
+            "\x1e",
+            "\x1b[0m",
+            "\x7f",
+            "\x85",
+            "\x9b0m",
+            "\u2028",
+            "\u2029",
+        ):
             with self.subTest(control=ascii(control)):
                 with self.assertRaisesRegex(
                     ReviewError,
-                    r"terminal control bytes: 'ncp-core .*'",
+                    r"unsafe non-printable characters: 'ncp-core .*'",
                 ):
                     parse_graph_output(
                         profile,
                         f"ncp-core v0.8.0 (locked)|default{control}\n",
                     )
 
+        self.assertEqual(
+            parse_graph_output(
+                profile,
+                "ncp-core v0.8.0 (locked)|default\r\n",
+            )["ncp-core"],
+            frozenset({"default"}),
+        )
+        with self.assertRaisesRegex(ReviewError, "unsafe non-printable characters"):
+            parse_graph_output(
+                profile,
+                "ncp-core v0.8.0 (locked)|default\r",
+            )
+
     def test_feature_graph_disables_cargo_terminal_color(self) -> None:
         profile = next(profile for profile in PROFILES if profile.name == "pure")
         completed = mock.Mock(
             returncode=0,
-            stdout="galadriel-cli v0.9.0|default\n",
-            stderr="",
+            stdout=b"galadriel-cli v0.9.0|default\n",
+            stderr=b"",
         )
         with (
             mock.patch.dict(os.environ, {"CARGO_TERM_COLOR": "always"}),
@@ -662,6 +689,67 @@ class ReviewToolsTest(unittest.TestCase):
             {**inherited_environment, "CARGO_TERM_COLOR": "never"},
         )
         self.assertIn("--color=never", run_cargo.call_args.args[0])
+        self.assertIs(run_cargo.call_args.kwargs["text"], False)
+
+        invalid_utf8 = mock.Mock(returncode=0, stdout=b"\xff", stderr=b"")
+        with mock.patch(
+            "check_feature_graph.subprocess.run", return_value=invalid_utf8
+        ):
+            with self.assertRaisesRegex(ReviewError, "non-UTF-8 stdout"):
+                package_graph(self.root, profile)
+
+        invalid_failure = mock.Mock(returncode=101, stdout=b"", stderr=b"\xff")
+        with mock.patch(
+            "check_feature_graph.subprocess.run", return_value=invalid_failure
+        ):
+            with self.assertRaisesRegex(
+                ReviewError,
+                "failed with exit status 101 and non-UTF-8 stderr",
+            ):
+                package_graph(self.root, profile)
+
+        failed_with_junk_stdout = mock.Mock(
+            returncode=101,
+            stdout=b"\xff",
+            stderr=b"error: failed to parse lock file\n",
+        )
+        with mock.patch(
+            "check_feature_graph.subprocess.run",
+            return_value=failed_with_junk_stdout,
+        ):
+            with self.assertRaisesRegex(
+                ReviewError,
+                "failed to parse lock file.*stdout is non-UTF-8",
+            ):
+                package_graph(self.root, profile)
+
+        unsafe_stderr = mock.Mock(
+            returncode=101,
+            stdout=b"",
+            stderr=b"\x1b[31merror\x1b[0m: failed\n",
+        )
+        with mock.patch(
+            "check_feature_graph.subprocess.run", return_value=unsafe_stderr
+        ):
+            with self.assertRaisesRegex(
+                ReviewError, "unsafe non-printable characters in stderr"
+            ):
+                package_graph(self.root, profile)
+
+        unsafe_success_stderr = mock.Mock(
+            returncode=0,
+            stdout=b"galadriel-cli v0.9.0|default\n",
+            stderr=b"\x1b[33mwarning\x1b[0m\n",
+        )
+        with mock.patch(
+            "check_feature_graph.subprocess.run",
+            return_value=unsafe_success_stderr,
+        ):
+            with self.assertRaisesRegex(
+                ReviewError,
+                "succeeded with unsafe non-printable characters in stderr",
+            ):
+                package_graph(self.root, profile)
 
     def test_machine_ecosystem_cut_binds_the_connection_prose(self) -> None:
         repo = TOOLS.parent

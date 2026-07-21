@@ -259,7 +259,9 @@ no dormant confirmation payload.
   of `100_000_000` generated observations, `100_000_000` latency-prefix visits,
   and `300_000_000_000` PID quadratic fit units are upper bounds, not targets.
 - A maneuver-lag grid must contain 1..=10,000 unique values. Magnitude must be
-  finite and positive with a finite square; duration must be nonzero. For the
+  finite and positive with a finite square; evaluation duration must be at least
+  two frames so the sampled half-open triangle has nonzero exposure. The low-level
+  simulator retains duration zero only as an explicit disabled/no-op form. For the
   current visual/acoustic/radar study, every half-open maneuver window must satisfy
   `floor(frames/3) + 3 * lag_step + duration <= frames` with checked arithmetic.
   Per-study work also requires `trials * lag_count <= 50,000` and

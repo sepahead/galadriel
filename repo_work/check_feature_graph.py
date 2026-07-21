@@ -264,20 +264,38 @@ PROFILES = (
 )
 
 
+def unsafe_nonprintable_snippet(value: str) -> str | None:
+    """Return a bounded offending region, allowing only LF and exact CRLF records."""
+
+    for offset, character in enumerate(value):
+        if character == "\n" or (
+            character == "\r" and offset + 1 < len(value) and value[offset + 1] == "\n"
+        ):
+            continue
+        if not character.isprintable():
+            start = max(0, offset - 100)
+            end = min(len(value), offset + 100)
+            return value[start:end]
+    return None
+
+
 def parse_graph_output(profile: Profile, output: str) -> dict[str, frozenset[str]]:
     """Parse Cargo's package and unified-feature rows without trusting display order."""
 
+    unsafe_snippet = unsafe_nonprintable_snippet(output)
+    if unsafe_snippet is not None:
+        raise ReviewError(
+            f"feature graph {profile.name!r} emitted unsafe non-printable characters: "
+            f"{unsafe_snippet!r}"
+        )
+
+    normalized = output.replace("\r\n", "\n")
+    lines = normalized.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
     selected: dict[str, frozenset[str]] = {}
     exact_packages = {name for name, _features in profile.exact_features}
-    for line in output.splitlines():
-        if any(
-            ord(character) < 0x20 or 0x7F <= ord(character) <= 0x9F
-            for character in line
-        ):
-            raise ReviewError(
-                f"feature graph {profile.name!r} emitted terminal control bytes: "
-                f"{line[:200]!r}"
-            )
+    for line in lines:
         package_text, separator, feature_text = line.partition("|")
         fields = package_text.split()
         if not separator or not fields:
@@ -325,15 +343,52 @@ def package_graph(repo: Path, profile: Profile) -> dict[str, frozenset[str]]:
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,
+        text=False,
         check=False,
         env=environment,
     )
-    if process.returncode != 0:
-        raise ReviewError(
-            f"feature graph {profile.name!r} failed: {process.stderr.strip()}"
+    try:
+        stderr = process.stderr.decode("utf-8", "strict")
+    except UnicodeDecodeError as error:
+        failure = (
+            f" failed with exit status {process.returncode} and"
+            if process.returncode != 0
+            else " emitted"
         )
-    return parse_graph_output(profile, process.stdout)
+        raise ReviewError(
+            f"feature graph {profile.name!r}{failure} non-UTF-8 stderr"
+        ) from error
+    if process.returncode != 0:
+        unsafe_snippet = unsafe_nonprintable_snippet(stderr)
+        if unsafe_snippet is not None:
+            raise ReviewError(
+                f"feature graph {profile.name!r} failed with unsafe non-printable "
+                f"characters in stderr: {unsafe_snippet!r}"
+            )
+        try:
+            process.stdout.decode("utf-8", "strict")
+        except UnicodeDecodeError as error:
+            raise ReviewError(
+                f"feature graph {profile.name!r} failed with exit status "
+                f"{process.returncode}: {stderr.strip()!r}; stdout is non-UTF-8"
+            ) from error
+        raise ReviewError(
+            f"feature graph {profile.name!r} failed with exit status "
+            f"{process.returncode}: {stderr.strip()!r}"
+        )
+    unsafe_snippet = unsafe_nonprintable_snippet(stderr)
+    if unsafe_snippet is not None:
+        raise ReviewError(
+            f"feature graph {profile.name!r} succeeded with unsafe non-printable "
+            f"characters in stderr: {unsafe_snippet!r}"
+        )
+    try:
+        stdout = process.stdout.decode("utf-8", "strict")
+    except UnicodeDecodeError as error:
+        raise ReviewError(
+            f"feature graph {profile.name!r} emitted non-UTF-8 stdout"
+        ) from error
+    return parse_graph_output(profile, stdout)
 
 
 def validate_profile_graph(profile: Profile, graph: dict[str, frozenset[str]]) -> None:

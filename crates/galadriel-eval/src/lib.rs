@@ -9,7 +9,8 @@
 //! continuous score; across trials we report detection rate, false-alarm rate (on the
 //! clean/null regime), and alarm-ranked ROC-AUC (alarms rank above non-alarms, then the
 //! continuous score; attack vs clean uses the Mann–Whitney identity
-//! `AUC = P(score_attack > score_clean)`). AUCs carry percentile-bootstrap 95 % CIs
+//! `AUC = P(score_attack > score_clean) + 0.5 * P(score_attack = score_clean)`).
+//! AUCs carry percentile-bootstrap 95 % CIs
 //! ([`stealthy_ci_study`], with a *paired* corr-vs-PID difference CI via [`auc_diff_ci`]).
 //! A companion study ([`measure_latency`]) reports median **time-to-detect** — frames from
 //! attack onset to first alarm on growing prefixes — because how *fast* a detector fires
@@ -211,8 +212,8 @@ pub enum EvalConfigError {
     /// Maneuver magnitude is not a finite, positive, representable scale.
     #[error("maneuver magnitude must be finite, > 0, and have a finite square")]
     InvalidManeuverMagnitude,
-    /// A zero-frame maneuver has no study exposure.
-    #[error("maneuver duration must be > 0")]
+    /// A maneuver shorter than two frames has no nonzero sampled study exposure.
+    #[error("maneuver duration must be >= 2")]
     InvalidManeuverDuration,
     /// A lagged modality's complete maneuver window is censored by the capture.
     #[error(
@@ -472,7 +473,7 @@ fn validate_maneuver_inputs(
     if !magnitude.is_finite() || magnitude <= 0.0 || !(magnitude * magnitude).is_finite() {
         return Err(EvalConfigError::InvalidManeuverMagnitude);
     }
-    if duration == 0 {
+    if duration < 2 {
         return Err(EvalConfigError::InvalidManeuverDuration);
     }
     let mut unique_lags = HashSet::with_capacity(lag_steps.len());
@@ -1697,9 +1698,37 @@ pub fn decoupling_sweep(
     Ok(rows)
 }
 
-/// Format the decoupling sweep as a plain-text table, with a data-driven verdict on
-/// whether the two detectors' CIs overlap at every strength.
+/// Format the decoupling sweep as a plain-text table, with a data-driven verdict from
+/// each paired `corr - PID` confidence interval. Public rows with non-finite, out-of-domain,
+/// or unordered statistical fields are disclosed and omitted from the table and verdict.
 pub fn format_sweep(rows: &[SweepRow]) -> String {
+    let is_unit = |value: f64| value.is_finite() && (0.0..=1.0).contains(&value);
+    let is_unit_interval = |interval: (f64, f64)| {
+        is_unit(interval.0) && is_unit(interval.1) && interval.0 <= interval.1
+    };
+    let is_difference_interval = |interval: (f64, f64)| {
+        interval.0.is_finite()
+            && interval.1.is_finite()
+            && (-1.0..=1.0).contains(&interval.0)
+            && (-1.0..=1.0).contains(&interval.1)
+            && interval.0 <= interval.1
+    };
+    let is_valid_row = |row: &SweepRow| {
+        is_unit(row.decoupling)
+            && is_unit(row.corr_auc)
+            && is_unit_interval(row.corr_ci)
+            && is_unit(row.pid_auc)
+            && is_unit_interval(row.pid_ci)
+            && is_difference_interval(row.diff_ci)
+    };
+    let valid_rows: Vec<&SweepRow> = rows.iter().filter(|row| is_valid_row(row)).collect();
+    let invalid_rows: Vec<String> = rows
+        .iter()
+        .enumerate()
+        .filter(|(_index, row)| !is_valid_row(row))
+        .map(|(index, _row)| (index + 1).to_string())
+        .collect();
+
     let mut s = String::new();
     s.push_str(
         "Decoupling-strength sweep — axis-0 AUC vs decoupling (the detection boundary)\n\
@@ -1710,7 +1739,7 @@ pub fn format_sweep(rows: &[SweepRow]) -> String {
         "d", "corr AUC [95% CI]", "PID AUC [95% CI]", "Δ(corr−PID) [95% CI]"
     ));
     s.push_str(&format!("{}\n", "-".repeat(74)));
-    for r in rows {
+    for r in &valid_rows {
         s.push_str(&format!(
             "{:>5.2} | {:>7.3} [{:.3},{:.3}] | {:>7.3} [{:.3},{:.3}] | {:+.3} [{:+.3},{:+.3}]\n",
             r.decoupling,
@@ -1725,23 +1754,61 @@ pub fn format_sweep(rows: &[SweepRow]) -> String {
             r.diff_ci.1,
         ));
     }
-    let pointwise_band: Vec<String> = rows
+    if rows.is_empty() {
+        s.push_str(
+            "\nNo sweep rows were sampled; no pointwise interval comparison is available.\n",
+        );
+        return s;
+    }
+    if !invalid_rows.is_empty() {
+        s.push_str(&format!(
+            "\nInvalid sweep rows at one-based positions {{{}}} were omitted from the table\n\
+             and directional comparison.\n",
+            invalid_rows.join(", ")
+        ));
+    }
+    if valid_rows.is_empty() {
+        s.push_str("\nNo valid pointwise interval comparison is available.\n");
+        return s;
+    }
+    let correlation_band: Vec<String> = valid_rows
         .iter()
         .filter(|r| r.diff_ci.0 > 0.0)
-        .map(|r| format!("{:.2}", r.decoupling))
+        .map(|r| r.decoupling.to_string())
         .collect();
-    if pointwise_band.is_empty() {
-        s.push_str(
-            "\nEvery pointwise paired ΔAUC interval includes 0. The sweep provides no evidence\n\
-             of a difference at any sampled strength.\n",
-        );
-    } else {
+    let pid_band: Vec<String> = valid_rows
+        .iter()
+        .filter(|r| r.diff_ci.1 < 0.0)
+        .map(|r| r.decoupling.to_string())
+        .collect();
+    if correlation_band.is_empty() && pid_band.is_empty() {
+        let qualifier = if invalid_rows.is_empty() {
+            "Every pointwise"
+        } else {
+            "Every valid pointwise"
+        };
         s.push_str(&format!(
-            "\nExploratory pointwise 95% intervals exclude 0 at d ∈ {{{}}}. Because this scans\n\
-             the grid without a simultaneous/max-statistic correction, it is not confirmatory\n\
-             evidence that correlation strictly beats PID somewhere on the boundary.\n",
-            pointwise_band.join(", ")
+            "\n{qualifier} paired ΔAUC interval includes 0. The sweep provides no evidence\n\
+             of a difference at any sampled strength.\n"
         ));
+    } else {
+        s.push_str("\nExploratory pointwise 95% intervals exclude 0 in these directions:\n");
+        if !correlation_band.is_empty() {
+            s.push_str(&format!(
+                "  correlation > PID at d ∈ {{{}}}\n",
+                correlation_band.join(", ")
+            ));
+        }
+        if !pid_band.is_empty() {
+            s.push_str(&format!(
+                "  PID > correlation at d ∈ {{{}}}\n",
+                pid_band.join(", ")
+            ));
+        }
+        s.push_str(
+            "Because this scans the grid without a simultaneous/max-statistic correction,\n\
+             these are not confirmatory evidence of detector superiority anywhere on the boundary.\n",
+        );
     }
     s
 }
@@ -2265,8 +2332,24 @@ pub fn attacker_gain(cfg: &EvalConfig, decouplings: &[f64]) -> CoreResult<Vec<At
     Ok(rows)
 }
 
-/// Format the modeled perturbation study.
+/// Format the modeled perturbation study. Public rows with non-finite or out-of-domain
+/// values are disclosed and omitted from the table and threshold partitions.
 pub fn format_attacker_gain(rows: &[AttackerGainRow], detect_tol: f64) -> String {
+    let is_unit = |value: f64| value.is_finite() && (0.0..=1.0).contains(&value);
+    let is_valid_row = |row: &AttackerGainRow| {
+        is_unit(row.decoupling)
+            && row.fused_perturbation_rms.is_finite()
+            && row.fused_perturbation_rms >= 0.0
+            && is_unit(row.detect_rate)
+    };
+    let valid_rows: Vec<&AttackerGainRow> = rows.iter().filter(|row| is_valid_row(row)).collect();
+    let invalid_rows: Vec<String> = rows
+        .iter()
+        .enumerate()
+        .filter(|(_index, row)| !is_valid_row(row))
+        .map(|(index, _row)| (index + 1).to_string())
+        .collect();
+
     let mut s = String::new();
     s.push_str(
         "Modeled impact — fused-innovation RMS perturbation vs detection (static equal-variance\n\
@@ -2277,32 +2360,51 @@ pub fn format_attacker_gain(rows: &[AttackerGainRow], detect_tol: f64) -> String
         "d", "fused RMS (σ)", "corr detect"
     ));
     s.push_str(&format!("{}\n", "-".repeat(40)));
-    for r in rows {
+    for r in &valid_rows {
         s.push_str(&format!(
-            "{:>5.2} | {:>16.3} | {:>12.3}\n",
+            "{:>5.2} | {:>16.3} | {:>12}\n",
             r.decoupling, r.fused_perturbation_rms, r.detect_rate
         ));
     }
+    if !invalid_rows.is_empty() {
+        s.push_str(&format!(
+            "\nInvalid modeled-impact rows at one-based positions {{{}}} were omitted from\n\
+             the table and threshold partitions.\n",
+            invalid_rows.join(", ")
+        ));
+    }
+    if !is_unit(detect_tol) {
+        s.push_str(
+            "\nDetection tolerance is not a finite probability in [0, 1]; sampled threshold\n\
+             partitions are unavailable.\n\
+             These are descriptive grid results, not an operational safety bound.\n",
+        );
+        return s;
+    }
+    let missing_partition = if invalid_rows.is_empty() {
+        "none sampled"
+    } else {
+        "none sampled among valid rows"
+    };
     // Largest sampled perturbation at or below the detection tolerance.
-    let undetected = rows
+    let undetected = valid_rows
         .iter()
         .filter(|r| r.detect_rate <= detect_tol)
         .map(|r| r.fused_perturbation_rms)
-        .fold(0.0_f64, f64::max);
-    let detected_min = rows
+        .reduce(f64::max)
+        .map(|value| format!("{value:.3} σ"))
+        .unwrap_or_else(|| missing_partition.to_owned());
+    let detected_min = valid_rows
         .iter()
         .filter(|r| r.detect_rate > detect_tol)
         .map(|r| r.fused_perturbation_rms)
-        .fold(f64::INFINITY, f64::min);
+        .reduce(f64::min)
+        .map(|value| format!("{value:.3} σ"))
+        .unwrap_or_else(|| missing_partition.to_owned());
     s.push_str(&format!(
-        "\nLargest sampled RMS perturbation with detection ≤ {detect_tol:.2}: {undetected:.3} σ.\n\
-         Smallest sampled RMS perturbation above that detection tolerance: {:.3} σ.\n\
+        "\nLargest sampled RMS perturbation with detection ≤ {detect_tol}: {undetected}.\n\
+         Smallest sampled RMS perturbation above that detection tolerance: {detected_min}.\n\
          These are descriptive grid results, not an operational safety bound.\n",
-        if detected_min.is_finite() {
-            detected_min
-        } else {
-            undetected
-        }
     ));
     s
 }
@@ -2894,6 +2996,130 @@ mod tests {
             .unwrap()
     }
 
+    fn sweep_row(decoupling: f64, diff_ci: (f64, f64)) -> SweepRow {
+        SweepRow {
+            decoupling,
+            corr_auc: 0.4,
+            corr_ci: (0.3, 0.5),
+            pid_auc: 0.6,
+            pid_ci: (0.5, 0.7),
+            diff_ci,
+        }
+    }
+
+    fn attacker_gain_row(rms: f64, detect_rate: f64) -> AttackerGainRow {
+        AttackerGainRow {
+            decoupling: 0.5,
+            fused_perturbation_rms: rms,
+            detect_rate,
+        }
+    }
+
+    #[test]
+    fn attacker_gain_formatter_does_not_invent_missing_partitions() {
+        let undetected = format_attacker_gain(&[attacker_gain_row(2.0, 0.1)], 0.5);
+        assert!(undetected.contains("detection ≤ 0.5: 2.000 σ"));
+        assert!(undetected.contains("above that detection tolerance: none sampled"));
+
+        let detected = format_attacker_gain(&[attacker_gain_row(1.0, 0.9)], 0.5);
+        assert!(detected.contains("detection ≤ 0.5: none sampled"));
+        assert!(detected.contains("above that detection tolerance: 1.000 σ"));
+
+        let mixed = format_attacker_gain(
+            &[
+                attacker_gain_row(0.8, 0.1),
+                attacker_gain_row(1.4, 0.4),
+                attacker_gain_row(2.1, 0.8),
+                attacker_gain_row(1.7, 0.7),
+            ],
+            0.5,
+        );
+        assert!(mixed.contains("detection ≤ 0.5: 1.400 σ"));
+        assert!(mixed.contains("above that detection tolerance: 1.700 σ"));
+
+        let inverted = format_attacker_gain(
+            &[attacker_gain_row(2.0, 0.1), attacker_gain_row(1.0, 0.9)],
+            0.5,
+        );
+        assert!(inverted.contains("detection ≤ 0.5: 2.000 σ"));
+        assert!(inverted.contains("above that detection tolerance: 1.000 σ"));
+
+        let precise = format_attacker_gain(&[attacker_gain_row(1.0, 0.008)], 0.005);
+        assert!(precise.contains("detection ≤ 0.005: none sampled"));
+        assert!(precise.contains("above that detection tolerance: 1.000 σ"));
+        assert!(!precise.contains("detection ≤ 0.01"));
+
+        let empty = format_attacker_gain(&[], 0.5);
+        assert_eq!(empty.matches("none sampled").count(), 2);
+
+        let nonfinite = format_attacker_gain(&[attacker_gain_row(1.0, 0.5)], f64::NAN);
+        assert!(nonfinite.contains("not a finite probability in [0, 1]"));
+        assert!(!nonfinite.contains("none sampled"));
+
+        let out_of_range = format_attacker_gain(&[attacker_gain_row(1.0, 0.5)], 1.1);
+        assert!(out_of_range.contains("not a finite probability in [0, 1]"));
+
+        let mut invalid_decoupling = attacker_gain_row(1.0, 0.5);
+        invalid_decoupling.decoupling = f64::NAN;
+        let invalid_rows = format_attacker_gain(
+            &[
+                attacker_gain_row(1.0, f64::NAN),
+                attacker_gain_row(-1.0, 0.5),
+                invalid_decoupling,
+            ],
+            0.5,
+        );
+        assert!(invalid_rows.contains("positions {1, 2, 3}"));
+        assert_eq!(
+            invalid_rows
+                .matches("none sampled among valid rows")
+                .count(),
+            2
+        );
+        assert!(!invalid_rows.contains("NaN"));
+        assert!(!invalid_rows.contains("-1.000"));
+    }
+
+    #[test]
+    fn sweep_formatter_reports_each_excluding_interval_direction() {
+        let negative = format_sweep(&[sweep_row(0.5, (-0.9, -0.7))]);
+        assert!(negative.contains("PID > correlation at d ∈ {0.5}"));
+        assert!(!negative.contains("Every pointwise"));
+
+        let positive = format_sweep(&[sweep_row(0.6, (0.1, 0.3))]);
+        assert!(positive.contains("correlation > PID at d ∈ {0.6}"));
+        assert!(!positive.contains("Every pointwise"));
+
+        let mixed = format_sweep(&[sweep_row(0.7, (0.1, 0.3)), sweep_row(0.2, (-0.4, -0.1))]);
+        assert!(mixed.contains("correlation > PID at d ∈ {0.7}"));
+        assert!(mixed.contains("PID > correlation at d ∈ {0.2}"));
+        assert!(mixed.contains("not confirmatory"));
+
+        let touching = format_sweep(&[sweep_row(0.8, (0.0, 0.2)), sweep_row(0.1, (-0.2, 0.0))]);
+        assert!(touching.contains("Every pointwise paired ΔAUC interval includes 0"));
+
+        let malformed = format_sweep(&[sweep_row(0.5, (0.2, -0.2))]);
+        assert!(malformed.contains("Invalid sweep rows at one-based positions {1}"));
+        assert!(malformed.contains("No valid pointwise interval comparison"));
+        assert!(!malformed.contains("correlation > PID"));
+        assert!(!malformed.contains("PID > correlation"));
+
+        let invalid_rows = format_sweep(&[
+            sweep_row(f64::NAN, (0.1, 0.2)),
+            sweep_row(0.5, (f64::NAN, 0.2)),
+            sweep_row(0.5, (2.0, 3.0)),
+        ]);
+        assert!(invalid_rows.contains("positions {1, 2, 3}"));
+        assert!(invalid_rows.contains("No valid pointwise interval comparison"));
+        assert!(!invalid_rows.contains("NaN"));
+        assert!(!invalid_rows.contains("correlation > PID"));
+        assert!(!invalid_rows.contains("PID > correlation"));
+
+        let empty = format_sweep(&[]);
+        assert!(empty.contains("No sweep rows were sampled"));
+        assert!(!empty.contains("Every pointwise"));
+    }
+
     #[test]
     fn eval_config_rejects_every_scalar_boundary_with_typed_categories() {
         for trials in [0, MIN_INFERENCE_TRIALS - 1, 1_001, usize::MAX] {
@@ -3167,6 +3393,7 @@ mod tests {
     fn auc_basics() {
         assert!((auc(&[1.0, 2.0, 3.0], &[0.0, 0.5]) - 1.0).abs() < 1e-9);
         assert!((auc(&[0.0], &[0.0]) - 0.5).abs() < 1e-9);
+        assert!((auc(&[2.0, 1.0], &[1.0, 0.0]) - 0.875).abs() < 1e-9);
     }
 
     #[test]
@@ -3437,6 +3664,12 @@ mod tests {
             validate_maneuver_inputs(&cfg, &[0], 12.0, 0),
             Err(EvalConfigError::InvalidManeuverDuration)
         ));
+        assert!(matches!(
+            validate_maneuver_inputs(&cfg, &[0], 12.0, 1),
+            Err(EvalConfigError::InvalidManeuverDuration)
+        ));
+        validate_maneuver_inputs(&cfg, &[0], 12.0, 2)
+            .expect("two frames provide one nonzero maneuver sample");
         assert!(matches!(
             validate_maneuver_inputs(&cfg, &[64], 12.0, 90),
             Err(EvalConfigError::ManeuverOutsideCapture { .. })

@@ -91,8 +91,8 @@
     {
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a546d611a871ba2c5bc3a0d9f2cb2b778c139894a3966491ca99637ca57f9018",
-      "size_bytes": 35706
+      "sha256": "f55630fb28511d7b18cdc14abd76f215cf6eac0ee7d98bfc4e793c741f1b9e31",
+      "size_bytes": 36578
     },
     {
       "path": "CITATION.cff",
@@ -337,8 +337,8 @@
     {
       "path": "crates/galadriel-eval/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "98d447f471049ac81226d930ce3af1a408e6c576a5906c10419e8a065e37065d",
-      "size_bytes": 142200
+      "sha256": "8dd388e0bf6d8b28094e1bb12e316b298af655947e748c0956b4688e0b7bc4d7",
+      "size_bytes": 151823
     },
     {
       "path": "crates/galadriel-eval/src/main.rs",
@@ -541,8 +541,8 @@
     {
       "path": "crates/galadriel-sim/src/injection.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "69b1b40337a1119ea19f6dd663798ad065371b71ab1f43439d56a9e6a642b624",
-      "size_bytes": 32937
+      "sha256": "e7384820e2b493243e00c52dc28a0e165223676ebcc56e7bf5cf813de0a1b9c3",
+      "size_bytes": 37315
     },
     {
       "path": "crates/galadriel-sim/src/lib.rs",
@@ -637,8 +637,8 @@
     {
       "path": "docs/CONFIGURATION-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "49f6b9261654133f2353d078be587b258d7673ec64af5b3c3fd149abe02f35c3",
-      "size_bytes": 31007
+      "sha256": "f3bedd698382691f84ccf007eed8861034a05965a532a6a9cf444ea29aa8650c",
+      "size_bytes": 31176
     },
     {
       "path": "docs/CORE-CONTRACT.md",
@@ -661,8 +661,8 @@
     {
       "path": "docs/EVALUATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "6fd5694ae4333b335886134d0809847646c294f3b09349508feb3529e5fc15d8",
-      "size_bytes": 12861
+      "sha256": "609e96832bf88dbd87329e9071fe5b2505b59461a69bf3f7315f5d9c424ebc57",
+      "size_bytes": 13115
     },
     {
       "path": "docs/JUSTIFICATION.md",
@@ -847,8 +847,8 @@
     {
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "b07b53eaab2471ba0ec4c1e82932d6de653e464e19433a73ba1230b83d84a96d",
-      "size_bytes": 3928
+      "sha256": "438cd288ab2de79784c98963ca51d02c665c8601aa9a9e33b888a4efc844e91e",
+      "size_bytes": 4088
     },
     {
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
@@ -901,13 +901,13 @@
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "446710e18924319ce44f8ace1af6fbe9062df5c0d50d6843e7c4a9b0884b527b",
+      "sha256": "17cfc235b0792caf1bb8973c4f5ba52357339c9160678db905b856d177953764",
       "size_bytes": 57030
     },
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "0a60c50f7b9c1da285faacf91ffc8310a0b7a386e23346111250541533068e69",
+      "sha256": "8718828606a87a00e63481f14f1f3aa9316cabace7591b11965bcd9b38b52668",
       "size_bytes": 322
     },
     {
@@ -1063,8 +1063,8 @@
     {
       "path": "repo_work/check_feature_graph.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ba3017c76c5612db68e0ffe170ab532e4a90a1765c8f9579e3828ee46513e07f",
-      "size_bytes": 19188
+      "sha256": "5ec42071413becb0f67d3f36a862ec5bbfd091ed55dd7ff66336579c0ecc18f6",
+      "size_bytes": 21335
     },
     {
       "path": "repo_work/check_focused_mutation.py",
@@ -1159,8 +1159,8 @@
     {
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "724310cb050a283ed8eecd4dd06cf3c70d6559910dbdf3a6890ac79059e2ac28",
-      "size_bytes": 82985
+      "sha256": "53b2146a282771fd39e1d47a250383cae8638a38701ff7f05f5179c7c1190dd1",
+      "size_bytes": 85924
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",

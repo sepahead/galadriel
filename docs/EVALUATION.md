@@ -113,10 +113,13 @@ Preflight requires that end to be at most `F`; the complete maneuver for every m
 must be observed rather than right-censored. At the named profile's `F=300` and `D=90`,
 the largest registered lag ends at frame 286.
 
-Both `EvalSuiteConfig::try_new` and direct `maneuver_far` calls reject before generation
+The continuous triangle is sampled over `[start, start + D)`: its included start and
+excluded right endpoint are zero. Even `D` samples the exact configured peak; odd `D`
+has two equal central samples at `(1 - 1/D)` times the peak parameter. Both
+`EvalSuiteConfig::try_new` and direct `maneuver_far` calls reject before generation
 unless the lag grid has 1..=10,000 unique `u64` entries, magnitude is finite and positive
-with a finite square, duration is nonzero, and every checked window fits. The study also
-requires `trials * lag_count <= 50,000` and
+with a finite square, duration is at least two frames, and every checked window fits. The
+study also requires `trials * lag_count <= 50,000` and
 `trials * frames * 3 * lag_count <= 100,000,000`, with checked arithmetic, before its
 PID-work preflight. These are workload and complete-exposure bounds, not evidence that
 the proxy represents field maneuvers.
