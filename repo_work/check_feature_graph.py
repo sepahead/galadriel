@@ -270,6 +270,10 @@ def parse_graph_output(profile: Profile, output: str) -> dict[str, frozenset[str
     selected: dict[str, frozenset[str]] = {}
     exact_packages = {name for name, _features in profile.exact_features}
     for line in output.splitlines():
+        if "\x1b" in line:
+            raise ReviewError(
+                f"feature graph {profile.name!r} emitted terminal control bytes"
+            )
         package_text, separator, feature_text = line.partition("|")
         fields = package_text.split()
         if not separator or not fields:
@@ -293,6 +297,8 @@ def parse_graph_output(profile: Profile, output: str) -> dict[str, frozenset[str
 def package_graph(repo: Path, profile: Profile) -> dict[str, frozenset[str]]:
     """Return packages and resolved features selected for one exact CLI profile."""
 
+    environment = dict(os.environ)
+    environment["CARGO_TERM_COLOR"] = "never"
     command = [
         "cargo",
         "tree",
@@ -316,6 +322,7 @@ def package_graph(repo: Path, profile: Profile) -> dict[str, frozenset[str]]:
         stderr=subprocess.PIPE,
         text=True,
         check=False,
+        env=environment,
     )
     if process.returncode != 0:
         raise ReviewError(

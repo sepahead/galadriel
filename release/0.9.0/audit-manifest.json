@@ -901,13 +901,13 @@
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "a0621f262a6ae20bcacc5bb0f1098656ec4bc606984062699d9ec6a6196dbef6",
+      "sha256": "0d1ef6a3df4ea848c75c7a92f8c28b4202eeee037625aac48ffcf8d6d71336d1",
       "size_bytes": 57030
     },
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "443d0c639e574e74837b2c2e870b18d21183c2acb0b04e72b35ade78b7c7495d",
+      "sha256": "5e920f9b56ac88e2433da9e590458acc63e6a7a16f1e5573851186e013415a38",
       "size_bytes": 322
     },
     {
@@ -1063,8 +1063,8 @@
     {
       "path": "repo_work/check_feature_graph.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3fda2d3f32ee75ebd603b635883111f9ae93b60e10ef5ebf87acd782b7d50f25",
-      "size_bytes": 18766
+      "sha256": "42f5e378ab9baeac009f563a8403006512f190000211b530778135e5f1870aeb",
+      "size_bytes": 19025
     },
     {
       "path": "repo_work/check_focused_mutation.py",
@@ -1159,8 +1159,8 @@
     {
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d57eb8656ca068793b3a854cf1a2c52ebf2ef28d21b1eb70b94efe3274748929",
-      "size_bytes": 81506
+      "sha256": "dcf9ad884582ceac741894a88f8f907c5f61f791d6dd7b127cc66fd4588c554e",
+      "size_bytes": 82575
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",

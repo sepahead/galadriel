@@ -28,6 +28,7 @@ from check_feature_graph import (
     PROFILES,
     TOKIO_RESOLVED_FEATURES,
     ZENOH_RESOLVED_FEATURES,
+    package_graph,
     parse_ncp_consumer_descriptor,
     parse_graph_output,
     main as feature_graph_main,
@@ -624,6 +625,33 @@ class ReviewToolsTest(unittest.TestCase):
                 profile,
                 output + "\nncp-core v0.8.0 (locked)|default,schema\n",
             )
+
+        with self.assertRaisesRegex(ReviewError, "terminal control bytes"):
+            parse_graph_output(
+                profile,
+                "ncp-core v0.8.0 (locked)|default\x1b[0m\n",
+            )
+
+    def test_feature_graph_disables_cargo_terminal_color(self) -> None:
+        profile = next(profile for profile in PROFILES if profile.name == "pure")
+        completed = mock.Mock(
+            returncode=0,
+            stdout="galadriel-cli v0.9.0|default\n",
+            stderr="",
+        )
+        with (
+            mock.patch.dict(os.environ, {"CARGO_TERM_COLOR": "always"}),
+            mock.patch(
+                "check_feature_graph.subprocess.run", return_value=completed
+            ) as run_cargo,
+        ):
+            self.assertEqual(
+                package_graph(self.root, profile),
+                {"galadriel-cli": frozenset({"default"})},
+            )
+            self.assertEqual(os.environ["CARGO_TERM_COLOR"], "always")
+
+        self.assertEqual(run_cargo.call_args.kwargs["env"]["CARGO_TERM_COLOR"], "never")
 
     def test_machine_ecosystem_cut_binds_the_connection_prose(self) -> None:
         repo = TOOLS.parent
