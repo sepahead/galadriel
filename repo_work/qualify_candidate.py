@@ -81,6 +81,24 @@ BASE_COMMANDS = (
         ("python3", "repo_work/build_task_dispositions.py", "verify"),
     ),
     CommandSpec(
+        "local-convergence-schema",
+        ("python3", "repo_work/local_convergence.py", "schema", "--repo", "."),
+    ),
+    CommandSpec(
+        "frozen-audit-inputs-verify",
+        (
+            "python3",
+            "repo_work/freeze_audit_inputs.py",
+            "verify",
+            "--repo",
+            ".",
+            "--out",
+            "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
+            "--allowed-signers",
+            ALLOWED_SIGNERS,
+        ),
+    ),
+    CommandSpec(
         "release-audit-verify", ("python3", "scripts/release_audit.py", "verify")
     ),
     CommandSpec("format", ("cargo", "fmt", "--all", "--", "--check")),
@@ -600,9 +618,7 @@ def capture_report(
     try:
         if json_lines:
             documents = [
-                loads_json(line)
-                for line in process.stdout.splitlines()
-                if line.strip()
+                loads_json(line) for line in process.stdout.splitlines() if line.strip()
             ]
             if not documents or not all(
                 isinstance(document, dict) for document in documents

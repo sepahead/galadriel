@@ -41,6 +41,36 @@ branch because the release owner explicitly required all changes to land there.
 The handoff's generic release-branch instruction is satisfied by the change-control
 rules in `RELEASE-POLICY.md`, not by maintaining a divergent branch.
 
+**GLD-090-REL-006:** The supplied convergence schema requires all T000–T115 IDs,
+while the supplied dependency order places T113 before the T114 final review and
+T115 signed decision. T113 **SHALL** therefore qualify the exact candidate-bound
+schema, generator, semantic validator, fixed cross-repository requirement set, and
+negative tests. It **SHALL NOT** cite a future `LOCAL-CONVERGENCE.json` as evidence.
+After the signed T114 review and signed T115 decision exist, finalization **SHALL**
+materialize and sign the all-task convergence record as a transaction output. This
+is the only acyclic interpretation that preserves both the exact 116-task schema and
+the supplied dependency order; it does not weaken any substantive gate.
+
+**GLD-090-REL-007:** The 0.9 advertised cross-repository edges are the exact pid-rs
+and NCP dependency-pin contracts exercised by qualified optional build graphs.
+`dependency_pin_required_for_qualified_graphs` describes that local build
+obligation. Local pin reconciliation **SHALL** pass before T115, while reciprocal
+final-candidate, deployed-producer, and downstream-adapter qualification remains
+removed through `CLM-008` and `CLM-009`. Readiness for later reconciliation **SHALL
+NOT** be represented as reciprocal acceptance or deployment evidence.
+
+**GLD-090-REL-008:** Final closure **SHALL** follow this evidence order: signed
+candidate and qualification; T113 mechanism evidence; detached-signed T114 review;
+detached-signed candidate-bound T115 decision; detached-signed ordered task
+dispositions citing those two inputs; signed convergence; signed closure manifest;
+checksums. The finalizer **SHALL** stage the complete bundle outside the requested
+path, verify it, flush it, and publish it with one atomic, no-replace,
+same-parent rename. Every pre-publication failure **SHALL** leave the requested
+path absent and retain no partial result there. The rename is the publication
+commit point: a later parent-directory durability or result-reporting failure
+**SHALL** return status 3, retain the complete output, and require independent
+verification before use.
+
 ## Consequences
 
 The complete 116-task ledger remains controlling and ordered. Version 0.9.0 means

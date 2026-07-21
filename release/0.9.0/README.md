@@ -31,6 +31,8 @@ prose alone **SHALL NOT** close a task.
 
 Normative and generated artifacts:
 
+- `RELEASE-NOTES.md` is the reviewed GitHub release text and preserves every
+  unavailable deployment, reciprocal-integration, archival, and policy-use claim.
 - `audit-inputs.json` is the reviewed input inventory; `audit-manifest.json` is
   generated from it and the repository.
 - `claims.json` separates implemented, validated, deployment-qualified, and
@@ -41,6 +43,17 @@ Normative and generated artifacts:
   `task-dispositions.json`, and `requirements-ledger.json` are source-state
   records: they preserve the exact post-commit work still required and do not
   represent future review as complete.
+- `ecosystem-cut.json` records each inspected sibling object, relationship direction,
+  build/runtime optionality, rationale, and explicit supersession. Mutable heads are
+  provenance only; the two Cargo revisions are the only dependency pins.
+- `local-convergence-schema.json` is the explicit 0.9.0 adaptation of the supplied
+  convergence schema. Finalization emits a separately signed, exact-candidate
+  `LOCAL-CONVERGENCE.json` only after all 116 dispositions, ten wave acceptances,
+  complete file review, and retained artifacts pass, and after the fixed local
+  cross-repository requirements are explicitly recorded. Exact pid-rs/NCP pin graphs
+  are locally qualified; reciprocal and deployed compatibility remains unclaimed.
+  The record is an entry point for any later reciprocal reconciliation, not evidence
+  that another repository accepted this candidate.
 - `api/` retains the public-source API baseline and accepted 0.9.0 surface.
 - `evidence/` retains complete command output rather than pass/fail summaries.
 - `reviews/` contains the phase and final multi-lens review records.
@@ -72,10 +85,19 @@ python3 repo_work/qualify_candidate.py \
   --deep --keep-going
 ```
 
-Reviewed file and task dispositions, the final twenty-lens review, and the release
-decision are then signed and supplied to `repo_work/finalize_release.py`. Those
-post-commit records must bind the same commit and tree; they remain outside the
-candidate so creating them cannot retroactively change its source identity.
+The post-commit order is exact: sign the final twenty-lens review; sign the canonical
+candidate-bound v3 release decision that hashes that review and its signature; then
+sign task dispositions whose T114 and T115 evidence cites those retained inputs.
+`repo_work/finalize_release.py` snapshots and verifies those exact bytes, stages the
+complete closure, flushes it, and publishes it by one same-parent rename. These
+records remain outside the candidate so creating them cannot retroactively change
+its source identity. A pre-publication failure leaves the requested output absent.
+Use its optional `--snapshot-dir` to select a secure external filesystem with room
+for the bounded 8 GiB qualification snapshot plus review inputs; prefer an
+agent-backed Ed25519 public-key handle so private key bytes need not be snapshotted.
+The rename is the commit point; status 3 means a complete output was retained but
+parent-directory durability or result reporting was not confirmed, so the retained
+bundle must be independently verified before use.
 
 The verifier rejects stale output, duplicate JSON keys, mutable Git dependencies,
 prose-only task closure, incomplete twenty-lens reviews, incorrect author/version

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import copy
 import csv
+import errno
 import hashlib
+import io
 import json
 import os
 import shlex
@@ -14,6 +16,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 TOOLS = Path(__file__).resolve().parents[1]
 ROOT = TOOLS.parent
@@ -22,9 +25,43 @@ sys.path.insert(0, str(TOOLS))
 from common import ReviewError, canonical_json  # noqa: E402
 from check_focused_mutation import assert_new_output_path  # noqa: E402
 from finalize_release import (  # noqa: E402
+    CLOSURE_MANIFEST,
+    CLOSURE_SIGNATURE,
+    LOCAL_CONVERGENCE,
+    LOCAL_CONVERGENCE_SIGNATURE,
+    RELEASE_DECISION,
+    RELEASE_DECISION_SIGNATURE,
+    PublicationDurabilityError,
+    atomic_rename_no_replace,
+    cleanup_finalization_inputs,
+    emit_closure_bundle,
+    emit_publication_result,
+    main as finalize_release_main,
+    publish_staged_output,
+    postpublication_cleanup_status,
+    qualification_tier_inventory,
+    snapshot_qualification_artifact,
+    snapshot_signed_qualification_tier,
     validate_candidate_plan_documents,
+    validate_finalization_dag_evidence,
     validate_qualification_commands,
     validate_qualification_record,
+    verify_sha256sums,
+)
+from local_convergence import (  # noqa: E402
+    CONVERGENCE_ARTIFACT_PATHS,
+    CROSS_REPO_REQUIREMENTS,
+    MAX_AGGREGATE_ARTIFACT_BYTES,
+    MAX_ARTIFACT_BYTES,
+    MAX_MANIFEST_BYTES,
+    SCHEMA_PATH as LOCAL_CONVERGENCE_SCHEMA,
+    SIGNATURE_NAMESPACE as LOCAL_CONVERGENCE_NAMESPACE,
+    artifact_path_parts as local_convergence_artifact_path_parts,
+    artifact_records as local_convergence_artifacts,
+    build_document as build_local_convergence,
+    read_bounded_artifact as read_bounded_local_convergence_artifact,
+    validate_document as validate_local_convergence,
+    validate_schema as validate_local_convergence_schema,
 )
 from qualify_candidate import (  # noqa: E402
     BASE_COMMANDS,
@@ -658,6 +695,252 @@ class FileLedgerTests(GitFixture):
 
 
 class BindingAndManifestTests(GitFixture):
+    def test_signed_qualification_tier_is_snapshotted_once_without_following_links(
+        self,
+    ) -> None:
+        key = self.root / "qualification-key"
+        subprocess.run(
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)],
+            check=True,
+        )
+        allowed = self.root / "qualification-allowed"
+        derive_external_allowed_signers(key, allowed)
+        source = self.root / "qualification"
+        artifact = source / "nested" / "evidence.json"
+        artifact.parent.mkdir(parents=True)
+        original = b'{"status":"PASS"}\n'
+        artifact.write_bytes(original)
+        manifest = source / "QUALIFICATION-MANIFEST.json"
+        manifest.write_bytes(
+            canonical_json(
+                {
+                    "schema": "galadriel.tiered-artifact-manifest.v1",
+                    "tier": "qualification",
+                    "candidate": {"commit": "a" * 40, "tree": "b" * 40},
+                    "artifacts": [
+                        {
+                            "path": "nested/evidence.json",
+                            "sha256": hashlib.sha256(original).hexdigest(),
+                            "size_bytes": len(original),
+                        }
+                    ],
+                }
+            )
+        )
+        signature = sign_file(manifest, key, "galadriel-qualification-manifest")
+        checksum_paths = sorted(
+            (artifact, manifest, signature),
+            key=lambda path: path.relative_to(source).as_posix(),
+        )
+        (source / "SHA256SUMS").write_text(
+            "".join(
+                f"{hashlib.sha256(path.read_bytes()).hexdigest()}  "
+                f"{path.relative_to(source).as_posix()}\n"
+                for path in checksum_paths
+            ),
+            encoding="utf-8",
+        )
+
+        def destination(name: str) -> tuple[Path, Path, Path]:
+            target = self.root / name
+            target.mkdir()
+            retained_manifest = target / manifest.name
+            retained_signature = target / signature.name
+            retained_manifest.write_bytes(manifest.read_bytes())
+            retained_signature.write_bytes(signature.read_bytes())
+            return target, retained_manifest, retained_signature
+
+        retained, retained_manifest, retained_signature = destination("retained")
+        snapshot_signed_qualification_tier(
+            source,
+            retained,
+            manifest_path=retained_manifest,
+            signature_path=retained_signature,
+            allowed_signers=allowed,
+        )
+        unlisted_target = self.root / "unlisted-target"
+        unlisted_target.write_bytes(b"unlisted\n")
+        for index, kind in enumerate(("regular", "symlink", "fifo")):
+            with self.subTest(unlisted=kind):
+                unlisted = source / f"unlisted-{kind}"
+                if kind == "regular":
+                    unlisted.write_bytes(b"unlisted\n")
+                    expected_error = "inventory differs"
+                elif kind == "symlink":
+                    unlisted.symlink_to(unlisted_target)
+                    expected_error = "symlink"
+                else:
+                    os.mkfifo(unlisted)
+                    expected_error = "special file"
+                target, target_manifest, target_signature = destination(
+                    f"unlisted-{index}"
+                )
+                with self.assertRaisesRegex(ReviewError, expected_error):
+                    snapshot_signed_qualification_tier(
+                        source,
+                        target,
+                        manifest_path=target_manifest,
+                        signature_path=target_signature,
+                        allowed_signers=allowed,
+                    )
+                unlisted.unlink()
+
+        race, race_manifest, race_signature = destination("post-copy-race")
+
+        def copy_then_add_unlisted(*args: object, **kwargs: object) -> None:
+            snapshot_qualification_artifact(*args, **kwargs)  # type: ignore[arg-type]
+            (source / "late-unlisted.json").write_text("{}\n", encoding="utf-8")
+
+        with (
+            mock.patch(
+                "finalize_release.snapshot_qualification_artifact",
+                side_effect=copy_then_add_unlisted,
+            ),
+            self.assertRaisesRegex(ReviewError, "changed while being snapshotted"),
+        ):
+            snapshot_signed_qualification_tier(
+                source,
+                race,
+                manifest_path=race_manifest,
+                signature_path=race_signature,
+                allowed_signers=allowed,
+            )
+        (source / "late-unlisted.json").unlink()
+        artifact.write_bytes(b'{"status":"CHANGED"}\n')
+        self.assertEqual((retained / "nested/evidence.json").read_bytes(), original)
+
+        artifact.write_bytes(original)
+        artifact.unlink()
+        outside = self.root / "outside.json"
+        outside.write_bytes(original)
+        artifact.symlink_to(outside)
+        linked, linked_manifest, linked_signature = destination("linked")
+        with self.assertRaisesRegex(
+            ReviewError, "missing or unsafe|size or type mismatch|symlink"
+        ):
+            snapshot_signed_qualification_tier(
+                source,
+                linked,
+                manifest_path=linked_manifest,
+                signature_path=linked_signature,
+                allowed_signers=allowed,
+            )
+
+        artifact.unlink()
+        artifact.write_bytes(original)
+        artifact.unlink()
+        os.mkfifo(artifact)
+        fifo, fifo_manifest, fifo_signature = destination("fifo")
+        with self.assertRaisesRegex(
+            ReviewError, "missing or unsafe|size or type mismatch|special file"
+        ):
+            snapshot_signed_qualification_tier(
+                source,
+                fifo,
+                manifest_path=fifo_manifest,
+                signature_path=fifo_signature,
+                allowed_signers=allowed,
+            )
+
+        artifact.unlink()
+        artifact.write_bytes(b'{"status":"FAIL"}\n')
+        drift, drift_manifest, drift_signature = destination("drift")
+        with self.assertRaisesRegex(ReviewError, "digest mismatch"):
+            snapshot_signed_qualification_tier(
+                source,
+                drift,
+                manifest_path=drift_manifest,
+                signature_path=drift_signature,
+                allowed_signers=allowed,
+            )
+
+        artifact.write_bytes(original)
+        artifact.unlink()
+        artifact.parent.rmdir()
+        outside_directory = self.root / "outside-directory"
+        outside_directory.mkdir()
+        (outside_directory / "evidence.json").write_bytes(original)
+        (source / "nested").symlink_to(outside_directory, target_is_directory=True)
+        parent_link, parent_manifest, parent_signature = destination("parent-link")
+        with self.assertRaisesRegex(ReviewError, "missing or unsafe|symlink"):
+            snapshot_signed_qualification_tier(
+                source,
+                parent_link,
+                manifest_path=parent_manifest,
+                signature_path=parent_signature,
+                allowed_signers=allowed,
+            )
+
+        alias = self.root / "qualification-alias"
+        alias.symlink_to(source, target_is_directory=True)
+        alias_target, alias_manifest, alias_signature = destination("root-link")
+        with self.assertRaisesRegex(ReviewError, "root is missing or unsafe"):
+            snapshot_signed_qualification_tier(
+                alias,
+                alias_target,
+                manifest_path=alias_manifest,
+                signature_path=alias_signature,
+                allowed_signers=allowed,
+            )
+
+        empty_digest = hashlib.sha256(b"").hexdigest()
+        for index, reserved in enumerate(
+            (
+                LOCAL_CONVERGENCE,
+                f"nested/{LOCAL_CONVERGENCE_SIGNATURE}",
+                "inputs/review.json",
+                "closure-summary.json",
+            )
+        ):
+            with self.subTest(reserved=reserved):
+                reserved_manifest = self.root / f"reserved-{index}.json"
+                reserved_manifest.write_bytes(
+                    canonical_json(
+                        {
+                            "schema": "galadriel.tiered-artifact-manifest.v1",
+                            "tier": "qualification",
+                            "candidate": {"commit": "a" * 40, "tree": "b" * 40},
+                            "artifacts": [
+                                {
+                                    "path": reserved,
+                                    "sha256": empty_digest,
+                                    "size_bytes": 0,
+                                }
+                            ],
+                        }
+                    )
+                )
+                reserved_signature = sign_file(
+                    reserved_manifest, key, "galadriel-qualification-manifest"
+                )
+                reserved_target = self.root / f"reserved-target-{index}"
+                reserved_target.mkdir()
+                with self.assertRaisesRegex(ReviewError, "reserved|forbidden"):
+                    snapshot_signed_qualification_tier(
+                        source,
+                        reserved_target,
+                        manifest_path=reserved_manifest,
+                        signature_path=reserved_signature,
+                        allowed_signers=allowed,
+                    )
+
+    def test_qualification_inventory_has_a_controlled_depth_bound(self) -> None:
+        root = self.root / "deep-qualification"
+        root.mkdir()
+        current = root
+        for _index in range(129):
+            current = current / "d"
+            current.mkdir()
+        with self.assertRaisesRegex(ReviewError, "directory-depth limit"):
+            qualification_tier_inventory(root)
+
+    def test_qualification_inventory_rejects_unsigned_empty_directories(self) -> None:
+        root = self.root / "qualification-with-empty-directory"
+        (root / "retained").mkdir(parents=True)
+        (root / "artifact.json").write_text("{}\n", encoding="utf-8")
+        with self.assertRaisesRegex(ReviewError, "empty directory: retained"):
+            qualification_tier_inventory(root)
+
     def test_signed_mutation_manifest_binds_canonical_diff_and_outcomes(self) -> None:
         key = self.root / "mutation-key"
         subprocess.run(
@@ -925,6 +1208,10 @@ class BindingAndManifestTests(GitFixture):
         tracked = self.root / "tracked-allowed"
         tracked.write_bytes(expected)
         assert_tracked_allowed_signer(tracked, expected)
+        for altered in (b"# comment\n" + expected, expected.rstrip(b"\n")):
+            tracked.write_bytes(altered)
+            with self.assertRaisesRegex(ReviewError, "replaced or altered"):
+                assert_tracked_allowed_signer(tracked, expected)
         tracked.write_text(
             "sepmhn@gmail.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIForged\n",
             encoding="ascii",
@@ -1136,6 +1423,26 @@ class DispositionTests(GitFixture):
 
 
 class DecisionAndRunnerTests(unittest.TestCase):
+    def test_semantic_freeze_verification_precedes_release_audit(self) -> None:
+        names = [spec.name for spec in BASE_COMMANDS]
+        freeze_index = names.index("frozen-audit-inputs-verify")
+        audit_index = names.index("release-audit-verify")
+        self.assertEqual(freeze_index + 1, audit_index)
+        self.assertEqual(
+            BASE_COMMANDS[freeze_index].argv,
+            (
+                "python3",
+                "repo_work/freeze_audit_inputs.py",
+                "verify",
+                "--repo",
+                ".",
+                "--out",
+                "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
+                "--allowed-signers",
+                "release/0.9.0/audit/ALLOWED_SIGNERS",
+            ),
+        )
+
     def test_qualification_commands_are_argv_and_output_bound(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1526,6 +1833,427 @@ class DecisionAndRunnerTests(unittest.TestCase):
             with self.assertRaisesRegex(ReviewError, "refusing to replace"):
                 assert_new_output_path(output, "focused mutation receipt")
 
+    def test_finalizer_publication_is_atomic_and_never_replaces(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            staging = root / ".closure.staging"
+            staging.mkdir()
+            (staging / "complete.json").write_text("complete\n", encoding="utf-8")
+            output = root / "closure"
+            publish_staged_output(staging, output)
+            self.assertFalse(staging.exists())
+            self.assertEqual(
+                (output / "complete.json").read_text(encoding="utf-8"),
+                "complete\n",
+            )
+
+            replacement = root / ".replacement.staging"
+            replacement.mkdir()
+            with self.assertRaisesRegex(ReviewError, "refusing to replace"):
+                atomic_rename_no_replace(replacement, output)
+            self.assertTrue(replacement.is_dir())
+
+            empty_output = root / "empty-output"
+            empty_output.mkdir()
+            empty_replacement = root / ".empty-replacement.staging"
+            empty_replacement.mkdir()
+            with self.assertRaisesRegex(ReviewError, "refusing to replace"):
+                atomic_rename_no_replace(empty_replacement, empty_output)
+            self.assertTrue(empty_output.is_dir())
+            self.assertTrue(empty_replacement.is_dir())
+
+            dangling = root / "dangling-output"
+            dangling.symlink_to(root / "missing-target")
+            another = root / ".another.staging"
+            another.mkdir()
+            with self.assertRaisesRegex(ReviewError, "refusing to replace"):
+                atomic_rename_no_replace(another, dangling)
+            self.assertTrue(dangling.is_symlink())
+            self.assertTrue(another.is_dir())
+
+            other_parent = root / "other-parent"
+            other_parent.mkdir()
+            with self.assertRaisesRegex(ReviewError, "must share one parent"):
+                publish_staged_output(another, other_parent / "closure")
+
+            preflush = root / ".preflush.staging"
+            preflush.mkdir()
+            preflush_output = root / "preflush-output"
+            with (
+                mock.patch(
+                    "finalize_release.fsync_tree",
+                    side_effect=OSError("injected pre-publication failure"),
+                ),
+                self.assertRaisesRegex(OSError, "injected pre-publication"),
+            ):
+                publish_staged_output(preflush, preflush_output)
+            self.assertTrue(preflush.is_dir())
+            self.assertFalse(os.path.lexists(preflush_output))
+
+            unavailable = root / ".unavailable.staging"
+            unavailable.mkdir()
+            unavailable_output = root / "unavailable-output"
+            with (
+                mock.patch("finalize_release.os.O_NOFOLLOW", None),
+                self.assertRaisesRegex(ReviewError, "durability operations"),
+            ):
+                publish_staged_output(unavailable, unavailable_output)
+            self.assertTrue(unavailable.is_dir())
+            self.assertFalse(os.path.lexists(unavailable_output))
+
+            nonblocking = root / ".nonblocking.staging"
+            nonblocking.mkdir()
+            nonblocking_output = root / "nonblocking-output"
+            with (
+                mock.patch("finalize_release.os.O_NONBLOCK", None),
+                self.assertRaisesRegex(ReviewError, "durability operations"),
+            ):
+                publish_staged_output(nonblocking, nonblocking_output)
+            self.assertTrue(nonblocking.is_dir())
+            self.assertFalse(os.path.lexists(nonblocking_output))
+
+            special = root / ".special.staging"
+            special.mkdir()
+            os.mkfifo(special / "unexpected.fifo")
+            special_output = root / "special-output"
+            with self.assertRaisesRegex(ReviewError, "special file"):
+                publish_staged_output(special, special_output)
+            self.assertTrue(special.is_dir())
+            self.assertFalse(os.path.lexists(special_output))
+
+            linked_staging = root / ".linked.staging"
+            linked_staging.mkdir()
+            (linked_staging / "unexpected-link").symlink_to(root / "outside")
+            linked_output = root / "linked-output"
+            with self.assertRaisesRegex(
+                ReviewError, "staged closure contains a symlink"
+            ):
+                publish_staged_output(linked_staging, linked_output)
+            self.assertTrue(linked_staging.is_dir())
+            self.assertFalse(os.path.lexists(linked_output))
+
+    def test_publication_durability_opens_files_and_directories_nonblocking(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            staging = root / ".closure.staging"
+            nested = staging / "nested"
+            nested.mkdir(parents=True)
+            (nested / "artifact.json").write_text("{}\n", encoding="utf-8")
+            output = root / "closure"
+            real_open = os.open
+            with mock.patch("finalize_release.os.open", wraps=real_open) as opened:
+                publish_staged_output(staging, output)
+            self.assertTrue(output.is_dir())
+            self.assertGreaterEqual(opened.call_count, 4)
+            self.assertTrue(
+                all(call.args[1] & os.O_NONBLOCK for call in opened.call_args_list)
+            )
+            self.assertTrue(
+                all(call.args[1] & os.O_NOFOLLOW for call in opened.call_args_list)
+            )
+            directory_calls = [
+                call for call in opened.call_args_list if call.args[1] & os.O_DIRECTORY
+            ]
+            self.assertGreaterEqual(len(directory_calls), 3)
+            self.assertTrue(opened.call_args_list[-1].args[1] & os.O_DIRECTORY)
+
+    def test_post_rename_sync_failure_retains_only_complete_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            staging = root / ".closure.staging"
+            staging.mkdir()
+            (staging / "complete.json").write_text("complete\n", encoding="utf-8")
+            output = root / "closure"
+            with (
+                mock.patch("finalize_release.fsync_tree"),
+                mock.patch(
+                    "finalize_release.os.fsync",
+                    side_effect=OSError("injected parent sync failure"),
+                ),
+                self.assertRaises(PublicationDurabilityError),
+            ):
+                publish_staged_output(staging, output)
+            self.assertFalse(staging.exists())
+            self.assertEqual(
+                (output / "complete.json").read_text(encoding="utf-8"),
+                "complete\n",
+            )
+
+            close_staging = root / ".close-failure.staging"
+            close_staging.mkdir()
+            (close_staging / "complete.json").write_text("complete\n", encoding="utf-8")
+            close_output = root / "close-failure-output"
+            with (
+                mock.patch("finalize_release.fsync_tree"),
+                mock.patch("finalize_release.os.fsync"),
+                mock.patch(
+                    "finalize_release.os.close",
+                    side_effect=OSError("injected parent close failure"),
+                ),
+                self.assertRaises(PublicationDurabilityError),
+            ):
+                publish_staged_output(close_staging, close_output)
+            self.assertFalse(close_staging.exists())
+            self.assertEqual(
+                (close_output / "complete.json").read_text(encoding="utf-8"),
+                "complete\n",
+            )
+
+    def test_postpublication_input_cleanup_failure_maps_to_status_three(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            temporary = tempfile.TemporaryDirectory(dir=root)
+            key = Path(temporary.name) / "SIGNING_KEY"
+            key.write_text("public-key-handle\n", encoding="utf-8")
+            with (
+                mock.patch.object(
+                    temporary,
+                    "cleanup",
+                    side_effect=OSError("injected cleanup failure"),
+                ),
+                mock.patch("finalize_release.warn_cleanup_failure") as warning,
+            ):
+                self.assertEqual(postpublication_cleanup_status(temporary, key), 3)
+            self.assertFalse(key.exists())
+            warning.assert_called_once()
+            self.assertIn(temporary.name, warning.call_args.args[0])
+            temporary.cleanup()
+
+    def test_publication_result_distinguishes_clean_and_cleanup_warning(self) -> None:
+        result = {"candidate": "a" * 40, "output": "/complete/closure"}
+        for status, expected in (
+            (0, "COMMITTED"),
+            (3, "COMMITTED_WITH_CLEANUP_WARNING"),
+        ):
+            with self.subTest(status=status):
+                output = io.StringIO()
+                with mock.patch("finalize_release.sys.stdout", output):
+                    self.assertEqual(emit_publication_result(result, status), status)
+                record = json.loads(output.getvalue())
+                self.assertEqual(record["publication_status"], expected)
+                self.assertEqual(record["output"], "/complete/closure")
+        with self.assertRaisesRegex(ReviewError, "status must be 0 or 3"):
+            emit_publication_result(result, 2)
+
+    def test_prepublication_input_cleanup_failure_is_nonmasking(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            temporary = tempfile.TemporaryDirectory(dir=root)
+            key = Path(temporary.name) / "SIGNING_KEY"
+            key.write_text("public-key-handle\n", encoding="utf-8")
+            with (
+                mock.patch.object(
+                    temporary,
+                    "cleanup",
+                    side_effect=OSError("injected cleanup failure"),
+                ),
+                mock.patch("finalize_release.warn_cleanup_failure") as warning,
+            ):
+                self.assertFalse(cleanup_finalization_inputs(temporary, key))
+            self.assertFalse(key.exists())
+            warning.assert_called_once()
+            temporary.cleanup()
+
+    def test_closure_emission_success_path_has_exact_acyclic_artifact_graph(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            key = root / "release-key"
+            subprocess.run(
+                ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)],
+                check=True,
+            )
+            allowed = root / "ALLOWED_SIGNERS"
+            derive_external_allowed_signers(key, allowed)
+            source = root / "source-inputs"
+            source.mkdir()
+
+            ledger = source / "FILE_REVIEW_LEDGER.completed.csv"
+            ledger.write_text(
+                "path,review_status\nREADME.md,REVIEWED\n", encoding="utf-8"
+            )
+            dispositions = {
+                "dispositions": [
+                    {
+                        "task_id": f"T{index:03d}",
+                        "status": "COMPLETE_WITH_EXCLUSIONS",
+                    }
+                    for index in range(116)
+                ]
+            }
+            disposition_path = source / "reviewed-task-dispositions.json"
+            disposition_path.write_bytes(canonical_json(dispositions))
+            disposition_signature = sign_file(
+                disposition_path, key, "galadriel-task-dispositions"
+            )
+            review_path = source / "FINAL-TWENTY-LENS-REVIEW.json"
+            review_path.write_bytes(
+                canonical_json(
+                    {
+                        "schema": "galadriel.final-twenty-lens-review.v1",
+                        "candidate": {"commit": "a" * 40, "tree": "b" * 40},
+                        "conclusion": "COMPLETE_WITH_EXCLUSIONS",
+                    }
+                )
+            )
+            review_signature = sign_file(review_path, key, "galadriel-final-review")
+            decision_path = source / RELEASE_DECISION
+            decision_path.write_bytes(
+                canonical_json(
+                    {
+                        "schema": "galadriel.release-decision.v3",
+                        "candidate": {"commit": "a" * 40, "tree": "b" * 40},
+                        "decision": "NARROWED_GO",
+                        "review_sha256": hashlib.sha256(
+                            review_path.read_bytes()
+                        ).hexdigest(),
+                        "review_signature_sha256": hashlib.sha256(
+                            review_signature.read_bytes()
+                        ).hexdigest(),
+                    }
+                )
+            )
+            decision_signature = sign_file(
+                decision_path, key, "galadriel-release-decision"
+            )
+            retained_inputs = {
+                "inputs/FILE_REVIEW_LEDGER.completed.csv": ledger,
+                "inputs/reviewed-task-dispositions.json": disposition_path,
+                "inputs/reviewed-task-dispositions.json.sig": disposition_signature,
+                "inputs/FINAL-TWENTY-LENS-REVIEW.json": review_path,
+                "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig": review_signature,
+                RELEASE_DECISION: decision_path,
+                RELEASE_DECISION_SIGNATURE: decision_signature,
+            }
+            candidate = {"commit": "a" * 40, "tree": "b" * 40}
+            summary = {
+                "schema": "galadriel.exact-candidate-closure.v1",
+                "release": "0.9.0",
+                "author": "Sepehr Mahmoudian",
+                "candidate": candidate,
+                "file_review": {"tracked_files": 3, "reviewed_files": 3},
+                "release_decision": {
+                    "decision": "NARROWED_GO",
+                    "sha256": hashlib.sha256(decision_path.read_bytes()).hexdigest(),
+                    "signature_sha256": hashlib.sha256(
+                        decision_signature.read_bytes()
+                    ).hexdigest(),
+                },
+            }
+            output = root / "closure"
+            schema = json.loads((ROOT / LOCAL_CONVERGENCE_SCHEMA).read_text())
+            emit_closure_bundle(
+                final_output=output,
+                retained_inputs=retained_inputs,
+                closure_summary=summary,
+                task_dispositions=dispositions,
+                local_convergence_schema=schema,
+                signing_key=key,
+                allowed_signers=allowed,
+            )
+
+            expected_files = set(retained_inputs) | {
+                "closure-summary.json",
+                LOCAL_CONVERGENCE,
+                LOCAL_CONVERGENCE_SIGNATURE,
+                CLOSURE_MANIFEST,
+                CLOSURE_SIGNATURE,
+                "SHA256SUMS",
+            }
+            observed_files = {
+                path.relative_to(output).as_posix()
+                for path in output.rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(observed_files, expected_files)
+            self.assertFalse(list(root.glob(".closure.staging-*")))
+
+            verify_signature(
+                output / "inputs/reviewed-task-dispositions.json",
+                output / "inputs/reviewed-task-dispositions.json.sig",
+                allowed,
+                "galadriel-task-dispositions",
+            )
+            verify_signature(
+                output / "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+                output / "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+                allowed,
+                "galadriel-final-review",
+            )
+            verify_signature(
+                output / RELEASE_DECISION,
+                output / RELEASE_DECISION_SIGNATURE,
+                allowed,
+                "galadriel-release-decision",
+            )
+            verify_signature(
+                output / LOCAL_CONVERGENCE,
+                output / LOCAL_CONVERGENCE_SIGNATURE,
+                allowed,
+                LOCAL_CONVERGENCE_NAMESPACE,
+            )
+            verify_signature(
+                output / CLOSURE_MANIFEST,
+                output / CLOSURE_SIGNATURE,
+                allowed,
+                "galadriel-closure-manifest",
+            )
+            convergence = json.loads((output / LOCAL_CONVERGENCE).read_text())
+            validate_local_convergence(
+                convergence,
+                schema=schema,
+                expected_commit=candidate["commit"],
+                artifact_root=output,
+            )
+            self.assertEqual(
+                {row["path"] for row in convergence["artifacts"]},
+                set(CONVERGENCE_ARTIFACT_PATHS),
+            )
+            self.assertNotIn(LOCAL_CONVERGENCE, CONVERGENCE_ARTIFACT_PATHS)
+
+            manifest_document = verify_artifact_manifest(
+                output,
+                output / CLOSURE_MANIFEST,
+                expected_schema="galadriel.tiered-artifact-manifest.v1",
+                forbidden_paths={
+                    CLOSURE_MANIFEST,
+                    CLOSURE_SIGNATURE,
+                    "SHA256SUMS",
+                },
+            )
+            manifest_paths = {row["path"] for row in manifest_document["artifacts"]}
+            self.assertEqual(
+                manifest_paths,
+                expected_files - {CLOSURE_MANIFEST, CLOSURE_SIGNATURE, "SHA256SUMS"},
+            )
+            self.assertTrue(
+                {
+                    RELEASE_DECISION,
+                    RELEASE_DECISION_SIGNATURE,
+                    LOCAL_CONVERGENCE,
+                    LOCAL_CONVERGENCE_SIGNATURE,
+                }.issubset(manifest_paths)
+            )
+            verify_sha256sums(output)
+            checksum_paths = {
+                line.split("  ", 1)[1]
+                for line in (output / "SHA256SUMS")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            }
+            self.assertEqual(checksum_paths, expected_files - {"SHA256SUMS"})
+            decision_text = (output / RELEASE_DECISION).read_text(encoding="utf-8")
+            for future_artifact in (
+                "reviewed-task-dispositions",
+                LOCAL_CONVERGENCE,
+                CLOSURE_MANIFEST,
+                "SHA256SUMS",
+            ):
+                self.assertNotIn(future_artifact, decision_text)
+
     def test_supply_chain_reports_must_be_nonempty_valid_json(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1559,9 +2287,21 @@ class DecisionAndRunnerTests(unittest.TestCase):
             "failed_criterion_ids": ["GLD-090-ACC-001"],
         }
         base = {
-            "schema": "galadriel.release-decision-input.v1",
+            "schema": "galadriel.release-decision.v3",
             "release": "0.9.0",
             "author": "Sepehr Mahmoudian",
+            "issued_at": "2026-07-18T00:00:00Z",
+            "candidate": {"commit": "a" * 40, "tree": "b" * 40},
+            "bindings": {
+                "reconciliation_status": "LOCAL_PIN_PASS",
+                "source_plan_sha256": "1" * 64,
+                "claims_sha256": "2" * 64,
+                "qualification_manifest_sha256": "3" * 64,
+                "feature_graph_log_sha256": "4" * 64,
+                "completed_file_review_ledger_sha256": "5" * 64,
+                "final_twenty_lens_review_sha256": "6" * 64,
+                "final_twenty_lens_review_signature_sha256": "7" * 64,
+            },
             "decision": "NARROWED_GO",
             "publication_scope": "GitHub research source release",
             "doi": None,
@@ -1572,9 +2312,15 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 "The exact candidate does not satisfy the frozen rate-bound criterion."
             ],
         }
+        expected_candidate = base["candidate"]
+        expected_bindings = base["bindings"]
         with self.assertRaisesRegex(ReviewError, "lack exact narrowed dispositions"):
             validate_decision_input(
-                base, acceptance=acceptance, excluded_claim_ids={"CLM-007"}
+                base,
+                acceptance=acceptance,
+                excluded_claim_ids={"CLM-007"},
+                expected_candidate=expected_candidate,
+                expected_bindings=expected_bindings,
             )
         base["acceptance_failure_dispositions"] = {
             "GLD-090-ACC-001": {
@@ -1586,12 +2332,51 @@ class DecisionAndRunnerTests(unittest.TestCase):
             }
         }
         validate_decision_input(
-            base, acceptance=acceptance, excluded_claim_ids={"CLM-007"}
+            base,
+            acceptance=acceptance,
+            excluded_claim_ids={"CLM-007"},
+            expected_candidate=expected_candidate,
+            expected_bindings=expected_bindings,
         )
+        wrong_candidate = copy.deepcopy(base)
+        wrong_candidate["candidate"]["tree"] = "c" * 40
+        with self.assertRaisesRegex(ReviewError, "wrong candidate"):
+            validate_decision_input(
+                wrong_candidate,
+                acceptance=acceptance,
+                excluded_claim_ids={"CLM-007"},
+                expected_candidate=expected_candidate,
+                expected_bindings=expected_bindings,
+            )
+        wrong_review_binding = copy.deepcopy(base)
+        wrong_review_binding["bindings"]["final_twenty_lens_review_sha256"] = "8" * 64
+        with self.assertRaisesRegex(ReviewError, "incorrect evidence bindings"):
+            validate_decision_input(
+                wrong_review_binding,
+                acceptance=acceptance,
+                excluded_claim_ids={"CLM-007"},
+                expected_candidate=expected_candidate,
+                expected_bindings=expected_bindings,
+            )
+        not_reconciled = copy.deepcopy(base)
+        not_reconciled["bindings"]["reconciliation_status"] = "NOT_RUN"
+        not_reconciled_bindings = copy.deepcopy(not_reconciled["bindings"])
+        with self.assertRaisesRegex(ReviewError, "must be NO_GO"):
+            validate_decision_input(
+                not_reconciled,
+                acceptance=acceptance,
+                excluded_claim_ids={"CLM-007"},
+                expected_candidate=expected_candidate,
+                expected_bindings=not_reconciled_bindings,
+            )
         base["decision"] = "GO"
         with self.assertRaisesRegex(ReviewError, "GO is prohibited"):
             validate_decision_input(
-                base, acceptance=acceptance, excluded_claim_ids={"CLM-007"}
+                base,
+                acceptance=acceptance,
+                excluded_claim_ids={"CLM-007"},
+                expected_candidate=expected_candidate,
+                expected_bindings=expected_bindings,
             )
 
     def test_shallow_or_unbound_qualification_is_rejected(self) -> None:
@@ -1629,6 +2414,426 @@ class DecisionAndRunnerTests(unittest.TestCase):
         plan = json.loads((ROOT / "release/0.9.0/task-closure-plan.json").read_text())
         tasks = json.loads((ROOT / "release/0.9.0/tasks.json").read_text())
         validate_candidate_plan_documents(plan, tasks)
+        forward = copy.deepcopy(tasks)
+        forward["tasks"][0]["dependencies"] = ["T001"]
+        with self.assertRaisesRegex(ReviewError, "dependencies are invalid at T000"):
+            validate_candidate_plan_documents(plan, forward)
+        missing_digest = copy.deepcopy(plan)
+        del missing_digest["source_task_ledger_sha256"]
+        missing_source_digest = copy.deepcopy(tasks)
+        del missing_source_digest["source"]["task_ledger_sha256"]
+        with self.assertRaisesRegex(ReviewError, "source plan"):
+            validate_candidate_plan_documents(missing_digest, missing_source_digest)
+        missing_lenses = copy.deepcopy(plan)
+        del missing_lenses["lens_catalog"]
+        with self.assertRaisesRegex(ReviewError, "source plan"):
+            validate_candidate_plan_documents(missing_lenses, tasks)
+        string_rows = copy.deepcopy(plan)
+        string_rows["tasks"] = [f"T{index:03d}" for index in range(116)]
+        with self.assertRaisesRegex(ReviewError, "source plan"):
+            validate_candidate_plan_documents(string_rows, tasks)
+        string_tasks = copy.deepcopy(tasks)
+        string_tasks["tasks"] = [f"T{index:03d}" for index in range(116)]
+        with self.assertRaisesRegex(ReviewError, "task sequence"):
+            validate_candidate_plan_documents(plan, string_tasks)
+
+    def test_finalization_dag_requires_exact_t113_t114_t115_evidence(self) -> None:
+        mechanism_paths = {
+            "release/0.9.0/local-convergence-schema.json",
+            "release/0.9.0/VERSION-ADAPTATION.md",
+            "repo_work/finalize_release.py",
+            "repo_work/local_convergence.py",
+            "repo_work/tests/test_release_assurance.py",
+        }
+        qualification_logs = {
+            "logs/01-release-tool-tests.log",
+            "logs/04-local-convergence-schema.log",
+            "logs/06-feature-graph-contract.log",
+        }
+
+        def reference(kind: str, path: str) -> dict[str, str]:
+            return {"kind": kind, "path": path, "sha256": "a" * 64}
+
+        mechanism_refs = [
+            *[reference("candidate_blob", path) for path in sorted(mechanism_paths)],
+            *[
+                reference("qualification_artifact", path)
+                for path in sorted(qualification_logs)
+            ],
+        ]
+        dispositions = {
+            "dispositions": [
+                {"task_id": f"T{index:03d}", "evidence": [], "tests": []}
+                for index in range(116)
+            ]
+        }
+        dispositions["dispositions"][113]["evidence"] = mechanism_refs
+        dispositions["dispositions"][114]["evidence"] = [
+            reference("review_input", "inputs/FINAL-TWENTY-LENS-REVIEW.json"),
+            reference("review_input", "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig"),
+        ]
+        dispositions["dispositions"][115]["evidence"] = [
+            reference("review_input", "RELEASE-DECISION.json"),
+            reference("review_input", "RELEASE-DECISION.json.sig"),
+        ]
+        final_review = {"lenses": {"L01": {"evidence": mechanism_refs}}}
+        validate_finalization_dag_evidence(
+            dispositions,
+            final_review,
+            qualification_logs=qualification_logs,
+        )
+
+        malformed = copy.deepcopy(dispositions)
+        malformed["dispositions"][113]["evidence"] = None
+        malformed["dispositions"][113]["tests"] = None
+        with self.assertRaisesRegex(ReviewError, "T113 lacks"):
+            validate_finalization_dag_evidence(
+                malformed,
+                final_review,
+                qualification_logs=qualification_logs,
+            )
+
+        for name, mutate, message in (
+            (
+                "prospective-t113",
+                lambda value: value["dispositions"][113]["tests"].append(
+                    reference("candidate_blob", "local-Convergence.json")
+                ),
+                "prospective convergence",
+            ),
+            (
+                "missing-t114",
+                lambda value: value["dispositions"][114]["evidence"].pop(),
+                "T114 lacks",
+            ),
+            (
+                "missing-t115",
+                lambda value: value["dispositions"][115]["evidence"].pop(),
+                "T115 lacks",
+            ),
+        ):
+            with self.subTest(name=name):
+                attacked = copy.deepcopy(dispositions)
+                mutate(attacked)
+                with self.assertRaisesRegex(ReviewError, message):
+                    validate_finalization_dag_evidence(
+                        attacked,
+                        final_review,
+                        qualification_logs=qualification_logs,
+                    )
+
+    def test_local_convergence_schema_and_exact_candidate_record(self) -> None:
+        schema = json.loads((ROOT / LOCAL_CONVERGENCE_SCHEMA).read_text())
+        validate_local_convergence_schema(schema)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact_paths = CONVERGENCE_ARTIFACT_PATHS
+            for index, relative in enumerate(artifact_paths):
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(f"artifact {index}\n", encoding="utf-8")
+            dispositions = {
+                "dispositions": [
+                    {
+                        "task_id": f"T{index:03d}",
+                        "status": "COMPLETE_WITH_EXCLUSIONS",
+                    }
+                    for index in range(116)
+                ]
+            }
+            commit = "a" * 40
+            document = build_local_convergence(
+                commit=commit,
+                file_review={"tracked_files": 7, "reviewed_files": 7},
+                task_dispositions=dispositions,
+                artifacts=local_convergence_artifacts(root, artifact_paths),
+            )
+            validate_local_convergence(
+                document,
+                schema=schema,
+                expected_commit=commit,
+                artifact_root=root,
+            )
+            canonical_round_trip = json.loads(canonical_json(document))
+            validate_local_convergence(
+                canonical_round_trip,
+                schema=schema,
+                expected_commit=commit,
+                artifact_root=root,
+            )
+            self.assertEqual(document["completed_tasks"][0], "T000")
+            self.assertEqual(document["completed_tasks"][-1], "T115")
+            self.assertEqual(
+                document["cross_repo_requirements"], list(CROSS_REPO_REQUIREMENTS)
+            )
+
+            attacks = (
+                (
+                    "candidate",
+                    lambda value: value.__setitem__("source_commit", "b" * 40),
+                    "another candidate",
+                ),
+                (
+                    "wave",
+                    lambda value: value["waves"][0].__setitem__(
+                        "disposition", "WAVE_REWORK"
+                    ),
+                    "wave 0",
+                ),
+                (
+                    "cross-repository",
+                    lambda value: value["cross_repo_requirements"][0].__setitem__(
+                        "pin", None
+                    ),
+                    "requirements drifted",
+                ),
+                (
+                    "artifact",
+                    lambda value: value["artifacts"][0].__setitem__("sha256", "0" * 64),
+                    "artifact bytes do not match",
+                ),
+                (
+                    "artifact-path-set",
+                    lambda value: value["artifacts"].pop(),
+                    "path set is not exact",
+                ),
+            )
+            for name, mutate, message in attacks:
+                with self.subTest(name=name):
+                    attacked = copy.deepcopy(document)
+                    mutate(attacked)
+                    with self.assertRaisesRegex(ReviewError, message):
+                        validate_local_convergence(
+                            attacked,
+                            schema=schema,
+                            expected_commit=commit,
+                            artifact_root=root,
+                        )
+
+            aggregate_attack = copy.deepcopy(document)
+            for row in aggregate_attack["artifacts"]:
+                row["size_bytes"] = MAX_AGGREGATE_ARTIFACT_BYTES
+            with self.assertRaisesRegex(ReviewError, "aggregate size limit"):
+                validate_local_convergence(
+                    aggregate_attack,
+                    schema=schema,
+                    expected_commit=commit,
+                )
+
+            with tempfile.TemporaryDirectory() as outside_directory:
+                outside = Path(outside_directory)
+                (outside / "evidence.json").write_text("outside\n", encoding="utf-8")
+                (root / "alias").symlink_to(outside, target_is_directory=True)
+                with self.assertRaisesRegex(ReviewError, "missing or unsafe"):
+                    local_convergence_artifacts(root, ("alias/evidence.json",))
+            with self.assertRaisesRegex(ReviewError, "path is unsafe"):
+                local_convergence_artifacts(root, (r"ambiguous\path.json",))
+
+            oversized = root / artifact_paths[0]
+            oversized.write_bytes(b"")
+            with oversized.open("r+b") as handle:
+                handle.truncate(MAX_ARTIFACT_BYTES + 1)
+            with self.assertRaisesRegex(ReviewError, "exceeds the size limit"):
+                local_convergence_artifacts(root, artifact_paths)
+            oversized.write_text("artifact 0\n", encoding="utf-8")
+
+            dispositions["dispositions"][0]["status"] = "OPEN"
+            with self.assertRaisesRegex(ReviewError, "open task disposition"):
+                build_local_convergence(
+                    commit=commit,
+                    file_review={"tracked_files": 7, "reviewed_files": 7},
+                    task_dispositions=dispositions,
+                    artifacts=local_convergence_artifacts(root, artifact_paths),
+                )
+
+    def test_local_convergence_artifact_paths_reserve_outputs_and_inputs(self) -> None:
+        attacks = (
+            ("LOCAL-CONVERGENCE.json", "reserved name"),
+            ("nested/local-convergence.json.sig", "reserved name"),
+            ("inputs/LOCAL-CONVERGENCE.json", "reserved name"),
+            ("inputs/unexpected.json", "reserved input namespace"),
+            (
+                "Inputs/FILE_REVIEW_LEDGER.completed.csv",
+                "reserved input namespace",
+            ),
+        )
+        for relative, message in attacks:
+            with self.subTest(relative=relative):
+                with self.assertRaisesRegex(ReviewError, message):
+                    local_convergence_artifact_path_parts(relative)
+
+        expected = "inputs/FILE_REVIEW_LEDGER.completed.csv"
+        self.assertEqual(
+            local_convergence_artifact_path_parts(expected),
+            ("inputs", "FILE_REVIEW_LEDGER.completed.csv"),
+        )
+
+    def test_local_convergence_reader_owns_each_descriptor_once(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            nested = root / "nested"
+            nested.mkdir()
+            (nested / "artifact.json").write_bytes(b"retained")
+            real_close = os.close
+
+            def strict_close(descriptor: int) -> None:
+                try:
+                    real_close(descriptor)
+                except OSError as error:
+                    if error.errno == errno.EBADF:
+                        raise AssertionError("descriptor was closed more than once")
+                    raise
+
+            with (
+                mock.patch("local_convergence.os.close", side_effect=strict_close),
+                self.assertRaisesRegex(ReviewError, "exceeds the size limit"),
+            ):
+                read_bounded_local_convergence_artifact(
+                    root, "nested/artifact.json", max_bytes=0
+                )
+
+            root_link = root.parent / f"{root.name}-link"
+            root_link.symlink_to(root, target_is_directory=True)
+            try:
+                with self.assertRaisesRegex(ReviewError, "root is missing or unsafe"):
+                    read_bounded_local_convergence_artifact(
+                        root_link, "nested/artifact.json"
+                    )
+            finally:
+                root_link.unlink(missing_ok=True)
+
+    def test_local_convergence_cli_authenticates_snapshot_before_artifacts(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifacts = root / "artifacts"
+            for index, relative in enumerate(CONVERGENCE_ARTIFACT_PATHS):
+                target = artifacts / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(f"artifact {index}\n", encoding="utf-8")
+            commit = "a" * 40
+            document = build_local_convergence(
+                commit=commit,
+                file_review={"tracked_files": 8, "reviewed_files": 8},
+                task_dispositions={
+                    "dispositions": [
+                        {
+                            "task_id": f"T{index:03d}",
+                            "status": "COMPLETE_WITH_EXCLUSIONS",
+                        }
+                        for index in range(116)
+                    ]
+                },
+                artifacts=local_convergence_artifacts(
+                    artifacts, CONVERGENCE_ARTIFACT_PATHS
+                ),
+            )
+            manifest = root / "LOCAL-CONVERGENCE.json"
+            manifest.write_bytes(canonical_json(document))
+            key = root / "key"
+            subprocess.run(
+                ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)],
+                check=True,
+            )
+            allowed = root / "ALLOWED_SIGNERS"
+            derive_external_allowed_signers(key, allowed)
+            signature = sign_file(manifest, key, LOCAL_CONVERGENCE_NAMESPACE)
+
+            def verify(
+                manifest_path: Path,
+                signature_path: Path,
+                signers_path: Path,
+                artifact_root: Path,
+            ) -> subprocess.CompletedProcess[str]:
+                return subprocess.run(
+                    [
+                        "python3",
+                        str(TOOLS / "local_convergence.py"),
+                        "verify",
+                        "--repo",
+                        str(ROOT),
+                        "--manifest",
+                        str(manifest_path),
+                        "--signature",
+                        str(signature_path),
+                        "--allowed-signers",
+                        str(signers_path),
+                        "--expected-commit",
+                        commit,
+                        "--artifact-root",
+                        str(artifact_root),
+                    ],
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=False,
+                )
+
+            valid = verify(manifest, signature, allowed, artifacts)
+            self.assertEqual(valid.returncode, 0, valid.stderr)
+            self.assertIn("LOCAL_CONVERGENCE_OK", valid.stdout)
+
+            invalid_signature = root / "invalid.sig"
+            invalid_signature.write_bytes(b"not an SSH signature\n")
+            invalid = verify(
+                manifest,
+                invalid_signature,
+                allowed,
+                root / "missing-artifact-root",
+            )
+            self.assertEqual(invalid.returncode, 2)
+            self.assertIn(
+                "invalid galadriel-local-convergence signature", invalid.stderr
+            )
+            self.assertNotIn("artifact root", invalid.stderr)
+
+            wrong_namespace_manifest = root / "wrong-namespace.json"
+            wrong_namespace_manifest.write_bytes(manifest.read_bytes())
+            wrong_namespace_signature = sign_file(
+                wrong_namespace_manifest, key, "another-namespace"
+            )
+            wrong_namespace = verify(
+                wrong_namespace_manifest,
+                wrong_namespace_signature,
+                allowed,
+                artifacts,
+            )
+            self.assertEqual(wrong_namespace.returncode, 2)
+            self.assertIn(
+                "invalid galadriel-local-convergence signature", wrong_namespace.stderr
+            )
+
+            for label, target in (
+                ("manifest", manifest),
+                ("signature", signature),
+                ("signers", allowed),
+            ):
+                link = root / f"{label}-link"
+                link.symlink_to(target)
+                result = verify(
+                    link if label == "manifest" else manifest,
+                    link if label == "signature" else signature,
+                    link if label == "signers" else allowed,
+                    artifacts,
+                )
+                with self.subTest(link=label):
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn("missing or not regular", result.stderr)
+
+            oversized = root / "oversized.json"
+            with oversized.open("wb") as handle:
+                handle.truncate(MAX_MANIFEST_BYTES + 1)
+            oversized_result = verify(oversized, signature, allowed, artifacts)
+            self.assertEqual(oversized_result.returncode, 2)
+            self.assertIn("manifest-byte", oversized_result.stderr)
+
+            fifo = root / "manifest-fifo"
+            os.mkfifo(fifo)
+            fifo_result = verify(fifo, signature, allowed, artifacts)
+            self.assertEqual(fifo_result.returncode, 2)
+            self.assertIn("missing or not regular", fifo_result.stderr)
 
     def test_timeout_kills_child_process_group(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1684,6 +2889,8 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 "/missing/review.sig",
                 "--decision-input",
                 "/missing/decision.json",
+                "--decision-input-signature",
+                "/missing/decision.sig",
                 "--signing-key",
                 "/missing/key",
                 "--out",
@@ -1695,6 +2902,154 @@ class DecisionAndRunnerTests(unittest.TestCase):
         )
         self.assertEqual(process.returncode, 2)
         self.assertNotIn("UnboundLocalError", process.stderr)
+
+    def test_finalizer_reports_key_error_as_a_controlled_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo = root / "repo"
+            repo.mkdir()
+            qualification = root / "qualification"
+            qualification.mkdir()
+            candidate = "a" * 40
+            arguments = [
+                "finalize_release.py",
+                "--repo",
+                str(repo),
+                "--candidate",
+                candidate,
+                "--qualification",
+                str(qualification),
+                "--review-ledger",
+                str(root / "review.csv"),
+                "--task-dispositions",
+                str(root / "tasks.json"),
+                "--task-dispositions-signature",
+                str(root / "tasks.sig"),
+                "--final-review",
+                str(root / "review.json"),
+                "--final-review-signature",
+                str(root / "review.sig"),
+                "--decision-input",
+                str(root / "decision.json"),
+                "--decision-input-signature",
+                str(root / "decision.sig"),
+                "--signing-key",
+                str(root / "signing-key"),
+                "--out",
+                str(root / "closure"),
+            ]
+
+            def fake_git(_repo: Path, *args: str, text: bool = True) -> str | bytes:
+                if args == ("status", "--porcelain=v1", "--untracked-files=all"):
+                    return ""
+                if args == ("rev-parse", "HEAD^{commit}"):
+                    return f"{candidate}\n"
+                if args == ("branch", "--show-current"):
+                    return "main\n"
+                if args[0] == "show" and text is False:
+                    return b"allowed signer fixture\n"
+                raise AssertionError(f"unexpected Git invocation: {args!r}")
+
+            stderr = io.StringIO()
+            with (
+                mock.patch.object(sys, "argv", arguments),
+                mock.patch("finalize_release.git", side_effect=fake_git),
+                mock.patch(
+                    "finalize_release.snapshot_input",
+                    side_effect=lambda _source, destination, **_kwargs: destination,
+                ),
+                mock.patch(
+                    "finalize_release.derive_external_allowed_signers",
+                    return_value=b"allowed signer fixture\n",
+                ),
+                mock.patch("finalize_release.assert_tracked_allowed_signer"),
+                mock.patch(
+                    "finalize_release.verify_candidate_commit", return_value="b" * 40
+                ),
+                mock.patch("finalize_release.candidate_json", return_value={}),
+                mock.patch(
+                    "finalize_release.validate_candidate_plan_documents",
+                    side_effect=KeyError("lens_catalog"),
+                ),
+                mock.patch("finalize_release.sys.stderr", stderr),
+            ):
+                self.assertEqual(finalize_release_main(), 2)
+            self.assertIn("release finalization failed", stderr.getvalue())
+            self.assertNotIn("Traceback", stderr.getvalue())
+
+    def test_finalizer_cli_rejects_symlinked_signed_inputs_and_key(self) -> None:
+        script = TOOLS / "finalize_release.py"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            qualification = root / "qualification"
+            qualification.mkdir()
+            (qualification / "QUALIFICATION-MANIFEST.json").write_text(
+                "manifest\n", encoding="utf-8"
+            )
+            (qualification / "QUALIFICATION-MANIFEST.json.sig").write_text(
+                "signature\n", encoding="utf-8"
+            )
+            inputs = {
+                "review-ledger": root / "review.csv",
+                "task-dispositions": root / "tasks.json",
+                "task-dispositions-signature": root / "tasks.sig",
+                "final-review": root / "review.json",
+                "final-review-signature": root / "review.sig",
+                "decision-input": root / "decision.json",
+                "decision-input-signature": root / "decision.sig",
+                "signing-key": root / "signing-key",
+            }
+            for path in inputs.values():
+                path.write_text("placeholder\n", encoding="utf-8")
+            target = root / "symlink-target"
+            target.write_text("replacement\n", encoding="utf-8")
+
+            base = [
+                sys.executable,
+                str(script),
+                "--repo",
+                str(root / "missing-repository"),
+                "--candidate",
+                "0" * 40,
+                "--qualification",
+                str(qualification),
+            ]
+            for option, path in inputs.items():
+                base.extend((f"--{option}", str(path)))
+            for option, path in inputs.items():
+                with self.subTest(option=option):
+                    original = path.read_bytes()
+                    path.unlink()
+                    path.symlink_to(target)
+                    process = subprocess.run(
+                        [*base, "--out", str(root / f"output-{option}")],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                    )
+                    self.assertEqual(process.returncode, 2, process.stderr)
+                    self.assertIn("missing or not regular", process.stderr)
+                    path.unlink()
+                    path.write_bytes(original)
+
+            snapshot_target = root / "snapshot-target"
+            snapshot_target.mkdir()
+            snapshot_link = root / "snapshot-link"
+            snapshot_link.symlink_to(snapshot_target, target_is_directory=True)
+            process = subprocess.run(
+                [
+                    *base,
+                    "--snapshot-dir",
+                    str(snapshot_link),
+                    "--out",
+                    str(root / "output-snapshot-link"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(process.returncode, 2, process.stderr)
+            self.assertIn("--snapshot-dir", process.stderr)
 
 
 if __name__ == "__main__":

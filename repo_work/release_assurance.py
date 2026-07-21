@@ -355,22 +355,17 @@ def derive_external_allowed_signers(signing_key: Path, destination: Path) -> byt
 
 
 def assert_tracked_allowed_signer(path: Path, expected: bytes) -> None:
-    """Treat the candidate signer file as metadata, never as the trust root."""
+    """Require byte-identical candidate signer metadata, never use it as trust root."""
 
     if not path.is_file() or path.is_symlink():
         raise ReviewError(
             "candidate tracked allowed-signers metadata is missing or unsafe"
         )
     try:
-        lines = [
-            line.split(b"#", 1)[0].strip()
-            for line in path.read_bytes().splitlines()
-            if line.split(b"#", 1)[0].strip()
-        ]
+        actual = path.read_bytes()
     except OSError as error:
         raise ReviewError(f"cannot read candidate signer metadata: {error}") from error
-    expected_line = expected.strip()
-    if lines != [expected_line]:
+    if actual != expected:
         raise ReviewError(
             "candidate replaced or altered the externally derived allowed signer"
         )
@@ -502,7 +497,9 @@ def _metric_observation(
 ) -> dict[str, Any]:
     metric_domain = ACCEPTANCE_METRIC_DOMAINS.get(metric_name)
     if metric_domain is None:
-        raise ReviewError(f"internal acceptance metric domain is missing: {metric_name}")
+        raise ReviewError(
+            f"internal acceptance metric domain is missing: {metric_name}"
+        )
     condition = row.get("condition")
     detector = row.get("detector")
     if not isinstance(condition, str) or not condition or not isinstance(detector, str):
@@ -1784,6 +1781,7 @@ def validate_evidence_reference(
     repo: Path,
     commit: str,
     qualification_root: Path,
+    review_inputs: dict[str, Path],
 ) -> str:
     require_keys(reference, {"kind", "path", "sha256"}, "evidence reference")
     kind = reference["kind"]
@@ -1797,6 +1795,11 @@ def validate_evidence_reference(
         target = contained_path(qualification_root, relative)
         if not target.is_file():
             raise ReviewError(f"qualification evidence is missing: {relative}")
+        actual = digest_file(target)[0]
+    elif kind == "review_input":
+        target = review_inputs.get(relative)
+        if target is None or not target.is_file() or target.is_symlink():
+            raise ReviewError(f"review-input evidence is missing: {relative}")
         actual = digest_file(target)[0]
     else:
         raise ReviewError(f"unsupported evidence reference kind: {kind!r}")
@@ -1815,6 +1818,7 @@ def validate_reviewed_task_dispositions(
     tree: str,
     qualification_root: Path,
     source_plan_sha256: str,
+    review_inputs: dict[str, Path] | None = None,
 ) -> dict[str, Any]:
     """Validate reviewer-supplied closure against every exact source item."""
 
@@ -1851,6 +1855,7 @@ def validate_reviewed_task_dispositions(
         )
 
     reference_cache: dict[str, str] = {}
+    retained_review_inputs = review_inputs or {}
 
     def checked_reference(item: Any) -> str:
         try:
@@ -1861,13 +1866,18 @@ def validate_reviewed_task_dispositions(
             ) from error
         if key not in reference_cache:
             reference_cache[key] = validate_evidence_reference(
-                item, repo=repo, commit=commit, qualification_root=qualification_root
+                item,
+                repo=repo,
+                commit=commit,
+                qualification_root=qualification_root,
+                review_inputs=retained_review_inputs,
             )
         return reference_cache[key]
 
     complete = 0
     not_claimed = 0
     all_findings: set[str] = set()
+    terminal_tasks: set[str] = set()
     categories = (
         "preconditions",
         "procedure",
@@ -1896,6 +1906,13 @@ def validate_reviewed_task_dispositions(
             raise ReviewError(
                 f"reviewed task disposition sequence changed at {task_id}"
             )
+        dependencies = task_plan.get("source_projection", {}).get("dependencies")
+        if (
+            not isinstance(dependencies, list)
+            or len(dependencies) != len(set(dependencies))
+            or not set(dependencies).issubset(terminal_tasks)
+        ):
+            raise ReviewError(f"{task_id}: dependency is not an earlier terminal task")
         if (
             disposition["source_projection_sha256"]
             != task_plan["source_projection_sha256"]
@@ -2148,6 +2165,7 @@ def validate_reviewed_task_dispositions(
             complete += 1
         else:
             not_claimed += 1
+        terminal_tasks.add(task_id)
     return {
         "complete_with_exclusions": complete,
         "not_claimed": not_claimed,
@@ -2228,6 +2246,7 @@ def validate_final_twenty_lens_review(
                 repo=repo,
                 commit=commit,
                 qualification_root=qualification_root,
+                review_inputs={},
             )
     risks = document["residual_risks"]
     if not isinstance(risks, list) or not risks:
@@ -2244,6 +2263,8 @@ def validate_decision_input(
     *,
     acceptance: dict[str, Any],
     excluded_claim_ids: set[str],
+    expected_candidate: dict[str, str],
+    expected_bindings: dict[str, Any],
 ) -> None:
     require_keys(
         document,
@@ -2251,6 +2272,9 @@ def validate_decision_input(
             "schema",
             "release",
             "author",
+            "issued_at",
+            "candidate",
+            "bindings",
             "decision",
             "publication_scope",
             "doi",
@@ -2261,29 +2285,50 @@ def validate_decision_input(
         },
         "release decision input",
     )
-    if document["schema"] != "galadriel.release-decision-input.v1":
-        raise ReviewError("release decision input has the wrong schema")
+    if document["schema"] != "galadriel.release-decision.v3":
+        raise ReviewError("release decision has the wrong schema")
     if document["release"] != VERSION or document["author"] != AUTHOR:
-        raise ReviewError("release decision input has the wrong release or author")
+        raise ReviewError("release decision has the wrong release or author")
+    issued_at = document["issued_at"]
+    if not isinstance(issued_at, str) or TIMESTAMP.fullmatch(issued_at) is None:
+        raise ReviewError("release decision has an invalid issuance timestamp")
+    if document["candidate"] != expected_candidate:
+        raise ReviewError("release decision targets the wrong candidate")
+    if document["bindings"] != expected_bindings:
+        raise ReviewError("release decision has incorrect evidence bindings")
+    reconciliation_status = expected_bindings.get("reconciliation_status")
+    if reconciliation_status not in {"NOT_RUN", "LOCAL_PIN_PASS"}:
+        raise ReviewError("release decision has an invalid reconciliation binding")
+    for field, value in expected_bindings.items():
+        if field == "reconciliation_status":
+            continue
+        if value is not None and (
+            not isinstance(value, str) or SHA256.fullmatch(value) is None
+        ):
+            raise ReviewError(f"release decision binding {field} is not a SHA-256")
     decision = document["decision"]
     if decision not in {"GO", "NARROWED_GO", "NO_GO"}:
-        raise ReviewError("release decision input has an invalid decision")
-    if document["publication_scope"] != "GitHub research source release":
-        raise ReviewError("release decision input has the wrong publication scope")
-    if document["doi"] is not None or document["zenodo"] is not None:
+        raise ReviewError("release decision has an invalid decision")
+    if reconciliation_status == "NOT_RUN" and decision != "NO_GO":
         raise ReviewError(
-            "release decision input must not claim DOI or Zenodo metadata"
+            "release decision must be NO_GO before local reconciliation passes"
         )
+    if document["publication_scope"] != "GitHub research source release":
+        raise ReviewError("release decision has the wrong publication scope")
+    if document["doi"] is not None or document["zenodo"] is not None:
+        raise ReviewError("release decision must not claim DOI or Zenodo metadata")
     removed = document["removed_claim_ids"]
     if (
         not isinstance(removed, list)
         or len(set(removed)) != len(removed)
         or not set(removed).issubset(excluded_claim_ids)
     ):
-        raise ReviewError("release decision input has invalid removed claims")
+        raise ReviewError("release decision has invalid removed claims")
+    if decision == "GO" and removed:
+        raise ReviewError("GO is prohibited while public claims remain removed")
     risks = document["residual_risks"]
     if not isinstance(risks, list) or not risks:
-        raise ReviewError("release decision input must retain residual risks")
+        raise ReviewError("release decision must retain residual risks")
     for index, risk in enumerate(risks):
         require_text(risk, f"decision residual risk {index}", minimum=40)
 

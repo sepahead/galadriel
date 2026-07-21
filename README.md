@@ -54,17 +54,29 @@ cross-repository integration.
 | [Haldir](https://github.com/sepahead/haldir) | Prospective downstream authorization consumer | No dependency, adapter, route, or runtime edge in 0.9.0. | Defines the intended future record-only and independently admitted restrict-only boundary; tests ensure Galadriel evidence cannot grant or widen authority. | The integration phase has not started and there is no runtime evidence. |
 | [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator/covariate consumer | No dependency, adapter, route, or runtime edge in 0.9.0. | Documents a possible future immutable offline covariate import and keeps Galadriel sidecars outside normative NCP `SensorFrame`s. | Relationship E0; shared NCP/PID dependencies imply neither schema compatibility nor independent-implementation replication. |
 
-The 2026-07-18 read-only coordination cut inspected NCP
+The 2026-07-18 read-only coordination inspection recorded NCP
 `10492c81ac671ef1909962a9f1fede33781b9933`, Crebain
 `0a58a5b8dd799884ddb06f1308b1748216fab322`, Haldir remote `main`
-`dd3d8a1c993721f89a1edb04dec5247761c694ad`, and Prisoma
-`63cff105e0e40281376e6f827d7782e9b351961a`. These mutable repository heads are
-provenance for the inspection, not Galadriel release inputs or reciprocal compatibility
+`0e94f61cfd5c78482198a765157571746a256181`, and Prisoma
+`63cff105e0e40281376e6f827d7782e9b351961a`. A later 2026-07-18 read-only Haldir
+reinspection observed remote `main` at
+`dd3d8a1c993721f89a1edb04dec5247761c694ad`. Git ancestry shows that the later
+object descends from the discovery object through Haldir current-head qualification and
+repository-inventory work. The later observation supersedes only the mutable Haldir
+discovery-head reference; it does not rewrite either observation, any frozen or historical
+evidence, or a Galadriel release input.
+
+These mutable repository heads are inspection provenance, not reciprocal compatibility
 pins. NCP's wire-1.0 topology remains proposed and incompatible with the current named
 wire-0.8 sidecars; Crebain retains component-level schema-v1 alignment but freezes
-Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input; Haldir has
-no adapter; and Prisoma has no direct sidecar path. Current reciprocal integration and
-final cross-repository qualification remain `NOT_CLAIMED`.
+Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input; neither
+inspected Haldir object contains a Galadriel adapter or runtime edge; and Prisoma has no
+direct sidecar path. Current reciprocal integration and final cross-repository
+qualification remain `NOT_CLAIMED`.
+
+The canonical [machine-readable inspection cut](release/0.9.0/ecosystem-cut.json)
+binds the same objects, relationship classes, optionality, rationale, and limited
+Haldir supersession so later prose edits cannot silently change this history.
 
 The exact route, lifecycle, and downstream-effect rules are in
 [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) and

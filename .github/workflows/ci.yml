@@ -73,6 +73,11 @@ jobs:
       - name: Verify generated release-audit artifacts
         run: |
           python3 repo_work/build_task_dispositions.py verify
+          python3 repo_work/local_convergence.py schema --repo .
+          python3 repo_work/freeze_audit_inputs.py verify \
+            --repo . \
+            --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json \
+            --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
           python3 scripts/release_audit.py verify
 
       - name: Verify exact public API snapshots

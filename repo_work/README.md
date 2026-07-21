@@ -24,11 +24,16 @@ Run them from a clean candidate checkout:
 ```bash
 python3 repo_work/check_frozen_head.py --expected "$(git rev-parse HEAD)"
 python3 repo_work/check_feature_graph.py
+python3 repo_work/local_convergence.py schema --repo .
 python3 repo_work/check_public_api.py
 python3 repo_work/audit_tracked_files.py --repo . --out audit/generated
 python3 repo_work/make_review_packets.py audit/generated/FILE_REVIEW_LEDGER.csv --lanes 3
 python3 repo_work/scan_claim_language.py --repo . --out audit/generated/CLAIM_LANGUAGE.json
 ```
+
+The feature-graph gate reads `.ncp-consumer` once through a bounded, no-follow,
+nonblocking regular-file descriptor. It binds the exact PID, NCP, Zenoh, and Tokio
+feature sets used by every profile in which those dependencies are security relevant.
 
 For qualification bundles, `audit_tracked_files.py --out` and
 `scan_claim_language.py --out` may point outside the checkout. Each output must be
@@ -48,31 +53,72 @@ The runner uses a detached temporary worktree and a temporary Cargo target
 directory. It records the exact commit/tree, tool identities, command arguments,
 combined output, exit codes, timestamps, Cargo metadata, and artifact digests.
 
-Freeze the complete supplied master handoff and exact baseline inputs after the
-release input records are final, then sign and verify the immutable bytes:
+Freeze the complete supplied master handoff and exact baseline inputs only after the
+release input records are final. Generate into a new staging directory: the tool refuses
+to overwrite a manifest, signer file, or pre-existing signature. Verify the staged bytes
+before replacing the tracked generated artifacts and regenerating the audit inventory:
 
 ```bash
+handoff_root=/path/to/SEPAHEAD_V1_0_CURRENT_HEAD_MAX_EFFORT_MASTER_HANDOFF
+freeze_dir="$(mktemp -d "${TMPDIR:-/tmp}/galadriel-0.9.0-freeze.XXXXXX")"
 python3 repo_work/freeze_audit_inputs.py \
   --repo . \
-  --handoff-root /path/to/SEPAHEAD_V1_0_CURRENT_HEAD_MAX_EFFORT_MASTER_HANDOFF \
-  --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json \
-  --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
+  --handoff-root "$handoff_root" \
+  --out "$freeze_dir/FROZEN-AUDIT-INPUTS.json" \
+  --allowed-signers "$freeze_dir/ALLOWED_SIGNERS"
 ssh-keygen -Y sign \
   -f "$(git config --get user.signingkey)" \
   -n galadriel-release-audit \
+  "$freeze_dir/FROZEN-AUDIT-INPUTS.json"
+python3 repo_work/freeze_audit_inputs.py verify \
+  --repo . \
+  --handoff-root "$handoff_root" \
+  --out "$freeze_dir/FROZEN-AUDIT-INPUTS.json" \
+  --allowed-signers "$freeze_dir/ALLOWED_SIGNERS"
+cmp "$freeze_dir/ALLOWED_SIGNERS" release/0.9.0/audit/ALLOWED_SIGNERS
+install -m 0644 "$freeze_dir/FROZEN-AUDIT-INPUTS.json" \
   release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json
-ssh-keygen -Y verify \
-  -f release/0.9.0/audit/ALLOWED_SIGNERS \
-  -I sepmhn@gmail.com \
-  -n galadriel-release-audit \
-  -s release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig \
-  < release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json
+install -m 0644 "$freeze_dir/FROZEN-AUDIT-INPUTS.json.sig" \
+  release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig
+python3 scripts/release_audit.py generate
+python3 repo_work/freeze_audit_inputs.py verify \
+  --repo . \
+  --handoff-root "$handoff_root" \
+  --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json \
+  --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
+python3 scripts/release_audit.py verify
 ```
+
+The semantic verifier checks canonical manifest bytes, the detached signature,
+the exact ordered release-input set and current digests, baseline object bindings,
+handoff cross-bindings, and signer metadata. Supplying `--handoff-root` additionally
+re-inventories every external handoff entry. CI and portable qualification omit that
+external path but still validate the retained handoff structure and the declared
+child-archive and task-ledger digests. The recorded origin and tag list are historical
+discovery inputs; verification validates their shape without comparing them to mutable
+live refs. Release-input digests intentionally bind the current working-tree bytes during
+the pre-commit freeze; candidate qualification later requires a clean checkout at the
+exact signed commit before accepting those same bytes.
+
+For the first trust-file bootstrap, independently inspect the staged public key and
+install `ALLOWED_SIGNERS` only when no tracked trust file exists. Any later key rotation
+is a release-boundary change: replace the tracked public key deliberately, regenerate and
+re-sign the frozen manifest, and restart candidacy and every candidate-bound check. The
+public-key entry is intentionally namespace-agnostic because its byte-identical external
+counterpart authenticates signed Git commits and several release bundles. Every consumer
+pins its own literal namespace in Git or the release tooling; adding another consumer
+requires review. The file must not be treated as a general application trust policy.
 
 Private signing material is never copied into the repository. `ALLOWED_SIGNERS`
 contains only the public key needed to reproduce signature verification; the
 `--signing-key` handle may itself be that public key when its private half is
 available through `ssh-agent`.
+
+For closure finalization, prefer that agent-backed public-key handle and pass
+`--snapshot-dir` to a secure external filesystem with at least 8 GiB plus review-
+input capacity. The finalizer authenticates and snapshots each signed input once,
+reports any failed temporary cleanup with its exact path, and never treats an
+abandoned staging directory as a valid closure tier.
 
 Public-API verification invokes `cargo-public-api` through the exact
 `nightly-2026-06-16` rustdoc toolchain and rejects a different rustc commit.
@@ -136,13 +182,22 @@ inventories with exactly `cargo-public-api 0.52.0` and rejects byte-level drift
 from the retained snapshots. A recorded run is author-operated evidence, not an
 independent clean-room or deployment qualification.
 
+Its signed manifest covers every semantic artifact while excluding only the manifest,
+its detached signature, and the final `SHA256SUMS` control file. That checksum then
+enumerates every other retained file, including the manifest/signature pair. Finalization
+requires exactly those signed rows plus the three control files, snapshots them once,
+and recomputes `SHA256SUMS`; an unlisted regular file, symlink, FIFO, special file, or
+empty directory, as well as a mid-copy inventory change, aborts before closure
+publication.
+
 After intentionally refreshing an accepted snapshot, regenerate its derived core
 comparison with `python3 repo_work/check_public_api.py --refresh-diff`. The command
 first proves that both retained snapshots exactly match source and the pinned tool;
 it never rewrites either snapshot, and its unified diff omits mutable file timestamps.
 
-After the exact file ledger and reviewer inputs are completed and signed, create
-the closure tier and separately signed decision without modifying the candidate:
+After the exact file ledger and reviewer inputs are completed, sign the T114 review,
+then the candidate-bound v3 T115 decision, then the all-task dispositions. Create the
+closure tier without modifying the candidate:
 
 ```bash
 python3 repo_work/finalize_release.py \
@@ -154,8 +209,10 @@ python3 repo_work/finalize_release.py \
   --task-dispositions-signature /reviewed/path/reviewed-task-dispositions.json.sig \
   --final-review /reviewed/path/FINAL-TWENTY-LENS-REVIEW.json \
   --final-review-signature /reviewed/path/FINAL-TWENTY-LENS-REVIEW.json.sig \
-  --decision-input /reviewed/path/release-decision-input.json \
+  --decision-input /reviewed/path/RELEASE-DECISION.json \
+  --decision-input-signature /reviewed/path/RELEASE-DECISION.json.sig \
   --signing-key "$(git config --get user.signingkey)" \
+  --snapshot-dir /secure/path/with-at-least-8-GiB-free \
   --out /new/path/galadriel-0.9.0-closure
 ```
 
@@ -163,6 +220,29 @@ Both commands derive an ephemeral public trust root from the external signing-ke
 handle (a private key or an agent-backed Ed25519 public key).
 The candidate's tracked `ALLOWED_SIGNERS` is checked only as matching metadata; it
 is never trusted to authenticate its own commit or bundle.
+
+The supplied decision already carries the detached `galadriel-release-decision`
+signature; finalization retains those exact bytes instead of generating a second,
+self-referential decision. It stages, verifies, and flushes the whole tier before one
+atomic no-replace same-parent rename, so the requested path is never a partial
+result. Pre-publication failures leave it absent. Status 3 means the rename committed
+a complete output but the later parent-directory durability sync, temporary-input
+cleanup, or result report failed. A cleanup failure still emits a machine-readable
+`COMMITTED_WITH_CLEANUP_WARNING` result naming the complete output. Independently
+verify that retained bundle and resolve any retained snapshot path before use.
+
+Atomic no-replace publication requires macOS `renamex_np` or a Linux libc exposing
+`renameat2`. Other platforms fail closed before publication; finalization must not be
+replaced with a check-then-rename sequence.
+
+Finalization also writes `LOCAL-CONVERGENCE.json` and its detached
+`galadriel-local-convergence` signature. The adapted schema preserves the supplied
+116-task and ten-wave gates while binding the approved 0.9.0 candidate. The
+validator requires complete tracked-file review, exact ordered task/wave coverage,
+artifact byte identities, and explicit pid-rs, NCP, Crebain, Haldir, and Prisoma
+requirements. `LOCAL_PIN_PASS` covers exact locally qualified pid-rs/NCP build pins.
+`ready_for_cross_repo_reconciliation` means only that optional reciprocal work may
+begin; it is not another repository's GO or deployment qualification.
 
 `FILE_REVIEW_LEDGER.csv` contains one row per tracked path with immutable Git and
 SHA-256 identities, language, known generator, criticality, and a reviewer-role

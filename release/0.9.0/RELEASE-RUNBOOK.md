@@ -28,14 +28,26 @@ A withdrawn identity **SHALL NOT** be reused.
    covers all 116 tasks and twenty lenses, has no `OPEN` item, and names retained
    evidence for every `COMPLETE` result and the removed claim for every
    `NOT_CLAIMED` result.
+   T114 cites the separately signed final review; T115 cites the separately signed,
+   candidate-bound v3 `NARROWED_GO` decision. T113 cites the candidate-bound
+   convergence mechanism and qualification evidence, never its future output;
+   additional retained predecessor evidence is permitted.
 4. The full locked build/test/documentation, feature, fuzz, mutation, supply-chain,
-   release-audit, source-inventory, and author-operated isolated qualification gates
-   pass on that commit.
+   signed frozen-input semantic verification, release-audit, source-inventory, and
+   author-operated isolated qualification gates pass on that commit.
 5. Release notes, `CITATION.cff`, Cargo metadata, schemas, API snapshot, changelog,
    support policy, and GitHub metadata all say 0.9.0 and agree on scope.
 6. The signed finalization manifest records exact artifacts, checksums, review
    dispositions, negative results, residual risks, and a `GO` or `NARROWED_GO`
    decision for this source release.
+7. Finalization emits and signs a schema-valid `LOCAL-CONVERGENCE.json` whose ten
+   waves are `WAVE_ACCEPTED`, whose task set is exactly T000–T115, and whose
+   explicit pid-rs, NCP, Crebain, Haldir, and Prisoma requirements preserve the
+   required/optional/absent boundaries. This record permits reconciliation to
+   begin; it does not claim that reconciliation or downstream qualification passed.
+8. The decision records `LOCAL_PIN_PASS` for the locally qualified pid-rs/NCP pins
+   and removes reciprocal/deployed claims `CLM-008` and `CLM-009` with the complete
+   frozen exclusion set. No external repository acceptance is inferred.
 
 If any entry condition changes, abort. Do not repair a frozen candidate in-place;
 make a new signed commit on `main`, rerun qualification, and mint artifacts again.
@@ -49,7 +61,12 @@ set -euo pipefail
 test "$(git branch --show-current)" = main
 test "$(git status --porcelain=v1)" = ""
 test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+python3 repo_work/freeze_audit_inputs.py verify \
+  --repo . \
+  --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json \
+  --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
 python3 scripts/release_audit.py verify
+python3 repo_work/local_convergence.py schema --repo .
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-features --locked
@@ -78,6 +95,60 @@ python3 repo_work/qualify_candidate.py \
   --mutation-evidence-signature /path/to/exact-candidate-mutation.json.sig \
   --evidence-config evidence/galadriel-0.9-candidate.json \
   --deep --keep-going
+```
+
+After producing the signed T114 review, the detached-signed canonical v3 decision,
+and the signed ordered task dispositions, finalize into a previously absent path:
+
+```bash
+python3 repo_work/finalize_release.py \
+  --repo . \
+  --candidate "$(git rev-parse HEAD)" \
+  --qualification /new/path/galadriel-0.9.0-qualification \
+  --review-ledger /reviewed/path/FILE_REVIEW_LEDGER.completed.csv \
+  --task-dispositions /reviewed/path/reviewed-task-dispositions.json \
+  --task-dispositions-signature /reviewed/path/reviewed-task-dispositions.json.sig \
+  --final-review /reviewed/path/FINAL-TWENTY-LENS-REVIEW.json \
+  --final-review-signature /reviewed/path/FINAL-TWENTY-LENS-REVIEW.json.sig \
+  --decision-input /reviewed/path/RELEASE-DECISION.json \
+  --decision-input-signature /reviewed/path/RELEASE-DECISION.json.sig \
+  --signing-key "$(git config --get user.signingkey)" \
+  --snapshot-dir /secure/path/with-at-least-8-GiB-free \
+  --out /new/path/galadriel-0.9.0-closure
+```
+
+The finalizer snapshots the signed qualification tier once before semantic use, so
+the selected snapshot filesystem must have room for the bounded 8 GiB tier plus
+review inputs. Prefer an agent-backed Ed25519 public-key handle for `--signing-key`;
+if a private-key path is supplied, its bytes are copied only into this mode-0700
+temporary snapshot and removed during cleanup. A cleanup warning identifies the
+exact retained temporary path and must be resolved before GitHub publication proceeds.
+The tier must contain exactly the signed artifact rows, qualification manifest,
+detached signature, and `SHA256SUMS`; the checksum must enumerate every other file.
+Unlisted or special entries and any inventory change during streaming are fatal.
+
+Finalization publishes only after the staged decision, convergence, closure manifest,
+and checksum set all verify and are flushed. Any error before the atomic no-replace
+rename leaves the requested output absent; hidden abandoned staging directories are
+never valid closure tiers. Atomic publication requires macOS `renamex_np` or a Linux
+libc exposing `renameat2`; unsupported platforms fail closed before publication. Exit
+status 3 means the rename committed a complete output but its parent-directory
+durability, temporary-input cleanup, or result reporting was not confirmed. A cleanup
+failure also emits `publication_status: COMMITTED_WITH_CLEANUP_WARNING` with the output
+path. Retain that output, resolve any reported snapshot path, and run the independent
+verification below before deciding whether to use or remove it.
+
+After finalization, independently verify the signed convergence record against
+the retained closure artifacts and exact candidate:
+
+```bash
+python3 repo_work/local_convergence.py verify \
+  --repo . \
+  --manifest /new/path/galadriel-0.9.0-closure/LOCAL-CONVERGENCE.json \
+  --signature /new/path/galadriel-0.9.0-closure/LOCAL-CONVERGENCE.json.sig \
+  --allowed-signers /independent/path/ALLOWED_SIGNERS \
+  --expected-commit "$(git rev-parse HEAD)" \
+  --artifact-root /new/path/galadriel-0.9.0-closure
 ```
 
 ## Publication
@@ -115,5 +186,5 @@ evidence, security, or provenance is wrong:
 6. never reuse a version, tag, checksum, provenance identity, epoch, key, or release asset.
 
 Rollback occurs in reverse dependency order. Galadriel 0.9.0 has no authority to
-roll back pid-rs, NCP, Crebain, or Haldir; cross-repository changes require their
-respective leads and the reconciliation change-request process.
+roll back pid-rs, NCP, Crebain, Haldir, or Prisoma; cross-repository changes require
+their respective leads and the reconciliation change-request process.

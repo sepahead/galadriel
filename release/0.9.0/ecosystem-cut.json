@@ -1,0 +1,113 @@
+{
+  "schema": "galadriel.ecosystem-inspection-cut.v1",
+  "release": "0.9.0",
+  "author": "Sepehr Mahmoudian",
+  "inspected_at": "2026-07-18",
+  "timestamp_precision": "date",
+  "scope": "Read-only relationship and dependency identity record; only Cargo revisions are release pins.",
+  "observations": [
+    {
+      "id": "ECO-001",
+      "project": "pid-rs",
+      "relationship": "optional_build_dependency",
+      "ref": "Cargo.lock git revision",
+      "object": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "identity_kind": "immutable_dependency_pin",
+      "observed_at": "2026-07-18",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": ["pid feature", "galadriel-pid", "galadriel-eval", "galadriel-justify"],
+      "supersedes": null,
+      "why": "Provides the optional PID implementation and run-log types at one exact revision."
+    },
+    {
+      "id": "ECO-002",
+      "project": "NCP",
+      "relationship": "optional_build_and_transport_dependency",
+      "ref": "Cargo.lock git revision",
+      "object": "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+      "identity_kind": "immutable_dependency_pin",
+      "observed_at": "2026-07-18",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": ["ncp feature", "ncp-live feature", "galadriel-ncp", "galadriel-eval"],
+      "supersedes": null,
+      "why": "Provides the wire-0.8 core types and, only for ncp-live, the Zenoh adapter."
+    },
+    {
+      "id": "ECO-003",
+      "project": "NCP",
+      "relationship": "upstream_design_inspection",
+      "ref": "refs/heads/main",
+      "object": "10492c81ac671ef1909962a9f1fede33781b9933",
+      "identity_kind": "mutable_head_observation",
+      "observed_at": "2026-07-18",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": null,
+      "why": "Records the inspected coordination tooling and proposed wire-1.0 topology without changing the runtime pin."
+    },
+    {
+      "id": "ECO-004",
+      "project": "Crebain",
+      "relationship": "optional_reference_producer",
+      "ref": "refs/heads/main",
+      "object": "0a58a5b8dd799884ddb06f1308b1748216fab322",
+      "identity_kind": "mutable_head_observation",
+      "observed_at": "2026-07-18",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": null,
+      "why": "Records component-level producer-contract alignment; no Cargo or runtime dependency exists."
+    },
+    {
+      "id": "ECO-005",
+      "project": "Haldir",
+      "relationship": "prospective_downstream_consumer",
+      "ref": "refs/heads/main",
+      "object": "0e94f61cfd5c78482198a765157571746a256181",
+      "identity_kind": "mutable_head_discovery_observation",
+      "observed_at": "2026-07-18",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": null,
+      "why": "Records the initial no-edge downstream inspection; Galadriel has no Haldir adapter or route."
+    },
+    {
+      "id": "ECO-006",
+      "project": "Haldir",
+      "relationship": "prospective_downstream_consumer",
+      "ref": "refs/heads/main",
+      "object": "dd3d8a1c993721f89a1edb04dec5247761c694ad",
+      "identity_kind": "mutable_head_reinspection",
+      "observed_at": "2026-07-18",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": "ECO-005",
+      "why": "Records the later same-day descendant observation; only the mutable discovery-head reference is superseded."
+    },
+    {
+      "id": "ECO-007",
+      "project": "Prisoma",
+      "relationship": "prospective_downstream_offline_consumer",
+      "ref": "refs/heads/main",
+      "object": "63cff105e0e40281376e6f827d7782e9b351961a",
+      "identity_kind": "mutable_head_observation",
+      "observed_at": "2026-07-18",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": null,
+      "why": "Records the absent direct sidecar path and a possible future immutable offline comparison only."
+    }
+  ],
+  "limitations": [
+    "Mutable head observations are inspection provenance, not dependency pins.",
+    "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir or Prisoma runtime edge.",
+    "The later Haldir observation does not rewrite the discovery observation or frozen historical evidence."
+  ]
+}

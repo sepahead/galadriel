@@ -49,6 +49,9 @@ with exactly `Nominal`, `AttributedInconsistency`, `BroadDegradation`,
 `UnclassifiedAnomaly`, and `InsufficientEvidence`. Invalid input or configuration is
 returned as `Err(..)` outside that enum. The vocabulary deliberately contains neither a
 `StateUnusable` verdict nor a `calibrated_for_policy` self-assertion (see §3.5).
+The retained [0.9.0 public-API snapshot](../release/0.9.0/api/galadriel-core.0.9.0.txt)
+locks this exact enum surface, while the variant and fail-closed cases are exercised by
+the unit tests beside the implementation in [`fusion.rs`](../crates/galadriel-core/src/fusion.rs).
 
 | Verdict | Means | Must **not** be read as |
 |---|---|---|
@@ -150,12 +153,17 @@ the resulting selection effects or calibrated the stream.
   `SensorFrame` publication path. Galadriel's live taps and operational join have in-process Zenoh
   loopback coverage, but no retained external multi-process mTLS/ACL run between current
   binaries exists.
-- **No downstream runtime edge.** A read-only 2026-07-18 inspection found no Galadriel
+- **No downstream runtime edge.** The 2026-07-18 discovery inspection found no Galadriel
   dependency, route, publisher, subscriber, or adapter in Haldir remote `main`
-  `dd3d8a1c993721f89a1edb04dec5247761c694ad`; its Galadriel phase remains not started.
-  Any future adapter MUST admit a raw Galadriel verdict into a Haldir-owned record and
-  derive `StateUnusable` and policy eligibility independently. It MUST NOT accept those
-  conclusions as producer assertions. Prisoma
+  `0e94f61cfd5c78482198a765157571746a256181`. A later 2026-07-18 read-only
+  reinspection observed `dd3d8a1c993721f89a1edb04dec5247761c694ad`, which Git
+  history retains as a descendant after Haldir current-head qualification and
+  repository-inventory commits. Those commits did not create a Galadriel edge; the later
+  observation supersedes only the mutable discovery-head reference and does not rewrite
+  either observation or frozen/historical evidence. Haldir's Galadriel phase remains not
+  started. Any future adapter MUST admit a raw Galadriel verdict into a Haldir-owned
+  record and derive `StateUnusable` and policy eligibility independently. It MUST NOT
+  accept those conclusions as producer assertions. Prisoma
   `63cff105e0e40281376e6f827d7782e9b351961a` likewise has no direct Galadriel edge:
   its optional observer accepts only exact base-plane keys and rejects named sensor
   subkeys. A future offline covariate importer MUST bind exact source/configuration,

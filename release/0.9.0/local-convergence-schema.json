@@ -1,0 +1,932 @@
+{
+  "$comment": "This preserves the supplied Galadriel convergence fields and task/wave counts while applying VERSION-ADAPTATION.md to release 0.9.0 and the approved exact candidate commit. T113 qualifies this candidate-bound schema, generator, validator, fixed requirement set, and negative tests; only after T114 review and the T115 decision are signed does finalization publish the all-task record. The emitted record is not evidence for its own creation. Schema validation fixes the portable structure; the signed Python semantic verifier is normative for relational and artifact-byte checks.",
+  "$defs": {
+    "artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes"
+      ],
+      "type": "object"
+    },
+    "crossRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "conditions": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "dependency_pin_required_for_qualified_graphs": {
+          "type": "boolean"
+        },
+        "direction": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "pin": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project": {
+          "enum": [
+            "pid-rs",
+            "NCP",
+            "Crebain",
+            "Haldir",
+            "Prisoma"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "LOCAL_PIN_VERIFIED_RECIPROCAL_NOT_CLAIMED",
+            "OPTIONAL_CONFORMANCE_ONLY",
+            "ABSENT_NOT_CLAIMED"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "direction",
+        "classification",
+        "dependency_pin_required_for_qualified_graphs",
+        "pin",
+        "status",
+        "conditions"
+      ],
+      "type": "object"
+    },
+    "wave": {
+      "additionalProperties": false,
+      "properties": {
+        "disposition": {
+          "const": "WAVE_ACCEPTED"
+        },
+        "evidence": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "task_ids": {
+          "items": {
+            "pattern": "^T[0-9]{3}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "wave": {
+          "maximum": 9,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "wave",
+        "task_ids",
+        "disposition",
+        "evidence"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/sepahead/galadriel/releases/0.9.0/local-convergence-schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/artifact"
+      },
+      "maxItems": 8,
+      "minItems": 8,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "completed_tasks": {
+      "items": {
+        "pattern": "^T[0-9]{3}$",
+        "type": "string"
+      },
+      "maxItems": 116,
+      "minItems": 116,
+      "prefixItems": [
+        {
+          "const": "T000"
+        },
+        {
+          "const": "T001"
+        },
+        {
+          "const": "T002"
+        },
+        {
+          "const": "T003"
+        },
+        {
+          "const": "T004"
+        },
+        {
+          "const": "T005"
+        },
+        {
+          "const": "T006"
+        },
+        {
+          "const": "T007"
+        },
+        {
+          "const": "T008"
+        },
+        {
+          "const": "T009"
+        },
+        {
+          "const": "T010"
+        },
+        {
+          "const": "T011"
+        },
+        {
+          "const": "T012"
+        },
+        {
+          "const": "T013"
+        },
+        {
+          "const": "T014"
+        },
+        {
+          "const": "T015"
+        },
+        {
+          "const": "T016"
+        },
+        {
+          "const": "T017"
+        },
+        {
+          "const": "T018"
+        },
+        {
+          "const": "T019"
+        },
+        {
+          "const": "T020"
+        },
+        {
+          "const": "T021"
+        },
+        {
+          "const": "T022"
+        },
+        {
+          "const": "T023"
+        },
+        {
+          "const": "T024"
+        },
+        {
+          "const": "T025"
+        },
+        {
+          "const": "T026"
+        },
+        {
+          "const": "T027"
+        },
+        {
+          "const": "T028"
+        },
+        {
+          "const": "T029"
+        },
+        {
+          "const": "T030"
+        },
+        {
+          "const": "T031"
+        },
+        {
+          "const": "T032"
+        },
+        {
+          "const": "T033"
+        },
+        {
+          "const": "T034"
+        },
+        {
+          "const": "T035"
+        },
+        {
+          "const": "T036"
+        },
+        {
+          "const": "T037"
+        },
+        {
+          "const": "T038"
+        },
+        {
+          "const": "T039"
+        },
+        {
+          "const": "T040"
+        },
+        {
+          "const": "T041"
+        },
+        {
+          "const": "T042"
+        },
+        {
+          "const": "T043"
+        },
+        {
+          "const": "T044"
+        },
+        {
+          "const": "T045"
+        },
+        {
+          "const": "T046"
+        },
+        {
+          "const": "T047"
+        },
+        {
+          "const": "T048"
+        },
+        {
+          "const": "T049"
+        },
+        {
+          "const": "T050"
+        },
+        {
+          "const": "T051"
+        },
+        {
+          "const": "T052"
+        },
+        {
+          "const": "T053"
+        },
+        {
+          "const": "T054"
+        },
+        {
+          "const": "T055"
+        },
+        {
+          "const": "T056"
+        },
+        {
+          "const": "T057"
+        },
+        {
+          "const": "T058"
+        },
+        {
+          "const": "T059"
+        },
+        {
+          "const": "T060"
+        },
+        {
+          "const": "T061"
+        },
+        {
+          "const": "T062"
+        },
+        {
+          "const": "T063"
+        },
+        {
+          "const": "T064"
+        },
+        {
+          "const": "T065"
+        },
+        {
+          "const": "T066"
+        },
+        {
+          "const": "T067"
+        },
+        {
+          "const": "T068"
+        },
+        {
+          "const": "T069"
+        },
+        {
+          "const": "T070"
+        },
+        {
+          "const": "T071"
+        },
+        {
+          "const": "T072"
+        },
+        {
+          "const": "T073"
+        },
+        {
+          "const": "T074"
+        },
+        {
+          "const": "T075"
+        },
+        {
+          "const": "T076"
+        },
+        {
+          "const": "T077"
+        },
+        {
+          "const": "T078"
+        },
+        {
+          "const": "T079"
+        },
+        {
+          "const": "T080"
+        },
+        {
+          "const": "T081"
+        },
+        {
+          "const": "T082"
+        },
+        {
+          "const": "T083"
+        },
+        {
+          "const": "T084"
+        },
+        {
+          "const": "T085"
+        },
+        {
+          "const": "T086"
+        },
+        {
+          "const": "T087"
+        },
+        {
+          "const": "T088"
+        },
+        {
+          "const": "T089"
+        },
+        {
+          "const": "T090"
+        },
+        {
+          "const": "T091"
+        },
+        {
+          "const": "T092"
+        },
+        {
+          "const": "T093"
+        },
+        {
+          "const": "T094"
+        },
+        {
+          "const": "T095"
+        },
+        {
+          "const": "T096"
+        },
+        {
+          "const": "T097"
+        },
+        {
+          "const": "T098"
+        },
+        {
+          "const": "T099"
+        },
+        {
+          "const": "T100"
+        },
+        {
+          "const": "T101"
+        },
+        {
+          "const": "T102"
+        },
+        {
+          "const": "T103"
+        },
+        {
+          "const": "T104"
+        },
+        {
+          "const": "T105"
+        },
+        {
+          "const": "T106"
+        },
+        {
+          "const": "T107"
+        },
+        {
+          "const": "T108"
+        },
+        {
+          "const": "T109"
+        },
+        {
+          "const": "T110"
+        },
+        {
+          "const": "T111"
+        },
+        {
+          "const": "T112"
+        },
+        {
+          "const": "T113"
+        },
+        {
+          "const": "T114"
+        },
+        {
+          "const": "T115"
+        }
+      ],
+      "type": "array",
+      "uniqueItems": true
+    },
+    "cross_repo_requirements": {
+      "items": {
+        "$ref": "#/$defs/crossRequirement"
+      },
+      "maxItems": 5,
+      "minItems": 5,
+      "prefixItems": [
+        {
+          "const": {
+            "classification": "required_optional_build_dependency",
+            "conditions": [
+              "Local qualification must verify the exact pid-core source, version, and enabled feature aliases used by Galadriel 0.9.0.",
+              "Keep the parallel feature disabled and do not treat a shared implementation as independent replication evidence.",
+              "Reciprocal final-candidate acceptance is not a publication prerequisite and remains unclaimed until a separately signed reconciliation exists."
+            ],
+            "dependency_pin_required_for_qualified_graphs": true,
+            "direction": "upstream_library",
+            "pin": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+            "project": "pid-rs",
+            "status": "LOCAL_PIN_VERIFIED_RECIPROCAL_NOT_CLAIMED"
+          }
+        },
+        {
+          "const": {
+            "classification": "required_optional_build_dependency",
+            "conditions": [
+              "Local qualification must verify wire-0.8 key and transport compatibility at the exact ncp-core and ncp-zenoh pin.",
+              "Keep Galadriel's named sidecars outside normative SensorFrame semantics and do not claim wire-1.0 support.",
+              "Reciprocal final-candidate acceptance is not a publication prerequisite and remains unclaimed until a separately signed reconciliation exists."
+            ],
+            "dependency_pin_required_for_qualified_graphs": true,
+            "direction": "upstream_wire_transport",
+            "pin": "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+            "project": "NCP",
+            "status": "LOCAL_PIN_VERIFIED_RECIPROCAL_NOT_CLAIMED"
+          }
+        },
+        {
+          "const": {
+            "classification": "optional_runtime_conformance",
+            "conditions": [
+              "Any live producer must be independently authorized and conform to both Galadriel sidecar contracts.",
+              "Do not require Crebain code identity or claim reciprocal final-candidate qualification without a new exact pin and evidence."
+            ],
+            "dependency_pin_required_for_qualified_graphs": false,
+            "direction": "external_reference_producer",
+            "pin": null,
+            "project": "Crebain",
+            "status": "OPTIONAL_CONFORMANCE_ONLY"
+          }
+        },
+        {
+          "const": {
+            "classification": "absent_runtime_edge",
+            "conditions": [
+              "Do not advertise a Galadriel adapter, route, or authorization effect for 0.9.0.",
+              "Any future integration must remain record-only or independently admitted and restrict-only."
+            ],
+            "dependency_pin_required_for_qualified_graphs": false,
+            "direction": "prospective_downstream_authorization",
+            "pin": null,
+            "project": "Haldir",
+            "status": "ABSENT_NOT_CLAIMED"
+          }
+        },
+        {
+          "const": {
+            "classification": "absent_runtime_edge",
+            "conditions": [
+              "Do not advertise a Galadriel adapter, named-sidecar route, or runtime compatibility for 0.9.0.",
+              "Any future offline covariate import must be immutable and must not imply independent-implementation replication."
+            ],
+            "dependency_pin_required_for_qualified_graphs": false,
+            "direction": "prospective_downstream_offline",
+            "pin": null,
+            "project": "Prisoma",
+            "status": "ABSENT_NOT_CLAIMED"
+          }
+        }
+      ],
+      "type": "array",
+      "uniqueItems": true
+    },
+    "project": {
+      "const": "Galadriel"
+    },
+    "ready_for_cross_repo_reconciliation": {
+      "const": true
+    },
+    "release_target": {
+      "const": "0.9.0"
+    },
+    "reviewed_files": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "source_commit": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": "string"
+    },
+    "tracked_files": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "tree_clean": {
+      "const": true
+    },
+    "waves": {
+      "items": {
+        "$ref": "#/$defs/wave"
+      },
+      "maxItems": 10,
+      "minItems": 10,
+      "prefixItems": [
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T000",
+              "T001",
+              "T002",
+              "T003",
+              "T004",
+              "T005",
+              "T006",
+              "T007",
+              "T008",
+              "T009",
+              "T010",
+              "T011"
+            ],
+            "wave": 0
+          }
+        },
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T012",
+              "T013",
+              "T014",
+              "T015",
+              "T016",
+              "T017",
+              "T018",
+              "T019",
+              "T020",
+              "T021",
+              "T022",
+              "T023"
+            ],
+            "wave": 1
+          }
+        },
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T024",
+              "T025",
+              "T026",
+              "T027",
+              "T028",
+              "T029",
+              "T030",
+              "T031",
+              "T032",
+              "T033",
+              "T034",
+              "T035"
+            ],
+            "wave": 2
+          }
+        },
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T036",
+              "T037",
+              "T038",
+              "T039",
+              "T040",
+              "T041",
+              "T042",
+              "T043",
+              "T044",
+              "T045",
+              "T046",
+              "T047"
+            ],
+            "wave": 3
+          }
+        },
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T048",
+              "T049",
+              "T050",
+              "T051",
+              "T052",
+              "T053",
+              "T054",
+              "T055",
+              "T056",
+              "T057",
+              "T058",
+              "T059"
+            ],
+            "wave": 4
+          }
+        },
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T060",
+              "T061",
+              "T062",
+              "T063",
+              "T064",
+              "T065",
+              "T066",
+              "T067",
+              "T068",
+              "T069",
+              "T070",
+              "T071"
+            ],
+            "wave": 5
+          }
+        },
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T072",
+              "T073",
+              "T074",
+              "T075",
+              "T076",
+              "T077",
+              "T078",
+              "T079",
+              "T080",
+              "T081",
+              "T082",
+              "T083"
+            ],
+            "wave": 6
+          }
+        },
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T084",
+              "T085",
+              "T086",
+              "T087",
+              "T088",
+              "T089",
+              "T090",
+              "T091",
+              "T092",
+              "T093",
+              "T094",
+              "T095"
+            ],
+            "wave": 7
+          }
+        },
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T096",
+              "T097",
+              "T098",
+              "T099",
+              "T100",
+              "T101",
+              "T102",
+              "T103",
+              "T104",
+              "T105",
+              "T106",
+              "T107"
+            ],
+            "wave": 8
+          }
+        },
+        {
+          "const": {
+            "disposition": "WAVE_ACCEPTED",
+            "evidence": [
+              "RELEASE-DECISION.json",
+              "RELEASE-DECISION.json.sig",
+              "closure-summary.json",
+              "inputs/FILE_REVIEW_LEDGER.completed.csv",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json",
+              "inputs/FINAL-TWENTY-LENS-REVIEW.json.sig",
+              "inputs/reviewed-task-dispositions.json",
+              "inputs/reviewed-task-dispositions.json.sig"
+            ],
+            "task_ids": [
+              "T108",
+              "T109",
+              "T110",
+              "T111",
+              "T112",
+              "T113",
+              "T114",
+              "T115"
+            ],
+            "wave": 9
+          }
+        }
+      ],
+      "type": "array"
+    }
+  },
+  "required": [
+    "project",
+    "release_target",
+    "source_commit",
+    "tree_clean",
+    "tracked_files",
+    "reviewed_files",
+    "completed_tasks",
+    "waves",
+    "artifacts",
+    "cross_repo_requirements",
+    "ready_for_cross_repo_reconciliation"
+  ],
+  "title": "Galadriel 0.9.0 local convergence manifest",
+  "type": "object"
+}

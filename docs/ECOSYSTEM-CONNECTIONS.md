@@ -5,6 +5,9 @@ dependency identity, component compatibility, and deployed qualification. An ins
 external head is provenance for the inspection, not a permanent dependency or a claim
 that another repository has accepted the final Galadriel release object.
 
+The exact dated identities behind this prose are retained in the
+[machine-readable 0.9.0 ecosystem cut](../release/0.9.0/ecosystem-cut.json).
+
 ## Dependency and activation matrix
 
 “Required” is scoped to the named build or operating mode; it does not mean every
@@ -35,12 +38,21 @@ The 2026-07-18 inspection used these repository objects:
 | pid-rs | `1cd2424f7967e1752dcc8e53859e8fdad3566f51` | Immutable `pid-core` library pin; its manifest declares 1.0.0, but no public v1 tag or published 1.x artifact is claimed. |
 | NCP | `10492c81ac671ef1909962a9f1fede33781b9933` | Mutable upstream head inspected for topology; not the dependency pin. |
 | Crebain | `0a58a5b8dd799884ddb06f1308b1748216fab322` | Mutable producer head inspected for component alignment; not a reciprocal Galadriel pin. |
-| Haldir | remote `main` `dd3d8a1c993721f89a1edb04dec5247761c694ad` | Downstream design/status inspection only; no runtime edge exists. |
+| Haldir discovery observation | remote `main` `0e94f61cfd5c78482198a765157571746a256181` | Mutable downstream design/status observation; no dependency, adapter, route, or runtime edge was found. |
+| Haldir later reinspection | remote `main` `dd3d8a1c993721f89a1edb04dec5247761c694ad` | Later 2026-07-18 observation of the same mutable branch; it supersedes only the discovery-head reference and does not replace frozen evidence. |
 | Prisoma | `63cff105e0e40281376e6f827d7782e9b351961a` | Downstream design/status inspection only; no runtime edge exists. |
 
+Haldir history retains both observations and places
+`0e94f61cfd5c78482198a765157571746a256181` in the ancestry of
+`dd3d8a1c993721f89a1edb04dec5247761c694ad`. The intervening commits activate
+current-head qualification, freeze the CH-T001 repository-inventory qualification, and
+implement the create-once repository inventory. They explain the branch-head movement;
+they do not establish a Galadriel dependency or integration.
+
 External heads can change after this cut. Galadriel's local audit binds only tracked
-release inputs and exact dependency revisions. Frozen evidence in another repository is
-not silently rewritten to follow a newer Galadriel candidate.
+release inputs and exact dependency revisions. The later Haldir observation supersedes
+the mutable discovery-head reference only: it does not rewrite the earlier observation,
+Haldir's frozen audit material, Galadriel's frozen evidence, or any historical object.
 
 ## pid-rs: optional in the default build, required by PID research crates
 
@@ -96,6 +108,12 @@ success without validating this descriptor. Coordinated pin checking must theref
 tooling at or after that exact minimum commit. Galadriel independently rejects a
 zero-row, legacy, unknown, partial, or drifted descriptor in its feature-graph gate; this
 tooling requirement does not upgrade the runtime wire or crate pin beyond 0.8.0.
+That local read is bounded, no-follow, and nonblocking. The same gate pins the resolved
+Tokio feature set for `ncp-live` and `--all-features`, so an unreviewed capability such
+as process spawning cannot enter those graphs silently.
+That gate emits the minimum tooling commit, both descriptor rows, and the qualified NCP
+pin in its machine-readable report, keeping checker compatibility distinct from runtime
+dependency identity in retained evidence.
 
 The inspected NCP head is an unreleased, incompatible wire-1.0 candidate. Its extension
 and ecosystem ADRs remain proposed and have no normative effect. Current Galadriel routes
@@ -135,10 +153,13 @@ claims therefore remain `NOT_CLAIMED` or pending as recorded in the release ledg
 
 ## Haldir: prospective record-only consumer
 
-Haldir is not part of any Galadriel build or runtime mode. The inspected Haldir object
-directly pins NCP 0.8 but contains no Galadriel dependency,
-import, deployed route, subscriber, publisher, or adapter. Its frozen audit cut records
-Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` as an input, not as independently
+Haldir is not part of any Galadriel build or runtime mode. Both the discovery object
+`0e94f61cfd5c78482198a765157571746a256181` and its later inspected descendant
+`dd3d8a1c993721f89a1edb04dec5247761c694ad` directly pin NCP 0.8 but contain no
+Galadriel dependency, import, deployed route, subscriber, publisher, or adapter. The
+later object adds Haldir qualification and repository-inventory work; it does not change
+that boundary. Haldir's frozen audit cut records Galadriel
+`94e2f8cc01f352d2bf899b7f656997f143a2588f` as an input, not as independently
 verified compatibility. Its Galadriel integration phase remains not started.
 
 A future Haldir adapter may only receive bounded advisory evidence. It must first record

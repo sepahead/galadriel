@@ -3,21 +3,43 @@
 from __future__ import annotations
 
 import csv
+import contextlib
 import hashlib
+import io
 import json
 import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any, Callable
+from unittest import mock
 
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from check_feature_graph import (
+    EXPECTED_DEFAULT_MEMBERS,
+    EXPECTED_UPSTREAM_MANIFESTS,
+    MAX_NCP_CONSUMER_BYTES,
+    NCP_RESOLVED_FEATURES,
+    PID_RESOLVED_FEATURES,
+    PROFILES,
+    TOKIO_RESOLVED_FEATURES,
+    ZENOH_RESOLVED_FEATURES,
+    parse_ncp_consumer_descriptor,
+    parse_graph_output,
+    main as feature_graph_main,
+    validate_profile_graph,
+    validate_ncp_consumer_descriptor,
+    validate_upstream_package_records,
+    validate_workspace_manifest,
+)
 from check_public_api import canonical_core_diff, compare_snapshot
 from common import ReviewError, canonical_json, load_json, loads_json
 from finalize_release import candidate_json
+import freeze_audit_inputs as freeze
 from freeze_audit_inputs import assert_release_tool_coverage, strict_relative_files
 from qualify_candidate import capture_report
 
@@ -25,7 +47,9 @@ from qualify_candidate import capture_report
 TOOLS = Path(__file__).resolve().parents[1]
 
 
-def run(*arguments: str, cwd: Path, expected: int = 0) -> subprocess.CompletedProcess[str]:
+def run(
+    *arguments: str, cwd: Path, expected: int = 0
+) -> subprocess.CompletedProcess[str]:
     process = subprocess.run(
         ["python3", *arguments],
         cwd=cwd,
@@ -75,6 +99,202 @@ class ReviewToolsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
+    def make_frozen_input_fixture(self, name: str) -> dict[str, object]:
+        repo = self.root / name
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        for key, value in (
+            ("user.name", "Sepehr Mahmoudian"),
+            ("user.email", "sepmhn@gmail.com"),
+            ("commit.gpgsign", "false"),
+        ):
+            subprocess.run(["git", "config", key, value], cwd=repo, check=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", "git@github.com:sepahead/galadriel.git"],
+            cwd=repo,
+            check=True,
+        )
+        baseline_contents = {
+            "Cargo.toml": '[workspace]\nmembers = []\nresolver = "2"\n',
+            "Cargo.lock": "version = 3\n",
+            "rust-toolchain.toml": '[toolchain]\nchannel = "1.89.0"\n',
+            "deny.toml": "[advisories]\nversion = 2\n",
+        }
+        for relative, contents in baseline_contents.items():
+            (repo / relative).write_text(contents, encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Create baseline"], cwd=repo, check=True
+        )
+        baseline = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=repo, text=True
+        ).strip()
+        baseline_tree = subprocess.check_output(
+            ["git", "rev-parse", "HEAD^{tree}"], cwd=repo, text=True
+        ).strip()
+
+        handoff = self.root / f"{name}-MASTER_HANDOFF"
+        handoff.mkdir()
+        child_name = "GALADRIEL_V1_0_CURRENT_HEAD_MAX_EFFORT_HANDOFF.zip"
+        child = handoff / child_name
+        child.write_bytes(b"child archive\n")
+        ledger = handoff / Path(child_name).stem / "MASTER_TASK_LEDGER.yaml"
+        ledger.parent.mkdir()
+        ledger.write_text("tasks: []\n", encoding="utf-8")
+        child_digest = hashlib.sha256(child.read_bytes()).hexdigest()
+        ledger_digest = hashlib.sha256(ledger.read_bytes()).hexdigest()
+
+        release = repo / "release/0.9.0"
+        release.mkdir(parents=True)
+        handoff_source = {
+            "schema": "galadriel.handoff-source.v2",
+            "prepared": "2026-07-14",
+            "repository": "https://github.com/sepahead/galadriel",
+            "frozen_commit": baseline,
+            "original_target": "1.0.0",
+            "adapted_release_target": "0.9.0",
+            "master_package": handoff.name,
+            "child_archive": child_name,
+            "child_archive_sha256": child_digest,
+            "task_ledger_sha256": ledger_digest,
+            "task_count": 1,
+            "supersedes_embedded_handoff_sha256": "1" * 64,
+            "provenance_note": "Fixture provenance binding.",
+        }
+        audit_inputs = {
+            "schema": "galadriel.release-audit-inputs.v1",
+            "release": {
+                "name": "Galadriel's Mirror",
+                "version": "0.9.0",
+                "author": "Sepehr Mahmoudian",
+                "doi": None,
+                "zenodo": None,
+                "publication_channel": "GitHub source release",
+            },
+            "audit_date": "2026-07-14",
+            "baseline_repository": {
+                "url": "https://github.com/sepahead/galadriel",
+                "commit": baseline,
+                "tree": baseline_tree,
+            },
+            "repositories": [],
+            "toolchains": [],
+            "github_actions": [],
+            "artifact_sets": [],
+            "external_sources": {"scan_patterns": [], "declared": []},
+            "adaptation_decision": "release/0.9.0/VERSION-ADAPTATION.md",
+        }
+        (release / "handoff-source.json").write_bytes(canonical_json(handoff_source))
+        (release / "audit-inputs.json").write_bytes(canonical_json(audit_inputs))
+        (repo / "input.txt").write_text("release input\n", encoding="utf-8")
+
+        key = self.root / f"{name}-signing-key"
+        subprocess.run(
+            [
+                "ssh-keygen",
+                "-q",
+                "-t",
+                "ed25519",
+                "-N",
+                "",
+                "-C",
+                freeze.SIGNATURE_PRINCIPAL,
+                "-f",
+                str(key),
+            ],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.signingkey", str(key) + ".pub"],
+            cwd=repo,
+            check=True,
+        )
+        output = self.root / f"{name}-FROZEN-AUDIT-INPUTS.json"
+        allowed_signers = self.root / f"{name}-ALLOWED_SIGNERS"
+        release_inputs = (
+            "release/0.9.0/audit-inputs.json",
+            "release/0.9.0/handoff-source.json",
+            "input.txt",
+        )
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+        ):
+            freeze.generate_frozen_inputs(repo, handoff, output, allowed_signers)
+        self.sign_frozen_fixture(output, key)
+        return {
+            "repo": repo,
+            "handoff": handoff,
+            "ledger": ledger,
+            "output": output,
+            "allowed_signers": allowed_signers,
+            "key": key,
+            "release_inputs": release_inputs,
+            "baseline": baseline,
+            "baseline_tree": baseline_tree,
+        }
+
+    def sign_frozen_fixture(
+        self, output: Path, key: Path, *, namespace: str = freeze.SIGNATURE_NAMESPACE
+    ) -> None:
+        signature = output.with_name(output.name + ".sig")
+        signature.unlink(missing_ok=True)
+        subprocess.run(
+            [
+                "ssh-keygen",
+                "-Y",
+                "sign",
+                "-f",
+                str(key),
+                "-n",
+                namespace,
+                str(output),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    def mutate_frozen_fixture(
+        self,
+        fixture: dict[str, object],
+        mutation: Callable[[dict[str, Any]], None],
+    ) -> None:
+        output = fixture["output"]
+        key = fixture["key"]
+        assert isinstance(output, Path)
+        assert isinstance(key, Path)
+        manifest = load_json(output)
+        assert isinstance(manifest, dict)
+        mutation(manifest)
+        output.write_bytes(canonical_json(manifest))
+        self.sign_frozen_fixture(output, key)
+
+    def verify_frozen_fixture(
+        self, fixture: dict[str, object], *, with_handoff: bool = True
+    ) -> None:
+        repo = fixture["repo"]
+        handoff = fixture["handoff"] if with_handoff else None
+        output = fixture["output"]
+        allowed_signers = fixture["allowed_signers"]
+        release_inputs = fixture["release_inputs"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(repo, Path)
+        assert handoff is None or isinstance(handoff, Path)
+        assert isinstance(output, Path)
+        assert isinstance(allowed_signers, Path)
+        assert isinstance(release_inputs, tuple)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+        ):
+            freeze.verify_frozen_inputs(repo, handoff, output, allowed_signers)
+
     def test_shared_json_helpers_reject_nonfinite_and_oversized_numbers(self) -> None:
         path = self.root / "strict.json"
         invalid_documents = {
@@ -118,19 +338,21 @@ class ReviewToolsTest(unittest.TestCase):
 
         for value in (float("nan"), float("inf"), -float("inf")):
             with self.subTest(canonical_value=value):
-                with self.assertRaisesRegex(ReviewError, "cannot encode canonical JSON"):
+                with self.assertRaisesRegex(
+                    ReviewError, "cannot encode canonical JSON"
+                ):
                     canonical_json({"value": value})
 
         retained = {"seed": 6_840_335_614_489_011_713}
         self.assertEqual(loads_json(canonical_json(retained)), retained)
         retained_evidence = load_json(TOOLS.parent / "evidence/post-audit-v1.json")
-        self.assertEqual(
-            retained_evidence["base_seed"], 6_840_335_614_489_011_713
-        )
+        self.assertEqual(retained_evidence["base_seed"], 6_840_335_614_489_011_713)
         with self.assertRaisesRegex(ReviewError, "cannot encode canonical JSON"):
             canonical_json({"value": 10**128})
 
-    def test_evidence_manifest_reports_oversized_integer_without_traceback(self) -> None:
+    def test_evidence_manifest_reports_oversized_integer_without_traceback(
+        self,
+    ) -> None:
         manifest = self.root / "manifest.json"
         manifest.write_text(
             '{"schema":"galadriel.evidence-manifest.v1","artifacts":[],"value":'
@@ -221,6 +443,1235 @@ class ReviewToolsTest(unittest.TestCase):
         ):
             assert_release_tool_coverage(self.root)
 
+    def test_frozen_input_verifier_accepts_exact_inputs_and_optional_handoff(
+        self,
+    ) -> None:
+        fixture = self.make_frozen_input_fixture("valid-freeze")
+        self.verify_frozen_fixture(fixture)
+        self.verify_frozen_fixture(fixture, with_handoff=False)
+
+        repo = fixture["repo"]
+        assert isinstance(repo, Path)
+        subprocess.run(
+            ["git", "remote", "set-url", "origin", "https://example.invalid/moved"],
+            cwd=repo,
+            check=True,
+        )
+        subprocess.run(["git", "tag", "post-freeze-tag"], cwd=repo, check=True)
+        self.verify_frozen_fixture(fixture, with_handoff=False)
+
+        ledger = fixture["ledger"]
+        assert isinstance(ledger, Path)
+        ledger.write_text("tasks: [changed]\n", encoding="utf-8")
+        self.verify_frozen_fixture(fixture, with_handoff=False)
+        with self.assertRaisesRegex(ReviewError, "supplied handoff inventory differs"):
+            self.verify_frozen_fixture(fixture)
+
+    def test_feature_contract_rejects_upstream_alias_and_resolved_feature_drift(
+        self,
+    ) -> None:
+        def upstream_packages() -> list[dict[str, object]]:
+            return [
+                {
+                    "name": name,
+                    "version": contract["version"],
+                    "source": contract["source"],
+                    "features": {
+                        feature: sorted(members)
+                        for feature, members in contract["features"].items()
+                    },
+                }
+                for name, contract in EXPECTED_UPSTREAM_MANIFESTS.items()
+            ]
+
+        packages = upstream_packages()
+        validate_upstream_package_records(packages)
+
+        for package_name in EXPECTED_UPSTREAM_MANIFESTS:
+            for field in ("version", "source"):
+                with self.subTest(package=package_name, field=field):
+                    mutated = upstream_packages()
+                    record = next(
+                        package
+                        for package in mutated
+                        if package["name"] == package_name
+                    )
+                    record[field] = "unexpected"
+                    with self.assertRaisesRegex(ReviewError, f"{field} differs"):
+                        validate_upstream_package_records(mutated)
+
+        pid_manifest = next(
+            package for package in packages if package["name"] == "pid-core"
+        )
+        pid_manifest["features"]["experimental-pipelines"] = ["experimental-continuous"]
+        with self.assertRaisesRegex(ReviewError, "experimental-pipelines differs"):
+            validate_upstream_package_records(packages)
+
+        unexpected_alias = upstream_packages()
+        unexpected_pid = next(
+            package for package in unexpected_alias if package["name"] == "pid-core"
+        )
+        unexpected_pid["features"]["unexpected"] = []
+        with self.assertRaisesRegex(ReviewError, "feature aliases differ"):
+            validate_upstream_package_records(unexpected_alias)
+
+        workspace_manifest = {
+            "workspace": {"default-members": list(EXPECTED_DEFAULT_MEMBERS)}
+        }
+        validate_workspace_manifest(workspace_manifest)
+        workspace_manifest["workspace"]["default-members"].append(
+            "crates/galadriel-pid"
+        )
+        with self.assertRaisesRegex(ReviewError, "default-members differ"):
+            validate_workspace_manifest(workspace_manifest)
+
+        expected_descriptor = (
+            "cargo_rev Cargo.toml v0.8.0 "
+            "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e\n"
+            "cargo_lock_rev Cargo.lock v0.8.0 "
+            "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e\n"
+        )
+        self.assertEqual(len(parse_ncp_consumer_descriptor(expected_descriptor)), 2)
+        for attack in (
+            "",
+            "cargo_tag Cargo.toml\ncargo_lock Cargo.lock\n",
+            expected_descriptor.splitlines()[0] + "\n",
+            expected_descriptor + "unknown extra row value\n",
+        ):
+            with self.subTest(descriptor=attack):
+                with self.assertRaises(ReviewError):
+                    parse_ncp_consumer_descriptor(attack)
+
+        profile = next(profile for profile in PROFILES if profile.name == "pid")
+        graph = {
+            "galadriel-pid": frozenset(),
+            "pid-core": PID_RESOLVED_FEATURES,
+            "pid-runlog": frozenset(),
+        }
+        validate_profile_graph(profile, graph)
+        graph["pid-core"] = PID_RESOLVED_FEATURES | {"parallel"}
+        with self.assertRaisesRegex(ReviewError, "resolved pid-core features"):
+            validate_profile_graph(profile, graph)
+
+        resolved_feature_attacks = (
+            ("ncp", "ncp-core", frozenset({"default", "schema"})),
+            ("ncp-live", "ncp-zenoh", frozenset({"default", "schema"})),
+            ("ncp-live", "zenoh", ZENOH_RESOLVED_FEATURES | {"default"}),
+            ("ncp-live", "tokio", TOKIO_RESOLVED_FEATURES | {"process"}),
+        )
+        for profile_name, package_name, mutated_features in resolved_feature_attacks:
+            with self.subTest(profile=profile_name, package=package_name):
+                attacked_profile = next(
+                    profile for profile in PROFILES if profile.name == profile_name
+                )
+                attacked_graph = {
+                    package: {
+                        "pid-core": PID_RESOLVED_FEATURES,
+                        "ncp-core": NCP_RESOLVED_FEATURES,
+                        "ncp-zenoh": NCP_RESOLVED_FEATURES,
+                        "zenoh": ZENOH_RESOLVED_FEATURES,
+                    }.get(package, frozenset())
+                    for package in attacked_profile.required
+                }
+                attacked_graph[package_name] = mutated_features
+                with self.assertRaisesRegex(ReviewError, "resolved.*features"):
+                    validate_profile_graph(attacked_profile, attacked_graph)
+
+        edge_contracts = (
+            ("eval-member", "ncp-core"),
+            ("eval-member", "pid-core"),
+            ("justify-member", "pid-core"),
+        )
+        exact_feature_sets = {
+            "pid-core": PID_RESOLVED_FEATURES,
+            "ncp-core": NCP_RESOLVED_FEATURES,
+            "ncp-zenoh": NCP_RESOLVED_FEATURES,
+            "zenoh": ZENOH_RESOLVED_FEATURES,
+            "tokio": TOKIO_RESOLVED_FEATURES,
+        }
+        for profile_name, missing_package in edge_contracts:
+            with self.subTest(profile=profile_name, missing=missing_package):
+                member_profile = next(
+                    profile for profile in PROFILES if profile.name == profile_name
+                )
+                member_graph = {
+                    package: exact_feature_sets.get(package, frozenset())
+                    for package in member_profile.required
+                }
+                validate_profile_graph(member_profile, member_graph)
+                del member_graph[missing_package]
+                with self.assertRaisesRegex(ReviewError, "missing"):
+                    validate_profile_graph(member_profile, member_graph)
+
+    def test_feature_graph_parser_tolerates_unrelated_duplicate_package_names(
+        self,
+    ) -> None:
+        profile = next(profile for profile in PROFILES if profile.name == "ncp-live")
+        output = "\n".join(
+            (
+                "getrandom v0.3.4|",
+                "getrandom v0.4.3|std",
+                "ncp-core v0.8.0 (locked)|default",
+                "ncp-core v0.8.0 (locked)|default (*)",
+            )
+        )
+        graph = parse_graph_output(profile, output)
+        self.assertEqual(graph["getrandom"], frozenset({"std"}))
+        self.assertEqual(graph["ncp-core"], frozenset({"default"}))
+
+        with self.assertRaisesRegex(ReviewError, "inconsistent features for ncp-core"):
+            parse_graph_output(
+                profile,
+                output + "\nncp-core v0.8.0 (locked)|default,schema\n",
+            )
+
+    def test_machine_ecosystem_cut_binds_the_connection_prose(self) -> None:
+        repo = TOOLS.parent
+        cut = json.loads(
+            (repo / "release/0.9.0/ecosystem-cut.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            set(cut),
+            {
+                "schema",
+                "release",
+                "author",
+                "inspected_at",
+                "timestamp_precision",
+                "scope",
+                "observations",
+                "limitations",
+            },
+        )
+        self.assertEqual(cut["schema"], "galadriel.ecosystem-inspection-cut.v1")
+        self.assertEqual(cut["release"], "0.9.0")
+        self.assertEqual(cut["author"], "Sepehr Mahmoudian")
+        self.assertEqual(
+            (cut["inspected_at"], cut["timestamp_precision"]),
+            ("2026-07-18", "date"),
+        )
+        observations = cut["observations"]
+        expected_observations = [
+            {
+                "id": "ECO-001",
+                "project": "pid-rs",
+                "relationship": "optional_build_dependency",
+                "ref": "Cargo.lock git revision",
+                "object": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+                "identity_kind": "immutable_dependency_pin",
+                "observed_at": "2026-07-18",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [
+                    "pid feature",
+                    "galadriel-pid",
+                    "galadriel-eval",
+                    "galadriel-justify",
+                ],
+                "supersedes": None,
+                "why": "Provides the optional PID implementation and run-log types at one exact revision.",
+            },
+            {
+                "id": "ECO-002",
+                "project": "NCP",
+                "relationship": "optional_build_and_transport_dependency",
+                "ref": "Cargo.lock git revision",
+                "object": "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+                "identity_kind": "immutable_dependency_pin",
+                "observed_at": "2026-07-18",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [
+                    "ncp feature",
+                    "ncp-live feature",
+                    "galadriel-ncp",
+                    "galadriel-eval",
+                ],
+                "supersedes": None,
+                "why": "Provides the wire-0.8 core types and, only for ncp-live, the Zenoh adapter.",
+            },
+            {
+                "id": "ECO-003",
+                "project": "NCP",
+                "relationship": "upstream_design_inspection",
+                "ref": "refs/heads/main",
+                "object": "10492c81ac671ef1909962a9f1fede33781b9933",
+                "identity_kind": "mutable_head_observation",
+                "observed_at": "2026-07-18",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": None,
+                "why": "Records the inspected coordination tooling and proposed wire-1.0 topology without changing the runtime pin.",
+            },
+            {
+                "id": "ECO-004",
+                "project": "Crebain",
+                "relationship": "optional_reference_producer",
+                "ref": "refs/heads/main",
+                "object": "0a58a5b8dd799884ddb06f1308b1748216fab322",
+                "identity_kind": "mutable_head_observation",
+                "observed_at": "2026-07-18",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": None,
+                "why": "Records component-level producer-contract alignment; no Cargo or runtime dependency exists.",
+            },
+            {
+                "id": "ECO-005",
+                "project": "Haldir",
+                "relationship": "prospective_downstream_consumer",
+                "ref": "refs/heads/main",
+                "object": "0e94f61cfd5c78482198a765157571746a256181",
+                "identity_kind": "mutable_head_discovery_observation",
+                "observed_at": "2026-07-18",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": None,
+                "why": "Records the initial no-edge downstream inspection; Galadriel has no Haldir adapter or route.",
+            },
+            {
+                "id": "ECO-006",
+                "project": "Haldir",
+                "relationship": "prospective_downstream_consumer",
+                "ref": "refs/heads/main",
+                "object": "dd3d8a1c993721f89a1edb04dec5247761c694ad",
+                "identity_kind": "mutable_head_reinspection",
+                "observed_at": "2026-07-18",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": "ECO-005",
+                "why": "Records the later same-day descendant observation; only the mutable discovery-head reference is superseded.",
+            },
+            {
+                "id": "ECO-007",
+                "project": "Prisoma",
+                "relationship": "prospective_downstream_offline_consumer",
+                "ref": "refs/heads/main",
+                "object": "63cff105e0e40281376e6f827d7782e9b351961a",
+                "identity_kind": "mutable_head_observation",
+                "observed_at": "2026-07-18",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": None,
+                "why": "Records the absent direct sidecar path and a possible future immutable offline comparison only.",
+            },
+        ]
+        self.assertEqual(observations, expected_observations)
+        self.assertEqual(
+            cut["limitations"],
+            [
+                "Mutable head observations are inspection provenance, not dependency pins.",
+                "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir or Prisoma runtime edge.",
+                "The later Haldir observation does not rewrite the discovery observation or frozen historical evidence.",
+            ],
+        )
+        self.assertEqual(
+            [row["id"] for row in observations],
+            [f"ECO-{index:03d}" for index in range(1, 8)],
+        )
+        self.assertEqual(
+            [row["project"] for row in observations],
+            ["pid-rs", "NCP", "NCP", "Crebain", "Haldir", "Haldir", "Prisoma"],
+        )
+        self.assertTrue(
+            all(row["required_by_default"] is False for row in observations)
+        )
+        self.assertEqual(
+            [
+                row["id"]
+                for row in observations
+                if row["identity_kind"] == "immutable_dependency_pin"
+            ],
+            ["ECO-001", "ECO-002"],
+        )
+        self.assertEqual(
+            {
+                row["id"]: row["supersedes"]
+                for row in observations
+                if row["supersedes"] is not None
+            },
+            {"ECO-006": "ECO-005"},
+        )
+        self.assertEqual(
+            observations[0]["required_for"],
+            ["pid feature", "galadriel-pid", "galadriel-eval", "galadriel-justify"],
+        )
+        self.assertEqual(
+            observations[1]["required_for"],
+            ["ncp feature", "ncp-live feature", "galadriel-ncp", "galadriel-eval"],
+        )
+
+        public_api = (repo / "release/0.9.0/api/galadriel-core.0.9.0.txt").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("FusedVerdict::AttributedInconsistency::channels:", public_api)
+        self.assertIn("FusedVerdict::AttributedInconsistency::magnitude:", public_api)
+
+        readme = (repo / "README.md").read_text(encoding="utf-8")
+        connections = (repo / "docs/ECOSYSTEM-CONNECTIONS.md").read_text(
+            encoding="utf-8"
+        )
+        for row in observations:
+            self.assertIn(row["object"], readme)
+            self.assertIn(row["object"], connections)
+        for relative in ("docs/ADVISORY-BOUNDARY.md", "CHANGELOG.md"):
+            text = (repo / relative).read_text(encoding="utf-8")
+            self.assertIn(observations[4]["object"], text)
+            self.assertIn(observations[5]["object"], text)
+        self.assertIn("ecosystem-cut.json", readme)
+        self.assertIn("ecosystem-cut.json", connections)
+
+    def test_feature_graph_cli_reports_non_utf8_descriptor_without_traceback(
+        self,
+    ) -> None:
+        (self.root / ".ncp-consumer").write_bytes(b"\xff\n")
+        stderr = io.StringIO()
+        with (
+            mock.patch("check_feature_graph.validate_manifest"),
+            mock.patch.object(
+                sys, "argv", ["check_feature_graph.py", "--repo", str(self.root)]
+            ),
+            contextlib.redirect_stderr(stderr),
+        ):
+            self.assertEqual(feature_graph_main(), 2)
+        self.assertIn("feature graph check failed", stderr.getvalue())
+        self.assertNotIn("Traceback", stderr.getvalue())
+
+    def test_ncp_consumer_descriptor_read_is_bounded_and_no_follow(self) -> None:
+        descriptor = self.root / ".ncp-consumer"
+        outside = self.root / "outside-consumer"
+        outside.write_text("not trusted\n", encoding="utf-8")
+
+        descriptor.symlink_to(outside)
+        with self.assertRaisesRegex(ReviewError, "missing or unsafe"):
+            validate_ncp_consumer_descriptor(self.root)
+        descriptor.unlink()
+
+        os.mkfifo(descriptor)
+        with self.assertRaisesRegex(ReviewError, "bounded regular file"):
+            validate_ncp_consumer_descriptor(self.root)
+        descriptor.unlink()
+
+        descriptor.write_bytes(b"x" * (MAX_NCP_CONSUMER_BYTES + 1))
+        with self.assertRaisesRegex(ReviewError, "bounded regular file"):
+            validate_ncp_consumer_descriptor(self.root)
+
+    def test_frozen_input_verifier_rejects_schema_identity_and_order_attacks(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "extra-key",
+                lambda manifest: manifest.__setitem__("unexpected", True),
+                "incorrect keys",
+            ),
+            (
+                "doi",
+                lambda manifest: manifest["release"].__setitem__("doi", "10.invalid"),
+                "null DOI/Zenodo",
+            ),
+            (
+                "release-order",
+                lambda manifest: manifest["release_input_files"].reverse(),
+                "exact ordered current RELEASE_INPUTS",
+            ),
+            (
+                "signature-namespace",
+                lambda manifest: manifest["signature_contract"].__setitem__(
+                    "namespace", "wrong-release-namespace"
+                ),
+                "signature contract namespace",
+            ),
+            (
+                "signature-path",
+                lambda manifest: manifest["signature_contract"].__setitem__(
+                    "signature_path", "wrong-signature-path"
+                ),
+                "signature contract signature_path",
+            ),
+        )
+        for name, mutation, message in cases:
+            with self.subTest(name=name):
+                fixture = self.make_frozen_input_fixture(f"semantic-{name}")
+                self.mutate_frozen_fixture(fixture, mutation)
+                with self.assertRaisesRegex(ReviewError, message):
+                    self.verify_frozen_fixture(fixture, with_handoff=False)
+
+    def test_frozen_input_verifier_rejects_release_input_digest_drift(self) -> None:
+        fixture = self.make_frozen_input_fixture("release-input-digest-drift")
+        repo = fixture["repo"]
+        assert isinstance(repo, Path)
+        (repo / "input.txt").write_text("mutated release input\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            ReviewError, "exact ordered current RELEASE_INPUTS set"
+        ):
+            self.verify_frozen_fixture(fixture, with_handoff=False)
+
+    def test_frozen_input_verifier_rejects_broken_baseline_handoff_and_ref_bindings(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "baseline",
+                lambda manifest: manifest["baseline"].__setitem__("tree", "0" * 40),
+                "baseline identities",
+            ),
+            (
+                "handoff",
+                lambda manifest: manifest["handoff"].__setitem__(
+                    "galadriel_child_archive_sha256", "0" * 64
+                ),
+                "child archive digest breaks",
+            ),
+            (
+                "historical-ref",
+                lambda manifest: manifest["repository_ref_inputs"][
+                    "local_tags_at_freeze"
+                ].append(
+                    {
+                        "ref": "refs/tags/../invalid",
+                        "object": "0" * 40,
+                        "object_type": "commit",
+                        "peeled_object": None,
+                    }
+                ),
+                "invalid refname",
+            ),
+        )
+        for name, mutation, message in cases:
+            with self.subTest(name=name):
+                fixture = self.make_frozen_input_fixture(f"binding-{name}")
+                self.mutate_frozen_fixture(fixture, mutation)
+                with self.assertRaisesRegex(ReviewError, message):
+                    self.verify_frozen_fixture(fixture, with_handoff=False)
+
+    def test_frozen_input_verifier_rejects_handoff_and_ref_structure_attacks(
+        self,
+    ) -> None:
+        def remove_bound_child(manifest: dict[str, Any]) -> None:
+            handoff = manifest["handoff"]
+            rows = handoff["files"]
+            handoff["files"] = [
+                row
+                for row in rows
+                if not ("/" not in row["path"] and row["path"].endswith(".zip"))
+            ]
+            handoff["file_count"] = len(handoff["files"])
+            handoff["total_bytes"] = sum(row["size_bytes"] for row in handoff["files"])
+
+        cases = (
+            (
+                "duplicate-handoff-path",
+                lambda manifest: manifest["handoff"]["files"].append(
+                    dict(manifest["handoff"]["files"][0])
+                ),
+                "handoff file path is duplicated",
+            ),
+            (
+                "symlink-identity",
+                lambda manifest: manifest["handoff"]["files"].append(
+                    {
+                        "path": "synthetic-link",
+                        "kind": "symlink",
+                        "target": "target",
+                        "sha256": "0" * 64,
+                        "size_bytes": 0,
+                    }
+                ),
+                "symlink target identity is inconsistent",
+            ),
+            (
+                "file-count",
+                lambda manifest: manifest["handoff"].__setitem__(
+                    "file_count", manifest["handoff"]["file_count"] + 1
+                ),
+                "file_count does not match",
+            ),
+            (
+                "total-bytes",
+                lambda manifest: manifest["handoff"].__setitem__(
+                    "total_bytes", manifest["handoff"]["total_bytes"] + 1
+                ),
+                "total_bytes does not match",
+            ),
+            (
+                "missing-bound-child",
+                remove_bound_child,
+                "does not contain its bound child archive",
+            ),
+            (
+                "origin-control",
+                lambda manifest: manifest["repository_ref_inputs"].__setitem__(
+                    "origin", "https://example.invalid/repo\ninjected"
+                ),
+                "historical origin contains a control separator",
+            ),
+            (
+                "annotated-tag-without-peel",
+                lambda manifest: manifest["repository_ref_inputs"][
+                    "local_tags_at_freeze"
+                ].append(
+                    {
+                        "ref": "refs/tags/annotated",
+                        "object": "0" * 40,
+                        "object_type": "tag",
+                        "peeled_object": None,
+                    }
+                ),
+                "peeled_object must be a nonempty JSON string",
+            ),
+        )
+        for name, mutation, message in cases:
+            with self.subTest(name=name):
+                fixture = self.make_frozen_input_fixture(f"structure-{name}")
+                self.mutate_frozen_fixture(fixture, mutation)
+                with self.assertRaisesRegex(ReviewError, message):
+                    self.verify_frozen_fixture(fixture, with_handoff=False)
+
+    def test_frozen_input_generator_rejects_multiple_configured_public_keys(
+        self,
+    ) -> None:
+        fixture = self.make_frozen_input_fixture("multi-key-generation")
+        repo = fixture["repo"]
+        handoff = fixture["handoff"]
+        key = fixture["key"]
+        release_inputs = fixture["release_inputs"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(repo, Path)
+        assert isinstance(handoff, Path)
+        assert isinstance(key, Path)
+        assert isinstance(release_inputs, tuple)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+
+        public_key = Path(str(key) + ".pub").read_text(encoding="ascii")
+        multiple_keys = self.root / "multiple-signing-keys.pub"
+        multiple_keys.write_text(public_key + public_key, encoding="ascii")
+        subprocess.run(
+            ["git", "config", "user.signingkey", str(multiple_keys)],
+            cwd=repo,
+            check=True,
+        )
+        output = self.root / "multi-key-generation-output.json"
+        allowed_signers = self.root / "multi-key-generation-allowed-signers"
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            self.assertRaisesRegex(ReviewError, "exactly one public key entry"),
+        ):
+            freeze.generate_frozen_inputs(repo, handoff, output, allowed_signers)
+        self.assertFalse(output.exists())
+        self.assertFalse(allowed_signers.exists())
+
+    def test_historical_tag_inventory_has_a_pre_subprocess_bound(self) -> None:
+        tag = {
+            "ref": "refs/tags/example",
+            "object": "0" * 40,
+            "object_type": "commit",
+            "peeled_object": None,
+        }
+        refs = {
+            "origin": "https://example.invalid/repo",
+            "local_tags_at_freeze": [tag] * (freeze.MAX_HISTORICAL_TAGS + 1),
+            "note": freeze.REF_INPUT_NOTE,
+        }
+        with (
+            mock.patch.object(
+                freeze.subprocess,
+                "run",
+                side_effect=AssertionError("oversize tag inventory must not spawn"),
+            ),
+            self.assertRaisesRegex(ReviewError, "historical tag inventory exceeds"),
+        ):
+            freeze.validate_repository_ref_inputs(refs)
+
+        raw_tags = "\n".join(
+            f"refs/tags/tag-{index:04d}\0{'0' * 40}\0commit\0"
+            for index in range(freeze.MAX_HISTORICAL_TAGS + 1)
+        )
+        with (
+            mock.patch.object(freeze, "git", return_value=raw_tags) as git_call,
+            self.assertRaisesRegex(ReviewError, "local tag inventory exceeds"),
+        ):
+            freeze.tag_inventory(self.root)
+        self.assertIn(
+            f"--count={freeze.MAX_HISTORICAL_TAGS + 1}", git_call.call_args.args
+        )
+
+    def test_frozen_input_verifier_rejects_paired_baseline_source_drift(self) -> None:
+        fixture = self.make_frozen_input_fixture("paired-baseline-drift")
+        repo = fixture["repo"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(repo, Path)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+
+        wrong_commit = "0" * 40
+        wrong_tree = "1" * 40
+        handoff_path = repo / "release/0.9.0/handoff-source.json"
+        audit_path = repo / "release/0.9.0/audit-inputs.json"
+        handoff = load_json(handoff_path)
+        audit = load_json(audit_path)
+        handoff["frozen_commit"] = wrong_commit
+        audit["baseline_repository"]["commit"] = wrong_commit
+        audit["baseline_repository"]["tree"] = wrong_tree
+        handoff_path.write_bytes(canonical_json(handoff))
+        audit_path.write_bytes(canonical_json(audit))
+
+        with (
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            self.assertRaisesRegex(ReviewError, "immutable baseline commit"),
+        ):
+            freeze.validate_source_documents(repo)
+
+    def test_frozen_input_verifier_rejects_noncanonical_signer_and_namespace_attacks(
+        self,
+    ) -> None:
+        noncanonical = self.make_frozen_input_fixture("noncanonical-freeze")
+        output = noncanonical["output"]
+        key = noncanonical["key"]
+        assert isinstance(output, Path)
+        assert isinstance(key, Path)
+        output.write_bytes(output.read_bytes() + b"\n")
+        self.sign_frozen_fixture(output, key)
+        with self.assertRaisesRegex(ReviewError, "not strict canonical JSON"):
+            self.verify_frozen_fixture(noncanonical, with_handoff=False)
+
+        signer = self.make_frozen_input_fixture("signer-freeze")
+        allowed_signers = signer["allowed_signers"]
+        assert isinstance(allowed_signers, Path)
+        allowed_signers.write_text(
+            allowed_signers.read_text(encoding="ascii").replace(
+                freeze.SIGNATURE_PRINCIPAL, "wrong@example.invalid"
+            ),
+            encoding="ascii",
+        )
+        with self.assertRaisesRegex(ReviewError, "principal does not match"):
+            self.verify_frozen_fixture(signer, with_handoff=False)
+
+        key_type = self.make_frozen_input_fixture("key-type-freeze")
+        key_type_signers = key_type["allowed_signers"]
+        assert isinstance(key_type_signers, Path)
+        key_type_signers.write_text(
+            key_type_signers.read_text(encoding="ascii").replace(
+                "ssh-ed25519", "ssh-rsa", 1
+            ),
+            encoding="ascii",
+        )
+        with self.assertRaisesRegex(ReviewError, "exactly ssh-ed25519"):
+            self.verify_frozen_fixture(key_type, with_handoff=False)
+
+        fingerprint = self.make_frozen_input_fixture("fingerprint-freeze")
+        self.mutate_frozen_fixture(
+            fingerprint,
+            lambda manifest: manifest["signature_contract"].__setitem__(
+                "public_key_fingerprint",
+                "256 SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA "
+                f"{freeze.SIGNATURE_PRINCIPAL} (ED25519)",
+            ),
+        )
+        with self.assertRaisesRegex(ReviewError, "fingerprint differs"):
+            self.verify_frozen_fixture(fingerprint, with_handoff=False)
+
+        namespace = self.make_frozen_input_fixture("namespace-freeze")
+        namespace_output = namespace["output"]
+        namespace_key = namespace["key"]
+        assert isinstance(namespace_output, Path)
+        assert isinstance(namespace_key, Path)
+        self.sign_frozen_fixture(
+            namespace_output, namespace_key, namespace="wrong-release-namespace"
+        )
+        with self.assertRaisesRegex(ReviewError, "signature verification failed"):
+            self.verify_frozen_fixture(namespace, with_handoff=False)
+
+        symlink = self.make_frozen_input_fixture("symlink-freeze")
+        symlink_output = symlink["output"]
+        symlink_signers = symlink["allowed_signers"]
+        assert isinstance(symlink_output, Path)
+        assert isinstance(symlink_signers, Path)
+        manifest_link = self.root / symlink_output.name.replace("FROZEN", "LINKED")
+        manifest_link.symlink_to(symlink_output)
+        with self.assertRaisesRegex(ReviewError, "missing or not regular"):
+            freeze.verify_frozen_inputs(
+                symlink["repo"], None, manifest_link, symlink_signers
+            )
+
+    def test_frozen_input_verifier_rejects_principal_prefix_and_spacing_attacks(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "principal-prefix",
+                freeze.SIGNATURE_PRINCIPAL + ".attacker",
+                "principal does not match",
+            ),
+            (
+                "principal-spacing",
+                freeze.SIGNATURE_PRINCIPAL + " ",
+                "exactly principal, key type, and key data",
+            ),
+        )
+        for name, replacement, message in cases:
+            with self.subTest(name=name):
+                fixture = self.make_frozen_input_fixture(name)
+                allowed_signers = fixture["allowed_signers"]
+                assert isinstance(allowed_signers, Path)
+                allowed_signers.write_text(
+                    allowed_signers.read_text(encoding="ascii").replace(
+                        freeze.SIGNATURE_PRINCIPAL, replacement, 1
+                    ),
+                    encoding="ascii",
+                )
+                with self.assertRaisesRegex(ReviewError, message):
+                    self.verify_frozen_fixture(fixture, with_handoff=False)
+
+        duplicate = self.make_frozen_input_fixture("duplicate-signer-entry")
+        duplicate_signers = duplicate["allowed_signers"]
+        assert isinstance(duplicate_signers, Path)
+        entry = duplicate_signers.read_text(encoding="ascii")
+        duplicate_signers.write_text(entry + entry, encoding="ascii")
+        with self.assertRaisesRegex(
+            ReviewError, "exactly one newline-terminated entry"
+        ):
+            self.verify_frozen_fixture(duplicate, with_handoff=False)
+
+    def test_signer_fingerprint_requires_canonical_ed25519_shape(self) -> None:
+        forged = subprocess.CompletedProcess(
+            args=["ssh-keygen"],
+            returncode=0,
+            stdout=(
+                "256 MD5:00:11:22:33:44:55:66:77 "
+                f"{freeze.SIGNATURE_PRINCIPAL} (ED25519)\n"
+            ).encode("ascii"),
+            stderr=b"",
+        )
+        with (
+            mock.patch.object(freeze.subprocess, "run", return_value=forged),
+            self.assertRaisesRegex(ReviewError, "unexpected Ed25519 shape"),
+        ):
+            freeze.signer_fingerprint(b"unused signer entry\n")
+
+    def test_allowed_signer_is_bounded_and_snapshotted_for_signature_use(self) -> None:
+        oversize = self.root / "oversize-allowed-signers"
+        oversize.write_bytes(b"x" * (freeze.MAX_ALLOWED_SIGNERS_BYTES + 1))
+        with (
+            mock.patch.object(
+                freeze,
+                "validate_allowed_signer_bytes",
+                side_effect=AssertionError("oversize signer must not be parsed"),
+            ),
+            self.assertRaisesRegex(ReviewError, "exceeds the 4 KiB limit"),
+        ):
+            freeze.validate_allowed_signer(oversize)
+
+        fixture = self.make_frozen_input_fixture("swapped-allowed-signer-freeze")
+        output = fixture["output"]
+        allowed_signers = fixture["allowed_signers"]
+        assert isinstance(output, Path)
+        assert isinstance(allowed_signers, Path)
+
+        replacement_key = self.root / "replacement-signing-key"
+        subprocess.run(
+            [
+                "ssh-keygen",
+                "-q",
+                "-t",
+                "ed25519",
+                "-N",
+                "",
+                "-C",
+                freeze.SIGNATURE_PRINCIPAL,
+                "-f",
+                str(replacement_key),
+            ],
+            check=True,
+        )
+        replacement_fields = (
+            Path(str(replacement_key) + ".pub").read_text(encoding="ascii").split()
+        )
+        replacement_signer = (
+            f"{freeze.SIGNATURE_PRINCIPAL} {replacement_fields[0]} "
+            f"{replacement_fields[1]}\n"
+        ).encode("ascii")
+        self.sign_frozen_fixture(output, replacement_key)
+        bounded_reader = freeze.read_bounded_regular_file
+
+        def snapshot_then_replace(path: Path, *args: object, **kwargs: object) -> bytes:
+            data = bounded_reader(path, *args, **kwargs)
+            if path == allowed_signers:
+                path.write_bytes(replacement_signer)
+            return data
+
+        with (
+            mock.patch.object(
+                freeze,
+                "read_bounded_regular_file",
+                side_effect=snapshot_then_replace,
+            ),
+            self.assertRaisesRegex(ReviewError, "signature verification failed"),
+        ):
+            freeze.validate_signature(
+                output.read_bytes(),
+                output,
+                allowed_signers,
+            )
+
+    def test_frozen_input_signature_is_verified_before_repository_recomputation(
+        self,
+    ) -> None:
+        fixture = self.make_frozen_input_fixture("signature-first-freeze")
+        repo = fixture["repo"]
+        output = fixture["output"]
+        allowed_signers = fixture["allowed_signers"]
+        assert isinstance(repo, Path)
+        assert isinstance(output, Path)
+        assert isinstance(allowed_signers, Path)
+
+        with (
+            mock.patch.object(
+                freeze,
+                "validate_signature",
+                side_effect=ReviewError("injected authentication failure"),
+            ),
+            mock.patch.object(
+                freeze,
+                "loads_json",
+                side_effect=AssertionError("unauthenticated bytes must not be parsed"),
+            ) as loads_json,
+            mock.patch.object(freeze, "baseline_manifest") as baseline_manifest,
+            self.assertRaisesRegex(ReviewError, "injected authentication failure"),
+        ):
+            freeze.verify_frozen_inputs(repo, None, output, allowed_signers)
+        loads_json.assert_not_called()
+        baseline_manifest.assert_not_called()
+
+    def test_frozen_input_signature_size_is_bounded_before_verification(self) -> None:
+        fixture = self.make_frozen_input_fixture("oversize-signature-freeze")
+        output = fixture["output"]
+        allowed_signers = fixture["allowed_signers"]
+        assert isinstance(output, Path)
+        assert isinstance(allowed_signers, Path)
+        manifest = load_json(output)
+        signature = output.with_name(output.name + ".sig")
+        signature.write_bytes(b"x" * (freeze.MAX_SIGNATURE_BYTES + 1))
+
+        with (
+            mock.patch.object(
+                freeze,
+                "validate_allowed_signer_bytes",
+                return_value=manifest["signature_contract"]["public_key_fingerprint"],
+            ),
+            mock.patch.object(
+                freeze.subprocess,
+                "run",
+                side_effect=AssertionError("oversize signature must not be verified"),
+            ),
+            self.assertRaisesRegex(ReviewError, "signature exceeds the 64 KiB limit"),
+        ):
+            freeze.validate_signature(
+                output.read_bytes(),
+                output,
+                allowed_signers,
+            )
+
+        swap_fixture = self.make_frozen_input_fixture("swapped-signature-freeze")
+        swap_output = swap_fixture["output"]
+        swap_signers = swap_fixture["allowed_signers"]
+        assert isinstance(swap_output, Path)
+        assert isinstance(swap_signers, Path)
+        swap_signature = swap_output.with_name(swap_output.name + ".sig")
+        bounded_reader = freeze.read_bounded_regular_file
+
+        def snapshot_then_swap(path: Path, *args: object, **kwargs: object) -> bytes:
+            data = bounded_reader(path, *args, **kwargs)
+            path.unlink()
+            path.write_bytes(b"x" * (freeze.MAX_SIGNATURE_BYTES + 1))
+            return data
+
+        with mock.patch.object(
+            freeze, "read_bounded_regular_file", side_effect=snapshot_then_swap
+        ):
+            freeze.validate_signature(
+                swap_output.read_bytes(),
+                swap_output,
+                swap_signers,
+            )
+        self.assertGreater(swap_signature.stat().st_size, freeze.MAX_SIGNATURE_BYTES)
+
+    def test_bounded_regular_reader_is_path_swap_safe_and_read_limited(self) -> None:
+        path = self.root / "bounded-input"
+        original = b"signed bytes"
+        path.write_bytes(original)
+        real_fstat = freeze.os.fstat
+
+        with (
+            mock.patch.object(
+                freeze.os,
+                "close",
+                side_effect=AssertionError("fdopen-owned descriptor was reclosed"),
+            ),
+            self.assertRaisesRegex(ReviewError, "exceeds the zero-byte limit"),
+        ):
+            freeze.read_bounded_regular_file(
+                path, 0, label="fixture", limit_label="zero-byte"
+            )
+
+        def replace_path(descriptor: int) -> os.stat_result:
+            metadata = real_fstat(descriptor)
+            path.unlink()
+            path.write_bytes(b"x" * 129)
+            return metadata
+
+        with mock.patch.object(freeze.os, "fstat", side_effect=replace_path):
+            data = freeze.read_bounded_regular_file(
+                path, 128, label="fixture", limit_label="128-byte"
+            )
+        self.assertEqual(data, original)
+
+        path.write_bytes(original)
+
+        def grow_open_file(descriptor: int) -> os.stat_result:
+            metadata = real_fstat(descriptor)
+            with path.open("ab") as handle:
+                handle.write(b"x" * 129)
+            return metadata
+
+        with (
+            mock.patch.object(freeze.os, "fstat", side_effect=grow_open_file),
+            self.assertRaisesRegex(ReviewError, "exceeds the 128-byte limit"),
+        ):
+            freeze.read_bounded_regular_file(
+                path, 128, label="fixture", limit_label="128-byte"
+            )
+
+        fifo = self.root / "bounded-fifo"
+        os.mkfifo(fifo)
+        program = """
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from common import ReviewError
+from freeze_audit_inputs import read_bounded_regular_file
+try:
+    read_bounded_regular_file(
+        Path(sys.argv[2]), 128, label="fixture", limit_label="128-byte"
+    )
+except ReviewError as error:
+    if "missing or not regular" in str(error):
+        raise SystemExit(0)
+    print(error, file=sys.stderr)
+    raise SystemExit(2)
+raise SystemExit(3)
+"""
+        try:
+            process = subprocess.run(
+                [sys.executable, "-c", program, str(TOOLS), str(fifo)],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=2,
+            )
+        except subprocess.TimeoutExpired as error:
+            self.fail(f"bounded regular-file reader blocked on a FIFO: {error}")
+        self.assertEqual(process.returncode, 0, process.stderr)
+
+    def test_frozen_input_verify_cli_returns_controlled_nonzero(self) -> None:
+        fixture = self.make_frozen_input_fixture("controlled-cli-freeze")
+        output = fixture["output"]
+        key = fixture["key"]
+        repo = fixture["repo"]
+        allowed_signers = fixture["allowed_signers"]
+        release_inputs = fixture["release_inputs"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(output, Path)
+        assert isinstance(key, Path)
+        assert isinstance(repo, Path)
+        assert isinstance(allowed_signers, Path)
+        assert isinstance(release_inputs, tuple)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+        self.sign_frozen_fixture(output, key, namespace="wrong-release-namespace")
+        stderr = io.StringIO()
+        arguments = [
+            str(TOOLS / "freeze_audit_inputs.py"),
+            "verify",
+            "--repo",
+            str(repo),
+            "--out",
+            str(output),
+            "--allowed-signers",
+            str(allowed_signers),
+        ]
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            mock.patch.object(sys, "argv", arguments),
+            contextlib.redirect_stderr(stderr),
+        ):
+            result = freeze.main()
+        self.assertEqual(result, 2)
+        self.assertIn("signature verification failed", stderr.getvalue())
+        self.assertNotIn("Traceback", stderr.getvalue())
+
+        output.write_text("[" * 2_000 + "0" + "]" * 2_000, encoding="ascii")
+        stderr = io.StringIO()
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            mock.patch.object(sys, "argv", arguments),
+            contextlib.redirect_stderr(stderr),
+        ):
+            result = freeze.main()
+        self.assertEqual(result, 2)
+        self.assertIn("audit-input freeze failed", stderr.getvalue())
+        self.assertNotIn("Traceback", stderr.getvalue())
+
+    def test_frozen_input_cli_rejects_manifest_and_signer_symlinks(self) -> None:
+        fixture = self.make_frozen_input_fixture("cli-symlink-freeze")
+        repo = fixture["repo"]
+        output = fixture["output"]
+        allowed_signers = fixture["allowed_signers"]
+        release_inputs = fixture["release_inputs"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(repo, Path)
+        assert isinstance(output, Path)
+        assert isinstance(allowed_signers, Path)
+        assert isinstance(release_inputs, tuple)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+
+        manifest_link = self.root / "cli-linked-manifest.json"
+        manifest_link.symlink_to(output)
+        signer_dir = self.root / "cli-linked-signer"
+        signer_dir.mkdir()
+        signer_link = signer_dir / allowed_signers.name
+        signer_link.symlink_to(allowed_signers)
+
+        cases = (
+            (manifest_link, allowed_signers, "manifest is missing or not regular"),
+            (output, signer_link, "allowed-signers file is missing or not regular"),
+        )
+        for manifest_path, signer_path, expected in cases:
+            with self.subTest(expected=expected):
+                stderr = io.StringIO()
+                arguments = [
+                    str(TOOLS / "freeze_audit_inputs.py"),
+                    "verify",
+                    "--repo",
+                    str(repo),
+                    "--out",
+                    str(manifest_path),
+                    "--allowed-signers",
+                    str(signer_path),
+                ]
+                with (
+                    mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+                    mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+                    mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+                    mock.patch.object(sys, "argv", arguments),
+                    contextlib.redirect_stderr(stderr),
+                ):
+                    result = freeze.main()
+                self.assertEqual(result, 2)
+                self.assertIn(expected, stderr.getvalue())
+                self.assertNotIn("Traceback", stderr.getvalue())
+
+    def test_frozen_input_generation_rejects_collisions_without_partial_outputs(
+        self,
+    ) -> None:
+        fixture = self.make_frozen_input_fixture("generation-collision-freeze")
+        repo = fixture["repo"]
+        handoff = fixture["handoff"]
+        release_inputs = fixture["release_inputs"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(repo, Path)
+        assert isinstance(handoff, Path)
+        assert isinstance(release_inputs, tuple)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+
+        output = self.root / "collision-manifest.json"
+        allowed = self.root / "collision-allowed-signers"
+        signature = output.with_name(output.name + ".sig")
+        signature.write_text("pre-existing\n", encoding="ascii")
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            self.assertRaisesRegex(ReviewError, "signature output already exists"),
+        ):
+            freeze.generate_frozen_inputs(repo, handoff, output, allowed)
+        self.assertFalse(output.exists())
+        self.assertFalse(allowed.exists())
+
+        signature.unlink()
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            mock.patch.object(
+                freeze, "canonical_json", return_value=b"x" * (4 * 1024 * 1024 + 1)
+            ),
+            self.assertRaisesRegex(ReviewError, "generated.*exceeds 4 MiB"),
+        ):
+            freeze.generate_frozen_inputs(repo, handoff, output, allowed)
+        self.assertFalse(output.exists())
+        self.assertFalse(allowed.exists())
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            mock.patch.object(
+                freeze,
+                "validate_allowed_signer",
+                side_effect=ReviewError("injected signer validation failure"),
+            ),
+            self.assertRaisesRegex(ReviewError, "injected signer validation failure"),
+        ):
+            freeze.generate_frozen_inputs(repo, handoff, output, allowed)
+        self.assertFalse(output.exists())
+        self.assertFalse(allowed.exists())
+
+        with self.assertRaisesRegex(ReviewError, "must be distinct"):
+            freeze.generate_frozen_inputs(repo, handoff, output, signature)
+
+    def test_frozen_input_verifier_rejects_oversize_before_reading(self) -> None:
+        output = self.root / "oversize-frozen-inputs.json"
+        output.write_bytes(b"x" * (freeze.MAX_MANIFEST_BYTES + 1))
+
+        with (
+            mock.patch.object(
+                Path,
+                "read_bytes",
+                side_effect=AssertionError("oversize manifest must not be read"),
+            ),
+            self.assertRaisesRegex(ReviewError, "exceeds the 4 MiB verification limit"),
+        ):
+            freeze.verify_frozen_inputs(
+                self.root,
+                None,
+                output,
+                self.root / "unused-allowed-signers",
+            )
+
     def test_candidate_qualifier_refuses_output_inside_subject_repository(self) -> None:
         process = run(
             str(TOOLS / "qualify_candidate.py"),
@@ -260,13 +1711,17 @@ class ReviewToolsTest(unittest.TestCase):
 
         self.assertEqual([row["path"] for row in rows], ["README.md", "data.json"])
         self.assertTrue(all(row["review_status"] == "UNREVIEWED" for row in rows))
-        self.assertTrue(all(row["reviewer"].startswith("Sepehr Mahmoudian") for row in rows))
+        self.assertTrue(
+            all(row["reviewer"].startswith("Sepehr Mahmoudian") for row in rows)
+        )
         self.assertTrue(all(row["generated"] == "NO" for row in rows))
         self.assertEqual(manifest["tracked_files"], 2)
         self.assertTrue(all(item["review_scope"] for item in manifest["files"]))
         self.assertEqual({item["path"] for item in findings}, {"README.md"})
 
-    def test_claim_scan_and_three_lane_packet_generation_are_deterministic(self) -> None:
+    def test_claim_scan_and_three_lane_packet_generation_are_deterministic(
+        self,
+    ) -> None:
         run(
             str(TOOLS / "audit_tracked_files.py"),
             "--repo",
@@ -293,7 +1748,9 @@ class ReviewToolsTest(unittest.TestCase):
 
         packets = [
             json.loads(
-                (self.root / f"audit/generated/review-packets/lane-{lane}.json").read_text()
+                (
+                    self.root / f"audit/generated/review-packets/lane-{lane}.json"
+                ).read_text()
             )
             for lane in range(1, 4)
         ]
@@ -302,9 +1759,15 @@ class ReviewToolsTest(unittest.TestCase):
         )
 
         self.assertEqual(sum(len(packet["files"]) for packet in packets), 2)
-        self.assertTrue(all(packet["human_review_claimed"] is False for packet in packets))
         self.assertTrue(
-            all(file["reviewer"].startswith("Sepehr Mahmoudian") for packet in packets for file in packet["files"])
+            all(packet["human_review_claimed"] is False for packet in packets)
+        )
+        self.assertTrue(
+            all(
+                file["reviewer"].startswith("Sepehr Mahmoudian")
+                for packet in packets
+                for file in packet["files"]
+            )
         )
         self.assertEqual({finding["path"] for finding in claims}, {"README.md"})
 
@@ -336,7 +1799,9 @@ class ReviewToolsTest(unittest.TestCase):
             cwd=self.root,
         )
 
-        manifest.write_text('{"schema":"a","schema":"b","artifacts":[]}', encoding="utf-8")
+        manifest.write_text(
+            '{"schema":"a","schema":"b","artifacts":[]}', encoding="utf-8"
+        )
         duplicate = run(
             str(TOOLS / "verify_evidence_manifest.py"),
             str(manifest),
@@ -396,9 +1861,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertIn("contains a symlink", symlink.stderr)
 
         manifest.write_text(
-            json.dumps(
-                {"schema": "galadriel.evidence-manifest.v1", "artifacts": []}
-            ),
+            json.dumps({"schema": "galadriel.evidence-manifest.v1", "artifacts": []}),
             encoding="utf-8",
         )
         empty = run(
@@ -414,7 +1877,9 @@ class ReviewToolsTest(unittest.TestCase):
     def test_public_api_snapshot_comparison_is_exact_and_bounded(self) -> None:
         compare_snapshot("fixture", b"pub struct Stable;\n", b"pub struct Stable;\n")
 
-        with self.assertRaisesRegex(ReviewError, "public API snapshot drifted") as raised:
+        with self.assertRaisesRegex(
+            ReviewError, "public API snapshot drifted"
+        ) as raised:
             compare_snapshot(
                 "fixture",
                 b"pub struct Stable;\n",
@@ -440,7 +1905,9 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertIn("+++ release/0.9.0/api/galadriel-core.0.9.0.txt\n", rendered)
         self.assertNotRegex(rendered, r"\d{4}-\d{2}-\d{2}")
 
-    def test_handoff_inventory_records_file_and_directory_symlinks_without_following(self) -> None:
+    def test_handoff_inventory_records_file_and_directory_symlinks_without_following(
+        self,
+    ) -> None:
         handoff = self.root / "handoff"
         target_directory = handoff / "directory"
         target_directory.mkdir(parents=True)
@@ -464,6 +1931,118 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(by_path["file-link"]["kind"], "symlink")
         self.assertEqual(by_path["directory-link"]["kind"], "symlink")
         self.assertEqual(by_path["directory-link"]["target"], "directory")
+
+    def test_handoff_inventory_rejects_walk_errors_and_symlink_root(self) -> None:
+        root = self.root / "handoff-walk-errors"
+        root.mkdir()
+
+        def denied_walk(*_args: object, **kwargs: object) -> object:
+            onerror = kwargs["onerror"]
+            assert callable(onerror)
+            onerror(PermissionError(13, "Permission denied", str(root / "blocked")))
+            return ()
+
+        with (
+            mock.patch.object(freeze.os, "walk", side_effect=denied_walk),
+            self.assertRaisesRegex(ReviewError, "cannot completely inventory"),
+        ):
+            strict_relative_files(root)
+
+        link = self.root / "handoff-root-link"
+        link.symlink_to(root, target_is_directory=True)
+        with self.assertRaisesRegex(ReviewError, "not a regular directory"):
+            strict_relative_files(link)
+
+    def test_handoff_inventory_rejects_non_utf8_symlink_targets(self) -> None:
+        handoff = self.root / "non-utf8-handoff"
+        handoff.mkdir()
+        os.symlink(b"\xff-target", os.fsencode(handoff / "link"))
+
+        with self.assertRaisesRegex(ReviewError, "target is not valid UTF-8"):
+            strict_relative_files(handoff)
+
+    def test_handoff_inventory_enforces_early_and_streaming_resource_bounds(
+        self,
+    ) -> None:
+        entry_root = self.root / "entry-bound-handoff"
+        entry_root.mkdir()
+        for index in range(3):
+            (entry_root / f"{index}.txt").write_bytes(b"x")
+        with (
+            mock.patch.object(freeze, "MAX_HANDOFF_ENTRIES", 2),
+            mock.patch.object(
+                freeze,
+                "digest_bounded_handoff_file",
+                side_effect=AssertionError("entries must be bounded before hashing"),
+            ),
+            self.assertRaisesRegex(ReviewError, "entry-count limit"),
+        ):
+            strict_relative_files(entry_root)
+
+        file_root = self.root / "file-bound-handoff"
+        file_root.mkdir()
+        (file_root / "large.bin").write_bytes(b"12345")
+        with (
+            mock.patch.object(freeze, "MAX_HANDOFF_FILE_BYTES", 4),
+            self.assertRaisesRegex(ReviewError, "per-file byte limit"),
+        ):
+            strict_relative_files(file_root)
+
+        symlink_root = self.root / "symlink-bound-handoff"
+        symlink_root.mkdir()
+        (symlink_root / "link").symlink_to("12345")
+        with (
+            mock.patch.object(freeze, "MAX_HANDOFF_SYMLINK_BYTES", 4),
+            self.assertRaisesRegex(ReviewError, "symlink target exceeds"),
+        ):
+            strict_relative_files(symlink_root)
+
+        aggregate_root = self.root / "aggregate-bound-handoff"
+        aggregate_root.mkdir()
+        (aggregate_root / "a.bin").write_bytes(b"123")
+        (aggregate_root / "b.bin").write_bytes(b"456")
+        with (
+            mock.patch.object(freeze, "MAX_HANDOFF_FILE_BYTES", 4),
+            mock.patch.object(freeze, "MAX_HANDOFF_AGGREGATE_BYTES", 5),
+            self.assertRaisesRegex(ReviewError, "aggregate byte limit"),
+        ):
+            strict_relative_files(aggregate_root)
+
+        growing = self.root / "growing-handoff-file"
+        growing.write_bytes(b"1234")
+        real_fstat = freeze.os.fstat
+
+        def grow_after_metadata(descriptor: int) -> os.stat_result:
+            metadata = real_fstat(descriptor)
+            with growing.open("ab") as handle:
+                handle.write(b"5")
+            return metadata
+
+        with (
+            mock.patch.object(freeze, "MAX_HANDOFF_FILE_BYTES", 4),
+            mock.patch.object(freeze.os, "fstat", side_effect=grow_after_metadata),
+            self.assertRaisesRegex(ReviewError, "per-file byte limit"),
+        ):
+            freeze.digest_bounded_handoff_file(growing, growing.name, 0)
+
+    def test_handoff_manifest_rows_reject_declared_resource_overflow(self) -> None:
+        regular = {
+            "path": "large.bin",
+            "kind": "regular",
+            "sha256": "0" * 64,
+            "size_bytes": 5,
+        }
+        with (
+            mock.patch.object(freeze, "MAX_HANDOFF_FILE_BYTES", 4),
+            self.assertRaisesRegex(ReviewError, "regular-file byte limit"),
+        ):
+            freeze.validate_handoff_rows([regular])
+
+        with (
+            mock.patch.object(freeze, "MAX_HANDOFF_ENTRIES", 1),
+            self.assertRaisesRegex(ReviewError, "entry-count limit"),
+        ):
+            freeze.validate_handoff_rows([regular, {**regular, "path": "another.bin"}])
 
 
 if __name__ == "__main__":

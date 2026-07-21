@@ -7,7 +7,7 @@ may contain breaking changes.
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-07-18
+## [0.9.0] - 2026-07-21
 
 ### Release contract
 
@@ -20,6 +20,13 @@ may contain breaking changes.
 - Add a generated immutable audit manifest, four-tier claims matrix, exact statistical
   contract, threat model, stable-core API policy, requirement/evidence ledger, and
   protected-main change-control policy.
+- Add semantic verification for the signed, canonical frozen-input manifest and an
+  acyclic exact-candidate closure protocol: bounded no-follow input snapshots, signed
+  qualification/review/decision/task records, schema-validated local convergence,
+  signed closure inventory, checksums, flushed same-parent staging, and atomic
+  no-replace publication. Qualification artifacts cannot occupy the closure `inputs/`
+  or convergence namespaces, and the NCP feature report records checker-tooling and
+  runtime-pin identities separately.
 - Add a verdict-independent authority-effect validator proving record-only and
   monotonically restrict-only consumer transitions; `Nominal` cannot grant authority,
   relax a limit, extend TTL/lease, refresh a watchdog, or change capabilities.
@@ -167,7 +174,11 @@ may contain breaking changes.
   qualification. Record pid-rs activation, its same-revision `pid-runlog` edge, and the
   absence of a published upstream 1.x claim. Clarify that NCP wire 1.0 is
   unreleased/proposed, Haldir has no runtime adapter, and Prisoma's base-route observer
-  rejects Galadriel's named sidecars.
+  rejects Galadriel's named sidecars. Preserve Haldir's discovery-head observation at
+  `0e94f61cfd5c78482198a765157571746a256181` and the later 2026-07-18 reinspection at
+  descendant `dd3d8a1c993721f89a1edb04dec5247761c694ad`; the later value supersedes only
+  the mutable discovery-head reference and does not rewrite frozen or historical evidence.
+  Bind the same objects and relationship semantics in a machine-readable ecosystem cut.
 - Split the unchanged strict changed-Rust mutation set into four deterministic CI shards so
   feature-sized diffs complete within the bounded job window. Add exact lifecycle identity,
   inclusive capacity/channel, history-clear, nested-endpoint, whitespace-path, and Unix

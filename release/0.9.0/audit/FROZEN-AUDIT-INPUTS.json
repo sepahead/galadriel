@@ -1071,8 +1071,8 @@
   "release_input_files": [
     {
       "path": ".github/workflows/ci.yml",
-      "sha256": "4eeeb242cbfdec392ecc9bc8df30b10b4b6c72a0a7858ab26a877849d3b9abf1",
-      "size_bytes": 7080
+      "sha256": "f7ab0e8d98c1f44961c4bf94d5d2fc7f5a44206ad3fe0c2dcac166c8d2f6de1b",
+      "size_bytes": 7359
     },
     {
       "path": ".github/workflows/deep-quality.yml",
@@ -1080,9 +1080,14 @@
       "size_bytes": 9706
     },
     {
+      "path": ".ncp-consumer",
+      "sha256": "2f4d5786241e31f7059475b9c55f0743543506542c55f9f676bf9d484a22f569",
+      "size_bytes": 1250
+    },
+    {
       "path": "Cargo.toml",
-      "sha256": "d17014075606bc3f61e1c79d394fc9be4052432bb1c32b0e666cabc2bc111437",
-      "size_bytes": 3098
+      "sha256": "40fc20d47f3c688969564708e421ac29b394f36addfdb7e43fb6a029afa1e5ad",
+      "size_bytes": 3286
     },
     {
       "path": "Cargo.lock",
@@ -1116,8 +1121,13 @@
     },
     {
       "path": "release/0.9.0/audit-inputs.json",
-      "sha256": "6103068f6e7f25dd54af57eb77e4d7aa589babbc8e67b0f46b033a1021ef5653",
-      "size_bytes": 10203
+      "sha256": "664142efd518ab3063637940c7044370ab6dd3173d23e4ca78a4d8303b2c4ab9",
+      "size_bytes": 10328
+    },
+    {
+      "path": "release/0.9.0/ecosystem-cut.json",
+      "sha256": "b260ce82e0f467296d7a938e2e26d9215dc445873eba456a321956f68f1a3ecd",
+      "size_bytes": 4548
     },
     {
       "path": "release/0.9.0/handoff-source.json",
@@ -1145,9 +1155,19 @@
       "size_bytes": 1714523
     },
     {
+      "path": "release/0.9.0/local-convergence-schema.json",
+      "sha256": "05039f3d2fee3bdeefadc1050a30f765b8e0382dbc68d15591c1ea0bb5fefe1f",
+      "size_bytes": 22827
+    },
+    {
+      "path": "release/0.9.0/RELEASE-NOTES.md",
+      "sha256": "b07b53eaab2471ba0ec4c1e82932d6de653e464e19433a73ba1230b83d84a96d",
+      "size_bytes": 3928
+    },
+    {
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
-      "sha256": "eb01030278ef7becea9c3892acb37235a1f50ed78d4847d1669a1140d6f88a2d",
-      "size_bytes": 2387
+      "sha256": "9c25dbd294813b7d1be6bbfd7c3bbadc7901266b7e5f628976c484c923cc5cd3",
+      "size_bytes": 4497
     },
     {
       "path": "release/0.9.0/claims.json",
@@ -1206,7 +1226,7 @@
     },
     {
       "path": "CITATION.cff",
-      "sha256": "49d27373e694a45fdecf970f9bf3fe8e69911a08b4d9408acd0f95624c78ac33",
+      "sha256": "4b69122f7740e2dad7cc9abc3d85379e339701036809e44a85cb5d0c64509b9f",
       "size_bytes": 753
     },
     {
@@ -1221,8 +1241,8 @@
     },
     {
       "path": "docs/ADVISORY-BOUNDARY.md",
-      "sha256": "fb8762752a5effbd8a88fa5be1c5adba149998ee5719f8b7378aa33669eb6015",
-      "size_bytes": 13029
+      "sha256": "dfc740100daf1c705463ac352a6099caa887793938ff0ea11e27559c674784ed",
+      "size_bytes": 14526
     },
     {
       "path": "docs/CLAIMS.md",
@@ -1236,13 +1256,13 @@
     },
     {
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
-      "sha256": "13f0662a6da8a4255df25d495b9423103e857cef8faf6acf7c58dc60e59c690f",
-      "size_bytes": 5429
+      "sha256": "a7c997a6a5efacaf9c60a480b019c7d879fc0af7e355fe061a86ec184a4830ca",
+      "size_bytes": 14053
     },
     {
       "path": "docs/PRODUCER-CONTRACT.md",
-      "sha256": "41c884f3e4099f27366d1b5541c8072f5fe068162a2c4a026d05e83e20735dc9",
-      "size_bytes": 32261
+      "sha256": "124466d202b89732784b5f9f56b40271df8bca4133e79ab608fcd1cc0e1bd24b",
+      "size_bytes": 32283
     },
     {
       "path": "docs/RELATED-WORK.md",
@@ -1291,8 +1311,8 @@
     },
     {
       "path": "repo_work/README.md",
-      "sha256": "d05699cf44b37c50e3b3b38ee024390f381ba2999d3d4d0b8b1845b95845e3ff",
-      "size_bytes": 8675
+      "sha256": "ab20e4f0516b114d080b1bbbef8ac901da65e8820c0270e5eac8862296b3ab4a",
+      "size_bytes": 13989
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1306,8 +1326,8 @@
     },
     {
       "path": "repo_work/check_feature_graph.py",
-      "sha256": "c800269123c10a8eef8364a4cb2090f73c74e5dfd0185ac9746c9b35c8fea5ac",
-      "size_bytes": 4520
+      "sha256": "3fda2d3f32ee75ebd603b635883111f9ae93b60e10ef5ebf87acd782b7d50f25",
+      "size_bytes": 18766
     },
     {
       "path": "repo_work/check_focused_mutation.py",
@@ -1336,13 +1356,18 @@
     },
     {
       "path": "repo_work/finalize_release.py",
-      "sha256": "761a12d47ba60ac480f0e640b80cd497cf05195e5119b28c8babbbc41c721f42",
-      "size_bytes": 49651
+      "sha256": "edfe61dd6e91593fae3cae3de5007d40501125a44e1624bb324469ec4d8881d2",
+      "size_bytes": 84644
     },
     {
       "path": "repo_work/freeze_audit_inputs.py",
-      "sha256": "30c71d1565d561f6be07fe0cd90d4fa1c5018aaefbe36e123fa35b4cedd43109",
-      "size_bytes": 17832
+      "sha256": "47035f947c8e3f505756f75da27b3384474b3198de048398def1f47c61c2bb37",
+      "size_bytes": 51554
+    },
+    {
+      "path": "repo_work/local_convergence.py",
+      "sha256": "d2de8dfa55cd38a41f7f11c8c79aaa3635e8a74bc03c222c4dc7b283ada7be9c",
+      "size_bytes": 26788
     },
     {
       "path": "repo_work/make_review_packets.py",
@@ -1356,13 +1381,13 @@
     },
     {
       "path": "repo_work/qualify_candidate.py",
-      "sha256": "86978d25eaa026708bfd4d49c4e673ecbf78aaefefb599cfe5a7acaa064d29eb",
-      "size_bytes": 52299
+      "sha256": "35ce55fffb328aa2be936c0df72c86bd9f490413c16cb78a38d0fd157d40825a",
+      "size_bytes": 52765
     },
     {
       "path": "repo_work/release_assurance.py",
-      "sha256": "f41d7dffcf493290d43145581c1f95facdab98cb02007985811c8f900cdf8952",
-      "size_bytes": 88392
+      "sha256": "2a7fd750972002be0ec5a6ade43e039e99adeb7d09bf217db17ceb9217794a26",
+      "size_bytes": 90605
     },
     {
       "path": "repo_work/reproduce_baseline.py",
@@ -1376,13 +1401,13 @@
     },
     {
       "path": "repo_work/tests/test_release_assurance.py",
-      "sha256": "c6d9e73b27059dffb655aab496890ff2a32b7cae6d5279c68c40133521f09f70",
-      "size_bytes": 67107
+      "sha256": "e3d2e7ef828c92ef3334ab97c5a702a2102e215d822d08d9a0bec22ceb61be4a",
+      "size_bytes": 125263
     },
     {
       "path": "repo_work/tests/test_review_tools.py",
-      "sha256": "1a8fa027b80bd5c0f7fd9ec601803669a9c334b5eaf46b0b67903527126160e4",
-      "size_bytes": 17001
+      "sha256": "d57eb8656ca068793b3a854cf1a2c52ebf2ef28d21b1eb70b94efe3274748929",
+      "size_bytes": 81506
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",
