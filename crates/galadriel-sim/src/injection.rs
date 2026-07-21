@@ -1041,7 +1041,7 @@ mod tests {
         for maneuver in invalid {
             let mut stream = vec![original.clone()];
             assert!(inject(&mut stream, &maneuver).is_err());
-            assert_eq!(stream, [original.clone()]);
+            assert_eq!(stream, std::slice::from_ref(&original));
         }
     }
 

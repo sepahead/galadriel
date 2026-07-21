@@ -541,8 +541,8 @@
     {
       "path": "crates/galadriel-sim/src/injection.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "7aea076f11a45d85c19a98c25a557d9a8092b6cf696e044ecd7f66768a6afe92",
-      "size_bytes": 38024
+      "sha256": "5d318001828fd06bc4d24e043d50166d33aa113b76dcff5de0ee8efdcfef0d41",
+      "size_bytes": 38037
     },
     {
       "path": "crates/galadriel-sim/src/lib.rs",
