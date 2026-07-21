@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/sepahead/galadriel/blob/main/crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
+  "$id": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
   "title": "Galadriel PID sidecar envelope v1",
   "description": "Project-owned payload carried on the NCP named perception route sensor/galadriel-pid. Transport authentication is external; producer_id is a claim bound by the receiver to its expected publisher.",
   "type": "object",

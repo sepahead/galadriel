@@ -43,17 +43,25 @@ Normative and generated artifacts:
   `task-dispositions.json`, and `requirements-ledger.json` are source-state
   records: they preserve the exact post-commit work still required and do not
   represent future review as complete.
-- `ecosystem-cut.json` records each inspected sibling object, relationship direction,
-  build/runtime optionality, rationale, and explicit supersession. Mutable heads are
-  provenance only; the two Cargo revisions are the only dependency pins.
+- `ecosystem-cut.json` records each inspected sibling object plus the candidate's explicit
+  Engram/Paper2Brain, ROS, and external-authority non-edges, relationship direction,
+  build/runtime optionality, rationale, acyclic boundary, and Haldir supersession. Mutable
+  heads are provenance only; the two Cargo revisions are the only dependency pins.
 - `local-convergence-schema.json` is the explicit 0.9.0 adaptation of the supplied
   convergence schema. Finalization emits a separately signed, exact-candidate
   `LOCAL-CONVERGENCE.json` only after all 116 dispositions, ten wave acceptances,
   complete file review, and retained artifacts pass, and after the fixed local
   cross-repository requirements are explicitly recorded. Exact pid-rs/NCP pin graphs
-  are locally qualified; reciprocal and deployed compatibility remains unclaimed.
+  are locally qualified; Crebain/Haldir/Prisoma remain optional or prospective; and
+  Engram/Paper2Brain, ROS, external-authority, reciprocal, and deployed relationships
+  remain absent or unclaimed.
   The record is an entry point for any later reciprocal reconciliation, not evidence
   that another repository accepted this candidate.
+- `repo_work/package_release_assets.py` maps the completed qualification and closure
+  tiers into two deterministic path-preserving tar files, a canonical asset map, and its
+  detached `galadriel-release-assets` signature. The signed map binds both tar byte
+  identities to the exact candidate, tree, signed tag object/target, author, and null
+  DOI/Zenodo fields; verification additionally enforces the exact four-file upload set.
 - `api/` retains the public-source API baseline and accepted 0.9.0 surface.
 - `evidence/` retains complete command output rather than pass/fail summaries.
 - `reviews/` contains the phase and final multi-lens review records.
@@ -98,6 +106,39 @@ agent-backed Ed25519 public-key handle so private key bytes need not be snapshot
 The rename is the commit point; status 3 means a complete output was retained but
 parent-directory durability or result reporting was not confirmed, so the retained
 bundle must be independently verified before use.
+
+After finalization and creation of the signed annotated `v0.9.0` tag, publication uses
+exactly these four attached assurance assets:
+
+- `galadriel-0.9.0-qualification.tar`
+- `galadriel-0.9.0-closure.tar`
+- `galadriel-0.9.0-release-asset-map.json`
+- `galadriel-0.9.0-release-asset-map.json.sig`
+
+Build them only with `repo_work/package_release_assets.py build`. Before publication,
+verify the downloaded four-file set with the same tool and an independently obtained
+allowed-signers trust root, then use `extract`/`reconstruct` to recover the two original
+tier roots without archive-path trust. Verify each recovered root's `SHA256SUMS`, the
+qualification and closure signatures, and `LOCAL-CONVERGENCE.json` against the exact
+candidate. GitHub's automatically generated source zip and tarball are convenience
+snapshots, not members of the signed asset map and not substitutes for either evidence tar.
+The complete draft-first operator sequence is normative in `RELEASE-RUNBOOK.md`.
+
+The internal tier signatures use principal `sepmhn@gmail.com` and the literal SSH
+namespaces `galadriel-qualification-manifest` and `galadriel-closure-manifest`. The
+runbook gives the exact independent-trust-root commands; these namespaces are distinct
+from the outer release-asset-map namespace `galadriel-release-assets`.
+
+Post-publication verification resolves all six immutable release-body `blob` links,
+byte-compares their raw counterparts with the tagged Git blobs, and separately
+byte-compares the `$id` URLs for the local-convergence, PID-envelope, and
+monitor-envelope schemas. HTML `blob` responses are never misrepresented as source bytes.
+The GitHub release title is literally `Galadriel 0.9.0`; its body is the complete tracked
+`RELEASE-NOTES.md`, not text inferred from that file's Markdown heading.
+
+Canonical tar construction and regeneration use the audit-pinned `CPython 3.14.6`.
+Authenticated and anonymous downloads are both compared byte-for-byte with all four local
+upload sources; this remains mandatory when GitHub does not report an API digest field.
 
 The verifier rejects stale output, duplicate JSON keys, mutable Git dependencies,
 prose-only task closure, incomplete twenty-lens reviews, incorrect author/version

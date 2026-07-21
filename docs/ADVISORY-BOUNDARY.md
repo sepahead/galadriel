@@ -157,11 +157,14 @@ the resulting selection effects or calibrated the stream.
   dependency, route, publisher, subscriber, or adapter in Haldir remote `main`
   `0e94f61cfd5c78482198a765157571746a256181`. A later 2026-07-18 read-only
   reinspection observed `dd3d8a1c993721f89a1edb04dec5247761c694ad`, which Git
-  history retains as a descendant after Haldir current-head qualification and
-  repository-inventory commits. Those commits did not create a Galadriel edge; the later
-  observation supersedes only the mutable discovery-head reference and does not rewrite
-  either observation or frozen/historical evidence. Haldir's Galadriel phase remains not
-  started. Any future adapter MUST admit a raw Galadriel verdict into a Haldir-owned
+  history retains as a descendant after Haldir current-head qualification and initial
+  repository-inventory commits. A 2026-07-22 reinspection observed descendant
+  `c0e4b3d156500684329a92bcb16e0609894fd738`; its activated CH-T001 downstream
+  disposition explicitly records no runtime-surface or external-conformance change.
+  These commits did not create a Galadriel edge. Each later observation supersedes only
+  the preceding mutable-head reference and does not rewrite an earlier observation or
+  frozen/historical evidence. Haldir's Galadriel phase remains not started. Any future
+  adapter MUST admit a raw Galadriel verdict into a Haldir-owned
   record and derive `StateUnusable` and policy eligibility independently. It MUST NOT
   accept those conclusions as producer assertions. Prisoma
   `63cff105e0e40281376e6f827d7782e9b351961a` likewise has no direct Galadriel edge:
@@ -172,6 +175,13 @@ the resulting selection effects or calibrated the stream.
   result logic. Shared `pid-rs` use creates a common implementation dependency, so the
   outputs are not independent-implementation replication; it does not by itself prove
   statistical dependence between them.
+- **Explicit local non-edges.** `engram/ncp` is a configurable NCP realm example, not an
+  Engram/Paper2Brain application interface. Galadriel has no ROS/ROS 2 dependency,
+  message binding, topic, service, action, node, bag importer, or bridge. It also has no
+  external command, control, credential, lease, watchdog, or authority path. These are
+  absent relationships, not optional integrations. The declared graph is acyclic:
+  upstream libraries and an optional producer point into Galadriel, prospective evidence
+  consumers point outward, and no feedback edge returns to an upstream or command path.
 - Building the signed advisory envelope, retaining the external secured interop campaign,
   and completing an independent recorded calibration study are the ordered prerequisites
   before *any* restrict-only profile in §3.3 is even a candidate.

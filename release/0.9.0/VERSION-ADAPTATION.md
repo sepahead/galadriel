@@ -54,10 +54,13 @@ the supplied dependency order; it does not weaken any substantive gate.
 **GLD-090-REL-007:** The 0.9 advertised cross-repository edges are the exact pid-rs
 and NCP dependency-pin contracts exercised by qualified optional build graphs.
 `dependency_pin_required_for_qualified_graphs` describes that local build
-obligation. Local pin reconciliation **SHALL** pass before T115, while reciprocal
-final-candidate, deployed-producer, and downstream-adapter qualification remains
-removed through `CLM-008` and `CLM-009`. Readiness for later reconciliation **SHALL
-NOT** be represented as reciprocal acceptance or deployment evidence.
+obligation. Crebain remains an optional reference producer; Haldir and Prisoma remain
+prospective consumers; and Engram/Paper2Brain, ROS/ROS 2, and external authority are
+explicit local non-edges. The directed graph **SHALL** remain acyclic and contain no
+evidence-to-command feedback. Local pin reconciliation **SHALL** pass before T115, while
+reciprocal final-candidate, deployed-producer, downstream-adapter, middleware, and command
+qualification remains removed through `CLM-008` and `CLM-009`. Readiness for later
+reconciliation **SHALL NOT** be represented as reciprocal acceptance or deployment evidence.
 
 **GLD-090-REL-008:** Final closure **SHALL** follow this evidence order: signed
 candidate and qualification; T113 mechanism evidence; detached-signed T114 review;

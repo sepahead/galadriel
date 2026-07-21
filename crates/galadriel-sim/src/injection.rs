@@ -807,6 +807,25 @@ mod tests {
     }
 
     #[test]
+    fn maneuver_odd_profile_preserves_noncentral_triangular_slope() {
+        let maneuver = Maneuver {
+            start_frame: 10,
+            duration: 5,
+            magnitude: 1.0,
+            lag_step: 0,
+        };
+
+        assert_eq!(
+            maneuver.profile(11, 0).unwrap().to_bits(),
+            (1.0_f64 - 3.0 / 5.0).to_bits()
+        );
+        assert_eq!(
+            maneuver.profile(13, 0).unwrap().to_bits(),
+            (1.0_f64 - 1.0 / 5.0).to_bits()
+        );
+    }
+
+    #[test]
     fn maneuver_validation_rejects_each_invalid_parameter_family_directly() {
         assert!(Maneuver {
             start_frame: 0,
@@ -1002,21 +1021,28 @@ mod tests {
     }
 
     #[test]
-    fn maneuver_rejects_overflow_before_mutating_the_stream() {
+    fn maneuver_rejects_overflows_before_mutating_the_stream() {
         let original = scalar(1, 0, 0, Modality::Visual, 3.0, 3);
-        let mut stream = vec![original.clone()];
-        let result = inject(
-            &mut stream,
-            &Maneuver {
-                start_frame: u64::MAX,
-                duration: 1,
+        let invalid = [
+            Maneuver {
+                start_frame: 0,
+                duration: 2,
                 magnitude: 2.0,
                 lag_step: u64::MAX,
             },
-        );
+            Maneuver {
+                start_frame: u64::MAX,
+                duration: 2,
+                magnitude: 2.0,
+                lag_step: 0,
+            },
+        ];
 
-        assert!(result.is_err());
-        assert_eq!(stream[0].nis(), original.nis());
+        for maneuver in invalid {
+            let mut stream = vec![original.clone()];
+            assert!(inject(&mut stream, &maneuver).is_err());
+            assert_eq!(stream, [original.clone()]);
+        }
     }
 
     #[test]

@@ -42,8 +42,9 @@ A withdrawn identity **SHALL NOT** be reused.
    decision for this source release.
 7. Finalization emits and signs a schema-valid `LOCAL-CONVERGENCE.json` whose ten
    waves are `WAVE_ACCEPTED`, whose task set is exactly T000–T115, and whose
-   explicit pid-rs, NCP, Crebain, Haldir, and Prisoma requirements preserve the
-   required/optional/absent boundaries. This record permits reconciliation to
+   explicit pid-rs, NCP, Crebain, Haldir, Prisoma, Engram/Paper2Brain, ROS, and
+   external-authority requirements preserve the required/optional/absent boundaries
+   and the acyclic no-command graph. This record permits reconciliation to
    begin; it does not claim that reconciliation or downstream qualification passed.
 8. The decision records `LOCAL_PIN_PASS` for the locally qualified pid-rs/NCP pins
    and removes reciprocal/deployed claims `CLM-008` and `CLM-009` with the complete
@@ -85,12 +86,16 @@ The qualifying command must include the tracked evidence configuration, the SSH
 signing key, and the signed exact-candidate mutation manifest:
 
 ```bash
+set -euo pipefail
+signing_key="$(git config --get user.signingkey)"
+test -n "$signing_key"
+
 python3 repo_work/qualify_candidate.py \
   --repo . \
   --expected "$(git rev-parse HEAD)" \
   --require-branch main \
   --out /new/path/galadriel-0.9.0-qualification \
-  --signing-key "$(git config --get user.signingkey)" \
+  --signing-key "$signing_key" \
   --mutation-evidence /path/to/exact-candidate-mutation.json \
   --mutation-evidence-signature /path/to/exact-candidate-mutation.json.sig \
   --evidence-config evidence/galadriel-0.9-candidate.json \
@@ -101,6 +106,10 @@ After producing the signed T114 review, the detached-signed canonical v3 decisio
 and the signed ordered task dispositions, finalize into a previously absent path:
 
 ```bash
+set -euo pipefail
+signing_key="$(git config --get user.signingkey)"
+test -n "$signing_key"
+
 python3 repo_work/finalize_release.py \
   --repo . \
   --candidate "$(git rev-parse HEAD)" \
@@ -112,7 +121,7 @@ python3 repo_work/finalize_release.py \
   --final-review-signature /reviewed/path/FINAL-TWENTY-LENS-REVIEW.json.sig \
   --decision-input /reviewed/path/RELEASE-DECISION.json \
   --decision-input-signature /reviewed/path/RELEASE-DECISION.json.sig \
-  --signing-key "$(git config --get user.signingkey)" \
+  --signing-key "$signing_key" \
   --snapshot-dir /secure/path/with-at-least-8-GiB-free \
   --out /new/path/galadriel-0.9.0-closure
 ```
@@ -153,22 +162,232 @@ python3 repo_work/local_convergence.py verify \
 
 ## Publication
 
-1. Re-fetch `origin`; prove the candidate commit is unchanged and all required
-   GitHub checks succeeded.
-2. Create signed annotated tag `v0.9.0` at the exact candidate commit with a
-   professional release message naming the source-only research scope.
-3. Push only `main` and `v0.9.0`; verify the remote object IDs and signatures.
-4. Create the GitHub release from `v0.9.0` using the reviewed notes and upload the
-   author-operated, isolated-verification archive, SBOM, reports, provenance, and
-   checksum file.
-5. Download every asset through GitHub, verify all digests, install/build from the
-   downloaded source in a fresh environment, and retain the complete result.
-6. Only after the replacement release and downloaded assets are verified, re-check
-   the legacy identities in `WITHDRAWN-RELEASES.md`; delete that tag and obsolete
-   release-work branch locally and remotely, without deleting their commits or
-   evidence, and verify that both refs and any legacy GitHub release are absent.
-7. Confirm the release contains no DOI/Zenodo/crates.io/production claim and that
-   the remote branch, tag, release, signature, asset, and checksum state is exact.
+1. Re-fetch `origin`; prove the candidate commit is unchanged, `main` and remote `main`
+   are identical, the worktree is clean, and every required exact-head GitHub check passed.
+2. Create signed annotated tag `v0.9.0` at that commit with a professional message naming
+   the source-only research scope. Derive the full candidate, tree, tag-object, and peeled
+   tag-target IDs; require the target to equal the candidate. Verify the commit and tag with
+   an independently obtained allowed-signers trust root. A failed or withdrawn tag name is
+   never moved or reused.
+3. Build the upload set into a previously absent directory. The two completed evidence
+   roots are preserved as distinct deterministic tar roots. The signed map binds both tar
+   byte identities and all candidate/tree/tag identities, while verification enforces the
+   exact map/signature/tar file set:
+
+   ```bash
+   set -euo pipefail
+   test "$(python3 -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+   candidate="$(git rev-parse 'HEAD^{commit}')"
+   tree="$(git rev-parse "$candidate^{tree}")"
+   tag=v0.9.0
+   tag_object="$(git rev-parse "$tag^{tag}")"
+   tag_target="$(git rev-parse "$tag^{}")"
+   test "$tag_target" = "$candidate"
+   signing_key="$(git config --get user.signingkey)"
+   test -n "$signing_key"
+
+   python3 repo_work/package_release_assets.py build \
+     --qualification-root /exact/path/galadriel-0.9.0-qualification \
+     --closure-root /exact/path/galadriel-0.9.0-closure \
+     --out /new/path/galadriel-0.9.0-github-assets \
+     --signing-key "$signing_key" \
+     --candidate-commit "$candidate" \
+     --candidate-tree "$tree" \
+     --tag-name "$tag" \
+     --tag-object "$tag_object" \
+     --tag-target "$tag_target"
+   ```
+
+   Exit status 3 means the no-replace rename may already have committed a complete
+   output while parent-directory durability or result reporting remained uncertain.
+   Retain that path, verify it independently, and resolve the durability warning before
+   upload; do not blindly rerun or delete it.
+
+   The directory must contain exactly:
+
+   - `galadriel-0.9.0-qualification.tar`
+   - `galadriel-0.9.0-closure.tar`
+   - `galadriel-0.9.0-release-asset-map.json`
+   - `galadriel-0.9.0-release-asset-map.json.sig`
+
+   Verify that exact set before upload, using the independent trust root rather than the
+   candidate-tracked copy:
+
+   ```bash
+   set -euo pipefail
+   test "$(python3 -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+   candidate="$(git rev-parse 'HEAD^{commit}')"
+   tree="$(git rev-parse "$candidate^{tree}")"
+   tag=v0.9.0
+   tag_object="$(git rev-parse "$tag^{tag}")"
+   tag_target="$(git rev-parse "$tag^{}")"
+   test "$tag_target" = "$candidate"
+
+   python3 repo_work/package_release_assets.py verify \
+     --assets /new/path/galadriel-0.9.0-github-assets \
+     --allowed-signers /independent/path/ALLOWED_SIGNERS \
+     --expected-candidate "$candidate" \
+     --expected-tree "$tree" \
+     --expected-tag-name "$tag" \
+     --expected-tag-object "$tag_object" \
+     --expected-tag-target "$tag_target"
+   ```
+
+4. Push only the exact `main` and `v0.9.0` identities, then verify the remote commit,
+   annotated tag object, peeled target, and both signatures again. Re-check hooks, installed
+   automation, and releases immediately before publication; no process may create a DOI,
+   Zenodo record, package publication, replacement asset, or second release.
+5. Create a **draft** GitHub release from `v0.9.0` with literal title
+   `Galadriel 0.9.0` and the exact tracked `RELEASE-NOTES.md` body. Upload the four named
+   files explicitly and without replacement. Require the API asset list to contain exactly
+   those four names, and compare every API-reported byte length and SHA-256 digest with the
+   corresponding locally computed file value. If the API omits a digest, record that field
+   as unavailable and use the mandatory authenticated byte-for-byte comparison in the next
+   step; never invent an API digest or waive the comparison. For the two tar files only,
+   additionally require locally computed values to equal their rows in the signed map; the
+   map does not contain rows for itself or its detached signature. The authenticated draft
+   re-download in the next step verifies the map signature and exact four-file set.
+   GitHub's automatically
+   generated “Source code” zip and tarball are separate convenience snapshots: they are
+   not attached assurance assets, are not covered by the map, and must not substitute for
+   either evidence tar.
+6. Download all four draft assets through the authenticated GitHub path into a new empty
+   directory. Require each downloaded file to be byte-identical to its local upload source,
+   then run `verify` and reconstruct both path-preserving tiers atomically. Release asset
+   construction and canonical-tar verification use the audit-pinned `CPython 3.14.6`;
+   another interpreter is outside the qualified deterministic representation:
+
+   ```bash
+   set -euo pipefail
+   test "$(python3 -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+   local_assets=/new/path/galadriel-0.9.0-github-assets
+   downloaded_assets=/downloaded/galadriel-0.9.0-github-assets
+   asset_names=(
+     "galadriel-0.9.0-qualification.tar"
+     "galadriel-0.9.0-closure.tar"
+     "galadriel-0.9.0-release-asset-map.json"
+     "galadriel-0.9.0-release-asset-map.json.sig"
+   )
+   for name in "${asset_names[@]}"; do
+     cmp -s "$local_assets/$name" "$downloaded_assets/$name"
+   done
+
+   candidate="$(git rev-parse 'HEAD^{commit}')"
+   tree="$(git rev-parse "$candidate^{tree}")"
+   tag=v0.9.0
+   tag_object="$(git rev-parse "$tag^{tag}")"
+   tag_target="$(git rev-parse "$tag^{}")"
+   test "$tag_target" = "$candidate"
+
+   python3 repo_work/package_release_assets.py reconstruct \
+     --assets "$downloaded_assets" \
+     --allowed-signers /independent/path/ALLOWED_SIGNERS \
+     --out /new/path/galadriel-0.9.0-reconstructed \
+     --expected-candidate "$candidate" \
+     --expected-tree "$tree" \
+     --expected-tag-name "$tag" \
+     --expected-tag-object "$tag_object" \
+     --expected-tag-target "$tag_target"
+   ```
+
+   Apply the same retain-and-verify rule if reconstruction reports status 3.
+
+   In each reconstructed root, verify `SHA256SUMS` over the exact internal file set and
+   authenticate both tier manifests with the independent trust root. The release
+   principal is `sepmhn@gmail.com`; the literal namespaces are
+   `galadriel-qualification-manifest` and `galadriel-closure-manifest`:
+
+   ```bash
+   set -euo pipefail
+   qualification_root=/new/path/galadriel-0.9.0-reconstructed/galadriel-0.9.0-qualification
+   closure_root=/new/path/galadriel-0.9.0-reconstructed/galadriel-0.9.0-closure
+   allowed_signers=/independent/path/ALLOWED_SIGNERS
+
+   ssh-keygen -Y verify \
+     -f "$allowed_signers" \
+     -I sepmhn@gmail.com \
+     -n galadriel-qualification-manifest \
+     -s "$qualification_root/QUALIFICATION-MANIFEST.json.sig" \
+     < "$qualification_root/QUALIFICATION-MANIFEST.json"
+   ssh-keygen -Y verify \
+     -f "$allowed_signers" \
+     -I sepmhn@gmail.com \
+     -n galadriel-closure-manifest \
+     -s "$closure_root/CLOSURE-MANIFEST.json.sig" \
+     < "$closure_root/CLOSURE-MANIFEST.json"
+
+   PYTHONPATH=repo_work python3 -c \
+     'import sys; from pathlib import Path; from finalize_release import verify_sha256sums; roots = sys.argv[1:]; len(roots) == 2 or sys.exit("expected exactly two tier roots"); tuple(verify_sha256sums(Path(root)) for root in roots)' \
+     "$qualification_root" "$closure_root"
+   ```
+
+   The outer signed map has already proved the exact reconstructed inventory; the
+   checksum verifier independently requires `SHA256SUMS` to enumerate every other file
+   exactly once. Re-run the `local_convergence.py verify` command above against the
+   reconstructed closure. Extract the qualification tier's
+   `galadriel-0.9.0.tar.gz` into a second fresh directory and run the locked
+   build/test/documentation gates from that downloaded source.
+7. Publish the draft only after every authenticated-download check passes and UTC has
+   reached the declared release date. Then download the four public assets anonymously
+   into another empty directory and repeat the four-file comparison with the local upload
+   source, exact-set verification, reconstruction, internal signature/checksum checks, and
+   the fresh-source build. Require all six tag-bound links
+   in the release body to resolve successfully. Because GitHub `blob` links return HTML,
+   byte-compare their raw counterparts—not the HTML pages—with the corresponding tagged
+   Git blobs. Also byte-compare all three public JSON Schema `$id` URLs with their tagged
+   Git blobs:
+
+   ```bash
+   set -euo pipefail
+   tag=v0.9.0
+   verification_dir="$(mktemp -d)"
+   trap 'rm -rf "$verification_dir"' EXIT
+
+   release_paths=(
+     "release/0.9.0/ecosystem-cut.json"
+     "release/0.9.0/claims.json"
+     "docs/ADVISORY-BOUNDARY.md"
+     "docs/ECOSYSTEM-CONNECTIONS.md"
+     "release/0.9.0/RELEASE-RUNBOOK.md"
+     "CITATION.cff"
+   )
+   schema_paths=(
+     "release/0.9.0/local-convergence-schema.json"
+     "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json"
+     "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json"
+   )
+
+   for path in "${release_paths[@]}"; do
+     curl --fail --silent --show-error --location \
+       --output /dev/null \
+       "https://github.com/sepahead/galadriel/blob/$tag/$path"
+     git show "$tag:$path" > "$verification_dir/expected"
+     curl --fail --silent --show-error --location \
+       --output "$verification_dir/downloaded" \
+       "https://raw.githubusercontent.com/sepahead/galadriel/$tag/$path"
+     cmp -s "$verification_dir/expected" "$verification_dir/downloaded"
+   done
+
+   for path in "${schema_paths[@]}"; do
+     git show "$tag:$path" > "$verification_dir/expected"
+     curl --fail --silent --show-error --location \
+       --output "$verification_dir/downloaded" \
+       "https://raw.githubusercontent.com/sepahead/galadriel/$tag/$path"
+     cmp -s "$verification_dir/expected" "$verification_dir/downloaded"
+   done
+
+   rm -rf "$verification_dir"
+   trap - EXIT
+   ```
+8. Only after the published release and anonymous downloads are verified, preserve the
+   legacy identities listed in `WITHDRAWN-RELEASES.md`; then delete only the obsolete tag
+   and release-work refs locally/remotely, without deleting their commits or evidence, and
+   prove the refs and any legacy GitHub release are absent.
+9. Confirm the release author is Sepehr Mahmoudian, the literal title is
+   `Galadriel 0.9.0`, and the version, date, and tracked body are exact. Require exactly
+   four attached assets and no DOI/Zenodo/crates.io/deployment/production claim. Retain
+   the remote branch, signed tag, release, download, signature, reconstruction,
+   fresh-build, and cleanup evidence.
 
 ## Rollback and withdrawal
 

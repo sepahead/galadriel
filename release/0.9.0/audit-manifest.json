@@ -43,8 +43,8 @@
     {
       "path": ".github/workflows/ci.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "f7ab0e8d98c1f44961c4bf94d5d2fc7f5a44206ad3fe0c2dcac166c8d2f6de1b",
-      "size_bytes": 7359
+      "sha256": "b8b192b8de3d2b75ed93a440b031f6cf69b336aac511a405cf49826c181e35b7",
+      "size_bytes": 7413
     },
     {
       "path": ".github/workflows/deep-quality.yml",
@@ -91,13 +91,13 @@
     {
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f55630fb28511d7b18cdc14abd76f215cf6eac0ee7d98bfc4e793c741f1b9e31",
-      "size_bytes": 36578
+      "sha256": "e409bfbb05f29ddc9fe555eb300e1fe04d8ac0d66862e64424ba31941e8d2ffe",
+      "size_bytes": 37738
     },
     {
       "path": "CITATION.cff",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "4b69122f7740e2dad7cc9abc3d85379e339701036809e44a85cb5d0c64509b9f",
+      "sha256": "347e4d73f495c0e4acbdd694aa64997f563e4b7e6f4f9a16b6183aa7429899af",
       "size_bytes": 753
     },
     {
@@ -145,8 +145,8 @@
     {
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7f85db6fbf57bc5a3e05aaa1fc7317cd447346f41b9b17639f49845e16c7a0b3",
-      "size_bytes": 31190
+      "sha256": "a0d326e878896037da150f68510168232945ecf251ef86b97db72341d00c51f3",
+      "size_bytes": 34294
     },
     {
       "path": "RELEASE-POLICY.md",
@@ -373,14 +373,14 @@
     {
       "path": "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "166f6ddc81798763d49ee218133a2532f850c96d5388cbbf053704232c011679",
-      "size_bytes": 18844
+      "sha256": "8aab0c78815e99c63970f0a3da154f22a19ace2e2607b61eac57575b08e87210",
+      "size_bytes": 18856
     },
     {
       "path": "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "1a95627882e8dd84277e21501b77f94a63c71cae0eb81e8d01bcebe86b64ab43",
-      "size_bytes": 3963
+      "sha256": "6429eb5efafbb76c747adbf37de88a6b4ee0bbeb62e33e2d8b6e5cd9e4623918",
+      "size_bytes": 3975
     },
     {
       "path": "crates/galadriel-ncp/src/assembler.rs",
@@ -541,8 +541,8 @@
     {
       "path": "crates/galadriel-sim/src/injection.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "e7384820e2b493243e00c52dc28a0e165223676ebcc56e7bf5cf813de0a1b9c3",
-      "size_bytes": 37315
+      "sha256": "7aea076f11a45d85c19a98c25a557d9a8092b6cf696e044ecd7f66768a6afe92",
+      "size_bytes": 38024
     },
     {
       "path": "crates/galadriel-sim/src/lib.rs",
@@ -619,8 +619,8 @@
     {
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "dfc740100daf1c705463ac352a6099caa887793938ff0ea11e27559c674784ed",
-      "size_bytes": 14526
+      "sha256": "dfb01c203a881418b75981291584107ae5791d083878fcb281143bec16f623ae",
+      "size_bytes": 15357
     },
     {
       "path": "docs/API-SURFACE.md",
@@ -631,8 +631,8 @@
     {
       "path": "docs/CLAIMS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "c9d6c786546fff7a88de98baf938281da5cea0468b6328b73dd83cffcce280d0",
-      "size_bytes": 1985
+      "sha256": "e1f279ab373b33884e03222abb30eca43787f67a3b1d667bddabc1040038bc31",
+      "size_bytes": 2235
     },
     {
       "path": "docs/CONFIGURATION-CONTRACT.md",
@@ -655,8 +655,8 @@
     {
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a7c997a6a5efacaf9c60a480b019c7d879fc0af7e355fe061a86ec184a4830ca",
-      "size_bytes": 14053
+      "sha256": "2e9810fdd7a991734dd2e3f80380200dae0fd05027d4ffa2fbb6a5939281ce39",
+      "size_bytes": 17784
     },
     {
       "path": "docs/EVALUATION.md",
@@ -733,8 +733,8 @@
     {
       "path": "docs/THREAT-MODEL.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e26d99d9c169dff411674d5b1f2971c716d1f22fe61ee80e57b16a6db3f5063b",
-      "size_bytes": 8130
+      "sha256": "e3e1a474162fdb99750fba918bced779296ca685a56ac784be4dab331ee04644",
+      "size_bytes": 8427
     },
     {
       "path": "evidence/galadriel-0.9-candidate.json",
@@ -841,26 +841,26 @@
     {
       "path": "release/0.9.0/README.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "d1a70697ba393fe46f1903e19c17603cb109ef7bed15d1f5b5c8903b77f09803",
-      "size_bytes": 5953
+      "sha256": "46c6bdfe63a6c5ce41cb57b17deaf7376119e19edd5f42878cd896e230cba499",
+      "size_bytes": 8670
     },
     {
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "438cd288ab2de79784c98963ca51d02c665c8601aa9a9e33b888a4efc844e91e",
-      "size_bytes": 4088
+      "sha256": "79a1cc82d95784466d3c46548dfb9e2e0a7219506d3faa73fafd9598897dc0ff",
+      "size_bytes": 5668
     },
     {
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "da57ebce2af5a7d999d8fff894b94566f15602ab95486e3359993c00e8097335",
-      "size_bytes": 10379
+      "sha256": "cfccdd2d4359da70cf83d56a08c1fd917ab9eeb86c850609d27c1909ee5bbf2d",
+      "size_bytes": 20498
     },
     {
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "9c25dbd294813b7d1be6bbfd7c3bbadc7901266b7e5f628976c484c923cc5cd3",
-      "size_bytes": 4497
+      "sha256": "5d4969a7e808fae7322b1b13a7ed26f19a13141fb1fe12de1948d4e5b2537dec",
+      "size_bytes": 4792
     },
     {
       "path": "release/0.9.0/WITHDRAWN-RELEASES.md",
@@ -901,32 +901,32 @@
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "17cfc235b0792caf1bb8973c4f5ba52357339c9160678db905b856d177953764",
-      "size_bytes": 57030
+      "sha256": "63b8fccb6a27fce327fa64a6580ed871c9dde5fd5ddffd329b4507bd8724e387",
+      "size_bytes": 57393
     },
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "8718828606a87a00e63481f14f1f3aa9316cabace7591b11965bcd9b38b52668",
+      "sha256": "6cdc88b9301056a45f4e497bcbebcb98bfffd00d692fb6ee86ca4facc40a5935",
       "size_bytes": 322
     },
     {
       "path": "release/0.9.0/audit/threat-register.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "1704ae7d464ecf3f746aa8ffd2a7a98eddfd594e07fb5722e20d7136e3501de4",
-      "size_bytes": 27261
+      "sha256": "06126f9fc7259cff13b0ae9517fe0765a0d02c28ca0d437eba095ce1aa6f4b69",
+      "size_bytes": 28288
     },
     {
       "path": "release/0.9.0/claims.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "8995c630810a88daeeb12dbcc795fc797b3836d4978554adf3cfad0a3828322f",
-      "size_bytes": 9212
+      "sha256": "978c3edf441f4fbc73c45dbf10083f7a49eb748eaa58301c169b53d3f65b5f92",
+      "size_bytes": 9335
     },
     {
       "path": "release/0.9.0/ecosystem-cut.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "b260ce82e0f467296d7a938e2e26d9215dc445873eba456a321956f68f1a3ecd",
-      "size_bytes": 4548
+      "sha256": "66803d9d2f9000e38686ca84c30df8d81fb468158617edca489ad171f34cdf0a",
+      "size_bytes": 7172
     },
     {
       "path": "release/0.9.0/evidence/ACCEPTANCE-CRITERIA.md",
@@ -997,8 +997,8 @@
     {
       "path": "release/0.9.0/local-convergence-schema.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "05039f3d2fee3bdeefadc1050a30f765b8e0382dbc68d15591c1ea0bb5fefe1f",
-      "size_bytes": 22827
+      "sha256": "5e50c73f8aee350636b1282f3e6385e398557c957533cecdaf82c661ac6780c8",
+      "size_bytes": 24936
     },
     {
       "path": "release/0.9.0/requirements-ledger.json",
@@ -1045,8 +1045,8 @@
     {
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ab20e4f0516b114d080b1bbbef8ac901da65e8820c0270e5eac8862296b3ab4a",
-      "size_bytes": 13989
+      "sha256": "fd2d6789e602055057e995193daa9d5c888e0e181a20a70ed00c31649e3b57d2",
+      "size_bytes": 21213
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1105,20 +1105,26 @@
     {
       "path": "repo_work/freeze_audit_inputs.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "47035f947c8e3f505756f75da27b3384474b3198de048398def1f47c61c2bb37",
-      "size_bytes": 51554
+      "sha256": "c902542b3efc1415cbd49637584a46a203071f8b09108dfa59f3267b8460da2e",
+      "size_bytes": 51651
     },
     {
       "path": "repo_work/local_convergence.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d2de8dfa55cd38a41f7f11c8c79aaa3635e8a74bc03c222c4dc7b283ada7be9c",
-      "size_bytes": 26788
+      "sha256": "8215fb60d3e55dfc2a6b0890977906533ecc7f67a83fc23da455f5a45189b27a",
+      "size_bytes": 28876
     },
     {
       "path": "repo_work/make_review_packets.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "8d4e8c95e5e3c08a33542f4ff33a7e984b7418d8983866c0dc597cb2bbca6493",
       "size_bytes": 5641
+    },
+    {
+      "path": "repo_work/package_release_assets.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "e6db5bc7e5d55ba1a21dff78428114187823d587001e58c4815568307307b0eb",
+      "size_bytes": 53312
     },
     {
       "path": "repo_work/prepare_mutation_evidence.py",
@@ -1129,8 +1135,8 @@
     {
       "path": "repo_work/qualify_candidate.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "35ce55fffb328aa2be936c0df72c86bd9f490413c16cb78a38d0fd157d40825a",
-      "size_bytes": 52765
+      "sha256": "33b31bfd0a03fb5e43079cb842e7030a70a037a1606653ffb01a5bd22636b77d",
+      "size_bytes": 52824
     },
     {
       "path": "repo_work/release_assurance.py",
@@ -1151,16 +1157,22 @@
       "size_bytes": 2925
     },
     {
+      "path": "repo_work/tests/test_package_release_assets.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "4bd52a60f428c6bd300eff3b344ef493cc8755d91bc002cb829ebc7bed6ddec0",
+      "size_bytes": 26068
+    },
+    {
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e3d2e7ef828c92ef3334ab97c5a702a2102e215d822d08d9a0bec22ceb61be4a",
-      "size_bytes": 125263
+      "sha256": "3d25ded036dc659b8a87ba07eac0207531d30833c965f753ccb998687e056ff4",
+      "size_bytes": 125575
     },
     {
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "53b2146a282771fd39e1d47a250383cae8638a38701ff7f05f5179c7c1190dd1",
-      "size_bytes": 85924
+      "sha256": "f3b39eada82740cde82417cc9eddf70b2c82383c62fc2c304624db3e830fe39a",
+      "size_bytes": 93142
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",
@@ -1288,10 +1300,10 @@
       "tier": "NOT_CLAIMED"
     },
     {
-      "claim": "Crebain, Haldir, Prisoma or Paper2Brain provides a deployment-qualified Galadriel 0.9.0 integration.",
+      "claim": "Crebain, Haldir, Prisoma, Engram/Paper2Brain, ROS/ROS 2, or external authority provides a deployment-qualified Galadriel 0.9.0 integration or command path.",
       "evidence": [],
       "id": "CLM-009",
-      "limitations": "Only the Crebain reciprocal component fixture exists; no accepted recorded projected stream, downstream adapter, or secured deployment campaign exists.",
+      "limitations": "Only the Crebain reciprocal component fixture exists; no accepted recorded projected stream, downstream adapter, ROS interface, Paper2Brain application edge, external command path, or secured deployment campaign exists.",
       "scope": "cross-repository ecosystem composition",
       "tier": "NOT_CLAIMED"
     },
@@ -1417,13 +1429,13 @@
     },
     {
       "kind": "external_reference",
-      "line": 404,
+      "line": 422,
       "path": "README.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 475,
+      "line": 505,
       "path": "README.md",
       "url": "https://github.com/sepahead"
     },
@@ -1946,20 +1958,20 @@
     {
       "path": "release/0.9.0/README.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "d1a70697ba393fe46f1903e19c17603cb109ef7bed15d1f5b5c8903b77f09803",
-      "size_bytes": 5953
+      "sha256": "46c6bdfe63a6c5ce41cb57b17deaf7376119e19edd5f42878cd896e230cba499",
+      "size_bytes": 8670
     },
     {
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "9c25dbd294813b7d1be6bbfd7c3bbadc7901266b7e5f628976c484c923cc5cd3",
-      "size_bytes": 4497
+      "sha256": "5d4969a7e808fae7322b1b13a7ed26f19a13141fb1fe12de1948d4e5b2537dec",
+      "size_bytes": 4792
     },
     {
       "path": "docs/CLAIMS.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "c9d6c786546fff7a88de98baf938281da5cea0468b6328b73dd83cffcce280d0",
-      "size_bytes": 1985
+      "sha256": "e1f279ab373b33884e03222abb30eca43787f67a3b1d667bddabc1040038bc31",
+      "size_bytes": 2235
     },
     {
       "path": "docs/STATISTICAL-CONTRACT.md",
@@ -1970,14 +1982,14 @@
     {
       "path": "docs/THREAT-MODEL.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "e26d99d9c169dff411674d5b1f2971c716d1f22fe61ee80e57b16a6db3f5063b",
-      "size_bytes": 8130
+      "sha256": "e3e1a474162fdb99750fba918bced779296ca685a56ac784be4dab331ee04644",
+      "size_bytes": 8427
     },
     {
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "dfc740100daf1c705463ac352a6099caa887793938ff0ea11e27559c674784ed",
-      "size_bytes": 14526
+      "sha256": "dfb01c203a881418b75981291584107ae5791d083878fcb281143bec16f623ae",
+      "size_bytes": 15357
     },
     {
       "path": "docs/API-SURFACE.md",
@@ -2006,8 +2018,8 @@
     {
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "da57ebce2af5a7d999d8fff894b94566f15602ab95486e3359993c00e8097335",
-      "size_bytes": 10379
+      "sha256": "cfccdd2d4359da70cf83d56a08c1fd917ab9eeb86c850609d27c1909ee5bbf2d",
+      "size_bytes": 20498
     }
   ],
   "release": {
@@ -2085,8 +2097,8 @@
   "threat_register": {
     "path": "release/0.9.0/audit/threat-register.json",
     "purpose": "repository threat, misuse, and failure register",
-    "sha256": "1704ae7d464ecf3f746aa8ffd2a7a98eddfd594e07fb5722e20d7136e3501de4",
-    "size_bytes": 27261
+    "sha256": "06126f9fc7259cff13b0ae9517fe0765a0d02c28ca0d437eba095ce1aa6f4b69",
+    "size_bytes": 28288
   },
   "toolchains": [
     {

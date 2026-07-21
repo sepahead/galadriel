@@ -31,6 +31,9 @@ production support, a DOI, or a Zenodo record.
 The read-only 2026-07-18 ecosystem inspection does not promote any claim tier. Galadriel
 remains pinned to NCP wire 0.8; the inspected Crebain component retains schema-v1 fixture
 alignment without a reciprocal final-candidate pin; Haldir has no runtime adapter; and
-Prisoma has no direct sidecar route. Exact inspected objects and the evidence missing from
-each relationship are listed in
+Prisoma has no direct sidecar route. The 2026-07-22 local source inventory separately
+records that `engram/ncp` is only an example realm rather than a Paper2Brain integration,
+ROS/ROS 2 has no binding or bridge, and Galadriel has no external command-authority path.
+Exact inspected objects, explicit non-edges, and the evidence missing from each
+relationship are listed in
 [`ECOSYSTEM-CONNECTIONS.md`](ECOSYSTEM-CONNECTIONS.md).

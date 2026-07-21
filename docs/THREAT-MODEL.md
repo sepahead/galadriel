@@ -62,7 +62,7 @@ indistinguishable from attacks where the evidence cannot separate them.
 | Callback race/shutdown fault | Serialize ingress state, retain first terminal fault, bound queues, account drops, and test close/reset interleavings. | OS, network and actual-binary deployment timing remains unqualified. |
 | Configuration substitution | Validate strict closed schemas/canonical digests and bind profile/registry/credential identities. | A privileged operator can replace all local artifacts unless deployment signing/attestation is provided. |
 | Dependency/source substitution | Cargo.lock, exact Git revisions, pinned toolchain and generated audit hashes are mandatory. | Registry compromise and compiler trust require external supply-chain controls. |
-| Evidence tampering or cherry-picking | Complete logs, checksums, exact commits/toolchains, seeds, status ledger and residual risks are retained. | 0.9.0 has no independent archive/DOI; GitHub availability is not permanent preservation. |
+| Evidence tampering or cherry-picking | Complete logs, checksums, exact commits/toolchains, seeds, status ledger and residual risks are retained. The published qualification/closure tiers use deterministic path-preserving tars plus a signed candidate/tree/tag-bound asset map, strict four-file verification, and safe reconstruction against an independent trust root; generated GitHub source archives are explicitly outside that assurance set. | 0.9.0 has no independent archive/DOI; GitHub availability is not permanent preservation. |
 
 ## Safe failure states
 

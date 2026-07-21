@@ -21,7 +21,8 @@ from freeze_audit_inputs import read_bounded_regular_file
 PROJECT = "Galadriel"
 VERSION = "0.9.0"
 SCHEMA_ID = (
-    "https://github.com/sepahead/galadriel/releases/0.9.0/local-convergence-schema.json"
+    "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
+    "release/0.9.0/local-convergence-schema.json"
 )
 SCHEMA_PATH = "release/0.9.0/local-convergence-schema.json"
 SIGNATURE_NAMESPACE = "galadriel-local-convergence"
@@ -143,6 +144,42 @@ CROSS_REPO_REQUIREMENTS: tuple[dict[str, Any], ...] = (
             "Any future offline covariate import must be immutable and must not imply independent-implementation replication.",
         ],
     },
+    {
+        "project": "Engram/Paper2Brain",
+        "direction": "external_application_context",
+        "classification": "absent_runtime_edge",
+        "dependency_pin_required_for_qualified_graphs": False,
+        "pin": None,
+        "status": "ABSENT_NOT_CLAIMED",
+        "conditions": [
+            "Treat engram/ncp only as a configurable example realm; do not infer a Paper2Brain API, process, route, adapter, or runtime edge.",
+            "Any future application integration requires a separately versioned and qualified contract.",
+        ],
+    },
+    {
+        "project": "ROS / ROS 2",
+        "direction": "external_robotics_middleware",
+        "classification": "absent_runtime_edge",
+        "dependency_pin_required_for_qualified_graphs": False,
+        "pin": None,
+        "status": "ABSENT_NOT_CLAIMED",
+        "conditions": [
+            "Do not advertise a ROS dependency, message binding, topic, service, action, node, bag importer, bridge, or compatibility claim for 0.9.0.",
+            "Any future middleware adapter requires explicit timing, frame, schema, replay, resource-bound, and qualification evidence.",
+        ],
+    },
+    {
+        "project": "external authority",
+        "direction": "prospective_downstream_policy_control",
+        "classification": "absent_command_edge",
+        "dependency_pin_required_for_qualified_graphs": False,
+        "pin": None,
+        "status": "ABSENT_NOT_CLAIMED",
+        "conditions": [
+            "Galadriel must have no command credential, lease, watchdog, control, or authority path and must remain advisory-only.",
+            "Any future consumer must begin record-only; a later effect requires independent admission and may only restrict existing authority.",
+        ],
+    },
 )
 
 
@@ -184,7 +221,16 @@ def schema_document() -> dict[str, Any]:
         "additionalProperties": False,
         "properties": {
             "project": {
-                "enum": ["pid-rs", "NCP", "Crebain", "Haldir", "Prisoma"],
+                "enum": [
+                    "pid-rs",
+                    "NCP",
+                    "Crebain",
+                    "Haldir",
+                    "Prisoma",
+                    "Engram/Paper2Brain",
+                    "ROS / ROS 2",
+                    "external authority",
+                ],
                 "type": "string",
             },
             "direction": {"minLength": 1, "type": "string"},
@@ -287,8 +333,8 @@ def schema_document() -> dict[str, Any]:
             },
             "cross_repo_requirements": {
                 "items": {"$ref": "#/$defs/crossRequirement"},
-                "maxItems": 5,
-                "minItems": 5,
+                "maxItems": len(CROSS_REPO_REQUIREMENTS),
+                "minItems": len(CROSS_REPO_REQUIREMENTS),
                 "prefixItems": [
                     {"const": copy.deepcopy(requirement)}
                     for requirement in CROSS_REPO_REQUIREMENTS

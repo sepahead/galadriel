@@ -2,9 +2,9 @@
   "schema": "galadriel.ecosystem-inspection-cut.v1",
   "release": "0.9.0",
   "author": "Sepehr Mahmoudian",
-  "inspected_at": "2026-07-18",
+  "inspected_at": "2026-07-22",
   "timestamp_precision": "date",
-  "scope": "Read-only relationship and dependency identity record; only Cargo revisions are release pins.",
+  "scope": "Read-only external identity and local relationship-absence record; only Cargo revisions are release pins.",
   "observations": [
     {
       "id": "ECO-001",
@@ -103,11 +103,68 @@
       "required_for": [],
       "supersedes": null,
       "why": "Records the absent direct sidecar path and a possible future immutable offline comparison only."
+    },
+    {
+      "id": "ECO-008",
+      "project": "Engram/Paper2Brain",
+      "relationship": "configuration_example_without_integration",
+      "ref": "Galadriel 0.9.0 local source inventory",
+      "object": null,
+      "identity_kind": "declared_absent_runtime_edge",
+      "observed_at": "2026-07-22",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": null,
+      "why": "Records that engram/ncp is a configurable example realm and creates no Paper2Brain dependency, API, route, adapter, or runtime edge."
+    },
+    {
+      "id": "ECO-009",
+      "project": "ROS / ROS 2",
+      "relationship": "external_middleware_without_interface",
+      "ref": "Galadriel 0.9.0 local source inventory",
+      "object": null,
+      "identity_kind": "declared_absent_runtime_edge",
+      "observed_at": "2026-07-22",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": null,
+      "why": "Records the absence of a ROS dependency, binding, topic, service, action, node, bag importer, bridge, or compatibility claim."
+    },
+    {
+      "id": "ECO-010",
+      "project": "external authority",
+      "relationship": "advisory_boundary_without_command_edge",
+      "ref": "Galadriel 0.9.0 local source inventory",
+      "object": null,
+      "identity_kind": "declared_absent_runtime_edge",
+      "observed_at": "2026-07-22",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": null,
+      "why": "Records that Galadriel has no command, credential, lease, watchdog, control, or authority path and cannot grant or widen permission."
+    },
+    {
+      "id": "ECO-011",
+      "project": "Haldir",
+      "relationship": "prospective_downstream_status_reinspection",
+      "ref": "main",
+      "object": "c0e4b3d156500684329a92bcb16e0609894fd738",
+      "identity_kind": "mutable_head_observation",
+      "observed_at": "2026-07-22",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": "ECO-006",
+      "why": "Records the activated CH-T001 repository-inventory evidence update, whose retained downstream disposition says the runtime surface and external conformance did not change; no Galadriel adapter or route was added."
     }
   ],
   "limitations": [
     "Mutable head observations are inspection provenance, not dependency pins.",
-    "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir or Prisoma runtime edge.",
-    "The later Haldir observation does not rewrite the discovery observation or frozen historical evidence."
+    "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir, Prisoma, Engram/Paper2Brain, ROS, or external-authority runtime edge.",
+    "Later Haldir observations do not rewrite the discovery observation or frozen historical evidence.",
+    "The directed declared graph is acyclic: optional upstream inputs point into Galadriel, prospective evidence consumers point outward, and no command or feedback edge returns upstream."
   ]
 }

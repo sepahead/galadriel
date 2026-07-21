@@ -67,6 +67,7 @@ BASE_COMMANDS = (
             "unittest",
             "-v",
             "scripts.tests.test_release_audit",
+            "repo_work.tests.test_package_release_assets",
             "repo_work.tests.test_review_tools",
             "repo_work.tests.test_task_dispositions",
             "repo_work.tests.test_release_assurance",

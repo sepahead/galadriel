@@ -7,7 +7,7 @@ may contain breaking changes.
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-07-21
+## [0.9.0] - 2026-07-22
 
 ### Release contract
 
@@ -27,6 +27,15 @@ may contain breaking changes.
   no-replace publication. Qualification artifacts cannot occupy the closure `inputs/`
   or convergence namespaces, and the NCP feature report records checker-tooling and
   runtime-pin identities separately.
+- Bind every published JSON Schema identifier to the immutable `v0.9.0` raw-tag URL;
+  release consumers never resolve a schema identity through the mutable default branch.
+- Add deterministic public release packaging for the qualification and closure tiers:
+  two path-preserving uncompressed tar files, a canonical exact-candidate/tree/tag asset
+  map, and its detached SSH signature. Verification rejects extra, missing, linked,
+  special, traversing, duplicate, reordered, oversized, changing, or noncanonical input;
+  strict UTF-8 tar names are locale-independent, and safe reconstruction never delegates
+  path handling to the archive library. Release publication pins canonical tar generation
+  and regeneration to CPython 3.14.6 and byte-compares all four downloaded upload files.
 - Add a verdict-independent authority-effect validator proving record-only and
   monotonically restrict-only consumer transitions; `Nominal` cannot grant authority,
   relax a limit, extend TTL/lease, refresh a watchdog, or change capabilities.
@@ -168,7 +177,9 @@ may contain breaking changes.
   The old commit pair is not a reciprocal pin of the current candidate; current
   cross-repository qualification, a real multi-process mTLS/ACL campaign, and an independent
   recorded stream-calibration study remain `NOT_CLAIMED`.
-- Add a dated exact-cut ecosystem record for pid-rs, NCP, Crebain, Haldir, and Prisoma
+- Add a dated exact-cut ecosystem record for pid-rs, NCP, Crebain, Haldir, Prisoma,
+  Engram/Paper2Brain, ROS/ROS 2, and external authority, including explicit non-edges
+  and the acyclic command/dataflow boundary
   that separates immutable dependency pins, byte/schema fixture compatibility, mutable
   audit heads, prospective downstream relationships, and missing reciprocal/deployment
   qualification. Record pid-rs activation, its same-revision `pid-runlog` edge, and the
@@ -176,13 +187,16 @@ may contain breaking changes.
   unreleased/proposed, Haldir has no runtime adapter, and Prisoma's base-route observer
   rejects Galadriel's named sidecars. Preserve Haldir's discovery-head observation at
   `0e94f61cfd5c78482198a765157571746a256181` and the later 2026-07-18 reinspection at
-  descendant `dd3d8a1c993721f89a1edb04dec5247761c694ad`; the later value supersedes only
-  the mutable discovery-head reference and does not rewrite frozen or historical evidence.
+  descendant `dd3d8a1c993721f89a1edb04dec5247761c694ad`, plus the 2026-07-22 descendant
+  `c0e4b3d156500684329a92bcb16e0609894fd738` whose CH-T001 activation explicitly
+  records no runtime or external-conformance change. Each later value supersedes only the
+  preceding mutable-head reference and does not rewrite frozen or historical evidence.
   Bind the same objects and relationship semantics in a machine-readable ecosystem cut.
 - Split the unchanged strict changed-Rust mutation set into four deterministic CI shards so
   feature-sized diffs complete within the bounded job window. Add exact lifecycle identity,
   inclusive capacity/channel, history-clear, nested-endpoint, whitespace-path, and Unix
-  private-key-mode regressions for every survivor found by the pre-merge mutation audit.
+  private-key-mode regressions for the pre-merge survivors, plus a noncentral odd-duration
+  maneuver-slope regression for the final subtraction-to-division survivor.
 - Close the receiver, registry, assembler, and observer-CLI mutation gaps with exact size and
   sequence boundaries, distinct malformed/oversized fault taxonomy, state-accessor and
   heartbeat telemetry assertions, frame-ledger birth/attempt/miss truth tables, deep registry

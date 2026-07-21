@@ -91,11 +91,11 @@
     },
     {
       "id": "CLM-009",
-      "claim": "Crebain, Haldir, Prisoma or Paper2Brain provides a deployment-qualified Galadriel 0.9.0 integration.",
+      "claim": "Crebain, Haldir, Prisoma, Engram/Paper2Brain, ROS/ROS 2, or external authority provides a deployment-qualified Galadriel 0.9.0 integration or command path.",
       "tier": "NOT_CLAIMED",
       "scope": "cross-repository ecosystem composition",
       "evidence": [],
-      "limitations": "Only the Crebain reciprocal component fixture exists; no accepted recorded projected stream, downstream adapter, or secured deployment campaign exists."
+      "limitations": "Only the Crebain reciprocal component fixture exists; no accepted recorded projected stream, downstream adapter, ROS interface, Paper2Brain application edge, external command path, or secured deployment campaign exists."
     },
     {
       "id": "CLM-010",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/sepahead/galadriel/blob/main/crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
+  "$id": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
   "title": "Galadriel producer monitor envelope v1",
   "description": "Project-owned producer lifecycle and liveness event carried on the NCP named perception route sensor/galadriel-monitor. Transport authentication is external; producer_id is a claim bound by the receiver to its expected publisher. Schema validation is necessary but not sufficient: application validation additionally enforces UTF-8 byte lengths, canonical lexical JSON integer spelling without a fraction or exponent, and cross-field coherence.",
   "type": "object",

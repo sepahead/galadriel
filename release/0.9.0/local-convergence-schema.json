@@ -64,7 +64,10 @@
             "NCP",
             "Crebain",
             "Haldir",
-            "Prisoma"
+            "Prisoma",
+            "Engram/Paper2Brain",
+            "ROS / ROS 2",
+            "external authority"
           ],
           "type": "string"
         },
@@ -127,7 +130,7 @@
       "type": "object"
     }
   },
-  "$id": "https://github.com/sepahead/galadriel/releases/0.9.0/local-convergence-schema.json",
+  "$id": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/release/0.9.0/local-convergence-schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
@@ -504,8 +507,8 @@
       "items": {
         "$ref": "#/$defs/crossRequirement"
       },
-      "maxItems": 5,
-      "minItems": 5,
+      "maxItems": 8,
+      "minItems": 8,
       "prefixItems": [
         {
           "const": {
@@ -576,6 +579,48 @@
             "direction": "prospective_downstream_offline",
             "pin": null,
             "project": "Prisoma",
+            "status": "ABSENT_NOT_CLAIMED"
+          }
+        },
+        {
+          "const": {
+            "classification": "absent_runtime_edge",
+            "conditions": [
+              "Treat engram/ncp only as a configurable example realm; do not infer a Paper2Brain API, process, route, adapter, or runtime edge.",
+              "Any future application integration requires a separately versioned and qualified contract."
+            ],
+            "dependency_pin_required_for_qualified_graphs": false,
+            "direction": "external_application_context",
+            "pin": null,
+            "project": "Engram/Paper2Brain",
+            "status": "ABSENT_NOT_CLAIMED"
+          }
+        },
+        {
+          "const": {
+            "classification": "absent_runtime_edge",
+            "conditions": [
+              "Do not advertise a ROS dependency, message binding, topic, service, action, node, bag importer, bridge, or compatibility claim for 0.9.0.",
+              "Any future middleware adapter requires explicit timing, frame, schema, replay, resource-bound, and qualification evidence."
+            ],
+            "dependency_pin_required_for_qualified_graphs": false,
+            "direction": "external_robotics_middleware",
+            "pin": null,
+            "project": "ROS / ROS 2",
+            "status": "ABSENT_NOT_CLAIMED"
+          }
+        },
+        {
+          "const": {
+            "classification": "absent_command_edge",
+            "conditions": [
+              "Galadriel must have no command credential, lease, watchdog, control, or authority path and must remain advisory-only.",
+              "Any future consumer must begin record-only; a later effect requires independent admission and may only restrict existing authority."
+            ],
+            "dependency_pin_required_for_qualified_graphs": false,
+            "direction": "prospective_downstream_policy_control",
+            "pin": null,
+            "project": "external authority",
             "status": "ABSENT_NOT_CLAIMED"
           }
         }

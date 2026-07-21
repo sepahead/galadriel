@@ -20,6 +20,15 @@ Galadriel build needs that project.
 | Crebain | External upstream producer relationship | No Cargo dependency and not required for demo, simulation, evaluation, or offline replay. A live deployment needs an authorized contract-conforming producer, but the code does not require that producer to be Crebain. | The inspected Crebain component is the reference producer for Galadriel's observation and monitor sidecars and retained registry fixture. |
 | Haldir | Prospective downstream consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither a required nor an enabled optional component. | Documents how a future authorization consumer could record evidence and apply only independently admitted, restrict-only effects. |
 | Prisoma | Prospective downstream offline consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither a required nor an enabled optional component. | Documents a possible future immutable covariate/comparator import and why shared NCP or PID dependencies do not establish compatibility or independence. |
+| Engram / Paper2Brain | External application and realm context | No dependency, API, process, adapter, route, or runtime edge. `engram/ncp` is one validated example realm string, not an Engram application binding. | Separates the deployment namespace example from NCP, which is the actual linked wire/transport interface. |
+| ROS / ROS 2 | External robotics middleware | No dependency, message binding, topic, service, action, bridge, node, bag importer, or runtime edge. | Records that any future robotics-middleware adapter is a new, separately qualified interface rather than an implicit consequence of sensor terminology. |
+| External authority or controller | Prospective downstream policy/control boundary | No command, control, credential, lease, watchdog, or authority path. It is neither required nor enabled. | Preserves advisory-only semantics: a future consumer may record evidence and may only apply an independently admitted restrict-only policy. |
+
+Galadriel is the center node and has no self-edge. The directed relationship graph is
+`pid-rs → Galadriel`, `NCP → Galadriel`, optional conforming producer `→ Galadriel`, and
+prospective `Galadriel → Haldir/Prisoma`. Engram/Paper2Brain, ROS, and external authority
+are explicit non-edges. No edge returns to an upstream producer or library, so this graph
+is acyclic and contains no evidence-to-command feedback loop.
 
 The default `cargo build` selects only the `galadriel-core`, `galadriel-sim`, and
 feature-empty CLI workspace members, together with their ordinary registry dependencies.
@@ -31,7 +40,8 @@ than inferring those edges from the CLI graph.
 
 ## Exact inspection cut
 
-The 2026-07-18 inspection used these repository objects:
+The dated inspection register uses these repository objects. Rows without a later date
+were observed on 2026-07-18; later observations state their dates explicitly:
 
 | Repository | Inspected object | Meaning for Galadriel 0.9.0 |
 | --- | --- | --- |
@@ -40,18 +50,26 @@ The 2026-07-18 inspection used these repository objects:
 | Crebain | `0a58a5b8dd799884ddb06f1308b1748216fab322` | Mutable producer head inspected for component alignment; not a reciprocal Galadriel pin. |
 | Haldir discovery observation | remote `main` `0e94f61cfd5c78482198a765157571746a256181` | Mutable downstream design/status observation; no dependency, adapter, route, or runtime edge was found. |
 | Haldir later reinspection | remote `main` `dd3d8a1c993721f89a1edb04dec5247761c694ad` | Later 2026-07-18 observation of the same mutable branch; it supersedes only the discovery-head reference and does not replace frozen evidence. |
+| Haldir current reinspection | remote `main` `c0e4b3d156500684329a92bcb16e0609894fd738` | 2026-07-22 descendant whose CH-T001 activation adds repository-inventory/release evidence and explicitly records no runtime or external-conformance change. |
 | Prisoma | `63cff105e0e40281376e6f827d7782e9b351961a` | Downstream design/status inspection only; no runtime edge exists. |
 
-Haldir history retains both observations and places
+The 2026-07-22 local source inventory additionally records that Engram/Paper2Brain has
+only the example realm-label relationship, and that ROS/ROS 2 and external authority have
+no code or runtime edges. Those absences have no external object identity and therefore
+must not be represented by a fabricated repository pin.
+
+Haldir history retains all three observations and places
 `0e94f61cfd5c78482198a765157571746a256181` in the ancestry of
-`dd3d8a1c993721f89a1edb04dec5247761c694ad`. The intervening commits activate
-current-head qualification, freeze the CH-T001 repository-inventory qualification, and
-implement the create-once repository inventory. They explain the branch-head movement;
-they do not establish a Galadriel dependency or integration.
+`dd3d8a1c993721f89a1edb04dec5247761c694ad`, which is in the ancestry of
+`c0e4b3d156500684329a92bcb16e0609894fd738`. The first interval activates current-head
+qualification and begins CH-T001 repository-inventory work. The second completes and
+activates that evidence-only task; its retained downstream-conformance disposition says
+the runtime surface and external conformance did not change. The branch-head movement
+does not establish a Galadriel dependency or integration.
 
 External heads can change after this cut. Galadriel's local audit binds only tracked
-release inputs and exact dependency revisions. The later Haldir observation supersedes
-the mutable discovery-head reference only: it does not rewrite the earlier observation,
+release inputs and exact dependency revisions. Each later Haldir observation supersedes
+only the preceding mutable-head reference: it does not rewrite an earlier observation,
 Haldir's frozen audit material, Galadriel's frozen evidence, or any historical object.
 
 ## pid-rs: optional in the default build, required by PID research crates
@@ -153,12 +171,13 @@ claims therefore remain `NOT_CLAIMED` or pending as recorded in the release ledg
 
 ## Haldir: prospective record-only consumer
 
-Haldir is not part of any Galadriel build or runtime mode. Both the discovery object
-`0e94f61cfd5c78482198a765157571746a256181` and its later inspected descendant
-`dd3d8a1c993721f89a1edb04dec5247761c694ad` directly pin NCP 0.8 but contain no
-Galadriel dependency, import, deployed route, subscriber, publisher, or adapter. The
-later object adds Haldir qualification and repository-inventory work; it does not change
-that boundary. Haldir's frozen audit cut records Galadriel
+Haldir is not part of any Galadriel build or runtime mode. The discovery object
+`0e94f61cfd5c78482198a765157571746a256181`, its later inspected descendant
+`dd3d8a1c993721f89a1edb04dec5247761c694ad`, and current descendant
+`c0e4b3d156500684329a92bcb16e0609894fd738` directly pin NCP 0.8 but contain no
+Galadriel dependency, import, deployed route, subscriber, publisher, or adapter. The two
+later objects add and activate Haldir qualification/repository-inventory evidence without
+changing that boundary. Haldir's frozen audit cut records Galadriel
 `94e2f8cc01f352d2bf899b7f656997f143a2588f` as an input, not as independently
 verified compatibility. Its Galadriel integration phase remains not started.
 
@@ -185,6 +204,30 @@ use `pid-rs`, their outputs do not constitute independent-implementation replica
 That common implementation dependency does not itself prove statistical dependence
 between outputs; any such dependence must be measured from the actual inputs,
 configuration, and results.
+
+## Engram / Paper2Brain: realm label, not an integration
+
+`engram/ncp` appears in examples, tests, and the rendered reference deployment as a
+multi-segment NCP realm. Realm validation treats it as data; operators may select another
+valid realm. Galadriel has no Paper2Brain dependency, import, API, process, route, adapter,
+or runtime discovery path. The Paper2Brain repository is retained only in the release
+inventory with the explicit statement that it supplies no Galadriel integration evidence.
+
+## ROS / ROS 2: no interface in 0.9.0
+
+The workspace has no ROS client dependency, message definition, topic, service, action,
+node, launch file, bag reader, or bridge. Sensor and track terminology does not imply ROS
+compatibility. A future ROS adapter would need a versioned schema, timing and frame
+semantics, bounded decoding, replay/staleness rules, feature isolation, negative tests,
+and independent qualification before any compatibility claim.
+
+## External authority: advisory evidence cannot become permission
+
+Galadriel owns no command credential or control route and cannot issue, widen, refresh, or
+restore authority, leases, limits, TTLs, capabilities, or watchdog state. A future consumer
+must first remain record-only; any later effect must be independently admitted and
+restrict-only. `Nominal` is evidence, never permission, and the command path must remain
+safe and available when Galadriel is absent.
 
 ## Qualification boundary
 

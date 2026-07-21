@@ -2,7 +2,7 @@
 
 Release author: Sepehr Mahmoudian
 
-Release date: 2026-07-21
+Release date: 2026-07-22
 
 Channel: GitHub source release
 
@@ -33,11 +33,18 @@ pure default core and explicitly activated PID and NCP integrations.
 | pid-rs | Optional linked dependency | Absent from the default CLI; required by `galadriel-pid`, `galadriel-eval`, `galadriel-justify`, and the CLI `pid` feature. |
 | NCP | Optional linked/wire dependency | Absent from the default CLI; required by `galadriel-ncp`, `galadriel-eval`, and CLI `ncp`; `ncp-live` adds transport. |
 | Crebain | Optional reference producer | No Cargo dependency. A live deployment needs a contract-conforming authorized producer, but it need not be Crebain. |
-| Haldir | Prospective downstream consumer | No dependency, adapter, route, or runtime edge. Any future use must start record-only and remain independently admitted and restrict-only. |
+| Haldir | Prospective downstream consumer | No dependency, adapter, route, or runtime edge. The latest inspected head `c0e4b3d156500684329a92bcb16e0609894fd738` activates repository-inventory evidence without a runtime/conformance change. Any future use must start record-only and remain independently admitted and restrict-only. |
 | Prisoma | Prospective offline consumer | No dependency, named-sidecar route, or runtime edge; a future immutable offline comparison remains unqualified. |
+| Engram / Paper2Brain | Realm context only | No dependency or runtime edge; `engram/ncp` is a configurable example realm, and Paper2Brain remains private/unpublished inventory rather than an application integration. |
+| ROS / ROS 2 | Absent middleware edge | No dependency, binding, topic, bridge, node, bag import, or compatibility claim. |
+| External authority or controller | Absent command edge | No command, credential, lease, watchdog, or authority path; advisory evidence cannot grant or widen permission. |
 
-The exact objects and the two dated Haldir observations are retained in
-[`ecosystem-cut.json`](ecosystem-cut.json). Mutable inspected heads are provenance, not
+The resulting graph is acyclic: optional libraries and a conforming producer point into
+Galadriel; only prospective evidence-consumer relationships point outward; and no command
+or feedback edge returns to an upstream component.
+
+The exact objects and the three dated Haldir observations are retained in
+[`ecosystem-cut.json`](https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/ecosystem-cut.json). Mutable inspected heads are provenance, not
 release pins or reciprocal acceptance.
 
 ## Deliberate limits
@@ -53,18 +60,24 @@ release pins or reciprocal acceptance.
 - The current retained calibration evidence is diagnostic and does not qualify the
   monitor for restrictive operational policy use.
 
-See [`claims.json`](claims.json),
-[`../../docs/ADVISORY-BOUNDARY.md`](../../docs/ADVISORY-BOUNDARY.md), and
-[`../../docs/ECOSYSTEM-CONNECTIONS.md`](../../docs/ECOSYSTEM-CONNECTIONS.md) for the
+See [`claims.json`](https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/claims.json),
+[`docs/ADVISORY-BOUNDARY.md`](https://github.com/sepahead/galadriel/blob/v0.9.0/docs/ADVISORY-BOUNDARY.md), and
+[`docs/ECOSYSTEM-CONNECTIONS.md`](https://github.com/sepahead/galadriel/blob/v0.9.0/docs/ECOSYSTEM-CONNECTIONS.md) for the
 claim-by-claim boundaries.
 
 ## Verification and citation
 
 Publication requires a signed annotated `v0.9.0` tag over the exact signed `main`
-candidate. Only the qualified source archive, package/SBOM and assurance records,
-signed closure manifests, and checksums may be attached. Verify the tag, signatures,
-and `SHA256SUMS` before using any published asset; the full operator sequence is in
-[`RELEASE-RUNBOOK.md`](RELEASE-RUNBOOK.md).
+candidate. The attached assurance set is exactly
+`galadriel-0.9.0-qualification.tar`, `galadriel-0.9.0-closure.tar`,
+`galadriel-0.9.0-release-asset-map.json`, and
+`galadriel-0.9.0-release-asset-map.json.sig`. Verify the map's
+`galadriel-release-assets` signature with an independently obtained trust root, verify
+its exact candidate/tree/tag identities and both tar inventories, safely reconstruct the
+tiers, and verify their internal signatures and `SHA256SUMS` before use. GitHub's
+automatically generated source zip/tar links are convenience snapshots, not signed
+assurance assets. The full draft-first operator sequence is in
+[`RELEASE-RUNBOOK.md`](https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/RELEASE-RUNBOOK.md).
 
-Use [`../../CITATION.cff`](../../CITATION.cff) with version 0.9.0 and the exact Git
+Use [`CITATION.cff`](https://github.com/sepahead/galadriel/blob/v0.9.0/CITATION.cff) with version 0.9.0 and the exact Git
 commit used for results. This release intentionally has no project DOI or Zenodo record.

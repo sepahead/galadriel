@@ -130,11 +130,15 @@ full-suite tests when active. Assemble all six checked outcome records and their
 run receipt without rewriting the candidate or trusting a candidate-provided key:
 
 ```bash
+set -euo pipefail
+signing_key="$(git config --get user.signingkey)"
+test -n "$signing_key"
+
 python3 repo_work/prepare_mutation_evidence.py \
   --repo . \
   --candidate "$(git rev-parse HEAD)" \
   --out /new/path/galadriel-0.9.0-mutation-evidence \
-  --signing-key "$(git config --get user.signingkey)" \
+  --signing-key "$signing_key" \
   --shard 0/4=/downloaded/mutation-diff-results-1-of-4 \
   --shard 1/4=/downloaded/mutation-diff-results-2-of-4 \
   --shard 2/4=/downloaded/mutation-diff-results-3-of-4 \
@@ -157,11 +161,15 @@ full build, test, documentation, feature, release, dependency, source-inventory,
 evidence, source-archive, SBOM, and checksum gates:
 
 ```bash
+set -euo pipefail
+signing_key="$(git config --get user.signingkey)"
+test -n "$signing_key"
+
 python3 repo_work/qualify_candidate.py \
   --repo . \
   --expected "$(git rev-parse HEAD)" \
   --out /new/path/galadriel-0.9.0-qualification \
-  --signing-key "$(git config --get user.signingkey)" \
+  --signing-key "$signing_key" \
   --mutation-evidence /new/path/galadriel-0.9.0-mutation-evidence/mutation-evidence.json \
   --mutation-evidence-signature /new/path/galadriel-0.9.0-mutation-evidence/mutation-evidence.json.sig \
   --evidence-config evidence/galadriel-0.9-candidate.json \
@@ -200,6 +208,10 @@ then the candidate-bound v3 T115 decision, then the all-task dispositions. Creat
 closure tier without modifying the candidate:
 
 ```bash
+set -euo pipefail
+signing_key="$(git config --get user.signingkey)"
+test -n "$signing_key"
+
 python3 repo_work/finalize_release.py \
   --repo . \
   --candidate "$(git rev-parse HEAD)" \
@@ -211,7 +223,7 @@ python3 repo_work/finalize_release.py \
   --final-review-signature /reviewed/path/FINAL-TWENTY-LENS-REVIEW.json.sig \
   --decision-input /reviewed/path/RELEASE-DECISION.json \
   --decision-input-signature /reviewed/path/RELEASE-DECISION.json.sig \
-  --signing-key "$(git config --get user.signingkey)" \
+  --signing-key "$signing_key" \
   --snapshot-dir /secure/path/with-at-least-8-GiB-free \
   --out /new/path/galadriel-0.9.0-closure
 ```
@@ -239,8 +251,9 @@ Finalization also writes `LOCAL-CONVERGENCE.json` and its detached
 `galadriel-local-convergence` signature. The adapted schema preserves the supplied
 116-task and ten-wave gates while binding the approved 0.9.0 candidate. The
 validator requires complete tracked-file review, exact ordered task/wave coverage,
-artifact byte identities, and explicit pid-rs, NCP, Crebain, Haldir, and Prisoma
-requirements. `LOCAL_PIN_PASS` covers exact locally qualified pid-rs/NCP build pins.
+artifact byte identities, and explicit pid-rs, NCP, Crebain, Haldir, Prisoma,
+Engram/Paper2Brain, ROS / ROS 2, and external-authority requirements. `LOCAL_PIN_PASS`
+covers exact locally qualified pid-rs/NCP build pins.
 `ready_for_cross_repo_reconciliation` means only that optional reciprocal work may
 begin; it is not another repository's GO or deployment qualification.
 
@@ -255,3 +268,142 @@ comments remain open unless an identified human actually records them.
 `verify_evidence_manifest.py` verifies a strict JSON artifact manifest without
 following paths outside the selected root. It rejects duplicate keys, duplicate
 paths, non-regular artifacts, and digest/size drift.
+
+<!-- BEGIN RELEASE-ASSET-PACKAGER -->
+## Deterministic GitHub release evidence assets
+
+`package_release_assets.py` converts the exact, already completed qualification and
+closure directories into a public four-file upload set without changing either tier:
+
+- `galadriel-0.9.0-qualification.tar`
+- `galadriel-0.9.0-closure.tar`
+- `galadriel-0.9.0-release-asset-map.json`
+- `galadriel-0.9.0-release-asset-map.json.sig`
+
+The map is the authoritative tier-to-asset-name mapping. Consumers resolve a tier
+through its map row and verify the recorded filename, root prefix, digest, size, and
+complete file inventory; they must not infer meaning from attachment order or an
+opaque download URL. The two uncompressed tar files have distinct fixed root prefixes,
+retain every internal directory and regular file (including each tier's root
+`SHA256SUMS`), and use canonical metadata, explicit strict UTF-8 member-name encoding,
+and lexical member order. Each tar must be strictly smaller than 2 GiB. The upload set
+contains exactly four assets, well below GitHub's 1,000-upload limit.
+
+To keep POSIX, Windows, and archive path interpretations unambiguous, any input name
+containing a backslash is rejected even though POSIX permits that byte in a filename.
+The independently supplied `ALLOWED_SIGNERS` trust root is limited to 4 KiB. Prepare
+replacement evidence tiers or a narrower reviewed trust root before packaging if either
+bound is exceeded; the packager never rewrites finalized evidence.
+
+First independently verify the candidate commit and annotated signed tag using the
+release trust root. Supply the resulting full commit, tree, tag-object, and peeled
+tag-target IDs; the packager requires the tag target to equal the candidate commit and
+binds all of them into the signed map:
+
+```bash
+set -euo pipefail
+test "$(python3 -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+candidate="$(git rev-parse 'HEAD^{commit}')"
+tree="$(git rev-parse "$candidate^{tree}")"
+tag=v0.9.0
+tag_object="$(git rev-parse "$tag^{tag}")"
+tag_target="$(git rev-parse "$tag^{}")"
+test "$tag_target" = "$candidate"
+signing_key="$(git config --get user.signingkey)"
+test -n "$signing_key"
+
+python3 repo_work/package_release_assets.py build \
+  --qualification-root /exact/path/galadriel-0.9.0-qualification \
+  --closure-root /exact/path/galadriel-0.9.0-closure \
+  --out /new/path/galadriel-0.9.0-github-assets \
+  --signing-key "$signing_key" \
+  --candidate-commit "$candidate" \
+  --candidate-tree "$tree" \
+  --tag-name "$tag" \
+  --tag-object "$tag_object" \
+  --tag-target "$tag_target"
+```
+
+The map always identifies release `0.9.0`, author `Sepehr Mahmoudian`, and null DOI
+and Zenodo fields. Its detached SSH signature uses the literal
+`galadriel-release-assets` namespace and the established release principal. Private
+signing material is never copied. Build snapshots both input trees through bounded,
+nonblocking, no-follow descriptors; rejects links, special files, path ambiguity,
+overlap, or ordinary mid-run change; self-verifies the completed staging tree; and
+publishes it with the same atomic no-replace mechanism as release finalization.
+Exit status 3 has the same committed-with-durability-warning meaning: the requested
+output may already be complete after the atomic rename. Retain it, verify it
+independently, and resolve the parent-directory durability uncertainty before upload;
+do not blindly rerun or delete it.
+
+Release asset construction and canonical-tar verification are qualified with the
+audit-pinned `CPython 3.14.6`. A different interpreter may emit different PAX bytes and
+therefore fail closed; use the pinned interpreter for public release verification.
+
+Verify downloaded assets against an independently obtained allowed-signers trust root
+and explicit expected identities:
+
+```bash
+set -euo pipefail
+test "$(python3 -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+candidate="$(git rev-parse 'HEAD^{commit}')"
+tree="$(git rev-parse "$candidate^{tree}")"
+tag=v0.9.0
+tag_object="$(git rev-parse "$tag^{tag}")"
+tag_target="$(git rev-parse "$tag^{}")"
+test "$tag_target" = "$candidate"
+
+python3 repo_work/package_release_assets.py verify \
+  --assets /downloaded/galadriel-0.9.0-github-assets \
+  --allowed-signers /independent/path/ALLOWED_SIGNERS \
+  --expected-candidate "$candidate" \
+  --expected-tree "$tree" \
+  --expected-tag-name "$tag" \
+  --expected-tag-object "$tag_object" \
+  --expected-tag-target "$tag_target"
+```
+
+Verification authenticates snapshotted map bytes before trusting any rows, requires
+canonical duplicate-free JSON and the exact four-file asset set, checks every bound
+identity and inventory row, then regenerates each canonical tar stream and requires its
+metadata, content, order, inventory, and complete bytes to match. It rejects compressed,
+appended, reordered, duplicated, linked, special, missing, extra, oversized, or changing
+inputs. The candidate-tracked `release/0.9.0/audit/ALLOWED_SIGNERS` is comparison
+metadata only: a verifier may compare it byte-for-byte with the independent trust root,
+but must never let the candidate authenticate itself.
+
+`extract` (alias `reconstruct`) performs the same verification while manually writing
+regular files into a new mode-0700 staging directory. It never calls `extractall`, never
+follows archive links, creates files exclusively, and publishes the two fixed-prefix
+trees only after complete verification:
+
+```bash
+set -euo pipefail
+test "$(python3 -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+candidate="$(git rev-parse 'HEAD^{commit}')"
+tree="$(git rev-parse "$candidate^{tree}")"
+tag=v0.9.0
+tag_object="$(git rev-parse "$tag^{tag}")"
+tag_target="$(git rev-parse "$tag^{}")"
+test "$tag_target" = "$candidate"
+
+python3 repo_work/package_release_assets.py reconstruct \
+  --assets /downloaded/galadriel-0.9.0-github-assets \
+  --allowed-signers /independent/path/ALLOWED_SIGNERS \
+  --out /new/path/galadriel-0.9.0-reconstructed \
+  --expected-candidate "$candidate" \
+  --expected-tree "$tree" \
+  --expected-tag-name "$tag" \
+  --expected-tag-object "$tag_object" \
+  --expected-tag-target "$tag_target"
+```
+
+No mode performs a GitHub mutation. Upload all four files only after verification.
+GitHub's automatically generated “Source code” zip and tarball are separate convenience
+snapshots: they are not members of this four-file upload set, are not authenticated by
+the release-asset map, and must not substitute for either evidence tar.
+After reconstruction, authenticate the tier manifests under the distinct literal SSH
+namespaces `galadriel-qualification-manifest` and `galadriel-closure-manifest`, and
+validate each exact `SHA256SUMS` inventory. The normative commands and release principal
+are in `release/0.9.0/RELEASE-RUNBOOK.md`.
+<!-- END RELEASE-ASSET-PACKAGER -->

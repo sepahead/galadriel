@@ -8,6 +8,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import subprocess
 import tempfile
 import unittest
@@ -99,6 +100,88 @@ class ReviewToolsTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
+
+    def test_release_schema_ids_and_tier_verification_are_immutable_and_explicit(
+        self,
+    ) -> None:
+        repository = TOOLS.parent
+        schema_root = repository / "crates/galadriel-ncp/schemas"
+        for name in (
+            "galadriel-pid-envelope-v1.schema.json",
+            "galadriel-monitor-envelope-v1.schema.json",
+        ):
+            document = json.loads((schema_root / name).read_text(encoding="utf-8"))
+            self.assertEqual(
+                document["$id"],
+                "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
+                f"crates/galadriel-ncp/schemas/{name}",
+            )
+
+        runbook = (repository / "release/0.9.0/RELEASE-RUNBOOK.md").read_text(
+            encoding="utf-8"
+        )
+        for literal in (
+            "ssh-keygen -Y verify",
+            "-I sepmhn@gmail.com",
+            "-n galadriel-qualification-manifest",
+            "-n galadriel-closure-manifest",
+            'len(roots) == 2 or sys.exit("expected exactly two tier roots")',
+            "tuple(verify_sha256sums(Path(root)) for root in roots)",
+            '"https://github.com/sepahead/galadriel/blob/$tag/$path"',
+            '"https://raw.githubusercontent.com/sepahead/galadriel/$tag/$path"',
+            'cmp -s "$verification_dir/expected" "$verification_dir/downloaded"',
+            'CPython 3.14.6"',
+            "mandatory authenticated byte-for-byte comparison",
+        ):
+            self.assertIn(literal, runbook)
+        self.assertRegex(
+            runbook,
+            re.compile(
+                r"5\. Create.*?literal title\s+`Galadriel 0\.9\.0`.*?"
+                r"exact tracked `RELEASE-NOTES\.md` body",
+                re.DOTALL,
+            ),
+        )
+        self.assertRegex(
+            runbook,
+            re.compile(
+                r"For the two tar files only,.*?signed map;\s+the\s+map\s+does\s+"
+                r"not\s+contain\s+rows\s+for\s+itself\s+or\s+its\s+detached\s+"
+                r"signature",
+                re.DOTALL,
+            ),
+        )
+        self.assertRegex(
+            runbook,
+            re.compile(
+                r"9\. Confirm.*?literal title is\s+`Galadriel 0\.9\.0`",
+                re.DOTALL,
+            ),
+        )
+        threat_register = json.loads(
+            (repository / "release/0.9.0/audit/threat-register.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        cross_repo_threat = next(
+            row
+            for row in threat_register["threats"]
+            if row["threat_id"] == "GLD-THR-015"
+        )
+        self.assertIn("ROS / ROS 2", cross_repo_threat["trust_boundary"])
+        self.assertNotIn("ROS/ROS 2", cross_repo_threat["trust_boundary"])
+        for path in (
+            "release/0.9.0/ecosystem-cut.json",
+            "release/0.9.0/claims.json",
+            "docs/ADVISORY-BOUNDARY.md",
+            "docs/ECOSYSTEM-CONNECTIONS.md",
+            "release/0.9.0/RELEASE-RUNBOOK.md",
+            "CITATION.cff",
+            "release/0.9.0/local-convergence-schema.json",
+            "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
+            "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
+        ):
+            self.assertIn(f'"{path}"', runbook)
 
     def make_frozen_input_fixture(self, name: str) -> dict[str, object]:
         repo = self.root / name
@@ -774,7 +857,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(cut["author"], "Sepehr Mahmoudian")
         self.assertEqual(
             (cut["inspected_at"], cut["timestamp_precision"]),
-            ("2026-07-18", "date"),
+            ("2026-07-22", "date"),
         )
         observations = cut["observations"]
         expected_observations = [
@@ -886,23 +969,92 @@ class ReviewToolsTest(unittest.TestCase):
                 "supersedes": None,
                 "why": "Records the absent direct sidecar path and a possible future immutable offline comparison only.",
             },
+            {
+                "id": "ECO-008",
+                "project": "Engram/Paper2Brain",
+                "relationship": "configuration_example_without_integration",
+                "ref": "Galadriel 0.9.0 local source inventory",
+                "object": None,
+                "identity_kind": "declared_absent_runtime_edge",
+                "observed_at": "2026-07-22",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": None,
+                "why": "Records that engram/ncp is a configurable example realm and creates no Paper2Brain dependency, API, route, adapter, or runtime edge.",
+            },
+            {
+                "id": "ECO-009",
+                "project": "ROS / ROS 2",
+                "relationship": "external_middleware_without_interface",
+                "ref": "Galadriel 0.9.0 local source inventory",
+                "object": None,
+                "identity_kind": "declared_absent_runtime_edge",
+                "observed_at": "2026-07-22",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": None,
+                "why": "Records the absence of a ROS dependency, binding, topic, service, action, node, bag importer, bridge, or compatibility claim.",
+            },
+            {
+                "id": "ECO-010",
+                "project": "external authority",
+                "relationship": "advisory_boundary_without_command_edge",
+                "ref": "Galadriel 0.9.0 local source inventory",
+                "object": None,
+                "identity_kind": "declared_absent_runtime_edge",
+                "observed_at": "2026-07-22",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": None,
+                "why": "Records that Galadriel has no command, credential, lease, watchdog, control, or authority path and cannot grant or widen permission.",
+            },
+            {
+                "id": "ECO-011",
+                "project": "Haldir",
+                "relationship": "prospective_downstream_status_reinspection",
+                "ref": "main",
+                "object": "c0e4b3d156500684329a92bcb16e0609894fd738",
+                "identity_kind": "mutable_head_observation",
+                "observed_at": "2026-07-22",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": "ECO-006",
+                "why": "Records the activated CH-T001 repository-inventory evidence update, whose retained downstream disposition says the runtime surface and external conformance did not change; no Galadriel adapter or route was added.",
+            },
         ]
         self.assertEqual(observations, expected_observations)
         self.assertEqual(
             cut["limitations"],
             [
                 "Mutable head observations are inspection provenance, not dependency pins.",
-                "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir or Prisoma runtime edge.",
-                "The later Haldir observation does not rewrite the discovery observation or frozen historical evidence.",
+                "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir, Prisoma, Engram/Paper2Brain, ROS, or external-authority runtime edge.",
+                "Later Haldir observations do not rewrite the discovery observation or frozen historical evidence.",
+                "The directed declared graph is acyclic: optional upstream inputs point into Galadriel, prospective evidence consumers point outward, and no command or feedback edge returns upstream.",
             ],
         )
         self.assertEqual(
             [row["id"] for row in observations],
-            [f"ECO-{index:03d}" for index in range(1, 8)],
+            [f"ECO-{index:03d}" for index in range(1, 12)],
         )
         self.assertEqual(
             [row["project"] for row in observations],
-            ["pid-rs", "NCP", "NCP", "Crebain", "Haldir", "Haldir", "Prisoma"],
+            [
+                "pid-rs",
+                "NCP",
+                "NCP",
+                "Crebain",
+                "Haldir",
+                "Haldir",
+                "Prisoma",
+                "Engram/Paper2Brain",
+                "ROS / ROS 2",
+                "external authority",
+                "Haldir",
+            ],
         )
         self.assertTrue(
             all(row["required_by_default"] is False for row in observations)
@@ -921,7 +1073,7 @@ class ReviewToolsTest(unittest.TestCase):
                 for row in observations
                 if row["supersedes"] is not None
             },
-            {"ECO-006": "ECO-005"},
+            {"ECO-006": "ECO-005", "ECO-011": "ECO-006"},
         )
         self.assertEqual(
             observations[0]["required_for"],
@@ -930,6 +1082,14 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(
             observations[1]["required_for"],
             ["ncp feature", "ncp-live feature", "galadriel-ncp", "galadriel-eval"],
+        )
+        self.assertEqual(
+            [
+                row["id"]
+                for row in observations
+                if row["identity_kind"] == "declared_absent_runtime_edge"
+            ],
+            ["ECO-008", "ECO-009", "ECO-010"],
         )
 
         public_api = (repo / "release/0.9.0/api/galadriel-core.0.9.0.txt").read_text(
@@ -943,8 +1103,11 @@ class ReviewToolsTest(unittest.TestCase):
             encoding="utf-8"
         )
         for row in observations:
-            self.assertIn(row["object"], readme)
-            self.assertIn(row["object"], connections)
+            self.assertIn(row["project"].casefold(), readme.casefold())
+            self.assertIn(row["project"].casefold(), connections.casefold())
+            if row["object"] is not None:
+                self.assertIn(row["object"], readme)
+                self.assertIn(row["object"], connections)
         for relative in ("docs/ADVISORY-BOUNDARY.md", "CHANGELOG.md"):
             text = (repo / relative).read_text(encoding="utf-8")
             self.assertIn(observations[4]["object"], text)

@@ -53,6 +53,15 @@ cross-repository integration.
 | [Crebain](https://github.com/sepahead/crebain) | External upstream producer relationship | No Cargo dependency; not required for demo, simulation, evaluation, or replay. Live operation needs an authorized contract-conforming producer, not necessarily Crebain by code identity. | Provides the inspected reference component for the observation/monitor sidecar contract and byte-identical retained registry fixture. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head; no reciprocal final-candidate or deployment qualification is claimed. |
 | [Haldir](https://github.com/sepahead/haldir) | Prospective downstream authorization consumer | No dependency, adapter, route, or runtime edge in 0.9.0. | Defines the intended future record-only and independently admitted restrict-only boundary; tests ensure Galadriel evidence cannot grant or widen authority. | The integration phase has not started and there is no runtime evidence. |
 | [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator/covariate consumer | No dependency, adapter, route, or runtime edge in 0.9.0. | Documents a possible future immutable offline covariate import and keeps Galadriel sidecars outside normative NCP `SensorFrame`s. | Relationship E0; shared NCP/PID dependencies imply neither schema compatibility nor independent-implementation replication. |
+| Engram / Paper2Brain | External application and realm context | No dependency, API, process, route, adapter, or runtime edge. The literal `engram/ncp` is a configurable example realm, not an application integration. | Makes the example deployment namespace concrete while NCP remains the actual library, key, and transport interface. | Paper2Brain is private/unpublished application inventory only; no public artifact, compatibility, or deployment qualification is claimed. |
+| ROS / ROS 2 | External robotics middleware | No dependency, message binding, topic, service, action, bridge, node, or runtime edge in 0.9.0. | Names an ecosystem boundary that a future adapter would have to define and qualify explicitly. | No ROS compatibility, bag import, or live bridge is claimed. |
+| External authority or controller | Prospective downstream policy/control boundary | No command, control, lease, watchdog, credential, or authority path. | A future consumer may record advisory evidence and may apply only an independently admitted restrict-only policy. | Galadriel cannot grant, widen, refresh, or restore authority; `Nominal` is never permission. |
+
+Galadriel is the sole center of this relationship view and has no self-edge. The directed
+declared graph is `pid-rs → Galadriel`, `NCP → Galadriel`, optional conforming producer
+`→ Galadriel`, and prospective `Galadriel → Haldir/Prisoma`; the Engram/Paper2Brain,
+ROS, and external-authority entries are explicit non-edges. Nothing points back to an
+upstream producer or library, so the 0.9.0 graph is acyclic and contains no command loop.
 
 The 2026-07-18 read-only coordination inspection recorded NCP
 `10492c81ac671ef1909962a9f1fede33781b9933`, Crebain
@@ -66,17 +75,26 @@ repository-inventory work. The later observation supersedes only the mutable Hal
 discovery-head reference; it does not rewrite either observation, any frozen or historical
 evidence, or a Galadriel release input.
 
+A 2026-07-22 reinspection found Haldir remote `main` at
+`c0e4b3d156500684329a92bcb16e0609894fd738`, descended from both earlier observations.
+Its intervening CH-T001 changes activate repository-inventory and release evidence only;
+Haldir's retained downstream disposition records no runtime-surface or external-conformance
+change. This latest object remains mutable provenance, not a Galadriel pin, adapter, route,
+or reciprocal acceptance.
+
 These mutable repository heads are inspection provenance, not reciprocal compatibility
 pins. NCP's wire-1.0 topology remains proposed and incompatible with the current named
 wire-0.8 sidecars; Crebain retains component-level schema-v1 alignment but freezes
-Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input; neither
-inspected Haldir object contains a Galadriel adapter or runtime edge; and Prisoma has no
-direct sidecar path. Current reciprocal integration and final cross-repository
-qualification remain `NOT_CLAIMED`.
+Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input; none of the
+three inspected Haldir objects contains a Galadriel adapter or runtime edge; and Prisoma has no
+direct sidecar path. The `engram/ncp` realm string creates no Paper2Brain edge, and the
+source tree contains no ROS or external-authority adapter. Current reciprocal integration
+and final cross-repository qualification remain `NOT_CLAIMED`.
 
 The canonical [machine-readable inspection cut](release/0.9.0/ecosystem-cut.json)
-binds the same objects, relationship classes, optionality, rationale, and limited
-Haldir supersession so later prose edits cannot silently change this history.
+binds the same objects, local absence declarations, relationship classes, optionality,
+rationale, acyclic boundary, and ordered Haldir supersession so later prose edits cannot
+silently change this history.
 
 The exact route, lifecycle, and downstream-effect rules are in
 [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) and
@@ -430,6 +448,18 @@ recorded pre-gate calibration, and any API or publication promotion beyond this 
 source release. See the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md) for the
 external procedure; none of those exclusions is converted into an implementation success.
 
+## Release verification boundary
+
+The 0.9.0 GitHub release attaches exactly two deterministic, path-preserving evidence
+tars plus their canonical asset map and detached SSH signature. The map binds the
+qualification and closure bytes to the exact candidate, tree, signed `v0.9.0` tag object
+and target, Sepehr Mahmoudian, and explicit null DOI/Zenodo fields. Verify and reconstruct
+that four-file set with `repo_work/package_release_assets.py` and an independently obtained
+trust root before using the retained evidence. GitHub's automatically generated source
+zip/tar links are convenience snapshots, not signed assurance assets. See the
+[`0.9.0 release runbook`](release/0.9.0/RELEASE-RUNBOOK.md) for the draft, authenticated
+download, anonymous download, signature, checksum, and fresh-build sequence.
+
 ## Documentation
 
 - [`docs/CLAIMS.md`](docs/CLAIMS.md) — normative 0.9.0 claim tiers and non-claims.
@@ -464,8 +494,8 @@ external procedure; none of those exclusions is converted into an implementation
 - [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) — non-authoritative,
   non-widening downstream use and prohibited control connections.
 - [`docs/ECOSYSTEM-CONNECTIONS.md`](docs/ECOSYSTEM-CONNECTIONS.md) — dated exact-cut
-  provenance and the limits of each pid-rs, NCP, Crebain, Haldir, and Prisoma
-  relationship.
+  provenance and the required, optional, prospective, or absent pid-rs, NCP, Crebain,
+  Haldir, Prisoma, Engram/Paper2Brain, ROS, and external-authority relationships.
 - [`release/0.9.0/README.md`](release/0.9.0/README.md) — auditable handoff, ledger,
   claims, evidence, and version-adaptation record.
 

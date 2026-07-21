@@ -54,6 +54,7 @@ from local_convergence import (  # noqa: E402
     MAX_AGGREGATE_ARTIFACT_BYTES,
     MAX_ARTIFACT_BYTES,
     MAX_MANIFEST_BYTES,
+    SCHEMA_ID as LOCAL_CONVERGENCE_SCHEMA_ID,
     SCHEMA_PATH as LOCAL_CONVERGENCE_SCHEMA,
     SIGNATURE_NAMESPACE as LOCAL_CONVERGENCE_NAMESPACE,
     artifact_path_parts as local_convergence_artifact_path_parts,
@@ -2525,6 +2526,12 @@ class DecisionAndRunnerTests(unittest.TestCase):
     def test_local_convergence_schema_and_exact_candidate_record(self) -> None:
         schema = json.loads((ROOT / LOCAL_CONVERGENCE_SCHEMA).read_text())
         validate_local_convergence_schema(schema)
+        self.assertEqual(
+            schema["$id"],
+            "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
+            "release/0.9.0/local-convergence-schema.json",
+        )
+        self.assertEqual(schema["$id"], LOCAL_CONVERGENCE_SCHEMA_ID)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             artifact_paths = CONVERGENCE_ARTIFACT_PATHS
