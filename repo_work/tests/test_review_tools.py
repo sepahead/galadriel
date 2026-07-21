@@ -626,11 +626,16 @@ class ReviewToolsTest(unittest.TestCase):
                 output + "\nncp-core v0.8.0 (locked)|default,schema\n",
             )
 
-        with self.assertRaisesRegex(ReviewError, "terminal control bytes"):
-            parse_graph_output(
-                profile,
-                "ncp-core v0.8.0 (locked)|default\x1b[0m\n",
-            )
+        for control in ("\x1b[0m", "\x9b0m", "\x08"):
+            with self.subTest(control=ascii(control)):
+                with self.assertRaisesRegex(
+                    ReviewError,
+                    r"terminal control bytes: 'ncp-core .*'",
+                ):
+                    parse_graph_output(
+                        profile,
+                        f"ncp-core v0.8.0 (locked)|default{control}\n",
+                    )
 
     def test_feature_graph_disables_cargo_terminal_color(self) -> None:
         profile = next(profile for profile in PROFILES if profile.name == "pure")
@@ -645,13 +650,18 @@ class ReviewToolsTest(unittest.TestCase):
                 "check_feature_graph.subprocess.run", return_value=completed
             ) as run_cargo,
         ):
+            inherited_environment = dict(os.environ)
             self.assertEqual(
                 package_graph(self.root, profile),
                 {"galadriel-cli": frozenset({"default"})},
             )
             self.assertEqual(os.environ["CARGO_TERM_COLOR"], "always")
 
-        self.assertEqual(run_cargo.call_args.kwargs["env"]["CARGO_TERM_COLOR"], "never")
+        self.assertEqual(
+            run_cargo.call_args.kwargs["env"],
+            {**inherited_environment, "CARGO_TERM_COLOR": "never"},
+        )
+        self.assertIn("--color=never", run_cargo.call_args.args[0])
 
     def test_machine_ecosystem_cut_binds_the_connection_prose(self) -> None:
         repo = TOOLS.parent

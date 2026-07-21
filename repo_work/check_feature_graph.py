@@ -270,9 +270,13 @@ def parse_graph_output(profile: Profile, output: str) -> dict[str, frozenset[str
     selected: dict[str, frozenset[str]] = {}
     exact_packages = {name for name, _features in profile.exact_features}
     for line in output.splitlines():
-        if "\x1b" in line:
+        if any(
+            ord(character) < 0x20 or 0x7F <= ord(character) <= 0x9F
+            for character in line
+        ):
             raise ReviewError(
-                f"feature graph {profile.name!r} emitted terminal control bytes"
+                f"feature graph {profile.name!r} emitted terminal control bytes: "
+                f"{line[:200]!r}"
             )
         package_text, separator, feature_text = line.partition("|")
         fields = package_text.split()
@@ -313,6 +317,7 @@ def package_graph(repo: Path, profile: Profile) -> dict[str, frozenset[str]]:
         "none",
         "--format",
         "{p}|{f}",
+        "--color=never",
     ]
     process = subprocess.run(
         command,
