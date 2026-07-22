@@ -1,555 +1,744 @@
-# Producer Observation and Lifecycle Contract
+# Producer observation and lifecycle contract
 
-Status: Accepted Galadriel-side ADR; local consumer components are implemented and
-deployment evidence is excluded. The strict contracts, pinned-registry capability,
-assembler, typed lifecycle adapter, and exact-epoch configuration profile exist and are
-component-tested. Crebain `4c311900ade5668200a48d56fb191be1916b884a` and
-Galadriel `81437d807ca83b66b45c8353968948e540072d97` are a historical
-compatibility fixture only. They do not pin this candidate; current reciprocal integration,
-final cross-repository qualification, remote-router enforcement, and operational
-calibration are `NOT_CLAIMED`.
+Status: accepted Galadriel-side ADR. Local consumer components are implemented.
+Deployment evidence is excluded.
 
-The read-only 2026-07-18 inspection of Crebain
-`0a58a5b8dd799884ddb06f1308b1748216fab322` reconfirmed component-level alignment:
-the two exact routes, schema `1.0`, NCP wire `0.8`, contract hash
-`d1b50a2d8a265276`, 64 KiB envelope ceiling, monitor taxonomy, registry bounds, and
-3,053-byte retained registry fixture agree. The fixture's raw SHA-256 is
-`506ce1437acc20ee5d36fd1e3551dd020095cc4d30d22d959c5df3cca81715a6`; its
+These Galadriel components exist and have component tests:
+
+- strict contracts
+- pinned-registry capability
+- assembler
+- typed lifecycle adapter
+- exact-epoch configuration profile
+
+Crebain `4c311900ade5668200a48d56fb191be1916b884a` and Galadriel
+`81437d807ca83b66b45c8353968948e540072d97` are a historical compatibility
+fixture. They do not pin this candidate.
+
+These evidence classes are `NOT_CLAIMED`:
+
+- current reciprocal integration
+- final cross-repository qualification
+- remote-router enforcement
+- operational calibration
+
+The read-only Crebain inspection from 2026-07-18 used
+`0a58a5b8dd799884ddb06f1308b1748216fab322`. It confirmed component-level
+alignment for these items:
+
+- two exact routes
+- schema `1.0`
+- NCP wire `0.8`
+- contract hash `d1b50a2d8a265276`
+- 64 KiB envelope ceiling
+- monitor taxonomy
+- registry bounds
+- 3,053-byte retained registry fixture
+
+The fixture has raw SHA-256
+`506ce1437acc20ee5d36fd1e3551dd020095cc4d30d22d959c5df3cca81715a6`. Its
 canonical SHA-256 is
 `7644ec2bbf0e400303aaad62c647eea36bd919913f1a28a81c52c13e00dd45ba`.
-That inspection establishes byte/schema fixture compatibility only. Crebain's formal
-0.9 boundary still freezes Galadriel
-`94e2f8cc01f352d2bf899b7f656997f143a2588f`; it neither pins the eventual Galadriel
-0.9.0 release object nor supplies the missing secured multi-process campaign. Exact
-current reciprocal pinning and deployed secured interoperability therefore remain
-separate, unmet evidence classes. See
+
+This inspection establishes byte and schema fixture compatibility only. The
+formal Crebain 0.9 boundary still freezes Galadriel
+`94e2f8cc01f352d2bf899b7f656997f143a2588f`. It does not pin the final Galadriel
+0.9.0 release object. It also does not supply the secured multi-process campaign.
+
+Current reciprocal pins and deployed secured interoperability are separate unmet
+evidence classes. See
 [`ECOSYSTEM-CONNECTIONS.md`](ECOSYSTEM-CONNECTIONS.md).
 
 ## Decision
 
-Galadriel's consumer contract defines two project-owned, observation-only sensor
-routes that a conforming producer must use, with different responsibilities:
+The Galadriel consumer contract defines two project-owned observation-only sensor
+routes. A conforming producer uses both routes for different responsibilities.
 
 | Route | Payload | Responsibility |
-| --- | --- | --- |
-| `{realm}/session/{epoch}/sensor/galadriel-pid` | Frozen `SidecarEnvelope` schema v1 | At most one real accepted observation per `(track, modality, frame)` suitable for the existing detectors |
-| `{realm}/session/{epoch}/sensor/galadriel-monitor` | Strict monitor envelope schema v1 | Measurement lifecycle outcomes, fusion-frame closure, and producer liveness |
+|---|---|---|
+| `{realm}/session/{epoch}/sensor/galadriel-pid` | Frozen `SidecarEnvelope` schema v1 | At most one real accepted observation for each `(track, modality, frame)`. The observation must be suitable for existing detectors. |
+| `{realm}/session/{epoch}/sensor/galadriel-monitor` | Strict monitor envelope schema v1 | Measurement lifecycle outcomes, fusion-frame closure, and producer liveness. |
 
-The observation route MUST remain byte- and schema-compatible with
+The observation route MUST remain byte-compatible and schema-compatible with
 [`galadriel-pid-envelope-v1.schema.json`](../crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json).
-Monitor events MUST NOT be added to that
-route. The monitor route MUST use an independently versioned, strict,
-project-owned schema and MUST NOT be presented as an NCP normative message.
+Monitor events MUST NOT enter that route.
 
-The operational profile joins the two routes and fails closed. A v1 observation
-alone remains valid input for Galadriel's existing baseline/replay behavior, but it
-is not sufficient evidence for lifecycle-complete, cross-modal operational
-assessment.
+The monitor route MUST use a separate strict project-owned schema with its own
+version. It MUST NOT be described as a normative NCP message.
 
-The key words MUST, MUST NOT, REQUIRED, SHOULD, SHOULD NOT, and MAY in this
-document are normative.
+The operational profile joins both routes and fails closed. One v1 observation is
+still valid for existing baseline and replay behavior. It is not sufficient for a
+lifecycle-complete cross-modal operational assessment.
+
+The words MUST, MUST NOT, REQUIRED, SHOULD, SHOULD NOT, and MAY are normative in
+this document.
 
 ## Context and current state
 
 The existing v1 sidecar is deliberately narrow. Its strict `SidecarEnvelope`
-contains `kind = "galadriel_pid_observation"`, `schema_version = "1.0"`, NCP
-version/hash provenance, `session_id`, `producer_id`, and one `PidObservation`.
-The live consumer subscribes to the named sensor route
+contains these fields:
+
+- `kind = "galadriel_pid_observation"`
+- `schema_version = "1.0"`
+- NCP version and hash provenance
+- `session_id`
+- `producer_id`
+- one `PidObservation`
+
+The live consumer subscribes to
 `{realm}/session/{epoch}/sensor/galadriel-pid`. The historical `-pid` name is
-frozen even though the primary statistics are NIS/CUSUM and signed consistency
-correlation.
+frozen. Primary statistics are NIS, CUSUM, and signed consistency correlation.
 
-That payload can represent an accepted measurement update. It cannot represent
-an association miss, gate rejection, update failure, empty fusion frame, frame
-completion, queue loss, or an independent heartbeat. The current live
-`RejectionReason` type reports receiver-side payload, decode, and replay failures;
-it is not a producer measurement-lifecycle vocabulary and MUST NOT be overloaded
-for that purpose. Likewise, a `payloads_received` counter proves only that some
-traffic arrived; it is not producer liveness.
+The payload can represent an accepted measurement update. It cannot represent any
+of these events:
 
-The command-line application now provides `observe` behind `ncp-live`. It loads an
-externally digest-pinned registry, opens the strict secure Zenoh client, joins both
-exact routes through one serialized bounded ingress, advances all declared
-deadlines, and passes only lifecycle-complete frames into the detector adapter.
-Explicit misses/rejections immediately abstain and clear the affected suffix.
+- association miss
+- gate rejection
+- update failure
+- empty fusion frame
+- frame completion
+- queue loss
+- independent heartbeat
 
-The producer design calls for a runtime that snapshots the predicted track set before
-association/update, calculates registered Cartesian projections from that one prior,
-records bounded opportunity outcomes, publishes summaries through ordered queues, and
-runs an independent heartbeat. The retained Crebain/Galadriel commit pair demonstrates a
-historical compatibility fixture for that shape, not the current candidate. Historical
-JSONL captures remain successful-update-only and are not upgraded by either repository's
-later implementation.
+The live `RejectionReason` type describes receiver-side payload, decode, and replay
+failures. It is not a producer lifecycle vocabulary. A producer MUST NOT use it
+for that purpose.
 
-Existing evidence is synthetic, golden, unit/property, or in-process transport
-evidence. The real multi-process allow/deny, wrong/no-certificate, restart, loss,
-and all-silence campaign remains an external acceptance gate. This ADR defines the
-implemented Galadriel consumer contract and the excluded producer, cross-repository,
-and deployment evidence boundaries.
+A `payloads_received` counter shows only that some traffic arrived. It does not
+show producer liveness.
+
+The command-line application provides `observe` behind `ncp-live`. It loads an
+externally digest-pinned registry and opens the strict secure Zenoh client. It
+joins both exact routes through one serialized bounded input. It advances all
+declared deadlines and sends only complete lifecycle frames to the detector
+adapter.
+
+Explicit misses and rejections cause immediate abstention. They also clear the
+affected suffix.
+
+The producer design requires a runtime to complete these actions:
+
+1. Snapshot the predicted track set before association and update.
+2. Calculate registered Cartesian projections from that one prior.
+3. Record bounded opportunity outcomes.
+4. Publish summaries through ordered queues.
+5. Run an independent heartbeat.
+
+The retained Crebain and Galadriel commit pair is a historical compatibility
+fixture for this design. It is not the current candidate. Historical JSONL
+captures contain only successful updates. New implementations do not change
+that evidence.
+
+Existing evidence is synthetic, golden, unit, property, or in-process transport
+evidence. An external acceptance gate still needs a real multi-process campaign.
+The campaign must cover allow and deny behavior, certificates, restarts, loss, and
+all-silence conditions.
+
+This ADR defines the implemented Galadriel consumer contract. It excludes
+producer, cross-repository, and deployment evidence.
 
 ## Route and publication rules
 
-Both routes are scoped to exactly one realm and producer epoch. Publishers MUST
-construct the exact named sensor keys shown above. A publisher MUST use the raw
-perception-plane byte publication API for these project-owned envelopes; it MUST
-NOT wrap either payload in a normative NCP `SensorFrame` or publish it through an
-API that enforces that wrapper.
+Both routes belong to exactly one realm and producer epoch. Publishers MUST use
+the exact named sensor keys above. A publisher MUST use the raw perception-plane
+byte publication API for these project-owned envelopes.
 
-The observation route is frozen as follows:
+A publisher MUST NOT wrap either payload in a normative NCP `SensorFrame`. It
+MUST NOT publish through an API that requires that wrapper.
+
+The observation route is frozen:
 
 - The envelope discriminator, schema version, field names, optional-field
   behavior, and nested `PidObservation` representation MUST NOT change in place.
-- Only real accepted observations that satisfy the existing semantic validator
-  may be published. A miss, rejection, failure, heartbeat, or frame summary MUST
-  NOT be encoded as a `PidObservation`.
-- An incompatible change requires a new route/schema version and a coordinated
-  producer/consumer migration. It MUST NOT be smuggled into v1 through a new
-  discriminator or tagged union.
+- The producer can publish only real accepted observations that pass the existing
+  semantic validator.
+- A producer MUST NOT encode a miss, rejection, failure, heartbeat, or frame
+  summary as a `PidObservation`.
+- An incompatible change needs a new route and schema version. It also needs a
+  coordinated producer and consumer migration.
+- A producer MUST NOT hide an incompatible change in v1 with a new discriminator
+  or tagged union.
 
-The monitor route is a separate compatibility boundary. Its Rust types and JSON
-Schema are frozen together with golden examples and negative fixtures. Its bounded
-decoder rejects unknown fields and unknown tagged-union variants. Schema evolution
-MUST follow explicit compatibility/versioning rules; an incompatible shape requires
-a new schema version rather than permissive best-effort decoding.
+The monitor route is a separate compatibility boundary. Its Rust types, JSON
+Schema, golden examples, and negative fixtures are frozen together. The bounded
+decoder rejects unknown fields and unknown tagged-union variants.
+
+Schema evolution MUST use explicit compatibility and version rules. An
+incompatible shape requires a new schema version. It cannot use permissive
+best-effort decoding.
 
 JSON Schema validation is necessary but not sufficient for canonical wire input.
-In particular, JSON Schema treats integer-valued `1.0` and `1e0` tokens as integers,
-while the bounded Rust decoder requires the canonical integer token form accepted by
-its `u32`/`u64` fields. Application semantic validation also enforces UTF-8 byte
-ceilings and cross-field invariants that the schema cannot express.
+JSON Schema treats integer-valued `1.0` and `1e0` tokens as integers. The bounded
+Rust decoder requires canonical integer tokens for `u32` and `u64` fields.
+
+Application validation also checks UTF-8 byte ceilings and cross-field invariants.
+The schema cannot express all these requirements.
 
 ## Epoch and sequence identity
 
-`epoch` is the sidecar `session_id`. It MUST be a valid NCP path segment, contain
-1 through 64 UTF-8 bytes, and equal the `session_id` carried by every envelope on
-both routes. It is an application-owned producer-process epoch, not an assertion
-that the sidecar participates in an NCP control-plane session-generation service.
+`epoch` is the sidecar `session_id`. It MUST be a valid NCP path segment. It MUST
+contain 1 through 64 UTF-8 bytes. Every envelope on both routes MUST contain that
+same `session_id`.
+
+The epoch is an application-owned producer-process epoch. It does not assert
+membership in an NCP control-plane session-generation service.
 
 An epoch MUST be:
 
-- stable for the lifetime of one producer process epoch;
-- freshly minted before any counter or replay state is reset; and
-- never reused by a later producer process epoch, even after a crash or rollback.
+- stable for one producer process epoch
+- freshly created before a counter or replay-state reset
+- never reused by a new producer process epoch after a crash or rollback
 
-Observation, fusion, and monitor sequences MAY restart only after a fresh epoch is
-minted. A consumer MUST subscribe to an exact epoch path, partition all replay and
-assembly state by epoch, reset that state on an epoch change, and retire the old
-subscription according to a bounded handover policy. Reusing an epoch after a
-sequence reset is a protocol fault, not an operational recovery mechanism.
+Observation, fusion, and monitor sequences MAY restart only after a fresh epoch.
+A consumer MUST subscribe to an exact epoch path. It MUST partition replay and
+assembly state by epoch. It MUST reset that state after an epoch change. It MUST
+retire the old subscription with a bounded handover policy.
 
-All numeric identifiers transmitted as JSON integers MUST be non-negative and no
-larger than `2^53 - 1`. Sequence counters MUST be monotonic under the rules stated
-for their event type. Exhausting a counter requires a fresh epoch; wrapping or
-silently saturating it is forbidden.
+An epoch reuse after a sequence reset is a protocol fault. It is not a recovery
+method.
+
+All numeric JSON identifiers MUST be nonnegative and at most `2^53 - 1`. Sequence
+counters MUST follow the monotonic rules for their event type. Counter exhaustion
+requires a fresh epoch. Wrapping and silent saturation are prohibited.
 
 ## Common consistency projection
 
-Cross-modal consistency MUST use a signed position residual in one registered,
-three-dimensional Cartesian ENU/world frame, in meters:
+Cross-modal consistency MUST use a signed position residual in one registered
+three-dimensional Cartesian ENU or world frame. Values use meters.
 
 ```text
 r[c,t] = z_ENU[c,t] - h_ENU[c](x_minus[t])
 ```
 
-Here `c` is a modality, `t` is a fusion sequence, `x_minus[t]` is the immutable
-predicted track prior, and `h_ENU[c]` projects that same prior into the registered
-ENU/world observation space for modality `c`.
+Here, `c` is a modality and `t` is a fusion sequence.
 
-The producer MUST snapshot the predicted state, covariance, track set, and
-projection context after prediction and before association, gating, or the first
-sequential sensor update. Every modality at one fusion sequence MUST derive its
-`consistency_projection` from that same immutable snapshot. Later sequential
-updates MUST NOT alter the residual used for another modality at that sequence.
-The projected residual is distinct from the modality-native innovation and MUST
-NOT fall back to it.
+`x_minus[t]` is the immutable predicted track prior.
 
-In particular, radar range/azimuth/elevation and any other modality-native
-measurement MUST be transformed through the registered calibration and extrinsic
-chain into the common Cartesian frame before subtraction. Angle/range components
-MUST NOT be placed into Cartesian projection axes. Active projection axes MUST
-have a stable order and inactive axes MUST remain zero as required by the frozen
-v1 observation schema.
+`h_ENU[c]` projects that same prior into the registered observation space for
+modality `c`.
 
-If a measurement or predicted track cannot be mapped validly into the registered
-common frame, the producer MUST emit an explicit monitor outcome such as
-`incomparable_projection`, MUST NOT fabricate projection values, and MUST mark the
-affected frame ineligible for cross-modal consistency assessment.
+The producer MUST snapshot these items after prediction. It does this before
+association, the gate calculation, or the first sequential sensor update.
+
+- predicted state
+- covariance
+- track set
+- projection context
+
+Every modality at one fusion sequence MUST derive `consistency_projection` from
+that same immutable snapshot. A subsequent sequential update MUST NOT change the
+residual for another modality at the sequence.
+
+The projected residual differs from the modality-native innovation. It MUST NOT
+fall back to that innovation.
+
+The producer MUST transform radar range, azimuth, and elevation through the
+registered calibration and extrinsic chain. The same rule applies to other native
+measurements. The transformation occurs before subtraction in the common
+Cartesian frame.
+
+The producer MUST NOT put angle or range components in Cartesian projection axes.
+Active axes MUST have stable order. Inactive axes MUST remain zero as required by
+the frozen v1 observation schema.
+
+If a valid common-frame mapping is unavailable, the producer MUST emit an explicit
+monitor outcome. For example, it can emit `incomparable_projection`. It MUST NOT
+create projection values. It MUST mark the affected frame ineligible for
+cross-modal consistency assessment.
 
 ### Frame and context registry
 
-Every nonzero `frame_id` and `context_id` is a reference into a version-controlled,
-deployment-pinned registry. The registry is part of the evidence contract, not an
-informal naming convention.
+Every nonzero `frame_id` and `context_id` refers to a version-controlled and
+deployment-pinned registry. The registry is part of the evidence contract. It is
+not an informal naming convention.
 
 A frame entry MUST define at least:
 
-- the ENU/world frame name, origin and datum;
-- axis order, direction, handedness, and units;
-- the transform chain and its authority; and
-- its validity interval or other applicability constraints.
+- ENU or world frame name, origin, and datum
+- axis order, direction, handedness, and units
+- transform chain and its authority
+- validity interval or other applicability limits
 
 A context entry MUST define at least:
 
-- projection algorithm and version;
-- output dimension and axis order;
-- sensor calibration and extrinsic identifiers plus content digests;
-- covariance and linearization semantics;
-- the enabled modality set; and
-- the producer software/configuration digest that fixes those semantics.
+- projection algorithm and version
+- output dimension and axis order
+- sensor calibration and extrinsic identifiers with content digests
+- covariance and linearization semantics
+- enabled modality set
+- producer software and configuration digest that fixes these semantics
 
-Registry identifiers are immutable. An identifier MUST never be reassigned to new
-semantics; any semantic change requires a new identifier. The producer and
-consumer MUST pin the same registry version/content digest. Each frame summary
-MUST bind the registry digest used for the frame. An unknown identifier, digest
-mismatch, expired applicability interval, or inconsistent frame/context binding
-MUST fail closed.
+Registry identifiers are immutable. An identifier MUST NOT receive new semantics.
+A semantic change requires a new identifier.
+
+Producer and consumer MUST pin the same registry version and content digest. Each
+frame summary MUST bind the frame registry digest. Unknown identifiers and digest
+mismatches MUST fail closed. Expired applicability and inconsistent frame-context
+bindings MUST also fail closed.
 
 ### Global prior identity
 
-`prior_id` identifies the immutable whole-frame predicted snapshot set. Within one
-epoch it is global, not namespaced by track, modality, `frame_id`, or `context_id`.
-It MUST be nonzero and obey this mapping:
+`prior_id` identifies the immutable predicted snapshot set for a complete frame.
+It is global within one epoch. Track, modality, `frame_id`, and `context_id` do not
+create separate namespaces.
+
+It MUST be nonzero and follow this mapping:
 
 ```text
 prior_id -> exactly one fusion_seq within an epoch
 ```
 
-The same `prior_id` MAY repeat across tracks and modalities at that one sequence
-because all of them attest to the same frozen prediction boundary. It MUST NOT
-appear at another sequence, even after a frame/context change or a partial frame
-failure. A consumer MUST retain a bounded epoch-level high-water/index sufficient
-to reject reuse; changing provenance MUST NOT make reuse acceptable. A fresh
-epoch starts a new namespace.
+The same `prior_id` MAY occur across tracks and modalities at that one sequence.
+They all attest to the same frozen prediction boundary.
+
+The identifier MUST NOT occur at another sequence. A frame or context change does
+not permit reuse. A partial frame failure also does not permit reuse.
+
+A consumer MUST retain a bounded epoch-level high-water index that rejects reuse.
+Changed provenance MUST NOT make reuse acceptable. A fresh epoch starts a new
+namespace.
 
 ## Monitor wire contract
 
 The monitor route carries one strict envelope per event. Its version-1 envelope
 MUST contain:
 
-- `kind = "galadriel_producer_event"`;
-- `schema_version = "1.0"`;
-- `ncp_version` in the exact canonical spelling pinned by the frozen schema and
-  `contract_hash` with the same advisory compatibility semantics as the
-  observation sidecar;
-- `session_id` and `producer_id`, matching the key and configured peer identity;
-- `event_seq`, an epoch-global JSON-safe integer that starts at 1, increments once
-  for every attempted monitor event, and is assigned before queue admission; and
-- `event`, an adjacent-tagged union of `modality_outcome`, `modality_miss`,
-  `frame_summary`, or `heartbeat`.
+- `kind = "galadriel_producer_event"`
+- `schema_version = "1.0"`
+- the canonical `ncp_version` spelling from the frozen schema
+- `contract_hash` with the observation-sidecar advisory compatibility semantics
+- `session_id` and `producer_id` that match the key and peer identity
+- epoch-global `event_seq`
+- an adjacent-tagged `event` union
 
-The corresponding Rust types and JSON Schema are frozen together. A producer or
-consumer is conformant only when it also follows the sequencing, assembly, epoch,
-queue, registry, and security rules in this ADR.
+`event_seq` is a JSON-safe integer. It starts at 1 and increments for each
+attempted monitor event. The producer assigns it before queue admission.
 
-Every string, collection, count, and encoded event MUST have a finite maximum in
-both JSON Schema and application validation. At minimum, the implementation MUST
-define and test `MAX_MONITOR_EVENT_BYTES`, identifier/string limits,
-`MAX_FRAME_ITEMS`, `MAX_MONITOR_QUEUE_EVENTS`, and `MAX_ACTIVE_TRACKS`.
-Deployments MAY configure smaller limits, never larger wire limits under the same
-schema. All floating-point values MUST be finite. A limit violation is an explicit
-overflow/protocol fault; silent truncation is forbidden. A
-`FrameSummary.truncated = true` value is an explicit degraded fault declaration
-and never makes partial accounting acceptable.
+The `event` union contains these variants:
+
+- `modality_outcome`
+- `modality_miss`
+- `frame_summary`
+- `heartbeat`
+
+The Rust types and JSON Schema are frozen together. Conformance also requires the
+sequence, assembly, epoch, queue, registry, and security rules in this ADR.
+
+Every string, collection, count, and encoded event MUST have a finite maximum.
+Both JSON Schema and application validation must enforce the limits. At minimum,
+the implementation MUST define and test:
+
+- `MAX_MONITOR_EVENT_BYTES`
+- identifier and string limits
+- `MAX_FRAME_ITEMS`
+- `MAX_MONITOR_QUEUE_EVENTS`
+- `MAX_ACTIVE_TRACKS`
+
+A deployment MAY use smaller limits. It cannot use larger wire limits under the
+same schema. All floating-point values MUST be finite.
+
+A limit violation is an explicit overflow or protocol fault. Silent truncation is
+prohibited. `FrameSummary.truncated = true` declares an explicit degraded fault.
+It never makes partial accounting acceptable.
 
 ### Outcome event
 
-`modality_outcome` records one bounded association/update opportunity for one
-fusion sequence and modality. It identifies its track and distinguishes:
+`modality_outcome` records one bounded association or update opportunity. It
+belongs to one fusion sequence and modality. It identifies its track and one of
+these dispositions:
 
-- `updated`;
-- `gate_rejected`;
-- `assignment_rejected`;
-- `update_rejected`;
-- `track_birth`;
-- `unsupported_filter`; and
-- `incomparable_projection`.
+- `updated`
+- `gate_rejected`
+- `assignment_rejected`
+- `update_rejected`
+- `track_birth`
+- `unsupported_filter`
+- `incomparable_projection`
 
-`modality_miss` separately closes an expected active-track/modality pair as
-`no_measurement`, `no_candidate`, `no_in_gate_candidate`, `not_assigned`, or
-`track_not_eligible`. A miss never carries fabricated gate, NIS, or projection
+`modality_miss` closes an expected active-track and modality pair. It uses one of
+these reasons:
+
+- `no_measurement`
+- `no_candidate`
+- `no_in_gate_candidate`
+- `not_assigned`
+- `track_not_eligible`
+
+A miss never contains invented gate, NIS, or projection values.
+
+An outcome contains these values:
+
+- `fusion_seq`
+- `fusion_timestamp_ms`
+- `frame_id`
+- `context_id`
+- `prior_id`
+- `track_id`
+- modality
+- bounded deterministic `attempt_index`
+- optional bounded `measurement_index`
+- pair-level candidate count
+- pair-level in-gate count
+- typed disposition
+
+Each attempt outcome repeats the pair-level counts. Thus, a `gate_rejected`
+attempt can report a nonzero `in_gate_count`. Another candidate for the same pair
+can have passed the gate.
+
+Each outcome that claims candidate gating MUST contain finite gate evidence from
+the correct contractual inputs. This rule applies to `updated`, `gate_rejected`,
+`assignment_rejected`, `update_rejected`, and `incomparable_projection`.
+
+`updated` MUST also contain its valid common-frame projection. If the producer
+cannot attest that projection, it MUST use `incomparable_projection`.
+
+Other quantities MUST appear only when they were calculated. Canonical output
+MUST omit undefined optional values. It MUST NOT fill them with zero or invented
 values.
 
-The outcome carries `fusion_seq`, `fusion_timestamp_ms`, `frame_id`, `context_id`,
-`prior_id`, `track_id`, modality, a bounded deterministic `attempt_index`, an
-optional bounded `measurement_index`, pair-level candidate/in-gate counts repeated
-on every attempt outcome, and the typed disposition. Consequently, one
-`gate_rejected` attempt may report a nonzero `in_gate_count` when another candidate
-for that track/modality pair passed the gate. Every outcome that claims candidate gating (`updated`,
-`gate_rejected`, `assignment_rejected`, `update_rejected`, or
-`incomparable_projection`) MUST carry finite gate evidence computed from the
-contractually correct inputs. `updated` MUST also carry its valid common-frame
-projection; when that projection cannot be attested, the producer MUST use
-`incomparable_projection`. Other quantities MUST be present only when actually
-computed. Canonical producer output MUST omit undefined optional quantities, never
-zero-fill or synthesize them. For compatibility, the frozen decoder and schema also
-accept an explicit JSON `null` and normalize it to the same absent value; producers
-MUST still emit the canonical omitted form.
-Gate evidence names `mahalanobis` versus the explicitly non-chi-square
-`normalized_euclidean_fallback` method.
+The frozen decoder and schema also accept explicit JSON `null` for compatibility.
+They normalize it to the absent value. Producers MUST still emit the canonical
+omitted form.
 
-Each outcome MUST state `v1_expected`. It is true only when exactly one
-corresponding accepted observation is required on the frozen route. Because the
-v1 consumer permits at most one consistency observation for a
-`(epoch, fusion_seq, track_id, modality)` key, only one accepted attempt for that
-key may set `v1_expected = true`. Additional returns/opportunities MUST remain
-bounded monitor outcomes with deterministic attempt identities and MUST NOT create
-ambiguous duplicate v1 records.
+Gate evidence names either `mahalanobis` or
+`normalized_euclidean_fallback`. The fallback is explicitly not chi-square.
 
-The producer MUST use one documented deterministic enumeration/aggregation rule
-for opportunities. It MUST emit an outcome for every opportunity covered by that
-rule, including negative outcomes. The rule and all caps MUST be part of the
-registry/configuration digest so that missingness and selection can be audited.
+Each outcome MUST state `v1_expected`. It is true only when the frozen route
+requires exactly one matching accepted observation.
 
-The version-1 cardinality rule is fixed. The Cartesian ledger uses the active-track
-set frozen immediately after prediction and before association/update. For every
-track in that snapshot and every expected modality, the producer emits every
-bounded attempt outcome first. It then emits
-exactly one `modality_miss` only when no attempt reached an assigned/filter
-terminal disposition. The reason is deterministic: use `track_not_eligible` if
-eligibility failed; otherwise use the deepest stage reached—`no_measurement`,
-`no_candidate`, `no_in_gate_candidate`, then `not_assigned`. Thus
-`gate_rejected` outcomes are
-followed by one aggregate `no_in_gate_candidate` miss when no other candidate
-passed, and `assignment_rejected` outcomes are followed by one aggregate
-`not_assigned` miss when nothing was selected. An `updated`, `update_rejected`,
-`unsupported_filter`, or `incomparable_projection` terminal outcome suppresses
-the miss for that pair. A producer MUST NOT emit any other outcome/miss
-combination for the pair. `FrameSummary.outcome_count` counts both event types.
-`no_candidate` requires at least one frame input; when `input_count` is zero, a
-non-eligibility miss MUST be `no_measurement`. Frozen pair ledgers are emitted in
-strict `(track_id, registered modality order)` order, with attempt and measurement
-indices increasing inside a pair and its optional aggregate miss last.
-`track_birth` is a measurement-level outcome outside that pre-association Cartesian
-ledger. Births follow all frozen-pair records in strict
-`(measurement_index, track_id, registered modality order)` order; birth track IDs
-and measurement indices are unique within the frame. A track born during the frame
-neither creates nor suppresses a miss until it belongs to the next frame's frozen
-active-track set.
+The v1 consumer permits at most one consistency observation for an
+`(epoch, fusion_seq, track_id, modality)` key. Thus, only one accepted
+attempt for that key can set `v1_expected = true`.
+
+Other returns and opportunities MUST remain bounded monitor outcomes. They
+need deterministic attempt identities. They MUST NOT create ambiguous duplicate
+v1 records.
+
+The producer MUST use one documented deterministic rule to enumerate and
+aggregate opportunities. It MUST emit positive and negative outcomes for every
+opportunity in that rule. The registry or configuration digest MUST
+include the rule and all limits. Thus, an audit can examine missingness and
+selection.
+
+The version-1 cardinality rule is fixed. The Cartesian ledger uses the active
+track set frozen after prediction and before association or update. For each
+frozen track and expected modality, the producer emits every bounded attempt
+outcome first.
+
+It then emits exactly one `modality_miss` when no attempt reached an assigned or
+filter terminal disposition. The producer selects the reason deterministically:
+
+1. Use `track_not_eligible` when eligibility failed.
+2. Otherwise, use the deepest stage reached in this order:
+   `no_measurement`, `no_candidate`, `no_in_gate_candidate`, `not_assigned`.
+
+When no other candidate passed, `gate_rejected` outcomes have one aggregate
+`no_in_gate_candidate` miss. When nothing was selected,
+`assignment_rejected` outcomes have one aggregate `not_assigned` miss.
+
+Any of these terminal outcomes suppresses the miss for the pair:
+
+- `updated`
+- `update_rejected`
+- `unsupported_filter`
+- `incomparable_projection`
+
+A producer MUST NOT emit another outcome and miss combination for the pair.
+`FrameSummary.outcome_count` counts outcomes and misses.
+
+`no_candidate` requires at least one frame input. When `input_count` is zero, a
+non-eligibility miss MUST be `no_measurement`.
+
+The producer emits frozen pair ledgers in strict
+`(track_id, registered modality order)` order. Attempt and measurement indices
+increase within a pair. Its optional aggregate miss is last.
+
+`track_birth` is a measurement-level outcome outside the pre-association
+Cartesian ledger. Births follow all frozen-pair records. They use strict
+`(measurement_index, track_id, registered modality order)` order.
+
+Birth track identifiers and measurement indices are unique within the frame. A
+track born in the frame does not create or suppress a miss. It enters the frozen
+active-track set in the next frame.
 
 ### Frame summary
 
-A `frame_summary` is the sole normal closure record for a `fusion_seq`. It MUST be
-emitted even for zero-track and zero-observation frames. It MUST include:
+A `frame_summary` is the only normal closure record for a `fusion_seq`. The
+producer MUST emit it for zero-track and zero-observation frames.
 
-- the epoch, fusion sequence, `frame_id`, `context_id`, and `prior_id`;
-- the registry version/content digest;
-- the expected modality set;
-- bounded active-track, input, total outcome/miss, and `v1_expected` counts; and
-- explicit `degraded` and `truncated` fault flags.
+It MUST contain:
 
-The summary's `active_track_count` is the post-processing track count. It does not
-change the pre-association snapshot used to determine this frame's miss cardinality.
+- epoch, fusion sequence, `frame_id`, `context_id`, and `prior_id`
+- registry version and content digest
+- expected modality set
+- bounded active-track count
+- bounded input count
+- bounded total outcome and miss count
+- bounded `v1_expected` count
+- explicit `degraded` and `truncated` fault flags
 
-The summary MUST be calculated from the immutable frame ledger after no more
-outcomes can be added. It MUST NOT retroactively turn an absent outcome or v1
-observation into success. A second, conflicting closure for the same sequence is a
-protocol fault.
+`active_track_count` is the track count after processing. It does not change the
+pre-association snapshot that defines miss cardinality.
 
-A summary tells the consumer when the producer considers a frame complete; it
-does not prove lossless transport. Contiguous `event_seq`, exact outcome counts,
-and cross-route joins remain mandatory.
+The producer MUST calculate the summary from the immutable frame ledger after
+outcomes are final. It MUST NOT convert an absent outcome or v1 observation into
+success. A second conflicting closure for one sequence is a protocol fault.
+
+A summary shows when the producer considers a frame complete. It does not prove
+lossless transport. Contiguous `event_seq`, exact counts, and cross-route joins
+remain mandatory.
 
 ### Independent heartbeat
 
-A `heartbeat` MUST be produced by a task and cadence independent of sensor input,
-track count, association success, and the fusion-frame loop. It MUST continue
-during zero-track and zero-observation periods. It includes producer wall time and
-monotonic uptime, the last completed `fusion_seq` if any, active-track count,
-declared interval/deadline, an epoch-degraded flag, and bounded queue depth,
-capacity, drop, and publication counters.
+A task independent of sensor input and the fusion loop MUST produce heartbeats.
+Its cadence also remains independent of track count and association success. It
+MUST continue during zero-track and zero-observation periods.
 
-The consumer MUST judge heartbeat freshness from its own monotonic receipt time
-and a configured deadline. Producer wall-clock time is diagnostic only. A
-heartbeat proves only that the authenticated producer and monitor path are alive;
-it is not a sensor observation, cannot close a frame, and cannot repair an event
-gap. Heartbeat publication SHOULD have a separate bounded queue/lane so ordinary
-data saturation cannot silently suppress liveness.
+It contains:
+
+- producer wall time
+- monotonic uptime
+- last completed `fusion_seq`, if present
+- active-track count
+- declared interval and deadline
+- epoch-degraded flag
+- bounded queue depth and capacity
+- bounded drop and publication counters
+
+The consumer MUST judge freshness from its monotonic receipt time and configured
+deadline. Producer wall time is diagnostic only.
+
+A heartbeat shows only that the authenticated producer and monitor path are alive.
+It is not a sensor observation. It cannot close a frame or repair an event gap.
+
+Heartbeat publication SHOULD use a separate bounded queue or lane. Ordinary data
+saturation must not silently suppress liveness.
 
 ## Cross-route assembly and fail-closed behavior
 
-The operational consumer assembles by epoch and fusion sequence, then joins
-outcomes to v1 observations by:
+The operational consumer assembles by epoch and fusion sequence. It then joins
+outcomes to v1 observations with this key:
 
 ```text
 (epoch, fusion_seq, track_id, modality)
 ```
 
-The monitor `attempt_index` or measurement identifier disambiguates multiple
-opportunities; the unique accepted opportunity with `v1_expected = true` maps to
-the single v1 key. Envelope producer/session provenance, observation sequence,
-frame/context/prior identity, and registry digest MUST agree.
+The monitor `attempt_index` or measurement identifier separates multiple
+opportunities. The unique accepted opportunity with `v1_expected = true` maps to
+the single v1 key.
 
-A frame is eligible for operational assessment only after:
+These values MUST agree:
 
-1. its frame summary has arrived;
-2. every declared monitor outcome has arrived exactly once;
-3. every outcome with `v1_expected = true` has exactly one matching v1 record;
-4. no unexpected or duplicate v1 record exists for the frame; and
-5. all identity, registry, sequence, projection, count, and digest checks pass.
+- envelope producer and session provenance
+- observation sequence
+- frame, context, and prior identity
+- registry digest
 
-A v1 observation received without monitor closure MAY be archived or processed by
-an explicitly selected baseline/replay profile, but it MUST NOT be described as
-lifecycle-complete operational evidence. A monitor `updated` outcome whose v1
-record is absent is likewise incomplete.
+A frame is eligible for operational assessment only after all these conditions
+hold:
+
+1. The frame summary arrived.
+2. Every declared monitor outcome arrived exactly once.
+3. Each `v1_expected = true` outcome has exactly one matching v1 record.
+4. The frame has no unexpected or duplicate v1 record.
+5. All identity, registry, sequence, projection, count, and digest checks pass.
+
+A consumer MAY archive or process a v1 observation without monitor closure. This
+operation requires an explicit baseline or replay profile. The observation MUST
+NOT be described as lifecycle-complete operational evidence. A monitor `updated`
+outcome without its v1 record is also incomplete.
 
 The consumer MUST use bounded out-of-order buffers and a finite assembly deadline.
-Wrong session/producer provenance, duplicate or regressed `event_seq`, any event
-gap, timeout, missing outcome/summary/v1 observation, unknown registry entry,
-prior reuse, inconsistent frame/context, unexpected observation, digest/count
-mismatch, or buffer overflow MUST produce a typed protocol or availability fault.
-The affected frame and any correlation suffix whose completeness is uncertain
-MUST be invalidated/reset. Such a fault yields `Insufficient` or `Rejected`, never
-`Nominal`. A later heartbeat MUST NOT repair it.
+Any of these conditions MUST cause a typed protocol or availability fault:
+
+- wrong session or producer provenance
+- duplicate or regressed `event_seq`
+- event gap
+- timeout
+- missing outcome, summary, or v1 observation
+- unknown registry entry
+- prior reuse
+- inconsistent frame or context
+- unexpected observation
+- digest or count mismatch
+- buffer overflow
+
+The consumer MUST invalidate or reset the affected frame and uncertain correlation
+suffix. This fault gives `Insufficient` or `Rejected`, never `Nominal`. A
+subsequent heartbeat MUST NOT repair it.
 
 Replay high-water marks MUST survive ordinary per-frame eviction for the epoch.
-Consumer eviction MUST NOT make an otherwise incomplete frame eligible. On epoch
-retirement, state may be discarded only under a documented retention policy after
-the old subscription can no longer contribute accepted evidence. Because bounded
-prior-identity and `(track, modality)` replay maps cannot safely evict while the epoch
-remains admissible, deployments MUST expose their utilization and coordinate a new,
-never-reused epoch before either limit is exhausted. Capacity exhaustion is terminal,
-not an automatic rollover signal that may be repaired in place.
+Consumer eviction MUST NOT make an incomplete frame eligible. An epoch-retirement
+policy can discard state only after the old subscription cannot contribute
+accepted evidence.
+
+Bounded prior and track-modality replay maps cannot safely evict while the epoch
+remains admissible. Deployments MUST expose their use. They MUST coordinate a new
+unused epoch before either map becomes full.
+
+Capacity exhaustion is terminal. It is not an automatic rollover signal and
+cannot be repaired in place.
 
 ## Producer queues and backpressure
 
 Fusion and sensor callbacks MUST NOT block on network or disk publication. The
 producer MUST hand off to bounded observation, monitor, and heartbeat queues.
-Frame summaries and heartbeats SHOULD use independent capacity/priority lanes so
-an observation burst cannot hide frame closure or liveness, while preserving the
-ordering needed for `event_seq` validation.
 
-All monitor lanes MUST merge through an ordered publication barrier. Priority MUST
-NOT reorder surviving events across their assigned `event_seq`; an intentionally
-dropped event remains visible as a gap when a later event arrives.
+Frame summaries and heartbeats SHOULD use separate capacity or priority lanes.
+This design prevents an observation burst from hiding closure or liveness. It must
+preserve the order required for `event_seq` validation.
 
-The producer MUST assign monitor `event_seq` before enqueue. A full queue therefore
-creates a visible sequence gap rather than an undetectable omission. Queue policy
-MUST be deterministic and documented. The default SHOULD preserve already queued
-events and drop the newest attempted event. It MUST NOT use an unbounded queue,
-silently block the fusion loop, silently retry forever, or fabricate a successful
-summary after loss.
+All monitor lanes MUST merge through an ordered publication barrier. Priority
+MUST NOT reorder surviving events across their assigned `event_seq`. A dropped
+event remains visible as a gap when an event with a larger sequence arrives.
+
+The producer MUST assign `event_seq` before enqueue. Thus, a full queue creates a
+visible gap instead of an undetected omission.
+
+Queue policy MUST be deterministic and documented. By default, it SHOULD preserve
+queued events and drop the newest attempted event. It MUST NOT use an unbounded
+queue. It MUST NOT silently block the fusion loop, retry forever, or create a
+successful summary after loss.
 
 Any queue overflow or publication failure MUST:
 
-- increment monotonic, non-resetting-within-epoch counters;
-- place the epoch in a degraded state;
-- be exposed by the heartbeat and next deliverable frame summary; and
-- make every potentially affected frame ineligible until a fresh epoch if the
-  missing event range cannot be proven and bounded.
+- increment monotonic counters that do not reset within the epoch
+- put the epoch in a degraded state
+- appear in the heartbeat and next deliverable frame summary
+- make all potentially affected frames ineligible when the missing range cannot
+  be proved and bounded
 
-The consumer's transport callback MUST also use a bounded, non-blocking handoff.
-Its assembler MUST cap active epochs, frames, tracks, outcomes, bytes, and reorder
-distance, with explicit timeout/overflow metrics. Drop-newest behavior is
-acceptable only when it invalidates the affected evidence and surfaces a fault;
-eviction MUST NOT silently restore eligibility.
+The consumer transport callback MUST also use a bounded nonblocking handoff. Its
+assembler MUST limit active epochs, frames, tracks, outcomes, bytes, and reorder
+distance. It must also expose timeout and overflow metrics.
+
+Drop-newest behavior is acceptable only when it invalidates affected evidence and
+shows a fault. Eviction MUST NOT silently restore eligibility.
 
 ## Security and identity boundary
 
-`producer_id` and `session_id` inside JSON are claims, not signatures. Operational
-acceptance requires transport authentication and authorization that binds those
-claims to the publisher.
+`producer_id` and `session_id` in JSON are claims, not signatures. Operational
+acceptance requires transport authentication and authorization. These controls
+must bind the claims to the publisher.
 
-The deployment MUST use mutually authenticated TLS and default-deny ACLs. The
-producer certificate identity/CN (or an equivalently strong authenticated
-principal) MUST be mapped to the configured `producer_id` and authorized to PUT
-only key expressions that bind its allowed realm/epoch and the two exact sensor
-names; it MUST NOT receive a broader `sensor/**` grant. Envelope identity MUST
-match the route and configured principal. An observer MUST use separate read-only
-credentials authorized only to SUBSCRIBE; it MUST NOT be able to PUT, issue
-commands, take leases, or invoke control/action routes.
+The deployment MUST use mutually authenticated TLS and default-deny ACLs. It MUST
+map the producer certificate identity or CN to the configured `producer_id`. An
+equally strong authenticated principal can replace that identity.
 
-A generic wildcard `robot` role is insufficient by itself to bind an application
-`producer_id` or epoch in a multi-producer fleet. Deployments MUST specialize the
-identity-to-key mapping and prove it with positive and negative authorization
-tests. A consumer constructed from a host-provided bus inherits that host's
-security posture; construction alone does not prove mTLS or ACL enforcement.
-Secure mode MUST be explicit and fail closed.
+The producer principal can PUT only key expressions for its allowed realm, epoch,
+and two exact sensor names. It MUST NOT receive a broader `sensor/**` grant.
+Envelope identity MUST match the route and configured principal.
 
-The pinned Zenoh 1.9 client authenticates the router against built-in public WebPKI
-roots plus the configured deployment CA; that CA is not an exclusive server pin.
-Conformance therefore additionally requires a private router hostname that is not
-eligible for public CA issuance plus controlled name resolution, or an external layer
-that enforces the exact router certificate/SPKI. Router-side client-certificate mTLS
-remains constrained by the configured client-authentication CA. See
-[`SECURE-DEPLOYMENT.md`](SECURE-DEPLOYMENT.md#tls-server-authentication-limitation);
-exclusive router pinning by the local profile alone is `NOT_CLAIMED`.
+An observer MUST use separate read-only credentials. They can only SUBSCRIBE. The
+observer MUST NOT be able to PUT, issue commands, take leases, or use control and
+action routes.
 
-The Zenoh transport receive maximum message size MUST be configured so an
-oversized message is rejected before excessive allocation. Application-level
-event-size limits remain required after transport framing; neither substitutes for
-the other. Credentials and private keys MUST never appear in payloads, logs,
-fixtures, or evidence bundles.
+A generic wildcard `robot` role cannot by itself bind an application `producer_id`
+or epoch in a multi-producer fleet. Deployments MUST specialize the
+identity-to-key mapping. Positive and negative authorization tests must prove the
+mapping.
 
-The routes are observation-only. This ADR grants no authority for producer or
-consumer commands, actions, leases, or vehicle control.
+A consumer on a host-provided bus inherits the host security posture. Construction
+alone does not prove mTLS or ACL enforcement. Secure mode MUST be explicit and
+fail closed.
+
+Zenoh 1.9 authenticates the router against built-in public WebPKI roots and the
+deployment CA. The deployment CA is not an exclusive server pin.
+
+Conformance needs one more control. Use a private router hostname that
+cannot receive a public certificate, with controlled name resolution. Otherwise,
+use an external layer that enforces the exact router certificate or SPKI.
+
+The configured client-authentication CA still constrains router-side client
+certificate mTLS. See
+[`SECURE-DEPLOYMENT.md`](SECURE-DEPLOYMENT.md#tls-server-authentication-limitation).
+Exclusive router pinning by the local profile alone is `NOT_CLAIMED`.
+
+The deployment MUST configure the Zenoh maximum receive message size. The
+transport MUST reject an oversized message before excessive allocation.
+Application event-size limits remain necessary after transport framing. Neither
+limit replaces the other.
+
+Credentials and private keys MUST NOT occur in payloads, logs, fixtures, or
+evidence bundles.
+
+The routes are observation-only. This ADR grants no authority for commands,
+actions, leases, or vehicle control.
 
 ## Acceptance matrix
 
-No implementation is conformant or deployable until all five lenses have durable,
-reviewable evidence.
+An implementation is not conformant or deployable before all five lenses have
+durable and reviewable evidence.
 
-| Lens | Required evidence | Acceptance condition | Failure semantics |
-| --- | --- | --- | --- |
-| Protocol and correctness | Frozen Rust/JSON schemas and goldens; registry fixtures; common-prior and radar-to-ENU tests; prior reuse across frame/context rejection; exact event counts/joins; safe-integer, unknown-field, fuzz, and property tests | Independent producer and consumer agree on valid fixtures and reject every invalid invariant without panic or ambiguity | Typed protocol fault; affected frame/suffix is ineligible, never `Nominal` |
-| Statistics and evidence | Recorded pre-gate opportunities and every lifecycle stage; modality/stage exposure and missingness; pre/post-gate comparisons; no fabricated statistics; repeated-look/autocorrelation calibration; errors separated from genuine insufficiency | Review can reconstruct selection/censoring and show that detector inputs use the frozen common prior and calibrated interpretation | Report `Insufficient`/selection bias or explicit statistical invalidity; do not infer health from absent/rejected samples |
-| Reliability and security | Loss, reorder, duplicate, restart, heartbeat-silence, queue-saturation, timeout, and message-size tests; real multi-process mTLS/ACL positive, wrong-cert, no-cert, wrong-identity, and observer-write/control-negative tests | Every injected fault is detected within a declared bound and unauthorized publication/control is denied at the transport boundary | Availability/security alarm, epoch degradation or rejection, and no promotion to operational evidence |
-| Integration and operations | Normal-runtime producer and live consumer service; fresh epoch mint/discovery/re-subscribe/reset; real router/process tests; metrics, alerts, runbook, and traffic/denial/restart/decode/all-silence exercises | An operator can distinguish healthy idle, sensor silence, producer death, transport loss, decode failure, incomplete frame, and denied peer | Explicit observable state and bounded recovery; ambiguous silence fails closed |
-| Maintainability and testing | Versioned code and schemas; cross-repository conformance corpus/goldens; one authoritative type definition or an explicit coordinated bump process; CI fuzz/property/integration suites; issue ownership and API/docs review | Contract drift breaks CI, incompatible changes require review/versioning, and every invariant has an owner and regression test | Release is blocked; no ad hoc permissive decoder or undocumented compatibility exception |
+| Lens | Required evidence | Acceptance condition | Failure behavior |
+|---|---|---|---|
+| Protocol and correctness | Frozen Rust and JSON schemas with golden files. Registry fixtures. Common-prior and radar-to-ENU tests. Prior-reuse rejection across frame and context. Exact event counts and joins. Safe-integer, unknown-field, fuzz, and property tests. | Independent producer and consumer agree on valid fixtures. They reject each invalid invariant without panic or ambiguity. | Typed protocol fault. The affected frame and suffix are ineligible, never `Nominal`. |
+| Statistics and evidence | Pre-gate opportunities and each lifecycle stage. Modality and stage exposure. Missingness and pre-gate to post-gate comparisons. No invented statistics. Repeated-look and autocorrelation calibration. Separation of errors from genuine insufficiency. | A review can reconstruct selection and censoring. It shows that detector input uses the frozen common prior and calibrated interpretation. | Report `Insufficient`, selection bias, or explicit statistical invalidity. Do not infer health from absent or rejected samples. |
+| Reliability and security | Loss, reorder, duplicate, restart, heartbeat-silence, saturation, timeout, and message-size tests. Real multi-process mTLS and ACL tests for valid, wrong, and absent certificates. Wrong-identity, observer-write, and observer-control negative tests. | Detect each injected fault within a declared limit. Deny unauthorized publication and control at the transport boundary. | Availability or security alarm with epoch degradation or rejection. Do not promote the input to operational evidence. |
+| Integration and operations | Normal producer and live consumer services. Fresh epoch creation, discovery, resubscription, and reset. Real router and process tests. Metrics, alerts, and a runbook. Traffic, denial, restart, decode, and all-silence exercises. | An operator can distinguish idle health, sensor silence, producer death, transport loss, decode failure, incomplete frames, and denied peers. | Explicit observable state and bounded recovery. Ambiguous silence fails closed. |
+| Maintainability and testing | Versioned code and schemas. Cross-repository conformance data and golden files. One authoritative type definition or an explicit coordinated version-bump process. CI fuzz, property, and integration tests. Issue ownership and API and documentation review. | Contract drift breaks CI. Incompatible changes require review and versioning. Each invariant has an owner and regression test. | Block the release. Do not allow a permissive decoder or undocumented compatibility exception. |
 
-Evidence MUST record exact software revisions, registry/configuration digests,
-schema versions, router/security configuration, test commands, and results. A
-synthetic JSONL/replay test is useful protocol/statistics evidence but MUST NOT be
-used as proof of live routing, independent heartbeat behavior, backpressure, or
-mTLS/ACL enforcement.
+Evidence MUST record exact software revisions, registry and configuration digests,
+schema versions, router security configuration, test commands, and results.
+
+A synthetic JSONL or replay test is useful protocol and statistics evidence. It
+MUST NOT prove live routing, independent heartbeat behavior, backpressure, or
+mTLS and ACL enforcement.
 
 ## Rejected alternatives
 
 ### Tagged union on the v1 observation route
 
-Adding lifecycle tags or monitor variants to the v1 envelope is rejected. The v1
-schema and decoder are strict, the live tap expects one observation, and existing
-sequence/detector state is observation-specific. A union would break current
-producer/consumer/schema compatibility or tempt permissive decoding, and could
-feed lifecycle events into the statistical observation stream. A separate monitor
-route preserves the frozen v1 contract and gives lifecycle evolution its own
-version boundary.
+The design rejects lifecycle tags or monitor variants on the v1 route. The v1
+schema and decoder are strict. The live tap expects one observation. Existing
+sequence and detector state is specific to observations.
 
-Overloading the receiver-side `RejectionReason` enum is rejected for the same
-reason: receiver decode/replay disposition and producer measurement lifecycle are
-different evidence with different trust boundaries.
+A union breaks current compatibility or encourages permissive decoding. It
+could send lifecycle events into the statistical stream. A separate monitor route
+preserves the frozen v1 contract. It gives lifecycle evolution a separate version
+boundary.
+
+The design also rejects producer lifecycle use of `RejectionReason`. Receiver
+decode and replay disposition differs from producer measurement lifecycle. They
+have different trust boundaries.
 
 ### Fabricated observation or frame for absence
 
-Synthesizing a `PidObservation`, NIS, residual, prior, empty “successful” frame, or
-heartbeat when a measurement missed, failed gating, could not project, or was lost
-is rejected. Fabricated samples can warm detector windows, create false
-cross-modal correlation, yield `Nominal`, and conceal selection bias. Consumer
-timeouts also cannot invent producer evidence. Absence and failure remain explicit
-monitor outcomes and fail closed.
+The design rejects an invented `PidObservation`, NIS, residual, prior, successful
+empty frame, or heartbeat. This rule applies when a measurement is absent, fails
+gating, cannot project, or is lost.
+
+Invented samples can warm detector windows and create false cross-modal
+correlation. They can produce `Nominal` and hide selection bias. Consumer
+timeouts also cannot create producer evidence.
+
+Absence and failure remain explicit monitor outcomes. They fail closed.
 
 ## Consequences and implementation order
 
-The separate route costs an additional schema, publisher lane, consumer assembler,
-and cross-route operational state. In return, existing v1 users remain compatible,
-negative measurement evidence becomes auditable, idle liveness is distinguishable
-from observations, and transport loss cannot silently masquerade as a statistically
-healthy frame.
+The separate route needs an extra schema, publisher lane, consumer assembler, and
+cross-route state. It preserves compatibility for existing v1 users. It makes
+negative measurement evidence auditable.
+
+The route also separates idle liveness from observations. Transport loss cannot
+silently look like a statistically healthy frame.
 
 The release disposition is:
 
-1. **Implemented locally:** monitor Rust/JSON types, limits, typed reason taxonomy,
-   canonical registry parsing and pin capability, opportunity policy, live monitor tap,
-   fail-closed assembler, typed lifecycle adapter, two-route receiver/CLI, exact-epoch
-   secure configuration generator, health counters, and in-process fault tests.
-2. **Historical fixture:** the two old commit identities above record an earlier
-   byte-identical registry and producer/consumer compatibility exercise. They are retained
-   for provenance and are not current qualification evidence.
+1. **Implemented locally:** monitor Rust and JSON types, limits, and typed reason
+   taxonomy. Also included are registry parsing, pin capability, and opportunity
+   policy. Live monitor tap, assembler, lifecycle adapter, two-route receiver,
+   CLI, exact-epoch secure configuration, counters, and in-process fault tests are
+   also implemented.
+2. **Historical fixture:** the two old commit identities record an earlier
+   byte-identical registry and compatibility exercise. They supply provenance,
+   not current qualification evidence.
 3. **Not claimed:** a reciprocal current producer pin or final cross-repository
    qualification.
-4. **External gate:** execute and retain all five acceptance-lens suites on a real secured
-   multi-process deployment, then run a recorded pre-gate calibration study independent of
-   threshold fitting.
+4. **External gate:** run and retain all five acceptance lenses on a secured
+   multi-process deployment. Then complete a recorded pre-gate calibration study
+   that is independent of threshold fitting.
 
-Until the external gate and acceptance matrix are satisfied, the operational components
-remain a research prototype. No deployment, remote ACL, field-performance, or calibrated-
-posterior claim is justified.
+The operational components remain a research prototype until the external gate
+and acceptance matrix are complete. No deployment, remote ACL, field performance,
+or calibrated-posterior claim is justified.

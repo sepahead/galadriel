@@ -1,16 +1,21 @@
-# .ncp-consumer — declares how galadriel pins NCP, for NCP's consumer-agnostic pin
-# tooling (check-consumer-pins.sh / repin-ncp.sh). NCP holds no knowledge of this
-# repo; it discovers us by globbing for this file. Galadriel deliberately pins
-# the immutable release commit rather than trusting a movable tag. Revision rows
-# also record the consumer-declared release label used by the coordinated checker;
-# NCP's repinner derives the commit from the canonical local tag.
-# These revision row kinds require NCP consumer tooling at or after commit
-# 205384508d619923e05aef192bedaeb57cf665fc. The pinned v0.8.0 runtime checker
-# predates them and can skip both rows; Galadriel's feature-graph gate therefore
-# rejects an empty, unknown, legacy, partial, or drifted local descriptor itself.
-# The default CLI graph has no NCP dependency. ncp-core is a direct dependency of
-# the galadriel-ncp workspace crate and therefore of galadriel-eval; the CLI's
-# off-by-default `ncp` feature selects that adapter. `ncp-live` additionally
-# enables ncp-zenoh, Zenoh, and Tokio for the operational subscriber.
+# This file declares the exact Neuro-Cybernetic Protocol (NCP) pins for Galadriel.
+# NCP consumer tools find this file without repository-specific logic.
+# The relevant tools are check-consumer-pins.sh and repin-ncp.sh.
+# Galadriel pins an immutable release commit instead of a movable tag.
+# Each revision row also records the consumer release label.
+# The NCP repinner derives the commit from the canonical local tag.
+#
+# These revision rows need NCP consumer tooling at commit
+# 205384508d619923e05aef192bedaeb57cf665fc or later.
+# The pinned v0.8.0 runtime checker predates these row types.
+# That checker can skip both rows.
+# The Galadriel feature graph gate rejects an invalid local descriptor.
+# Invalid descriptors are empty, unknown, legacy, partial, or drifted.
+#
+# The default command-line interface (CLI) graph has no NCP dependency.
+# The galadriel-ncp workspace crate has a direct ncp-core dependency.
+# The galadriel-eval workspace crate depends on galadriel-ncp.
+# The off-by-default CLI `ncp` feature selects the adapter.
+# The `ncp-live` feature also enables ncp-zenoh, Zenoh, and Tokio.
 cargo_rev       Cargo.toml v0.8.0 2f5bd586d4bb20c90362bb6f5698b7f64057ba4e
 cargo_lock_rev  Cargo.lock v0.8.0 2f5bd586d4bb20c90362bb6f5698b7f64057ba4e

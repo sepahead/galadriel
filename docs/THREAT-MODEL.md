@@ -1,84 +1,114 @@
 # Threat model
 
-This threat model covers the 0.9.0 advisory monitor, its evidence inputs, optional
-transport adapters, release artifacts, and downstream use. It complements rather
-than replaces the deployment-specific ACL/mTLS model.
+This threat model covers the Galadriel 0.9.0 advisory monitor. It includes
+evidence inputs, optional transport adapters, release artifacts, and downstream
+use. It complements the deployment-specific ACL and mTLS model. It does not
+replace that model.
 
 ## Assets and trust boundaries
 
-Protected assets are the integrity and availability of observation evidence,
-provenance identities, detector state/configuration, report interpretation,
-release evidence, and the independence of the actual control/safety path. Trust
-crosses boundaries at the physical sensor, estimator/producer, NCP transport,
-Galadriel decoder, detector core, evidence archive, and any downstream consumer.
+The model protects these assets:
 
-The physical scene, sensor and estimator are not trusted to be honest. A
-producer-declared frame/prior is only a claim until a deployment binds it to an
-authenticated producer. The transport is not trusted merely because a local
-configuration file is strict. Galadriel is never trusted with controller, lease,
-plant, or authorization credentials.
+- integrity and availability of observation evidence
+- provenance identities
+- detector state and configuration
+- report interpretation
+- release evidence
+- independence of the actual control and safety path
 
-**GLD-090-THR-001:** Invalid, stale, missing, replayed, contradictory, incomparable,
-or resource-excess evidence **SHALL NOT** become `Nominal`. It shall produce a
-typed error, explicit insufficiency/unclassified evidence, or bounded rejection.
+Trust crosses boundaries at the physical sensor, estimator or producer, NCP
+transport, Galadriel decoder, detector core, evidence archive, and downstream
+consumer.
 
-**GLD-090-THR-002:** Galadriel **SHALL NOT** grant authority, authenticate physical
-truth, infer malicious intent, close a synchronous control feedback loop, or
-replace an independent safety mechanism.
+The physical scene, sensor, and estimator are not trusted to be honest. A
+producer-declared frame or prior is only a claim. A deployment must bind the
+claim to an authenticated producer.
 
-**GLD-090-THR-003:** Every ingestion surface **SHALL** impose explicit size, count,
-identity, sequence, time, and retained-state bounds before unbounded work or state
-growth. A transport-level message bound remains required before callback materialization.
+A strict local configuration file does not make the transport trusted. Galadriel
+never receives controller, lease, plant, or authorization credentials.
+
+**GLD-090-THR-001:** Invalid, stale, missing, replayed, contradictory,
+incomparable, or resource-excess evidence **SHALL NOT** become `Nominal`. It shall
+produce a typed error, explicit insufficiency, unclassified evidence, or bounded
+rejection.
+
+**GLD-090-THR-002:** Galadriel **SHALL NOT** grant authority or authenticate
+physical truth. It **SHALL NOT** infer malicious intent or replace an independent
+safety mechanism. It **SHALL NOT** close a synchronous control feedback loop.
+
+**GLD-090-THR-003:** Every ingestion surface **SHALL** set explicit bounds before
+unbounded work or state growth. These bounds cover size, count, identity,
+sequence, time, and retained state. The transport must also bound message size
+before callback materialization.
 
 ## Adversaries and failures
 
-The model includes an external spoofer; one or several compromised sensors; a
-compromised or faulty producer; a publisher with the wrong route/session/epoch; a
-network attacker without, and separately with, a valid credential; a replaying or
-delaying broker; a malicious fixture/configuration author; an accidental operator;
-and a downstream consumer that misinterprets advisory output. It also treats
-ordinary faults, drift, clock errors, scheduler delays, missing data and overload as
-indistinguishable from attacks where the evidence cannot separate them.
+The model includes these adversaries and failures:
 
-| Threat | Required behavior | Residual risk / non-claim |
+- an external spoofer
+- one or more compromised sensors
+- a compromised or faulty producer
+- a publisher with the wrong route, session, or epoch
+- a network attacker without a valid credential
+- a network attacker with a valid credential
+- a replaying or delaying broker
+- a malicious fixture or configuration author
+- an accidental operator
+- a downstream consumer that misinterprets advisory output
+
+The model also covers ordinary faults, drift, clock errors, scheduler delays,
+missing data, and overload. The evidence can make these events
+indistinguishable from attacks.
+
+| Threat | Required behavior | Residual risk or non-claim |
 |---|---|---|
-| Single-sensor spoof or fault | Magnitude and common-projection dependence evidence may localize inconsistency; cause remains unclassified. | A bias inside the covariance model or censored by association may evade detection. |
-| Correlated or coordinated compromise | Axis disagreement and broad magnitude changes fail closed; signed geometry is retained. | A coordinated statistics-preserving attack can remain nominal; truth is not claimed. |
-| Moment-matched spoof | Report only the statistics actually observed. | It can defeat NIS and any preserved dependence statistic. |
-| Association/gate missingness | Operational lifecycle evidence represents update, rejection, miss and heartbeat; absence never becomes a healthy sample. | Historical successful-update-only captures are selection-biased and cannot validate cross-modal claims. |
-| Partial sensor silence | Expected modalities remain unready/stale and block nominal. | All-modal silence needs an independent heartbeat/deadline because no input call advances detector time. |
-| Timestamp freeze/regression | Reject as malformed; do not mutate accepted state. | Authenticated but false producer time remains a producer-compromise case. |
-| Excessive gap/skew/reorder | Reset/abstain according to the explicit epoch and window rules; never ordinally realign unequal tails. | Loss can create prolonged abstention and is a denial-of-service lever. |
-| Replay/prior reuse | Reject duplicate/regressing identities and cross-sequence frozen-prior reuse in the bounded operational assembler. | Lifetime replay protection requires epoch rollover before bounded ledgers exhaust. |
-| Route/session/producer confusion | Exact realm, route, schema, session, producer, registry and version checks; wrong provenance is terminal or rejected. | Payload identity is not authenticated without transport identity/ACL binding. |
-| Router/server substitution | Use a non-publicly-issuable private router hostname with controlled resolution, or enforce the exact router certificate/SPKI in an external layer; retain the certificate actually presented. | The pinned Zenoh 1.9 client trusts built-in public WebPKI roots in addition to the deployment CA. Local profile validation does not exclusively pin the router, and that exclusivity is `NOT_CLAIMED`. |
-| Malformed/duplicate-key/oversized JSON | Bound size before parse where the API permits, reject duplicate keys and non-exact integers, retain typed fault counters. | Zenoh may allocate transport bytes before the application size gate; broker bounds are mandatory. |
-| Advisory replay/staleness | A future consumer must independently authenticate, bind profile digest/session/time and apply no effect when invalid. | No signed downstream advisory publisher or consumer is qualified in 0.9.0. |
-| Verdict-induced authority widening | The core non-widening validator rejects deny-to-allow, increased limits/TTL/lease, watchdog mutation, and all record-only changes. | A consumer that bypasses the validator remains outside the claim. |
-| Restriction abuse | Record-only is the only initial mode; any future restriction needs independent calibration, bounded effect, dwell, hysteresis and recovery. | Even restrict-only evidence is a DoS input. No such profile is qualified. |
-| Feedback oscillation | No synchronous verdict-to-same-epoch control connection. | Offline joins can still have confounding; causal claims are excluded. |
-| State/memory exhaustion | Cap tracks, windows, payload/line/record counts, queues, registry entries, join state and estimator work. | Sustained valid traffic can force drops/abstention; availability is not guaranteed. |
-| CPU denial of service | Validate work bounds before pair/PID/bootstrap work; optional heavy features stay off by default. | Platform-specific deadlines need independent benchmarks and admission control. |
-| Callback race/shutdown fault | Serialize ingress state, retain first terminal fault, bound queues, account drops, and test close/reset interleavings. | OS, network and actual-binary deployment timing remains unqualified. |
-| Configuration substitution | Validate strict closed schemas/canonical digests and bind profile/registry/credential identities. | A privileged operator can replace all local artifacts unless deployment signing/attestation is provided. |
-| Dependency/source substitution | Cargo.lock, exact Git revisions, pinned toolchain and generated audit hashes are mandatory. | Registry compromise and compiler trust require external supply-chain controls. |
-| Evidence tampering or cherry-picking | Complete logs, checksums, exact commits/toolchains, seeds, status ledger and residual risks are retained. The published qualification/closure tiers use deterministic path-preserving tars plus a signed candidate/tree/tag-bound asset map, strict four-file verification, and safe reconstruction against an independent trust root; generated GitHub source archives are explicitly outside that assurance set. | 0.9.0 has no independent archive/DOI; GitHub availability is not permanent preservation. |
+| Single-sensor spoof or fault | Magnitude and common-projection dependence evidence can localize inconsistency. The cause remains unclassified. | A bias inside the covariance model can evade detection. Association censoring can also hide it. |
+| Correlated or coordinated compromise | Axis disagreement and broad magnitude changes fail closed. The report retains signed geometry. | A coordinated statistics-preserving attack can remain nominal. Galadriel does not claim truth. |
+| Moment-matched spoof | Report only the observed statistics. | This spoof can defeat NIS and any preserved dependence statistic. |
+| Association or gate missingness | Operational lifecycle evidence represents updates, rejections, misses, and heartbeats. Absence never becomes a healthy sample. | Historical successful-update-only captures have selection bias. They cannot validate cross-modal claims. |
+| Partial sensor silence | Expected modalities remain unready or stale. They block nominal evidence. | All-modal silence needs an independent heartbeat and deadline. No input call advances detector time. |
+| Timestamp freeze or regression | Reject the input as malformed. Do not change accepted state. | Authenticated but false producer time remains a producer-compromise case. |
+| Excessive gap, skew, or reorder | Reset or abstain under the explicit epoch and window rules. Never align unequal tails by ordinal position. | Loss can cause prolonged abstention. It is a denial-of-service lever. |
+| Replay or prior reuse | Reject duplicate or regressing identities. Reject cross-sequence frozen-prior reuse in the bounded operational assembler. | Lifetime replay protection requires epoch rollover before bounded ledgers become full. |
+| Route/session/producer confusion | Check the exact realm, route, schema, session, producer, registry, and version. Reject or terminate wrong provenance. | Payload identity is not authenticated without transport identity and ACL binding. |
+| Router or server substitution | Use a private router hostname that cannot receive a public certificate. Control name resolution. Otherwise, an external layer must enforce the exact certificate or SPKI. Retain the presented certificate. | Zenoh 1.9 trusts built-in public WebPKI roots and the deployment CA. The local profile does not exclusively pin the router. This exclusivity is `NOT_CLAIMED`. |
+| Malformed, duplicate-key, or oversized JSON | Bound size before parsing when the API permits this. Reject duplicate keys and non-exact integers. Retain typed fault counters. | Zenoh can allocate transport bytes before the application size gate. Broker bounds are mandatory. |
+| Advisory replay or staleness | A future consumer must authenticate the advisory independently. It must bind profile digest, session, and time. Invalid input has no effect. | Galadriel 0.9.0 has no qualified signed advisory publisher or consumer. |
+| Verdict-induced authority widening | The core non-widening validator rejects authority increases. It covers deny-to-allow changes, limits, TTL values, leases, watchdog changes, and record-only changes. | A consumer that bypasses the validator is outside the claim. |
+| Restriction abuse | Record-only is the only initial mode. A future restriction needs independent calibration, bounded effect, dwell, hysteresis, and recovery. | Restrict-only evidence is still a denial-of-service input. No such profile is qualified. |
+| Feedback oscillation | Do not connect a verdict to control in the same epoch. | Offline joins can have confounding. Causal claims are excluded. |
+| State or memory exhaustion | Cap tracks, windows, payloads, lines, records, queues, registry entries, join state, and estimator work. | Sustained valid traffic can force drops or abstention. Availability is not guaranteed. |
+| CPU denial of service | Validate work bounds before pair, PID, or bootstrap work. Keep optional heavy features off by default. | Platform-specific deadlines need independent benchmarks and admission control. |
+| Callback race or shutdown fault | Serialize ingress state. Retain the first terminal fault. Bound queues, account for drops, and test close and reset interleavings. | Operating-system, network, and actual-binary deployment timing remain unqualified. |
+| Configuration substitution | Validate strict closed schemas and canonical digests. Bind profile, registry, and credential identities. | A privileged operator can replace local artifacts without deployment signing or attestation. |
+| Dependency or source substitution | Require Cargo.lock, exact Git revisions, a pinned toolchain, and generated audit hashes. | Registry compromise and compiler trust need external supply-chain controls. |
+| Evidence tampering or cherry-picking | Retain complete logs, checksums, exact commits, toolchains, seeds, status ledger, and residual risks. Published qualification and closure tiers use deterministic path-preserving tar files. A signed asset map binds candidate, tree, and tag. Verification accepts four strict files and reconstructs safely against an independent trust root. Generated GitHub source archives are outside this assurance set. | Galadriel 0.9.0 has no independent archive or DOI. GitHub availability is not permanent preservation. |
 
 ## Safe failure states
 
-Malformed representation is an error, statistical non-identifiability is
-`InsufficientEvidence`, positive but non-localizable evidence is
-`UnclassifiedAnomaly`, transport/assembler integrity faults stop the affected
-epoch, and resource pressure rejects/drops according to the documented bounded
-policy with health accounting. None of these states is silently mapped to
-`Nominal`; none directly commands a plant.
+Malformed representation is an error. Statistical non-identifiability is
+`InsufficientEvidence`. Positive but non-localizable evidence is
+`UnclassifiedAnomaly`. A transport or assembler integrity fault stops the
+affected epoch.
+
+Resource pressure causes a documented bounded rejection or drop. Health
+accounting records this action. None of these states becomes `Nominal`. None of
+them directly commands a plant.
 
 ## Security acceptance boundary
 
-Component tests can establish parsing, state and policy invariants. Deployment
-qualification additionally requires an actual multi-process router campaign that
-retains correct-certificate allow results, wrong/no-certificate denies, wrong-route
-denies, replay/stale behavior, saturation, resource measurements, the router certificate
-actually presented, the server-authentication mitigation, and independent configuration
-identities. That evidence does not exist for 0.9.0, so secured deployment remains
+Component tests can establish parsing, state, and policy invariants. Deployment
+qualification also requires an actual multi-process router campaign. The campaign
+must retain this evidence:
+
+- correct-certificate allow results
+- wrong-certificate and no-certificate denials
+- wrong-route denials
+- replay and stale behavior
+- saturation and resource measurements
+- the router certificate that the test observed
+- the server-authentication mitigation
+- independent configuration identities
+
+This evidence does not exist for 0.9.0. Thus, secured deployment remains
 `NOT_CLAIMED`.
