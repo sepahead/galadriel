@@ -25,6 +25,8 @@ EXPECTED_BASELINE_REPOSITORY = "https://github.com/sepahead/galadriel"
 EXPECTED_BASELINE_COMMIT = "94e2f8cc01f352d2bf899b7f656997f143a2588f"
 EXPECTED_BASELINE_TREE = "9d9b3f9c2eaa26f50ffcc7ab16c0d38652a9f6c0"
 RELEASE_INPUTS = (
+    "AGENTS.md",
+    "CLAUDE.mdc",
     ".github/workflows/ci.yml",
     ".github/workflows/deep-quality.yml",
     ".ncp-consumer",

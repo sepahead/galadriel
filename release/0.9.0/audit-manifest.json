@@ -19,14 +19,14 @@
     {
       "path": ".github/ISSUE_TEMPLATE/bug.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "dabe3555ee63ad052fe595c34ab112498d0cf30b58c13ce6455febb7537d5388",
-      "size_bytes": 1625
+      "sha256": "60f22f4789aae4590d09430e3a56242b8de2b2d9f695f1428913628be8301287",
+      "size_bytes": 1670
     },
     {
       "path": ".github/ISSUE_TEMPLATE/config.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "c55c318d4cafb77e1ceb43c36dcc27b3f515b29428ed25bec74a9356fb1cce1d",
-      "size_bytes": 219
+      "sha256": "7b6ca78e1cfa4ccd97dc1d0c6e94b3859ee50975ff8241230466b11190574bb9",
+      "size_bytes": 221
     },
     {
       "path": ".github/dependabot.yml",
@@ -37,8 +37,8 @@
     {
       "path": ".github/pull_request_template.md",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "e7fa6ae544be2ade709ff3247b5b40fd3b891c5bffcbe826c46c45a24e5f6c6a",
-      "size_bytes": 776
+      "sha256": "034c0400cba5425bd9073dff8d95000c9c5812ff0d1a636480129d93eb10e0b1",
+      "size_bytes": 868
     },
     {
       "path": ".github/workflows/ci.yml",
@@ -61,8 +61,8 @@
     {
       "path": ".ncp-consumer",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2f4d5786241e31f7059475b9c55f0743543506542c55f9f676bf9d484a22f569",
-      "size_bytes": 1250
+      "sha256": "8969971ad8c22ab39fa350958dec76988e41410fc2c7e200b91c9e55f8d9b946",
+      "size_bytes": 1257
     },
     {
       "path": ".superstack/build-context.md",
@@ -89,28 +89,40 @@
       "size_bytes": 262
     },
     {
+      "path": "AGENTS.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "c06d1bb3c5ac99c570745c471d7470d2f42db54131ecb3e4eec0630221235e6d",
+      "size_bytes": 12663
+    },
+    {
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "efc2e958fb92511a898135b2e8e65ad3c76d53ed0a8901ec832ec4f4dc10d164",
-      "size_bytes": 38152
+      "sha256": "cdb155746c24bf9041522e6bdb5df6d7227bbdde1d4192cfcb05d2120c591201",
+      "size_bytes": 40033
     },
     {
       "path": "CITATION.cff",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "347e4d73f495c0e4acbdd694aa64997f563e4b7e6f4f9a16b6183aa7429899af",
-      "size_bytes": 753
+      "sha256": "4dc88688e4b5bab1cadf26449e4febb4d721840e1385f082e000c8b697284ab9",
+      "size_bytes": 850
+    },
+    {
+      "path": "CLAUDE.mdc",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "1a69de50a2e90b3bdf077bf50ab84606722425af666228b024a9bf0152a92936",
+      "size_bytes": 4772
     },
     {
       "path": "CODE_OF_CONDUCT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "10b3fea05478639ec067fad8d0aacec7d8df43346dd3c6ee2e88b799a6e446a6",
-      "size_bytes": 1244
+      "sha256": "8abcd89a580ab2a91a9c29e51fed13cfe8b9d53a07109cbb1e4d34401b7a8de0",
+      "size_bytes": 1274
     },
     {
       "path": "CONTRIBUTING.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f13b28214913c52815214ff920d3ea9115a2814c0202f85d4ff80c8f4f4769ff",
-      "size_bytes": 3405
+      "sha256": "f27e51cf2ef23c38661d8be9b0dbe2f1181a5410c8e40ff43b1b17445e323d52",
+      "size_bytes": 3622
     },
     {
       "path": "Cargo.lock",
@@ -121,8 +133,8 @@
     {
       "path": "Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "40fc20d47f3c688969564708e421ac29b394f36addfdb7e43fb6a029afa1e5ad",
-      "size_bytes": 3286
+      "sha256": "4de83a2a89fffa1fa0d2225891fd646b438d18f9cd90a22ae1e5de436bbdf270",
+      "size_bytes": 3156
     },
     {
       "path": "LICENSE",
@@ -145,38 +157,38 @@
     {
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a0d326e878896037da150f68510168232945ecf251ef86b97db72341d00c51f3",
-      "size_bytes": 34294
+      "sha256": "7470a9e699c66cdf69075d9b7f2060ded06b409baaf0ad91d1c21427fc16b485",
+      "size_bytes": 36176
     },
     {
       "path": "RELEASE-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2bda6993fd040fc763ec77567a21c08d77a0d2ad9f90c76bb680385627c39170",
-      "size_bytes": 2969
+      "sha256": "32f29bb02beb70ac795e61e78bc4d3dc6d52864f8dba2356144473b7efd10cfb",
+      "size_bytes": 3312
     },
     {
       "path": "SECURITY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "52d4d627a74062cbd2174848dcda69f19b316b319799d20618c2ff11b6a9a336",
-      "size_bytes": 4747
+      "sha256": "438cb4934c08d1002cae4fc7433fd2e48e53d8a3d7a69205a4dfd89e37b37209",
+      "size_bytes": 4883
     },
     {
       "path": "SUPPORT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0f438960ad8d11806c12fd482fa967c9c90b815b99793ada7521483246c40bd0",
-      "size_bytes": 964
+      "sha256": "9f1578d2d8f824d48ed1a5a652227b9432e43641a4629bd723afb4cf0b21aa5d",
+      "size_bytes": 1055
     },
     {
       "path": "assets/galadriel-logo.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "882e9fafbb81577d5c1e2c76bca0bd09d84f470b61fdb459ec2725200e840593",
-      "size_bytes": 7302
+      "sha256": "95a2916ead48458219335694c48f5a7904a515c91731f35e08496fcad4af2b98",
+      "size_bytes": 7120
     },
     {
       "path": "crates/galadriel-cli/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "4dd39afa1e23756af12c434b00dd52f5ed8524592154ee2709cca7a35a8fa18d",
-      "size_bytes": 1141
+      "sha256": "16a0f2a2d7e73ff112381f5368ad4d1203b1a8cff464a5b675a7c56e2457aae9",
+      "size_bytes": 1218
     },
     {
       "path": "crates/galadriel-cli/src/main.rs",
@@ -211,14 +223,14 @@
     {
       "path": "crates/galadriel-core/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "32010bc03a43eea3e99f65262399062752e5b91eda4f69748447e5548d938bd6",
-      "size_bytes": 633
+      "sha256": "16ccec0d6a5fb70881c2c4fec2f4cb20d9b8e571c7625e812a4e0d93255a3802",
+      "size_bytes": 622
     },
     {
       "path": "crates/galadriel-core/README.md",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "8ec15d35c102085adfc1fd98a1c99349f79c4e9545554dc674d07e8f2e24b475",
-      "size_bytes": 2594
+      "sha256": "84cdecaf010990445636c2e7db4deeb6fdbfc810b76dc72c4ff51f005d3dccf1",
+      "size_bytes": 2821
     },
     {
       "path": "crates/galadriel-core/src/authority.rs",
@@ -319,8 +331,8 @@
     {
       "path": "crates/galadriel-eval/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "526fae21d020818921304f80087b0ce86aee0c48659cfb8ab38002e13fd96104",
-      "size_bytes": 1225
+      "sha256": "c5f5ce3d7126cb3c5ddf04f2493c56d7b0c6eee803bda825d0edae2beca6b16a",
+      "size_bytes": 1209
     },
     {
       "path": "crates/galadriel-eval/benches/detectors.rs",
@@ -349,8 +361,8 @@
     {
       "path": "crates/galadriel-justify/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "884b8c796208f8285ff35fdba0daa7705497104d1d9b2e5f4085103c5b24f1e5",
-      "size_bytes": 637
+      "sha256": "d70e43f96dbaadfc85d513febc623f789a4db89844d5777a58bfbd2f1cfaa1d1",
+      "size_bytes": 634
     },
     {
       "path": "crates/galadriel-justify/src/lib.rs",
@@ -367,8 +379,8 @@
     {
       "path": "crates/galadriel-ncp/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "9b3b37c30de23eb0748b4169d2536d17b99de36bb66cf34212ab5eb718903b6e",
-      "size_bytes": 2499
+      "sha256": "70eebbeecab646f4b204cc4affe45c8ceb76c6fd86f09a9ad9bd700ebef4a9d3",
+      "size_bytes": 2435
     },
     {
       "path": "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
@@ -499,8 +511,8 @@
     {
       "path": "crates/galadriel-pid/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "cb91bdc283e981d632934bbd2b171cf509fe84c921ccbe5edfe6847d45985160",
-      "size_bytes": 776
+      "sha256": "e662ee209c0eab3f9a5631a82d3cc89ac2ddfaaa104d5aadb33c321afc816694",
+      "size_bytes": 765
     },
     {
       "path": "crates/galadriel-pid/src/engine.rs",
@@ -535,8 +547,8 @@
     {
       "path": "crates/galadriel-sim/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "92ab6a31d486b894bb6fa3e49422bc87a54eebd9750572b667fc8c36a39c6f03",
-      "size_bytes": 599
+      "sha256": "cd98ca133c19a99b30baeebe78a32fe237cbf9cc34eaa2cd21436c2419b4744c",
+      "size_bytes": 587
     },
     {
       "path": "crates/galadriel-sim/src/injection.rs",
@@ -571,8 +583,8 @@
     {
       "path": "deploy/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "81ace63334bda33f821e3e880eba28584e2709c3e6ddb59dd1e3e91cda587a97",
-      "size_bytes": 6336
+      "sha256": "137e776aa369683429cbbd59e0c9ecaa7c248aebb40d7f562c800602ef473e9a",
+      "size_bytes": 6872
     },
     {
       "path": "deploy/galadriel-security-profile.example.json",
@@ -619,122 +631,122 @@
     {
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "dfb01c203a881418b75981291584107ae5791d083878fcb281143bec16f623ae",
-      "size_bytes": 15357
+      "sha256": "bcf177e5ec4de24239e7e7ee52980337150d7726639cc53496232c2351748b94",
+      "size_bytes": 15054
     },
     {
       "path": "docs/API-SURFACE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0fb002d256f150cf8f5b24350db90940e63731dd669434e6710bdbe884e5f635",
-      "size_bytes": 2575
+      "sha256": "b071a26bf2cdaa3d981be6707d9a36525e46901e437d73bf439f22e5660de483",
+      "size_bytes": 2667
     },
     {
       "path": "docs/CLAIMS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e1f279ab373b33884e03222abb30eca43787f67a3b1d667bddabc1040038bc31",
-      "size_bytes": 2235
+      "sha256": "2ae93efe93f3d265ba3ae5e50350845b892a22ef0eb396a435183f6ecd0c0af8",
+      "size_bytes": 2342
     },
     {
       "path": "docs/CONFIGURATION-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f3bedd698382691f84ccf007eed8861034a05965a532a6a9cf444ea29aa8650c",
-      "size_bytes": 31176
+      "sha256": "2a423851801f254875d08b179fb46fb584c05ed601e6706143155a95d46dbe26",
+      "size_bytes": 30929
     },
     {
       "path": "docs/CORE-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "13b6825a468024da387cf3e2c2dc6ddfe91c2d8d0a340ee1efe9e4e7cd4c8bec",
-      "size_bytes": 5469
+      "sha256": "7122b55d9e00020b88de7f7018a5e3dc42e330d859176532c3765f572d38e879",
+      "size_bytes": 5892
     },
     {
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "303b397dff4bd78fc6bcdcafeed8ad67b3481af7e90f2c5897e98d57b496b5da",
-      "size_bytes": 3750
+      "sha256": "7887e6cf9df51dd07213f2f0417286891d4387eb53256992d448b4f89db64d79",
+      "size_bytes": 3907
     },
     {
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2e9810fdd7a991734dd2e3f80380200dae0fd05027d4ffa2fbb6a5939281ce39",
-      "size_bytes": 17784
+      "sha256": "2edc548db133bf8ba2ad5767998302c3e1e9395eb4196495acd764526af4ed27",
+      "size_bytes": 17009
     },
     {
       "path": "docs/EVALUATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "609e96832bf88dbd87329e9071fe5b2505b59461a69bf3f7315f5d9c424ebc57",
-      "size_bytes": 13115
+      "sha256": "4f0607d50da0745b23e5db1b55eaaeb974a1bbe5f45f36a32e0b638298c0938e",
+      "size_bytes": 13889
     },
     {
       "path": "docs/JUSTIFICATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "20b15efca379c83949dcb13b33abc5609f62e05e213db167160f68c7e0d843d8",
-      "size_bytes": 8265
+      "sha256": "77c84a5388e441ee6e8c825ff4eed6d2315d12729ae18c8a8f7d0c378194f685",
+      "size_bytes": 8717
     },
     {
       "path": "docs/MIGRATION-0.9.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "22f1ebc10a51f5b2d3c5ebe393d234c4a8dd98d1839de13111bc3dcc65a40f5d",
-      "size_bytes": 6676
+      "sha256": "504a54a6ad251b81ba7e5c738e57ea93a80c9733d696c312fa035fe8f3e75f7f",
+      "size_bytes": 7362
     },
     {
       "path": "docs/MOTIVATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8ef8ddee523507bbad1e9317ed79452c3e7a6067f17326a32f28084b4cbceb9c",
-      "size_bytes": 14217
+      "sha256": "42fd01590b8aececc5179d53614773124147a000f393e9ee995fd46e3c667168",
+      "size_bytes": 14140
     },
     {
       "path": "docs/PAPER.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a998aa6b4a1a47f89f8087cc308dc80013b05cb9689d13cee0e71eeafc43cbe5",
-      "size_bytes": 19421
+      "sha256": "1559fe6af84b627931fa10e2a7e64603f599f0e1d9f5e8133fc8e9c8fc95a3fa",
+      "size_bytes": 20330
     },
     {
       "path": "docs/PID_RS_1_0_MIGRATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "9b8c0bacf109090c72265a3c37083e0c810894a47cc28aef927bc17a3f508278",
-      "size_bytes": 7181
+      "sha256": "25a339b342ea73ace816f182caf6b781efa542811c463c3be4de17416195d24c",
+      "size_bytes": 7964
     },
     {
       "path": "docs/POST-AUDIT-EVIDENCE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ee69137517f5a17bc567548862a88c0622cd3195468f430b916ac7ee9a537c34",
-      "size_bytes": 8831
+      "sha256": "b33bcc1f3a7fc9b889d80c0f84280cda41db49e695e9b41af2c99fcf9162fe43",
+      "size_bytes": 9494
     },
     {
       "path": "docs/PRODUCER-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "124466d202b89732784b5f9f56b40271df8bca4133e79ab608fcd1cc0e1bd24b",
-      "size_bytes": 32283
+      "sha256": "456a32ff1c736ec4b4ef40909f20f7b90fcfce760d49b2102b2e1a2e2a527e20",
+      "size_bytes": 32411
     },
     {
       "path": "docs/RELATED-WORK.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "87b899b076575647d3842dcdc3bf1bf1a637aa8224e5c70690bc5bf221ec612c",
-      "size_bytes": 31892
+      "sha256": "21414f96759b5ef655f2d43bb2cc0784ca57e4987d5b1b718b7a68cccb0600f3",
+      "size_bytes": 31853
     },
     {
       "path": "docs/SECURE-DEPLOYMENT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7e7ab0db44397b3e447c46df3aed2bb4e03ecdd12ac18437301d3a0e3c426154",
-      "size_bytes": 14129
+      "sha256": "0e6037c1b19e8b5f43214671fa69ca29b6b7331ac6027ec21456a2d541f9051a",
+      "size_bytes": 15311
     },
     {
       "path": "docs/STATE-MACHINE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8bc8fb6594dced270011a2d2edc1777e41e5bf8bcc4d83af8521c447845e31b6",
-      "size_bytes": 13088
+      "sha256": "7598a1c27f096275fffa77d60de7cb63fda3fc5bfa26bb02e8d049fe98065879",
+      "size_bytes": 13234
     },
     {
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a655fcf7cfaf07562c4d319920ace127ecaa57da4ba8e07f185e13a2593d383f",
-      "size_bytes": 12495
+      "sha256": "8b024faec58a755f3e7dcbc6e4763d1edd4f34f5fb8d78ceb497b609185b4c1e",
+      "size_bytes": 13052
     },
     {
       "path": "docs/THREAT-MODEL.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e3e1a474162fdb99750fba918bced779296ca685a56ac784be4dab331ee04644",
-      "size_bytes": 8427
+      "sha256": "9e1b0fc777ec3a077f1c7cbfa82f3c85b70005ae66445846966cf8f401b5ccec",
+      "size_bytes": 8827
     },
     {
       "path": "evidence/galadriel-0.9-candidate.json",
@@ -817,8 +829,8 @@
     {
       "path": "fuzz/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "baf304dbd529192b9ee932fd76bf3085cdaf5da7eb638593ad1ea597b8982705",
-      "size_bytes": 810
+      "sha256": "d8254b4e26ea07986fd3d30d6ee08bafd0a9e9799448afde53fc9c4507858b48",
+      "size_bytes": 784
     },
     {
       "path": "fuzz/deny.toml",
@@ -841,26 +853,26 @@
     {
       "path": "release/0.9.0/README.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "46c6bdfe63a6c5ce41cb57b17deaf7376119e19edd5f42878cd896e230cba499",
-      "size_bytes": 8670
+      "sha256": "a4d979499ce2e76904785b9f7ef8e5c8f14ea12e53a23797a70269ccb2a89244",
+      "size_bytes": 9103
     },
     {
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "6e6710542642f1f449f4550d9dca1eec416d04f8a37c5998adb7991d7f2a8403",
-      "size_bytes": 5924
+      "sha256": "d8995a8aad0115ea953868cfc45487a052ba8ccab7937cf8fdada2f927588bd0",
+      "size_bytes": 6731
     },
     {
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "cfccdd2d4359da70cf83d56a08c1fd917ab9eeb86c850609d27c1909ee5bbf2d",
-      "size_bytes": 20498
+      "sha256": "fdce631ed1f839e84e8f05b8cdc912a55c4b7739d2f6b8f3bfb7560daa863ce1",
+      "size_bytes": 20983
     },
     {
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "5d4969a7e808fae7322b1b13a7ed26f19a13141fb1fe12de1948d4e5b2537dec",
-      "size_bytes": 4792
+      "sha256": "bdfd9e675689fa7f327870a109759127f69d44173363ed16b70f1479aec147de",
+      "size_bytes": 5063
     },
     {
       "path": "release/0.9.0/WITHDRAWN-RELEASES.md",
@@ -889,8 +901,8 @@
     {
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "664142efd518ab3063637940c7044370ab6dd3173d23e4ca78a4d8303b2c4ab9",
-      "size_bytes": 10328
+      "sha256": "1a6f2d4f9f418f78675ed6f6e0879780b96657258d132043b2d615eed6ade8dd",
+      "size_bytes": 10371
     },
     {
       "path": "release/0.9.0/audit/ALLOWED_SIGNERS",
@@ -901,13 +913,13 @@
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "681807495838a20cfd73b2356d74e1f15b2643f115343cea639640a146b5a392",
-      "size_bytes": 57393
+      "sha256": "57c6a912af0d0d2a0022dc213def7b67a025d510dc637627d16016d1ab9ed86a",
+      "size_bytes": 57693
     },
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "3c0cbaa8497e445ef9501773b4c51f810e9c92c7368286b7677df453d13ab64c",
+      "sha256": "afdb0801aa870eae818d47dd2407b5cf118712f4305fbe89e8d22bd67cc0e676",
       "size_bytes": 322
     },
     {
@@ -1009,14 +1021,14 @@
     {
       "path": "release/0.9.0/reviews/REVIEW-COMMENTS.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "44a1595136d98eaf09ede7f5befdb0f742c6c99f58af9ff1493ba7d4bde7747f",
-      "size_bytes": 2071
+      "sha256": "02db6c462cb801980d5efff55a58599ac5bb2209cade554576adf269b482b6a5",
+      "size_bytes": 1977
     },
     {
       "path": "release/0.9.0/reviews/REVIEW-METHOD.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "4c18482d8c04f703e7e2a42003eb57bac9e559303483202ec5791d4068a9c3aa",
-      "size_bytes": 7135
+      "sha256": "b116f4cfc68223ae127d5a8ba10a38903048825a0b1ca13ab1e4e182706e484c",
+      "size_bytes": 7459
     },
     {
       "path": "release/0.9.0/reviews/phase-1.md",
@@ -1045,8 +1057,8 @@
     {
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "865348289c352f2765d187b197bc4e43791db53e7f602aa512ce03ff8d1d92fd",
-      "size_bytes": 21627
+      "sha256": "a36c1354be972d40cc32ae490f5dc2feaa800921cfffdb4a3e281a657ab7f77e",
+      "size_bytes": 22785
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1105,8 +1117,8 @@
     {
       "path": "repo_work/freeze_audit_inputs.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "c902542b3efc1415cbd49637584a46a203071f8b09108dfa59f3267b8460da2e",
-      "size_bytes": 51651
+      "sha256": "42bfdb38703745dad402062bbe9bbdca564299d20f22cb14213edc1b5ff0c702",
+      "size_bytes": 51686
     },
     {
       "path": "repo_work/local_convergence.py",
@@ -1171,8 +1183,8 @@
     {
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "fac4d4c4a278d2a8067d11eeaa961c68d1612a28a949d3604f98c9b7d7e8fc7f",
-      "size_bytes": 93190
+      "sha256": "fd96bf5229209cb38a7d865e7fc7f9eeef55b72f80f64a42a9bbab68d1b60cdf",
+      "size_bytes": 93376
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",
@@ -1429,199 +1441,193 @@
     },
     {
       "kind": "external_reference",
-      "line": 422,
+      "line": 471,
       "path": "README.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
-    },
-    {
-      "kind": "external_reference",
-      "line": 505,
-      "path": "README.md",
-      "url": "https://github.com/sepahead"
-    },
-    {
-      "kind": "external_reference",
-      "line": 51,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/pid-rs"
-    },
-    {
-      "kind": "external_reference",
-      "line": 52,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/NCP"
     },
     {
       "kind": "external_reference",
       "line": 53,
       "path": "README.md",
-      "url": "https://github.com/sepahead/crebain"
+      "url": "https://github.com/sepahead/pid-rs"
     },
     {
       "kind": "external_reference",
       "line": 54,
       "path": "README.md",
-      "url": "https://github.com/sepahead/haldir"
+      "url": "https://github.com/sepahead/NCP"
     },
     {
       "kind": "external_reference",
       "line": 55,
       "path": "README.md",
+      "url": "https://github.com/sepahead/crebain"
+    },
+    {
+      "kind": "external_reference",
+      "line": 568,
+      "path": "README.md",
+      "url": "https://github.com/sepahead"
+    },
+    {
+      "kind": "external_reference",
+      "line": 56,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/haldir"
+    },
+    {
+      "kind": "external_reference",
+      "line": 57,
+      "path": "README.md",
       "url": "https://github.com/sepahead/prisoma"
     },
     {
       "kind": "external_reference",
-      "line": 143,
+      "line": 165,
       "path": "docs/MOTIVATION.md",
       "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138"
     },
     {
       "kind": "external_reference",
-      "line": 145,
+      "line": 167,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
     {
       "kind": "external_reference",
-      "line": 148,
+      "line": 170,
       "path": "docs/MOTIVATION.md",
       "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149"
     },
     {
       "kind": "external_reference",
-      "line": 154,
+      "line": 173,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2311.06373"
     },
     {
       "kind": "external_reference",
-      "line": 156,
+      "line": 176,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2008.09535"
     },
     {
       "kind": "external_reference",
-      "line": 166,
+      "line": 188,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1411.2832"
     },
     {
       "kind": "external_reference",
-      "line": 168,
+      "line": 192,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2105.00769"
     },
     {
       "kind": "external_reference",
-      "line": 174,
+      "line": 201,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1604.03006"
     },
     {
       "kind": "external_reference",
-      "line": 176,
+      "line": 203,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1411.2003"
     },
     {
       "kind": "external_reference",
-      "line": 178,
+      "line": 204,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1903.09280"
     },
     {
       "kind": "external_reference",
-      "line": 184,
+      "line": 208,
       "path": "docs/MOTIVATION.md",
       "url": "https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf"
     },
     {
       "kind": "external_reference",
-      "line": 184,
+      "line": 208,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.gpsworld.com/drone-hack/"
     },
     {
       "kind": "external_reference",
-      "line": 185,
+      "line": 209,
       "path": "docs/MOTIVATION.md",
       "url": "https://rntfnd.org/2024/02/03/ukraine-will-spoof-gps-across-the-country-to-stop-russian-drones-new-scientist/"
     },
     {
       "kind": "external_reference",
-      "line": 185,
+      "line": 209,
       "path": "docs/MOTIVATION.md",
       "url": "https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones"
     },
     {
       "kind": "external_reference",
-      "line": 185,
+      "line": 209,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/"
     },
     {
       "kind": "external_reference",
-      "line": 185,
+      "line": 209,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.jpost.com/defense-and-tech/article-894907"
     },
     {
       "kind": "external_reference",
-      "line": 186,
+      "line": 210,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2106.09249"
     },
     {
       "kind": "external_reference",
-      "line": 186,
+      "line": 210,
       "path": "docs/MOTIVATION.md",
       "url": "https://github.com/ASGuard-UCI/MSF-ADV"
     },
     {
       "kind": "external_reference",
-      "line": 187,
+      "line": 211,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2106.07098"
     },
     {
       "kind": "external_reference",
-      "line": 187,
+      "line": 211,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 188,
+      "line": 212,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2205.04662"
     },
     {
       "kind": "external_reference",
-      "line": 189,
+      "line": 213,
       "path": "docs/MOTIVATION.md",
       "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138"
     },
     {
       "kind": "external_reference",
-      "line": 190,
+      "line": 214,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
     {
       "kind": "external_reference",
-      "line": 191,
+      "line": 215,
       "path": "docs/MOTIVATION.md",
       "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149"
     },
     {
       "kind": "external_reference",
-      "line": 28,
-      "path": "docs/MOTIVATION.md",
-      "url": "https://www.gpsworld.com/drone-hack/"
-    },
-    {
-      "kind": "external_reference",
-      "line": 29,
+      "line": 36,
       "path": "docs/MOTIVATION.md",
       "url": "https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf"
     },
@@ -1629,247 +1635,253 @@
       "kind": "external_reference",
       "line": 36,
       "path": "docs/MOTIVATION.md",
-      "url": "https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/"
+      "url": "https://www.gpsworld.com/drone-hack/"
     },
     {
       "kind": "external_reference",
-      "line": 37,
-      "path": "docs/MOTIVATION.md",
-      "url": "https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones"
-    },
-    {
-      "kind": "external_reference",
-      "line": 38,
+      "line": 43,
       "path": "docs/MOTIVATION.md",
       "url": "https://rntfnd.org/2024/02/03/ukraine-will-spoof-gps-across-the-country-to-stop-russian-drones-new-scientist/"
     },
     {
       "kind": "external_reference",
-      "line": 42,
+      "line": 43,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones"
+    },
+    {
+      "kind": "external_reference",
+      "line": 43,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/"
+    },
+    {
+      "kind": "external_reference",
+      "line": 48,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.jpost.com/defense-and-tech/article-894907"
     },
     {
       "kind": "external_reference",
-      "line": 61,
+      "line": 69,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2106.09249"
     },
     {
       "kind": "external_reference",
-      "line": 62,
+      "line": 69,
       "path": "docs/MOTIVATION.md",
       "url": "https://github.com/ASGuard-UCI/MSF-ADV"
     },
     {
       "kind": "external_reference",
-      "line": 67,
+      "line": 73,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2106.07098"
+    },
+    {
+      "kind": "external_reference",
+      "line": 73,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 68,
-      "path": "docs/MOTIVATION.md",
-      "url": "https://arxiv.org/abs/2106.07098"
-    },
-    {
-      "kind": "external_reference",
-      "line": 83,
+      "line": 90,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2205.04662"
     },
     {
       "kind": "external_reference",
-      "line": 88,
+      "line": 97,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.mdpi.com/1424-8220/18/5/1305"
     },
     {
       "kind": "external_reference",
-      "line": 341,
+      "line": 382,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2311.06373"
     },
     {
       "kind": "external_reference",
-      "line": 342,
+      "line": 383,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1604.03006"
     },
     {
       "kind": "external_reference",
-      "line": 343,
+      "line": 384,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2106.07098"
     },
     {
       "kind": "external_reference",
-      "line": 345,
+      "line": 386,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2002.03356"
     },
     {
       "kind": "external_reference",
-      "line": 348,
+      "line": 389,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
     {
       "kind": "paper",
-      "line": 118,
+      "line": 111,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://www.mdpi.com/2072-4292/14/19/4826"
+    },
+    {
+      "kind": "paper",
+      "line": 137,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.ion.org/publications/abstract.cfm?articleID=100323"
     },
     {
       "kind": "paper",
-      "line": 119,
+      "line": 138,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2025.1567301/full"
     },
     {
       "kind": "paper",
-      "line": 120,
+      "line": 139,
       "path": "docs/RELATED-WORK.md",
       "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7570696/"
     },
     {
       "kind": "paper",
-      "line": 142,
+      "line": 164,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.wiley.com/en-us/Estimation+with+Applications+to+Tracking+and+Navigation-p-9780471221272"
     },
     {
       "kind": "paper",
-      "line": 143,
+      "line": 165,
       "path": "docs/RELATED-WORK.md",
       "url": "https://doi.org/10.1093/biomet/41.1-2.100"
     },
     {
       "kind": "paper",
-      "line": 160,
+      "line": 184,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.mdpi.com/1424-8220/18/5/1305"
     },
     {
       "kind": "paper",
-      "line": 162,
+      "line": 187,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/2205.04662"
     },
     {
       "kind": "paper",
-      "line": 164,
-      "path": "docs/RELATED-WORK.md",
-      "url": "https://arxiv.org/abs/2106.09249"
-    },
-    {
-      "kind": "paper",
-      "line": 165,
+      "line": 189,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/2106.07098"
     },
     {
       "kind": "paper",
-      "line": 186,
+      "line": 189,
+      "path": "docs/RELATED-WORK.md",
+      "url": "https://arxiv.org/abs/2106.09249"
+    },
+    {
+      "kind": "paper",
+      "line": 214,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/1205.5073"
     },
     {
       "kind": "paper",
-      "line": 188,
+      "line": 216,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/1802.09651"
     },
     {
       "kind": "paper",
-      "line": 208,
+      "line": 243,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/2103.00883"
     },
     {
       "kind": "paper",
-      "line": 225,
+      "line": 264,
       "path": "docs/RELATED-WORK.md",
       "url": "https://anavs.com/wp-content/uploads/2025/10/Detection_and_Mitigation_of_Jamming_Meaconing_and_Spoofing_based_on_Machine_Learning_and_Multi_Sensor_Data.pdf"
     },
     {
       "kind": "paper",
-      "line": 242,
+      "line": 287,
       "path": "docs/RELATED-WORK.md",
       "url": "https://dl.acm.org/doi/10.1145/2810103.2813679"
     },
     {
       "kind": "paper",
-      "line": 445,
+      "line": 511,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.ion.org/publications/abstract.cfm?articleID=100323"
     },
     {
       "kind": "paper",
-      "line": 446,
+      "line": 512,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2025.1567301/full"
     },
     {
       "kind": "paper",
-      "line": 447,
+      "line": 513,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.mdpi.com/2072-4292/14/19/4826"
     },
     {
       "kind": "paper",
-      "line": 448,
+      "line": 514,
       "path": "docs/RELATED-WORK.md",
       "url": "https://navi.ion.org/content/68/2/243"
     },
     {
       "kind": "paper",
-      "line": 449,
+      "line": 515,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/1205.5073"
     },
     {
       "kind": "paper",
-      "line": 451,
+      "line": 517,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/1802.09651"
     },
     {
       "kind": "paper",
-      "line": 452,
+      "line": 518,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/2103.00883"
     },
     {
       "kind": "paper",
-      "line": 453,
+      "line": 519,
       "path": "docs/RELATED-WORK.md",
       "url": "https://dl.acm.org/doi/10.1145/2810103.2813679"
     },
     {
       "kind": "paper",
-      "line": 454,
+      "line": 520,
       "path": "docs/RELATED-WORK.md",
       "url": "https://anavs.com/wp-content/uploads/2025/10/Detection_and_Mitigation_of_Jamming_Meaconing_and_Spoofing_based_on_Machine_Learning_and_Multi_Sensor_Data.pdf"
     },
     {
       "kind": "paper",
-      "line": 75,
+      "line": 86,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.mdpi.com/2072-4292/14/19/4826"
     },
     {
       "kind": "paper",
-      "line": 76,
+      "line": 87,
       "path": "docs/RELATED-WORK.md",
       "url": "https://navi.ion.org/content/68/2/243"
-    },
-    {
-      "kind": "paper",
-      "line": 97,
-      "path": "docs/RELATED-WORK.md",
-      "url": "https://www.mdpi.com/2072-4292/14/19/4826"
     }
   ],
   "git_dependencies": [
@@ -1958,68 +1970,68 @@
     {
       "path": "release/0.9.0/README.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "46c6bdfe63a6c5ce41cb57b17deaf7376119e19edd5f42878cd896e230cba499",
-      "size_bytes": 8670
+      "sha256": "a4d979499ce2e76904785b9f7ef8e5c8f14ea12e53a23797a70269ccb2a89244",
+      "size_bytes": 9103
     },
     {
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "5d4969a7e808fae7322b1b13a7ed26f19a13141fb1fe12de1948d4e5b2537dec",
-      "size_bytes": 4792
+      "sha256": "bdfd9e675689fa7f327870a109759127f69d44173363ed16b70f1479aec147de",
+      "size_bytes": 5063
     },
     {
       "path": "docs/CLAIMS.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "e1f279ab373b33884e03222abb30eca43787f67a3b1d667bddabc1040038bc31",
-      "size_bytes": 2235
+      "sha256": "2ae93efe93f3d265ba3ae5e50350845b892a22ef0eb396a435183f6ecd0c0af8",
+      "size_bytes": 2342
     },
     {
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "a655fcf7cfaf07562c4d319920ace127ecaa57da4ba8e07f185e13a2593d383f",
-      "size_bytes": 12495
+      "sha256": "8b024faec58a755f3e7dcbc6e4763d1edd4f34f5fb8d78ceb497b609185b4c1e",
+      "size_bytes": 13052
     },
     {
       "path": "docs/THREAT-MODEL.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "e3e1a474162fdb99750fba918bced779296ca685a56ac784be4dab331ee04644",
-      "size_bytes": 8427
+      "sha256": "9e1b0fc777ec3a077f1c7cbfa82f3c85b70005ae66445846966cf8f401b5ccec",
+      "size_bytes": 8827
     },
     {
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "dfb01c203a881418b75981291584107ae5791d083878fcb281143bec16f623ae",
-      "size_bytes": 15357
+      "sha256": "bcf177e5ec4de24239e7e7ee52980337150d7726639cc53496232c2351748b94",
+      "size_bytes": 15054
     },
     {
       "path": "docs/API-SURFACE.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "0fb002d256f150cf8f5b24350db90940e63731dd669434e6710bdbe884e5f635",
-      "size_bytes": 2575
+      "sha256": "b071a26bf2cdaa3d981be6707d9a36525e46901e437d73bf439f22e5660de483",
+      "size_bytes": 2667
     },
     {
       "path": "SUPPORT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "0f438960ad8d11806c12fd482fa967c9c90b815b99793ada7521483246c40bd0",
-      "size_bytes": 964
+      "sha256": "9f1578d2d8f824d48ed1a5a652227b9432e43641a4629bd723afb4cf0b21aa5d",
+      "size_bytes": 1055
     },
     {
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "303b397dff4bd78fc6bcdcafeed8ad67b3481af7e90f2c5897e98d57b496b5da",
-      "size_bytes": 3750
+      "sha256": "7887e6cf9df51dd07213f2f0417286891d4387eb53256992d448b4f89db64d79",
+      "size_bytes": 3907
     },
     {
       "path": "RELEASE-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "2bda6993fd040fc763ec77567a21c08d77a0d2ad9f90c76bb680385627c39170",
-      "size_bytes": 2969
+      "sha256": "32f29bb02beb70ac795e61e78bc4d3dc6d52864f8dba2356144473b7efd10cfb",
+      "size_bytes": 3312
     },
     {
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "cfccdd2d4359da70cf83d56a08c1fd917ab9eeb86c850609d27c1909ee5bbf2d",
-      "size_bytes": 20498
+      "sha256": "fdce631ed1f839e84e8f05b8cdc912a55c4b7739d2f6b8f3bfb7560daa863ce1",
+      "size_bytes": 20983
     }
   ],
   "release": {

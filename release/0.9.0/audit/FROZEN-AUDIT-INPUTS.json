@@ -1070,6 +1070,16 @@
   },
   "release_input_files": [
     {
+      "path": "AGENTS.md",
+      "sha256": "c06d1bb3c5ac99c570745c471d7470d2f42db54131ecb3e4eec0630221235e6d",
+      "size_bytes": 12663
+    },
+    {
+      "path": "CLAUDE.mdc",
+      "sha256": "1a69de50a2e90b3bdf077bf50ab84606722425af666228b024a9bf0152a92936",
+      "size_bytes": 4772
+    },
+    {
       "path": ".github/workflows/ci.yml",
       "sha256": "b8b192b8de3d2b75ed93a440b031f6cf69b336aac511a405cf49826c181e35b7",
       "size_bytes": 7413
@@ -1081,13 +1091,13 @@
     },
     {
       "path": ".ncp-consumer",
-      "sha256": "2f4d5786241e31f7059475b9c55f0743543506542c55f9f676bf9d484a22f569",
-      "size_bytes": 1250
+      "sha256": "8969971ad8c22ab39fa350958dec76988e41410fc2c7e200b91c9e55f8d9b946",
+      "size_bytes": 1257
     },
     {
       "path": "Cargo.toml",
-      "sha256": "40fc20d47f3c688969564708e421ac29b394f36addfdb7e43fb6a029afa1e5ad",
-      "size_bytes": 3286
+      "sha256": "4de83a2a89fffa1fa0d2225891fd646b438d18f9cd90a22ae1e5de436bbdf270",
+      "size_bytes": 3156
     },
     {
       "path": "Cargo.lock",
@@ -1121,8 +1131,8 @@
     },
     {
       "path": "release/0.9.0/audit-inputs.json",
-      "sha256": "664142efd518ab3063637940c7044370ab6dd3173d23e4ca78a4d8303b2c4ab9",
-      "size_bytes": 10328
+      "sha256": "1a6f2d4f9f418f78675ed6f6e0879780b96657258d132043b2d615eed6ade8dd",
+      "size_bytes": 10371
     },
     {
       "path": "release/0.9.0/ecosystem-cut.json",
@@ -1161,13 +1171,13 @@
     },
     {
       "path": "release/0.9.0/RELEASE-NOTES.md",
-      "sha256": "6e6710542642f1f449f4550d9dca1eec416d04f8a37c5998adb7991d7f2a8403",
-      "size_bytes": 5924
+      "sha256": "d8995a8aad0115ea953868cfc45487a052ba8ccab7937cf8fdada2f927588bd0",
+      "size_bytes": 6731
     },
     {
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
-      "sha256": "5d4969a7e808fae7322b1b13a7ed26f19a13141fb1fe12de1948d4e5b2537dec",
-      "size_bytes": 4792
+      "sha256": "bdfd9e675689fa7f327870a109759127f69d44173363ed16b70f1479aec147de",
+      "size_bytes": 5063
     },
     {
       "path": "release/0.9.0/claims.json",
@@ -1186,13 +1196,13 @@
     },
     {
       "path": "release/0.9.0/reviews/REVIEW-METHOD.md",
-      "sha256": "4c18482d8c04f703e7e2a42003eb57bac9e559303483202ec5791d4068a9c3aa",
-      "size_bytes": 7135
+      "sha256": "b116f4cfc68223ae127d5a8ba10a38903048825a0b1ca13ab1e4e182706e484c",
+      "size_bytes": 7459
     },
     {
       "path": "release/0.9.0/reviews/REVIEW-COMMENTS.md",
-      "sha256": "44a1595136d98eaf09ede7f5befdb0f742c6c99f58af9ff1493ba7d4bde7747f",
-      "size_bytes": 2071
+      "sha256": "02db6c462cb801980d5efff55a58599ac5bb2209cade554576adf269b482b6a5",
+      "size_bytes": 1977
     },
     {
       "path": "release/0.9.0/api/galadriel-core.baseline.txt",
@@ -1226,73 +1236,73 @@
     },
     {
       "path": "CITATION.cff",
-      "sha256": "347e4d73f495c0e4acbdd694aa64997f563e4b7e6f4f9a16b6183aa7429899af",
-      "size_bytes": 753
+      "sha256": "4dc88688e4b5bab1cadf26449e4febb4d721840e1385f082e000c8b697284ab9",
+      "size_bytes": 850
     },
     {
       "path": "RELEASE-POLICY.md",
-      "sha256": "2bda6993fd040fc763ec77567a21c08d77a0d2ad9f90c76bb680385627c39170",
-      "size_bytes": 2969
+      "sha256": "32f29bb02beb70ac795e61e78bc4d3dc6d52864f8dba2356144473b7efd10cfb",
+      "size_bytes": 3312
     },
     {
       "path": "SECURITY.md",
-      "sha256": "52d4d627a74062cbd2174848dcda69f19b316b319799d20618c2ff11b6a9a336",
-      "size_bytes": 4747
+      "sha256": "438cb4934c08d1002cae4fc7433fd2e48e53d8a3d7a69205a4dfd89e37b37209",
+      "size_bytes": 4883
     },
     {
       "path": "docs/ADVISORY-BOUNDARY.md",
-      "sha256": "dfb01c203a881418b75981291584107ae5791d083878fcb281143bec16f623ae",
-      "size_bytes": 15357
+      "sha256": "bcf177e5ec4de24239e7e7ee52980337150d7726639cc53496232c2351748b94",
+      "size_bytes": 15054
     },
     {
       "path": "docs/CLAIMS.md",
-      "sha256": "e1f279ab373b33884e03222abb30eca43787f67a3b1d667bddabc1040038bc31",
-      "size_bytes": 2235
+      "sha256": "2ae93efe93f3d265ba3ae5e50350845b892a22ef0eb396a435183f6ecd0c0af8",
+      "size_bytes": 2342
     },
     {
       "path": "docs/CONFIGURATION-CONTRACT.md",
-      "sha256": "f3bedd698382691f84ccf007eed8861034a05965a532a6a9cf444ea29aa8650c",
-      "size_bytes": 31176
+      "sha256": "2a423851801f254875d08b179fb46fb584c05ed601e6706143155a95d46dbe26",
+      "size_bytes": 30929
     },
     {
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
-      "sha256": "2e9810fdd7a991734dd2e3f80380200dae0fd05027d4ffa2fbb6a5939281ce39",
-      "size_bytes": 17784
+      "sha256": "2edc548db133bf8ba2ad5767998302c3e1e9395eb4196495acd764526af4ed27",
+      "size_bytes": 17009
     },
     {
       "path": "docs/PRODUCER-CONTRACT.md",
-      "sha256": "124466d202b89732784b5f9f56b40271df8bca4133e79ab608fcd1cc0e1bd24b",
-      "size_bytes": 32283
+      "sha256": "456a32ff1c736ec4b4ef40909f20f7b90fcfce760d49b2102b2e1a2e2a527e20",
+      "size_bytes": 32411
     },
     {
       "path": "docs/RELATED-WORK.md",
-      "sha256": "87b899b076575647d3842dcdc3bf1bf1a637aa8224e5c70690bc5bf221ec612c",
-      "size_bytes": 31892
+      "sha256": "21414f96759b5ef655f2d43bb2cc0784ca57e4987d5b1b718b7a68cccb0600f3",
+      "size_bytes": 31853
     },
     {
       "path": "docs/SECURE-DEPLOYMENT.md",
-      "sha256": "7e7ab0db44397b3e447c46df3aed2bb4e03ecdd12ac18437301d3a0e3c426154",
-      "size_bytes": 14129
+      "sha256": "0e6037c1b19e8b5f43214671fa69ca29b6b7331ac6027ec21456a2d541f9051a",
+      "size_bytes": 15311
     },
     {
       "path": "docs/STATE-MACHINE.md",
-      "sha256": "8bc8fb6594dced270011a2d2edc1777e41e5bf8bcc4d83af8521c447845e31b6",
-      "size_bytes": 13088
+      "sha256": "7598a1c27f096275fffa77d60de7cb63fda3fc5bfa26bb02e8d049fe98065879",
+      "size_bytes": 13234
     },
     {
       "path": "docs/STATISTICAL-CONTRACT.md",
-      "sha256": "a655fcf7cfaf07562c4d319920ace127ecaa57da4ba8e07f185e13a2593d383f",
-      "size_bytes": 12495
+      "sha256": "8b024faec58a755f3e7dcbc6e4763d1edd4f34f5fb8d78ceb497b609185b4c1e",
+      "size_bytes": 13052
     },
     {
       "path": "docs/THREAT-MODEL.md",
-      "sha256": "e3e1a474162fdb99750fba918bced779296ca685a56ac784be4dab331ee04644",
-      "size_bytes": 8427
+      "sha256": "9e1b0fc777ec3a077f1c7cbfa82f3c85b70005ae66445846966cf8f401b5ccec",
+      "size_bytes": 8827
     },
     {
       "path": "deploy/README.md",
-      "sha256": "81ace63334bda33f821e3e880eba28584e2709c3e6ddb59dd1e3e91cda587a97",
-      "size_bytes": 6336
+      "sha256": "137e776aa369683429cbbd59e0c9ecaa7c248aebb40d7f562c800602ef473e9a",
+      "size_bytes": 6872
     },
     {
       "path": "deploy/galadriel-security-profile.example.json",
@@ -1311,8 +1321,8 @@
     },
     {
       "path": "repo_work/README.md",
-      "sha256": "865348289c352f2765d187b197bc4e43791db53e7f602aa512ce03ff8d1d92fd",
-      "size_bytes": 21627
+      "sha256": "a36c1354be972d40cc32ae490f5dc2feaa800921cfffdb4a3e281a657ab7f77e",
+      "size_bytes": 22785
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1361,8 +1371,8 @@
     },
     {
       "path": "repo_work/freeze_audit_inputs.py",
-      "sha256": "c902542b3efc1415cbd49637584a46a203071f8b09108dfa59f3267b8460da2e",
-      "size_bytes": 51651
+      "sha256": "42bfdb38703745dad402062bbe9bbdca564299d20f22cb14213edc1b5ff0c702",
+      "size_bytes": 51686
     },
     {
       "path": "repo_work/local_convergence.py",
@@ -1416,8 +1426,8 @@
     },
     {
       "path": "repo_work/tests/test_review_tools.py",
-      "sha256": "fac4d4c4a278d2a8067d11eeaa961c68d1612a28a949d3604f98c9b7d7e8fc7f",
-      "size_bytes": 93190
+      "sha256": "fd96bf5229209cb38a7d865e7fc7f9eeef55b72f80f64a42a9bbab68d1b60cdf",
+      "size_bytes": 93376
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",

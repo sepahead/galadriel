@@ -528,6 +528,10 @@ class ReviewToolsTest(unittest.TestCase):
         ):
             assert_release_tool_coverage(self.root)
 
+    def test_repository_instruction_files_are_frozen(self) -> None:
+        self.assertIn("AGENTS.md", freeze.RELEASE_INPUTS)
+        self.assertIn("CLAUDE.mdc", freeze.RELEASE_INPUTS)
+
     def test_frozen_input_verifier_accepts_exact_inputs_and_optional_handoff(
         self,
     ) -> None:

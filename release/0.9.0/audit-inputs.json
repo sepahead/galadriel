@@ -279,6 +279,8 @@
     {
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "patterns": [
+        "AGENTS.md",
+        "CLAUDE.mdc",
         ".gitignore",
         ".gitattributes",
         ".ncp-consumer",
