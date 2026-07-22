@@ -5,9 +5,10 @@ Owner and release author: Sepehr Mahmoudian
 Channel: GitHub source release only. There is no crates.io publication, project
 DOI, Zenodo record, deployment qualification, or production-support promise.
 
-**GLD-090-PUB-001:** Publication **SHALL** use the exact clean, signed `main`
-candidate that passed every retained gate; a post-qualification source or metadata
-change **SHALL** create a new candidate and rerun qualification.
+**GLD-090-PUB-001:** Publication **SHALL** use the exact clean and signed `main` candidate.
+That candidate **SHALL** pass every retained gate.
+A post-qualification source or metadata change **SHALL** create a new candidate.
+The new candidate **SHALL** repeat qualification.
 
 **GLD-090-PUB-002:** The release **SHALL** use signed annotated tag `v0.9.0`,
 verified checksummed assets, and reviewed GitHub notes. It **SHALL NOT** publish to
@@ -16,42 +17,55 @@ production support.
 
 **GLD-090-PUB-003:** A withdrawal **SHALL** preserve the affected tag, commit,
 asset, checksum, signature, reason, consumer, and claim identities before deletion.
-A withdrawn identity **SHALL NOT** be reused.
+The release operator **SHALL NOT** reuse a withdrawn identity.
 
 ## Immutable entry conditions
 
 1. `main` and `origin/main` resolve to the same signed commit and the worktree is clean.
-2. The candidate's source plan contains exactly T000–T115 and remains an honest
-   pre-result record: post-commit tasks are pending and unavailable external claims
-   are `NOT_CLAIMED`. It must not contain fabricated future results.
-3. A separately signed post-commit disposition set binds that exact commit and tree,
-   covers all 116 tasks and twenty lenses, has no `OPEN` item, and names retained
-   evidence for every `COMPLETE` result and the removed claim for every
-   `NOT_CLAIMED` result.
-   T114 cites the separately signed final review; T115 cites the separately signed,
-   candidate-bound v3 `NARROWED_GO` decision. T113 cites the candidate-bound
-   convergence mechanism and qualification evidence, never its future output;
-   additional retained predecessor evidence is permitted.
-4. The full locked build/test/documentation, feature, fuzz, mutation, supply-chain,
-   signed frozen-input semantic verification, release-audit, source-inventory, and
-   author-operated isolated qualification gates pass on that commit.
-5. Release notes, `CITATION.cff`, Cargo metadata, schemas, API snapshot, changelog,
-   support policy, and GitHub metadata all say 0.9.0 and agree on scope.
-6. The signed finalization manifest records exact artifacts, checksums, review
-   dispositions, negative results, residual risks, and a `GO` or `NARROWED_GO`
-   decision for this source release.
-7. Finalization emits and signs a schema-valid `LOCAL-CONVERGENCE.json` whose ten
-   waves are `WAVE_ACCEPTED`, whose task set is exactly T000–T115, and whose
-   explicit pid-rs, NCP, Crebain, Haldir, Prisoma, Engram/Paper2Brain, ROS, and
-   external-authority requirements preserve the required/optional/absent boundaries
-   and the acyclic no-command graph. This record permits reconciliation to
-   begin; it does not claim that reconciliation or downstream qualification passed.
+2. The candidate source plan contains exactly T000 through T115.
+   It remains an honest pre-result record.
+   Post-commit tasks are pending.
+   Unavailable external claims are `NOT_CLAIMED`.
+   The plan must not contain fabricated future results.
+3. A separately signed post-commit disposition set binds the exact commit and tree.
+   It covers all 116 tasks and twenty lenses.
+   It has no `OPEN` item.
+   It names retained evidence for each `COMPLETE` result.
+   It names the removed claim for each `NOT_CLAIMED` result.
+   T114 cites the separately signed final review.
+   T115 cites the separately signed candidate-bound version 3 `NARROWED_GO` decision.
+
+   T113 cites the candidate-bound convergence mechanism and qualification evidence.
+   T113 never cites its future output.
+   The disposition can include more retained predecessor evidence.
+4. All locked build, test, documentation, feature, fuzz, and mutation gates pass on that commit.
+   All supply-chain and frozen-input semantic gates also pass.
+   The release-audit, source-inventory, and author-operated isolated qualification gates also pass.
+5. Release notes and `CITATION.cff` identify version 0.9.0 and agree on scope.
+   Cargo metadata, schemas, and the application programming interface (API) snapshot also agree.
+   The changelog, support policy, and GitHub metadata also agree.
+6. The signed finalization manifest records exact artifacts and checksums.
+   It records review dispositions, negative results, and residual risks.
+   It records a `GO` or `NARROWED_GO` decision for this source release.
+7. Finalization emits and signs a schema-valid `LOCAL-CONVERGENCE.json` file.
+   All ten waves are `WAVE_ACCEPTED`.
+   The task set is exactly T000 through T115.
+   The ecosystem requirements preserve each required, optional, and absent boundary.
+   They also preserve the acyclic no-command graph.
+   The ecosystem scope includes pid-rs, NCP, Crebain, Haldir, and Prisoma.
+   It also includes Engram, Paper2Brain, ROS, and external authority.
+
+   This record permits reconciliation to start.
+   It does not claim successful reconciliation or downstream qualification.
 8. The decision records `LOCAL_PIN_PASS` for the locally qualified pid-rs/NCP pins
    and removes reciprocal/deployed claims `CLM-008` and `CLM-009` with the complete
-   frozen exclusion set. No external repository acceptance is inferred.
+   frozen exclusion set.
+   Do not infer acceptance by an external repository.
 
-If any entry condition changes, abort. Do not repair a frozen candidate in-place;
-make a new signed commit on `main`, rerun qualification, and mint artifacts again.
+If an entry condition changes, abort.
+Do not repair a frozen candidate in place.
+Create a new signed commit on `main`.
+Repeat qualification and create new artifacts.
 
 ## Rehearsal without publication
 
@@ -78,11 +92,12 @@ cargo deny --all-features --locked check
 
 Generate source archive, SBOM, license/vulnerability reports, provenance, and
 checksums into an empty directory outside the checkout. Verify them from a second
-fresh directory. The archive prefix is exactly `galadriel-0.9.0/`; archive content
-must equal `git ls-files` subject only to explicitly documented GitHub-generated
-archive metadata.
+fresh directory.
+The archive prefix is exactly `galadriel-0.9.0/`.
+Archive content must equal `git ls-files`.
+Only documented GitHub archive metadata can differ.
 
-The qualifying command must include the tracked evidence configuration, the SSH
+The qualification command must include the tracked evidence configuration, the SSH
 signing key, and the signed exact-candidate mutation manifest:
 
 ```bash
@@ -102,8 +117,9 @@ python3 repo_work/qualify_candidate.py \
   --deep --keep-going
 ```
 
-After producing the signed T114 review, the detached-signed canonical v3 decision,
-and the signed ordered task dispositions, finalize into a previously absent path:
+Create the signed T114 review and detached-signed canonical version 3 decision.
+Create the signed ordered task dispositions.
+Then finalize into a previously absent path:
 
 ```bash
 set -euo pipefail
@@ -126,26 +142,35 @@ python3 repo_work/finalize_release.py \
   --out /new/path/galadriel-0.9.0-closure
 ```
 
-The finalizer snapshots the signed qualification tier once before semantic use, so
-the selected snapshot filesystem must have room for the bounded 8 GiB tier plus
-review inputs. Prefer an agent-backed Ed25519 public-key handle for `--signing-key`;
-if a private-key path is supplied, its bytes are copied only into this mode-0700
-temporary snapshot and removed during cleanup. A cleanup warning identifies the
-exact retained temporary path and must be resolved before GitHub publication proceeds.
-The tier must contain exactly the signed artifact rows, qualification manifest,
-detached signature, and `SHA256SUMS`; the checksum must enumerate every other file.
-Unlisted or special entries and any inventory change during streaming are fatal.
+The finalizer takes one snapshot of the signed qualification tier before semantic use.
+The selected file system must hold the bounded 8 GiB tier and review inputs.
+Prefer an agent-backed Ed25519 public-key handle for `--signing-key`.
 
-Finalization publishes only after the staged decision, convergence, closure manifest,
-and checksum set all verify and are flushed. Any error before the atomic no-replace
-rename leaves the requested output absent; hidden abandoned staging directories are
-never valid closure tiers. Atomic publication requires macOS `renamex_np` or a Linux
-libc exposing `renameat2`; unsupported platforms fail closed before publication. Exit
-status 3 means the rename committed a complete output but its parent-directory
-durability, temporary-input cleanup, or result reporting was not confirmed. A cleanup
-failure also emits `publication_status: COMMITTED_WITH_CLEANUP_WARNING` with the output
-path. Retain that output, resolve any reported snapshot path, and run the independent
-verification below before deciding whether to use or remove it.
+If you supply a private-key path, the finalizer copies its bytes into a temporary snapshot.
+That snapshot has mode 0700.
+The finalizer removes it during cleanup.
+A cleanup warning identifies an exact retained temporary path.
+Resolve that path before GitHub publication.
+
+The tier must contain the signed artifact rows, qualification manifest, detached signature, and `SHA256SUMS`.
+The checksum must list every other file.
+An unlisted or special entry is fatal.
+An inventory change during a stream read is also fatal.
+
+Finalization verifies and flushes the staged decision, convergence, closure manifest, and checksum set.
+It publishes only after those actions pass.
+An error before the atomic no-replace rename leaves the requested output absent.
+An abandoned hidden stage directory is never a valid closure tier.
+
+Atomic publication needs macOS `renamex_np` or Linux `renameat2` support.
+An unsupported platform fails closed before publication.
+Status 3 means that the rename committed a complete output.
+The tool did not confirm durability, cleanup, or result output.
+A cleanup failure also reports `publication_status: COMMITTED_WITH_CLEANUP_WARNING` and the output path.
+Retain that output.
+
+Resolve each reported snapshot path.
+Run the independent verification below before you use or remove the output.
 
 After finalization, independently verify the signed convergence record against
 the retained closure artifacts and exact candidate:
@@ -162,17 +187,22 @@ python3 repo_work/local_convergence.py verify \
 
 ## Publication
 
-1. Re-fetch `origin`; prove the candidate commit is unchanged, `main` and remote `main`
-   are identical, the worktree is clean, and every required exact-head GitHub check passed.
-2. Create signed annotated tag `v0.9.0` at that commit with a professional message naming
-   the source-only research scope. Derive the full candidate, tree, tag-object, and peeled
-   tag-target IDs; require the target to equal the candidate. Verify the commit and tag with
-   an independently obtained allowed-signers trust root. A failed or withdrawn tag name is
-   never moved or reused.
-3. Build the upload set into a previously absent directory. The two completed evidence
-   roots are preserved as distinct deterministic tar roots. The signed map binds both tar
-   byte identities and all candidate/tree/tag identities, while verification enforces the
-   exact map/signature/tar file set:
+1. Fetch `origin` again.
+   Confirm that the candidate commit did not change.
+   Confirm that local and remote `main` are identical.
+   Confirm that the worktree is clean.
+   Confirm that each required exact-head GitHub check passed.
+2. Create signed annotated tag `v0.9.0` at that commit.
+   Use a professional message that identifies the source-only research scope.
+   Derive the complete candidate, tree, tag-object, and peeled tag-target identifiers.
+   Require the tag target to equal the candidate.
+   Verify the commit and tag with an independently obtained allowed-signers trust root.
+   Never move or reuse a failed or withdrawn tag name.
+3. Build the upload set in a previously absent directory.
+   Preserve the two completed evidence roots as separate deterministic tar roots.
+   The signed map binds both tar byte identities.
+   It also binds all candidate, tree, and tag identities.
+   Verification enforces the exact map, signature, and tar file set:
 
    ```bash
    set -euo pipefail
@@ -198,10 +228,11 @@ python3 repo_work/local_convergence.py verify \
      --tag-target "$tag_target"
    ```
 
-   Exit status 3 means the no-replace rename may already have committed a complete
-   output while parent-directory durability or result reporting remained uncertain.
-   Retain that path, verify it independently, and resolve the durability warning before
-   upload; do not blindly rerun or delete it.
+   Exit status 3 means that the no-replace rename can have committed a complete output.
+   Parent-directory durability or the result report remains uncertain.
+   Retain that path and verify it independently.
+   Resolve the durability warning before upload.
+   Do not repeat or delete the output without verification.
 
    The directory must contain exactly:
 
@@ -210,8 +241,8 @@ python3 repo_work/local_convergence.py verify \
    - `galadriel-0.9.0-release-asset-map.json`
    - `galadriel-0.9.0-release-asset-map.json.sig`
 
-   Verify that exact set before upload, using the independent trust root rather than the
-   candidate-tracked copy:
+   Verify that exact set before upload.
+   Use the independent trust root and not the candidate copy:
 
    ```bash
    set -euo pipefail
@@ -233,29 +264,37 @@ python3 repo_work/local_convergence.py verify \
      --expected-tag-target "$tag_target"
    ```
 
-4. Push only the exact `main` and `v0.9.0` identities, then verify the remote commit,
-   annotated tag object, peeled target, and both signatures again. Re-check hooks, installed
-   automation, and releases immediately before publication; no process may create a DOI,
-   Zenodo record, package publication, replacement asset, or second release.
-5. Create a **draft** GitHub release from `v0.9.0` with literal title
-   `Galadriel 0.9.0` and the exact tracked `RELEASE-NOTES.md` body. Upload the four named
-   files explicitly and without replacement. Require the API asset list to contain exactly
-   those four names, and compare every API-reported byte length and SHA-256 digest with the
-   corresponding locally computed file value. If the API omits a digest, record that field
-   as unavailable and use the mandatory authenticated byte-for-byte comparison in the next
-   step; never invent an API digest or waive the comparison. For the two tar files only,
-   additionally require locally computed values to equal their rows in the signed map; the
-   map does not contain rows for itself or its detached signature. The authenticated draft
-   re-download in the next step verifies the map signature and exact four-file set.
-   GitHub's automatically
-   generated “Source code” zip and tarball are separate convenience snapshots: they are
-   not attached assurance assets, are not covered by the map, and must not substitute for
-   either evidence tar.
-6. Download all four draft assets through the authenticated GitHub path into a new empty
-   directory. Require each downloaded file to be byte-identical to its local upload source,
-   then run `verify` and reconstruct both path-preserving tiers atomically. Release asset
-   construction and canonical-tar verification use the audit-pinned `CPython 3.14.6`;
-   another interpreter is outside the qualified deterministic representation:
+4. Push only the exact `main` and `v0.9.0` identities.
+   Verify the remote commit, annotated tag object, peeled target, and both signatures again.
+   Check hooks, installed automation, and releases immediately before publication.
+   No process may create a DOI, Zenodo record, package publication, replacement asset, or second release.
+5. Create a **draft** GitHub release from `v0.9.0`.
+   Use the exact title `Galadriel 0.9.0`.
+   Use the complete tracked `RELEASE-NOTES.md` body.
+   Upload the four named files without replacement.
+   Require exactly those four names in the application programming interface (API) asset list.
+   Compare each API byte length with its local file value.
+   Compare each API SHA-256 digest with its local file value.
+
+   If the API omits a digest, record that field as unavailable.
+   Use the authenticated byte comparison in the next step.
+   Never invent an API digest or omit the comparison.
+
+   For each tar file, compare the local values with its signed-map row.
+   The map does not contain a row for itself or its detached signature.
+   The next authenticated download verifies the map signature and exact four-file set.
+
+   GitHub generates the source ZIP and tar archives automatically.
+   Use them only as convenience snapshots.
+   Do not treat them as attached assurance assets.
+   The signed map does not cover them.
+   They cannot replace either evidence tar file.
+6. Download all four draft assets through the authenticated GitHub path.
+   Use a new empty directory.
+   Require each downloaded file to equal its local upload source byte-for-byte.
+   Run `verify` and reconstruct both path-preserving tiers atomically.
+   Use the audit-pinned `CPython 3.14.6` for asset creation and canonical tar verification.
+   A different interpreter is outside the qualified deterministic representation:
 
    ```bash
    set -euo pipefail
@@ -292,10 +331,13 @@ python3 repo_work/local_convergence.py verify \
 
    Apply the same retain-and-verify rule if reconstruction reports status 3.
 
-   In each reconstructed root, verify `SHA256SUMS` over the exact internal file set and
-   authenticate both tier manifests with the independent trust root. The release
-   principal is `sepmhn@gmail.com`; the literal namespaces are
-   `galadriel-qualification-manifest` and `galadriel-closure-manifest`:
+   In each reconstructed root, verify `SHA256SUMS` over the exact internal file set.
+   Authenticate both tier manifests with the independent trust root.
+   The release principal is `sepmhn@gmail.com`.
+   Use these literal namespaces:
+
+   - `galadriel-qualification-manifest`
+   - `galadriel-closure-manifest`
 
    ```bash
    set -euo pipefail
@@ -321,21 +363,25 @@ python3 repo_work/local_convergence.py verify \
      "$qualification_root" "$closure_root"
    ```
 
-   The outer signed map has already proved the exact reconstructed inventory; the
-   checksum verifier independently requires `SHA256SUMS` to enumerate every other file
-   exactly once. Re-run the `local_convergence.py verify` command above against the
-   reconstructed closure. Extract the qualification tier's
-   `galadriel-0.9.0.tar.gz` into a second fresh directory and run the locked
-   build/test/documentation gates from that downloaded source.
-7. Publish the draft only after every authenticated-download check passes and UTC has
-   reached the declared release date. Then download the four public assets anonymously
-   into another empty directory and repeat the four-file comparison with the local upload
-   source, exact-set verification, reconstruction, internal signature/checksum checks, and
-   the fresh-source build. Require all six tag-bound links
-   in the release body to resolve successfully. Because GitHub `blob` links return HTML,
-   byte-compare their raw counterparts—not the HTML pages—with the corresponding tagged
-   Git blobs. Also byte-compare all three public JSON Schema `$id` URLs with their tagged
-   Git blobs:
+   The outer signed map proves the exact reconstructed inventory.
+   The checksum verifier independently requires one `SHA256SUMS` row for each other file.
+   Repeat the `local_convergence.py verify` command against the reconstructed closure.
+   Extract the qualification `galadriel-0.9.0.tar.gz` file into a second fresh directory.
+   Run the locked build, test, and documentation gates from that downloaded source.
+7. Publish the draft only after each authenticated-download check passes.
+   Also wait until Coordinated Universal Time (UTC) reaches the declared release date.
+   Download the four public assets anonymously into another empty directory.
+   Compare the four files with the local upload sources.
+   Repeat exact-set verification and reconstruction.
+   Repeat the internal signature and checksum checks.
+   Repeat the fresh-source build.
+
+   Require all six tag-bound release-body links to resolve.
+
+   GitHub `blob` links return Hypertext Markup Language (HTML).
+   Compare each raw file with the applicable tagged Git blob.
+   Do not compare the HTML page as source content.
+   Compare all three public JSON Schema `$id` URLs with their tagged Git blobs:
 
    ```bash
    set -euo pipefail
@@ -379,31 +425,40 @@ python3 repo_work/local_convergence.py verify \
    rm -rf "$verification_dir"
    trap - EXIT
    ```
-8. Only after the published release and anonymous downloads are verified, preserve the
-   legacy identities listed in `WITHDRAWN-RELEASES.md`; then delete only the obsolete tag
-   and release-work refs locally/remotely, without deleting their commits or evidence, and
-   prove the refs and any legacy GitHub release are absent.
-9. Confirm the release author is Sepehr Mahmoudian, the literal title is
-   `Galadriel 0.9.0`, and the version, date, and tracked body are exact. Require exactly
-   four attached assets and no DOI/Zenodo/crates.io/deployment/production claim. Retain
-   the remote branch, signed tag, release, download, signature, reconstruction,
-   fresh-build, and cleanup evidence.
+8. Verify the published release and anonymous downloads first.
+   Then preserve the legacy identities in `WITHDRAWN-RELEASES.md`.
+   Delete only the obsolete tag and release-work references.
+   Delete the local and remote references.
+   Do not delete their commits or evidence.
+   Confirm that none of those references exists.
+   Confirm that no applicable legacy GitHub release exists.
+9. Confirm that the release author is Sepehr Mahmoudian.
+   Confirm that the literal title is `Galadriel 0.9.0`.
+   Confirm that the version, date, and tracked body are exact.
+   Require exactly four attached assets.
+   Require no DOI, Zenodo, crates.io, deployment, or production claim.
+   Retain the branch, signed tag, and release evidence.
+   Retain download, signature, reconstruction, fresh-build, and cleanup evidence.
 
 ## Rollback and withdrawal
 
-Do not move or reuse `v0.9.0`. If publication metadata alone is wrong, correct the
-GitHub release text without replacing assets and record the edit. If source,
-evidence, security, or provenance is wrong:
+Do not move or reuse `v0.9.0`.
+If only publication metadata is wrong, correct the GitHub release text.
+Do not replace assets.
+Record the edit.
+If source, evidence, security, or provenance is wrong:
 
-1. mark the GitHub release withdrawn with the exact reason and affected claims;
-2. remove download promotion, but preserve hashes, logs, and the incident record;
-3. delete the remote tag only after recording its tag object, target commit,
-   signature, assets, and reason in `WITHDRAWN-RELEASES.md`;
-4. notify affected consumers and reject the withdrawn artifact identity in future
-   qualification;
-5. repair on `main`, choose a fresh version, and rerun every entry condition;
-6. never reuse a version, tag, checksum, provenance identity, epoch, key, or release asset.
+1. Mark the GitHub release as withdrawn with the exact reason and affected claims.
+2. Remove download promotion.
+   Preserve hashes, logs, and the incident record.
+3. Delete the remote tag only after recording its tag object, target commit,
+   signature, assets, and reason in `WITHDRAWN-RELEASES.md`.
+4. Notify affected consumers.
+   Reject the withdrawn artifact identity in new qualification work.
+5. Repair the defect on `main`.
+   Select a new version and repeat each entry condition.
+6. Never reuse a version, tag, checksum, provenance identity, epoch, key, or release asset.
 
-Rollback occurs in reverse dependency order. Galadriel 0.9.0 has no authority to
-roll back pid-rs, NCP, Crebain, Haldir, or Prisoma; cross-repository changes require
-their respective leads and the reconciliation change-request process.
+Rollback occurs in reverse dependency order.
+Galadriel 0.9.0 has no authority to roll back pid-rs, NCP, Crebain, Haldir, or Prisoma.
+Cross-repository changes require the applicable project lead and reconciliation process.

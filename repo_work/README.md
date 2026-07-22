@@ -1,23 +1,23 @@
 # Repository review utilities
 
-These standard-library-only utilities implement the exact-checkout review workflow
-required for the Galadriel 0.9 research release. They inventory evidence;
-they never claim that a machine-generated row received human review.
+These standard-library-only utilities implement the exact-checkout review workflow for the Galadriel 0.9 research release.
+They inventory evidence.
+They never claim human review of a machine-generated row.
 
-Source readiness and release closure are separate. The checked-in
-`task-closure-plan.json` is a byte-bound projection of all 116 handoff tasks and
-contains only open source questions, requirements, counterfactuals, evidence
-types, and explicit exclusions. It never contains generated completion findings.
-Verify that source state with:
+Source readiness and release closure are separate.
+The checked-in `task-closure-plan.json` is a byte-bound projection of all 116 handoff tasks.
+It contains only open source questions, requirements, counterfactuals, evidence types, and explicit exclusions.
+It never contains generated completion findings.
+Verify that source state with these commands:
 
 ```bash
 python3 repo_work/build_task_dispositions.py verify
 python3 scripts/release_audit.py verify
 ```
 
-Exact-file completion, task findings, the final twenty-lens review, and the
-release decision are produced after the signed candidate exists and remain in an
-external closure bundle.
+The release process produces exact-file completion after the signed candidate exists.
+It also produces task findings, the final twenty-lens review, and the release decision.
+An external closure bundle retains these records.
 
 Run them from a clean candidate checkout:
 
@@ -31,32 +31,35 @@ python3 repo_work/make_review_packets.py audit/generated/FILE_REVIEW_LEDGER.csv 
 python3 repo_work/scan_claim_language.py --repo . --out audit/generated/CLAIM_LANGUAGE.json
 ```
 
-The feature-graph gate reads `.ncp-consumer` once through a bounded, no-follow,
-nonblocking regular-file descriptor. It binds the exact PID, NCP, Zenoh, and Tokio
-feature sets used by every profile in which those dependencies are security relevant.
+The feature-graph gate reads `.ncp-consumer` one time through a bounded regular-file descriptor.
+The descriptor does not follow links or block.
+The gate binds the exact PID, NCP, Zenoh, and Tokio feature sets.
+These feature sets apply to each profile where those dependencies affect security.
 
-For qualification bundles, `audit_tracked_files.py --out` and
-`scan_claim_language.py --out` may point outside the checkout. Each output must be
-new, so a prior review cannot be overwritten or silently mixed with another cut.
+For qualification bundles, `audit_tracked_files.py --out` can point outside the checkout.
+`scan_claim_language.py --out` can also point outside the checkout.
+Use a new output path for each command.
+This requirement prevents an overwrite or a silent mix of review cuts.
 
-Reproduce the frozen, unmodified baseline separately from a dirty candidate
-checkout (the output directory must not already exist):
+If the candidate checkout is dirty, reproduce the frozen unmodified baseline separately.
+The output directory must not exist before this command:
 
 ```bash
 python3 repo_work/reproduce_baseline.py \
   --repo . \
   --commit 94e2f8cc01f352d2bf899b7f656997f143a2588f \
-  --out release/0.9.0/evidence/baseline-94e2f8cc
+  --out /new/path/galadriel-baseline-94e2f8cc
 ```
 
-The runner uses a detached temporary worktree and a temporary Cargo target
-directory. It records the exact commit/tree, tool identities, command arguments,
-combined output, exit codes, timestamps, Cargo metadata, and artifact digests.
+The runner uses a detached temporary worktree and a temporary Cargo target directory.
+It records the exact commit and tree.
+It also records tool identities, command arguments, combined output, exit codes, timestamps, Cargo metadata, and artifact digests.
 
-Freeze the complete supplied master handoff and exact baseline inputs only after the
-release input records are final. Generate into a new staging directory: the tool refuses
-to overwrite a manifest, signer file, or pre-existing signature. Verify the staged bytes
-before replacing the tracked generated artifacts and regenerating the audit inventory:
+After the release input records are final, freeze the complete supplied master handoff and exact baseline inputs.
+Generate the artifacts in a new temporary directory.
+The tool refuses a manifest, signer file, or signature that already exists.
+Before you replace tracked generated artifacts, verify the temporary bytes.
+Then, regenerate the audit inventory:
 
 ```bash
 handoff_root=/path/to/SEPAHEAD_V1_0_CURRENT_HEAD_MAX_EFFORT_MASTER_HANDOFF
@@ -89,45 +92,57 @@ python3 repo_work/freeze_audit_inputs.py verify \
 python3 scripts/release_audit.py verify
 ```
 
-The semantic verifier checks canonical manifest bytes, the detached signature,
-the exact ordered release-input set and current digests, baseline object bindings,
-handoff cross-bindings, and signer metadata. Supplying `--handoff-root` additionally
-re-inventories every external handoff entry. CI and portable qualification omit that
-external path but still validate the retained handoff structure and the declared
-child-archive and task-ledger digests. The recorded origin and tag list are historical
-discovery inputs; verification validates their shape without comparing them to mutable
-live refs. Release-input digests intentionally bind the current working-tree bytes during
-the pre-commit freeze; candidate qualification later requires a clean checkout at the
-exact signed commit before accepting those same bytes.
+The semantic verifier checks canonical manifest bytes and the detached signature.
+It checks the ordered release-input set and current digests.
+It also checks baseline object bindings, handoff cross-bindings, and signer metadata.
 
-For the first trust-file bootstrap, independently inspect the staged public key and
-install `ALLOWED_SIGNERS` only when no tracked trust file exists. Any later key rotation
-is a release-boundary change: replace the tracked public key deliberately, regenerate and
-re-sign the frozen manifest, and restart candidacy and every candidate-bound check. The
-public-key entry is intentionally namespace-agnostic because its byte-identical external
-counterpart authenticates signed Git commits and several release bundles. Every consumer
-pins its own literal namespace in Git or the release tooling; adding another consumer
-requires review. The file must not be treated as a general application trust policy.
+When the command includes `--handoff-root`, the verifier inventories each external handoff entry again.
+Continuous integration and portable qualification omit that external path.
+They still validate the retained handoff structure.
+They also validate the declared child-archive and task-ledger digests.
 
-Private signing material is never copied into the repository. `ALLOWED_SIGNERS`
-contains only the public key needed to reproduce signature verification; the
-`--signing-key` handle may itself be that public key when its private half is
-available through `ssh-agent`.
+The recorded origin and tag list are historical discovery inputs.
+The verifier validates their shape but does not compare them with mutable live references.
+During the pre-commit freeze, release-input digests bind the current worktree bytes.
+Candidate qualification accepts those bytes only from a clean checkout at the exact signed commit.
 
-For closure finalization, prefer that agent-backed public-key handle and pass
-`--snapshot-dir` to a secure external filesystem with at least 8 GiB plus review-
-input capacity. The finalizer authenticates and snapshots each signed input once,
-reports any failed temporary cleanup with its exact path, and never treats an
-abandoned staging directory as a valid closure tier.
+For the first trust-file bootstrap, confirm that no tracked trust file exists.
+Then, independently inspect the temporary public key.
+Install `ALLOWED_SIGNERS` only after that inspection.
+
+A key rotation after bootstrap is a release-boundary change.
+Replace the tracked public key deliberately.
+Regenerate and sign the frozen manifest again.
+Restart candidacy and each candidate-bound check.
+
+The public-key entry intentionally has no namespace.
+Its byte-identical external counterpart authenticates signed Git commits and several release bundles.
+Each consumer pins its literal namespace in Git or the release tools.
+Before you add a consumer, review the new use.
+Do not use this file as a general application trust policy.
+
+Never copy private signing material into the repository.
+`ALLOWED_SIGNERS` contains only the public key for reproducible signature verification.
+The `--signing-key` handle can be that public key when `ssh-agent` has its private half.
+
+For closure finalization, prefer that agent-backed public-key handle.
+Pass `--snapshot-dir` to a secure external file system.
+The file system must have at least 8 GiB plus capacity for review inputs.
+The finalizer authenticates each signed input one time.
+It takes one snapshot of each input.
+If temporary cleanup fails, it reports the exact path.
+
+The finalizer never accepts an abandoned temporary directory as a valid closure tier.
 
 Public-API verification invokes `cargo-public-api` through the exact
 `nightly-2026-06-16` rustdoc toolchain and rejects a different rustc commit.
 
-After all four `mutation-diff` jobs pass for the exact candidate, download and
-inspect their four artifact directories. Shard `2/4` also contains two focused
-direct-test runs for synchronization mutants that intentionally block unrelated
-full-suite tests when active. Assemble all six checked outcome records and their
-run receipt without rewriting the candidate or trusting a candidate-provided key:
+After all four `mutation-diff` jobs pass for the exact candidate, download their four artifact directories.
+Inspect each directory.
+Shard `2/4` also contains two focused direct-test runs for synchronization mutants.
+When active, those mutants intentionally block unrelated full-suite tests.
+Assemble all six checked outcome records and their run receipt.
+Do not rewrite the candidate or trust a candidate-provided key:
 
 ```bash
 set -euo pipefail
@@ -145,20 +160,39 @@ python3 repo_work/prepare_mutation_evidence.py \
   --shard 3/4=/downloaded/mutation-diff-results-4-of-4
 ```
 
-The workflow disables ambient cargo-mutants configuration and validates the two
-focused outputs before the broad shard runs. The assembler requires each job's
-exact candidate/tree record, canonical frozen-baseline diff and digest, one
-successful non-vacuous Cargo baseline, at least one caught mutant per shard, and
-no missed or timed-out mutant. It also binds the focused runs to the exact Cargo
-build/test commands, process outcomes, complete package/file/function/span mutant
-descriptors, and named non-blocking tests. It copies the six checked
-`outcomes.json` files and their exact-run receipt into a signed external evidence
-directory.
+The workflow disables ambient cargo-mutants configuration.
+It validates the two focused outputs before the broad shard runs.
 
-Qualify a final clean signed `main` commit into a new directory outside the
-checkout. The deep form runs the pinned hostile-input campaigns as well as the
-full build, test, documentation, feature, release, dependency, source-inventory,
-evidence, source-archive, SBOM, and checksum gates:
+The assembler requires these items from each job:
+
+- exact candidate and tree record
+- canonical frozen-baseline difference and digest
+- one successful non-vacuous Cargo baseline
+- at least one caught mutant per shard
+- no missed mutant
+- no timed-out mutant
+
+It binds the focused runs to the exact Cargo build and test commands.
+It also binds process outcomes and complete package, file, function, and span mutant descriptors.
+The records include the named `non-blocking` tests.
+The assembler copies the six checked `outcomes.json` files into a signed external evidence directory.
+It also copies their exact-run receipt.
+
+Qualify a final clean signed `main` commit into a new directory outside the checkout.
+The deep form runs the pinned hostile-input campaigns.
+It also runs these complete gates:
+
+- build
+- test
+- documentation
+- feature
+- release
+- dependency
+- source inventory
+- evidence
+- source archive
+- software bill of materials (SBOM)
+- checksum
 
 ```bash
 set -euo pipefail
@@ -177,41 +211,64 @@ python3 repo_work/qualify_candidate.py \
   --keep-going
 ```
 
-Retained supply-chain evidence is stream-bound to the pinned tools: `cargo-deny`
-0.19.9 license JSON is read from stderr only and requires byte-empty stdout, while
-`cargo-audit` JSON is read from stdout and its stderr is retained as diagnostics.
-Finalization verifies those declarations, the opposite-stream diagnostics, and each
-report's exact signed-manifest identity before accepting the qualification bundle.
+The retained supply-chain evidence binds each stream to a pinned tool.
+`cargo-deny` 0.19.9 writes license JSON only to standard error (stderr).
+Its standard output (stdout) must contain zero bytes.
+`cargo-audit` writes JSON to stdout.
+The evidence retains its stderr as diagnostics.
+Before it accepts the qualification bundle, finalization verifies these stream declarations.
 
-The retained `.crate` files are reproducible unpublished-source packages, not a
-crates.io publication claim. Cargo prepares them twice in disposable exact-commit
-clones using offline path overrides for the locked unpublished workspace/Git
-dependencies. Per-package generated lockfiles are excluded; the exact candidate
-`Cargo.lock` remains in the signed full source archive.
+It also verifies the opposite-stream diagnostics and each report's exact signed-manifest identity.
 
-The qualifier works in a detached temporary worktree and refuses a dirty subject,
-wrong branch/commit, unsigned commit, existing output directory, stale audit, or
-post-run source drift. It also regenerates the complete core and PID Rust API
-inventories with exactly `cargo-public-api 0.52.0` and rejects byte-level drift
-from the retained snapshots. A recorded run is author-operated evidence, not an
-independent clean-room or deployment qualification.
+The retained `.crate` files are reproducible unpublished-source packages.
+They do not claim a crates.io publication.
+Cargo prepares each package two times in disposable exact-commit clones.
+It uses offline path overrides for the locked unpublished workspace and Git dependencies.
+Cargo excludes per-package generated lockfiles.
+The signed full source archive retains the exact candidate `Cargo.lock`.
 
-Its signed manifest covers every semantic artifact while excluding only the manifest,
-its detached signature, and the final `SHA256SUMS` control file. That checksum then
-enumerates every other retained file, including the manifest/signature pair. Finalization
-requires exactly those signed rows plus the three control files, snapshots them once,
-and recomputes `SHA256SUMS`; an unlisted regular file, symlink, FIFO, special file, or
-empty directory, as well as a mid-copy inventory change, aborts before closure
-publication.
+The qualifier works in a detached temporary worktree.
+It refuses these conditions:
 
-After intentionally refreshing an accepted snapshot, regenerate its derived core
-comparison with `python3 repo_work/check_public_api.py --refresh-diff`. The command
-first proves that both retained snapshots exactly match source and the pinned tool;
-it never rewrites either snapshot, and its unified diff omits mutable file timestamps.
+- dirty subject
+- wrong branch or commit
+- unsigned commit
+- output directory that already exists
+- stale audit
+- source drift after the run
 
-After the exact file ledger and reviewer inputs are completed, sign the T114 review,
-then the candidate-bound v3 T115 decision, then the all-task dispositions. Create the
-closure tier without modifying the candidate:
+It regenerates the complete core and PID Rust API inventories with exactly `cargo-public-api 0.52.0`.
+It rejects byte-level drift from the retained snapshots.
+The author operates and records each run.
+The run supplies evidence.
+It is not an independent clean-room or deployment qualification.
+
+Its signed manifest covers each semantic artifact.
+It excludes only the manifest, its detached signature, and the final `SHA256SUMS` control file.
+That checksum lists each other retained file.
+This list includes the manifest and signature pair.
+
+Finalization requires exactly the signed rows and the three control files.
+It snapshots each required item one time and calculates `SHA256SUMS` again.
+Finalization aborts before closure publication if it finds one of these conditions:
+
+- unlisted regular file
+- symbolic link
+- first-in, first-out (FIFO) special file
+- other special file
+- empty directory
+- inventory change during a copy
+
+After you intentionally refresh an accepted snapshot, regenerate its derived core comparison.
+Use `python3 repo_work/check_public_api.py --refresh-diff`.
+The command first proves that both retained snapshots exactly match source and the pinned tool.
+It never rewrites either snapshot.
+Its unified difference omits mutable file timestamps.
+
+After reviewers complete the exact file ledger and review inputs, sign the T114 review.
+Then, sign the candidate-bound v3 T115 decision.
+Next, sign the all-task dispositions.
+Create the closure tier without a candidate change:
 
 ```bash
 set -euo pipefail
@@ -234,77 +291,102 @@ python3 repo_work/finalize_release.py \
   --out /new/path/galadriel-0.9.0-closure
 ```
 
-Both commands derive an ephemeral public trust root from the external signing-key
-handle (a private key or an agent-backed Ed25519 public key).
-The candidate's tracked `ALLOWED_SIGNERS` is checked only as matching metadata; it
-is never trusted to authenticate its own commit or bundle.
+Both commands derive a temporary public trust root from the external signing-key handle.
+The handle can be a private key or an agent-backed Ed25519 public key.
+The commands compare the candidate-tracked `ALLOWED_SIGNERS` only as metadata.
+They never use that file to authenticate the candidate commit or bundle.
 
-The supplied decision already carries the detached `galadriel-release-decision`
-signature; finalization retains those exact bytes instead of generating a second,
-self-referential decision. It stages, verifies, and flushes the whole tier before one
-atomic no-replace same-parent rename, so the requested path is never a partial
-result. Pre-publication failures leave it absent. Status 3 means the rename committed
-a complete output but the later parent-directory durability sync, temporary-input
-cleanup, or result report failed. A cleanup failure still emits a machine-readable
-`COMMITTED_WITH_CLEANUP_WARNING` result naming the complete output. Independently
-verify that retained bundle and resolve any retained snapshot path before use.
+The supplied decision already has the detached `galadriel-release-decision` signature.
+Finalization retains those exact bytes and does not create a second self-referential decision.
+It stages, verifies, and flushes the complete tier before one atomic no-replace same-parent rename.
+Thus, the requested path never contains a partial result.
+Failures before publication leave the path absent.
 
-Atomic no-replace publication requires macOS `renamex_np` or a Linux libc exposing
-`renameat2`. Other platforms fail closed before publication; finalization must not be
-replaced with a check-then-rename sequence.
+Status 3 means that the rename committed a complete output.
+It also means that a subsequent parent-directory durability sync, temporary-input cleanup, or result report failed.
+A cleanup failure still emits a machine-readable `COMMITTED_WITH_CLEANUP_WARNING` result.
+That result names the complete output.
+Before use, independently verify the retained bundle.
+Resolve each retained snapshot path.
 
-Finalization also writes `LOCAL-CONVERGENCE.json` and its detached
-`galadriel-local-convergence` signature. The adapted schema preserves the supplied
-116-task and ten-wave gates while binding the approved 0.9.0 candidate. The
-validator requires complete tracked-file review, exact ordered task/wave coverage,
-artifact byte identities, and explicit pid-rs, NCP, Crebain, Haldir, Prisoma,
-Engram/Paper2Brain, ROS / ROS 2, and external-authority requirements. `LOCAL_PIN_PASS`
-covers exact locally qualified pid-rs/NCP build pins.
-`ready_for_cross_repo_reconciliation` means only that optional reciprocal work may
-begin; it is not another repository's GO or deployment qualification.
+Atomic no-replace publication requires macOS `renamex_np` or a Linux libc that exposes `renameat2`.
+Other platforms fail closed before publication.
+Do not replace finalization with a check-then-rename sequence.
 
-`FILE_REVIEW_LEDGER.csv` contains one row per tracked path with immutable Git and
-SHA-256 identities, language, known generator, criticality, and a reviewer-role
-assignment. Its review fields start as `UNREVIEWED`; assignment is not evidence of
-completion. Each packet covers the complete declared line range (or complete byte
-range for binary/data), and a reviewer must fill findings from the exact blob.
-Binary, symlink, generated, and data paths remain separate review items. External
-comments remain open unless an identified human actually records them.
+Finalization also writes `LOCAL-CONVERGENCE.json`.
+It writes the detached `galadriel-local-convergence` signature.
+The adapted schema preserves the supplied 116-task and ten-wave gates.
+It also binds the approved 0.9.0 candidate.
 
-`verify_evidence_manifest.py` verifies a strict JSON artifact manifest without
-following paths outside the selected root. It rejects duplicate keys, duplicate
-paths, non-regular artifacts, and digest/size drift.
+The validator requires complete tracked-file review.
+It requires exact ordered task and wave coverage.
+It requires artifact byte identities.
+It also requires explicit requirements for these projects and boundaries:
+
+- pid-rs
+- NCP
+- Crebain
+- Haldir
+- Prisoma
+- Engram and Paper2Brain
+- ROS and ROS 2
+- external authority
+
+`LOCAL_PIN_PASS` covers the exact locally qualified pid-rs and NCP build pins.
+`ready_for_cross_repo_reconciliation` means only that optional reciprocal work can start.
+It is not another repository GO or deployment qualification.
+
+`FILE_REVIEW_LEDGER.csv` contains one row for each tracked path.
+Each row has immutable Git and SHA-256 identities, language, known generator, criticality, and a reviewer-role assignment.
+Its review fields start as `UNREVIEWED`.
+An assignment does not prove completion.
+Each packet covers the complete declared line range.
+For binary or data files, it covers the complete byte range.
+
+A reviewer must record findings from the exact blob.
+Binary, symbolic-link, generated, and data paths remain separate review items.
+External comments remain open until an identified human records them.
+
+`verify_evidence_manifest.py` verifies a strict JSON artifact manifest.
+It does not follow paths outside the selected root.
+It rejects duplicate keys, duplicate paths, non-regular artifacts, and digest or size drift.
 
 <!-- BEGIN RELEASE-ASSET-PACKAGER -->
 ## Deterministic GitHub release evidence assets
 
-`package_release_assets.py` converts the exact, already completed qualification and
-closure directories into a public four-file upload set without changing either tier:
+`package_release_assets.py` converts the exact completed qualification and closure directories into a public four-file upload set.
+It does not change either tier:
 
 - `galadriel-0.9.0-qualification.tar`
 - `galadriel-0.9.0-closure.tar`
 - `galadriel-0.9.0-release-asset-map.json`
 - `galadriel-0.9.0-release-asset-map.json.sig`
 
-The map is the authoritative tier-to-asset-name mapping. Consumers resolve a tier
-through its map row and verify the recorded filename, root prefix, digest, size, and
-complete file inventory; they must not infer meaning from attachment order or an
-opaque download URL. The two uncompressed tar files have distinct fixed root prefixes,
-retain every internal directory and regular file (including each tier's root
-`SHA256SUMS`), and use canonical metadata, explicit strict UTF-8 member-name encoding,
-and lexical member order. Each tar must be strictly smaller than 2 GiB. The upload set
-contains exactly four assets, well below GitHub's 1,000-upload limit.
+The map is the authoritative tier-to-asset-name map.
+For each tier, use its map row.
+Verify the recorded filename, root prefix, digest, size, and complete file inventory.
+Do not infer a tier from attachment order or an opaque download URL.
 
-To keep POSIX, Windows, and archive path interpretations unambiguous, any input name
-containing a backslash is rejected even though POSIX permits that byte in a filename.
-The independently supplied `ALLOWED_SIGNERS` trust root is limited to 4 KiB. Prepare
-replacement evidence tiers or a narrower reviewed trust root before packaging if either
-bound is exceeded; the packager never rewrites finalized evidence.
+The two uncompressed tar files have distinct fixed root prefixes.
+They retain each internal directory and regular file.
+This inventory includes each tier root `SHA256SUMS`.
+The tar files use canonical metadata and explicit strict UTF-8 member-name encoding.
+They also use lexical member order.
+Each tar must be strictly smaller than 2 GiB.
 
-First independently verify the candidate commit and annotated signed tag using the
-release trust root. Supply the resulting full commit, tree, tag-object, and peeled
-tag-target IDs; the packager requires the tag target to equal the candidate commit and
-binds all of them into the signed map:
+The upload set contains exactly four assets, below the GitHub limit of 1,000 uploads.
+
+The packager rejects each input name that has a backslash.
+This rule makes `Portable Operating System Interface (POSIX)`, Windows, and archive path interpretations unambiguous.
+POSIX permits that byte in a filename.
+The independently supplied `ALLOWED_SIGNERS` trust root has a maximum size of 4 KiB.
+If the 2 GiB or 4 KiB bound fails, prepare replacement evidence tiers or a narrower reviewed trust root before packaging.
+The packager never rewrites finalized evidence.
+
+Before packaging, independently verify the candidate commit and annotated signed tag with the release trust root.
+Supply the full commit, tree, tag-object, and peeled tag-target identifiers.
+The packager requires the tag target to equal the candidate commit.
+It binds all these identifiers into the signed map:
 
 ```bash
 set -euo pipefail
@@ -330,24 +412,31 @@ python3 repo_work/package_release_assets.py build \
   --tag-target "$tag_target"
 ```
 
-The map always identifies release `0.9.0`, author `Sepehr Mahmoudian`, and null DOI
-and Zenodo fields. Its detached SSH signature uses the literal
-`galadriel-release-assets` namespace and the established release principal. Private
-signing material is never copied. Build snapshots both input trees through bounded,
-nonblocking, no-follow descriptors; rejects links, special files, path ambiguity,
-overlap, or ordinary mid-run change; self-verifies the completed staging tree; and
-publishes it with the same atomic no-replace mechanism as release finalization.
-Exit status 3 has the same committed-with-durability-warning meaning: the requested
-output may already be complete after the atomic rename. Retain it, verify it
-independently, and resolve the parent-directory durability uncertainty before upload;
-do not blindly rerun or delete it.
+The map always identifies release `0.9.0` and author `Sepehr Mahmoudian`.
+Its DOI and Zenodo fields are null.
+Its detached SSH signature uses the literal `galadriel-release-assets` namespace.
+It also uses the established release principal.
+Never copy private signing material.
 
-Release asset construction and canonical-tar verification are qualified with the
-audit-pinned `CPython 3.14.6`. A different interpreter may emit different PAX bytes and
-therefore fail closed; use the pinned interpreter for public release verification.
+The `build` command snapshots both input trees through bounded descriptors.
+The descriptors do not block or follow links.
+The command rejects links, special files, path ambiguity, overlap, and ordinary changes during a run.
+It verifies the completed temporary tree itself.
+It uses the same atomic no-replace publication mechanism as release finalization.
 
-Verify downloaded assets against an independently obtained allowed-signers trust root
-and explicit expected identities:
+Exit status 3 means that the atomic rename can have committed a complete output.
+It also means that durability remains uncertain.
+Retain the output.
+Verify it independently.
+Before upload, resolve the parent-directory durability uncertainty.
+Do not repeat or delete the output without verification.
+
+The audit qualifies release asset construction and canonical-tar verification with `CPython 3.14.6`.
+A different interpreter can emit different PAX bytes and fail closed.
+Use the pinned interpreter for public release verification.
+
+Verify downloaded assets against an independently obtained allowed-signers trust root.
+Supply the explicit expected identities:
 
 ```bash
 set -euo pipefail
@@ -369,19 +458,23 @@ python3 repo_work/package_release_assets.py verify \
   --expected-tag-target "$tag_target"
 ```
 
-Verification authenticates snapshotted map bytes before trusting any rows, requires
-canonical duplicate-free JSON and the exact four-file asset set, checks every bound
-identity and inventory row, then regenerates each canonical tar stream and requires its
-metadata, content, order, inventory, and complete bytes to match. It rejects compressed,
-appended, reordered, duplicated, linked, special, missing, extra, oversized, or changing
-inputs. The candidate-tracked `release/0.9.0/audit/ALLOWED_SIGNERS` is comparison
-metadata only: a verifier may compare it byte-for-byte with the independent trust root,
-but must never let the candidate authenticate itself.
+Verification authenticates the snapshotted map bytes before it uses any row.
+It requires canonical duplicate-free JSON and the exact four-file asset set.
+It checks each bound identity and inventory row.
+Then, it generates each canonical tar stream again.
+It requires equal metadata, content, order, inventory, and complete bytes.
 
-`extract` (alias `reconstruct`) performs the same verification while manually writing
-regular files into a new mode-0700 staging directory. It never calls `extractall`, never
-follows archive links, creates files exclusively, and publishes the two fixed-prefix
-trees only after complete verification:
+It rejects compressed, appended, reordered, duplicated, linked, special, missing, extra, or oversized inputs.
+It also rejects an input that changes during verification.
+The candidate-tracked `release/0.9.0/audit/ALLOWED_SIGNERS` is comparison metadata only.
+A verifier can compare it byte-for-byte with the independent trust root.
+The verifier must not let the candidate authenticate itself.
+
+`extract`, also named `reconstruct`, performs the same verification.
+It writes regular files manually into a new mode-0700 temporary directory.
+It never calls `extractall` or follows archive links.
+It creates each file exclusively.
+It publishes the two fixed-prefix trees only after complete verification:
 
 ```bash
 set -euo pipefail
@@ -404,12 +497,15 @@ python3 repo_work/package_release_assets.py reconstruct \
   --expected-tag-target "$tag_target"
 ```
 
-No mode performs a GitHub mutation. Upload all four files only after verification.
-GitHub's automatically generated “Source code” zip and tarball are separate convenience
-snapshots: they are not members of this four-file upload set, are not authenticated by
-the release-asset map, and must not substitute for either evidence tar.
-After reconstruction, authenticate the tier manifests under the distinct literal SSH
-namespaces `galadriel-qualification-manifest` and `galadriel-closure-manifest`, and
-validate each exact `SHA256SUMS` inventory. The normative commands and release principal
-are in `release/0.9.0/RELEASE-RUNBOOK.md`.
+No mode changes GitHub state.
+After verification, upload all four files.
+GitHub automatically generates a “Source code” zip and tarball as convenience snapshots.
+They are not part of this four-file upload set.
+The release-asset map does not authenticate them.
+They must not replace either evidence tar.
+
+After reconstruction, authenticate the tier manifests under two distinct literal SSH namespaces.
+The namespaces are `galadriel-qualification-manifest` and `galadriel-closure-manifest`.
+Validate each exact `SHA256SUMS` inventory.
+`release/0.9.0/RELEASE-RUNBOOK.md` contains the normative commands and release principal.
 <!-- END RELEASE-ASSET-PACKAGER -->

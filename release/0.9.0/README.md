@@ -1,84 +1,101 @@
 # Galadriel 0.9.0 release record
 
-This directory is the auditable release record for Galadriel's Mirror 0.9.0.
-The release author is **Sepehr Mahmoudian**. It is
-a GitHub source release: no crates.io publication, DOI, or Zenodo identifier is
-claimed.
+This directory contains the auditable release record for Galadriel's Mirror 0.9.0.
+The release author is **Sepehr Mahmoudian**.
+The publication channel is a GitHub source release.
+This release does not claim crates.io publication, a DOI, or a Zenodo identifier.
 
-[`handoff-source.json`](handoff-source.json) records the exact current external
-handoff archive and task-ledger digests. The superseded handoff formerly embedded
-here was removed: inherited prose is provenance, not fresh proof. The current
-116-task projection is [`tasks.json`](tasks.json), and
-[`VERSION-ADAPTATION.md`](VERSION-ADAPTATION.md) maps its 1.0 design target onto
-0.9.0 without weakening technical, safety, or evidence obligations.
+[`handoff-source.json`](handoff-source.json) identifies the current external handoff.
+It records the exact archive and task-ledger digests.
+The repository does not contain the superseded handoff copy.
+Inherited prose supplies provenance and not new evidence.
 
-**GLD-090-AUD-001:** The release **SHALL** generate a canonical audit manifest
-covering every repository, toolchain, Git dependency, dataset/fixture/evidence
-input, normative document, and external source used for qualification. Each local
-artifact **SHALL** carry its path, byte length, purpose and SHA-256; mutable or
-abbreviated repository identities **SHALL NOT** qualify.
+[`tasks.json`](tasks.json) contains the current 116-task projection.
+[`VERSION-ADAPTATION.md`](VERSION-ADAPTATION.md) maps the 1.0 design target to version 0.9.0.
+This adaptation does not weaken a technical, safety, or evidence obligation.
 
-The manifest itself is the sole tracked-file exclusion from its artifact list,
-because a file cannot contain its own cryptographic digest. This exclusion is
-machine-recorded and enforced exactly; `requirements-ledger.json` and every other
-tracked path remain covered. The qualifier's signed full-source archive separately
-binds the manifest bytes.
+**GLD-090-AUD-001:** The release **SHALL** generate a canonical audit manifest.
+The manifest **SHALL** cover each qualification input in these groups:
 
-**GLD-090-LED-001:** The requirement ledger **SHALL** contain exactly T000–T115 in
-dependency order. `COMPLETE` **SHALL** require normative SHALL-language, retained
-tests/evidence, all twenty current-handoff lenses, and a residual-risk disposition;
-prose alone **SHALL NOT** close a task.
+- repositories
+- toolchains
+- Git dependencies
+- datasets, fixtures, and evidence
+- normative documents
+- external sources
 
-Normative and generated artifacts:
+Each local artifact **SHALL** record its path, byte length, purpose, and SHA-256 value.
+A mutable or abbreviated repository identity **SHALL NOT** qualify.
 
-- `RELEASE-NOTES.md` is the reviewed GitHub release text and preserves every
-  unavailable deployment, reciprocal-integration, archival, and policy-use claim.
-- `audit-inputs.json` is the reviewed input inventory; `audit-manifest.json` is
-  generated from it and the repository.
-- `claims.json` separates implemented, validated, deployment-qualified, and
-  explicitly unclaimed behavior. There are intentionally no
-  deployment-qualified claims.
-- `handoff-source.json` identifies the immutable source package; `tasks.json` is
-  the current task-index projection. `task-closure-plan.json`,
-  `task-dispositions.json`, and `requirements-ledger.json` are source-state
-  records: they preserve the exact post-commit work still required and do not
-  represent future review as complete.
-- `ecosystem-cut.json` records each inspected sibling object plus the candidate's explicit
-  Engram/Paper2Brain, ROS, and external-authority non-edges, relationship direction,
-  build/runtime optionality, rationale, acyclic boundary, and Haldir supersession. Mutable
-  heads are provenance only; the two Cargo revisions are the only dependency pins.
-- `local-convergence-schema.json` is the explicit 0.9.0 adaptation of the supplied
-  convergence schema. Finalization emits a separately signed, exact-candidate
-  `LOCAL-CONVERGENCE.json` only after all 116 dispositions, ten wave acceptances,
-  complete file review, and retained artifacts pass, and after the fixed local
-  cross-repository requirements are explicitly recorded. Exact pid-rs/NCP pin graphs
-  are locally qualified; Crebain/Haldir/Prisoma remain optional or prospective; and
-  Engram/Paper2Brain, ROS, external-authority, reciprocal, and deployed relationships
-  remain absent or unclaimed.
-  The record is an entry point for any later reciprocal reconciliation, not evidence
-  that another repository accepted this candidate.
-- `repo_work/package_release_assets.py` maps the completed qualification and closure
-  tiers into two deterministic path-preserving tar files, a canonical asset map, and its
-  detached `galadriel-release-assets` signature. The signed map binds both tar byte
-  identities to the exact candidate, tree, signed tag object/target, author, and null
-  DOI/Zenodo fields; verification additionally enforces the exact four-file upload set.
-- `api/` retains the public-source API baseline and accepted 0.9.0 surface.
-- `evidence/` retains complete command output rather than pass/fail summaries.
+The audit manifest excludes only itself from its tracked-file inventory.
+A file cannot contain its own cryptographic digest.
+The generator records and enforces this exact exclusion.
+It includes `requirements-ledger.json` and all other tracked paths.
+The signed full-source archive separately binds the audit manifest bytes.
+
+**GLD-090-LED-001:** The requirement ledger **SHALL** contain exactly T000 through T115.
+It **SHALL** keep dependency order.
+A `COMPLETE` task **SHALL** have normative `SHALL` requirements and retained evidence.
+It **SHALL** also have all twenty handoff lenses and a residual-risk disposition.
+Prose alone **SHALL NOT** close a task.
+
+## Release records
+
+- `RELEASE-NOTES.md` contains the reviewed GitHub release text.
+  It preserves each unavailable deployment, integration, archival, and policy-use claim.
+- `audit-inputs.json` contains the reviewed input inventory.
+  `audit-manifest.json` is the generated repository inventory.
+- `claims.json` separates implemented, validated, deployment-qualified, and unclaimed behavior.
+  This release has no deployment-qualified claim.
+- `handoff-source.json` identifies the immutable source package.
+  `tasks.json` contains the current task-index projection.
+- `task-closure-plan.json` records the required task closure.
+  `task-dispositions.json` and `requirements-ledger.json` record its source state.
+  These records do not represent future review as complete.
+- `ecosystem-cut.json` records each inspected peer object and each relationship direction.
+  It records build and runtime optionality, the graph rationale, and the acyclic boundary.
+  It also records the Haldir supersession and explicit non-edges.
+  Mutable heads record provenance only.
+  The two Cargo revisions are the only dependency pins.
+- `local-convergence-schema.json` adapts the supplied convergence schema to version 0.9.0.
+  Finalization creates a signed exact-candidate `LOCAL-CONVERGENCE.json` file.
+  Creation occurs only after all 116 dispositions and ten wave acceptances pass.
+  Complete file review and all retained artifacts must also pass.
+  The record must state the fixed local cross-repository requirements.
+- Exact pid-rs and NCP pin graphs receive local qualification.
+  Crebain, Haldir, and Prisoma remain optional or prospective.
+  Engram, Paper2Brain, ROS, and external authority remain absent edges.
+  Reciprocal and deployed relationships remain absent or unclaimed.
+- If reciprocal reconciliation starts, it can use `LOCAL-CONVERGENCE.json` as an entry point.
+  The record does not prove acceptance by another repository.
+- `repo_work/package_release_assets.py` creates two deterministic path-preserving tar files.
+  It also creates a canonical asset map and detached `galadriel-release-assets` signature.
+  The signed map binds both tar byte identities to the exact candidate and tree.
+  It binds the signed tag object and target, the author, and null DOI and Zenodo fields.
+  Verification enforces the exact four-file upload set.
+- `api/` contains the public source API baseline and accepted 0.9.0 surface.
+- `evidence/` contains complete command output instead of pass or fail summaries.
 - `reviews/` contains the phase and final multi-lens review records.
-- `reviews/REVIEW-COMMENTS.md` is an uncompleted, non-signoff comment interface
-  bound to the eventual exact candidate; it does not claim that any external
-  person has reviewed or approved the release.
+- `reviews/REVIEW-COMMENTS.md` is an incomplete comment interface bound to the eventual exact candidate.
+  It does not claim that an external person reviewed or approved the release.
 
-Regenerate and verify deterministic artifacts with:
+Generate and verify deterministic audit artifacts with these commands:
 
 ```console
 python3 scripts/release_audit.py generate
 python3 scripts/release_audit.py verify
 ```
 
-After the exact signed source commit exists, qualification runs from that immutable
-commit into a new directory outside the checkout. A successful invocation requires
-the signing key and the separately signed exact-candidate mutation manifest:
+## Candidate qualification
+
+Create the exact signed source commit before qualification.
+Run qualification from that immutable commit.
+Use a new output directory outside the checkout.
+
+The qualification run needs two signed inputs:
+
+- the signing key
+- the exact-candidate mutation manifest
 
 ```console
 python3 repo_work/qualify_candidate.py \
@@ -93,53 +110,94 @@ python3 repo_work/qualify_candidate.py \
   --deep --keep-going
 ```
 
-The post-commit order is exact: sign the final twenty-lens review; sign the canonical
-candidate-bound v3 release decision that hashes that review and its signature; then
-sign task dispositions whose T114 and T115 evidence cites those retained inputs.
-`repo_work/finalize_release.py` snapshots and verifies those exact bytes, stages the
-complete closure, flushes it, and publishes it by one same-parent rename. These
-records remain outside the candidate so creating them cannot retroactively change
-its source identity. A pre-publication failure leaves the requested output absent.
-Use its optional `--snapshot-dir` to select a secure external filesystem with room
-for the bounded 8 GiB qualification snapshot plus review inputs; prefer an
-agent-backed Ed25519 public-key handle so private key bytes need not be snapshotted.
-The rename is the commit point; status 3 means a complete output was retained but
-parent-directory durability or result reporting was not confirmed, so the retained
-bundle must be independently verified before use.
+Use this exact post-commit evidence order:
 
-After finalization and creation of the signed annotated `v0.9.0` tag, publication uses
-exactly these four attached assurance assets:
+1. Sign the final twenty-lens review.
+2. Create and sign the candidate-bound version 3 release decision.
+3. Bind that decision to the review and its signature.
+4. Create and sign the ordered task dispositions.
+5. Cite the retained review and decision for tasks T114 and T115.
+
+`repo_work/finalize_release.py` verifies and copies the exact input bytes.
+It stages the complete closure and flushes it.
+It publishes the closure with one same-parent rename.
+These records remain outside the candidate checkout.
+Their creation cannot change the source identity.
+
+A pre-publication failure leaves the requested output absent.
+Use `--snapshot-dir` to select a secure external file system with sufficient space.
+The bounded qualification snapshot can use up to 8 GiB plus review inputs.
+Prefer an agent-backed Ed25519 public-key handle.
+This method avoids a snapshot of private key bytes.
+
+The rename is the commit point.
+Status 3 means that the tool retained a complete output.
+It also means that the tool did not confirm durability or the result report.
+An independent verifier must check that bundle before use.
+
+## Publication assets
+
+Create the signed annotated `v0.9.0` tag after finalization.
+Publish exactly these four assurance assets:
 
 - `galadriel-0.9.0-qualification.tar`
 - `galadriel-0.9.0-closure.tar`
 - `galadriel-0.9.0-release-asset-map.json`
 - `galadriel-0.9.0-release-asset-map.json.sig`
 
-Build them only with `repo_work/package_release_assets.py build`. Before publication,
-verify the downloaded four-file set with the same tool and an independently obtained
-allowed-signers trust root, then use `extract`/`reconstruct` to recover the two original
-tier roots without archive-path trust. Verify each recovered root's `SHA256SUMS`, the
-qualification and closure signatures, and `LOCAL-CONVERGENCE.json` against the exact
-candidate. GitHub's automatically generated source zip and tarball are convenience
-snapshots, not members of the signed asset map and not substitutes for either evidence tar.
-The complete draft-first operator sequence is normative in `RELEASE-RUNBOOK.md`.
+Build these files only with `repo_work/package_release_assets.py build`.
+Download all four files before publication verification.
+Use an independently obtained allowed-signers trust root.
+Verify the complete four-file set with the same tool.
 
-The internal tier signatures use principal `sepmhn@gmail.com` and the literal SSH
-namespaces `galadriel-qualification-manifest` and `galadriel-closure-manifest`. The
-runbook gives the exact independent-trust-root commands; these namespaces are distinct
-from the outer release-asset-map namespace `galadriel-release-assets`.
+Use `extract` and `reconstruct` to recover the original tier roots.
+These actions do not trust an archive path.
+Verify each recovered `SHA256SUMS` file.
+Verify the qualification and closure signatures.
+Verify `LOCAL-CONVERGENCE.json` against the exact candidate.
 
-Post-publication verification resolves all six immutable release-body `blob` links,
-byte-compares their raw counterparts with the tagged Git blobs, and separately
-byte-compares the `$id` URLs for the local-convergence, PID-envelope, and
-monitor-envelope schemas. HTML `blob` responses are never misrepresented as source bytes.
-The GitHub release title is literally `Galadriel 0.9.0`; its body is the complete tracked
-`RELEASE-NOTES.md`, not text inferred from that file's Markdown heading.
+GitHub creates source ZIP and tar archives automatically.
+Use them only as convenience snapshots.
+They are not members of the signed asset map.
+They do not replace either evidence tar file.
+`RELEASE-RUNBOOK.md` contains the normative draft-first procedure.
 
-Canonical tar construction and regeneration use the audit-pinned `CPython 3.14.6`.
-Authenticated and anonymous downloads are both compared byte-for-byte with all four local
-upload sources; this remains mandatory when GitHub does not report an API digest field.
+The internal tier signatures use principal `sepmhn@gmail.com`.
+They use these literal SSH namespaces:
 
-The verifier rejects stale output, duplicate JSON keys, mutable Git dependencies,
-prose-only task closure, incomplete twenty-lens reviews, incorrect author/version
-metadata, and an accidental project DOI or Zenodo claim.
+- `galadriel-qualification-manifest`
+- `galadriel-closure-manifest`
+
+The outer asset-map namespace is `galadriel-release-assets`.
+The runbook gives the exact independent-trust-root commands.
+
+## Public verification
+
+Post-publication verification resolves all six immutable release-body `blob` links.
+It compares each raw file with the applicable tagged Git blob.
+It also checks schema `$id` URLs for these schemas:
+
+- local convergence
+- PID envelope
+- monitor envelope
+
+The verifier compares schema bytes with their tagged Git blobs.
+It does not represent an HTML `blob` response as source bytes.
+
+The release title must be `Galadriel 0.9.0`.
+The release body must equal the complete tracked `RELEASE-NOTES.md` file.
+Do not infer the release body from its Markdown title.
+
+Canonical tar creation and regeneration use the audit-pinned `CPython 3.14.6`.
+Compare authenticated and anonymous downloads with all four local source files.
+This check remains mandatory when GitHub omits an API digest.
+
+The verifier rejects these conditions:
+
+- stale output
+- duplicate JSON keys
+- mutable Git dependencies
+- prose-only task closure
+- incomplete twenty-lens reviews
+- incorrect author or version metadata
+- a project DOI or Zenodo claim
