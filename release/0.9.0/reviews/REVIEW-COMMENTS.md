@@ -1,5 +1,12 @@
 # External review comment record for Galadriel 0.9.0
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ID | identifier |
+| SHA-256 | Secure Hash Algorithm 256 |
+
 Release author and decision owner: **Sepehr Mahmoudian**
 
 This file is an unsigned and incomplete comment template.

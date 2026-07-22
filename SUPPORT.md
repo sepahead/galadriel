@@ -1,5 +1,11 @@
 # Support policy
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| SLA | service-level agreement |
+
 Galadriel 0.9.0 is a research source release.
 Sepehr Mahmoudian is the maintainer and release author.
 

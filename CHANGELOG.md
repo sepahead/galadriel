@@ -1,5 +1,45 @@
 # Changelog
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACL | access control list |
+| AR(1) | first-order autoregressive model |
+| API | application programming interface |
+| AUC | area under the receiver operating characteristic curve |
+| CA | certificate authority |
+| CI | continuous integration |
+| CLI | command-line interface |
+| CN | certificate common name |
+| CUSUM | cumulative sum |
+| DoF | degrees of freedom |
+| DOI | digital object identifier |
+| `et al.` | and others |
+| EuroS&P | European Symposium on Security and Privacy |
+| FAR | false-alarm rate |
+| IEEE | Institute of Electrical and Electronics Engineers |
+| JSON | JavaScript Object Notation |
+| JSONL | JavaScript Object Notation Lines |
+| KSG | Kraskov-Stögbauer-Grassberger |
+| mTLS | mutual Transport Layer Security |
+| MSRV | minimum supported Rust version |
+| NaN | not a number |
+| NCP | Neuro-Cybernetic Protocol |
+| NIS | normalized innovation squared |
+| PID | partial information decomposition |
+| ROS / ROS 2 | Robot Operating System / Robot Operating System 2 |
+| SHA | Secure Hash Algorithm |
+| SHA-256 | Secure Hash Algorithm 256 |
+| SoK | systematization of knowledge |
+| SPKI | Subject Public Key Info |
+| SSH | Secure Shell |
+| TTL | time to live |
+| URL | Uniform Resource Locator |
+| UTF-8 | 8-bit Unicode Transformation Format |
+| WebPKI | Web Public Key Infrastructure |
+| XOR | exclusive OR |
+
 This file documents all notable project changes.
 It uses the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

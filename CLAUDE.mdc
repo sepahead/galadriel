@@ -12,6 +12,17 @@ Read it before you act.
 Read `RELEASE-POLICY.md` before release work.
 Read `release/0.9.0/RELEASE-RUNBOOK.md` before qualification or publication.
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ASD-STE100 | ASD-STE100 Simplified Technical English |
+| CI | continuous integration |
+| DOI | digital object identifier |
+| JSON | JavaScript Object Notation |
+| NCP | Neuro-Cybernetic Protocol |
+| PID | partial information decomposition |
+
 ## Start each task
 
 Work from the repository root.

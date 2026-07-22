@@ -1,4 +1,12 @@
-# 0.9.0 API and compatibility surface
+# 0.9.0 application programming interface (API) and compatibility surface
+
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| MSRV | minimum supported Rust version |
+| NIS | normalized innovation squared |
+| PID | partial information decomposition |
 
 Galadriel 0.9.0 is a GitHub source release. All crates have `publish = false`.
 This policy defines source compatibility in the 0.9 release line.

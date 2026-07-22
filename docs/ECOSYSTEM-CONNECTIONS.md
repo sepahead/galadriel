@@ -1,5 +1,24 @@
 # Ecosystem connections
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACL | access control list |
+| ADRs | architecture decision records |
+| API | application programming interface |
+| CLI | command-line interface |
+| JSONL | JavaScript Object Notation Lines |
+| KSG | Kraskov-Stögbauer-Grassberger |
+| NCP | Neuro-Cybernetic Protocol |
+| PID | partial information decomposition |
+| ROS / ROS 2 | Robot Operating System / Robot Operating System 2 |
+| SHA-256 | Secure Hash Algorithm 256 |
+| TCP | Transmission Control Protocol |
+| TLS | Transport Layer Security |
+| TTLs | time-to-live values |
+| UDP | User Datagram Protocol |
+
 Status: dated read-only coordination record for Galadriel 0.9.0. This document
 separates dependency identity, component compatibility, and deployed
 qualification.
@@ -24,8 +43,8 @@ that every Galadriel build needs the project.
 | Crebain | External upstream producer relationship | No Cargo dependency. It is not required for demos, simulation, evaluation, or offline replay. Live use needs an authorized conforming producer. That producer does not have to be Crebain. | Serves as the inspected reference producer for observation and monitor sidecars and the retained registry fixture. |
 | Haldir | Prospective downstream consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither required nor an enabled option. | Shows how a future authorization consumer can record evidence. Any later effect must be independently admitted and restrict-only. |
 | Prisoma | Prospective downstream offline consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither required nor an enabled option. | Shows a possible immutable covariate or comparator import. Shared NCP or PID dependencies do not establish compatibility or independence. |
-| Engram or Paper2Brain | External application and realm context | No dependency, API, process, adapter, route, or runtime edge. `engram/ncp` is an example realm string, not an application binding. | Separates the realm example from NCP, which is the linked wire and transport interface. |
-| ROS or ROS 2 | External robotics middleware | No dependency, message binding, topic, service, action, bridge, node, bag importer, or runtime edge. | Records that a future robotics adapter is a new and separately qualified interface. Sensor terms do not imply this interface. |
+| Engram/Paper2Brain | External application and realm context | No dependency, API, process, adapter, route, or runtime edge. `engram/ncp` is an example realm string, not an application binding. | Separates the realm example from NCP, which is the linked wire and transport interface. |
+| ROS / ROS 2 | External robotics middleware | No dependency, message binding, topic, service, action, bridge, node, bag importer, or runtime edge. | Records that a future robotics adapter is a new and separately qualified interface. Sensor terms do not imply this interface. |
 | External authority or controller | Prospective downstream policy or control boundary | No command, control, credential, lease, watchdog, or authority path. It is neither required nor enabled. | Preserves advisory-only behavior. A future consumer can record evidence. It can apply only an independently admitted restrict-only policy. |
 
 Galadriel is the center node and has no self-edge. The directed relationship graph
@@ -38,7 +57,7 @@ optional conforming producer -> Galadriel
 Galadriel -> prospective Haldir or Prisoma consumer
 ```
 
-Engram or Paper2Brain, ROS, and external authority are explicit non-edges. No edge
+Engram/Paper2Brain, ROS, and external authority are explicit non-edges. No edge
 returns to an upstream producer or library. Thus, the graph is acyclic and
 has no evidence-to-command feedback loop.
 
@@ -69,8 +88,8 @@ were observed on 2026-07-18.
 | Haldir current reinspection | remote `main` `c0e4b3d156500684329a92bcb16e0609894fd738` | A 2026-07-22 descendant. Its CH-T001 activation adds repository inventory and release evidence. It records no runtime or external-conformance change. |
 | Prisoma | `63cff105e0e40281376e6f827d7782e9b351961a` | Downstream design and status inspection only. No runtime edge exists. |
 
-The local source inventory from 2026-07-22 records three more non-edges. Engram
-or Paper2Brain has only the example realm-label relationship. ROS and ROS 2 have
+The local source inventory from 2026-07-22 records three more non-edges.
+Engram/Paper2Brain has only the example realm-label relationship. ROS and ROS 2 have
 no code or runtime edge. External authority also has no code or runtime edge.
 
 These absent relationships have no external object identity. Do not create a
@@ -295,7 +314,7 @@ independent-implementation replication. This common dependency alone does not
 prove statistical dependence. Measure dependence from actual inputs,
 configuration, and results.
 
-## Engram or Paper2Brain non-edge
+## Engram/Paper2Brain non-edge
 
 `engram/ncp` appears in examples, tests, and the rendered reference deployment. It
 is a multi-segment NCP realm. Realm validation treats it as data. Operators can
@@ -305,7 +324,7 @@ Galadriel has no Paper2Brain dependency, import, API, process, route, adapter, o
 runtime discovery path. The release inventory retains the Paper2Brain repository
 only to record that it supplies no Galadriel integration evidence.
 
-## ROS or ROS 2 non-edge
+## ROS / ROS 2 non-edge
 
 The workspace has no ROS client dependency or message definition. It has no
 topic, service, action, node, launch file, bag reader, or bridge. Sensor and track

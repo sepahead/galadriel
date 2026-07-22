@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Galadriel sidecar ingestion through the CLI `ncp` feature and NCP wire 0.8 addressing."
+description = "Galadriel sidecar ingestion through the command-line interface `ncp` feature and Neuro-Cybernetic Protocol (NCP) wire 0.8 addressing."
 publish = false
 
 [lints]
@@ -26,7 +26,7 @@ thiserror = { workspace = true }
 ncp-core = { workspace = true }
 # The live named-perception tap uses the `zenoh` feature.
 # This feature selects the complete Zenoh and Tokio stack.
-# The JSONL ingestion path does not need this stack.
+# The JavaScript Object Notation Lines (JSONL) ingestion path does not need this stack.
 ncp-zenoh = { workspace = true, optional = true }
 # Retain exact raw subscriber guards so each live receiver can undeclare only its
 # own selector without broad-closing a host-owned NCP session.
@@ -46,7 +46,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 [features]
 default = []
 # The live Zenoh named-perception tap is off by default.
-# The CLI `ncp-live` feature forwards it.
+# The command-line interface (CLI) `ncp-live` feature forwards it.
 # A direct galadriel-ncp build can also select it.
 zenoh = ["dep:ncp-zenoh", "dep:tokio", "dep:zenoh"]
 

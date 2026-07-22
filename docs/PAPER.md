@@ -1,5 +1,17 @@
 # Forced or justified? Mutual information versus correlation for cross-sensor spoof detection
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| APIs | application programming interfaces |
+| ed. | edition |
+| `et al.` | and others |
+| IEEE | Institute of Electrical and Electronics Engineers |
+| LiDAR | light detection and ranging |
+| Phys. Rev. E | Physical Review E |
+| XOR | exclusive OR |
+
 ## Abstract
 
 Cross-sensor consistency can expose a compromised sensor that stops agreeing with an honest majority.

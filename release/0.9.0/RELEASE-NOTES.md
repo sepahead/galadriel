@@ -1,5 +1,15 @@
 # Galadriel 0.9.0
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| API | application programming interface |
+| DOI | digital object identifier |
+| JSON | JavaScript Object Notation |
+| ROS | Robot Operating System |
+| TLS | Transport Layer Security |
+
 Release author: Sepehr Mahmoudian
 
 Release date: 2026-07-22

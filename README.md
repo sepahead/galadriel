@@ -7,13 +7,43 @@
 <p align="center"><strong>Galadriel's Mirror</strong> — an experimental cross-sensor consistency monitor for multi-sensor fusion.</p>
 
 <p align="center">
-  <a href="https://github.com/sepahead/galadriel/actions/workflows/ci.yml"><img src="https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/sepahead/galadriel/actions/workflows/ci.yml"><img src="https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg" alt="continuous integration"></a>
   <img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License: MIT OR Apache-2.0">
   <img src="https://img.shields.io/badge/rust-1.89%2B-orange.svg" alt="Rust 1.89+">
   <img src="https://img.shields.io/badge/release-0.9.0-blue.svg" alt="release: 0.9.0">
   <img src="https://img.shields.io/badge/status-research%20review-orange.svg" alt="status: research review">
   <img src="https://img.shields.io/badge/unsafe-forbidden-success.svg" alt="unsafe forbidden">
 </p>
+
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACL | access control list |
+| API | application programming interface |
+| CA | certificate authority |
+| CLI | command-line interface |
+| CN | certificate common name |
+| CUSUM | cumulative sum |
+| DOA | direction of arrival |
+| DOI | digital object identifier |
+| JSON | JavaScript Object Notation |
+| JSONL | JavaScript Object Notation Lines |
+| KSG | Kraskov-Stögbauer-Grassberger |
+| LiDAR | light detection and ranging |
+| MI | mutual information |
+| mTLS | mutual Transport Layer Security |
+| MSRV | minimum supported Rust version |
+| NCP | Neuro-Cybernetic Protocol |
+| NIS | normalized innovation squared |
+| PID | partial information decomposition |
+| PID2 | two-source partial information decomposition |
+| PID3 | three-source partial information decomposition |
+| ROS / ROS 2 | Robot Operating System / Robot Operating System 2 |
+| SPKI | Subject Public Key Info |
+| SSH | Secure Shell |
+| TLS | Transport Layer Security |
+| WebPKI | Web Public Key Infrastructure |
 
 Galadriel checks whether several sensors that observe one track still agree.
 It combines per-channel Normalized Innovation Squared (NIS) evidence with signed cross-channel correlation.
@@ -321,7 +351,7 @@ Author and maintainer: **Sepehr Mahmoudian**.
 | [`galadriel-pid`](crates/galadriel-pid) | KSG-MI / PID evidence | Optional research path |
 | [`galadriel-ncp`](crates/galadriel-ncp) | strict codecs, pinned registry, monitor tap, assembler, lifecycle gate, operational Zenoh receiver | Unit, golden, and in-process Zenoh tests. No external deployment evidence. |
 | [`galadriel-eval`](crates/galadriel-eval) | Monte Carlo evaluation and cost bench | Synthetic only |
-| [`galadriel-justify`](crates/galadriel-justify) | canonical forced-vs-justified studies | Synthetic/theoretical only |
+| [`galadriel-justify`](crates/galadriel-justify) | canonical forced-versus-justified studies | Synthetic/theoretical only |
 
 The workspace MSRV is **Rust 1.89**.
 Mutable test totals and benchmark values are not project-status claims.

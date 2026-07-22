@@ -1,5 +1,6 @@
 # Galadriel's Mirror is a fail-closed cross-sensor consistency monitor.
-# It supports multisensor fusion research for counter-UAS and embodied-agent perception.
+# It supports multisensor fusion research for counter-unmanned aircraft systems
+# (counter-UAS) and embodied-agent perception.
 #
 # The default build is pure and small.
 # It includes galadriel-core, galadriel-sim, and galadriel-cli.
@@ -64,7 +65,8 @@ galadriel-ncp = { version = "0.9.0", path = "crates/galadriel-ncp" }
 # It has no public v1 tag or published artifact.
 # The selected revision includes the version declaration and same-day corrections.
 # It also includes the same-day continuous integration changes.
-# Galadriel selects the experimental continuous pipeline for its advisory PID path.
+# Galadriel selects the experimental continuous pipeline for its advisory
+# partial information decomposition (PID) path.
 pid-core = { version = "1.0.0", git = "https://github.com/sepahead/pid-rs", rev = "1cd2424f7967e1752dcc8e53859e8fdad3566f51", features = ["experimental-pipelines"] }
 ncp-core = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 ncp-zenoh = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0

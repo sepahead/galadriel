@@ -1,5 +1,29 @@
 # Producer observation and lifecycle contract
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACLs | access control lists |
+| ADR | architecture decision record |
+| API | application programming interface |
+| CA | certificate authority |
+| CI | continuous integration |
+| CLI | command-line interface |
+| CN | certificate common name |
+| CUSUM | cumulative sum |
+| ENU | east-north-up |
+| JSON | JavaScript Object Notation |
+| JSONL | JavaScript Object Notation Lines |
+| mTLS | mutual Transport Layer Security |
+| NCP | Neuro-Cybernetic Protocol |
+| NIS | normalized innovation squared |
+| SHA-256 | Secure Hash Algorithm 256 |
+| SPKI | Subject Public Key Info |
+| TLS | Transport Layer Security |
+| UTF-8 | 8-bit Unicode Transformation Format |
+| WebPKI | Web Public Key Infrastructure |
+
 Status: accepted Galadriel-side ADR. Local consumer components are implemented.
 Deployment evidence is excluded.
 

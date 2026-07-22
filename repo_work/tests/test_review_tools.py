@@ -145,7 +145,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertRegex(
             runbook,
             re.compile(
-                r"For the two tar files only,.*?signed map;\s+the\s+map\s+does\s+"
+                r"For the two tar files only,.*?signed map\.\s+The\s+map\s+does\s+"
                 r"not\s+contain\s+rows\s+for\s+itself\s+or\s+its\s+detached\s+"
                 r"signature",
                 re.DOTALL,

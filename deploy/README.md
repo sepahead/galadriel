@@ -1,5 +1,21 @@
 # Galadriel secure deployment profile
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACL | access control list |
+| CA | certificate authority |
+| CN | certificate common name |
+| JSON | JavaScript Object Notation |
+| mTLS | mutual Transport Layer Security |
+| NCP | Neuro-Cybernetic Protocol |
+| POSIX | Portable Operating System Interface |
+| RPC | remote procedure call |
+| SHA-256 | Secure Hash Algorithm 256 |
+| TLS | Transport Layer Security |
+| UTF-8 | 8-bit Unicode Transformation Format |
+
 This directory contains a deterministic, fail-closed Zenoh deployment profile.
 The profile applies to one Galadriel producer process epoch.
 It is narrower than the generic NCP sensor ACL.

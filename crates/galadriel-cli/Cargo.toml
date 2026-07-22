@@ -30,11 +30,12 @@ anyhow = { workspace = true }
 
 [features]
 default = []
-# This feature selects the cross-sensor PID engine and pid-core.
+# This feature selects the cross-sensor partial information decomposition (PID)
+# engine and pid-core.
 # Demonstration command: `cargo run --features pid -- demo`.
 pid = ["dep:galadriel-pid"]
-# This feature selects NCP sidecar ingestion and ncp-core.
+# This feature selects Neuro-Cybernetic Protocol (NCP) sidecar ingestion and ncp-core.
 # It adds `replay <jsonl>`.
 ncp = ["dep:galadriel-ncp"]
-# The operational two-route Zenoh receiver and process runtime.
+# This feature selects the operational two-route Zenoh receiver and process runtime.
 ncp-live = ["ncp", "galadriel-ncp/zenoh", "dep:tokio"]

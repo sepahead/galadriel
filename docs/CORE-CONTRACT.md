@@ -1,5 +1,16 @@
 # Galadriel core contract for 0.9.0
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| API | application programming interface |
+| ASCII | American Standard Code for Information Interchange |
+| JSON | JavaScript Object Notation |
+| NCP | Neuro-Cybernetic Protocol |
+| PID | partial information decomposition |
+| UTF-8 | 8-bit Unicode Transformation Format |
+
 Status: normative for the stable `galadriel-core` source API selected for 0.9.x.
 This contract defines representation and failure semantics. It does not assert
 producer authenticity, calibrated field performance, malicious intent, or safe

@@ -1,5 +1,15 @@
 # Qualification dependency policy
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| API | application programming interface |
+| CI | continuous integration |
+| NCP | Neuro-Cybernetic Protocol |
+| SHA | Secure Hash Algorithm |
+| TLS | Transport Layer Security |
+
 **GLD-090-PIN-001:** Every Git dependency used for qualification **SHALL** name a
 full 40-hex `rev`. Cargo.lock **SHALL** resolve the same commit. A branch-only,
 tag-only, abbreviated, floating-main, or local sibling-path substitution

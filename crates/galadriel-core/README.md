@@ -1,5 +1,13 @@
 # galadriel-core
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| CUSUM | cumulative sum |
+| MSRV | minimum supported Rust version |
+| NIS | normalized innovation squared |
+
 This crate is the safe-Rust core of Galadriel's Mirror.
 Galadriel's Mirror is an experimental cross-sensor consistency monitor for multi-sensor fusion.
 

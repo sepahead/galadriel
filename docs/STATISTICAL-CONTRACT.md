@@ -1,5 +1,17 @@
 # Statistical contract and estimands
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| CUSUM | cumulative sum |
+| KSG | Kraskov-Stögbauer-Grassberger |
+| MI | mutual information |
+| NIS | normalized innovation squared |
+| PID | partial information decomposition |
+| PID2 | two-source partial information decomposition |
+| SHA-256 | Secure Hash Algorithm 256 |
+
 This document is normative for reports from Galadriel 0.9.0. An estimand is the
 exact population quantity or decision function. This term does not imply that a
 deployment satisfies the identification assumptions.

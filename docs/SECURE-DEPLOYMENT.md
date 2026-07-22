@@ -1,5 +1,16 @@
 # Secure operational receiver runbook
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| CN | certificate common name |
+| NCP | Neuro-Cybernetic Protocol |
+| PEM | Privacy-Enhanced Mail |
+| SHA-256 | Secure Hash Algorithm 256 |
+| TLS | Transport Layer Security |
+| WebPKI | Web Public Key Infrastructure |
+
 Status: runnable component implementation and external evidence procedure.
 
 The repository supplies checked configuration artifacts, a secure observer command, and bounded receiver components.

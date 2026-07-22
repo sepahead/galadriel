@@ -1,5 +1,20 @@
 # Galadriel 0.9.0 release record
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| API | application programming interface |
+| DOI | digital object identifier |
+| HTML | Hypertext Markup Language |
+| JSON | JavaScript Object Notation |
+| NCP | Neuro-Cybernetic Protocol |
+| PID | partial information decomposition |
+| ROS | Robot Operating System |
+| SHA-256 | Secure Hash Algorithm 256 |
+| SSH | Secure Shell |
+| URLs | Uniform Resource Locators |
+
 This directory contains the auditable release record for Galadriel's Mirror 0.9.0.
 The release author is **Sepehr Mahmoudian**.
 The publication channel is a GitHub source release.

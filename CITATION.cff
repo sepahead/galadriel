@@ -1,7 +1,8 @@
 cff-version: 1.2.0
 message: >-
   If you use this research release, cite version 0.9.0 and the exact Git
-  commit used to produce your results. This release has no DOI or Zenodo record.
+  commit used to produce your results. This release has no digital object
+  identifier (DOI) or Zenodo record.
 type: software
 title: "Galadriel's Mirror"
 version: 0.9.0
@@ -22,5 +23,5 @@ keywords:
   - sensor fusion
   - anomaly detection
   - statistical consistency
-  - counter-UAS
+  - counter-unmanned aircraft systems
   - information theory

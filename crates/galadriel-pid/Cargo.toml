@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Optional partial information decomposition through the CLI `pid` feature."
+description = "Optional partial information decomposition through the command-line interface `pid` feature."
 publish = false
 
 [lints]

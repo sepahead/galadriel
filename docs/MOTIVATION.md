@@ -1,5 +1,27 @@
 # Why Galadriel exists
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| AISTATS | International Conference on Artificial Intelligence and Statistics |
+| APS | American Physical Society |
+| BROJA | Bertschinger-Rauh-Olbrich-Jost-Ay |
+| `et al.` | and others |
+| EuroS&P | European Symposium on Security and Privacy |
+| IEEE | Institute of Electrical and Electronics Engineers |
+| ISIT | International Symposium on Information Theory |
+| IT | information theory |
+| LiDAR | light detection and ranging |
+| NCP | Neuro-Cybernetic Protocol |
+| Phys. Rev. E | Physical Review E |
+| PRE | Physical Review E |
+| Proc. R. Soc. A | Proceedings of the Royal Society A |
+| RNTF | Resilient Navigation and Timing Foundation |
+| S&P | Symposium on Security and Privacy |
+| SoK | systematization of knowledge |
+| UT | University of Texas |
+
 Galadriel addresses a documented problem.
 Sensor spoofing of autonomous and counter-unmanned-aircraft systems is a demonstrated, current, and high-stakes threat.
 Multi-sensor fusion is a standard defense against this threat.

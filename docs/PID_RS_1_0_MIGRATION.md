@@ -1,5 +1,13 @@
 # pid-rs 0.4 to 1.0 migration
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| PID2 | two-source partial information decomposition |
+| SHA-256 | Secure Hash Algorithm 256 |
+| SxPID | shared-exclusions partial information decomposition |
+
 Galadriel pins immutable pid-rs revision `1cd2424f7967e1752dcc8e53859e8fdad3566f51`.
 Its `pid-core` manifest declares version 1.0.0.
 At this snapshot, pid-rs has no public v1 tag or released upstream 1.x artifact.

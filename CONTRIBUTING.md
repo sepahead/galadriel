@@ -1,7 +1,16 @@
 # Contributing to galadriel
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| AI | artificial intelligence |
+| MSRV | minimum supported Rust version |
+| NIS | normalized innovation squared |
+| PID | partial information decomposition |
+
 Thank you for your interest. Galadriel is **Galadriel's Mirror**.
-It is an information-theoretic cross-sensor consistency and spoof detector for multi-sensor fusion.
+It is an information-theoretic monitor for cross-sensor statistical consistency in multi-sensor fusion.
 It is part of the [`sepahead`](https://github.com/sepahead) ecosystem.
 It consumes accepted `(track, modality, frame)` innovation records (`PidObservation`).
 

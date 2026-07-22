@@ -1,7 +1,25 @@
 # Security Policy
 
-Galadriel is a defensive security tool.
-It detects spoofing and jamming in a multi-sensor fusion picture.
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACL | access control list |
+| API | application programming interface |
+| CI | continuous integration |
+| JSON | JavaScript Object Notation |
+| MI | mutual information |
+| mTLS | mutual Transport Layer Security |
+| NCP | Neuro-Cybernetic Protocol |
+| NIS | normalized innovation squared |
+| PID | partial information decomposition |
+| SHA | Secure Hash Algorithm |
+| SLA | service-level agreement |
+| UTF-8 | 8-bit Unicode Transformation Format |
+
+Galadriel is a defensive research tool.
+It reports statistical consistency evidence for a multi-sensor fusion picture.
+It does not identify spoofing, jamming, or malicious intent.
 Its output is **advisory**.
 It reports and attributes anomalies for a person or a slow policy layer.
 It is not an enforcement gate on a control path. Do not represent it as one.

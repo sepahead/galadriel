@@ -1,5 +1,17 @@
 # Typed lifecycle admission and receipts
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACL | access control list |
+| JSON | JavaScript Object Notation |
+| MAC | message authentication code |
+| mTLS | mutual Transport Layer Security |
+| NCP | Neuro-Cybernetic Protocol |
+| NIS | normalized innovation squared |
+| SHA-256 | Secure Hash Algorithm 256 |
+
 Status: implemented Galadriel 0.9 adapter contract. This document defines the
 typed lifecycle boundary in `galadriel-core::StreamPosition` and
 `galadriel-ncp::LifecycleDetector`.

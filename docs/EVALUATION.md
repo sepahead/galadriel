@@ -1,5 +1,11 @@
 # Evaluation evidence plan and synthetic harness
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| PID2 | two-source partial information decomposition |
+
 This document describes the Galadriel evaluation method.
 It also states what the current evidence does **not** establish.
 

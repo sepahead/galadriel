@@ -1,5 +1,16 @@
 # Galadriel 0.9.0 review method
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| DOI | digital object identifier |
+| FFI | foreign function interface |
+| MSRV | minimum supported Rust version |
+| NCP | Neuro-Cybernetic Protocol |
+| ROS | Robot Operating System |
+| SemVer | semantic versioning |
+
 Release author and final decision owner: **Sepehr Mahmoudian**
 
 Review date: 2026-07-14
@@ -82,7 +93,7 @@ A `NOT_APPLICABLE` result needs the same evidence discipline as a `RESOLVED` res
     Record exact inputs and commands for builds, fixtures, simulations, evidence, and archives.
 13. **L13: API, FFI, and SemVer.**
     Minimize the stable surface.
-    Define panics, ownership, allocation, thread safety, features, minimum Rust version (MSRV), and compatibility.
+    Define panics, ownership, allocation, thread safety, features, the MSRV, and compatibility.
 14. **L14: Schema, wire, and language parity.**
     Use one normative semantic source.
     Require matching accept and reject behavior across encodings and consumers.

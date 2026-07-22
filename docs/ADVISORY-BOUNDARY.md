@@ -1,5 +1,23 @@
 # Galadriel downstream advisory boundary
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACLs | access control lists |
+| ADRs | architecture decision records |
+| API | application programming interface |
+| CA | certificate authority |
+| CLI | command-line interface |
+| FDI | false-data injection |
+| JSONL | JavaScript Object Notation Lines |
+| mTLS | mutual Transport Layer Security |
+| NCP | Neuro-Cybernetic Protocol |
+| NIS | normalized innovation squared |
+| ROS | Robot Operating System |
+| TTL | time to live |
+| WebPKI | Web Public Key Infrastructure |
+
 Galadriel is **instrumentation, not enforcement**. Per-plane ACLs and mTLS on the
 NCP bus supply cryptographic enforcement. A plant-side safety governor supplies
 the other enforcement layer. Galadriel runs above these layers and reports

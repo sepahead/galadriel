@@ -1,4 +1,5 @@
 [toolchain]
-# One exact workspace MSRV keeps local, CI, and optional-feature builds reproducible.
+# One exact workspace minimum supported Rust version (MSRV) keeps local,
+# continuous integration (CI), and optional-feature builds reproducible.
 channel = "1.89.0"
 components = ["rustfmt", "clippy"]

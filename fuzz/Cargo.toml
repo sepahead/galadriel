@@ -28,6 +28,6 @@ doc = false
 bench = false
 
 # Keep fuzz-only dependencies and nightly instrumentation outside the production
-# workspace and its MSRV lockfile policy.
+# workspace and its minimum supported Rust version (MSRV) lockfile policy.
 [workspace]
 members = ["."]

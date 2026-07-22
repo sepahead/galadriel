@@ -1,5 +1,22 @@
 # Repository review utilities
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| API | application programming interface |
+| DOI | digital object identifier |
+| JSON | JavaScript Object Notation |
+| NCP | Neuro-Cybernetic Protocol |
+| PAX | portable archive exchange |
+| PID | partial information decomposition |
+| POSIX | Portable Operating System Interface |
+| ROS | Robot Operating System |
+| SHA-256 | Secure Hash Algorithm 256 |
+| SSH | Secure Shell |
+| URL | Uniform Resource Locator |
+| UTF-8 | 8-bit Unicode Transformation Format |
+
 These standard-library-only utilities implement the exact-checkout review workflow for the Galadriel 0.9 research release.
 They inventory evidence.
 They never claim human review of a machine-generated row.
@@ -62,15 +79,18 @@ Before you replace tracked generated artifacts, verify the temporary bytes.
 Then, regenerate the audit inventory:
 
 ```bash
+set -euo pipefail
 handoff_root=/path/to/SEPAHEAD_V1_0_CURRENT_HEAD_MAX_EFFORT_MASTER_HANDOFF
 freeze_dir="$(mktemp -d "${TMPDIR:-/tmp}/galadriel-0.9.0-freeze.XXXXXX")"
+signing_key="$(git config --get user.signingkey)"
+test -n "$signing_key"
 python3 repo_work/freeze_audit_inputs.py \
   --repo . \
   --handoff-root "$handoff_root" \
   --out "$freeze_dir/FROZEN-AUDIT-INPUTS.json" \
   --allowed-signers "$freeze_dir/ALLOWED_SIGNERS"
 ssh-keygen -Y sign \
-  -f "$(git config --get user.signingkey)" \
+  -f "$signing_key" \
   -n galadriel-release-audit \
   "$freeze_dir/FROZEN-AUDIT-INPUTS.json"
 python3 repo_work/freeze_audit_inputs.py verify \

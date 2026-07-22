@@ -1,5 +1,20 @@
 # Configuration construction and capability contract
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| APIs | application programming interfaces |
+| CLI | command-line interface |
+| CUSUM | cumulative sum |
+| DTOs | data transfer objects |
+| JSON | JavaScript Object Notation |
+| JSONL | JavaScript Object Notation Lines |
+| mTLS | mutual Transport Layer Security |
+| NCP | Neuro-Cybernetic Protocol |
+| NIS | normalized innovation squared |
+| PID | partial information decomposition |
+
 Status: **normative implemented contract** for Galadriel 0.9.0. The accepted
 boundaries cover these surfaces:
 
@@ -256,12 +271,12 @@ runtime boundary.
 | registry `OpportunityPolicy`, `DeploymentRegistry`, and `PinnedDeploymentRegistry` | strict decoded deployment input | Closed-schema decoding produces tooling data. Exact digest verification produces the opaque pin capability. Only `PinnedDeploymentRegistry` implements operational `RegistryVerifier`. |
 | `JsonlLimits` | bounded offline runtime | Private accepted fields, typed failure, fixed ceilings, aggregate checks, named profile, and canonical identity. |
 | `HandoffConfig` | bounded live runtime | Private accepted fields, typed construction, named bounded profile, aggregate queue-byte check, and closed drop-newest policy. |
-
-Each detector aggregate includes every window's fixed 272-byte exact-sum cache.
 | `LiveLimits` | bounded live runtime | Private accepted fields, typed failure, and canonical identity. Hard limits cover payload bytes, replay streams, advance distance, and aggregate work. |
 | `MonitorLiveConfig` | bounded live runtime | Private accepted fields, named profile, relationship and deadline checks, and canonical identity. |
 | `OperationalLiveConfig` | bounded live runtime | Private accepted fields, named profile, hard input ceiling, typed failure, and canonical identity. |
 | secure foreign `ZenohConfig` admission | security configuration capability | Read a standalone strict-JSON file through an inclusive 256 KiB pre-parse limit. Reject nested `__config__` includes. Each credential file has an inclusive 1 MiB validation limit. Single-load validation returns opaque `SecureZenohCapability`. `CredentialMaterialKind` controls role-specific permission checks. The capability records canonical security identity. |
+
+Each detector aggregate includes every window's fixed 272-byte exact-sum cache.
 
 ### Named profiles
 

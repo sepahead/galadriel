@@ -1,5 +1,18 @@
 # Galadriel 0.9.0 publication, rollback, and withdrawal runbook
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| DOI | digital object identifier |
+| JSON | JavaScript Object Notation |
+| NCP | Neuro-Cybernetic Protocol |
+| ROS | Robot Operating System |
+| SBOM | software bill of materials |
+| SHA-256 | Secure Hash Algorithm 256 |
+| SSH | Secure Shell |
+| URLs | Uniform Resource Locators |
+
 Owner and release author: Sepehr Mahmoudian
 
 Channel: GitHub source release only. There is no crates.io publication, project
@@ -269,19 +282,19 @@ python3 repo_work/local_convergence.py verify \
    Check hooks, installed automation, and releases immediately before publication.
    No process may create a DOI, Zenodo record, package publication, replacement asset, or second release.
 5. Create a **draft** GitHub release from `v0.9.0`.
-   Use the exact title `Galadriel 0.9.0`.
-   Use the complete tracked `RELEASE-NOTES.md` body.
+   Use the literal title `Galadriel 0.9.0`.
+   Use the exact tracked `RELEASE-NOTES.md` body.
    Upload the four named files without replacement.
    Require exactly those four names in the application programming interface (API) asset list.
    Compare each API byte length with its local file value.
    Compare each API SHA-256 digest with its local file value.
 
    If the API omits a digest, record that field as unavailable.
-   Use the authenticated byte comparison in the next step.
+   Use the mandatory authenticated byte-for-byte comparison in the next step.
    Never invent an API digest or omit the comparison.
 
-   For each tar file, compare the local values with its signed-map row.
-   The map does not contain a row for itself or its detached signature.
+   For the two tar files only, compare the local values with their rows in the signed map.
+   The map does not contain rows for itself or its detached signature.
    The next authenticated download verifies the map signature and exact four-file set.
 
    GitHub generates the source ZIP and tar archives automatically.

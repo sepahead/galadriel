@@ -1,5 +1,15 @@
 # Decision to apply the 1.0 handoff to release 0.9.0
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| DOI | digital object identifier |
+| IDs | identifiers |
+| NCP | Neuro-Cybernetic Protocol |
+| ROS | Robot Operating System |
+| SHA-256 | Secure Hash Algorithm 256 |
+
 Status: accepted
 
 Author: Sepehr Mahmoudian

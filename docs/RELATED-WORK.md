@@ -1,5 +1,34 @@
 # Related work and comparison methods
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACM | Association for Computing Machinery |
+| AS | anti-spoofing |
+| CAVs | connected and automated vehicles |
+| CCS | Conference on Computer and Communications Security |
+| CPS | cyber-physical systems |
+| `et al.` | and others |
+| EuroS&P | European Symposium on Security and Privacy |
+| FAR | false-alarm rate |
+| FDI | false-data injection |
+| GPS | Global Positioning System |
+| IEEE | Institute of Electrical and Electronics Engineers |
+| ION | Institute of Navigation |
+| J. Inst. | Journal of the Institute |
+| KSG | Kraskov-Stögbauer-Grassberger |
+| LiDAR | light detection and ranging |
+| MDPI | Multidisciplinary Digital Publishing Institute |
+| NCP | Neuro-Cybernetic Protocol |
+| PDF | Portable Document Format |
+| pp. | pages |
+| RANSAC | random sample consensus |
+| S&P | Symposium on Security and Privacy |
+| TAC | Transactions on Automatic Control |
+| TCNS | Transactions on Control of Network Systems |
+| Trans. | Transactions |
+
 Galadriel's Mirror is one detector in a large and layered field.
 Spoof and fault detection for multi-sensor systems has a fifty-year literature.
 Accurate positioning requires clear statements about each alternative.

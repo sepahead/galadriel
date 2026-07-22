@@ -5,6 +5,22 @@ These instructions apply to every change in this repository.
 Use this file as the operational guide.
 Use the linked contracts as the technical source of truth.
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| API | application programming interface |
+| ASD-STE100 | ASD-STE100 Simplified Technical English |
+| CI | continuous integration |
+| CLI | command-line interface |
+| DOI | digital object identifier |
+| JSON | JavaScript Object Notation |
+| JSONL | JavaScript Object Notation Lines |
+| NCP | Neuro-Cybernetic Protocol |
+| PID | partial information decomposition |
+| ROS / ROS 2 | Robot Operating System / Robot Operating System 2 |
+| SSH | Secure Shell |
+
 ## Read before work
 
 Run these commands before you change a file:

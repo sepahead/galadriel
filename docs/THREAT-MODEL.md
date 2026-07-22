@@ -1,5 +1,23 @@
 # Threat model
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| ACL | access control list |
+| API | application programming interface |
+| CA | certificate authority |
+| CPU | central processing unit |
+| DOI | digital object identifier |
+| JSON | JavaScript Object Notation |
+| mTLS | mutual Transport Layer Security |
+| NCP | Neuro-Cybernetic Protocol |
+| NIS | normalized innovation squared |
+| PID | partial information decomposition |
+| SPKI | Subject Public Key Info |
+| TTL | time to live |
+| WebPKI | Web Public Key Infrastructure |
+
 This threat model covers the Galadriel 0.9.0 advisory monitor. It includes
 evidence inputs, optional transport adapters, release artifacts, and downstream
 use. It complements the deployment-specific ACL and mTLS model. It does not

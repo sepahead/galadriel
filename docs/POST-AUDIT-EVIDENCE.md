@@ -1,5 +1,11 @@
 # Post-audit evidence runner
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| SHA-256 | Secure Hash Algorithm 256 |
+
 `galadriel-evidence` is the bounded and reproducible evidence path for two product detectors.
 They are the streaming Normalized Innovation Squared (NIS) baseline and the default signed-correlation fusion.
 Run this command from the repository root:

@@ -1,5 +1,13 @@
 # Galadriel 0.9.0 normative claims
 
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| DOI | digital object identifier |
+| NCP | Neuro-Cybernetic Protocol |
+| ROS | Robot Operating System |
+
 The machine-readable source of truth is
 [`release/0.9.0/claims.json`](../release/0.9.0/claims.json). This page explains
 how to read that file. It does not add a claim.

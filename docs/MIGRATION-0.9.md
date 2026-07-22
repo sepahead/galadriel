@@ -1,4 +1,11 @@
-# Migration from the 0.1 research API to 0.9.0
+# Migration from the 0.1 research application programming interface (API) to 0.9.0
+
+## Abbreviations
+
+| Short form | Meaning |
+|---|---|
+| NCP | Neuro-Cybernetic Protocol |
+| SHA-256 | Secure Hash Algorithm 256 |
 
 Galadriel 0.9.0 deliberately breaks ambiguous pre-1.0 behavior.
 This change affects the application programming interface (API).
