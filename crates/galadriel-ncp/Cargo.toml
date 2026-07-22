@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Galadriel sidecar ingest using NCP 0.8 addressing, reached through galadriel-cli's `ncp` feature."
+description = "Galadriel sidecar ingestion through the CLI `ncp` feature and NCP wire 0.8 addressing."
 publish = false
 
 [lints]
@@ -21,34 +21,37 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
-# ncp-core is light (serde + serde_json only); the workspace root pins the exact
-# commit selected by the public annotated NCP v0.8.0 tag.
+# ncp-core uses only serde and serde_json.
+# The workspace root pins the commit for the annotated NCP v0.8.0 tag.
 ncp-core = { workspace = true }
-# The live named-perception tap (feature `zenoh`) pulls the full Zenoh + tokio stack;
-# the JSONL ingest path needs none of it, so it is strictly optional.
+# The live named-perception tap uses the `zenoh` feature.
+# This feature selects the complete Zenoh and Tokio stack.
+# The JSONL ingestion path does not need this stack.
 ncp-zenoh = { workspace = true, optional = true }
 # Retain exact raw subscriber guards so each live receiver can undeclare only its
 # own selector without broad-closing a host-owned NCP session.
 zenoh = { workspace = true, optional = true }
-# Used directly for bounded live handoffs and the fail-stop monitor receiver;
-# do not rely on ncp-zenoh's transitive runtime dependency. The live monitor gap
-# deadline owns one cancellation-aware timer task per exact epoch subscription.
+# Galadriel uses Tokio directly for bounded live handoffs.
+# The fail-stop monitor receiver also uses Tokio directly.
+# Do not rely on the transitive Tokio dependency from ncp-zenoh.
+# Each exact epoch subscription owns one cancellation-aware gap timer task.
 tokio = { workspace = true, optional = true, features = ["macros", "rt", "time"] }
 
 [dev-dependencies]
-# Live integration tests drive real in-process Zenoh round trips and need a
-# multi-thread runtime; the feature-gated library needs only sync, timers, macros,
-# and the current-thread runtime for its cancellation-aware gap worker.
+# Live integration tests use real in-process Zenoh round trips.
+# These tests need a multithreaded runtime.
+# The feature-gated library uses synchronization, timers, macros, and the current-thread runtime.
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 
 [features]
 default = []
-# The live Zenoh named-perception tap is off by default. The CLI's `ncp-live`
-# feature forwards it; direct galadriel-ncp builds may also select it explicitly.
+# The live Zenoh named-perception tap is off by default.
+# The CLI `ncp-live` feature forwards it.
+# A direct galadriel-ncp build can also select it.
 zenoh = ["dep:ncp-zenoh", "dep:tokio", "dep:zenoh"]
 
-# The live-leg e2e test compiles only when the `zenoh` feature is enabled
-# (it needs ncp-zenoh and the optional tokio dependency in the lib itself).
+# The live end-to-end test needs the `zenoh` feature.
+# It also needs ncp-zenoh and the optional library Tokio dependency.
 [[test]]
 name = "live_zenoh_e2e"
 required-features = ["zenoh"]

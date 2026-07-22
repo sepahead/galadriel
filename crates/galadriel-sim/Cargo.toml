@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Synthetic multi-sensor scenarios and an injection library for exercising Galadriel's Mirror."
+description = "Synthetic multisensor scenarios and an injection library for Galadriel's Mirror."
 publish = false
 
 [lints]

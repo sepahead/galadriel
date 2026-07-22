@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Core types and the NIS chi-squared baseline detector for Galadriel's Mirror."
+description = "Core types and a normalized innovation squared baseline detector."
 readme = "README.md"
 publish = false
 

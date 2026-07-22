@@ -1,5 +1,5 @@
 name: Reproducible defect
-description: Report a non-security correctness, reproducibility, or documentation defect.
+description: Report a public correctness, reproducibility, or documentation defect.
 title: "bug: "
 labels:
   - bug
@@ -12,7 +12,7 @@ body:
     id: commit
     attributes:
       label: Exact commit
-      description: Full 40-character Git commit used for the reproduction.
+      description: Enter the full 40-character Git commit for the reproduction.
       placeholder: 0123456789abcdef0123456789abcdef01234567
     validations:
       required: true
@@ -20,14 +20,14 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS, architecture, Rust/Python versions, and relevant hardware.
+      description: Enter the operating system, architecture, tool versions, and relevant hardware.
     validations:
       required: true
   - type: textarea
     id: command
     attributes:
       label: Command and configuration
-      description: Exact command, feature set, configuration, seeds, and non-sensitive inputs.
+      description: Enter the exact command, feature set, configuration, seeds, and non-sensitive inputs.
       render: shell
     validations:
       required: true
@@ -35,7 +35,7 @@ body:
     id: observed
     attributes:
       label: Observed behavior
-      description: Include complete error output or a minimal checksummed artifact.
+      description: Include the complete error output or a minimal checksummed artifact.
     validations:
       required: true
   - type: textarea
@@ -50,5 +50,5 @@ body:
     attributes:
       label: Safety check
       options:
-        - label: This report contains no credentials, private data, or undisclosed vulnerability details.
+        - label: I confirm that this report contains no credentials, private data, or undisclosed vulnerability details.
           required: true

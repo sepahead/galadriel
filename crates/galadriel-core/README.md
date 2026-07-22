@@ -1,22 +1,21 @@
 # galadriel-core
 
-The safe-Rust core of Galadriel's Mirror, an experimental cross-sensor
-consistency monitor for multi-sensor fusion.
+This crate is the safe-Rust core of Galadriel's Mirror.
+Galadriel's Mirror is an experimental cross-sensor consistency monitor for multi-sensor fusion.
 
-It provides:
+It supplies these functions:
 
-- validated `PidObservation` / `Modality` types, including an optional bounded
-  `ConsistencyProjection` with frame/context/frozen-prior provenance;
-- bounded per-track, per-modality NIS windows;
-- chi-square distribution functions backed by `statrs`;
-- windowed-NIS magnitude evidence with per-assessment family-wise control,
-  plus historical CUSUM evidence without a calibrated p-value;
-- signed Pearson correlation with a unique strict-majority positive-consensus
-  clique;
-- fail-closed fusion that preserves `InsufficientEvidence` and
-  `UnclassifiedAnomaly` rather than fabricating `Nominal`;
-- sealed whole-stream reports bound canonically to the complete release suite and
-  every exact ordered observation field.
+- It validates `PidObservation` and `Modality` types.
+- It supports an optional bounded `ConsistencyProjection` with frame, context, and frozen-prior provenance.
+- It keeps bounded NIS windows for each track and modality.
+- It supplies chi-square distribution functions through `statrs`.
+- It supplies windowed-NIS magnitude evidence with per-assessment family-wise control.
+- It supplies historical CUSUM evidence without a calibrated p-value.
+- It calculates signed Pearson correlation with one unique strict-majority positive-consensus clique.
+- Its fail-closed fusion preserves `InsufficientEvidence` and `UnclassifiedAnomaly`.
+- It does not fabricate `Nominal`.
+- It seals whole-stream reports and binds them canonically to the complete release suite.
+- It also binds each report to every exact ordered observation field.
 
 ```rust
 use galadriel_core::{
@@ -41,18 +40,25 @@ println!("{:?} ({})", report.verdict(), report.config_identity());
 # }
 ```
 
-`Mirror` is the magnitude component, so a magnitude-only nominal result remains
-an unavailable typed `AssessmentOutcome` until the signed-consistency prerequisite
-has run. Use `assess_default` for a sealed accepted default report. Its opaque
-`AssessmentBinding` can be compared or verified against the exact stream and
-suite, but cannot be fabricated or attached to replacement component reports.
+`Mirror` is the magnitude component.
+A magnitude-only nominal result remains an unavailable typed `AssessmentOutcome`.
+It remains unavailable until the signed-consistency prerequisite runs.
+Use `assess_default` for a sealed accepted default report.
+You can compare its opaque `AssessmentBinding` with the exact stream and suite.
+You can also verify it against the exact stream and suite.
 
-Invalid input/configuration returns `Err(...)`. Missing, stale, or insufficient
-evidence returns `InsufficientEvidence`. Cross-channel analysis consumes only the
-producer-attested common projection, evaluates every active axis with a shared
-multiple-testing budget, and never falls back to native innovations. Direct
-extraction scans at most 400,000 observations and retains at most 65,536 frames.
+You cannot fabricate it or attach it to replacement component reports.
 
-This crate is a pre-1.0 research component, uses workspace MSRV Rust 1.89, and
-sets `publish = false`. It is not a field-validated safety or enforcement layer.
+Invalid input or configuration returns `Err(...)`.
+Missing, stale, or insufficient evidence returns `InsufficientEvidence`.
+Cross-channel analysis consumes only the producer-attested common projection.
+It evaluates every active axis with a shared multiple-testing budget.
+It never falls back to native innovations.
+
+Direct extraction scans at most 400,000 observations.
+It retains at most 65,536 frames.
+
+This crate is a pre-1.0 research component.
+It uses workspace MSRV Rust 1.89 and sets `publish = false`.
+It is not a field-validated safety or enforcement layer.
 Licensed under MIT OR Apache-2.0.

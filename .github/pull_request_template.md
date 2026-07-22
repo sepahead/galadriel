@@ -1,17 +1,19 @@
 ## Change
 
-Describe the requirement, smallest coherent change, and affected public claims.
+Describe the requirement and the smallest coherent change.
+Identify all affected public claims.
 
 ## Evidence
 
-- [ ] Exact starting commit and affected requirement IDs are recorded.
-- [ ] Positive, boundary, malformed, and regression tests cover the change.
-- [ ] `cargo fmt`, locked all-target/all-feature Clippy, tests, and rustdoc pass.
-- [ ] Release-audit and generated artifacts are current when affected.
-- [ ] Documentation, migration, schemas, examples, and residual risks agree.
-- [ ] No credential, private key, generated secret, or undisclosed vulnerability is included.
-- [ ] The commit author is Sepehr Mahmoudian and no assistant is listed as author/co-author.
+- [ ] Record the exact base commit and all affected requirement identifiers.
+- [ ] Add positive, boundary, malformed-input, and regression tests for the change.
+- [ ] Run `cargo fmt`, locked all-target and all-feature Clippy, tests, and rustdoc. Confirm that all commands pass.
+- [ ] Update the release audit and generated artifacts when the change affects them.
+- [ ] Make documentation, migrations, schemas, examples, and residual risks consistent.
+- [ ] Exclude credentials, private keys, generated secrets, and undisclosed vulnerabilities.
+- [ ] List Sepehr Mahmoudian as the commit author. Do not list an assistant as an author or co-author.
 
 ## Scope and rollback
 
-State what is deliberately not claimed and how the change can be withdrawn safely.
+State each deliberate non-claim.
+Explain how to withdraw the change safely.

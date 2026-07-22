@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Monte-Carlo evaluation of NIS, signed correlation, PID, and fused assessment across attack types."
+description = "Monte Carlo evaluation of Galadriel detectors and fused assessments."
 publish = false
 
 [lints]
@@ -41,7 +41,7 @@ thiserror = { workspace = true }
 statrs = { workspace = true }
 
 [dev-dependencies]
-# Lean criterion: keep the statistical harness, drop the plotters/rayon extras so
-# `cargo bench` stays quick to build.
+# Keep the statistical harness without the Plotters and Rayon extras.
+# This configuration reduces the build time for `cargo bench`.
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 proptest = "1"

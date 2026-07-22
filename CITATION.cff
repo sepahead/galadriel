@@ -14,9 +14,10 @@ license:
   - MIT
   - Apache-2.0
 abstract: >-
-  A fail-closed Rust research release for cross-sensor statistical-consistency
-  monitoring using NIS/CUSUM, signed common-projection correlation, and an optional
-  information-theoretic PID diagnostic.
+  Galadriel is a fail-closed Rust research release for cross-sensor statistical
+  consistency monitoring. It uses normalized innovation squared (NIS), cumulative sum
+  (CUSUM), and signed common-projection correlation. It also offers an optional
+  partial information decomposition (PID) diagnostic.
 keywords:
   - sensor fusion
   - anomaly detection

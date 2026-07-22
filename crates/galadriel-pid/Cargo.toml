@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "The opt-in Partial Information Decomposition engine reached through galadriel-cli's `pid` feature."
+description = "Optional partial information decomposition through the CLI `pid` feature."
 publish = false
 
 [lints]
@@ -17,8 +17,8 @@ workspace = true
 
 [dependencies]
 galadriel-core = { workspace = true }
-# pid-core is pinned to the exact public revision whose manifest declares 1.0.0;
-# no public v1 tag or published 1.x artifact is claimed here.
+# pid-core uses the exact public revision whose manifest declares version 1.0.0.
+# This repository does not claim a public v1 tag or published 1.x artifact.
 pid-core = { workspace = true }
 sha2 = { workspace = true }
 

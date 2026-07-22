@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Demo, replay, and secure observer for Galadriel's Mirror."
+description = "A demonstration, replay, and fail-closed observer for Galadriel's Mirror."
 publish = false
 
 [lints]
@@ -30,9 +30,11 @@ anyhow = { workspace = true }
 
 [features]
 default = []
-# The cross-sensor PID engine (pulls pid-core). Demo: `cargo run --features pid -- demo`.
+# This feature selects the cross-sensor PID engine and pid-core.
+# Demonstration command: `cargo run --features pid -- demo`.
 pid = ["dep:galadriel-pid"]
-# NCP sidecar ingest (pulls ncp-core). Adds `replay <jsonl>`.
+# This feature selects NCP sidecar ingestion and ncp-core.
+# It adds `replay <jsonl>`.
 ncp = ["dep:galadriel-ncp"]
 # The operational two-route Zenoh receiver and process runtime.
 ncp-live = ["ncp", "galadriel-ncp/zenoh", "dep:tokio"]

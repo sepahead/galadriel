@@ -1,0 +1,146 @@
+---
+description: Repository-wide Galadriel engineering and release constraints
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Galadriel execution rules
+
+`AGENTS.md` is the primary repository instruction file.
+Read it before you act.
+Read `RELEASE-POLICY.md` before release work.
+Read `release/0.9.0/RELEASE-RUNBOOK.md` before qualification or publication.
+
+## Start each task
+
+Work from the repository root.
+Record the exact commit and tree.
+Inspect the worktree before you edit.
+Read the applicable code, tests, schema, and documentation.
+Check for concurrent work on each file.
+Preserve unrelated changes.
+
+Stop before an edit that conflicts with another owner.
+
+## Non-negotiable boundary
+
+Galadriel reports advisory evidence only.
+Galadriel MUST NOT grant or widen authority.
+`Nominal` MUST NOT create permission.
+Missing or incompatible evidence MUST NOT become `Nominal`.
+Invalid input or invalid configuration MUST return an error.
+
+Keep PID and NCP integrations off by default.
+Keep the PID path additive.
+PID evidence MUST NOT repair a failed core prerequisite.
+Keep all Rust targets free of unsafe code.
+Bind cross-channel input to one track and one exact sequence.
+Bind it to a common projection and physical frame.
+
+Bind live input to its session, producer, epoch, route, and lifecycle.
+Bound resources before expensive work.
+Preserve abstention and negative results.
+
+## Release identity
+
+The current release version is `0.9.0`.
+Sepehr Mahmoudian is the author.
+The canonical GitHub owner is `sepahead`.
+Keep every workspace package at `publish = false`.
+Do not add a project DOI or Zenodo record.
+Do not claim production support or deployment qualification.
+
+Each tracked edit creates a new candidate identity.
+Rerun candidate-bound verification after each tracked edit.
+Do not reuse evidence from an earlier candidate.
+Do not modify a signed evidence file.
+Do not overwrite an evidence directory.
+
+## Protected records
+
+Do not edit a file in the protected-record list in `AGENTS.md`.
+Do not hand-edit a generated artifact.
+Change its declared generator.
+Do not rewrite contract, fixture, schema, or evidence JSON as style work.
+
+## Change method
+
+Use `rg` for search.
+Use `apply_patch` for manual edits.
+Do not use destructive Git commands.
+Do not weaken a guard to make a test pass.
+Add a negative test for each new accept path.
+Add a positive test for each new fail-closed path.
+
+Test feature-disabled behavior when an optional feature changes.
+
+Treat external model output as advisory review.
+Do not treat that output as release evidence.
+Do not let an external model decide a security or authority boundary.
+Verify each suggestion against code, tests, and retained evidence.
+
+## Secrets
+
+Keep `.env` ignored.
+Do not print a secret value.
+Do not put a secret in a command argument.
+Do not put a secret in a prompt, log, commit, document, or evidence file.
+Pass an approved secret through the process environment.
+Stop if output contains a secret.
+
+Rotate an exposed credential before you continue.
+
+## Verification
+
+Run focused tests during implementation.
+Run the complete command set in `AGENTS.md` before a push.
+Use `.github/workflows/ci.yml` as the exact CI command source.
+Run the four mutation-diff shards for a release candidate.
+Keep the observational mutation result as residual evidence.
+Do not claim that a skipped or failed gate passed.
+
+Use an external trust root for signature verification.
+Do not let the candidate authenticate itself.
+
+## Documentation
+
+Use the project ASD-STE100 Issue 9 style.
+Use short active sentences.
+Put one instruction or topic in each sentence.
+Use American English word forms.
+Do not use contractions.
+
+Do not use semicolons.
+Define each abbreviation at first use.
+Use one term for one concept.
+Preserve exact technical data.
+State the scope and evidence tier of each result.
+State what each result does not prove.
+
+## Collaboration and Git
+
+Edit only assigned files during delegated work.
+Do not merge, tag, publish, or change repository settings during delegated work.
+The release operator must review each returned line.
+The release operator must rerun decisive tests.
+
+Commit one coherent verified milestone at a time.
+Sign every commit.
+Use Sepehr Mahmoudian as the sole commit author.
+Use a concise professional imperative subject.
+Do not add automated attribution or a co-author trailer.
+
+Do not force-push `main`.
+Push the accepted exact candidate to `origin/main`.
+
+## Stop conditions
+
+Stop if the candidate identity differs from the expected identity.
+Stop if a signed input changed.
+Stop if required evidence is missing.
+Stop if a claim exceeds its evidence tier.
+Stop if an edit creates a command or authority edge.
+
+Stop if another agent owns the same file.
+Resolve the condition before you continue.

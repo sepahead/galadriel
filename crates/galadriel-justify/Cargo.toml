@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Is PID/mutual-information actually justified over cheap Pearson correlation? A head-to-head study."
+description = "A comparison of partial information decomposition, mutual information, and Pearson correlation."
 publish = false
 
 [lints]

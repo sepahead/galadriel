@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Galadriel sentinel shield: an angular futuristic crest whose visor slit carries a sweeping red scanning eye; three fiber-optic sensor channels stream into it from below — the watcher that looks for the channel that lies.">
-  <title>Galadriel — Sentinel Shield (the eye that scans for the lying channel)</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="An angular Galadriel shield with a red scanning eye and three incoming sensor channels.">
+  <title>Galadriel sentinel shield</title>
   <defs>
     <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#10202f"/>

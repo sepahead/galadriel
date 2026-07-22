@@ -1,13 +1,13 @@
-# galadriel — Galadriel's Mirror
-# A fail-closed cross-sensor statistical-consistency monitor for
-# multi-sensor fusion (counter-UAS and embodied-agent perception).
+# Galadriel's Mirror is a fail-closed cross-sensor consistency monitor.
+# It supports multisensor fusion research for counter-UAS and embodied-agent perception.
 #
-# The default build is PURE and light: galadriel-core (the cheap NIS chi-squared
-# baseline) + galadriel-sim (synthetic scenarios) + galadriel-cli (the demo).
-# For the default-member CLI build, the additive `pid`, `ncp`, and `ncp-live`
-# features opt into pid-core, ncp-core, and ncp-zenoh/Zenoh/Tokio respectively.
-# Direct builds of the adapter, evaluation, or justification workspace members
-# resolve the dependencies declared by those members without going through CLI features.
+# The default build is pure and small.
+# It includes galadriel-core, galadriel-sim, and galadriel-cli.
+# The default-member command-line interface (CLI) build has three additive features.
+# The `pid` feature selects pid-core.
+# The `ncp` feature selects ncp-core.
+# The `ncp-live` feature selects ncp-zenoh, Zenoh, and Tokio.
+# Direct workspace-member builds resolve their declared dependencies.
 [workspace]
 resolver = "2"
 members = [
@@ -19,9 +19,9 @@ members = [
     "crates/galadriel-eval",
     "crates/galadriel-justify",
 ]
-# The default build (`cargo build` / `cargo test` with no args) stays PURE — it
-# excludes galadriel-pid, which pulls the heavier pid-core. Build/test it with
-# `-p galadriel-pid`, `--workspace`, or via the cli `pid` feature.
+# The default build excludes galadriel-pid and its heavier pid-core dependency.
+# Select galadriel-pid with `-p galadriel-pid` or `--workspace`.
+# The CLI `pid` feature also selects galadriel-pid.
 default-members = [
     "crates/galadriel-core",
     "crates/galadriel-sim",
@@ -36,7 +36,7 @@ license = "MIT OR Apache-2.0"
 authors = ["Sepehr Mahmoudian"]
 repository = "https://github.com/sepahead/galadriel"
 homepage = "https://github.com/sepahead/galadriel"
-description = "Galadriel's Mirror — a fail-closed cross-sensor statistical-consistency monitor for multi-sensor fusion."
+description = "A fail-closed cross-sensor statistical consistency monitor for multisensor fusion."
 keywords = ["security", "sensor-fusion", "anomaly-detection", "counter-uas", "information-theory"]
 categories = ["science", "algorithms"]
 
@@ -59,11 +59,12 @@ galadriel-core = { version = "0.9.0", path = "crates/galadriel-core" }
 galadriel-sim = { version = "0.9.0", path = "crates/galadriel-sim" }
 galadriel-pid = { version = "0.9.0", path = "crates/galadriel-pid" }
 galadriel-ncp = { version = "0.9.0", path = "crates/galadriel-ncp" }
-# Public sibling ecosystem crates pinned to immutable commits. pid-rs currently
-# declares 1.0.0 on main without a v1 tag or published artifact; this revision
-# includes that version-declaration commit plus its same-day correctness/CI
-# follow-ups. Galadriel opts into the
-# explicitly experimental continuous/pipeline surface used by its advisory PID path.
+# Public sibling ecosystem crates use immutable commits.
+# pid-rs declares version 1.0.0 on main.
+# It has no public v1 tag or published artifact.
+# The selected revision includes the version declaration and same-day corrections.
+# It also includes the same-day continuous integration changes.
+# Galadriel selects the experimental continuous pipeline for its advisory PID path.
 pid-core = { version = "1.0.0", git = "https://github.com/sepahead/pid-rs", rev = "1cd2424f7967e1752dcc8e53859e8fdad3566f51", features = ["experimental-pipelines"] }
 ncp-core = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 ncp-zenoh = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
