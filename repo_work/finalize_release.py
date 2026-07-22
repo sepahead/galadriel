@@ -1034,6 +1034,85 @@ def validate_qualification_commands(
             )
 
 
+def validate_supply_chain_report_records(
+    qualification: dict[str, Any], manifest_artifacts: dict[str, dict[str, Any]]
+) -> None:
+    """Bind each retained supply-chain report to its declared process stream."""
+
+    report_contracts = (
+        (
+            "license_report",
+            "reports/license-report.jsonl",
+            [
+                "cargo",
+                "deny",
+                "--format",
+                "json",
+                "--all-features",
+                "--locked",
+                "check",
+                "licenses",
+            ],
+            "stderr",
+            "stdout",
+            True,
+        ),
+        (
+            "vulnerability_report",
+            "reports/vulnerability-report.json",
+            [
+                "cargo",
+                "audit",
+                "--no-yanked",
+                "--ignore",
+                "RUSTSEC-2026-0041",
+                "--format",
+                "json",
+            ],
+            "stdout",
+            "stderr",
+            False,
+        ),
+    )
+    for (
+        field,
+        relative,
+        argv,
+        expected_report_stream,
+        expected_diagnostics_stream,
+        require_empty_diagnostics,
+    ) in report_contracts:
+        report = qualification.get(field)
+        row = manifest_artifacts.get(relative)
+        diagnostics = report.get("diagnostics") if isinstance(report, dict) else None
+        if (
+            not isinstance(report, dict)
+            or set(report)
+            != {
+                "argv",
+                "path",
+                "sha256",
+                "size_bytes",
+                "report_stream",
+                "diagnostics",
+            }
+            or row is None
+            or report["argv"] != argv
+            or report["path"] != relative
+            or (report["sha256"], report["size_bytes"])
+            != (row["sha256"], row["size_bytes"])
+            or report["report_stream"] != expected_report_stream
+            or not isinstance(diagnostics, dict)
+            or set(diagnostics) != {"stream", "text"}
+            or diagnostics["stream"] != expected_diagnostics_stream
+            or not isinstance(diagnostics["text"], str)
+            or (require_empty_diagnostics and diagnostics["text"] != "")
+        ):
+            raise ReviewError(
+                f"qualification {field} is not command-, stream-, and manifest-bound"
+            )
+
+
 def verify_qualification(
     root: Path,
     *,
@@ -1445,49 +1524,7 @@ def verify_qualification(
             "qualification provenance contradicts its candidate or materials"
         )
 
-    report_contracts = (
-        (
-            "license_report",
-            "reports/license-report.jsonl",
-            [
-                "cargo",
-                "deny",
-                "--format",
-                "json",
-                "--all-features",
-                "--locked",
-                "check",
-                "licenses",
-            ],
-        ),
-        (
-            "vulnerability_report",
-            "reports/vulnerability-report.json",
-            [
-                "cargo",
-                "audit",
-                "--no-yanked",
-                "--ignore",
-                "RUSTSEC-2026-0041",
-                "--format",
-                "json",
-            ],
-        ),
-    )
-    for field, relative, argv in report_contracts:
-        report = qualification.get(field)
-        row = manifest_artifacts[relative]
-        if (
-            not isinstance(report, dict)
-            or set(report) != {"argv", "path", "sha256", "size_bytes", "stderr"}
-            or report["argv"] != argv
-            or report["path"] != relative
-            or (report["sha256"], report["size_bytes"])
-            != (row["sha256"], row["size_bytes"])
-        ):
-            raise ReviewError(
-                f"qualification {field} is not command- and manifest-bound"
-            )
+    validate_supply_chain_report_records(qualification, manifest_artifacts)
     license_documents = [
         loads_json(line)
         for line in (root / "reports/license-report.jsonl")

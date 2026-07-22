@@ -177,6 +177,12 @@ python3 repo_work/qualify_candidate.py \
   --keep-going
 ```
 
+Retained supply-chain evidence is stream-bound to the pinned tools: `cargo-deny`
+0.19.9 license JSON is read from stderr only and requires byte-empty stdout, while
+`cargo-audit` JSON is read from stdout and its stderr is retained as diagnostics.
+Finalization verifies those declarations, the opposite-stream diagnostics, and each
+report's exact signed-manifest identity before accepting the qualification bundle.
+
 The retained `.crate` files are reproducible unpublished-source packages, not a
 crates.io publication claim. Cargo prepares them twice in disposable exact-commit
 clones using offline path overrides for the locked unpublished workspace/Git

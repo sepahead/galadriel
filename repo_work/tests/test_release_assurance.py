@@ -46,6 +46,7 @@ from finalize_release import (  # noqa: E402
     validate_finalization_dag_evidence,
     validate_qualification_commands,
     validate_qualification_record,
+    validate_supply_chain_report_records,
     verify_sha256sums,
 )
 from local_convergence import (  # noqa: E402
@@ -2264,6 +2265,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 environment=dict(os.environ),
                 output=root / "reports" / "valid.jsonl",
                 json_lines=True,
+                report_stream="stdout",
             )
             self.assertGreater(valid["size_bytes"], 0)
             for name, program in (
@@ -2280,7 +2282,240 @@ class DecisionAndRunnerTests(unittest.TestCase):
                             environment=dict(os.environ),
                             output=root / "reports" / f"{name}.json",
                             json_lines=False,
+                            report_stream="stdout",
                         )
+
+    def test_supply_chain_reports_retain_the_declared_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cases = (
+                (
+                    "cargo-deny-stderr-jsonl",
+                    ('import sys; sys.stderr.write(\'{"type":"summary"}\\n\')'),
+                    True,
+                    "stderr",
+                    "stdout",
+                    "",
+                    b'{"type":"summary"}\n',
+                ),
+                (
+                    "stdout-json",
+                    (
+                        "import sys; "
+                        "sys.stdout.write('{\"vulnerabilities\":{}}\\n'); "
+                        "sys.stderr.write('audit diagnostic\\n')"
+                    ),
+                    False,
+                    "stdout",
+                    "stderr",
+                    "audit diagnostic",
+                    b'{"vulnerabilities":{}}\n',
+                ),
+            )
+            for (
+                name,
+                program,
+                json_lines,
+                report_stream,
+                diagnostics_stream,
+                diagnostics_text,
+                expected_report,
+            ) in cases:
+                with self.subTest(name=name):
+                    output = root / "reports" / f"{name}.json"
+                    report = capture_report(
+                        [sys.executable, "-c", program],
+                        worktree=root,
+                        environment=dict(os.environ),
+                        output=output,
+                        json_lines=json_lines,
+                        report_stream=report_stream,
+                    )
+                    self.assertEqual(
+                        set(report),
+                        {
+                            "argv",
+                            "path",
+                            "sha256",
+                            "size_bytes",
+                            "report_stream",
+                            "diagnostics",
+                        },
+                    )
+                    self.assertEqual(report["report_stream"], report_stream)
+                    self.assertEqual(
+                        report["diagnostics"],
+                        {"stream": diagnostics_stream, "text": diagnostics_text},
+                    )
+                    self.assertEqual(output.read_bytes(), expected_report)
+
+    def test_supply_chain_reports_reject_wrong_or_invalid_selected_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cases = (
+                (
+                    "wrong-stream",
+                    'import sys; sys.stderr.write(\'{"type":"summary"}\\n\')',
+                    "stdout",
+                    "empty report on stdout",
+                ),
+                (
+                    "deny-nonempty-stdout",
+                    (
+                        "import sys; "
+                        "sys.stdout.write('unexpected diagnostic\\n'); "
+                        'sys.stderr.write(\'{"type":"summary"}\\n\')'
+                    ),
+                    "stderr",
+                    "unexpected nonempty stdout",
+                ),
+                (
+                    "deny-whitespace-only-stdout",
+                    (
+                        "import sys; "
+                        "sys.stdout.write(' \\n'); "
+                        'sys.stderr.write(\'{"type":"summary"}\\n\')'
+                    ),
+                    "stderr",
+                    "unexpected nonempty stdout",
+                ),
+                (
+                    "invalid-selected-stream",
+                    "print('not-json')",
+                    "stdout",
+                    "invalid JSON evidence on stdout",
+                ),
+                (
+                    "selected-scalar",
+                    "print('1')",
+                    "stdout",
+                    "JSON report must be an object",
+                ),
+                (
+                    "selected-list",
+                    "print('[]')",
+                    "stdout",
+                    "JSON report must be an object",
+                ),
+                (
+                    "selected-invalid-utf8",
+                    "import sys; sys.stdout.buffer.write(b'\\xff')",
+                    "stdout",
+                    "JSON input is not valid UTF-8",
+                ),
+                ("empty-selected-stream", "pass", "stdout", "empty report on stdout"),
+            )
+            for name, program, report_stream, error in cases:
+                with self.subTest(name=name):
+                    with self.assertRaisesRegex(ReviewError, error):
+                        capture_report(
+                            [sys.executable, "-c", program],
+                            worktree=root,
+                            environment=dict(os.environ),
+                            output=root / "reports" / f"{name}.json",
+                            json_lines=False,
+                            report_stream=report_stream,
+                        )
+
+            with self.assertRaisesRegex(ReviewError, "report_stream must be exactly"):
+                capture_report(
+                    [sys.executable, "-c", "pass"],
+                    worktree=root,
+                    environment=dict(os.environ),
+                    output=root / "reports" / "unknown.json",
+                    json_lines=False,
+                    report_stream="unknown",
+                )
+
+            with self.assertRaisesRegex(ReviewError, "report failed"):
+                capture_report(
+                    [
+                        sys.executable,
+                        "-c",
+                        "import sys; print('{\"valid\":true}'); sys.exit(7)",
+                    ],
+                    worktree=root,
+                    environment=dict(os.environ),
+                    output=root / "reports" / "nonzero.json",
+                    json_lines=False,
+                    report_stream="stdout",
+                )
+
+    def test_finalizer_binds_supply_chain_report_streams_and_diagnostics(self) -> None:
+        license_path = "reports/license-report.jsonl"
+        vulnerability_path = "reports/vulnerability-report.json"
+        manifest_artifacts = {
+            license_path: {"sha256": "a" * 64, "size_bytes": 101},
+            vulnerability_path: {"sha256": "b" * 64, "size_bytes": 202},
+        }
+        qualification = {
+            "license_report": {
+                "argv": [
+                    "cargo",
+                    "deny",
+                    "--format",
+                    "json",
+                    "--all-features",
+                    "--locked",
+                    "check",
+                    "licenses",
+                ],
+                "path": license_path,
+                "sha256": "a" * 64,
+                "size_bytes": 101,
+                "report_stream": "stderr",
+                "diagnostics": {"stream": "stdout", "text": ""},
+            },
+            "vulnerability_report": {
+                "argv": [
+                    "cargo",
+                    "audit",
+                    "--no-yanked",
+                    "--ignore",
+                    "RUSTSEC-2026-0041",
+                    "--format",
+                    "json",
+                ],
+                "path": vulnerability_path,
+                "sha256": "b" * 64,
+                "size_bytes": 202,
+                "report_stream": "stdout",
+                "diagnostics": {"stream": "stderr", "text": "audit warning"},
+            },
+        }
+        validate_supply_chain_report_records(qualification, manifest_artifacts)
+
+        variants: list[tuple[str, dict[str, object], str]] = []
+        swapped = copy.deepcopy(qualification)
+        swapped["license_report"]["report_stream"] = "stdout"
+        variants.append(("swapped-report-stream", swapped, "license_report"))
+        wrong_diagnostics = copy.deepcopy(qualification)
+        wrong_diagnostics["vulnerability_report"]["diagnostics"]["stream"] = "stdout"
+        variants.append(
+            ("wrong-diagnostics-stream", wrong_diagnostics, "vulnerability_report")
+        )
+        nonempty_deny_stdout = copy.deepcopy(qualification)
+        nonempty_deny_stdout["license_report"]["diagnostics"]["text"] = "unexpected"
+        variants.append(
+            ("nonempty-deny-stdout", nonempty_deny_stdout, "license_report")
+        )
+        missing_key = copy.deepcopy(qualification)
+        del missing_key["license_report"]["report_stream"]
+        variants.append(("missing-key", missing_key, "license_report"))
+        extra_key = copy.deepcopy(qualification)
+        extra_key["license_report"]["stderr"] = "legacy"
+        variants.append(("extra-key", extra_key, "license_report"))
+        wrong_digest = copy.deepcopy(qualification)
+        wrong_digest["license_report"]["sha256"] = "c" * 64
+        variants.append(("digest-tamper", wrong_digest, "license_report"))
+        wrong_size = copy.deepcopy(qualification)
+        wrong_size["vulnerability_report"]["size_bytes"] = 203
+        variants.append(("size-tamper", wrong_size, "vulnerability_report"))
+
+        for name, document, field in variants:
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ReviewError, f"qualification {field}"):
+                    validate_supply_chain_report_records(document, manifest_artifacts)
 
     def test_failed_acceptance_requires_exact_narrowed_disposition(self) -> None:
         acceptance = {

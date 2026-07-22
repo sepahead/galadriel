@@ -23,6 +23,9 @@ pure default core and explicitly activated PID and NCP integrations.
   activates the pinned Zenoh transport adapter and Tokio.
 - Exact feature-graph, public-API, security-profile, supply-chain, fuzz, mutation,
   source-inventory, signed-input, qualification, and closure-verification tooling.
+- Stream-bound retained supply-chain reports: the pinned `cargo-deny` license summary
+  is captured from stderr with byte-empty stdout, `cargo-audit` JSON is captured from
+  stdout, and finalization verifies both declared stream contracts and diagnostics.
 - Direction-complete exploratory sweep summaries, explicit empty-partition reporting,
   tie-aware alarm-ranked AUC, and fully sampled bounded maneuver studies.
 

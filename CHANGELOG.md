@@ -36,6 +36,11 @@ may contain breaking changes.
   strict UTF-8 tar names are locale-independent, and safe reconstruction never delegates
   path handling to the archive library. Release publication pins canonical tar generation
   and regeneration to CPython 3.14.6 and byte-compares all four downloaded upload files.
+- Bind retained supply-chain reports to the exact stream used by each pinned tool:
+  `cargo-deny` 0.19.9 license JSON is captured from stderr with byte-empty stdout,
+  while `cargo-audit` JSON is captured from stdout with its stderr retained as
+  diagnostics. Finalization rejects stream swaps, unexpected deny output, malformed
+  diagnostics, and report identities that differ from the signed artifact inventory.
 - Add a verdict-independent authority-effect validator proving record-only and
   monotonically restrict-only consumer transitions; `Nominal` cannot grant authority,
   relax a limit, extend TTL/lease, refresh a watchdog, or change capabilities.

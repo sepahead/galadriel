@@ -91,8 +91,8 @@
     {
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e409bfbb05f29ddc9fe555eb300e1fe04d8ac0d66862e64424ba31941e8d2ffe",
-      "size_bytes": 37738
+      "sha256": "efc2e958fb92511a898135b2e8e65ad3c76d53ed0a8901ec832ec4f4dc10d164",
+      "size_bytes": 38152
     },
     {
       "path": "CITATION.cff",
@@ -847,8 +847,8 @@
     {
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "79a1cc82d95784466d3c46548dfb9e2e0a7219506d3faa73fafd9598897dc0ff",
-      "size_bytes": 5668
+      "sha256": "6e6710542642f1f449f4550d9dca1eec416d04f8a37c5998adb7991d7f2a8403",
+      "size_bytes": 5924
     },
     {
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
@@ -901,13 +901,13 @@
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "63b8fccb6a27fce327fa64a6580ed871c9dde5fd5ddffd329b4507bd8724e387",
+      "sha256": "681807495838a20cfd73b2356d74e1f15b2643f115343cea639640a146b5a392",
       "size_bytes": 57393
     },
     {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "6cdc88b9301056a45f4e497bcbebcb98bfffd00d692fb6ee86ca4facc40a5935",
+      "sha256": "3c0cbaa8497e445ef9501773b4c51f810e9c92c7368286b7677df453d13ab64c",
       "size_bytes": 322
     },
     {
@@ -1045,8 +1045,8 @@
     {
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "fd2d6789e602055057e995193daa9d5c888e0e181a20a70ed00c31649e3b57d2",
-      "size_bytes": 21213
+      "sha256": "865348289c352f2765d187b197bc4e43791db53e7f602aa512ce03ff8d1d92fd",
+      "size_bytes": 21627
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1099,8 +1099,8 @@
     {
       "path": "repo_work/finalize_release.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "edfe61dd6e91593fae3cae3de5007d40501125a44e1624bb324469ec4d8881d2",
-      "size_bytes": 84644
+      "sha256": "d6e23ab9f88451d3f6e9e7cf67a04ad532acaf7e904313073f780d2ed0f890ad",
+      "size_bytes": 85837
     },
     {
       "path": "repo_work/freeze_audit_inputs.py",
@@ -1135,8 +1135,8 @@
     {
       "path": "repo_work/qualify_candidate.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "33b31bfd0a03fb5e43079cb842e7030a70a037a1606653ffb01a5bd22636b77d",
-      "size_bytes": 52824
+      "sha256": "a95d5d3e3079bd97b32be51c7447e99a6b350651c86ff0606f9519d483be0ca0",
+      "size_bytes": 53696
     },
     {
       "path": "repo_work/release_assurance.py",
@@ -1165,14 +1165,14 @@
     {
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3d25ded036dc659b8a87ba07eac0207531d30833c965f753ccb998687e056ff4",
-      "size_bytes": 125575
+      "sha256": "91307ba5eed3968700751ea980a2edd7d3e17be176afcd7286896fd8e377266a",
+      "size_bytes": 135209
     },
     {
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f3b39eada82740cde82417cc9eddf70b2c82383c62fc2c304624db3e830fe39a",
-      "size_bytes": 93142
+      "sha256": "fac4d4c4a278d2a8067d11eeaa961c68d1612a28a949d3604f98c9b7d7e8fc7f",
+      "size_bytes": 93190
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",

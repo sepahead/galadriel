@@ -599,8 +599,12 @@ def capture_report(
     environment: dict[str, str],
     output: Path,
     json_lines: bool,
+    report_stream: str,
 ) -> dict[str, Any]:
-    """Retain and parse-check a standalone supply-chain JSON report."""
+    """Retain and parse-check a report from one explicitly selected stream."""
+
+    if report_stream not in {"stdout", "stderr"}:
+        raise ReviewError("report_stream must be exactly 'stdout' or 'stderr'")
 
     process = subprocess.run(
         argv,
@@ -614,34 +618,48 @@ def capture_report(
     if process.returncode != 0:
         detail = process.stderr.decode("utf-8", "replace").strip()
         raise ReviewError(f"{' '.join(argv)} report failed: {detail}")
-    if not process.stdout.strip():
-        raise ReviewError(f"{' '.join(argv)} produced an empty report")
+    command = " ".join(argv)
+    report_payload = process.stdout if report_stream == "stdout" else process.stderr
+    diagnostics_stream = "stderr" if report_stream == "stdout" else "stdout"
+    diagnostics_payload = (
+        process.stderr if diagnostics_stream == "stderr" else process.stdout
+    )
+    if not report_payload.strip():
+        raise ReviewError(f"{command} produced an empty report on {report_stream}")
+    if report_stream == "stderr" and process.stdout:
+        raise ReviewError(
+            f"{command} produced unexpected nonempty stdout alongside its stderr report"
+        )
     try:
         if json_lines:
             documents = [
-                loads_json(line) for line in process.stdout.splitlines() if line.strip()
+                loads_json(line) for line in report_payload.splitlines() if line.strip()
             ]
             if not documents or not all(
                 isinstance(document, dict) for document in documents
             ):
                 raise ValueError("JSONL report must contain at least one object")
         else:
-            document = loads_json(process.stdout)
+            document = loads_json(report_payload)
             if not isinstance(document, dict):
                 raise ValueError("JSON report must be an object")
     except (UnicodeError, ReviewError, ValueError) as error:
         raise ReviewError(
-            f"{' '.join(argv)} produced invalid JSON evidence: {error}"
+            f"{command} produced invalid JSON evidence on {report_stream}: {error}"
         ) from error
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(process.stdout)
+    output.write_bytes(report_payload)
     digest, size = digest_file(output)
     return {
         "argv": argv,
         "path": output.relative_to(output.parents[1]).as_posix(),
         "sha256": digest,
         "size_bytes": size,
-        "stderr": process.stderr.decode("utf-8", "replace").strip(),
+        "report_stream": report_stream,
+        "diagnostics": {
+            "stream": diagnostics_stream,
+            "text": diagnostics_payload.decode("utf-8", "replace").strip(),
+        },
     }
 
 
@@ -1262,6 +1280,7 @@ def main() -> int:
                 environment=environment,
                 output=output / "reports" / "license-report.jsonl",
                 json_lines=True,
+                report_stream="stderr",
             )
             vulnerability_report = capture_report(
                 [
@@ -1277,6 +1296,7 @@ def main() -> int:
                 environment=environment,
                 output=output / "reports" / "vulnerability-report.json",
                 json_lines=False,
+                report_stream="stdout",
             )
             reproducibility = {
                 "schema": "galadriel.reproducibility-comparison.v1",

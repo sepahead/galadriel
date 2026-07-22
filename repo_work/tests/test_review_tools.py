@@ -491,6 +491,7 @@ class ReviewToolsTest(unittest.TestCase):
                         environment=os.environ.copy(),
                         output=self.root / "reports" / "report.json",
                         json_lines=json_lines,
+                        report_stream="stdout",
                     )
 
     def test_frozen_head_accepts_exact_clean_checkout(self) -> None:
