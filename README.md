@@ -21,6 +21,7 @@
 |---|---|
 | ACL | access control list |
 | API | application programming interface |
+| ASCII | American Standard Code for Information Interchange |
 | CA | certificate authority |
 | CLI | command-line interface |
 | CN | certificate common name |
@@ -40,6 +41,7 @@
 | PID2 | two-source partial information decomposition |
 | PID3 | three-source partial information decomposition |
 | ROS / ROS 2 | Robot Operating System / Robot Operating System 2 |
+| SBOM | software bill of materials |
 | SPKI | Subject Public Key Info |
 | SSH | Secure Shell |
 | TLS | Transport Layer Security |
@@ -83,9 +85,9 @@ A shared transport or historical fixture also does not prove such an integration
 | [pid-rs](https://github.com/sepahead/pid-rs) | Upstream algorithm library | The default CLI build does not use it. The PID, justification, and evaluation crates require its exact `pid-core` pin. The CLI `pid` feature also requires the pin. It is linked code, not a runtime service. | It supplies restricted-domain KSG mutual-information and PID primitives for additive research diagnostics. | Pin `1cd2424f7967e1752dcc8e53859e8fdad3566f51` declares 1.0.0. It transitively resolves `pid-runlog` 1.0.0 from the same revision. Galadriel claims no public v1 tag or published upstream 1.x artifact. |
 | [NCP](https://github.com/sepahead/NCP) | Upstream wire and transport libraries | The default CLI build does not use it. `galadriel-ncp`, evaluation, and CLI `ncp` require `ncp-core`. `ncp-live` also pulls `ncp-zenoh`, Zenoh, and Tokio. | It supplies wire-0.8 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded offline JSONL, and operational receiver. | Both NCP crates pin `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`. This pin does not prove remote authorization, ACL enforcement, or wire-1.0 compatibility. |
 | [Crebain](https://github.com/sepahead/crebain) | External upstream producer relationship | There is no Cargo dependency. The demo, simulation, evaluation, and replay do not require Crebain. Live operation needs an authorized contract-conforming producer. The code identity does not have to be Crebain. | It supplies the inspected reference component for the observation and monitor sidecar contract. It also supplies the byte-identical retained registry fixture. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head. Galadriel claims no reciprocal final-candidate or deployment qualification. |
-| [Haldir](https://github.com/sepahead/haldir) | Prospective downstream authorization consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It defines the intended future record-only boundary. It also defines the independently admitted restrict-only boundary. Tests ensure that Galadriel evidence cannot grant or widen authority. | The integration phase has not started. There is no runtime evidence. |
-| [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator and covariate consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It documents a possible future immutable offline covariate import. It keeps Galadriel sidecars outside normative NCP `SensorFrame`s. | The relationship is E0. Shared NCP and PID dependencies do not imply schema compatibility or independent-implementation replication. |
-| Engram / Paper2Brain | External application and realm context | There is no dependency, API, process, route, adapter, or runtime edge. The literal `engram/ncp` is a configurable example realm. It is not an application integration. | It makes the example deployment namespace concrete. NCP remains the actual library, key, and transport interface. | Paper2Brain is private and unpublished application inventory only. Galadriel claims no public artifact, compatibility, or deployment qualification. |
+| [Haldir](https://github.com/sepahead/haldir) | Prospective record-only consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It defines the intended future record-only boundary. It also defines the independently admitted restrict-only boundary. Tests ensure that Galadriel evidence cannot grant or widen authority. | The integration phase has not started. There is no runtime evidence. |
+| [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator and covariate consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It documents a possible future immutable offline covariate import. It keeps Galadriel sidecars outside normative NCP `SensorFrame`s. | The inspected relationship records intention or adjacency only. Shared NCP and PID dependencies do not imply schema compatibility or independent-implementation replication. |
+| Engram and Paper2Brain | External application names and realm context | There is no dependency, API, process, route, adapter, or runtime edge. The literal `engram/ncp` is a configurable example realm. It is not an application integration. | It makes the example deployment namespace concrete. NCP remains the actual library, key, and transport interface. | A 2026-07-23 read-only Paper2Brain observation records provenance only. Galadriel claims no integration, compatibility, or deployment qualification. |
 | ROS / ROS 2 | External robotics middleware | Version 0.9.0 has no dependency, message binding, topic, service, action, bridge, node, or runtime edge. | It identifies an ecosystem boundary that a future adapter must define and qualify explicitly. | Galadriel claims no ROS compatibility, bag import, or live bridge. |
 | External authority or controller | Prospective downstream policy and control boundary | There is no command, control, lease, watchdog, credential, or authority path. | A future consumer can record advisory evidence. It can apply only an independently admitted restrict-only policy. | Galadriel cannot grant, widen, refresh, or restore authority. `Nominal` is never permission. |
 
@@ -111,12 +113,23 @@ The path includes Haldir current-head qualification and repository-inventory wor
 The second observation supersedes only the mutable Haldir discovery-head reference.
 It does not rewrite either observation, frozen or historical evidence, or a Galadriel release input.
 
-A reinspection on 2026-07-22 found Haldir remote `main` at `c0e4b3d156500684329a92bcb16e0609894fd738`.
+A retained reinspection on 2026-07-22 found Haldir remote `main` at `c0e4b3d156500684329a92bcb16e0609894fd738`.
 This object descends from both earlier observations.
 Its CH-T001 changes between the observed heads activate repository-inventory and release evidence only.
 Haldir's retained downstream disposition records no runtime-surface or external-conformance change.
-This latest object remains mutable provenance.
+This retained inspection-cut object remains mutable provenance.
 It is not a Galadriel pin, adapter, route, or reciprocal acceptance.
+
+A later read-only observation on 2026-07-23 found Haldir remote `main` at `590ba767b32a27d9dd61a2462968306c1052434e`.
+This object descends from the retained inspection-cut object.
+The intervening changes affect audit, evidence, and release tooling only.
+They do not create a Haldir runtime edge or external-conformance change.
+The refreshed inspection cut retains this mutable provenance.
+
+A 2026-07-23 read-only observation found Paper2Brain remote `main` at
+`24e74b781a5bf8af069f69cbc2d0c42d89008211`.
+The observation found no Galadriel dependency, API, process, route, adapter, or runtime edge.
+It is not a dependency pin or reciprocal acceptance.
 
 These mutable repository heads are inspection provenance, not reciprocal compatibility pins.
 NCP's wire-1.0 topology remains proposed.
@@ -124,7 +137,7 @@ It is incompatible with the current named wire-0.8 sidecars.
 Crebain retains component-level schema-v1 alignment.
 But it freezes Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input.
 
-None of the three inspected Haldir objects contains a Galadriel adapter or runtime edge.
+None of the retained Haldir objects contains a Galadriel adapter or runtime edge.
 Prisoma has no direct sidecar path.
 The `engram/ncp` realm string creates no Paper2Brain edge.
 The source tree contains no ROS or external-authority adapter.
@@ -132,7 +145,7 @@ Current reciprocal integration and final cross-repository qualification remain `
 
 The canonical [machine-readable inspection cut](release/0.9.0/ecosystem-cut.json) binds the same objects.
 It also binds local absence declarations, relationship classes, optionality, rationale, and the acyclic boundary.
-It binds the ordered Haldir supersession so subsequent prose edits cannot silently change this history.
+It binds the ordered Haldir supersession and Paper2Brain observation.
 
 [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) defines the exact route and lifecycle rules.
 [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) defines the downstream-effect rules.
@@ -140,7 +153,7 @@ It binds the ordered Haldir supersession so subsequent prose edits cannot silent
 Current external repository heads can move independently.
 Version 0.9.0 claims only the dependency revisions and local evidence named here.
 
-## Run the verified demo
+## Run the source demo
 
 ```bash
 cargo run --locked --bin galadriel -- demo --frames 128 --seed 7
@@ -241,6 +254,7 @@ Galadriel consumes `PidObservation` records that contain NIS and degrees of free
 Cross-sensor analysis also requires an optional `consistency_projection`.
 This projection contains a bounded signed vector.
 It also contains nonzero physical-frame, projection-context, and frozen-prior identifiers.
+
 Native `innovation` and `innovation_cov` fields remain diagnostic.
 The detector never uses them as a cross-modal fallback.
 The detector requires these conditions:
@@ -314,7 +328,7 @@ They do not show that those regimes occur in Crebain output.
 
 The path pins an immutable pid-rs revision.
 The `pid-core` manifest for this revision declares 1.0.0.
-There is no public v1 tag or released upstream 1.x artifact.
+A retained inspection on 2026-07-22 found no public v1 tag or released upstream 1.x artifact.
 
 The path declares the restricted regular-continuous support model of the pinned revision.
 It records seeded Gaussian observation noise as an estimand-changing model choice.
@@ -328,22 +342,25 @@ See the [0.4→1.0 migration record](docs/PID_RS_1_0_MIGRATION.md).
 
 ## Project status
 
-**Version `0.9.0`, pre-1.0 research release.**
+**Version `0.9.0`, pre-1.0 review-gated research source release.**
 Version 0.9.x freezes the `galadriel-core` source surface.
 Other crates and wire adapters remain experimental.
 Every workspace package sets `publish = false`.
-Thus, this release is a GitHub source release, not a crates.io publication.
+Thus, this is a review-gated GitHub research source release.
+It is not a crates.io publication.
 
 Unit, property, integration, and synthetic study tests exercise the implementation.
 Current evidence does not support a field-validated or production-ready claim.
 The normative [claims matrix](docs/CLAIMS.md) states the exact boundary.
 The [statistical contract](docs/STATISTICAL-CONTRACT.md) and [threat model](docs/THREAT-MODEL.md) also state it.
 The [API policy](docs/API-SURFACE.md) completes this boundary.
-The project does not yet claim a DOI or Zenodo record.
+
+No project DOI exists.
+No project Zenodo record exists.
 
 Author and maintainer: **Sepehr Mahmoudian**.
 
-| Crate | Role | Evidence level |
+| Crate | Role | Evidence scope |
 |---|---|---|
 | [`galadriel-core`](crates/galadriel-core) | NIS/CUSUM, signed correlation, fused assessment | Tested research core |
 | [`galadriel-sim`](crates/galadriel-sim) | synthetic scenarios and injections | Synthetic only |
@@ -354,6 +371,7 @@ Author and maintainer: **Sepehr Mahmoudian**.
 | [`galadriel-justify`](crates/galadriel-justify) | canonical forced-versus-justified studies | Synthetic/theoretical only |
 
 The workspace MSRV is **Rust 1.89**.
+The current-stable Clippy and test gate uses Rust and Cargo 1.97.1.
 Mutable test totals and benchmark values are not project-status claims.
 
 ## CLI features and workspace dependencies
@@ -374,7 +392,8 @@ The pinned `ncp-core` manifest also declares opt-in `schema` and `ts` aliases.
 The audited offline, live, and evaluation dependency graphs select neither alias.
 
 Exact Git revisions pin the public `pid-rs` repository and NCP's `ncp-core` and `ncp-zenoh` crates.
-The pid-rs revision declares 1.0.0. No v1 tag exists now.
+The pid-rs revision declares 1.0.0.
+The retained 2026-07-22 inspection found no public v1 tag.
 The NCP revision corresponds to public tag `v0.8.0`.
 A fresh clone needs no sibling checkout, private repository token, or global Git credential rewrite.
 
@@ -439,7 +458,10 @@ See [`docs/STATE-MACHINE.md`](docs/STATE-MACHINE.md).
 
 Every live payload uses a strict `galadriel_pid_observation` schema `1.0` envelope.
 The envelope carries `ncp_version`, advisory `contract_hash`, `session_id`, and `producer_id`.
-It also carries the historical Crebain-compatible `observation`.
+The two identities use the canonical Galadriel core ASCII grammar.
+The runtime rejects a generic NCP-valid value that does not use this grammar.
+
+The envelope also carries the historical Crebain-compatible `observation` shape.
 [`galadriel-pid-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json) defines the exact independent-producer contract.
 This file is a frozen producer-conformance schema.
 The runtime `SidecarEnvelope` validation gate is the authoritative consumer-acceptance check.
@@ -471,6 +493,7 @@ The monitor tap, pinned registry, fail-closed assembler, lifecycle adapter, and 
 [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) describes this boundary.
 
 The retained Crebain and Galadriel commit pair is a historical component fixture only.
+Its accepted example identities remain valid under the stricter consumer grammar.
 The current candidate has no accepted reciprocal producer pin or final cross-repository qualification.
 Local evidence does not attest the active ACL of a remote router.
 It also does not calibrate the detector.
@@ -489,7 +512,10 @@ cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-features --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps --locked
 cargo build -p galadriel-core --no-default-features --locked
-cargo deny --all-features --locked check
+cargo fetch --locked
+cargo fetch --locked --manifest-path fuzz/Cargo.toml
+cargo deny --offline --all-features --locked check
+cargo deny --offline --manifest-path fuzz/Cargo.toml --all-features --locked check --config fuzz/deny.toml
 ```
 
 The workspace MSRV is **1.89**.
@@ -532,19 +558,58 @@ Final cross-repository qualification also remains an explicit exclusion.
 A retained multi-process mTLS/ACL allow-and-deny campaign remains excluded.
 Recorded pre-gate calibration remains excluded.
 
-API or publication promotion beyond this research source release remains excluded.
+API or publication promotion beyond this review-gated research source release remains excluded.
 See the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md) for the external procedure.
 None of these exclusions becomes an implementation success.
 
 ## Release verification boundary
 
-The 0.9.0 GitHub release attaches exactly two deterministic path-preserving evidence tar files.
+Exact-candidate qualification uses schema `galadriel.candidate-qualification.v3`.
+It requires an independently obtained allowed-signers file.
+It also requires a clean external clone of the pinned RustSec advisory database.
+It uses the exact 16-key base environment in `docs/DEPENDENCY-POLICY.md`.
+
+All four broad mutation shards and all three focused outcomes are exact-candidate gates.
+The observational mutation-baseline job remains residual evidence.
+It is not a successful release gate.
+
+A passing signed qualification tier must retain exactly 22 auxiliary command receipts.
+Each receipt binds its command, sandbox, exit status, log, and output streams.
+Each command also uses a stop-before-exec gate and fixed resource limits.
+macOS does not provide atomic recursive descendant tracking.
+A short-lived reparented process can exit between scans.
+The process scan detects a detached process that remains active.
+
+The inherited sandbox and resource limits apply before candidate execution.
+A sandboxed process can request work from an existing external service.
+The process scan cannot attribute that external service work.
+
+A passing qualification tier must retain 15 two-run comparisons.
+They cover one source archive, seven unpublished package archives, and seven SBOM documents.
+Semantic checks bind source and package members to the candidate tree.
+They also close SBOM fields against the validated `Cargo.lock` graph.
+The license inventory is the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset of that 437-package graph.
+See [`docs/DEPENDENCY-POLICY.md`](docs/DEPENDENCY-POLICY.md) for the exact checks.
+
+These checks are author-operated on the recorded host.
+They do not establish independent or cross-platform reproduction.
+They do not qualify a deployment, deployed binary, security property, or permanent archive.
+
+The release input pins the exact external RustSec origin, commit, tree, and inventory.
+A qualification result remains bound to that pinned input.
+[`docs/DEPENDENCY-POLICY.md`](docs/DEPENDENCY-POLICY.md) gives the exact identity.
+
+The 0.9.0 publication procedure attaches two deterministic path-preserving evidence tar files.
 It also attaches their canonical asset map and detached SSH signature.
 The map binds qualification and closure bytes to the exact candidate and tree.
 It also binds the signed `v0.9.0` tag object and target.
 It identifies Sepehr Mahmoudian and contains explicit null DOI and Zenodo fields.
 
 Use `repo_work/package_release_assets.py` to verify and reconstruct the four-file set.
+The tool authenticates both internal tier signatures during build, verification, and reconstruction.
+It binds each tier to the expected candidate commit and tree.
+It also verifies each complete manifest inventory and `SHA256SUMS` file.
+
 Get the trust root independently before you use the retained evidence.
 GitHub's automatically generated source zip and tar links are convenience snapshots.
 They are not signed assurance assets.

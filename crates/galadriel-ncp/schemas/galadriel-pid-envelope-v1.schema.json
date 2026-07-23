@@ -29,21 +29,25 @@
       "pattern": "^[0-9a-f]{16}$"
     },
     "session_id": {
-      "$ref": "#/$defs/ncpKeySegment"
+      "$ref": "#/$defs/galadrielCoreIdentity"
     },
     "producer_id": {
-      "$ref": "#/$defs/ncpKeySegment"
+      "$ref": "#/$defs/galadrielCoreIdentity"
     },
     "observation": {
       "$ref": "#/$defs/pidObservation"
     }
   },
   "$defs": {
-    "ncpKeySegment": {
+    "galadrielCoreIdentity": {
       "type": "string",
+      "description": "An NCP-safe Galadriel core identity with canonical ASCII spelling.",
       "minLength": 1,
       "maxLength": 64,
-      "pattern": "^[^/\\*\\$#\\?\\s\\u0000-\\u001F\\u007F-\\u009F\\uFEFF]+$"
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9_.:-]{0,62}[A-Za-z0-9])?$",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.:-]"
+      }
     },
     "safeUnsignedInteger": {
       "type": "integer",

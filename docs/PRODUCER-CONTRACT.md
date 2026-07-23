@@ -7,6 +7,7 @@
 | ACLs | access control lists |
 | ADR | architecture decision record |
 | API | application programming interface |
+| ASCII | American Standard Code for Information Interchange |
 | CA | certificate authority |
 | CI | continuous integration |
 | CLI | command-line interface |
@@ -200,9 +201,17 @@ The schema cannot express all these requirements.
 
 ## Epoch and sequence identity
 
-`epoch` is the sidecar `session_id`. It MUST be a valid NCP path segment. It MUST
-contain 1 through 64 UTF-8 bytes. Every envelope on both routes MUST contain that
-same `session_id`.
+`epoch` is the sidecar `session_id`. Both `session_id` and `producer_id` MUST use
+the Galadriel core identity grammar. Each value MUST contain 1 through 64 ASCII
+bytes. It MUST start and end with an ASCII letter or digit. Its other characters
+MUST be ASCII letters, digits, hyphens, underscores, periods, or colons. A value
+that is only a valid generic NCP path segment is not sufficient.
+
+The pre-release 0.9.0 schemas narrowed these fields from the earlier draft grammar.
+This change occurred before the first public 0.9.0 release.
+An authorized producer MUST use the narrower grammar before live operation.
+
+Every envelope on both routes MUST contain the same `session_id`.
 
 The epoch is an application-owned producer-process epoch. It does not assert
 membership in an NCP control-plane session-generation service.

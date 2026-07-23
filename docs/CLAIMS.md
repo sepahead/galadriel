@@ -33,7 +33,7 @@ independent evidence from the target deployment. Galadriel 0.9.0 has no claim in
 this tier.
 
 **GLD-090-CLM-004:** `NOT_CLAIMED` **SHALL** mean that the release promises no
-affirmative behavior. The reason and missing evidence shall remain visible. This
+affirmative behavior. The reason and missing evidence **SHALL** remain visible. This
 tier is not an implementation success. A public statement may not describe it as
 one.
 
@@ -53,14 +53,16 @@ parts of the component under specified conditions. It makes none of these claims
 - a DOI
 - a Zenodo record
 
-The read-only ecosystem inspection from 2026-07-18 does not change a claim tier.
+Dated read-only ecosystem inspections through 2026-07-23 do not change a claim tier.
 Galadriel remains pinned to NCP wire 0.8. The inspected Crebain component retains
 schema-v1 fixture alignment without a reciprocal final-candidate pin. Haldir has
 no runtime adapter. Prisoma has no direct sidecar route.
 
-The local source inventory from 2026-07-22 records three more boundaries.
-`engram/ncp` is an example realm, not a Paper2Brain integration. ROS and ROS 2
-have no binding or bridge. Galadriel has no external command-authority path.
+The local source inventory records three more boundaries.
+`engram/ncp` is an example realm.
+The 2026-07-23 Paper2Brain observation does not create an integration.
+ROS and ROS 2 have no binding or bridge.
+Galadriel has no external command-authority path.
 
 [`ECOSYSTEM-CONNECTIONS.md`](ECOSYSTEM-CONNECTIONS.md) lists the exact inspected
 objects. It also lists the explicit non-edges and missing evidence for each

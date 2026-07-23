@@ -13,18 +13,36 @@ import argparse
 import hashlib
 import json
 import re
-import subprocess
 import sys
 import tomllib
+from datetime import date
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+REPO_WORK = ROOT / "repo_work"
+if str(REPO_WORK) not in sys.path:
+    sys.path.insert(0, str(REPO_WORK))
 
 from repo_work import build_task_dispositions as closure_plan  # noqa: E402
-from repo_work.common import loads_json, validate_json_number_bounds  # noqa: E402
+from repo_work.common import (  # noqa: E402
+    git as safe_git,
+    loads_json,
+    validate_json_number_bounds,
+)
+from finalize_release import (  # noqa: E402
+    EXPECTED_QUALIFICATION_TOOLS,
+    RUSTSEC_ADVISORY_DATABASE,
+)
+from qualify_candidate import (  # noqa: E402
+    ADVISORY_DB_COMMIT,
+    ADVISORY_DB_DENY_DIRECTORY,
+    ADVISORY_DB_TREE,
+    ADVISORY_DB_URL,
+    BASE_COMMANDS,
+)
 
 
 RELEASE = ROOT / "release" / "0.9.0"
@@ -35,13 +53,13 @@ CLOSURE_PLAN = RELEASE / "task-closure-plan.json"
 TASKS = RELEASE / "tasks.json"
 HANDOFF_SOURCE = RELEASE / "handoff-source.json"
 THREAT_REGISTER = RELEASE / "audit" / "threat-register.json"
+ECOSYSTEM_CUT = RELEASE / "ecosystem-cut.json"
 AUDIT_OUTPUT = RELEASE / "audit-manifest.json"
 LEDGER_OUTPUT = RELEASE / "requirements-ledger.json"
 VERSION = "0.9.0"
+PUBLICATION_CHANNEL = "review-gated GitHub research source release"
 
-AUDIT_SELF_EXCLUSIONS = frozenset(
-    {AUDIT_OUTPUT.relative_to(ROOT).as_posix()}
-)
+AUDIT_SELF_EXCLUSIONS = frozenset({AUDIT_OUTPUT.relative_to(ROOT).as_posix()})
 
 TASK_ID = re.compile(r"T(?P<number>\d{3})\Z")
 REVISION = re.compile(r"[0-9a-f]{40}\Z")
@@ -61,6 +79,90 @@ VALID_THREAT_DISPOSITIONS = {
     "KEEP_EXPERIMENTAL_AND_NOT_CLAIMED",
     "NO_GO",
 }
+VALID_THREAT_REGISTER_STATUSES = {
+    "LIVING_UNTIL_CANDIDATE_FREEZE",
+    "FROZEN_AT_CANDIDATE",
+}
+REQUIRED_REPOSITORY_INPUTS = {
+    "pid-rs": (
+        "https://github.com/sepahead/pid-rs",
+        "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+        "PINNED_COMPONENT",
+    ),
+    "NCP": (
+        "https://github.com/sepahead/NCP",
+        "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+        "PINNED_COMPONENT",
+    ),
+    "Crebain": (
+        "https://github.com/sepahead/crebain",
+        "4c311900ade5668200a48d56fb191be1916b884a",
+        "RECIPROCAL_FIXTURE",
+    ),
+    "Haldir": (
+        "https://github.com/sepahead/haldir",
+        "5f7d183625a982741c51958e2d10bc12bb628ca0",
+        "NOT_CLAIMED",
+    ),
+    "Prisoma": (
+        "https://github.com/sepahead/prisoma",
+        "0968128062f30da5c04f3f31c23f6ce8e0d95d36",
+        "NOT_CLAIMED",
+    ),
+    "Paper2Brain": (
+        "https://github.com/sepahead/Paper2Brain",
+        "9845c31bc5bae4746120858037b27f9c9ed2f445",
+        "NOT_CLAIMED",
+    ),
+    "RustSec advisory database": (
+        "https://github.com/RustSec/advisory-db",
+        "f981d991604f3e7d4a0eb94e559cb3e5a94a6dc2",
+        "PINNED_COMPONENT",
+    ),
+}
+LOCKED_REPOSITORY_PACKAGES = {
+    "pid-rs": {"pid-core", "pid-runlog"},
+    "NCP": {"ncp-core", "ncp-zenoh"},
+}
+AUDIT_TO_QUALIFICATION_TOOL = {
+    "git": "git",
+    "rustc": "rustc",
+    "cargo": "cargo",
+    "python": "python",
+    "cargo-public-api": "cargo_public_api",
+    "rustc-nightly": "rustc_fuzz_nightly",
+    "cargo-fuzz": "cargo_fuzz",
+    "rustc-current-stable": "rustc_current_stable",
+    "cargo-current-stable": "cargo_current_stable",
+    "cargo-deny": "cargo_deny",
+    "cargo-audit": "cargo_audit",
+    "cargo-cyclonedx": "cargo_cyclonedx",
+}
+REQUIRED_TOOL_VERSIONS = {
+    "git": "2.50.1",
+    "rustc": "1.89.0",
+    "cargo": "1.89.0",
+    "python": "3.14.6",
+    "host": "Darwin 25.5.0",
+    "cargo-public-api": "0.52.0",
+    "rustc-nightly": "nightly-2026-06-16",
+    "cargo-fuzz": "0.13.2",
+    "rustc-current-stable": "1.97.1",
+    "cargo-current-stable": "1.97.1",
+    "cargo-deny": "0.19.9",
+    "cargo-audit": "0.22.2",
+    "cargo-cyclonedx": "0.5.9",
+    "cargo-mutants": "27.1.0",
+    "OpenSSH": "10.2p1",
+    "GitHub CLI": "2.95.0",
+}
+ADDITIONAL_TOOL_IDENTITIES = {
+    "host": "arm64",
+    "cargo-mutants": "cargo-mutants 27.1.0 installed with --locked",
+    "OpenSSH": "OpenSSH_10.2p1, LibreSSL 3.3.6",
+    "GitHub CLI": "gh version 2.95.0 (2026-06-17)",
+}
+CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 
 
 class AuditError(RuntimeError):
@@ -114,16 +216,10 @@ def sha256(path: Path) -> str:
 
 
 def git(*arguments: str) -> str:
-    process = subprocess.run(
-        ["git", *arguments],
-        cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if process.returncode != 0:
-        raise AuditError(f"git {' '.join(arguments)} failed: {process.stderr.strip()}")
-    return process.stdout.strip()
+    try:
+        return str(safe_git(ROOT, *arguments)).strip()
+    except RuntimeError as error:
+        raise AuditError(str(error)) from error
 
 
 def require_keys(value: dict[str, Any], keys: set[str], context: str) -> None:
@@ -181,21 +277,16 @@ def workflow_action_refs() -> set[tuple[str, str]]:
 def tracked_repository_paths() -> set[str]:
     """Return the exact index path set without newline-delimited ambiguity."""
 
-    process = subprocess.run(
-        ["git", "ls-files", "-z"],
-        cwd=ROOT,
-        check=False,
-        capture_output=True,
-    )
-    if process.returncode != 0:
-        raise AuditError(
-            "git ls-files failed: "
-            + process.stderr.decode("utf-8", errors="replace").strip()
-        )
     try:
-        entries = process.stdout.decode("utf-8").split("\0")
+        entries = (
+            bytes(safe_git(ROOT, "ls-files", "-z", text=False))
+            .decode("utf-8")
+            .split("\0")
+        )
     except UnicodeDecodeError as error:
         raise AuditError("tracked paths are not valid UTF-8") from error
+    except RuntimeError as error:
+        raise AuditError(str(error)) from error
     return {entry for entry in entries if entry}
 
 
@@ -212,6 +303,235 @@ def validate_artifact_coverage(artifacts: list[dict[str, Any]]) -> None:
             "artifact inventory does not exactly cover tracked source: "
             f"missing={missing}, unexpected={extra}, "
             f"self_exclusions={sorted(AUDIT_SELF_EXCLUSIONS)}"
+        )
+
+
+def validate_repository_input_contract(
+    repositories: list[dict[str, Any]],
+) -> None:
+    """Cross-bind every repository input to its owning release contract."""
+
+    by_name = {item["name"]: item for item in repositories}
+    if set(by_name) != set(REQUIRED_REPOSITORY_INPUTS):
+        raise AuditError(
+            "repository input set differs from the release contract: "
+            f"missing={sorted(set(REQUIRED_REPOSITORY_INPUTS) - set(by_name))}, "
+            f"unexpected={sorted(set(by_name) - set(REQUIRED_REPOSITORY_INPUTS))}"
+        )
+    for name, (url, commit, qualification) in REQUIRED_REPOSITORY_INPUTS.items():
+        item = by_name[name]
+        if (
+            item["url"] != url
+            or item["commit"] != commit
+            or item["qualification"] != qualification
+        ):
+            raise AuditError(f"{name}: repository input identity differs from contract")
+
+    qualifier_database = {
+        "url": ADVISORY_DB_URL,
+        "commit": ADVISORY_DB_COMMIT,
+        "tree": ADVISORY_DB_TREE,
+    }
+    if set(RUSTSEC_ADVISORY_DATABASE) != {
+        "url",
+        "commit",
+        "tree",
+        "inventory_sha256",
+        "entries",
+        "fetch_policy",
+    }:
+        raise AuditError("finalizer RustSec database contract has another field set")
+    if {
+        key: RUSTSEC_ADVISORY_DATABASE[key] for key in qualifier_database
+    } != qualifier_database:
+        raise AuditError("qualifier and finalizer RustSec database identities differ")
+    rustsec = by_name["RustSec advisory database"]
+    if {
+        "url": rustsec["url"],
+        "commit": rustsec["commit"],
+    } != {
+        "url": qualifier_database["url"],
+        "commit": qualifier_database["commit"],
+    }:
+        raise AuditError("audit and qualification RustSec database identities differ")
+
+    locked_sources = lockfile_git_sources()
+    expected_packages = set().union(*LOCKED_REPOSITORY_PACKAGES.values())
+    actual_packages = {item["name"] for item in locked_sources}
+    if actual_packages != expected_packages:
+        raise AuditError(
+            "locked Git package set differs from repository inputs: "
+            f"missing={sorted(expected_packages - actual_packages)}, "
+            f"unexpected={sorted(actual_packages - expected_packages)}"
+        )
+    for repository_name, package_names in LOCKED_REPOSITORY_PACKAGES.items():
+        repository = by_name[repository_name]
+        expected_source = (
+            f"git+{repository['url']}?rev={repository['commit']}#{repository['commit']}"
+        )
+        for item in locked_sources:
+            if item["name"] not in package_names:
+                continue
+            if (
+                item["commit"] != repository["commit"]
+                or item["source"] != expected_source
+            ):
+                raise AuditError(
+                    f"{item['name']}: lock source differs from {repository_name}"
+                )
+
+
+def validate_toolchain_input_contract(toolchains: list[dict[str, Any]]) -> None:
+    """Cross-bind every tool input to the exact qualification tool set."""
+
+    by_name = {item["name"]: item for item in toolchains}
+    if set(by_name) != set(REQUIRED_TOOL_VERSIONS):
+        raise AuditError(
+            "toolchain input set differs from the release contract: "
+            f"missing={sorted(set(REQUIRED_TOOL_VERSIONS) - set(by_name))}, "
+            f"unexpected={sorted(set(by_name) - set(REQUIRED_TOOL_VERSIONS))}"
+        )
+    if set(EXPECTED_QUALIFICATION_TOOLS) != set(AUDIT_TO_QUALIFICATION_TOOL.values()):
+        raise AuditError(
+            "finalizer qualification tool set differs from the audit mapping"
+        )
+    for name, version in REQUIRED_TOOL_VERSIONS.items():
+        if by_name[name]["version"] != version:
+            raise AuditError(f"{name}: tool version differs from release contract")
+    for audit_name, qualification_name in AUDIT_TO_QUALIFICATION_TOOL.items():
+        if (
+            by_name[audit_name]["identity"]
+            != EXPECTED_QUALIFICATION_TOOLS[qualification_name]
+        ):
+            raise AuditError(
+                f"{audit_name}: tool identity differs from qualification contract"
+            )
+    for name, identity in ADDITIONAL_TOOL_IDENTITIES.items():
+        if by_name[name]["identity"] != identity:
+            raise AuditError(f"{name}: tool identity differs from release contract")
+
+    commands = {spec.name: spec for spec in BASE_COMMANDS}
+    current_stable_versions: set[str] = set()
+    for name in ("current-stable-clippy", "current-stable-tests"):
+        spec = commands.get(name)
+        if (
+            spec is None
+            or len(spec.argv) < 2
+            or spec.argv[0] != "cargo"
+            or not spec.argv[1].startswith("+")
+        ):
+            raise AuditError(f"qualification command is malformed: {name}")
+        current_stable_versions.add(spec.argv[1].removeprefix("+"))
+    if current_stable_versions != {
+        by_name["rustc-current-stable"]["version"]
+    } or current_stable_versions != {by_name["cargo-current-stable"]["version"]}:
+        raise AuditError(
+            "audit and qualification current-stable toolchain versions differ"
+        )
+
+
+def _workflow_scalar(workflow: str, name: str) -> str:
+    matches = re.findall(
+        rf"(?m)^\s*{re.escape(name)}:\s*([^\s#]+)\s*(?:#.*)?$",
+        workflow,
+    )
+    if len(matches) != 1:
+        raise AuditError(f"CI workflow must define {name} exactly once")
+    return matches[0].strip("'\"")
+
+
+def validate_ci_qualification_contract(workflow: str | None = None) -> None:
+    """Require CI to use the candidate qualification pins and offline policy."""
+
+    if workflow is None:
+        workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    expected_environment = {
+        "RUSTSEC_ADVISORY_DB_URL": ADVISORY_DB_URL,
+        "RUSTSEC_ADVISORY_DB_COMMIT": ADVISORY_DB_COMMIT,
+        "RUSTSEC_ADVISORY_DB_TREE": ADVISORY_DB_TREE,
+        "RUSTSEC_ADVISORY_DB_DIRECTORY": ADVISORY_DB_DENY_DIRECTORY,
+    }
+    for name, expected in expected_environment.items():
+        if _workflow_scalar(workflow, name) != expected:
+            raise AuditError(f"CI workflow has another {name} value")
+
+    stable_step = re.search(
+        r"(?ms)^      - name: Install current stable Rust\n"
+        r"(?P<body>.*?)(?=^      - name:|\Z)",
+        workflow,
+    )
+    if stable_step is None:
+        raise AuditError("CI workflow omits the current-stable installation step")
+    stable_match = re.search(
+        r"(?m)^\s*toolchain:\s*([^\s#]+)",
+        stable_step.group("body"),
+    )
+    if (
+        stable_match is None
+        or stable_match.group(1).strip("'\"")
+        != REQUIRED_TOOL_VERSIONS["rustc-current-stable"]
+    ):
+        raise AuditError("CI workflow uses another current-stable toolchain")
+
+    deny_commands = re.findall(
+        r"(?m)^\s*run:\s*(cargo deny(?:\s+[^\n]+)?)\s*$",
+        workflow,
+    )
+    if len(deny_commands) != 2 or any(
+        not command.startswith("cargo deny --offline ") for command in deny_commands
+    ):
+        raise AuditError(
+            "CI dependency-policy commands must both use the pinned offline database"
+        )
+    supply_chain = re.search(
+        r"(?ms)^  supply-chain:\n(?P<body>.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)",
+        workflow,
+    )
+    if supply_chain is None:
+        raise AuditError("CI workflow omits the supply-chain job")
+    supply_chain_body = supply_chain.group("body")
+    materialization_step = re.search(
+        r"(?ms)^      - name: Materialize locked dependency graphs\n"
+        r"(?P<body>.*?)(?=^      - name:|\Z)",
+        supply_chain_body,
+    )
+    expected_fetches = (
+        "cargo fetch --locked",
+        "cargo fetch --locked --manifest-path fuzz/Cargo.toml",
+    )
+    if materialization_step is None:
+        raise AuditError(
+            "CI supply-chain job must materialize both locked dependency graphs"
+        )
+    fetches = tuple(
+        line.strip()
+        for line in materialization_step.group("body").splitlines()
+        if line.strip().startswith("cargo fetch")
+    )
+    if fetches != expected_fetches:
+        raise AuditError(
+            "CI supply-chain job must materialize both locked dependency graphs"
+        )
+    first_offline_deny = supply_chain_body.find("cargo deny --offline ")
+    if first_offline_deny < 0 or materialization_step.end() >= first_offline_deny:
+        raise AuditError(
+            "CI supply-chain job must fetch dependencies before offline checks"
+        )
+    required_provisioning = (
+        'database="$database_root/$RUSTSEC_ADVISORY_DB_DIRECTORY"',
+        'git -C "$database" fetch --no-tags --depth=1 origin '
+        '"$RUSTSEC_ADVISORY_DB_COMMIT"',
+        'test "$(git -C "$database" rev-parse \'HEAD^{commit}\')" = '
+        '"$RUSTSEC_ADVISORY_DB_COMMIT"',
+        'test "$(git -C "$database" rev-parse \'HEAD^{tree}\')" = '
+        '"$RUSTSEC_ADVISORY_DB_TREE"',
+        'test "$(git -C "$database" remote get-url origin)" = '
+        '"$RUSTSEC_ADVISORY_DB_URL"',
+        'test -z "$(git -C "$database" status --porcelain=v1 --untracked-files=all)"',
+    )
+    if any(fragment not in workflow for fragment in required_provisioning):
+        raise AuditError(
+            "CI workflow does not fully verify the pinned RustSec database"
         )
 
 
@@ -242,6 +562,8 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
     )
     if release["version"] != VERSION or release["author"] != "Sepehr Mahmoudian":
         raise AuditError("release version/author is not the frozen 0.9.0 identity")
+    if release["publication_channel"] != PUBLICATION_CHANNEL:
+        raise AuditError("release publication channel differs from the 0.9.0 contract")
     if release["doi"] is not None or release["zenodo"] is not None:
         raise AuditError("0.9.0 must not claim a project DOI or Zenodo record")
     baseline = inputs["baseline_repository"]
@@ -272,10 +594,16 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
             "NOT_CLAIMED",
         }:
             raise AuditError(f"{repository['name']}: invalid qualification")
+    validate_repository_input_contract(inputs["repositories"])
+    seen_tools: set[str] = set()
     for tool in inputs["toolchains"]:
         require_keys(tool, {"name", "version", "identity", "role"}, "toolchain")
         if not all(isinstance(tool[key], str) and tool[key] for key in tool):
             raise AuditError("toolchain entries must contain non-empty strings")
+        if tool["name"] in seen_tools:
+            raise AuditError(f"duplicate toolchain name: {tool['name']}")
+        seen_tools.add(tool["name"])
+    validate_toolchain_input_contract(inputs["toolchains"])
     recorded_actions: set[tuple[str, str]] = set()
     for action in inputs["github_actions"]:
         require_keys(
@@ -300,7 +628,9 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
         if not REVISION.fullmatch(revision):
             raise AuditError(f"{action_id}: action commit is not a full revision")
         if action["repository"] != f"https://github.com/{action_id}":
-            raise AuditError(f"{action_id}: repository URL does not match action identity")
+            raise AuditError(
+                f"{action_id}: repository URL does not match action identity"
+            )
         if action["source_ref_kind"] not in {
             "lightweight_tag",
             "annotated_tag_target",
@@ -309,7 +639,9 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
             raise AuditError(f"{action_id}: unsupported source-ref kind")
         key = (action_id, revision)
         if key in recorded_actions:
-            raise AuditError(f"duplicate GitHub Action revision: {action_id}@{revision}")
+            raise AuditError(
+                f"duplicate GitHub Action revision: {action_id}@{revision}"
+            )
         recorded_actions.add(key)
     used_actions = workflow_action_refs()
     if recorded_actions != used_actions:
@@ -318,8 +650,11 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
             f"missing={sorted(used_actions - recorded_actions)}, "
             f"unexpected={sorted(recorded_actions - used_actions)}"
         )
+    validate_ci_qualification_contract()
     if not inputs["adaptation_decision"].startswith("release/0.9.0/"):
-        raise AuditError("adaptation decision must be retained inside the release record")
+        raise AuditError(
+            "adaptation decision must be retained inside the release record"
+        )
 
 
 def collect_artifacts(
@@ -349,8 +684,7 @@ def collect_artifacts(
             matched.extend(
                 path
                 for path in ROOT.glob(pattern)
-                if path.is_file()
-                and path.relative_to(ROOT).as_posix() in indexed_paths
+                if path.is_file() and path.relative_to(ROOT).as_posix() in indexed_paths
             )
             matched.extend(
                 path
@@ -385,7 +719,9 @@ def collect_external_references(inputs: dict[str, Any]) -> list[dict[str, Any]]:
     )
     for path in source_paths:
         relative = path.relative_to(ROOT).as_posix()
-        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        for line_number, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), 1
+        ):
             for match in URL.finditer(line):
                 url = match.group(0).rstrip(".,;:")
                 key = (relative, f"{line_number}:{url}")
@@ -413,7 +749,9 @@ def lockfile_git_sources() -> list[dict[str, str]]:
             continue
         match = re.search(r"#([0-9a-f]{40})\Z", source)
         if match is None:
-            raise AuditError(f"Git dependency lacks an immutable lock revision: {source}")
+            raise AuditError(
+                f"Git dependency lacks an immutable lock revision: {source}"
+            )
         item = {
             "name": package["name"],
             "version": package["version"],
@@ -434,18 +772,30 @@ def validate_project_metadata(inputs: dict[str, Any]) -> dict[str, Any]:
     citation = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     if not re.search(r"(?m)^version: ['\"]?0\.9\.0['\"]?$", citation):
         raise AuditError("CITATION.cff does not identify version 0.9.0")
-    if re.search(r"(?mi)^(doi|identifiers):", citation) or "zenodo.org" in citation.lower():
+    if (
+        re.search(r"(?mi)^(doi|identifiers):", citation)
+        or "zenodo.org" in citation.lower()
+    ):
         raise AuditError("CITATION.cff must omit project DOI/Zenodo metadata for 0.9.0")
-    if "family-names: Mahmoudian" not in citation or "given-names: Sepehr" not in citation:
+    if (
+        "family-names: Mahmoudian" not in citation
+        or "given-names: Sepehr" not in citation
+    ):
         raise AuditError("CITATION.cff author identity is incomplete")
     for member in cargo["workspace"]["members"]:
-        manifest = tomllib.loads((ROOT / member / "Cargo.toml").read_text(encoding="utf-8"))
+        manifest = tomllib.loads(
+            (ROOT / member / "Cargo.toml").read_text(encoding="utf-8")
+        )
         if manifest["package"].get("publish") is not False:
-            raise AuditError(f"{member} must remain publish=false for the GitHub-only 0.9.0")
+            raise AuditError(
+                f"{member} must remain publish=false for the GitHub-only 0.9.0"
+            )
     fuzz = tomllib.loads((ROOT / "fuzz/Cargo.toml").read_text(encoding="utf-8"))
     for dependency in ("galadriel-core", "galadriel-ncp"):
         if fuzz["dependencies"][dependency].get("version") != VERSION:
-            raise AuditError(f"fuzz dependency {dependency} must track release {VERSION}")
+            raise AuditError(
+                f"fuzz dependency {dependency} must track release {VERSION}"
+            )
     return {
         "authors": package["authors"],
         "license": package["license"],
@@ -458,8 +808,13 @@ def validate_project_metadata(inputs: dict[str, Any]) -> dict[str, Any]:
 
 def validate_claims() -> list[dict[str, Any]]:
     document = load_json(CLAIMS)
-    require_keys(document, {"schema", "release", "tier_definitions", "claims"}, "claims")
-    if document["schema"] != "galadriel.claims-matrix.v1" or document["release"] != VERSION:
+    require_keys(
+        document, {"schema", "release", "tier_definitions", "claims"}, "claims"
+    )
+    if (
+        document["schema"] != "galadriel.claims-matrix.v1"
+        or document["release"] != VERSION
+    ):
         raise AuditError("claims matrix has the wrong schema or release")
     if set(document["tier_definitions"]) != VALID_TIERS:
         raise AuditError("claims matrix must define exactly the four frozen tiers")
@@ -483,10 +838,14 @@ def validate_claims() -> list[dict[str, Any]]:
             if not claim["evidence"]:
                 raise AuditError(f"{claim['id']}: deployment claim lacks evidence")
         if claim["tier"] == "NOT_CLAIMED" and claim["evidence"]:
-            raise AuditError(f"{claim['id']}: NOT_CLAIMED must not cite affirmative evidence")
+            raise AuditError(
+                f"{claim['id']}: NOT_CLAIMED must not cite affirmative evidence"
+            )
         for path_string in claim["evidence"]:
             if not (ROOT / path_string).exists():
-                raise AuditError(f"{claim['id']}: claim evidence is missing: {path_string}")
+                raise AuditError(
+                    f"{claim['id']}: claim evidence is missing: {path_string}"
+                )
     if deployment_claims:
         raise AuditError("0.9.0 has no deployment-qualified behavior")
     return document["claims"]
@@ -547,10 +906,84 @@ def validate_normative_documents() -> list[dict[str, Any]]:
     ):
         if threat not in threat_model:
             raise AuditError(f"threat model omits required class: {threat}")
-    public_api = (RELEASE / "api" / "galadriel-core.0.9.0.txt").read_text(encoding="utf-8")
+    public_api = (RELEASE / "api" / "galadriel-core.0.9.0.txt").read_text(
+        encoding="utf-8"
+    )
     if "pub mod galadriel_core::chi2" in public_api:
-        raise AuditError("accepted API snapshot still exposes the accidental chi2 module")
+        raise AuditError(
+            "accepted API snapshot still exposes the accidental chi2 module"
+        )
     return artifacts
+
+
+def parse_exact_date(value: Any, label: str) -> date:
+    """Parse one exact calendar date."""
+
+    if not isinstance(value, str) or re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is None:
+        raise AuditError(f"{label} must use YYYY-MM-DD precision")
+    try:
+        return date.fromisoformat(value)
+    except ValueError as error:
+        raise AuditError(f"{label} is not a valid calendar date") from error
+
+
+def validate_ecosystem_cut() -> None:
+    """Require the cut date to contain every same-precision observation."""
+
+    document = load_json(ECOSYSTEM_CUT)
+    require_keys(
+        document,
+        {
+            "schema",
+            "release",
+            "author",
+            "inspected_at",
+            "timestamp_precision",
+            "scope",
+            "observations",
+            "limitations",
+        },
+        "ecosystem cut",
+    )
+    if document["schema"] != "galadriel.ecosystem-inspection-cut.v1":
+        raise AuditError("ecosystem cut has the wrong schema")
+    if document["release"] != VERSION or document["author"] != "Sepehr Mahmoudian":
+        raise AuditError("ecosystem cut has the wrong release or author")
+    if document["timestamp_precision"] != "date":
+        raise AuditError("ecosystem cut must use date precision")
+    inspected_at = parse_exact_date(
+        document["inspected_at"],
+        "ecosystem cut inspected_at",
+    )
+    observations = document["observations"]
+    if not isinstance(observations, list) or not observations:
+        raise AuditError("ecosystem cut must contain observations")
+    seen: set[str] = set()
+    for observation in observations:
+        if not isinstance(observation, dict):
+            raise AuditError("ecosystem observation must be an object")
+        observation_id = observation.get("id")
+        if (
+            not isinstance(observation_id, str)
+            or re.fullmatch(r"ECO-\d{3}", observation_id) is None
+            or observation_id in seen
+        ):
+            raise AuditError(
+                f"invalid or duplicate ecosystem observation ID: {observation_id!r}"
+            )
+        seen.add(observation_id)
+        if observation.get("timestamp_precision") != document["timestamp_precision"]:
+            raise AuditError(
+                f"{observation_id}: timestamp precision differs from the ecosystem cut"
+            )
+        observed_at = parse_exact_date(
+            observation.get("observed_at"),
+            f"{observation_id} observed_at",
+        )
+        if observed_at > inspected_at:
+            raise AuditError(
+                f"ecosystem cut inspected_at predates observation {observation_id}"
+            )
 
 
 def validate_threat_register() -> dict[str, Any]:
@@ -571,6 +1004,8 @@ def validate_threat_register() -> dict[str, Any]:
         raise AuditError("unsupported threat-register schema")
     if document["release"] != VERSION:
         raise AuditError("threat register has the wrong release")
+    if document["status"] not in VALID_THREAT_REGISTER_STATUSES:
+        raise AuditError("threat register has an unsupported lifecycle status")
     if set(document["disposition_values"]) != VALID_THREAT_DISPOSITIONS:
         raise AuditError("threat register has the wrong disposition vocabulary")
     source = document["source"]
@@ -607,7 +1042,9 @@ def validate_threat_register() -> dict[str, Any]:
             raise AuditError("threat-register entries must be objects")
         require_keys(threat, required_fields, "threat-register entry")
         threat_id = threat["threat_id"]
-        if not isinstance(threat_id, str) or not re.fullmatch(r"GLD-THR-\d{3}", threat_id):
+        if not isinstance(threat_id, str) or not re.fullmatch(
+            r"GLD-THR-\d{3}", threat_id
+        ):
             raise AuditError(f"invalid threat ID: {threat_id!r}")
         if threat_id in seen:
             raise AuditError(f"duplicate threat ID: {threat_id}")
@@ -624,8 +1061,13 @@ def validate_threat_register() -> dict[str, Any]:
             if not isinstance(values, list) or not values:
                 raise AuditError(f"{threat_id}: {field} must be a non-empty list")
             for path_string in values:
-                if not isinstance(path_string, str) or not (ROOT / path_string).exists():
-                    raise AuditError(f"{threat_id}: missing {field} path {path_string!r}")
+                if (
+                    not isinstance(path_string, str)
+                    or not (ROOT / path_string).exists()
+                ):
+                    raise AuditError(
+                        f"{threat_id}: missing {field} path {path_string!r}"
+                    )
     return artifact(THREAT_REGISTER, "repository threat, misuse, and failure register")
 
 
@@ -651,7 +1093,9 @@ def validate_tasks() -> list[dict[str, Any]]:
     )
     handoff = load_json(HANDOFF_SOURCE)
     if source["child_package_sha256"] != handoff["child_archive_sha256"]:
-        raise AuditError("task inventory child-package digest differs from handoff source")
+        raise AuditError(
+            "task inventory child-package digest differs from handoff source"
+        )
     if source["task_ledger_sha256"] != handoff["task_ledger_sha256"]:
         raise AuditError("task inventory ledger digest differs from handoff source")
     if source["frozen_commit"] != handoff["frozen_commit"]:
@@ -768,6 +1212,7 @@ def validate_ledger(
 def build_outputs() -> tuple[dict[str, Any], dict[str, Any]]:
     inputs = load_json(INPUTS)
     validate_inputs(inputs)
+    validate_ecosystem_cut()
     claims = validate_claims()
     tasks = validate_tasks()
     ledger = validate_ledger(tasks, claims)

@@ -14,6 +14,7 @@
 | NCP | Neuro-Cybernetic Protocol |
 | NIS | normalized innovation squared |
 | PID | partial information decomposition |
+| SBOM | software bill of materials |
 | SPKI | Subject Public Key Info |
 | TTL | time to live |
 | WebPKI | Web Public Key Infrastructure |
@@ -22,6 +23,13 @@ This threat model covers the Galadriel 0.9.0 advisory monitor. It includes
 evidence inputs, optional transport adapters, release artifacts, and downstream
 use. It complements the deployment-specific ACL and mTLS model. It does not
 replace that model.
+
+## Register lifecycle
+
+The machine-readable threat register remains `LIVING_UNTIL_CANDIDATE_FREEZE` during implementation.
+Only the release operator can set it to `FROZEN_AT_CANDIDATE`.
+The active signed audit-input pair and next signed commit complete that transition.
+A later tracked change reopens the freeze and requires new candidate evidence.
 
 ## Assets and trust boundaries
 
@@ -46,7 +54,7 @@ A strict local configuration file does not make the transport trusted. Galadriel
 never receives controller, lease, plant, or authorization credentials.
 
 **GLD-090-THR-001:** Invalid, stale, missing, replayed, contradictory,
-incomparable, or resource-excess evidence **SHALL NOT** become `Nominal`. It shall
+incomparable, or resource-excess evidence **SHALL NOT** become `Nominal`. It **SHALL**
 produce a typed error, explicit insufficiency, unclassified evidence, or bounded
 rejection.
 
@@ -99,8 +107,18 @@ indistinguishable from attacks.
 | CPU denial of service | Validate work bounds before pair, PID, or bootstrap work. Keep optional heavy features off by default. | Platform-specific deadlines need independent benchmarks and admission control. |
 | Callback race or shutdown fault | Serialize ingress state. Retain the first terminal fault. Bound queues, account for drops, and test close and reset interleavings. | Operating-system, network, and actual-binary deployment timing remain unqualified. |
 | Configuration substitution | Validate strict closed schemas and canonical digests. Bind profile, registry, and credential identities. | A privileged operator can replace local artifacts without deployment signing or attestation. |
-| Dependency or source substitution | Require Cargo.lock, exact Git revisions, a pinned toolchain, and generated audit hashes. | Registry compromise and compiler trust need external supply-chain controls. |
-| Evidence tampering or cherry-picking | Retain complete logs, checksums, exact commits, toolchains, seeds, status ledger, and residual risks. Published qualification and closure tiers use deterministic path-preserving tar files. A signed asset map binds candidate, tree, and tag. Verification accepts four strict files and reconstructs safely against an independent trust root. Generated GitHub source archives are outside this assurance set. | Galadriel 0.9.0 has no independent archive or DOI. GitHub availability is not permanent preservation. |
+| Candidate self-authentication | Authenticate the candidate and qualification tier with an independently obtained allowed-signers file. Treat the candidate-tracked signer file as metadata only. | Trust-root acquisition and signing-key protection remain operator responsibilities. A compromised independent trust root can authenticate false evidence. |
+| Stale or redirected public `main` | Refresh the literal public URL and exact `main` refspec before candidate comparisons. Repeat the refresh before return or publication. Reject local Git settings that can redirect or weaken the operation. | A compromised public repository can still supply a false object. Public availability is not permanent preservation. |
+| Dependency or source substitution | Require `Cargo.lock`, exact Git revisions, and pinned tool identities. Use the 16-key qualification environment. Use Rust and Cargo 1.97.1 only for the current-stable gate. Reject every Cargo configuration path before and after each command. | Registry compromise, approved host-tool substitution, and compiler trust need external supply-chain controls. |
+| Advisory database substitution | Require a clean external RustSec clone at the exact origin, commit, and tree. Install detached copies in isolated tool state. Prohibit network fetches during report generation. | The pinned database can omit a defect. A qualification result remains bound to the pinned input. |
+| Package or source-archive substitution | Compare the source archive with the exact Git tree. Compare every package member byte and mode with the tracked crate-file map. Permit only the two declared generated package files. | Package evidence describes unpublished source artifacts. It does not prove crates.io publication or deployed-binary content. |
+| SBOM substitution or hidden component | Close every SBOM root, target, package, dependency, identity, license, checksum, scope, and edge against validated Cargo metadata and `Cargo.lock`. Reject hidden nested components and null authors. | In a passing qualification, the SBOMs describe the qualified source graph. They do not identify a deployed target environment. |
+| Host or target license-scope confusion | Require the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset of the validated 437-package graph. Bind its exact package and license semantic digests. | This inventory does not describe another host or target graph. It is not an all-target license inventory. |
+| Artifact-generation result substitution | Require qualification schema v3 and exactly 22 auxiliary command receipts. Bind commands, sandboxes, exits, logs, streams, and artifacts. Retain 15 two-run source, package, and SBOM comparisons. | The comparisons are author-operated on one recorded host. They do not prove independent or cross-platform reproduction. |
+| Candidate-evidence substitution | Require the exact six-file flat set. Apply per-file and aggregate bounds. Snapshot without following links. Compare source, quarantine, snapshot, and installed bytes. Parse captured bounded JSON only. | Host controls cannot prove that a candidate-generated scientific result is correct. Acceptance still depends on the configured statistical contract. |
+| Candidate descendant escape | Arm a stop-before-exec gate. Track the process group. Scan for the inherited sandbox identity. Apply inherited sandbox and resource limits. Bound post-cleanup stream waits. | macOS process discovery is not atomic. A short-lived reparented process can exit between scans. The scan cannot attribute work from an existing external service. |
+| Evidence tampering or cherry-picking | Retain complete logs, checksums, exact commits, toolchains, seeds, status ledger, and residual risks. Retain all 13 signed mutation artifacts. Bind candidate, tree, and tag in the signed four-asset release map. Reconstruct against an independent trust root. | Galadriel 0.9.0 has no independent archive or DOI. GitHub availability is not permanent preservation. |
+| Valid outer map with invalid inner tier | Authenticate both internal tier signatures during build, verification, and reconstruction. Bind both manifests to the expected candidate and tree. Verify each complete signed inventory and checksum file. | The same independent trust root authenticates the outer and inner layers. Trust-root compromise remains an external risk. |
 
 ## Safe failure states
 

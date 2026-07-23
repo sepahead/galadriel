@@ -15,7 +15,7 @@ Release author and final decision owner: **Sepehr Mahmoudian**
 
 Review date: 2026-07-14
 
-Target: GitHub source release 0.9.0
+Target: review-gated GitHub research source release 0.9.0
 
 The target has no project DOI or Zenodo record.
 This record adapts the supplied Galadriel 1.0 handoff to version 0.9.0.

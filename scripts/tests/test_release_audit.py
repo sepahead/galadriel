@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts import release_audit, secure_deployment
 
@@ -91,7 +92,9 @@ class ReleaseAuditTests(unittest.TestCase):
             for document in invalid_documents:
                 with self.subTest(document=document[:40]):
                     path.write_text(document, encoding="utf-8")
-                    with self.assertRaisesRegex(release_audit.AuditError, "cannot load"):
+                    with self.assertRaisesRegex(
+                        release_audit.AuditError, "cannot load"
+                    ):
                         release_audit.load_json(path)
 
         for value in (float("nan"), float("inf"), -float("inf")):
@@ -153,9 +156,13 @@ class ReleaseAuditTests(unittest.TestCase):
     def test_every_claim_has_a_frozen_tier_and_limit(self) -> None:
         claims = release_audit.validate_claims()
         self.assertGreater(len(claims), 0)
-        self.assertTrue(all(claim["tier"] in release_audit.VALID_TIERS for claim in claims))
+        self.assertTrue(
+            all(claim["tier"] in release_audit.VALID_TIERS for claim in claims)
+        )
         self.assertTrue(all(claim["limitations"] for claim in claims))
-        self.assertFalse(any(claim["tier"] == "DEPLOYMENT_QUALIFIED" for claim in claims))
+        self.assertFalse(
+            any(claim["tier"] == "DEPLOYMENT_QUALIFIED" for claim in claims)
+        )
 
     def test_threat_register_is_complete_and_bound_to_current_tasks(self) -> None:
         artifact = release_audit.validate_threat_register()
@@ -168,6 +175,91 @@ class ReleaseAuditTests(unittest.TestCase):
                 "task_ledger_sha256"
             ],
         )
+
+    def test_threat_register_accepts_only_declared_lifecycle_states(self) -> None:
+        current = release_audit.load_json(release_audit.THREAT_REGISTER)
+        original_load = release_audit.load_json
+
+        def load_with_status(path: Path, status: str) -> object:
+            if path == release_audit.THREAT_REGISTER:
+                document = copy.deepcopy(current)
+                document["status"] = status
+                return document
+            return original_load(path)
+
+        for status in sorted(release_audit.VALID_THREAT_REGISTER_STATUSES):
+            with self.subTest(status=status):
+                with patch.object(
+                    release_audit,
+                    "load_json",
+                    side_effect=lambda path, status=status: load_with_status(
+                        path, status
+                    ),
+                ):
+                    release_audit.validate_threat_register()
+
+        with patch.object(
+            release_audit,
+            "load_json",
+            side_effect=lambda path: load_with_status(path, "UNSUPPORTED"),
+        ):
+            with self.assertRaisesRegex(
+                release_audit.AuditError, "unsupported lifecycle status"
+            ):
+                release_audit.validate_threat_register()
+
+    def test_ecosystem_cut_contains_each_observation_date(self) -> None:
+        current = release_audit.load_json(release_audit.ECOSYSTEM_CUT)
+        release_audit.validate_ecosystem_cut()
+        original_load = release_audit.load_json
+
+        def load_cut(document: object):
+            return lambda path: (
+                document if path == release_audit.ECOSYSTEM_CUT else original_load(path)
+            )
+
+        stale = copy.deepcopy(current)
+        stale["inspected_at"] = "2026-07-22"
+        with (
+            patch.object(
+                release_audit,
+                "load_json",
+                side_effect=load_cut(stale),
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError,
+                "inspected_at predates observation ECO-012",
+            ),
+        ):
+            release_audit.validate_ecosystem_cut()
+
+        mixed_precision = copy.deepcopy(current)
+        mixed_precision["observations"][0]["timestamp_precision"] = "second"
+        with (
+            patch.object(
+                release_audit,
+                "load_json",
+                side_effect=load_cut(mixed_precision),
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError,
+                "timestamp precision differs",
+            ),
+        ):
+            release_audit.validate_ecosystem_cut()
+
+    def test_release_publication_channel_is_exact(self) -> None:
+        inputs = copy.deepcopy(release_audit.load_json(release_audit.INPUTS))
+        self.assertEqual(
+            inputs["release"]["publication_channel"],
+            release_audit.PUBLICATION_CHANNEL,
+        )
+        inputs["release"]["publication_channel"] = "another channel"
+        with self.assertRaisesRegex(
+            release_audit.AuditError,
+            "publication channel differs",
+        ):
+            release_audit.validate_inputs(inputs)
 
     def test_build_is_deterministic_and_covers_all_tasks(self) -> None:
         first_audit, first_ledger = release_audit.build_outputs()
@@ -201,8 +293,7 @@ class ReleaseAuditTests(unittest.TestCase):
     def test_workflow_actions_are_full_revisions_and_exactly_inventoried(self) -> None:
         inputs = release_audit.load_json(release_audit.INPUTS)
         recorded = {
-            (entry["action"], entry["commit"])
-            for entry in inputs["github_actions"]
+            (entry["action"], entry["commit"]) for entry in inputs["github_actions"]
         }
         self.assertEqual(recorded, release_audit.workflow_action_refs())
 

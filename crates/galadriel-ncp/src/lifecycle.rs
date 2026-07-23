@@ -1569,13 +1569,12 @@ fn validate_frame_cardinality(
     frame: &AssembledFrame,
     max_tracks: usize,
 ) -> Result<(), LifecycleDetectorError> {
-    if frame.session_id().is_empty()
-        || frame.session_id().len() > crate::MAX_ID_SEGMENT_BYTES
-        || frame.producer_id().is_empty()
-        || frame.producer_id().len() > crate::MAX_ID_SEGMENT_BYTES
+    if !crate::valid_session_identity(frame.session_id())
+        || !crate::valid_producer_identity(frame.producer_id())
     {
         return Err(LifecycleDetectorError::InvalidFrame(
-            "assembled producer/session identity exceeds the bounded sidecar domain".to_owned(),
+            "assembled producer/session identity is outside the canonical sidecar domain"
+                .to_owned(),
         ));
     }
     if frame.summary.registry_digest.len() != REGISTRY_DIGEST_HEX_LEN {
@@ -2122,6 +2121,10 @@ mod tests {
                 "epoch-1".to_owned(),
                 "p".repeat(crate::MAX_ID_SEGMENT_BYTES + 1),
             ),
+            ("uav+3".to_owned(), "crebain".to_owned()),
+            ("époch1".to_owned(), "crebain".to_owned()),
+            ("-uav3".to_owned(), "crebain".to_owned()),
+            ("uav3".to_owned(), "crebain-".to_owned()),
         ];
 
         for (session_id, producer_id) in cases {
@@ -2131,7 +2134,7 @@ mod tests {
             assert!(matches!(
                 validate_frame_cardinality(&frame, 1),
                 Err(LifecycleDetectorError::InvalidFrame(reason))
-                    if reason.contains("bounded sidecar domain")
+                    if reason.contains("canonical sidecar domain")
             ));
         }
     }

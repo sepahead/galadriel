@@ -13,12 +13,16 @@ import argparse
 import difflib
 import hashlib
 import os
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping
 
-from common import ReviewError
+from common import ReviewError, safe_git_environment
+from release_assurance import (
+    run_bounded_host_command,
+    sanitized_host_environment,
+)
 
 
 EXPECTED_TOOL_VERSION = "cargo-public-api 0.52.0"
@@ -29,6 +33,10 @@ MAX_DIFF_LINES = 200
 BASELINE_SNAPSHOT = "release/0.9.0/api/galadriel-core.baseline.txt"
 ACCEPTED_SNAPSHOT = "release/0.9.0/api/galadriel-core.0.9.0.txt"
 RETAINED_DIFF = "release/0.9.0/evidence/galadriel-core-api.diff"
+PUBLIC_API_TIMEOUT_SECONDS = 600
+MAX_PUBLIC_API_STDOUT_BYTES = 16 * 1024 * 1024
+MAX_PUBLIC_API_STDERR_BYTES = 1024 * 1024
+MAX_PUBLIC_API_DIAGNOSTIC_CHARACTERS = 4 * 1024
 
 
 @dataclass(frozen=True)
@@ -102,24 +110,47 @@ def canonical_core_diff(repo: Path) -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
+def release_tool_environment(
+    source: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Return host tool state without ambient credentials or network proxies."""
+
+    environment = sanitized_host_environment(os.environ if source is None else source)
+    environment = safe_git_environment(environment)
+    environment["CARGO_TERM_COLOR"] = "never"
+    return environment
+
+
+def bounded_diagnostic(document: bytes) -> str:
+    """Return one bounded UTF-8 diagnostic without command arguments."""
+
+    text = document.decode("utf-8", "replace").strip()
+    if len(text) <= MAX_PUBLIC_API_DIAGNOSTIC_CHARACTERS:
+        return text
+    omitted = len(text) - MAX_PUBLIC_API_DIAGNOSTIC_CHARACTERS
+    return (
+        text[:MAX_PUBLIC_API_DIAGNOSTIC_CHARACTERS]
+        + f"\n... {omitted} additional characters omitted"
+    )
+
+
 def capture(argv: list[str], *, repo: Path) -> bytes:
     """Run one shell-free API command with deterministic terminal settings."""
 
-    environment = dict(os.environ)
-    environment["CARGO_TERM_COLOR"] = "never"
-    process = subprocess.run(
+    process = run_bounded_host_command(
         argv,
         cwd=repo,
-        env=environment,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
+        environment=release_tool_environment(),
+        context="public API command",
+        max_stdout_bytes=MAX_PUBLIC_API_STDOUT_BYTES,
+        max_stderr_bytes=MAX_PUBLIC_API_STDERR_BYTES,
+        timeout_seconds=PUBLIC_API_TIMEOUT_SECONDS,
     )
     if process.returncode != 0:
-        stderr = process.stderr.decode("utf-8", "replace").strip()
         raise ReviewError(
-            f"{' '.join(argv)} failed with {process.returncode}: {stderr}"
+            "public API command failed with "
+            f"{process.returncode}; stderr sha256={digest(process.stderr)} "
+            f"bytes={len(process.stderr)}"
         )
     return process.stdout
 
@@ -138,9 +169,11 @@ def verify(repo: Path) -> None:
             f"public-API rustdoc identity changed: expected commit "
             f"{EXPECTED_RUSTDOC_COMMIT}, got {rustdoc_fields.get('commit-hash')!r}"
         )
-    version = capture([*PUBLIC_API_COMMAND, "--version"], repo=repo).decode(
-        "utf-8", "strict"
-    ).strip()
+    version = (
+        capture([*PUBLIC_API_COMMAND, "--version"], repo=repo)
+        .decode("utf-8", "strict")
+        .strip()
+    )
     if version != EXPECTED_TOOL_VERSION:
         raise ReviewError(
             f"cargo-public-api identity changed: expected {EXPECTED_TOOL_VERSION!r}, "
@@ -183,9 +216,11 @@ def main() -> int:
             # Verify both source-derived snapshots before rewriting the derived
             # comparison artifact. Snapshots themselves are never rewritten by
             # this command.
-            version = capture([*PUBLIC_API_COMMAND, "--version"], repo=repo).decode(
-                "utf-8", "strict"
-            ).strip()
+            version = (
+                capture([*PUBLIC_API_COMMAND, "--version"], repo=repo)
+                .decode("utf-8", "strict")
+                .strip()
+            )
             if version != EXPECTED_TOOL_VERSION:
                 raise ReviewError(
                     f"cargo-public-api identity changed: expected {EXPECTED_TOOL_VERSION!r}, "

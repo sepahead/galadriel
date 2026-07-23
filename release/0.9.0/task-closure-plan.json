@@ -196,7 +196,7 @@
       ],
       "residual_risks": [
         "T000: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T000: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T000: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T000: future changes to commit, tree, submodules, tags, toolchains, packages, models/data, papers, downstream heads can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -487,7 +487,7 @@
       ],
       "residual_risks": [
         "T001: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T001: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T001: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T001: future changes to complete source inventory can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -780,7 +780,7 @@
       ],
       "residual_risks": [
         "T002: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T002: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T002: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T002: future changes to human review coverage can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -1073,7 +1073,7 @@
       ],
       "residual_risks": [
         "T003: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T003: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T003: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T003: future changes to truthful scope can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -1366,7 +1366,7 @@
       ],
       "residual_risks": [
         "T004: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T004: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T004: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T004: future changes to adversarial model can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -1659,7 +1659,7 @@
       ],
       "residual_risks": [
         "T005: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T005: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T005: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T005: future changes to baseline evidence can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -1952,7 +1952,7 @@
       ],
       "residual_risks": [
         "T006: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T006: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T006: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T006: future changes to latent incompleteness can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -2245,7 +2245,7 @@
       ],
       "residual_risks": [
         "T007: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T007: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T007: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T007: future changes to dependency governance can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -2538,7 +2538,7 @@
       ],
       "residual_risks": [
         "T008: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T008: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T008: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T008: future changes to traceability can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -2831,7 +2831,7 @@
       ],
       "residual_risks": [
         "T009: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T009: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T009: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T009: future changes to scope decision can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -3124,7 +3124,7 @@
       ],
       "residual_risks": [
         "T010: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T010: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T010: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T010: future changes to Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth.; language family=md/toml can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -3417,7 +3417,7 @@
       ],
       "residual_risks": [
         "T011: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T011: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T011: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T011: future changes to Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -3710,7 +3710,7 @@
       ],
       "residual_risks": [
         "T012: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T012: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T012: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T012: future changes to Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -4003,7 +4003,7 @@
       ],
       "residual_risks": [
         "T013: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T013: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T013: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T013: future changes to Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -4296,7 +4296,7 @@
       ],
       "residual_risks": [
         "T014: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T014: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T014: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T014: future changes to Version, stable/research scope, crate features, claims, commands, dependencies, licenses, and release truth. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -4589,7 +4589,7 @@
       ],
       "residual_risks": [
         "T015: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T015: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T015: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T015: future changes to Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources.; language family=rust can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -4882,7 +4882,7 @@
       ],
       "residual_risks": [
         "T016: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T016: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T016: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T016: future changes to Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -5175,7 +5175,7 @@
       ],
       "residual_risks": [
         "T017: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T017: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T017: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T017: future changes to Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -5468,7 +5468,7 @@
       ],
       "residual_risks": [
         "T018: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T018: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T018: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T018: future changes to Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -5761,7 +5761,7 @@
       ],
       "residual_risks": [
         "T019: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T019: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T019: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T019: future changes to Observation types, identities, state machines, NIS/CUSUM, correlation, fusion, abstention, reports, resets, cancellation, and resources. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -6054,7 +6054,7 @@
       ],
       "residual_risks": [
         "T020: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T020: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T020: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T020: future changes to Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration.; language family=rust can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -6347,7 +6347,7 @@
       ],
       "residual_risks": [
         "T021: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T021: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T021: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T021: future changes to Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -6640,7 +6640,7 @@
       ],
       "residual_risks": [
         "T022: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T022: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T022: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T022: future changes to Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -6933,7 +6933,7 @@
       ],
       "residual_risks": [
         "T023: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T023: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T023: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T023: future changes to Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -7226,7 +7226,7 @@
       ],
       "residual_risks": [
         "T024: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T024: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T024: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T024: future changes to Reference distributions, rank/conditioning, covariance estimation, head starts, sidedness, repeated looks, multiplicity, episodes, and calibration. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -7519,7 +7519,7 @@
       ],
       "residual_risks": [
         "T025: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T025: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T025: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T025: future changes to Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases.; language family=rust can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -7812,7 +7812,7 @@
       ],
       "residual_risks": [
         "T026: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T026: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T026: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T026: future changes to Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -8105,7 +8105,7 @@
       ],
       "residual_risks": [
         "T027: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T027: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T027: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T027: future changes to Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -8398,7 +8398,7 @@
       ],
       "residual_risks": [
         "T028: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T028: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T028: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T028: future changes to Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -8691,7 +8691,7 @@
       ],
       "residual_risks": [
         "T029: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T029: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T029: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T029: future changes to Common projection, frames/units, sign, windows, robust statistics, dyads/ties/cliques, attribution assumptions, and negative cases. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -8984,7 +8984,7 @@
       ],
       "residual_risks": [
         "T030: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T030: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T030: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T030: future changes to Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites.; language family=rust can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -9277,7 +9277,7 @@
       ],
       "residual_risks": [
         "T031: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T031: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T031: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T031: future changes to Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -9570,7 +9570,7 @@
       ],
       "residual_risks": [
         "T032: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T032: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T032: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T032: future changes to Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -9863,7 +9863,7 @@
       ],
       "residual_risks": [
         "T033: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T033: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T033: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T033: future changes to Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -10156,7 +10156,7 @@
       ],
       "residual_risks": [
         "T034: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T034: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T034: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T034: future changes to Complete truth table, evidence monotonicity, unavailable states, missingness, severity versus confidence, hysteresis, and no Nominal on incomplete prerequisites. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -10449,7 +10449,7 @@
       ],
       "residual_risks": [
         "T035: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T035: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T035: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T035: future changes to Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift.; language family=rust can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -10742,7 +10742,7 @@
       ],
       "residual_risks": [
         "T036: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T036: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T036: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T036: future changes to Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -11035,7 +11035,7 @@
       ],
       "residual_risks": [
         "T037: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T037: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T037: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T037: future changes to Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -11328,7 +11328,7 @@
       ],
       "residual_risks": [
         "T038: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T038: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T038: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T038: future changes to Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -11621,7 +11621,7 @@
       ],
       "residual_risks": [
         "T039: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T039: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T039: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T039: future changes to Generator truth, seeds, autocorrelation, covariance error, common-mode attacks, missingness, attack duration, leakage, and distribution shift. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -11914,7 +11914,7 @@
       ],
       "residual_risks": [
         "T040: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T040: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T040: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T040: future changes to Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence.; language family=rust can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -12207,7 +12207,7 @@
       ],
       "residual_risks": [
         "T041: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T041: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T041: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T041: future changes to Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -12500,7 +12500,7 @@
       ],
       "residual_risks": [
         "T042: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T042: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T042: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T042: future changes to Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -12793,7 +12793,7 @@
       ],
       "residual_risks": [
         "T043: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T043: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T043: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T043: future changes to Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -13086,7 +13086,7 @@
       ],
       "residual_risks": [
         "T044: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T044: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T044: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T044: future changes to Preregistration, train/validation/holdout split, episodes/hour, mission probability, delay, misses, attribution, abstention, uncertainty, and raw evidence. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -13379,7 +13379,7 @@
       ],
       "residual_risks": [
         "T045: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T045: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T045: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T045: future changes to Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code.; language family=rust/md can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -13672,7 +13672,7 @@
       ],
       "residual_risks": [
         "T046: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T046: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T046: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T046: future changes to Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -13965,7 +13965,7 @@
       ],
       "residual_risks": [
         "T047: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T047: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T047: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T047: future changes to Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -14258,7 +14258,7 @@
       ],
       "residual_risks": [
         "T048: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T048: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T048: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T048: future changes to Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -14551,7 +14551,7 @@
       ],
       "residual_risks": [
         "T049: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T049: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T049: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T049: future changes to Derivations, symbolic/numeric checks, assumptions, citations, generated claims, and exact correspondence to core code. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -14844,7 +14844,7 @@
       ],
       "residual_risks": [
         "T050: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T050: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T050: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T050: future changes to Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown.; language family=rust can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -15137,7 +15137,7 @@
       ],
       "residual_risks": [
         "T051: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T051: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T051: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T051: future changes to Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -15430,7 +15430,7 @@
       ],
       "residual_risks": [
         "T052: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T052: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T052: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T052: future changes to Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -15723,7 +15723,7 @@
       ],
       "residual_risks": [
         "T053: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T053: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T053: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T053: future changes to Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -16016,7 +16016,7 @@
       ],
       "residual_risks": [
         "T054: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T054: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T054: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T054: future changes to Final NCP 1.0/extension boundary, canonical decoding, routes, identities, lifecycle assembler, bytes, replay, epoch/session, heartbeats, and shutdown. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -16309,7 +16309,7 @@
       ],
       "residual_risks": [
         "T055: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T055: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T055: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T055: future changes to Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair.; language family=rust can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -16602,7 +16602,7 @@
       ],
       "residual_risks": [
         "T056: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T056: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T056: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T056: future changes to Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -16895,7 +16895,7 @@
       ],
       "residual_risks": [
         "T057: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T057: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T057: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T057: future changes to Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -17188,7 +17188,7 @@
       ],
       "residual_risks": [
         "T058: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T058: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T058: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T058: future changes to Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -17481,7 +17481,7 @@
       ],
       "residual_risks": [
         "T059: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T059: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T059: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T059: future changes to Exact pid-rs 1.x pin, allowed estimators/support, report-first output, preprocessing, provenance, resource limits, failure, and no prerequisite repair. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -17774,7 +17774,7 @@
       ],
       "residual_risks": [
         "T060: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T060: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T060: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T060: future changes to Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation.; language family=rust can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -18067,7 +18067,7 @@
       ],
       "residual_risks": [
         "T061: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T061: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T061: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T061: future changes to Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -18360,7 +18360,7 @@
       ],
       "residual_risks": [
         "T062: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T062: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T062: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T062: future changes to Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -18653,7 +18653,7 @@
       ],
       "residual_risks": [
         "T063: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T063: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T063: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T063: future changes to Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -18946,7 +18946,7 @@
       ],
       "residual_risks": [
         "T064: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T064: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T064: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T064: future changes to Config validation, commands, defaults, output wording, exit codes, replay, observation, dirty-tree refusal, and evidence generation. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -19239,7 +19239,7 @@
       ],
       "residual_risks": [
         "T065: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T065: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T065: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T065: future changes to Every theorem, metric, number, threshold, limitation, citation, and operational interpretation.; language family=md can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -19532,7 +19532,7 @@
       ],
       "residual_risks": [
         "T066: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T066: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T066: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T066: future changes to Every theorem, metric, number, threshold, limitation, citation, and operational interpretation. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -19825,7 +19825,7 @@
       ],
       "residual_risks": [
         "T067: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T067: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T067: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T067: future changes to Every theorem, metric, number, threshold, limitation, citation, and operational interpretation. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -20118,7 +20118,7 @@
       ],
       "residual_risks": [
         "T068: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T068: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T068: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T068: future changes to Every theorem, metric, number, threshold, limitation, citation, and operational interpretation. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -20411,7 +20411,7 @@
       ],
       "residual_risks": [
         "T069: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T069: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T069: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T069: future changes to Every theorem, metric, number, threshold, limitation, citation, and operational interpretation. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -20704,7 +20704,7 @@
       ],
       "residual_risks": [
         "T070: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T070: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T070: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T070: future changes to Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations.; language family=md can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -20997,7 +20997,7 @@
       ],
       "residual_risks": [
         "T071: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T071: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T071: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T071: future changes to Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -21290,7 +21290,7 @@
       ],
       "residual_risks": [
         "T072: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T072: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T072: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T072: future changes to Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -21583,7 +21583,7 @@
       ],
       "residual_risks": [
         "T073: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T073: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T073: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T073: future changes to Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -21876,7 +21876,7 @@
       ],
       "residual_risks": [
         "T074: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T074: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T074: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T074: future changes to Optionality, record-only/restrict-only, non-widening, producer identities, schemas, migration, and consumer obligations. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -22169,7 +22169,7 @@
       ],
       "residual_risks": [
         "T075: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T075: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T075: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T075: future changes to Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile.; language family=md can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -22462,7 +22462,7 @@
       ],
       "residual_risks": [
         "T076: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T076: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T076: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T076: future changes to Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -22755,7 +22755,7 @@
       ],
       "residual_risks": [
         "T077: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T077: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T077: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T077: future changes to Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -23048,7 +23048,7 @@
       ],
       "residual_risks": [
         "T078: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T078: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T078: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T078: future changes to Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -23341,7 +23341,7 @@
       ],
       "residual_risks": [
         "T079: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T079: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T079: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T079: future changes to Actors, common-mode compromise, consistency-preserving attacks, credentials, ACLs, PKI, route security, and supported profile. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -23634,7 +23634,7 @@
       ],
       "residual_risks": [
         "T080: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T080: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T080: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T080: future changes to Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction.; language family=json/md/data can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -23927,7 +23927,7 @@
       ],
       "residual_risks": [
         "T081: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T081: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T081: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T081: future changes to Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -24220,7 +24220,7 @@
       ],
       "residual_risks": [
         "T082: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T082: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T082: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T082: future changes to Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -24513,7 +24513,7 @@
       ],
       "residual_risks": [
         "T083: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T083: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T083: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T083: future changes to Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -24806,7 +24806,7 @@
       ],
       "residual_risks": [
         "T084: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T084: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T084: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T084: future changes to Immutable inputs, regenerated metrics, inherited handoff adaptation, reviews, claims, requirements, exact heads, signatures, and independent reproduction. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -25099,7 +25099,7 @@
       ],
       "residual_risks": [
         "T085: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T085: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T085: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T085: future changes to mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility.; language family=yaml/json/certs/docs can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -25392,7 +25392,7 @@
       ],
       "residual_risks": [
         "T086: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T086: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T086: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T086: future changes to mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -25685,7 +25685,7 @@
       ],
       "residual_risks": [
         "T087: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T087: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T087: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T087: future changes to mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -25978,7 +25978,7 @@
       ],
       "residual_risks": [
         "T088: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T088: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T088: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T088: future changes to mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -26271,7 +26271,7 @@
       ],
       "residual_risks": [
         "T089: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T089: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T089: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T089: future changes to mTLS identities, default-deny ACLs, registry/epoch handoff, secrets, real-router campaign, expiry/rotation/revocation, and reproducibility. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -26564,7 +26564,7 @@
       ],
       "residual_risks": [
         "T090: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T090: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T090: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T090: future changes to Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release.; language family=rust/python/shell/yaml can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -26857,7 +26857,7 @@
       ],
       "residual_risks": [
         "T091: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T091: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T091: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T091: future changes to Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -27150,7 +27150,7 @@
       ],
       "residual_risks": [
         "T092: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T092: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T092: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T092: future changes to Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -27443,7 +27443,7 @@
       ],
       "residual_risks": [
         "T093: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T093: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T093: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T093: future changes to Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -27736,7 +27736,7 @@
       ],
       "residual_risks": [
         "T094: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T094: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T094: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T094: future changes to Decoder/state fuzzing, corpus, calibration runners, generated evidence, locked CI, permissions, artifacts, SBOM, and release. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -28029,7 +28029,7 @@
       ],
       "residual_risks": [
         "T095: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T095: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T095: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T095: future changes to Write a normative statistical estimand for every report field and verdict. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -28325,7 +28325,7 @@
       "residual_risks": [
         "T096: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
         "T096: CLM-013 remains NOT_CLAIMED — The release controls stated within-assessment channel and projection-axis families only. It does not convert those thresholds into an anytime-valid, track-wide, or mission-wide false-alarm guarantee.",
-        "T096: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T096: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T096: future changes to Choose and justify a sequential-error-control method; calibrate it under serial dependence and estimated covariance. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -28621,7 +28621,7 @@
       "residual_risks": [
         "T097: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
         "T097: CLM-013 remains NOT_CLAIMED — The release controls stated within-assessment channel and projection-axis families only. It does not convert those thresholds into an anytime-valid, track-wide, or mission-wide false-alarm guarantee.",
-        "T097: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T097: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T097: future changes to Control multiplicity across channels, axes, directions, windows, tracks, and repeated assessments. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -28914,7 +28914,7 @@
       ],
       "residual_risks": [
         "T098: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T098: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T098: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T098: future changes to Create a complete fusion truth table and property tests proving unavailable evidence never becomes Nominal and conflicting positive evidence cannot disappear. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -29207,7 +29207,7 @@
       ],
       "residual_risks": [
         "T099: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T099: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T099: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T099: future changes to Define readiness and availability budgets separately from anomaly statistics. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -29500,7 +29500,7 @@
       ],
       "residual_risks": [
         "T100: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T100: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T100: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T100: future changes to Predeclare acceptance thresholds for false-alert episodes, mission false-alarm probability, detection probability, conditional delay, attribution error, and abstention. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -29796,7 +29796,7 @@
       "residual_risks": [
         "T101: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
         "T101: CLM-014 remains NOT_CLAIMED — The checked-in generators and reciprocal Crebain fixture are repository-controlled compatibility inputs, not an independently authored or representative deployment holdout.",
-        "T101: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T101: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T101: future changes to Use independently authored generators or external datasets for at least one holdout arm. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -30089,7 +30089,7 @@
       ],
       "residual_risks": [
         "T102: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T102: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T102: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T102: future changes to Require producer-attested common projection and reject historical captures that cannot prove it. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -30382,7 +30382,7 @@
       ],
       "residual_risks": [
         "T103: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T103: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T103: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T103: future changes to Run consistency-preserving, common-mode, frame-swap, unit-swap, stale-prior, route-confusion, and gating-censorship attack campaigns. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -30675,7 +30675,7 @@
       ],
       "residual_risks": [
         "T104: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T104: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T104: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T104: future changes to Keep initial Haldir consumption record-only; any future restrict-only profile requires separate deployment calibration and cannot widen ALLOW. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -30971,7 +30971,7 @@
       "residual_risks": [
         "T105: CLM-008 remains NOT_CLAIMED — The selected NCP dependency is immutable v0.8.0; the pid-rs revision is immutable but lacks an upstream v1 release tag/artifact.",
         "T105: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T105: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T105: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T105: future changes to Requalify against published pid-rs and NCP 1.0 artifacts rather than source-branch assumptions. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -31266,7 +31266,7 @@
       ],
       "residual_risks": [
         "T106: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T106: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T106: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T106: future changes to Commission independent statistical and security reviews and publish negative/failure-region results. can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -31562,7 +31562,7 @@
       "residual_risks": [
         "T107: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
         "T107: CLM-015 remains NOT_CLAIMED — Qualification covers the recorded author host, Linux CI, bounded hostile-input campaigns, and supported feature graphs; it is not a full platform matrix or a long-duration deployment soak.",
-        "T107: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T107: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T107: future changes to matrix qualification can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -31858,7 +31858,7 @@
       "residual_risks": [
         "T108: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
         "T108: CLM-015 remains NOT_CLAIMED — Qualification covers the recorded author host, Linux CI, bounded hostile-input campaigns, and supported feature graphs; it is not a full platform matrix or a long-duration deployment soak.",
-        "T108: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T108: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T108: future changes to resilience can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -32151,7 +32151,7 @@
       ],
       "residual_risks": [
         "T109: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T109: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T109: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T109: future changes to supply chain can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -32446,7 +32446,7 @@
       ],
       "residual_risks": [
         "T110: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T110: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T110: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T110: future changes to independence can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -32739,7 +32739,7 @@
       ],
       "residual_risks": [
         "T111: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T111: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T111: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T111: future changes to truthfulness can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -33034,7 +33034,7 @@
       ],
       "residual_risks": [
         "T112: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T112: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T112: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T112: CLM-017 remains NOT_CLAIMED — The release includes checked procedures and performs the actual GitHub publication path, but destructive rollback, credential revocation, and production-equivalent incident drills are intentionally not fabricated.",
         "T112: future changes to release safety can invalidate this exact-candidate closure and require a new review."
       ],
@@ -33328,7 +33328,7 @@
       ],
       "residual_risks": [
         "T113: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T113: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T113: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T113: future changes to ecosystem boundary can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -33621,7 +33621,7 @@
       ],
       "residual_risks": [
         "T114: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T114: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T114: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T114: future changes to final review can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {
@@ -33914,7 +33914,7 @@
       ],
       "residual_risks": [
         "T115: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
-        "T115: CLM-016 remains NOT_CLAIMED — The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent.",
+        "T115: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T115: future changes to governance can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {

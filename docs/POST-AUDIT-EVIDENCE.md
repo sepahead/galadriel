@@ -4,6 +4,7 @@
 
 | Short form | Meaning |
 |---|---|
+| IEEE | Institute of Electrical and Electronics Engineers |
 | SHA-256 | Secure Hash Algorithm 256 |
 
 `galadriel-evidence` is the bounded and reproducible evidence path for two product detectors.
@@ -37,7 +38,7 @@ It is not a trial-v3 artifact.
 The current runner's exact-string schema applies only to newly generated output.
 
 This snapshot is not a pass or fail acceptance artifact.
-The independent clean arm reports 26.26 alert episodes/hour.
+The independent clean arm reports 26.26 alert episodes per track-hour.
 It reports a 0.9167 mission probability of any alert.
 Positive autocorrelation further increases the episode rate.
 Ordinary acoustic missingness produces 99.35% fused monitoring abstention.
@@ -55,6 +56,7 @@ One command writes these files:
   It also includes the pre-onset-alert flag, conditional delay, and attribution result.
   Synthetic rows encode `seed` as an exact unsigned-decimal JavaScript Object Notation (JSON) string.
   They encode `seed_hex` as fixed-width lowercase hexadecimal.
+
   Recorded-fixture rows use `null` for both fields.
   `track_id` remains a JSON-safe integer.
 

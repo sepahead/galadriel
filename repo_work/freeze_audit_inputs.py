@@ -10,17 +10,30 @@ import hashlib
 import os
 import re
 import stat
-import subprocess
 import sys
 import tempfile
 import tomllib
 from pathlib import Path
 from typing import Any
 
-from common import ReviewError, canonical_json, git, load_json, loads_json
+from check_public_api import bounded_diagnostic, release_tool_environment
+from common import (
+    ReviewError,
+    assert_no_replace_refs,
+    canonical_json,
+    git,
+    load_json,
+    loads_json,
+)
+from release_assurance import canonical_repository_identity, run_bounded_host_command
 
 
 SCHEMA = "galadriel.frozen-audit-inputs.v1"
+PUBLICATION_CHANNEL = "review-gated GitHub research source release"
+THREAT_REGISTER_PATH = "release/0.9.0/audit/threat-register.json"
+THREAT_STATUS_LIVING = "LIVING_UNTIL_CANDIDATE_FREEZE"
+THREAT_STATUS_FROZEN = "FROZEN_AT_CANDIDATE"
+VALID_THREAT_STATUSES = frozenset({THREAT_STATUS_LIVING, THREAT_STATUS_FROZEN})
 EXPECTED_BASELINE_REPOSITORY = "https://github.com/sepahead/galadriel"
 EXPECTED_BASELINE_COMMIT = "94e2f8cc01f352d2bf899b7f656997f143a2588f"
 EXPECTED_BASELINE_TREE = "9d9b3f9c2eaa26f50ffcc7ab16c0d38652a9f6c0"
@@ -46,6 +59,7 @@ RELEASE_INPUTS = (
     "release/0.9.0/requirements-ledger.json",
     "release/0.9.0/local-convergence-schema.json",
     "release/0.9.0/RELEASE-NOTES.md",
+    "release/0.9.0/RELEASE-RUNBOOK.md",
     "release/0.9.0/VERSION-ADAPTATION.md",
     "release/0.9.0/claims.json",
     "release/0.9.0/audit/threat-register.json",
@@ -64,6 +78,7 @@ RELEASE_INPUTS = (
     "docs/ADVISORY-BOUNDARY.md",
     "docs/CLAIMS.md",
     "docs/CONFIGURATION-CONTRACT.md",
+    "docs/DEPENDENCY-POLICY.md",
     "docs/ECOSYSTEM-CONNECTIONS.md",
     "docs/PRODUCER-CONTRACT.md",
     "docs/RELATED-WORK.md",
@@ -90,11 +105,16 @@ RELEASE_INPUTS = (
     "repo_work/make_review_packets.py",
     "repo_work/package_release_assets.py",
     "repo_work/prepare_mutation_evidence.py",
+    "repo_work/qualification_artifacts.py",
     "repo_work/qualify_candidate.py",
     "repo_work/release_assurance.py",
     "repo_work/reproduce_baseline.py",
+    "repo_work/run_broad_mutation.py",
     "repo_work/scan_claim_language.py",
+    "repo_work/tests/test_finalize_qualification.py",
+    "repo_work/tests/test_host_process_bounds.py",
     "repo_work/tests/test_package_release_assets.py",
+    "repo_work/tests/test_qualification_artifacts.py",
     "repo_work/tests/test_release_assurance.py",
     "repo_work/tests/test_review_tools.py",
     "repo_work/tests/test_task_dispositions.py",
@@ -136,6 +156,24 @@ MAX_HANDOFF_ENTRIES = 4_096
 MAX_HANDOFF_FILE_BYTES = 64 * 1024 * 1024
 MAX_HANDOFF_SYMLINK_BYTES = 16 * 1024
 MAX_HANDOFF_AGGREGATE_BYTES = 512 * 1024 * 1024
+MAX_THREAT_REGISTER_BYTES = 4 * 1024 * 1024
+HOST_IDENTITY_TIMEOUT_SECONDS = 30
+MAX_HOST_IDENTITY_STDOUT_BYTES = 64 * 1024
+MAX_HOST_IDENTITY_STDERR_BYTES = 64 * 1024
+
+
+def _file_identity(metadata: os.stat_result) -> tuple[int, ...]:
+    """Return the fields that bind one open regular-file instance."""
+
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        metadata.st_mode,
+        metadata.st_nlink,
+        metadata.st_size,
+        metadata.st_mtime_ns,
+        metadata.st_ctime_ns,
+    )
 
 
 def exact_object(value: Any, keys: set[str], label: str) -> dict[str, Any]:
@@ -196,15 +234,18 @@ def read_bounded_regular_file(
             pass
         raise
     with handle:
-        metadata = os.fstat(handle.fileno())
-        if not stat.S_ISREG(metadata.st_mode):
+        before = os.fstat(handle.fileno())
+        if not stat.S_ISREG(before.st_mode):
             raise ReviewError(f"{label} is missing or not regular: {path}")
-        if metadata.st_size > max_bytes:
+        if before.st_size > max_bytes:
             raise ReviewError(f"{label} exceeds the {limit_label} limit")
         data = handle.read(max_bytes + 1)
         if len(data) > max_bytes:
             raise ReviewError(f"{label} exceeds the {limit_label} limit")
-        if len(data) != metadata.st_size:
+        after = os.fstat(handle.fileno())
+        if len(data) != before.st_size or _file_identity(after) != _file_identity(
+            before
+        ):
             raise ReviewError(f"{label} changed while being read")
         return data
 
@@ -287,16 +328,16 @@ def digest_bounded_handoff_file(
             pass
         raise
     with handle:
-        metadata = os.fstat(handle.fileno())
-        if not stat.S_ISREG(metadata.st_mode):
+        before = os.fstat(handle.fileno())
+        if not stat.S_ISREG(before.st_mode):
             raise ReviewError(
                 f"handoff path is not a contained regular file: {relative}"
             )
-        if metadata.st_size > MAX_HANDOFF_FILE_BYTES:
+        if before.st_size > MAX_HANDOFF_FILE_BYTES:
             raise ReviewError(
                 f"handoff regular file exceeds the per-file byte limit: {relative}"
             )
-        if aggregate_size + metadata.st_size > MAX_HANDOFF_AGGREGATE_BYTES:
+        if aggregate_size + before.st_size > MAX_HANDOFF_AGGREGATE_BYTES:
             raise ReviewError("handoff inventory exceeds the aggregate byte limit")
 
         digest = hashlib.sha256()
@@ -317,7 +358,8 @@ def digest_bounded_handoff_file(
             if aggregate_size + size > MAX_HANDOFF_AGGREGATE_BYTES:
                 raise ReviewError("handoff inventory exceeds the aggregate byte limit")
             digest.update(block)
-        if size != metadata.st_size:
+        after = os.fstat(handle.fileno())
+        if size != before.st_size or _file_identity(after) != _file_identity(before):
             raise ReviewError(f"handoff regular file changed while read: {relative}")
         return digest.hexdigest(), size
 
@@ -349,19 +391,15 @@ def assert_release_tool_coverage(repo: Path) -> None:
 
 
 def git_blob(repo: Path, commit: str, relative: str) -> bytes:
-    process = subprocess.run(
-        ["git", "-C", str(repo), "show", f"{commit}:{relative}"],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    if process.returncode != 0:
-        raise ReviewError(
-            f"cannot read {relative} from {commit}: "
-            + process.stderr.decode("utf-8", "replace").strip()
+    return bytes(
+        git(
+            repo,
+            "show",
+            f"{commit}:{relative}",
+            text=False,
+            max_bytes=MAX_HANDOFF_FILE_BYTES,
         )
-    return process.stdout
+    )
 
 
 def strict_relative_files(root: Path) -> list[dict[str, Any]]:
@@ -650,7 +688,7 @@ def validate_source_documents(
     expected_audit_release = {
         "name": "Galadriel's Mirror",
         **RELEASE,
-        "publication_channel": "GitHub source release",
+        "publication_channel": PUBLICATION_CHANNEL,
     }
     if audit_release != expected_audit_release:
         raise ReviewError(
@@ -733,13 +771,94 @@ def baseline_manifest(
     }
 
 
-def release_input_manifest(repo: Path) -> list[dict[str, Any]]:
+def threat_register_status(document: bytes) -> str:
+    """Return one declared threat-register lifecycle status."""
+
+    if len(document) > MAX_THREAT_REGISTER_BYTES:
+        raise ReviewError("threat register exceeds the 4 MiB byte limit")
+    try:
+        value = loads_json(document)
+    except (UnicodeError, ValueError) as error:
+        raise ReviewError("threat register is not strict JSON") from error
+    if type(value) is not dict:
+        raise ReviewError("threat register must be a JSON object")
+    status = value.get("status")
+    if status not in VALID_THREAT_STATUSES:
+        raise ReviewError("threat register has an unsupported lifecycle status")
+    assert isinstance(status, str)
+    return status
+
+
+def release_input_manifest(
+    repo: Path,
+    *,
+    required_threat_status: str | None = None,
+) -> list[dict[str, Any]]:
+    """Bind each declared release input to its exact stage-zero index blob."""
+
+    if (
+        required_threat_status is not None
+        and required_threat_status not in VALID_THREAT_STATUSES
+    ):
+        raise ReviewError("required threat-register lifecycle status is unsupported")
     rows: list[dict[str, Any]] = []
+    observed_threat_status: str | None = None
     resolved_repo = repo.resolve()
     if len(RELEASE_INPUTS) != len(set(RELEASE_INPUTS)):
         raise ReviewError("RELEASE_INPUTS contains a duplicate path")
     for relative in RELEASE_INPUTS:
         safe_relative_path(relative, "declared release input path")
+    assert_no_replace_refs(repo)
+    raw_index = git(
+        repo,
+        "--literal-pathspecs",
+        "ls-files",
+        "--stage",
+        "-z",
+        "--",
+        *RELEASE_INPUTS,
+        text=False,
+    )
+    index_entries: dict[str, list[tuple[str, str, int]]] = {
+        relative: [] for relative in RELEASE_INPUTS
+    }
+    for raw_entry in raw_index.split(b"\0"):
+        if not raw_entry:
+            continue
+        try:
+            metadata, raw_path = raw_entry.split(b"\t", 1)
+            raw_mode, raw_blob, raw_stage = metadata.split(b" ")
+            relative = raw_path.decode("utf-8")
+            mode = raw_mode.decode("ascii")
+            blob = raw_blob.decode("ascii")
+            stage = int(raw_stage.decode("ascii"), 10)
+        except (UnicodeError, ValueError) as error:
+            raise ReviewError(
+                "release input index contains a malformed entry"
+            ) from error
+        if relative not in index_entries:
+            raise ReviewError(
+                f"release input index contains an unexpected path: {relative}"
+            )
+        index_entries[relative].append((mode, blob, stage))
+
+    for relative in RELEASE_INPUTS:
+        entries = index_entries[relative]
+        if len(entries) != 1 or entries[0][2] != 0:
+            raise ReviewError(
+                "release audit input must have exactly one stage-zero tracked "
+                f"entry: {relative}"
+            )
+        mode, blob, _stage = entries[0]
+        if mode not in {"100644", "100755"}:
+            raise ReviewError(
+                f"release audit input index entry is not a regular file: {relative}"
+            )
+        exact_object_id(blob, f"release input index blob for {relative}")
+        indexed_data = git(repo, "cat-file", "blob", blob, text=False)
+        if relative == THREAT_REGISTER_PATH:
+            observed_threat_status = threat_register_status(indexed_data)
+
         path = repo / relative
         if path.is_symlink() or not path.is_file():
             raise ReviewError(
@@ -748,8 +867,57 @@ def release_input_manifest(repo: Path) -> list[dict[str, Any]]:
         resolved = path.resolve()
         if resolved_repo not in resolved.parents:
             raise ReviewError(f"release audit input escapes the repository: {relative}")
-        digest, size = digest_file(path)
-        rows.append({"path": relative, "sha256": digest, "size_bytes": size})
+        try:
+            size = path.stat(follow_symlinks=False).st_size
+        except OSError as error:
+            raise ReviewError(
+                f"release audit input is missing or not regular: {relative}"
+            ) from error
+        if size != len(indexed_data):
+            raise ReviewError(
+                f"release audit input differs from its indexed blob: {relative}"
+            )
+        working_data = read_bounded_regular_file(
+            path,
+            len(indexed_data),
+            label="release audit input",
+            limit_label="indexed blob size",
+        )
+        if working_data != indexed_data:
+            raise ReviewError(
+                f"release audit input differs from its indexed blob: {relative}"
+            )
+        rows.append(
+            {
+                "path": relative,
+                "sha256": digest_bytes(indexed_data),
+                "size_bytes": len(indexed_data),
+            }
+        )
+
+    final_index = git(
+        repo,
+        "--literal-pathspecs",
+        "ls-files",
+        "--stage",
+        "-z",
+        "--",
+        *RELEASE_INPUTS,
+        text=False,
+    )
+    if final_index != raw_index:
+        raise ReviewError("release input index changed while it was read")
+    if required_threat_status is not None:
+        if THREAT_REGISTER_PATH not in RELEASE_INPUTS:
+            raise ReviewError(
+                "the threat register is absent from the release input contract"
+            )
+        if observed_threat_status != required_threat_status:
+            raise ReviewError(
+                "indexed threat register must have lifecycle status "
+                f"{required_threat_status}"
+            )
+    assert_no_replace_refs(repo)
     return rows
 
 
@@ -879,8 +1047,15 @@ def validate_repository_ref_inputs(value: Any) -> None:
         "historical repository ref inputs",
     )
     origin = exact_string(refs["origin"], "historical origin")
-    if any(character in origin for character in "\r\n\0"):
-        raise ReviewError("historical origin contains a control separator")
+    if origin not in {
+        EXPECTED_BASELINE_REPOSITORY,
+        "git@github.com:sepahead/galadriel.git",
+        "ssh://git@github.com/sepahead/galadriel.git",
+        f"{EXPECTED_BASELINE_REPOSITORY}.git",
+    }:
+        raise ReviewError(
+            "historical origin is not a canonical credential-free repository"
+        )
     if refs["note"] != REF_INPUT_NOTE:
         raise ReviewError(
             "historical ref-input note does not match the freeze contract"
@@ -900,13 +1075,13 @@ def validate_repository_ref_inputs(value: Any) -> None:
         refname = exact_string(tag["ref"], f"historical tag {index} ref")
         if not refname.startswith("refs/tags/") or refname <= previous:
             raise ReviewError("historical tag refs must be unique and strictly ordered")
-        check = subprocess.run(
+        check = run_bounded_host_command(
             ["git", "check-ref-format", refname],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False,
+            context="historical tag ref check",
+            environment=release_tool_environment(),
+            max_stdout_bytes=MAX_HOST_IDENTITY_STDOUT_BYTES,
+            max_stderr_bytes=MAX_HOST_IDENTITY_STDERR_BYTES,
+            timeout_seconds=HOST_IDENTITY_TIMEOUT_SECONDS,
         )
         if check.returncode != 0:
             raise ReviewError(f"historical tag has an invalid refname: {refname}")
@@ -927,16 +1102,19 @@ def validate_repository_ref_inputs(value: Any) -> None:
 
 
 def signer_fingerprint(allowed_signer_bytes: bytes) -> str:
-    process = subprocess.run(
+    process = run_bounded_host_command(
         ["ssh-keygen", "-lf", "-", "-E", "sha256"],
-        input=allowed_signer_bytes,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
+        context="allowed signer fingerprint",
+        stdin_document=allowed_signer_bytes,
+        environment=release_tool_environment(),
+        max_stdout_bytes=MAX_HOST_IDENTITY_STDOUT_BYTES,
+        max_stderr_bytes=MAX_HOST_IDENTITY_STDERR_BYTES,
+        timeout_seconds=HOST_IDENTITY_TIMEOUT_SECONDS,
     )
     if process.returncode != 0:
-        detail = process.stderr.decode("utf-8", "replace").strip()
-        raise ReviewError(f"cannot fingerprint allowed signer: {detail}")
+        raise ReviewError(
+            "cannot fingerprint allowed signer: " + bounded_diagnostic(process.stderr)
+        )
     lines = process.stdout.decode("utf-8", "replace").splitlines()
     if len(lines) != 1 or not lines[0]:
         raise ReviewError("allowed signer must resolve to exactly one fingerprint")
@@ -1034,7 +1212,7 @@ def validate_signature(
         signer_snapshot.write_bytes(allowed_signer_bytes)
         signature_snapshot = Path(directory) / "manifest.sshsig"
         signature_snapshot.write_bytes(signature_bytes)
-        process = subprocess.run(
+        process = run_bounded_host_command(
             [
                 "ssh-keygen",
                 "-Y",
@@ -1048,14 +1226,18 @@ def validate_signature(
                 "-s",
                 str(signature_snapshot),
             ],
-            input=manifest_bytes,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
+            context="frozen audit-input signature verification",
+            stdin_document=manifest_bytes,
+            environment=release_tool_environment(),
+            max_stdout_bytes=MAX_HOST_IDENTITY_STDOUT_BYTES,
+            max_stderr_bytes=MAX_HOST_IDENTITY_STDERR_BYTES,
+            timeout_seconds=HOST_IDENTITY_TIMEOUT_SECONDS,
         )
     if process.returncode != 0:
-        detail = process.stderr.decode("utf-8", "replace").strip()
-        raise ReviewError(f"frozen audit-input signature verification failed: {detail}")
+        raise ReviewError(
+            "frozen audit-input signature verification failed: "
+            + bounded_diagnostic(process.stderr)
+        )
     return fingerprint
 
 
@@ -1115,7 +1297,10 @@ def generate_frozen_inputs(
     )
     baseline = baseline_manifest(repo, baseline_commit, declared_tree)
     baseline["repository"] = audit_inputs["baseline_repository"]["url"]
-    release_files = release_input_manifest(repo)
+    release_files = release_input_manifest(
+        repo,
+        required_threat_status=THREAT_STATUS_FROZEN,
+    )
     handoff_files = strict_relative_files(handoff_root)
     handoff = {
         "root_name": handoff_root.name,
@@ -1157,7 +1342,7 @@ def generate_frozen_inputs(
         "release": RELEASE,
         "baseline": baseline,
         "repository_ref_inputs": {
-            "origin": str(git(repo, "remote", "get-url", "origin")).strip(),
+            "origin": canonical_repository_identity(repo),
             "local_tags_at_freeze": tag_inventory(repo),
             "note": REF_INPUT_NOTE,
         },
@@ -1274,7 +1459,10 @@ def verify_frozen_inputs(
     release_inputs = exact_list(root["release_input_files"], "release input files")
     for index, row in enumerate(release_inputs):
         exact_object(row, {"path", "sha256", "size_bytes"}, f"release input {index}")
-    if release_inputs != release_input_manifest(repo):
+    if release_inputs != release_input_manifest(
+        repo,
+        required_threat_status=THREAT_STATUS_FROZEN,
+    ):
         raise ReviewError(
             "release input files are not the exact ordered current RELEASE_INPUTS set"
         )
@@ -1283,10 +1471,46 @@ def verify_frozen_inputs(
     validate_repository_ref_inputs(root["repository_ref_inputs"])
 
 
+def verify_freeze_lifecycle(
+    repo: Path,
+    handoff_root: Path | None,
+    output: Path,
+    allowed_signers: Path,
+) -> str:
+    """Verify the exact living or frozen audit-input lifecycle state."""
+
+    register_bytes = read_bounded_regular_file(
+        repo / THREAT_REGISTER_PATH,
+        MAX_THREAT_REGISTER_BYTES,
+        label="threat register",
+        limit_label="4 MiB lifecycle",
+    )
+    status = threat_register_status(register_bytes)
+    signature_path = output.with_name(output.name + ".sig")
+    if status == THREAT_STATUS_LIVING:
+        release_input_manifest(
+            repo,
+            required_threat_status=THREAT_STATUS_LIVING,
+        )
+        validate_allowed_signer(allowed_signers)
+        for label, path in (
+            ("active frozen manifest", output),
+            ("active frozen signature", signature_path),
+        ):
+            if path.exists() or path.is_symlink():
+                raise ReviewError(f"{label} must be absent in the living state")
+        return status
+    verify_frozen_inputs(repo, handoff_root, output, allowed_signers)
+    return status
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "action", nargs="?", choices=("generate", "verify"), default="generate"
+        "action",
+        nargs="?",
+        choices=("generate", "verify", "verify-lifecycle"),
+        default="generate",
     )
     parser.add_argument("--repo", default=".")
     parser.add_argument("--handoff-root")
@@ -1344,9 +1568,17 @@ def main() -> int:
             generate_frozen_inputs(repo, handoff_root, output, allowed_signers)
             print(output)
             print(allowed_signers)
-        else:
+        elif arguments.action == "verify":
             verify_frozen_inputs(repo, handoff_root, output, allowed_signers)
             print(f"FROZEN_AUDIT_INPUTS_OK {output}")
+        else:
+            status = verify_freeze_lifecycle(
+                repo,
+                handoff_root,
+                output,
+                allowed_signers,
+            )
+            print(f"FREEZE_LIFECYCLE_OK {status} {output}")
     except (
         KeyError,
         OSError,

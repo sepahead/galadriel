@@ -19,7 +19,7 @@ Date: 2026-07-14
 ## Context
 
 The supplied standalone handoff uses version `1.0.0`.
-The requested first public research release uses version `0.9.0`.
+The requested first review-gated public research source release uses version `0.9.0`.
 It has no DOI or Zenodo record.
 
 The external source package remains immutable.
@@ -135,7 +135,7 @@ An independent verifier must check that output before use.
 ## Consequences
 
 The complete ordered 116-task ledger controls closure.
-Version 0.9.0 means the first reviewable release.
+Version 0.9.0 means the first review-gated release.
 It does not mean partial safety.
 
 A version 1.0.0 release needs a new decision and new evidence.

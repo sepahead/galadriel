@@ -4288,6 +4288,129 @@ mod tests {
     }
 
     #[test]
+    fn bootstrap_envelope_and_usable_threshold_keep_their_exact_boundaries() {
+        assert_eq!(interval_envelope([0.2, 0.8], None), [0.2, 0.8]);
+        assert_eq!(interval_envelope([0.2, 0.8], Some([0.1, 0.9])), [0.1, 0.9]);
+        assert_eq!(interval_envelope([0.2, 0.8], Some([0.3, 0.7])), [0.2, 0.8]);
+        assert!(bootstrap_sample_is_sufficient(4, 5));
+        assert!(!bootstrap_sample_is_sufficient(3, 5));
+    }
+
+    #[test]
+    fn conditional_metric_threshold_separates_sparse_and_estimable_samples() {
+        let config = tiny_config();
+        let records = run_synthetic(&config).expect("synthetic threshold fixture should run");
+        let mut attack = records
+            .into_iter()
+            .filter(|record| {
+                record.condition == "attack_loud_acoustic"
+                    && record.role == Role::Holdout
+                    && record.detector == DetectorId::NisBaseline
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(attack.len(), 2);
+        for (index, record) in attack.iter_mut().enumerate() {
+            record.pre_onset_alert = Some(false);
+            record.first_post_onset_delay_frames = Some((index + 1) * 10);
+        }
+
+        let sparse_records = [&attack[0]];
+        let sparse = estimate_metric(
+            &sparse_records,
+            MetricKind::ConditionalDelayFrames,
+            &config,
+            "sparse-threshold",
+        );
+        assert_eq!(sparse.status, "descriptive_sparse");
+        assert_eq!(sparse.ci95, None);
+        assert_eq!(sparse.bootstrap_usable, 0);
+
+        let estimable_records = attack.iter().collect::<Vec<_>>();
+        let estimable = estimate_metric(
+            &estimable_records,
+            MetricKind::ConditionalDelayFrames,
+            &config,
+            "estimable-threshold",
+        );
+        assert_eq!(estimable.status, "estimated");
+        assert!(estimable.ci95.is_some());
+        assert_eq!(estimable.bootstrap_usable, config.bootstrap_resamples);
+    }
+
+    #[test]
+    fn conditional_delay_bootstrap_keeps_the_frozen_seed_composition() {
+        let mut raw = tiny_config_file();
+        raw.holdout_tracks = 4;
+        let config = accept(raw).expect("four-track bootstrap fixture should validate");
+        let records = run_synthetic(&config).expect("four-track bootstrap fixture should run");
+        let mut attack = records
+            .into_iter()
+            .filter(|record| {
+                record.condition == "attack_loud_acoustic"
+                    && record.role == Role::Holdout
+                    && record.detector == DetectorId::NisBaseline
+            })
+            .collect::<Vec<_>>();
+        attack.sort_by_key(|record| record.trial_index);
+        assert_eq!(attack.len(), 4);
+        for (record, delay) in attack.iter_mut().zip([100, 100, 100, 0]) {
+            record.pre_onset_alert = Some(false);
+            record.first_post_onset_delay_frames = Some(delay);
+        }
+        let references = attack.iter().collect::<Vec<_>>();
+        let estimate = estimate_metric(
+            &references,
+            MetricKind::ConditionalDelayFrames,
+            &config,
+            "attack_loud_acoustic:Holdout:NisBaseline",
+        );
+
+        assert_eq!(estimate.value, Some(100.0));
+        assert_eq!(estimate.bootstrap_usable, 200);
+        assert_eq!(estimate.ci95, Some([50.0, 100.0]));
+    }
+
+    #[test]
+    fn clean_summary_preserves_exposure_applicability_and_reset_counts() {
+        let mut raw = tiny_config_file();
+        raw.holdout_tracks = 3;
+        let config = accept(raw).expect("three-track summary fixture should validate");
+        let records = run_synthetic(&config).expect("three-track summary fixture should run");
+        let mut clean = records
+            .into_iter()
+            .filter(|record| {
+                record.role == Role::Holdout
+                    && record.detector == DetectorId::NisBaseline
+                    && record.experiment_kind == "clean_autocorrelation"
+                    && record.phi == Some(0.0)
+            })
+            .collect::<Vec<_>>();
+        clean.sort_by_key(|record| record.trial_index);
+        assert_eq!(clean.len(), 3);
+        for (record, duration_ms) in clean.iter_mut().zip([1_800_000, 900_000, 900_000]) {
+            record.duration_ms = duration_ms;
+            record.detector_generation_resets.clear();
+        }
+        clean[0]
+            .detector_generation_resets
+            .push(DetectorGenerationReset {
+                frame_index: 1,
+                seq: 1,
+                timestamp_ms: 1,
+                reason: DetectorGenerationResetReason::SequenceOrTimestampDiscontinuity,
+            });
+        let references = clean.iter().collect::<Vec<_>>();
+        let summary = summarize_condition(&references, &config);
+
+        assert_eq!(summary.exposure_hours, 1.0);
+        assert_eq!(summary.metrics.false_alerts_per_hour.status, "estimated");
+        assert_eq!(summary.detector_generation_resets, 1);
+        assert_eq!(summary.tracks_with_detector_generation_resets, 1);
+        assert_eq!(summary.raw_counts.detector_generation_resets, 1);
+        assert_eq!(summary.raw_counts.tracks_with_detector_generation_resets, 1);
+    }
+
+    #[test]
     fn zero_event_intervals_retain_nonzero_upper_uncertainty() {
         let (_, wilson_upper) = wilson_ci(0, 24);
         assert!(wilson_upper > 0.0);

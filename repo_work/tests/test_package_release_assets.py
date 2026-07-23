@@ -7,12 +7,14 @@ import hashlib
 import io
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
 import unittest
+from collections.abc import Callable
 from pathlib import Path
 from unittest import mock
 
@@ -40,9 +42,6 @@ class PackageReleaseAssetsTest(unittest.TestCase):
         self.closure = self.root / "closure"
         self.qualification.mkdir()
         self.closure.mkdir()
-        (self.qualification / "SHA256SUMS").write_text(
-            "qualification checksums\n", encoding="utf-8"
-        )
         (self.qualification / "report.json").write_text(
             '{"status":"qualified"}\n', encoding="utf-8"
         )
@@ -50,7 +49,6 @@ class PackageReleaseAssetsTest(unittest.TestCase):
         (self.qualification / "nested" / "evidence.bin").write_bytes(
             b"qualification evidence\x00\xff"
         )
-        (self.qualification / "empty").mkdir()
         long_directory = self.qualification / ("long-directory-" + "x" * 96)
         long_directory.mkdir()
         (long_directory / ("long-file-" + "y" * 110 + ".txt")).write_text(
@@ -59,13 +57,10 @@ class PackageReleaseAssetsTest(unittest.TestCase):
         (self.qualification / "unicode-Δ.txt").write_text(
             "explicit UTF-8 path encoding\n", encoding="utf-8"
         )
-        (self.closure / "SHA256SUMS").write_text(
-            "closure checksums\n", encoding="utf-8"
-        )
         (self.closure / "decision.json").write_text(
             '{"decision":"GO"}\n', encoding="utf-8"
         )
-        self.key = self.root / "signing-key"
+        self.private_key = self.root / "signing-key"
         subprocess.run(
             [
                 "ssh-keygen",
@@ -77,15 +72,123 @@ class PackageReleaseAssetsTest(unittest.TestCase):
                 "-C",
                 pack.SIGNING_PRINCIPAL,
                 "-f",
-                str(self.key),
+                str(self.private_key),
             ],
             check=True,
         )
+        agent = subprocess.run(
+            ["ssh-agent", "-s"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        agent_environment: dict[str, str] = {}
+        for name in ("SSH_AUTH_SOCK", "SSH_AGENT_PID"):
+            match = re.search(rf"{name}=([^;]+);", agent.stdout)
+            if match is None:
+                self.fail(f"ssh-agent did not report {name}")
+            agent_environment[name] = match.group(1)
+        self.environment_patch = mock.patch.dict(os.environ, agent_environment)
+        self.environment_patch.start()
+        self.addCleanup(self.stop_signing_agent)
+        subprocess.run(
+            ["ssh-add", str(self.private_key)],
+            check=True,
+            capture_output=True,
+        )
+        self.key = self.private_key.with_suffix(".pub")
         self.allowed_signers = self.root / "ALLOWED_SIGNERS"
         derive_external_allowed_signers(self.key, self.allowed_signers)
+        self.seal_tier("qualification")
+        self.seal_tier("closure")
+
+    def stop_signing_agent(self) -> None:
+        subprocess.run(
+            ["ssh-agent", "-k"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        self.environment_patch.stop()
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
+
+    def tier_root(self, tier: str) -> Path:
+        return self.qualification if tier == "qualification" else self.closure
+
+    def inner_contract(self, tier: str) -> dict[str, object]:
+        return pack.INNER_TIER_CONTRACTS[tier]
+
+    def refresh_tier_checksum(self, tier: str) -> None:
+        root = self.tier_root(tier)
+        checksum = root / "SHA256SUMS"
+        checksum.unlink(missing_ok=True)
+        rows = []
+        for path in sorted(target for target in root.rglob("*") if target.is_file()):
+            relative = path.relative_to(root).as_posix()
+            rows.append(
+                f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {relative}\n"
+            )
+        checksum.write_text("".join(rows), encoding="utf-8")
+
+    def write_inner_manifest_bytes(
+        self,
+        tier: str,
+        manifest_bytes: bytes,
+        *,
+        namespace: str | None = None,
+    ) -> None:
+        root = self.tier_root(tier)
+        contract = self.inner_contract(tier)
+        manifest = root / str(contract["manifest"])
+        signature = root / str(contract["signature"])
+        manifest.write_bytes(manifest_bytes)
+        signature.unlink(missing_ok=True)
+        sign_file(
+            manifest,
+            self.key,
+            namespace if namespace is not None else str(contract["namespace"]),
+        )
+        self.refresh_tier_checksum(tier)
+
+    def seal_tier(
+        self,
+        tier: str,
+        *,
+        candidate_commit: str = COMMIT,
+        candidate_tree: str = TREE,
+    ) -> None:
+        root = self.tier_root(tier)
+        contract = self.inner_contract(tier)
+        excluded = {
+            str(contract["manifest"]),
+            str(contract["signature"]),
+            "SHA256SUMS",
+        }
+        artifacts = []
+        for path in sorted(target for target in root.rglob("*") if target.is_file()):
+            relative = path.relative_to(root).as_posix()
+            if relative in excluded:
+                continue
+            data = path.read_bytes()
+            artifacts.append(
+                {
+                    "path": relative,
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                    "size_bytes": len(data),
+                }
+            )
+        document = {
+            "schema": pack.INNER_MANIFEST_SCHEMA,
+            "tier": tier,
+            "candidate": {
+                "commit": candidate_commit,
+                "tree": candidate_tree,
+            },
+            "artifacts": artifacts,
+        }
+        self.write_inner_manifest_bytes(tier, canonical_json(document))
 
     def build(self, name: str = "assets") -> Path:
         return pack.build_release_assets(
@@ -93,6 +196,7 @@ class PackageReleaseAssetsTest(unittest.TestCase):
             self.closure,
             self.root / name,
             self.key,
+            self.allowed_signers,
             candidate_commit=COMMIT,
             candidate_tree=TREE,
             tag_name=pack.TAG_NAME,
@@ -132,7 +236,9 @@ class PackageReleaseAssetsTest(unittest.TestCase):
         self,
         assets: Path,
         tier: str,
-        mutate: object,
+        mutate: Callable[[list[tuple[tarfile.TarInfo, bytes | None]]], None],
+        *,
+        sync_file_inventory: bool = False,
     ) -> None:
         archive_path = assets / pack.ASSET_NAMES[tier]
         rows: list[tuple[tarfile.TarInfo, bytes | None]] = []
@@ -162,7 +268,128 @@ class PackageReleaseAssetsTest(unittest.TestCase):
             if row["tier"] == tier:
                 row["sha256"] = digest
                 row["size_bytes"] = size
+                if sync_file_inventory:
+                    prefix = f"{pack.ROOT_PREFIXES[tier]}/"
+                    row["directories"] = sorted(
+                        member.name.removeprefix(prefix)
+                        for member, _data in rows
+                        if member.isdir() and member.name != pack.ROOT_PREFIXES[tier]
+                    )
+                    row["files"] = sorted(
+                        (
+                            {
+                                "path": member.name.removeprefix(prefix),
+                                "sha256": hashlib.sha256(data).hexdigest(),
+                                "size_bytes": len(data),
+                            }
+                            for member, data in rows
+                            if member.isfile() and data is not None
+                        ),
+                        key=lambda record: record["path"],
+                    )
         self.write_manifest(assets, document)
+
+    def replace_inner_row(
+        self,
+        rows: list[tuple[tarfile.TarInfo, bytes | None]],
+        tier: str,
+        relative: str,
+        data: bytes,
+    ) -> None:
+        expected = f"{pack.ROOT_PREFIXES[tier]}/{relative}"
+        for index, (member, _old_data) in enumerate(rows):
+            if member.name == expected:
+                member.size = len(data)
+                rows[index] = (member, data)
+                return
+        self.fail(f"inner archive lacks {expected}")
+
+    def remove_inner_row(
+        self,
+        rows: list[tuple[tarfile.TarInfo, bytes | None]],
+        tier: str,
+        relative: str,
+    ) -> None:
+        expected = f"{pack.ROOT_PREFIXES[tier]}/{relative}"
+        for index, (member, _data) in enumerate(rows):
+            if member.name == expected:
+                rows.pop(index)
+                return
+        self.fail(f"inner archive lacks {expected}")
+
+    def refresh_inner_checksum_rows(
+        self,
+        rows: list[tuple[tarfile.TarInfo, bytes | None]],
+        tier: str,
+    ) -> None:
+        prefix = f"{pack.ROOT_PREFIXES[tier]}/"
+        checksum_rows = []
+        for member, data in rows:
+            if not member.isfile() or data is None:
+                continue
+            relative = member.name.removeprefix(prefix)
+            if relative == "SHA256SUMS":
+                continue
+            checksum_rows.append((relative, hashlib.sha256(data).hexdigest()))
+        checksum = "".join(
+            f"{digest}  {relative}\n" for relative, digest in sorted(checksum_rows)
+        ).encode("utf-8")
+        self.replace_inner_row(rows, tier, "SHA256SUMS", checksum)
+
+    def sign_inner_manifest_bytes(
+        self,
+        tier: str,
+        manifest_bytes: bytes,
+        *,
+        namespace: str | None = None,
+    ) -> bytes:
+        contract = self.inner_contract(tier)
+        with tempfile.TemporaryDirectory(dir=self.root) as directory:
+            manifest = Path(directory) / str(contract["manifest"])
+            manifest.write_bytes(manifest_bytes)
+            signature = sign_file(
+                manifest,
+                self.key,
+                namespace if namespace is not None else str(contract["namespace"]),
+            )
+            return signature.read_bytes()
+
+    def rewrite_inner_manifest(
+        self,
+        assets: Path,
+        tier: str,
+        manifest_bytes: bytes,
+        *,
+        namespace: str | None = None,
+    ) -> None:
+        contract = self.inner_contract(tier)
+        signature = self.sign_inner_manifest_bytes(
+            tier,
+            manifest_bytes,
+            namespace=namespace,
+        )
+
+        def mutate(rows: list[tuple[tarfile.TarInfo, bytes | None]]) -> None:
+            self.replace_inner_row(
+                rows,
+                tier,
+                str(contract["manifest"]),
+                manifest_bytes,
+            )
+            self.replace_inner_row(
+                rows,
+                tier,
+                str(contract["signature"]),
+                signature,
+            )
+            self.refresh_inner_checksum_rows(rows, tier)
+
+        self.rewrite_archive(
+            assets,
+            tier,
+            mutate,
+            sync_file_inventory=True,
+        )
 
     def test_build_verify_and_manifest_contract(self) -> None:
         assets = self.build()
@@ -190,6 +417,83 @@ class PackageReleaseAssetsTest(unittest.TestCase):
             self.assertLess(asset["size_bytes"], 2 * 1024**3)
             self.assertIn("SHA256SUMS", [row["path"] for row in asset["files"]])
 
+    def test_cli_verify_reconstructs_inner_tiers_in_a_private_directory(
+        self,
+    ) -> None:
+        assets = self.build()
+        observed_roots: list[Path] = []
+        original = pack._authenticate_inner_tier
+
+        def record_root(
+            root: Path,
+            tier: str,
+            allowed_signers: Path,
+            *,
+            expected_candidate: str,
+            expected_tree: str,
+        ) -> dict[str, object]:
+            observed_roots.append(root)
+            self.assertTrue(root.is_dir())
+            self.assertFalse(pack._overlap(root, assets))
+            return original(
+                root,
+                tier,
+                allowed_signers,
+                expected_candidate=expected_candidate,
+                expected_tree=expected_tree,
+            )
+
+        arguments = [
+            "verify",
+            "--assets",
+            str(assets),
+            "--allowed-signers",
+            str(self.allowed_signers),
+            "--expected-candidate",
+            COMMIT,
+            "--expected-tree",
+            TREE,
+            "--expected-tag-object",
+            TAG_OBJECT,
+            "--expected-tag-target",
+            COMMIT,
+        ]
+        with (
+            mock.patch.object(
+                pack,
+                "_authenticate_inner_tier",
+                side_effect=record_root,
+            ),
+            mock.patch("sys.stdout", new_callable=io.StringIO),
+        ):
+            self.assertEqual(pack.main(arguments), 0)
+        self.assertEqual(len(observed_roots), 2)
+        self.assertTrue(all(not root.exists() for root in observed_roots))
+
+    def test_build_rejects_an_inner_candidate_mismatch(self) -> None:
+        self.seal_tier("qualification", candidate_commit="4" * 40)
+        output = self.root / "inner-candidate-mismatch"
+        with self.assertRaisesRegex(
+            ReviewError,
+            "qualification tier manifest targets another candidate",
+        ):
+            self.build(output.name)
+        self.assertFalse(output.exists())
+        self.assertEqual(
+            list(self.root.glob(f".{output.name}.staging-*")),
+            [],
+        )
+
+    def test_build_rejects_inner_inventory_drift(self) -> None:
+        (self.closure / "unlisted.json").write_text(
+            '{"status":"unlisted"}\n',
+            encoding="utf-8",
+        )
+        output = self.root / "inner-inventory-drift"
+        with self.assertRaisesRegex(ReviewError, "omits retained files"):
+            self.build(output.name)
+        self.assertFalse(output.exists())
+
     def test_cli_build_dispatches_every_identity_and_path_flag(self) -> None:
         output = self.root / "cli-assets"
         arguments = [
@@ -202,6 +506,8 @@ class PackageReleaseAssetsTest(unittest.TestCase):
             str(output),
             "--signing-key",
             str(self.key),
+            "--allowed-signers",
+            str(self.allowed_signers),
             "--candidate-commit",
             COMMIT,
             "--candidate-tree",
@@ -227,6 +533,7 @@ class PackageReleaseAssetsTest(unittest.TestCase):
             self.closure,
             output,
             self.key,
+            self.allowed_signers,
             candidate_commit=COMMIT,
             candidate_tree=TREE,
             tag_name=pack.TAG_NAME,
@@ -373,7 +680,7 @@ class PackageReleaseAssetsTest(unittest.TestCase):
             )
         )
 
-    def test_extract_restores_fixed_prefixes_paths_empty_directories_and_bytes(
+    def test_extract_restores_fixed_prefixes_paths_and_bytes(
         self,
     ) -> None:
         assets = self.build()
@@ -455,6 +762,204 @@ class PackageReleaseAssetsTest(unittest.TestCase):
         self.resign(assets, namespace="wrong-release-assets")
         with self.assertRaisesRegex(ReviewError, "invalid galadriel-release-assets"):
             self.verify(assets)
+
+    def test_rejects_each_inner_tier_candidate_mismatch(self) -> None:
+        for tier in pack.TIER_ORDER:
+            with self.subTest(tier=tier):
+                assets = self.build(f"{tier}-candidate-mismatch")
+                contract = self.inner_contract(tier)
+                manifest = self.tier_root(tier) / str(contract["manifest"])
+                document = json.loads(manifest.read_text(encoding="utf-8"))
+                document["candidate"]["commit"] = "4" * 40
+                self.rewrite_inner_manifest(
+                    assets,
+                    tier,
+                    canonical_json(document),
+                )
+                with self.assertRaisesRegex(
+                    ReviewError,
+                    f"{tier} tier manifest targets another candidate",
+                ):
+                    self.verify(assets)
+
+    def test_rejects_missing_and_bad_inner_signatures(self) -> None:
+        missing = self.build("missing-inner-signature")
+        qualification_contract = self.inner_contract("qualification")
+
+        def remove_signature(
+            rows: list[tuple[tarfile.TarInfo, bytes | None]],
+        ) -> None:
+            self.remove_inner_row(
+                rows,
+                "qualification",
+                str(qualification_contract["signature"]),
+            )
+            self.refresh_inner_checksum_rows(rows, "qualification")
+
+        self.rewrite_archive(
+            missing,
+            "qualification",
+            remove_signature,
+            sync_file_inventory=True,
+        )
+        with self.assertRaisesRegex(ReviewError, "lacks fixed control files"):
+            self.verify(missing)
+
+        bad = self.build("bad-inner-signature")
+        closure_contract = self.inner_contract("closure")
+
+        def replace_signature(
+            rows: list[tuple[tarfile.TarInfo, bytes | None]],
+        ) -> None:
+            self.replace_inner_row(
+                rows,
+                "closure",
+                str(closure_contract["signature"]),
+                b"invalid detached signature\n",
+            )
+            self.refresh_inner_checksum_rows(rows, "closure")
+
+        self.rewrite_archive(
+            bad,
+            "closure",
+            replace_signature,
+            sync_file_inventory=True,
+        )
+        with self.assertRaisesRegex(
+            ReviewError,
+            "invalid galadriel-closure-manifest signature",
+        ):
+            self.verify(bad)
+
+    def test_rejects_an_inner_signature_in_the_wrong_namespace(self) -> None:
+        assets = self.build("wrong-inner-namespace")
+        contract = self.inner_contract("qualification")
+        manifest = (
+            self.tier_root("qualification") / str(contract["manifest"])
+        ).read_bytes()
+        self.rewrite_inner_manifest(
+            assets,
+            "qualification",
+            manifest,
+            namespace="wrong-inner-namespace",
+        )
+        with self.assertRaisesRegex(
+            ReviewError,
+            "invalid galadriel-qualification-manifest signature",
+        ):
+            self.verify(assets)
+
+    def test_rejects_malformed_and_noncanonical_inner_manifests(self) -> None:
+        contract = self.inner_contract("closure")
+        source_manifest = self.tier_root("closure") / str(contract["manifest"])
+        document = json.loads(source_manifest.read_text(encoding="utf-8"))
+        cases = (
+            ("malformed", b"not JSON\n", "not valid bounded JSON"),
+            (
+                "noncanonical",
+                json.dumps(document, indent=2).encode("utf-8"),
+                "not a canonical JSON object",
+            ),
+        )
+        for name, manifest_bytes, error in cases:
+            with self.subTest(name=name):
+                assets = self.build(f"{name}-inner-manifest")
+                self.rewrite_inner_manifest(
+                    assets,
+                    "closure",
+                    manifest_bytes,
+                )
+                with self.assertRaisesRegex(ReviewError, error):
+                    self.verify(assets)
+
+    def test_rejects_wrong_inner_manifest_schema_and_tier(self) -> None:
+        contract = self.inner_contract("qualification")
+        source = self.tier_root("qualification") / str(contract["manifest"])
+        source_document = json.loads(source.read_text(encoding="utf-8"))
+        cases = (
+            ("schema", "unexpected.schema", "wrong schema"),
+            ("tier", "closure", "wrong tier"),
+        )
+        for field, value, error in cases:
+            with self.subTest(field=field):
+                assets = self.build(f"wrong-inner-{field}")
+                document = copy.deepcopy(source_document)
+                document[field] = value
+                self.rewrite_inner_manifest(
+                    assets,
+                    "qualification",
+                    canonical_json(document),
+                )
+                with self.assertRaisesRegex(ReviewError, error):
+                    self.verify(assets)
+
+    def test_rejects_unordered_inner_artifact_inventory(self) -> None:
+        assets = self.build("unordered-inner-inventory")
+        contract = self.inner_contract("qualification")
+        source = self.tier_root("qualification") / str(contract["manifest"])
+        document = json.loads(source.read_text(encoding="utf-8"))
+        document["artifacts"].reverse()
+        self.rewrite_inner_manifest(
+            assets,
+            "qualification",
+            canonical_json(document),
+        )
+        with self.assertRaisesRegex(ReviewError, "artifact inventory is not ordered"):
+            self.verify(assets)
+
+    def test_rejects_inner_artifact_digest_drift(self) -> None:
+        assets = self.build("inner-artifact-drift")
+
+        def change_artifact(
+            rows: list[tuple[tarfile.TarInfo, bytes | None]],
+        ) -> None:
+            self.replace_inner_row(
+                rows,
+                "qualification",
+                "report.json",
+                b'{"status":"changed"}\n',
+            )
+            self.refresh_inner_checksum_rows(rows, "qualification")
+
+        self.rewrite_archive(
+            assets,
+            "qualification",
+            change_artifact,
+            sync_file_inventory=True,
+        )
+        with self.assertRaisesRegex(ReviewError, "artifact digest mismatch"):
+            self.verify(assets)
+
+    def test_rejects_inner_checksum_drift_before_reconstruction_publication(
+        self,
+    ) -> None:
+        assets = self.build("inner-checksum-drift")
+
+        def change_checksum(
+            rows: list[tuple[tarfile.TarInfo, bytes | None]],
+        ) -> None:
+            self.replace_inner_row(
+                rows,
+                "closure",
+                "SHA256SUMS",
+                b"0" * 64 + b"  decision.json\n",
+            )
+
+        self.rewrite_archive(
+            assets,
+            "closure",
+            change_checksum,
+            sync_file_inventory=True,
+        )
+        output = self.root / "checksum-drift-reconstruction"
+        with self.assertRaisesRegex(ReviewError, "checksum inventory"):
+            pack.extract_release_assets(
+                assets,
+                self.allowed_signers,
+                output,
+                **self.expectations(),
+            )
+        self.assertFalse(output.exists())
 
     def test_rejects_duplicate_json_keys(self) -> None:
         assets = self.build()
@@ -599,7 +1104,7 @@ class PackageReleaseAssetsTest(unittest.TestCase):
         self.assertEqual(list(self.root.glob(".changing.staging-*")), [])
 
     def test_rejects_signing_key_inside_evidence_root(self) -> None:
-        embedded_key = self.qualification / "embedded-private-key"
+        embedded_key = self.qualification / "embedded-public-key"
         embedded_key.write_bytes(self.key.read_bytes())
         os.chmod(embedded_key, 0o600)
         output = self.root / "key-leak"
@@ -609,6 +1114,7 @@ class PackageReleaseAssetsTest(unittest.TestCase):
                 self.closure,
                 output,
                 embedded_key,
+                self.allowed_signers,
                 candidate_commit=COMMIT,
                 candidate_tree=TREE,
                 tag_name=pack.TAG_NAME,
@@ -616,6 +1122,81 @@ class PackageReleaseAssetsTest(unittest.TestCase):
                 tag_target=COMMIT,
             )
         self.assertFalse(output.exists())
+
+    def test_rejects_a_private_signing_key(self) -> None:
+        output = self.root / "private-key-output"
+        with self.assertRaisesRegex(ReviewError, "signing-key handle"):
+            pack.build_release_assets(
+                self.qualification,
+                self.closure,
+                output,
+                self.private_key,
+                self.allowed_signers,
+                candidate_commit=COMMIT,
+                candidate_tree=TREE,
+                tag_name=pack.TAG_NAME,
+                tag_object=TAG_OBJECT,
+                tag_target=COMMIT,
+            )
+        self.assertFalse(output.exists())
+
+    def test_rejects_a_signing_key_that_differs_from_the_trust_root(self) -> None:
+        foreign_private = self.root / "foreign-signing-key"
+        subprocess.run(
+            [
+                "ssh-keygen",
+                "-q",
+                "-t",
+                "ed25519",
+                "-N",
+                "",
+                "-f",
+                str(foreign_private),
+            ],
+            check=True,
+        )
+        foreign_allowed = self.root / "FOREIGN_ALLOWED_SIGNERS"
+        derive_external_allowed_signers(
+            foreign_private.with_suffix(".pub"),
+            foreign_allowed,
+        )
+        output = self.root / "foreign-trust-output"
+        with self.assertRaisesRegex(
+            ReviewError, "does not match independent trust root"
+        ):
+            pack.build_release_assets(
+                self.qualification,
+                self.closure,
+                output,
+                self.key,
+                foreign_allowed,
+                candidate_commit=COMMIT,
+                candidate_tree=TREE,
+                tag_name=pack.TAG_NAME,
+                tag_object=TAG_OBJECT,
+                tag_target=COMMIT,
+            )
+        self.assertFalse(output.exists())
+
+    def test_build_enforces_the_four_kib_trust_root_bound(self) -> None:
+        oversized = self.root / "OVERSIZED_ALLOWED_SIGNERS"
+        oversized.write_bytes(b"x" * (pack.MAX_ALLOWED_SIGNERS_BYTES + 1))
+        output = self.root / "oversized-trust-output"
+        with self.assertRaisesRegex(ReviewError, "exceeds 4096 bytes"):
+            pack.build_release_assets(
+                self.qualification,
+                self.closure,
+                output,
+                self.key,
+                oversized,
+                candidate_commit=COMMIT,
+                candidate_tree=TREE,
+                tag_name=pack.TAG_NAME,
+                tag_object=TAG_OBJECT,
+                tag_target=COMMIT,
+            )
+        self.assertFalse(output.exists())
+        self.assertEqual(list(self.root.glob(".oversized-trust-output.staging-*")), [])
 
     def test_rejects_tar_traversal_member(self) -> None:
         assets = self.build()

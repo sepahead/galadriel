@@ -565,7 +565,11 @@ through its documented profile or builder path.
 - no `bootstrap: bool`
 - no accidental acceptance of raw parameters
 
-The scan must cover all workspace features and the separate fuzz workspace.
+The retained scan must cover `galadriel-core` and `galadriel-pid`.
+These crates are the two retained library API profiles for version 0.9.0.
+All-feature workspace checks cover the other experimental library surfaces.
+Separate fuzz-workspace checks cover its binary targets and dependency graph.
+The fuzz workspace has no retained public library API surface.
 
 ### Property and fuzz tests
 

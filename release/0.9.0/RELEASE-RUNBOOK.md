@@ -4,6 +4,9 @@
 
 | Short form | Meaning |
 |---|---|
+| API | application programming interface |
+| CI | continuous integration |
+| CPU | central processing unit |
 | DOI | digital object identifier |
 | JSON | JavaScript Object Notation |
 | NCP | Neuro-Cybernetic Protocol |
@@ -11,12 +14,15 @@
 | SBOM | software bill of materials |
 | SHA-256 | Secure Hash Algorithm 256 |
 | SSH | Secure Shell |
+| UTC | Coordinated Universal Time |
 | URLs | Uniform Resource Locators |
+| ZIP | ZIP archive format |
 
 Owner and release author: Sepehr Mahmoudian
 
-Channel: GitHub source release only. There is no crates.io publication, project
-DOI, Zenodo record, deployment qualification, or production-support promise.
+Channel: review-gated GitHub research source release only.
+There is no crates.io publication or project DOI.
+There is no Zenodo record, deployment qualification, or production-support promise.
 
 **GLD-090-PUB-001:** Publication **SHALL** use the exact clean and signed `main` candidate.
 That candidate **SHALL** pass every retained gate.
@@ -32,9 +38,43 @@ production support.
 asset, checksum, signature, reason, consumer, and claim identities before deletion.
 The release operator **SHALL NOT** reuse a withdrawn identity.
 
+Only the release operator can merge, tag, publish, delete references, or change repository settings.
+A delegated agent can prepare and verify a milestone.
+The release operator must accept that milestone before promotion.
+
+## Candidate freeze
+
+Keep the threat register at `LIVING_UNTIL_CANDIDATE_FREEZE` during implementation.
+Stage the final release inputs before you generate the active signed freeze pair.
+Only the release operator can set the register to `FROZEN_AT_CANDIDATE`.
+
+The signed audit-input manifest is the only pre-commit evidence exception.
+It binds exact stage-zero index blobs and external inputs.
+It does not bind a candidate commit or tree.
+The next signed commit creates the exact candidate identity.
+
+Install the active pair at these paths:
+
+- `release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json`
+- `release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig`
+
+A later tracked change reopens the freeze.
+Generate a new signed pair.
+Create a new signed candidate.
+Restart every candidate-bound check.
+
 ## Immutable entry conditions
 
-1. `main` and `origin/main` resolve to the same signed commit and the worktree is clean.
+1. Inspect the fetch and push URLs for `origin` without logging them.
+   Require exactly one fetch URL and one push URL.
+   Require each URL to name the canonical credential-free Galadriel repository.
+   Fetch `main` from that origin.
+   Require `main` and `origin/main` to resolve to the same signed commit.
+   Require the worktree to be clean.
+
+   The qualifier and finalizer repeat this refresh automatically.
+   They use the literal public URL and exact `main` refspec.
+   They reject local Git settings that can redirect the fetch, run a helper, or weaken object checks.
 2. The candidate source plan contains exactly T000 through T115.
    It remains an honest pre-result record.
    Post-commit tasks are pending.
@@ -44,6 +84,7 @@ The release operator **SHALL NOT** reuse a withdrawn identity.
    It covers all 116 tasks and twenty lenses.
    It has no `OPEN` item.
    It names retained evidence for each `COMPLETE` result.
+
    It names the removed claim for each `NOT_CLAIMED` result.
    T114 cites the separately signed final review.
    T115 cites the separately signed candidate-bound version 3 `NARROWED_GO` decision.
@@ -52,6 +93,17 @@ The release operator **SHALL NOT** reuse a withdrawn identity.
    T113 never cites its future output.
    The disposition can include more retained predecessor evidence.
 4. All locked build, test, documentation, feature, fuzz, and mutation gates pass on that commit.
+   Mutation evidence contains exactly 13 artifacts.
+   These artifacts are seven outcome files, five run receipts, and one retained `git.diff`.
+   Each of the four broad outcome files has one broad shard receipt.
+   The three focused outcome files share one focused receipt.
+   All four broad shards and all three focused outcomes are exact-candidate gates.
+
+   The observational mutation-baseline job remains residual evidence.
+   It is not a successful release gate.
+
+   The acceptance-estimation outcome has 23 caught mutants and three exact compile-unviable mutants.
+   It has no missed, timed-out, or surviving mutant.
    All supply-chain and frozen-input semantic gates also pass.
    The release-audit, source-inventory, and author-operated isolated qualification gates also pass.
 5. Release notes and `CITATION.cff` identify version 0.9.0 and agree on scope.
@@ -65,6 +117,7 @@ The release operator **SHALL NOT** reuse a withdrawn identity.
    The task set is exactly T000 through T115.
    The ecosystem requirements preserve each required, optional, and absent boundary.
    They also preserve the acyclic no-command graph.
+
    The ecosystem scope includes pid-rs, NCP, Crebain, Haldir, and Prisoma.
    It also includes Engram, Paper2Brain, ROS, and external authority.
 
@@ -82,41 +135,158 @@ Repeat qualification and create new artifacts.
 
 ## Rehearsal without publication
 
-Run from a fresh temporary clone of the candidate:
+Run from a fresh temporary clone of the candidate.
+Use Rust and Cargo 1.89.0 for this command block.
+Use the exact pinned tools and external RustSec database from the CI workflow:
 
 ```bash
 set -euo pipefail
+export CARGO_TERM_COLOR=always
+export RUSTFLAGS='-D warnings'
+candidate="$(git rev-parse 'HEAD^{commit}')"
+PYTHONPATH=repo_work python3 -c \
+  'import sys; from pathlib import Path; from release_assurance import refresh_canonical_origin_main; refresh_canonical_origin_main(Path("."), sys.argv[1])' \
+  "$candidate"
 test "$(git branch --show-current)" = main
 test "$(git status --porcelain=v1)" = ""
 test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+cargo fetch --locked
+python3 scripts/secure_deployment.py check
+python3 -m unittest -v \
+  scripts.tests.test_release_audit \
+  repo_work.tests.test_package_release_assets \
+  repo_work.tests.test_review_tools \
+  repo_work.tests.test_task_dispositions \
+  repo_work.tests.test_release_assurance \
+  repo_work.tests.test_finalize_qualification \
+  repo_work.tests.test_qualification_artifacts \
+  repo_work.tests.test_host_process_bounds
+python3 repo_work/build_task_dispositions.py verify
+python3 repo_work/local_convergence.py schema --repo .
 python3 repo_work/freeze_audit_inputs.py verify \
   --repo . \
-  --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json \
+  --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
   --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
 python3 scripts/release_audit.py verify
-python3 repo_work/local_convergence.py schema --repo .
+python3 repo_work/check_public_api.py
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+python3 repo_work/check_feature_graph.py
+cargo check -p galadriel-cli --no-default-features --locked
+cargo check -p galadriel-cli --no-default-features --features pid --locked
+cargo check -p galadriel-cli --no-default-features --features ncp --locked
+cargo check -p galadriel-cli --no-default-features --features ncp-live --locked
 cargo test --workspace --all-features --locked
 RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked
 cargo build -p galadriel-core --no-default-features --locked
-cargo deny --all-features --locked check
+python3 repo_work/check_vulnerable_features.py
+cargo fetch --locked --manifest-path fuzz/Cargo.toml
+cargo deny --offline --all-features --locked check
+cargo deny --offline --manifest-path fuzz/Cargo.toml --all-features --locked check --config fuzz/deny.toml
 ```
 
-Generate source archive, SBOM, license/vulnerability reports, provenance, and
-checksums into an empty directory outside the checkout. Verify them from a second
-fresh directory.
+The supply-chain commands require the clean detached RustSec clone from the CI materialization step.
+The release input pins that database identity at the 2026-07-23 inspection cut.
+A qualification result remains bound to that pinned input.
+
+Then, activate Rust and Cargo 1.97.1.
+Run the current-stable job commands:
+
+```bash
+set -euo pipefail
+export CARGO_TERM_COLOR=always
+export RUSTFLAGS='-D warnings'
+cargo fetch --locked
+cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+cargo test --workspace --all-features --locked
+```
+
+Use `nightly-2026-06-16` and `cargo-public-api 0.52.0` for the public API gate.
+The complete rehearsal covers all commands in the three CI jobs.
+Do not describe a smaller subset as the complete CI mirror.
+
+Generate the source archive in two runs from the exact qualification clone.
+Require byte-identical results from those runs.
+Generate package archives and software bills of materials in two separate standalone clones.
+Require byte-identical results from each pair of clones.
+Generate each license and vulnerability report one time.
+Retain all provenance and checksums in an empty directory outside the checkout.
+
 The archive prefix is exactly `galadriel-0.9.0/`.
 Archive content must equal `git ls-files`.
+The archive command disables Git replacement objects.
+It pins `tar.umask=0022` and `core.attributesFile=/dev/null`.
+The validator binds each entry type, mode, owner, time, and content to the Git tree.
 Only documented GitHub archive metadata can differ.
 
-The qualification command must include the tracked evidence configuration, the SSH
-signing key, and the signed exact-candidate mutation manifest:
+## Assemble exact-candidate mutation evidence
+
+Download the four successful `mutation-diff` artifact directories for the exact candidate.
+Keep their order from shard `0/4` through shard `3/4`.
+Use the agent-backed Ed25519 public-key handle from `user.signingkey`.
+Require that handle to match the independent allowed-signers file.
 
 ```bash
 set -euo pipefail
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
+
+python3 repo_work/prepare_mutation_evidence.py \
+  --repo . \
+  --candidate "$(git rev-parse HEAD)" \
+  --out /new/path/galadriel-0.9.0-mutation-evidence \
+  --signing-key "$signing_key" \
+  --allowed-signers /independent/path/ALLOWED_SIGNERS \
+  --shard 0/4=/downloaded/mutation-diff-results-1-of-4 \
+  --shard 1/4=/downloaded/mutation-diff-results-2-of-4 \
+  --shard 2/4=/downloaded/mutation-diff-results-3-of-4 \
+  --shard 3/4=/downloaded/mutation-diff-results-4-of-4
+```
+
+The assembler verifies the exact commit, tree, diff, workflow run, and shard order.
+It verifies all four broad outcomes and all three focused outcomes.
+It signs one new mutation manifest outside the repository.
+It does not convert the observational mutation baseline into a gate.
+
+## Qualify the candidate
+
+The qualification command must include all required external inputs.
+These inputs include the tracked evidence configuration and signed mutation pair.
+They also include the independent trust root and pinned external advisory database.
+Use an agent-backed Ed25519 public-key handle for `--signing-key`.
+Require that handle to match the independently obtained allowed-signers file.
+
+The qualifier fetches the locked workspace graph and the locked fuzz graph.
+Both fetches complete before the offline metadata and dependency-policy gates.
+It uses the exact 16-key base environment in `docs/DEPENDENCY-POLICY.md`.
+It isolates `HOME`, `CARGO_HOME`, `CARGO_TARGET_DIR`, and `TMPDIR` in a private root.
+It denies candidate reads from the original external RustSec clone.
+It permits reads from only the installed detached database copies.
+
+It removes ambient credentials, proxies, wrappers, loader variables, and compiler flags.
+It rejects a file, directory, or link at each Cargo configuration path.
+It checks before and after each retained command.
+
+The signed qualification record binds this environment policy.
+
+The evidence command must create exactly six flat regular files.
+These files are `SHA256SUMS`, `config.json`, `manifest.json`, `report.md`, `summary.json`, and `trials.jsonl`.
+Each file has a 1 GiB limit.
+The complete set has a 4 GiB limit.
+The host snapshot does not follow links or open blocking special files.
+It compares source, snapshot, quarantine, and installed identities.
+
+It parses only bounded JSON bytes captured from the verified snapshot.
+Only a run that uses `--deep` can have qualification status `PASS`.
+
+```bash
+set -euo pipefail
+signing_key="$(git config --get user.signingkey)"
+test -n "$signing_key"
+candidate="$(git rev-parse 'HEAD^{commit}')"
+PYTHONPATH=repo_work python3 -c \
+  'import sys; from pathlib import Path; from release_assurance import refresh_canonical_origin_main; refresh_canonical_origin_main(Path("."), sys.argv[1])' \
+  "$candidate"
 
 python3 repo_work/qualify_candidate.py \
   --repo . \
@@ -124,11 +294,29 @@ python3 repo_work/qualify_candidate.py \
   --require-branch main \
   --out /new/path/galadriel-0.9.0-qualification \
   --signing-key "$signing_key" \
+  --allowed-signers /independent/path/ALLOWED_SIGNERS \
+  --advisory-db /independent/path/advisory-db \
   --mutation-evidence /path/to/exact-candidate-mutation.json \
   --mutation-evidence-signature /path/to/exact-candidate-mutation.json.sig \
   --evidence-config evidence/galadriel-0.9-candidate.json \
   --deep --keep-going
 ```
+
+A passing schema v3 tier must retain exactly 22 auxiliary command receipts.
+It must retain exactly 15 two-run reproducibility comparisons.
+The comparisons cover one source archive, seven package archives, and seven software bills of materials.
+
+Each command uses a stop-before-exec gate and fixed resource limits.
+macOS does not provide atomic recursive descendant tracking.
+A short-lived reparented process can exit between scans.
+The process scan detects a detached process that remains active.
+
+The inherited sandbox and resource limits apply before candidate execution.
+A sandboxed process can request work from an existing external service.
+The process scan cannot attribute that external service work.
+
+The license inventory covers the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope.
+It does not cover all 437 packages for every target.
 
 Create the signed T114 review and detached-signed canonical version 3 decision.
 Create the signed ordered task dispositions.
@@ -138,6 +326,10 @@ Then finalize into a previously absent path:
 set -euo pipefail
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
+candidate="$(git rev-parse 'HEAD^{commit}')"
+PYTHONPATH=repo_work python3 -c \
+  'import sys; from pathlib import Path; from release_assurance import refresh_canonical_origin_main; refresh_canonical_origin_main(Path("."), sys.argv[1])' \
+  "$candidate"
 
 python3 repo_work/finalize_release.py \
   --repo . \
@@ -151,17 +343,21 @@ python3 repo_work/finalize_release.py \
   --decision-input /reviewed/path/RELEASE-DECISION.json \
   --decision-input-signature /reviewed/path/RELEASE-DECISION.json.sig \
   --signing-key "$signing_key" \
-  --snapshot-dir /secure/path/with-at-least-8-GiB-free \
+  --allowed-signers /independent/path/ALLOWED_SIGNERS \
+  --snapshot-dir /external/operator-only/path/with-at-least-8-GiB-free \
   --out /new/path/galadriel-0.9.0-closure
 ```
 
 The finalizer takes one snapshot of the signed qualification tier before semantic use.
 The selected file system must hold the bounded 8 GiB tier and review inputs.
-Prefer an agent-backed Ed25519 public-key handle for `--signing-key`.
+Use an agent-backed Ed25519 public-key handle for `--signing-key`.
+Keep that handle outside the repository, qualification tier, output, and snapshot root.
+Require that handle to match the independently obtained allowed-signers file.
 
-If you supply a private-key path, the finalizer copies its bytes into a temporary snapshot.
-That snapshot has mode 0700.
-The finalizer removes it during cleanup.
+The finalizer rejects a private-key path.
+It validates the external public handle before snapshot creation.
+It stores only the canonical public fields in the temporary snapshot.
+A finalizer snapshot never contains private signing material.
 A cleanup warning identifies an exact retained temporary path.
 Resolve that path before GitHub publication.
 
@@ -205,6 +401,19 @@ python3 repo_work/local_convergence.py verify \
    Confirm that local and remote `main` are identical.
    Confirm that the worktree is clean.
    Confirm that each required exact-head GitHub check passed.
+
+   Use the same guarded public refresh that qualification and finalization use:
+
+   ```bash
+   set -euo pipefail
+   candidate="$(git rev-parse 'HEAD^{commit}')"
+   PYTHONPATH=repo_work python3 -c \
+     'import sys; from pathlib import Path; from release_assurance import refresh_canonical_origin_main; refresh_canonical_origin_main(Path("."), sys.argv[1])' \
+     "$candidate"
+   test "$(git rev-parse 'HEAD^{commit}')" = "$candidate"
+   test "$(git rev-parse 'origin/main^{commit}')" = "$candidate"
+   test -z "$(git status --porcelain=v1 --untracked-files=all)"
+   ```
 2. Create signed annotated tag `v0.9.0` at that commit.
    Use a professional message that identifies the source-only research scope.
    Derive the complete candidate, tree, tag-object, and peeled tag-target identifiers.
@@ -229,11 +438,13 @@ python3 repo_work/local_convergence.py verify \
    signing_key="$(git config --get user.signingkey)"
    test -n "$signing_key"
 
+   # user.signingkey must name an agent-backed Ed25519 public-key handle.
    python3 repo_work/package_release_assets.py build \
      --qualification-root /exact/path/galadriel-0.9.0-qualification \
      --closure-root /exact/path/galadriel-0.9.0-closure \
      --out /new/path/galadriel-0.9.0-github-assets \
      --signing-key "$signing_key" \
+     --allowed-signers /independent/path/ALLOWED_SIGNERS \
      --candidate-commit "$candidate" \
      --candidate-tree "$tree" \
      --tag-name "$tag" \
@@ -241,7 +452,7 @@ python3 repo_work/local_convergence.py verify \
      --tag-target "$tag_target"
    ```
 
-   Exit status 3 means that the no-replace rename can have committed a complete output.
+   Exit status 3 means that the no-replace rename committed a complete output.
    Parent-directory durability or the result report remains uncertain.
    Retain that path and verify it independently.
    Resolve the durability warning before upload.
@@ -285,6 +496,7 @@ python3 repo_work/local_convergence.py verify \
    Use the literal title `Galadriel 0.9.0`.
    Use the exact tracked `RELEASE-NOTES.md` body.
    Upload the four named files without replacement.
+
    Require exactly those four names in the application programming interface (API) asset list.
    Compare each API byte length with its local file value.
    Compare each API SHA-256 digest with its local file value.
@@ -306,7 +518,7 @@ python3 repo_work/local_convergence.py verify \
    Use a new empty directory.
    Require each downloaded file to equal its local upload source byte-for-byte.
    Run `verify` and reconstruct both path-preserving tiers atomically.
-   Use the audit-pinned `CPython 3.14.6` for asset creation and canonical tar verification.
+   Use the audit-pinned `CPython 3.14.6` for asset construction, verification, and reconstruction.
    A different interpreter is outside the qualified deterministic representation:
 
    ```bash
@@ -344,8 +556,9 @@ python3 repo_work/local_convergence.py verify \
 
    Apply the same retain-and-verify rule if reconstruction reports status 3.
 
-   In each reconstructed root, verify `SHA256SUMS` over the exact internal file set.
-   Authenticate both tier manifests with the independent trust root.
+   Reconstruction already authenticates both tier manifests with the independent trust root.
+   It also verifies both exact candidate identities, complete inventories, and `SHA256SUMS` files.
+   Independently repeat these checks with the commands below.
    The release principal is `sepmhn@gmail.com`.
    Use these literal namespaces:
 
@@ -383,8 +596,13 @@ python3 repo_work/local_convergence.py verify \
    Run the locked build, test, and documentation gates from that downloaded source.
 7. Publish the draft only after each authenticated-download check passes.
    Also wait until Coordinated Universal Time (UTC) reaches the declared release date.
+   Stop if the UTC date is later than `2026-07-23`.
+   Update every declared release date.
+   Create and qualify a new candidate.
+
    Download the four public assets anonymously into another empty directory.
    Compare the four files with the local upload sources.
+
    Repeat exact-set verification and reconstruction.
    Repeat the internal signature and checksum checks.
    Repeat the fresh-source build.
@@ -394,6 +612,7 @@ python3 repo_work/local_convergence.py verify \
    GitHub `blob` links return Hypertext Markup Language (HTML).
    Compare each raw file with the applicable tagged Git blob.
    Do not compare the HTML page as source content.
+
    Compare all three public JSON Schema `$id` URLs with their tagged Git blobs:
 
    ```bash
@@ -439,16 +658,97 @@ python3 repo_work/local_convergence.py verify \
    trap - EXIT
    ```
 8. Verify the published release and anonymous downloads first.
-   Then preserve the legacy identities in `WITHDRAWN-RELEASES.md`.
-   Delete only the obsolete tag and release-work references.
+   Confirm that `WITHDRAWN-RELEASES.md` preserves the legacy identities.
+   The recorded cleanup set has one obsolete tag and two obsolete release-work branches.
+   The recorded cleanup set has zero GitHub releases.
+
+   Preserve the complete reachable Git history for all three obsolete references.
+   The bundle preserves each tracked evidence file that is reachable from these references.
+   Use a new private directory outside the checkout.
+   Verify every remote identity before bundle creation.
+
+   ```bash
+   set -euo pipefail
+   legacy_dir=/new/external/path/galadriel-0.9.0-obsolete-reference-preservation
+   legacy_bundle="$legacy_dir/galadriel-obsolete-references.bundle"
+   legacy_verify="$legacy_dir/verification.git"
+   legacy_tag=research-snapshot-v0.1.0
+   legacy_tag_object=ca1b2c69a0a6e04223fbbc07820b8226d918e275
+   legacy_tag_target=1205ce56a461036769ad29d4af93ceafd83da1db
+   phase_branch=release/0.9-phase-2
+   phase_tip=bcb1c0734aa3581b86b08d5960f96c13e1e81066
+   work_branch=wip/release-0.9.0-20260715
+   work_tip=f541f3eda7cfdc81a3277c3d6fecc91245179f24
+
+   test ! -e "$legacy_dir"
+   mkdir -m 700 "$legacy_dir"
+
+   test "$(git ls-remote --exit-code origin "refs/tags/$legacy_tag" | cut -f1)" = \
+     "$legacy_tag_object"
+   test "$(git ls-remote --exit-code origin "refs/tags/$legacy_tag^{}" | cut -f1)" = \
+     "$legacy_tag_target"
+   test "$(git ls-remote --exit-code --heads origin "refs/heads/$phase_branch" | cut -f1)" = \
+     "$phase_tip"
+   test "$(git ls-remote --exit-code --heads origin "refs/heads/$work_branch" | cut -f1)" = \
+     "$work_tip"
+
+   git fetch --no-tags origin \
+     "refs/tags/$legacy_tag:refs/tags/$legacy_tag" \
+     "refs/heads/$phase_branch:refs/remotes/origin/$phase_branch" \
+     "refs/heads/$work_branch:refs/remotes/origin/$work_branch"
+
+   test "$(git rev-parse "refs/tags/$legacy_tag^{tag}")" = "$legacy_tag_object"
+   test "$(git rev-parse "refs/tags/$legacy_tag^{}")" = "$legacy_tag_target"
+   test "$(git rev-parse "refs/remotes/origin/$phase_branch")" = "$phase_tip"
+   test "$(git rev-parse "refs/remotes/origin/$work_branch")" = "$work_tip"
+
+   git bundle create "$legacy_bundle" \
+     "refs/tags/$legacy_tag" \
+     "refs/remotes/origin/$phase_branch" \
+     "refs/remotes/origin/$work_branch"
+   chmod 600 "$legacy_bundle"
+   git bundle verify "$legacy_bundle"
+
+   test "$(git bundle list-heads "$legacy_bundle" "refs/tags/$legacy_tag")" = \
+     "$legacy_tag_object refs/tags/$legacy_tag"
+   test "$(git bundle list-heads "$legacy_bundle" "refs/remotes/origin/$phase_branch")" = \
+     "$phase_tip refs/remotes/origin/$phase_branch"
+   test "$(git bundle list-heads "$legacy_bundle" "refs/remotes/origin/$work_branch")" = \
+     "$work_tip refs/remotes/origin/$work_branch"
+
+   git clone --mirror "$legacy_bundle" "$legacy_verify"
+   test "$(git -C "$legacy_verify" rev-parse "refs/tags/$legacy_tag^{tag}")" = \
+     "$legacy_tag_object"
+   test "$(git -C "$legacy_verify" rev-parse "refs/tags/$legacy_tag^{}")" = \
+     "$legacy_tag_target"
+   test "$(git -C "$legacy_verify" rev-parse "refs/remotes/origin/$phase_branch")" = \
+     "$phase_tip"
+   test "$(git -C "$legacy_verify" rev-parse "refs/remotes/origin/$work_branch")" = \
+     "$work_tip"
+   git -C "$legacy_verify" fsck --strict
+
+   (
+     cd "$legacy_dir"
+     shasum -a 256 galadriel-obsolete-references.bundle \
+       > galadriel-obsolete-references.bundle.sha256
+     chmod 600 galadriel-obsolete-references.bundle.sha256
+     shasum -a 256 -c galadriel-obsolete-references.bundle.sha256
+   )
+   ```
+
+   Retain the verified bundle, checksum, and mirror outside the checkout.
+   Stop if any identity, bundle, checksum, or object check fails.
+   Delete only those three obsolete Git references.
    Delete the local and remote references.
-   Do not delete their commits or evidence.
+
+   Do not delete the external preservation directory.
    Confirm that none of those references exists.
    Confirm that no applicable legacy GitHub release exists.
 9. Confirm that the release author is Sepehr Mahmoudian.
    Confirm that the literal title is `Galadriel 0.9.0`.
    Confirm that the version, date, and tracked body are exact.
    Require exactly four attached assets.
+
    Require no DOI, Zenodo, crates.io, deployment, or production claim.
    Retain the branch, signed tag, and release evidence.
    Retain download, signature, reconstruction, fresh-build, and cleanup evidence.

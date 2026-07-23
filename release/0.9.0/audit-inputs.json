@@ -6,9 +6,9 @@
     "author": "Sepehr Mahmoudian",
     "doi": null,
     "zenodo": null,
-    "publication_channel": "GitHub source release"
+    "publication_channel": "review-gated GitHub research source release"
   },
-  "audit_date": "2026-07-14",
+  "audit_date": "2026-07-23",
   "baseline_repository": {
     "url": "https://github.com/sepahead/galadriel",
     "commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",
@@ -33,7 +33,7 @@
       "name": "Crebain",
       "url": "https://github.com/sepahead/crebain",
       "commit": "4c311900ade5668200a48d56fb191be1916b884a",
-      "role": "reciprocal producer-contract fixture and source pin",
+      "role": "optional reference-producer snapshot for contract review with no Cargo or runtime dependency",
       "qualification": "RECIPROCAL_FIXTURE"
     },
     {
@@ -54,27 +54,40 @@
       "name": "Paper2Brain",
       "url": "https://github.com/sepahead/Paper2Brain",
       "commit": "9845c31bc5bae4746120858037b27f9c9ed2f445",
-      "role": "active Engram application inventory; no Galadriel integration evidence",
+      "role": "Paper2Brain inventory snapshot with no Galadriel dependency, API, route, adapter, or runtime edge",
       "qualification": "NOT_CLAIMED"
+    },
+    {
+      "name": "RustSec advisory database",
+      "url": "https://github.com/RustSec/advisory-db",
+      "commit": "f981d991604f3e7d4a0eb94e559cb3e5a94a6dc2",
+      "role": "pinned offline advisory input for exact-candidate qualification",
+      "qualification": "PINNED_COMPONENT"
     }
   ],
   "toolchains": [
     {
+      "name": "git",
+      "version": "2.50.1",
+      "identity": "git version 2.50.1 (Apple Git-155)",
+      "role": "pinned source-archive and repository verifier"
+    },
+    {
       "name": "rustc",
       "version": "1.89.0",
-      "identity": "29483883eed69d5fb4db01964cdf2af4d86e9cb2; aarch64-apple-darwin; LLVM 20.1.7",
+      "identity": "rustc 1.89.0 (29483883e 2025-08-04)\nbinary: rustc\ncommit-hash: 29483883eed69d5fb4db01964cdf2af4d86e9cb2\ncommit-date: 2025-08-04\nhost: aarch64-apple-darwin\nrelease: 1.89.0\nLLVM version: 20.1.7",
       "role": "pinned build and test compiler"
     },
     {
       "name": "cargo",
       "version": "1.89.0",
-      "identity": "c24e10642 2025-06-23",
+      "identity": "cargo 1.89.0 (c24e10642 2025-06-23)\nrelease: 1.89.0\ncommit-hash: c24e1064277fe51ab72011e2612e556ac56addf7\ncommit-date: 2025-06-23\nhost: aarch64-apple-darwin\nlibgit2: 1.9.0 (sys:0.20.2 vendored)\nlibcurl: 8.7.1 (sys:0.4.80+curl-8.12.1 system ssl:(SecureTransport) LibreSSL/3.3.6)\nssl: OpenSSL 3.5.0 8 Apr 2025\nos: Mac OS 26.5.1 [64-bit]",
       "role": "pinned workspace package manager"
     },
     {
       "name": "python",
       "version": "3.14.6",
-      "identity": "CPython 3.14.6",
+      "identity": "Python 3.14.6",
       "role": "standard-library release audit and secure-deployment tooling"
     },
     {
@@ -92,20 +105,26 @@
     {
       "name": "rustc-nightly",
       "version": "nightly-2026-06-16",
-      "identity": "rustc 1.98.0-nightly 01dfd79246f1b2d5f146616deff08223a840a9ae; aarch64-apple-darwin; LLVM 22.1.7",
+      "identity": "rustc 1.98.0-nightly (01dfd7924 2026-06-15)\nbinary: rustc\ncommit-hash: 01dfd79246f1b2d5f146616deff08223a840a9ae\ncommit-date: 2026-06-15\nhost: aarch64-apple-darwin\nrelease: 1.98.0-nightly\nLLVM version: 22.1.7",
       "role": "public-API inventory, bounded fuzz, and hostile-input campaigns"
     },
     {
       "name": "cargo-fuzz",
       "version": "0.13.2",
-      "identity": "cargo-fuzz 0.13.2 installed with --locked",
+      "identity": "cargo-fuzz 0.13.2",
       "role": "bounded libFuzzer campaign runner"
     },
     {
       "name": "rustc-current-stable",
-      "version": "1.96.0",
-      "identity": "ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96; aarch64-apple-darwin; LLVM 22.1.2",
+      "version": "1.97.1",
+      "identity": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-apple-darwin\nrelease: 1.97.1\nLLVM version: 22.1.6",
       "role": "recorded current-stable compatibility compiler"
+    },
+    {
+      "name": "cargo-current-stable",
+      "version": "1.97.1",
+      "identity": "cargo 1.97.1 (c980f4866 2026-06-30)\nrelease: 1.97.1\ncommit-hash: c980f4866141969fab6254a680546a277789d6f0\ncommit-date: 2026-06-30\nhost: aarch64-apple-darwin\nlibgit2: 1.9.2 (sys:0.20.4 vendored)\nlibcurl: 8.7.1 (sys:0.4.88+curl-8.20.0 system ssl:(SecureTransport) LibreSSL/3.3.6)\nssl: OpenSSL 3.6.2 7 Apr 2026\nos: Mac OS 26.5.1 [64-bit]",
+      "role": "recorded current-stable compatibility package manager"
     },
     {
       "name": "cargo-deny",

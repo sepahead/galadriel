@@ -5,6 +5,7 @@
 | Short form | Meaning |
 |---|---|
 | ACL | access control list |
+| ASCII | American Standard Code for Information Interchange |
 | JSON | JavaScript Object Notation |
 | MAC | message authentication code |
 | mTLS | mutual Transport Layer Security |
@@ -282,6 +283,10 @@ clock domain  := monotonic_process
 sequence/time := assembled fusion sequence/timestamp
 generation    := retained continuity state
 ```
+
+Wire validation applies the core identity grammar before this mapping.
+It rejects non-ASCII text, `+`, and leading or trailing separators.
+Thus, a decoded frame cannot fail later only because a mapped core identity is invalid.
 
 `assess_frame` delegates through this mapping. Its convenience return value omits
 the receipt, but the detector retains that receipt in its bounded chain.

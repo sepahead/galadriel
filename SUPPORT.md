@@ -6,8 +6,10 @@
 |---|---|
 | SLA | service-level agreement |
 
-Galadriel 0.9.0 is a research source release.
+Galadriel 0.9.0 is a review-gated GitHub research source release.
 Sepehr Mahmoudian is the maintainer and release author.
+No project digital object identifier exists.
+No project Zenodo record exists.
 
 **GLD-090-META-001:** General reproducible defects **SHALL** use the GitHub issue tracker.
 Each report **SHALL** include the exact commit, platform, Rust toolchain, command, and configuration.

@@ -23,7 +23,7 @@ NCP bus supply cryptographic enforcement. A plant-side safety governor supplies
 the other enforcement layer. Galadriel runs above these layers and reports
 statistical *consistency* evidence.
 
-See [`MOTIVATION.md`](MOTIVATION.md) section 4b and the README "Honest scope" box.
+See [`MOTIVATION.md`](MOTIVATION.md) section 4.2 and the README "Honest scope" box.
 
 This document defines the Galadriel contract for a component that consumes its
 verdicts. A Haldir-style inline authorization gate is the specific near-term
@@ -82,7 +82,7 @@ fused advisory values:
 
 Invalid input or configuration returns `Err(..)` outside the enum. The vocabulary
 has no `StateUnusable` verdict. It also has no `calibrated_for_policy`
-self-assertion. See section 3.5.
+self-assertion. See item 5 in section 3.
 
 The retained
 [0.9.0 public-API snapshot](../release/0.9.0/api/galadriel-core.0.9.0.txt)
@@ -144,7 +144,9 @@ This section is normative for integrators.
    mean cryptographic signatures. "Signed correlation" is the positive or negative
    sign of the Pearson coefficient. "Producer-attested projection" is a producer
    provenance claim. NCP transport identity and ACLs must bind the publisher to
-   authenticate that claim. A consumer must not treat Galadriel output as signed
+   authenticate that claim.
+
+   A consumer must not treat Galadriel output as signed
    evidence before a signed advisory envelope exists. See section 5.
 
    The consumer must bind transport identity to application identity. Zenoh 1.9
@@ -159,7 +161,9 @@ This section is normative for integrators.
 8. **Prove prohibited effects.** Integration tests must prove that Galadriel cannot
    publish controller intent or a final command. They must prove that it cannot
    issue or extend a lease. They must prove that `Nominal` cannot create `ALLOW`
-   or relax a limit. Replayed, stale, wrong-session, and malformed advisories must
+   or relax a limit.
+
+   Replayed, stale, wrong-session, and malformed advisories must
    have no policy effect. A Galadriel crash or absence must not change the profile.
    Advisory flooding must not exhaust consumer memory or delay a command deadline.
 
@@ -237,6 +241,14 @@ The 2026-07-22 inspection observed descendant
 `c0e4b3d156500684329a92bcb16e0609894fd738`. Its active CH-T001 downstream
 disposition records no runtime-surface or external-conformance change.
 
+A later read-only observation on 2026-07-23 found descendant
+`590ba767b32a27d9dd61a2462968306c1052434e`. Its intervening changes affect
+audit, evidence, and release tooling only. It creates no runtime edge or
+external-conformance change.
+
+This later object is mutable coordination provenance.
+The refreshed Galadriel inspection cut retains it.
+
 These commits did not create a Galadriel edge. A newer observation changes only
 the preceding mutable-head reference. It does not change an earlier observation
 or frozen historical evidence.
@@ -269,6 +281,11 @@ their outputs.
 `engram/ncp` is a configurable NCP realm example. It is not an Engram or
 Paper2Brain application interface.
 
+The 2026-07-23 Paper2Brain observation records remote `main` at
+`24e74b781a5bf8af069f69cbc2d0c42d89008211`.
+It found no Galadriel dependency, API, process, route, adapter, or runtime edge.
+The object is mutable provenance, not an integration pin.
+
 Galadriel has no ROS or ROS 2 dependency, message binding, topic, service, action,
 node, bag importer, or bridge. It has no external command, control, credential,
 lease, watchdog, or authority path. These relationships are absent, not optional.
@@ -289,14 +306,15 @@ order:
 - **Do not let Galadriel control Crebain fusion weights or feedback in an initial
   deployment.** Down-weighting is a denial-of-service lever. An attacker can
   induce apparent uniqueness in a healthy channel and suppress it. Down-weighting
-  also reenters the feedback loop from section 3.4. Treat sensor-quality
-  arbitration as a separate Crebain research program. It needs calibration,
-  falsification, a weight floor, and stability analysis. It is not a basic
-  interface.
+  also reenters the feedback loop from item 4 in section 3.
+
+  Treat sensor-quality arbitration as a separate Crebain research program.
+  This program needs calibration, falsification, a weight floor, and stability analysis.
+  It is not a basic interface.
 - **Do not give a consumer-to-Galadriel path control authority.** Galadriel must
   have no controller-intent or final-command credentials. It must not issue leases
   or change admission or policy. The command path, such as Haldir to Crebain, must
-  remain safe and functional without Galadriel.
+  remain available without Galadriel. Its governance must remain independent of Galadriel.
 
 ---
 

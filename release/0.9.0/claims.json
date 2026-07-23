@@ -103,7 +103,7 @@
       "tier": "NOT_CLAIMED",
       "scope": "package publication and operational support",
       "evidence": [],
-      "limitations": "All workspace packages remain publish=false; 0.9.0 is a GitHub research source release."
+      "limitations": "All workspace packages remain publish=false. Version 0.9.0 is a review-gated GitHub research source release."
     },
     {
       "id": "CLM-011",
@@ -151,7 +151,7 @@
       "tier": "NOT_CLAIMED",
       "scope": "organizationally independent reproducibility",
       "evidence": [],
-      "limitations": "The isolated-worktree qualifier is author-operated. It records exact inputs and deterministic artifacts but is not organizationally or procedurally independent."
+      "limitations": "The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent."
     },
     {
       "id": "CLM-017",

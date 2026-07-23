@@ -15,6 +15,10 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTSEC_ADVISORY_DB_URL: https://github.com/RustSec/advisory-db
+  RUSTSEC_ADVISORY_DB_COMMIT: f981d991604f3e7d4a0eb94e559cb3e5a94a6dc2
+  RUSTSEC_ADVISORY_DB_TREE: 26bea0ac10667f826b5522a828a27861ae4b5287
+  RUSTSEC_ADVISORY_DB_DIRECTORY: advisory-db-3157b0e258782691
   RUSTFLAGS: "-D warnings"
 
 jobs:
@@ -70,14 +74,17 @@ jobs:
           repo_work.tests.test_review_tools
           repo_work.tests.test_task_dispositions
           repo_work.tests.test_release_assurance
+          repo_work.tests.test_finalize_qualification
+          repo_work.tests.test_qualification_artifacts
+          repo_work.tests.test_host_process_bounds
 
       - name: Verify generated release-audit artifacts
         run: |
           python3 repo_work/build_task_dispositions.py verify
           python3 repo_work/local_convergence.py schema --repo .
-          python3 repo_work/freeze_audit_inputs.py verify \
+          python3 repo_work/freeze_audit_inputs.py verify-lifecycle \
             --repo . \
-            --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json \
+            --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
             --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
           python3 scripts/release_audit.py verify
 
@@ -110,21 +117,7 @@ jobs:
         run: cargo build -p galadriel-core --no-default-features --locked
 
       - name: Assert vulnerable Zenoh compression path stays disabled
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ "$(date -u +%F)" > "2026-10-01" ]]; then
-            echo 'RUSTSEC-2026-0041 exception expired; upgrade NCP/Zenoh or renew with review' >&2
-            exit 1
-          fi
-          # Workspace-wide so no member's feature unification can smuggle the
-          # vulnerable path in, and --locked so the assertion binds to the audited
-          # dependency graph.
-          feature_tree="$(cargo tree --workspace --all-features -e features --locked)"
-          if [[ "$feature_tree" == *'zenoh-transport feature "transport_compression"'* ]]; then
-            echo 'RUSTSEC-2026-0041 mitigation invalid: transport_compression is enabled' >&2
-            exit 1
-          fi
+        run: python3 repo_work/check_vulnerable_features.py
 
   current-stable:
     name: current stable · clippy · test
@@ -149,7 +142,7 @@ jobs:
       - name: Install current stable Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
         with:
-          toolchain: stable
+          toolchain: 1.97.1
           components: clippy
 
       - name: Restore Cargo cache
@@ -195,14 +188,37 @@ jobs:
           RUSTFLAGS: ""
         run: cargo install cargo-deny --version 0.19.9 --locked
 
+      - name: Materialize locked dependency graphs
+        run: |
+          cargo fetch --locked
+          cargo fetch --locked --manifest-path fuzz/Cargo.toml
+
+      - name: Materialize pinned advisory database
+        shell: bash
+        env:
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: "1"
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          set -euo pipefail
+          cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+          database_root="$cargo_home/advisory-dbs"
+          database="$database_root/$RUSTSEC_ADVISORY_DB_DIRECTORY"
+          test ! -e "$database"
+          mkdir -p "$database_root"
+          git init --quiet "$database"
+          git -C "$database" config --local core.hooksPath /dev/null
+          git -C "$database" remote add origin "$RUSTSEC_ADVISORY_DB_URL"
+          git -C "$database" fetch --no-tags --depth=1 origin "$RUSTSEC_ADVISORY_DB_COMMIT"
+          git -C "$database" checkout --detach --quiet FETCH_HEAD
+          test "$(git -C "$database" rev-parse 'HEAD^{commit}')" = "$RUSTSEC_ADVISORY_DB_COMMIT"
+          test "$(git -C "$database" rev-parse 'HEAD^{tree}')" = "$RUSTSEC_ADVISORY_DB_TREE"
+          test "$(git -C "$database" remote get-url origin)" = "$RUSTSEC_ADVISORY_DB_URL"
+          test -z "$(git -C "$database" status --porcelain=v1 --untracked-files=all)"
+          git -C "$database" fsck --strict --no-progress
+
       - name: Check dependency policy
-        run: cargo deny --all-features --locked check
+        run: cargo deny --offline --all-features --locked check
 
       - name: Check fuzz-workspace dependency policy
-        run: >-
-          cargo deny
-          --manifest-path fuzz/Cargo.toml
-          --all-features
-          --locked
-          check
-          --config fuzz/deny.toml
+        run: cargo deny --offline --manifest-path fuzz/Cargo.toml --all-features --locked check --config fuzz/deny.toml

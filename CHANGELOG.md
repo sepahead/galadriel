@@ -29,6 +29,7 @@
 | NIS | normalized innovation squared |
 | PID | partial information decomposition |
 | ROS / ROS 2 | Robot Operating System / Robot Operating System 2 |
+| SBOM | software bill of materials |
 | SHA | Secure Hash Algorithm |
 | SHA-256 | Secure Hash Algorithm 256 |
 | SoK | systematization of knowledge |
@@ -47,11 +48,11 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-07-22
+## [0.9.0] - 2026-07-23
 
 ### Release contract
 
-- Establish the first reviewed research release under author Sepehr Mahmoudian.
+- Establish the first review-gated GitHub research source release under author Sepehr Mahmoudian.
   Give it an explicit GitHub-source-only scope.
   Make no DOI, Zenodo, crates.io, deployment, or production-support claim.
 - Bind the current standalone handoff by the full archive and task-ledger SHA-256 values.
@@ -75,6 +76,10 @@ Before `1.0`, minor releases can contain breaking changes.
   The package contains two path-preserving uncompressed tar files.
   It also contains a canonical exact-candidate, tree, and tag asset map with a detached SSH signature.
 
+  Build, verification, and reconstruction now authenticate both internal tier signatures.
+  They bind each tier to the expected candidate commit and tree.
+  They also verify the complete signed inventory and each `SHA256SUMS` file.
+
   Verification rejects extra, missing, linked, or special input.
   It rejects input with path traversal, duplicates, or incorrect order.
   It also rejects oversized or noncanonical input.
@@ -82,13 +87,60 @@ Before `1.0`, minor releases can contain breaking changes.
 
   Strict UTF-8 tar names do not depend on locale.
   Safe reconstruction never gives path handling to the archive library.
-  Release publication pins canonical tar generation and regeneration to CPython 3.14.6.
+  Release publication pins canonical asset construction, verification, and reconstruction to CPython 3.14.6.
   It compares all four downloaded upload files at the byte level.
 - Bind retained supply-chain reports to the exact stream that each pinned tool uses.
   Capture `cargo-deny` 0.19.9 license JSON from stderr with byte-empty stdout.
   Capture `cargo-audit` JSON from stdout and retain its stderr as diagnostics.
   Finalization rejects stream swaps, unexpected deny output, and malformed diagnostics.
   It also rejects report identities that differ from the signed artifact inventory.
+- Advance exact-candidate qualification to `galadriel.candidate-qualification.v3`.
+  Require an independently obtained allowed-signers file.
+  Require a clean external clone of the exact pinned RustSec database.
+  Freeze that database identity on 2026-07-23.
+  Bind its origin, commit, tree, 1,187-entry inventory, and inventory digest.
+  Retain exactly 22 auxiliary command receipts with command, sandbox, exit, log, and stream bindings.
+
+  Add a stop-before-exec launch gate and fixed process resource limits.
+  Track the process group and scan for the inherited sandbox identity on macOS.
+  Record the non-atomic short-lived process race.
+  Record that the scan cannot attribute existing external-service work.
+- Run exact-candidate qualification with a 16-key base environment.
+  Isolate home, Cargo, target, and temporary state in a private root.
+  Remove ambient credentials, proxies, wrappers, loader variables, and compiler flags.
+  Reject a file, directory, or link at each Cargo configuration path before and after each retained command.
+  Bind the environment policy in the signed qualification record.
+- Refresh public `main` before candidate comparisons and again before a result returns.
+  Use the literal public repository URL and exact `main` refspec.
+  Disable credential use, tags, submodules, pruning, maintenance, commit-graph writes, and `FETCH_HEAD` writes.
+  Reject local Git settings that can redirect the fetch, run a helper, or weaken object checks.
+- Retain exactly six flat candidate-evidence files after a successful evidence command.
+  Apply a 1 GiB per-file limit and a 4 GiB aggregate limit before retention.
+  Stream the files into a private host snapshot without following links.
+  Compare the source, snapshot, quarantined source, and installed snapshot.
+  Parse only the bounded JSON bytes captured from the verified snapshot.
+  Only a deep qualification run can have qualification status `PASS`.
+- Pin current-stable qualification and continuous integration checks to Rust and Cargo 1.97.1.
+  Preserve Rust 1.89.0 as the workspace minimum supported Rust version.
+- Add exact semantic validation for retained release artifacts.
+  Bind the 437-package metadata graph to `Cargo.lock`.
+  Bind source-archive types, modes, owners, times, and content to the exact Git tree.
+  Bind every package member byte and mode to the exact tracked crate-file map.
+  Close each SBOM identity, component, and dependency field against the validated Cargo graph.
+
+  Compare one source archive, seven package archives, and seven SBOM documents across two runs.
+  Retain all 15 comparisons.
+  Bind the license inventory to the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset.
+  This host-filtered evidence does not describe the complete 437-package graph on another target.
+  The author-operated same-host comparisons do not prove independent or cross-platform reproduction.
+- Add a focused 26-mutant acceptance-estimation gate.
+  Require 23 caught mutants and three exact compile-unviable replacements.
+  Permit no missed, timed-out, or surviving mutant.
+- Add exact isolated execution receipts for all mutation gates.
+  Retain 13 signed artifacts.
+  These artifacts contain seven outcome files, five run receipts, and one exact `git.diff`.
+  Four receipts bind the broad shards.
+  One receipt binds the three focused outcomes.
 - Add a verdict-independent authority-effect validator.
   It proves record-only and monotonically restrict-only consumer transitions.
   `Nominal` cannot grant authority, relax a limit, or extend TTL or lease.
@@ -107,10 +159,10 @@ Before `1.0`, minor releases can contain breaking changes.
   It checks outputs before it writes them.
   It writes each output atomically with owner-only access.
   It rejects duplicate keys and invalid credential paths.
-  It produces a digest manifest and requires absolute production credential paths.
+  It produces a digest manifest and requires absolute deployment credential paths.
   It uses atomic no-replace publication and alias-safe credential identity.
 
-  It requires owner-only private-key modes and includes 67 security regression checks.
+  It requires owner-only private-key modes and a maintained security regression suite.
   The runbook keeps real-router wrong-certificate, no-certificate, allow, and deny results as an external evidence gate.
 - Add a secure-only operational observer constructor and CLI.
   All Galadriel-owned secure live paths load the configuration once.
@@ -132,8 +184,9 @@ Before `1.0`, minor releases can contain breaking changes.
   A shared tap now returns a typed error. The host closes its own session.
   Taps that the `open*` constructors open still close normally.
 - Bound sidecar `session_id` and `producer_id` to 64 bytes.
-  This bound matches the NCP 0.8 transport-neutral session-identifier rule of 1..=64 bytes.
-  Thus, an envelope cannot carry an identity that the NCP control plane rejects.
+  The length bound matches the generic NCP 0.8 transport-neutral rule of 1..=64 bytes.
+  Galadriel also requires its narrower ASCII core identity grammar.
+  Thus, a generic NCP segment can still be invalid for a Galadriel envelope.
   The JSON Schema now uses `maxLength: 64`.
 - Widen the CI compression guard for the `RUSTSEC-2026-0041` exception.
   Change it from `-p galadriel-ncp` to `--workspace --all-features --locked`.
@@ -274,10 +327,14 @@ Before `1.0`, minor releases can contain breaking changes.
   Preserve Haldir's discovery-head observation at `0e94f61cfd5c78482198a765157571746a256181`.
   Preserve the 2026-07-18 reinspection at descendant `dd3d8a1c993721f89a1edb04dec5247761c694ad`.
   Preserve the 2026-07-22 descendant `c0e4b3d156500684329a92bcb16e0609894fd738`.
-  Its CH-T001 activation explicitly records no runtime or external-conformance change.
+  Preserve the 2026-07-23 descendant `590ba767b32a27d9dd61a2462968306c1052434e`.
+
+  These changes explicitly record no runtime or external-conformance change.
   Each subsequent value supersedes only the prior mutable-head reference.
   It does not rewrite frozen or historical evidence.
 
+  Preserve the 2026-07-23 Paper2Brain observation at `24e74b781a5bf8af069f69cbc2d0c42d89008211`.
+  Record it as mutable provenance and an explicit integration non-edge.
   Bind the same objects and relationship semantics in a machine-readable ecosystem cut.
 - Split the unchanged strict changed-Rust mutation set into four deterministic CI shards.
   This split lets feature-sized differences complete within the bounded job window.
@@ -402,9 +459,11 @@ Before `1.0`, minor releases can contain breaking changes.
   Thus, queued or concurrent work cannot cross the first terminal boundary.
 - Do not let a lifecycle-complete frame with an explicit per-modality absence reuse the previous fresh detector window.
   Such a frame must not appear nominal.
-- Reject non-finite/negative NIS, invalid degrees of freedom, malformed innovation/covariance
-  pairs, non-positive-definite covariance, duplicate/out-of-order sequences, changed DoF,
-  mixed tracks, invalid axes, and degenerate channel series.
+- Reject non-finite or negative NIS and invalid degrees of freedom.
+  Reject malformed innovation and covariance pairs.
+  Reject covariance that is not positive-definite.
+  Reject duplicate or out-of-order sequences.
+  Reject changed DoF, mixed tracks, invalid axes, and degenerate channel series.
 - Bound detector track state and add explicit track removal and clear operations.
 - Do not let floating-point overflow or NaN become perfect correlation.
 - Do not count negative or sign-flipped correlation as corroboration.
@@ -539,7 +598,7 @@ Before `1.0`, minor releases can contain breaking changes.
   all-modal silence requires an external producer/transport heartbeat.
 - Add the producer roadmap: common frozen prior, common frame, explicit miss/rejection
   events, heartbeat, stable session identity, and a versioned schema.
-- Align CONTRIBUTING's `cargo deny` invocation with CI (`--all-features --locked`).
+- Align documented supply-chain checks with the two locked fetches and two offline CI checks.
 - Correct citation integrity across `docs/`.
   Remove two misattributed verbatim quotations.
   One was a Defense One "visual or inertial position data" line.
@@ -565,7 +624,7 @@ Before `1.0`, minor releases can contain breaking changes.
   Thus, its latency column is not strictly iso-FAR.
   Clarify that `prior_id` non-reuse is a producer attestation.
   The producer enforces it within each aligned frame and context window.
-- Reorder the README's opening around the problem, architecture, one verified command,
+- Reorder the README's opening around the problem, architecture, one source demo command,
   representative output, current evidence boundary, and then the full caveats.
 - Distinguish the published post-audit streaming evidence slice from the complete comparative report.
   The complete report is not yet available.

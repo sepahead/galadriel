@@ -5,6 +5,7 @@
 | Short form | Meaning |
 |---|---|
 | ACL | access control list |
+| ASCII | American Standard Code for Information Interchange |
 | CA | certificate authority |
 | CN | certificate common name |
 | JSON | JavaScript Object Notation |
@@ -19,6 +20,8 @@
 This directory contains a deterministic, fail-closed Zenoh deployment profile.
 The profile applies to one Galadriel producer process epoch.
 It is narrower than the generic NCP sensor ACL.
+The epoch and producer identity use the Galadriel core identity grammar.
+A generic NCP segment is not sufficient for these two fields.
 
 - One authenticated producer CN can send `put` ingress only on two exact keys.
   The keys are `.../session/{epoch}/sensor/galadriel-{pid,monitor}`.
@@ -57,14 +60,14 @@ They are inert review fixtures. They are not credentials or a production deploym
    Persist or otherwise coordinate the value.
    Do not use `session/*` to avoid this coordination requirement.
 2. Put the externally pinned canonical registry SHA-256 in `registry_canonical_sha256`.
-   Give the same value to Crebain and Galadriel.
+   Give the same value to the authorized producer and Galadriel.
    The field is deployment coordination evidence. It is not a Zenoh ACL input.
 3. Issue separate keys and certificates for the router, producer, and observer.
    Put each client leaf's exact common name in its profile field.
    The renderer rejects CNs that look like wildcards.
    It also rejects reused certificate and key paths.
 
-   Each production credential path must identify a regular file that exists.
+   Each deployment credential path must identify a regular file that exists.
    Each path must be absolute.
    The renderer rejects textual, symbolic-link, case-folded, and hard-link aliases.
    On POSIX, make each private key readable by its owner.
@@ -89,6 +92,7 @@ They are inert review fixtures. They are not credentials or a production deploym
    It applies the same controls to the nonsecret `galadriel-handoff.json`.
    `SHA256SUMS` binds all four files.
    The directory is not a transactional unit.
+
    Verify the complete set after `--force`, a copy operation, or an interrupted render:
 
    ```bash
@@ -99,10 +103,13 @@ They are inert review fixtures. They are not credentials or a production deploym
    The handoff binds `profile_version`, realm, epoch, producer identifier, and canonical registry digest.
    It also binds both exact client CNs. It contains no credential material.
 5. Start the router with the generated `zenoh-router.json5`.
-   Start the Crebain producer with `zenoh-producer.json5`.
+   Start the authorized contract-conforming producer with `zenoh-producer.json5`.
    Start Galadriel with `zenoh-observer.json5`.
    Configure both applications with the exact epoch from the handoff.
    Also use its `producer_id` and registry digest.
+
+   Crebain is an optional reference producer.
+   A deployment does not require Crebain.
 
    Galadriel accepts the JSON claim only when its route, session, and producer validators agree.
    The transport ACL separately requires a CA-valid connection with the authorized CN.
@@ -116,7 +123,7 @@ They also reject non-finite floats and floats with overflow or nonzero underflow
 They reject integer tokens that exceed the fixed resource bound.
 Each profile field must then satisfy its closed type, identity, path, endpoint, and size domain.
 
-Run the reference fixture and 67 security regression checks with this command:
+Run the reference fixture and maintained security regression suite with this command:
 
 ```bash
 python3 scripts/secure_deployment.py check

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import copy
 import csv
 import contextlib
+import datetime as dt
 import hashlib
 import io
 import json
@@ -11,6 +13,7 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from typing import Any, Callable
@@ -23,6 +26,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from check_feature_graph import (
     EXPECTED_DEFAULT_MEMBERS,
     EXPECTED_UPSTREAM_MANIFESTS,
+    FEATURE_GRAPH_TIMEOUT_SECONDS,
+    MAX_FEATURE_GRAPH_STDERR_BYTES,
+    MAX_FEATURE_GRAPH_STDOUT_BYTES,
     MAX_NCP_CONSUMER_BYTES,
     NCP_RESOLVED_FEATURES,
     PID_RESOLVED_FEATURES,
@@ -38,12 +44,27 @@ from check_feature_graph import (
     validate_upstream_package_records,
     validate_workspace_manifest,
 )
-from check_public_api import canonical_core_diff, compare_snapshot
+from check_public_api import (
+    canonical_core_diff,
+    compare_snapshot,
+    release_tool_environment,
+)
+from check_vulnerable_features import (
+    CARGO_METADATA_COMMAND,
+    MAX_METADATA_STDERR_BYTES,
+    MAX_METADATA_STDOUT_BYTES,
+    METADATA_TIMEOUT_SECONDS,
+    main as vulnerable_features_main,
+    validate_metadata,
+)
+import common as common_helpers
 from common import ReviewError, canonical_json, load_json, loads_json
 from finalize_release import candidate_json
 import freeze_audit_inputs as freeze
 from freeze_audit_inputs import assert_release_tool_coverage, strict_relative_files
 from qualify_candidate import capture_report
+import release_assurance as assurance
+from scripts import release_audit
 
 
 TOOLS = Path(__file__).resolve().parents[1]
@@ -98,6 +119,701 @@ class ReviewToolsTest(unittest.TestCase):
             ["git", "rev-parse", "HEAD"], cwd=self.root, text=True
         ).strip()
 
+    def test_common_git_runner_bounds_output_timeout_and_environment(self) -> None:
+        recorded: dict[str, Any] = {}
+
+        def successful_run(arguments: list[str], **kwargs: Any) -> Any:
+            recorded["arguments"] = arguments
+            recorded["environment"] = kwargs["environment"]
+            recorded["timeout"] = kwargs["timeout_seconds"]
+            return assurance.BoundedHostResult(0, b"", b"")
+
+        ambient = {
+            "PATH": os.environ["PATH"],
+            "SOURCE_DATE_EPOCH": "123",
+            "ANTHROPIC_API_KEY": "key-material",
+            "GH_TOKEN": "token-material",
+            "GIT_CONFIG_GLOBAL": "/unsafe/config",
+            "GIT_OBJECT_DIRECTORY": "/unsafe/objects",
+            "HTTP_PROXY": "http://proxy.invalid",
+            "SSH_AUTH_SOCK": "/unsafe/agent",
+            "LC_ALL": "de_DE.UTF-8",
+        }
+        with mock.patch.object(
+            common_helpers,
+            "run_bounded_host_command",
+            side_effect=successful_run,
+        ):
+            self.assertEqual(
+                common_helpers.git_bounded_output(
+                    self.root,
+                    "status",
+                    "--short",
+                    max_bytes=0,
+                    environment=ambient,
+                ),
+                b"",
+            )
+        arguments = recorded["arguments"]
+        self.assertEqual(arguments[0:2], ["git", "--no-replace-objects"])
+        self.assertIn("core.hooksPath=/dev/null", arguments)
+        self.assertIn("core.attributesFile=/dev/null", arguments)
+        self.assertEqual(
+            recorded["timeout"], common_helpers.DEFAULT_GIT_TIMEOUT_SECONDS
+        )
+        sanitized = recorded["environment"]
+        self.assertEqual(sanitized["GIT_CONFIG_GLOBAL"], os.devnull)
+        self.assertEqual(sanitized["GIT_CONFIG_NOSYSTEM"], "1")
+        self.assertEqual(sanitized["LC_ALL"], "C")
+        self.assertEqual(sanitized["SOURCE_DATE_EPOCH"], "123")
+        self.assertNotIn("ANTHROPIC_API_KEY", sanitized)
+        self.assertNotIn("GH_TOKEN", sanitized)
+        self.assertNotIn("GIT_OBJECT_DIRECTORY", sanitized)
+        self.assertNotIn("HTTP_PROXY", sanitized)
+        self.assertNotIn("SSH_AUTH_SOCK", sanitized)
+        self.assertEqual(
+            assurance.sanitized_host_environment(ambient),
+            {
+                "PATH": os.environ["PATH"],
+                "SOURCE_DATE_EPOCH": "123",
+                "LC_ALL": "de_DE.UTF-8",
+            },
+        )
+        with mock.patch.dict(
+            os.environ,
+            {
+                "ANTHROPIC_API_KEY": "key-material",
+                "SSH_AUTH_SOCK": "/fixture/agent.sock",
+            },
+        ):
+            agent_environment = assurance._ssh_host_environment(use_agent=True)
+            non_agent_environment = assurance._ssh_host_environment(use_agent=False)
+        self.assertNotIn("ANTHROPIC_API_KEY", agent_environment)
+        self.assertEqual(agent_environment["SSH_AUTH_SOCK"], "/fixture/agent.sock")
+        self.assertNotIn("SSH_AUTH_SOCK", non_agent_environment)
+
+        def oversized_run(arguments: list[str], **kwargs: Any) -> Any:
+            del arguments, kwargs
+            return assurance.BoundedHostResult(0, b"x" * 17, b"")
+
+        with (
+            mock.patch.object(
+                common_helpers,
+                "run_bounded_host_command",
+                side_effect=oversized_run,
+            ),
+            self.assertRaisesRegex(ReviewError, "output exceeds 16 bytes"),
+        ):
+            common_helpers.git_bounded_output(
+                self.root,
+                "status",
+                "--short",
+                max_bytes=16,
+            )
+
+        def failed_run(arguments: list[str], **kwargs: Any) -> Any:
+            del arguments, kwargs
+            return assurance.BoundedHostResult(
+                128,
+                b"",
+                b"fatal: fixture failure\n",
+            )
+
+        with (
+            mock.patch.object(
+                common_helpers,
+                "run_bounded_host_command",
+                side_effect=failed_run,
+            ),
+            self.assertRaisesRegex(ReviewError, "failed with 128"),
+        ):
+            common_helpers.git_bounded_output(
+                self.root,
+                "status",
+                "--short",
+                max_bytes=16,
+            )
+
+        with (
+            mock.patch.object(
+                common_helpers,
+                "run_bounded_host_command",
+                side_effect=ReviewError("git status timed out after 3 seconds"),
+            ) as mocked_run,
+            self.assertRaisesRegex(
+                ReviewError,
+                "timed out after 3 seconds",
+            ) as raised,
+        ):
+            common_helpers.git_bounded_output(
+                self.root,
+                "status",
+                "--short",
+                max_bytes=16,
+                timeout_seconds=3,
+            )
+        self.assertEqual(mocked_run.call_args.kwargs["timeout_seconds"], 3)
+        self.assertNotIn("MATERIAL-SENTINEL", str(raised.exception))
+        with self.assertRaisesRegex(ReviewError, "output byte limit"):
+            common_helpers.git_bounded_output(
+                self.root,
+                "status",
+                "--short",
+                max_bytes=common_helpers.MAX_GIT_CAPTURE_BYTES + 1,
+            )
+
+    def test_common_git_stream_cap_stops_descendant_processes(self) -> None:
+        marker = self.root / "git-descendant-survived"
+        child_program = (
+            "import pathlib,signal,time;"
+            "signal.signal(signal.SIGTERM, signal.SIG_IGN);"
+            "time.sleep(2);"
+            f"pathlib.Path({str(marker)!r}).write_text('survived')"
+        )
+        parent_program = (
+            "import os,subprocess,sys,time;"
+            f"subprocess.Popen([sys.executable,'-c',{child_program!r}]);"
+            "os.write(1,b'x'*17);"
+            "time.sleep(30)"
+        )
+        real_popen = subprocess.Popen
+
+        def replace_git(arguments: list[str], **kwargs: Any) -> subprocess.Popen[bytes]:
+            del arguments
+            return real_popen(
+                [sys.executable, "-I", "-c", parent_program],
+                **kwargs,
+            )
+
+        with (
+            mock.patch.object(
+                common_helpers.subprocess,
+                "Popen",
+                side_effect=replace_git,
+            ),
+            self.assertRaisesRegex(ReviewError, "output exceeds 16 bytes"),
+        ):
+            common_helpers.git_bounded_output(
+                self.root,
+                "status",
+                "--short",
+                max_bytes=16,
+                timeout_seconds=3,
+            )
+        time.sleep(2.2)
+        self.assertFalse(marker.exists())
+
+    def test_host_command_runner_bounds_streams_and_timeout(self) -> None:
+        result = assurance.run_bounded_host_command(
+            [sys.executable, "-c", "print('ok')"],
+            context="host command fixture",
+            max_stdout_bytes=16,
+            max_stderr_bytes=16,
+            timeout_seconds=2,
+        )
+        self.assertEqual(result, assurance.BoundedHostResult(0, b"ok\n", b""))
+
+        command_root = self.root / "host-command-cwd"
+        command_root.mkdir()
+        merged_program = (
+            "import os;"
+            "os.write(2,b'error|');"
+            "os.write(1,(os.getcwd()+'|'+os.environ['FIXTURE']).encode())"
+        )
+        merged = assurance.run_bounded_host_command(
+            [sys.executable, "-c", merged_program],
+            context="merged host command fixture",
+            environment={"FIXTURE": "value"},
+            cwd=command_root,
+            merge_stderr=True,
+            max_stdout_bytes=1024,
+            max_stderr_bytes=0,
+            timeout_seconds=2,
+        )
+        self.assertEqual(
+            merged,
+            assurance.BoundedHostResult(
+                0,
+                b"error|" + str(command_root.resolve()).encode() + b"|value",
+                b"",
+            ),
+        )
+
+        cases = (
+            ("standard output", "import os; os.write(1, b'x' * 17)"),
+            ("standard error", "import os; os.write(2, b'x' * 17)"),
+        )
+        for label, program in cases:
+            with (
+                self.subTest(label=label),
+                self.assertRaisesRegex(
+                    ReviewError,
+                    rf"{label} exceeds 16 bytes",
+                ),
+            ):
+                assurance.run_bounded_host_command(
+                    [sys.executable, "-c", program],
+                    context="host command fixture",
+                    max_stdout_bytes=16,
+                    max_stderr_bytes=16,
+                    timeout_seconds=2,
+                )
+
+        marker = self.root / "host-command-descendant-survived"
+        child_program = (
+            "import pathlib,signal,time;"
+            "signal.signal(signal.SIGTERM, signal.SIG_IGN);"
+            "time.sleep(2);"
+            f"pathlib.Path({str(marker)!r}).write_text('survived')"
+        )
+        parent_program = (
+            "import subprocess,sys,time;"
+            f"subprocess.Popen([sys.executable,'-c',{child_program!r}]);"
+            "time.sleep(30)"
+        )
+        with self.assertRaisesRegex(
+            ReviewError,
+            "timed out after 1 seconds",
+        ):
+            assurance.run_bounded_host_command(
+                [sys.executable, "-c", parent_program],
+                context="host command fixture",
+                max_stdout_bytes=16,
+                max_stderr_bytes=16,
+                timeout_seconds=1,
+            )
+        time.sleep(2)
+        self.assertFalse(marker.exists())
+
+    def test_signing_failure_diagnostic_omits_command_output(self) -> None:
+        document = self.root / "signed-document"
+        key = self.root / "signing-key"
+        document.write_bytes(b"document\n")
+        key.write_bytes(b"key handle\n")
+        result = assurance.BoundedHostResult(
+            7,
+            b"PUBLIC-KEY-MATERIAL-SENTINEL",
+            b"PRIVATE-KEY-MATERIAL-SENTINEL",
+        )
+        with (
+            mock.patch.object(
+                assurance,
+                "run_bounded_host_command",
+                return_value=result,
+            ),
+            self.assertRaisesRegex(
+                ReviewError,
+                "command exited with 7",
+            ) as raised,
+        ):
+            assurance.sign_file(document, key, "fixture")
+        self.assertNotIn("KEY-MATERIAL-SENTINEL", str(raised.exception))
+
+    def test_candidate_tree_reads_preserve_modes_and_reject_symlinks(self) -> None:
+        executable = self.root / "executable"
+        executable.write_bytes(b"#!/bin/sh\nexit 0\n")
+        executable.chmod(0o755)
+        link = self.root / "readme-link"
+        link.symlink_to("README.md")
+        subprocess.run(
+            ["git", "add", "--", "executable", "readme-link"],
+            cwd=self.root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Add mode fixtures"],
+            cwd=self.root,
+            check=True,
+        )
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.root,
+            text=True,
+        ).strip()
+
+        inventory = assurance.git_tree_inventory(self.root, commit)
+        self.assertEqual(inventory["README.md"]["mode"], "100644")
+        self.assertEqual(inventory["executable"]["mode"], "100755")
+        self.assertEqual(inventory["readme-link"]["mode"], "120000")
+        self.assertEqual(inventory["readme-link"]["object_type"], "blob")
+        self.assertEqual(
+            inventory["readme-link"]["sha256"],
+            hashlib.sha256(b"README.md").hexdigest(),
+        )
+        self.assertEqual(inventory["readme-link"]["bytes"], len(b"README.md"))
+        self.assertEqual(
+            assurance.candidate_blob(self.root, commit, "README.md"),
+            (self.root / "README.md").read_bytes(),
+        )
+        with self.assertRaisesRegex(ReviewError, "identifies a symbolic link"):
+            assurance.candidate_blob(self.root, commit, "readme-link")
+
+    def test_candidate_tree_parser_rejects_resource_and_path_abuse(self) -> None:
+        object_id = "1" * 40
+
+        def row(path: bytes, size: int = 1) -> bytes:
+            return (
+                f"100644 blob {object_id} {size}".encode("ascii") + b"\t" + path + b"\0"
+            )
+
+        with (
+            mock.patch.object(assurance, "MAX_CANDIDATE_TREE_ENTRIES", 1),
+            self.assertRaisesRegex(ReviewError, "entry-count bound"),
+        ):
+            assurance._parse_git_tree_listing(
+                row(b"first") + row(b"second"),
+                "fixture tree",
+            )
+        with (
+            mock.patch.object(assurance, "MAX_CANDIDATE_BLOB_BYTES", 4),
+            self.assertRaisesRegex(ReviewError, "per-blob byte bound"),
+        ):
+            assurance._parse_git_tree_listing(row(b"large", 5), "fixture tree")
+        with (
+            mock.patch.object(assurance, "MAX_CANDIDATE_TREE_BLOB_BYTES", 1),
+            self.assertRaisesRegex(ReviewError, "aggregate blob-byte bound"),
+        ):
+            assurance._parse_git_tree_listing(row(b"aggregate", 2), "fixture tree")
+        with (
+            mock.patch.object(assurance, "MAX_CANDIDATE_PATH_BYTES", 4),
+            self.assertRaisesRegex(ReviewError, "path exceeds its byte bound"),
+        ):
+            assurance._parse_git_tree_listing(row(b"large"), "fixture tree")
+        with (
+            mock.patch.object(assurance, "MAX_CANDIDATE_PATH_DEPTH", 1),
+            self.assertRaisesRegex(ReviewError, "path is unsafe"),
+        ):
+            assurance._parse_git_tree_listing(row(b"a/b"), "fixture tree")
+
+        unsafe_paths = ("../README.md", "/README.md", "a//b", "a\\b")
+        for path in unsafe_paths:
+            with (
+                self.subTest(path=path),
+                mock.patch.object(
+                    assurance,
+                    "git_bounded_output",
+                    side_effect=AssertionError("Git must not run"),
+                ),
+                self.assertRaises(ReviewError),
+            ):
+                assurance.candidate_blob(self.root, self.head, path)
+        with (
+            mock.patch.object(
+                assurance,
+                "git_bounded_output",
+                side_effect=AssertionError("Git must not run"),
+            ),
+            self.assertRaisesRegex(ReviewError, "full lowercase Git object"),
+        ):
+            assurance._exact_git_commit(self.root, "HEAD")
+
+    def test_candidate_blob_rejects_mismatched_object_identity(self) -> None:
+        expected_id = hashlib.sha1(
+            b"blob 1\0x",
+            usedforsecurity=False,
+        ).hexdigest()
+        entry = assurance._GitTreeEntry(
+            "fixture",
+            "100644",
+            "blob",
+            expected_id,
+            1,
+        )
+        with (
+            mock.patch.object(
+                assurance,
+                "git_bounded_output",
+                return_value=b"y",
+            ),
+            self.assertRaisesRegex(ReviewError, "Git blob identity"),
+        ):
+            assurance._read_git_blob(self.root, entry, "fixture blob")
+
+    def test_vulnerable_feature_check_uses_resolved_metadata(self) -> None:
+        self.assertEqual(
+            CARGO_METADATA_COMMAND,
+            (
+                "cargo",
+                "metadata",
+                "--format-version",
+                "1",
+                "--locked",
+                "--all-features",
+                "--offline",
+            ),
+        )
+        safe = {
+            "packages": [
+                {"id": "path+file:///workspace#galadriel@0.9.0", "name": "galadriel"},
+                {
+                    "id": "registry+https://github.com/rust-lang/crates.io-index#zenoh-transport@1.9.0",
+                    "name": "zenoh-transport",
+                    "version": "1.9.0",
+                    "source": "registry+https://github.com/rust-lang/crates.io-index",
+                },
+            ],
+            "resolve": {
+                "nodes": [
+                    {
+                        "id": "path+file:///workspace#galadriel@0.9.0",
+                        "features": ["default"],
+                    },
+                    {
+                        "id": "registry+https://github.com/rust-lang/crates.io-index#zenoh-transport@1.9.0",
+                        "features": [
+                            "shared-memory",
+                            "transport_tcp",
+                            "transport_tls",
+                            "transport_udp",
+                            "zenoh-shm",
+                        ],
+                    },
+                ]
+            },
+        }
+
+        metadata_process = assurance.BoundedHostResult(
+            0,
+            json.dumps(safe).encode("utf-8"),
+            b"",
+        )
+        with (
+            mock.patch("check_vulnerable_features.dt.datetime") as datetime_type,
+            mock.patch(
+                "check_vulnerable_features.run_bounded_host_command",
+                return_value=metadata_process,
+            ) as run_metadata,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            datetime_type.now.return_value.date.return_value = dt.date(2026, 7, 22)
+            self.assertEqual(vulnerable_features_main(), 0)
+        run_metadata.assert_called_once_with(
+            CARGO_METADATA_COMMAND,
+            context="vulnerable-feature Cargo metadata",
+            environment=release_tool_environment(),
+            max_stdout_bytes=MAX_METADATA_STDOUT_BYTES,
+            max_stderr_bytes=MAX_METADATA_STDERR_BYTES,
+            timeout_seconds=METADATA_TIMEOUT_SECONDS,
+        )
+
+        safe_text = json.dumps(safe, separators=(",", ":"))
+        safe_features = json.dumps(
+            safe["resolve"]["nodes"][1]["features"], separators=(",", ":")
+        )
+        feature_member = f'"features":{safe_features}'
+        duplicate_text = safe_text.replace(
+            feature_member,
+            f'"features":["transport_compression"],{feature_member}',
+            1,
+        )
+        nonfinite_text = f'{safe_text[:-1]},"ignored_nonfinite":NaN}}'
+        invalid_documents = {
+            "duplicate": (duplicate_text, "duplicate JSON key"),
+            "nonfinite": (nonfinite_text, "nonstandard JSON constant"),
+        }
+        for label, (document, diagnostic) in invalid_documents.items():
+            diagnostics = io.StringIO()
+            with (
+                self.subTest(label=label),
+                mock.patch("check_vulnerable_features.dt.datetime") as datetime_type,
+                mock.patch(
+                    "check_vulnerable_features.run_bounded_host_command",
+                    return_value=assurance.BoundedHostResult(
+                        0,
+                        document.encode("utf-8"),
+                        b"",
+                    ),
+                ),
+                contextlib.redirect_stderr(diagnostics),
+            ):
+                datetime_type.now.return_value.date.return_value = dt.date(2026, 7, 22)
+                self.assertEqual(vulnerable_features_main(), 2)
+            self.assertIn(diagnostic, diagnostics.getvalue())
+
+        validate_metadata(safe)
+
+        enabled = copy.deepcopy(safe)
+        enabled["resolve"]["nodes"][1]["features"].append("transport_compression")
+        with self.assertRaisesRegex(ValueError, "transport_compression is enabled"):
+            validate_metadata(enabled)
+
+        absent = copy.deepcopy(safe)
+        absent["packages"] = absent["packages"][:1]
+        absent["resolve"]["nodes"] = absent["resolve"]["nodes"][:1]
+        with self.assertRaisesRegex(ValueError, "exactly one zenoh-transport"):
+            validate_metadata(absent)
+
+        unresolved = copy.deepcopy(safe)
+        unresolved["resolve"]["nodes"] = unresolved["resolve"]["nodes"][:1]
+        with self.assertRaisesRegex(
+            ValueError, "omits a resolved zenoh-transport node"
+        ):
+            validate_metadata(unresolved)
+
+        with self.assertRaisesRegex(ValueError, "root is not an object"):
+            validate_metadata([])
+
+        wrong_version = copy.deepcopy(safe)
+        wrong_version["packages"][1]["version"] = "1.9.1"
+        with self.assertRaisesRegex(ValueError, "unexpected zenoh-transport identity"):
+            validate_metadata(wrong_version)
+
+        wrong_source = copy.deepcopy(safe)
+        wrong_source["packages"][1]["source"] = "git+https://example.invalid/zenoh"
+        with self.assertRaisesRegex(ValueError, "unexpected zenoh-transport identity"):
+            validate_metadata(wrong_source)
+
+        duplicate_package = copy.deepcopy(safe)
+        duplicate_package["packages"].append(
+            {
+                "id": "registry+index#zenoh-transport@2.0.0",
+                "name": "zenoh-transport",
+                "version": "2.0.0",
+                "source": "registry+https://github.com/rust-lang/crates.io-index",
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "exactly one zenoh-transport"):
+            validate_metadata(duplicate_package)
+
+        malformed_package = copy.deepcopy(safe)
+        malformed_package["packages"].append([])
+        with self.assertRaisesRegex(ValueError, "malformed package"):
+            validate_metadata(malformed_package)
+
+        malformed_node = copy.deepcopy(safe)
+        malformed_node["resolve"]["nodes"].append([])
+        with self.assertRaisesRegex(ValueError, "malformed resolved node"):
+            validate_metadata(malformed_node)
+
+        unknown_node = copy.deepcopy(safe)
+        unknown_node["resolve"]["nodes"].append(
+            {
+                "id": "registry+https://example.invalid/index#unknown@1.0.0",
+                "features": [],
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "unknown package identity"):
+            validate_metadata(unknown_node)
+
+        duplicate_node = copy.deepcopy(safe)
+        duplicate_node["resolve"]["nodes"].append(
+            copy.deepcopy(duplicate_node["resolve"]["nodes"][1])
+        )
+        with self.assertRaisesRegex(ValueError, "duplicate resolved node"):
+            validate_metadata(duplicate_node)
+
+        duplicate_feature = copy.deepcopy(safe)
+        duplicate_feature["resolve"]["nodes"][1]["features"].append("transport_tcp")
+        with self.assertRaisesRegex(ValueError, "duplicate resolved features"):
+            validate_metadata(duplicate_feature)
+
+        for label, features in (
+            ("missing", ["transport_tcp"]),
+            ("extra", [*safe["resolve"]["nodes"][1]["features"], "future_feature"]),
+        ):
+            drifted = copy.deepcopy(safe)
+            drifted["resolve"]["nodes"][1]["features"] = features
+            with (
+                self.subTest(label=label),
+                self.assertRaisesRegex(
+                    ValueError, "unexpected zenoh-transport features"
+                ),
+            ):
+                validate_metadata(drifted)
+
+    def test_release_audit_cross_binds_repository_and_tool_inputs(self) -> None:
+        inputs = release_audit.load_json(release_audit.INPUTS)
+        release_audit.validate_inputs(inputs)
+
+        mutations = []
+        missing_repository = copy.deepcopy(inputs)
+        missing_repository["repositories"].pop()
+        mutations.append(("repository input set", missing_repository))
+
+        changed_database = copy.deepcopy(inputs)
+        database = next(
+            item
+            for item in changed_database["repositories"]
+            if item["name"] == "RustSec advisory database"
+        )
+        database["commit"] = "0" * 40
+        mutations.append(("repository input identity", changed_database))
+
+        missing_tool = copy.deepcopy(inputs)
+        missing_tool["toolchains"].pop()
+        mutations.append(("toolchain input set", missing_tool))
+
+        changed_tool = copy.deepcopy(inputs)
+        current_stable = next(
+            item
+            for item in changed_tool["toolchains"]
+            if item["name"] == "rustc-current-stable"
+        )
+        current_stable["identity"] = "another compiler"
+        mutations.append(("tool identity", changed_tool))
+
+        for diagnostic, mutated in mutations:
+            with (
+                self.subTest(diagnostic=diagnostic),
+                self.assertRaisesRegex(release_audit.AuditError, diagnostic),
+            ):
+                release_audit.validate_inputs(mutated)
+
+    def test_ci_cross_binds_current_stable_and_advisory_database(self) -> None:
+        workflow = release_audit.CI_WORKFLOW.read_text(encoding="utf-8")
+        release_audit.validate_ci_qualification_contract(workflow)
+
+        mutations = (
+            (
+                "current-stable",
+                workflow.replace("toolchain: 1.97.1", "toolchain: 1.97.0", 1),
+                "current-stable toolchain",
+            ),
+            (
+                "database commit",
+                workflow.replace(
+                    release_audit.ADVISORY_DB_COMMIT,
+                    "0" * 40,
+                    1,
+                ),
+                "RUSTSEC_ADVISORY_DB_COMMIT",
+            ),
+            (
+                "online dependency check",
+                workflow.replace(
+                    "cargo deny --offline --all-features",
+                    "cargo deny --all-features",
+                    1,
+                ),
+                "pinned offline database",
+            ),
+            (
+                "missing fuzz dependency materialization",
+                workflow.replace(
+                    "cargo fetch --locked --manifest-path fuzz/Cargo.toml",
+                    "cargo fetch --locked --manifest-path fuzz/Cargo.toml.missing",
+                    1,
+                ),
+                "materialize both locked dependency graphs",
+            ),
+            (
+                "missing tree comparison",
+                workflow.replace(
+                    'test "$(git -C "$database" rev-parse \'HEAD^{tree}\')" = '
+                    '"$RUSTSEC_ADVISORY_DB_TREE"',
+                    'test -n "$database"',
+                    1,
+                ),
+                "fully verify",
+            ),
+        )
+        for label, mutated, diagnostic in mutations:
+            with (
+                self.subTest(label=label),
+                self.assertRaisesRegex(release_audit.AuditError, diagnostic),
+            ):
+                release_audit.validate_ci_qualification_contract(mutated)
+
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
@@ -116,6 +832,15 @@ class ReviewToolsTest(unittest.TestCase):
                 "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
                 f"crates/galadriel-ncp/schemas/{name}",
             )
+            identity = document["$defs"]["galadrielCoreIdentity"]
+            self.assertEqual(identity["not"]["pattern"], r"[^A-Za-z0-9_.:-]")
+            for value in ("uav3\n", "uav3\r", "uav+3", "crébain"):
+                with self.subTest(schema=name, identity=value):
+                    matches_primary = re.search(identity["pattern"], value) is not None
+                    matches_forbidden = (
+                        re.search(identity["not"]["pattern"], value) is not None
+                    )
+                    self.assertFalse(matches_primary and not matches_forbidden)
 
         runbook = (repository / "release/0.9.0/RELEASE-RUNBOOK.md").read_text(
             encoding="utf-8"
@@ -163,6 +888,24 @@ class ReviewToolsTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
+        self.assertEqual(
+            threat_register["status"],
+            "LIVING_UNTIL_CANDIDATE_FREEZE",
+        )
+        unsupported_threat_register = copy.deepcopy(threat_register)
+        unsupported_threat_register["status"] = "UNSUPPORTED"
+        with (
+            mock.patch.object(
+                release_audit,
+                "load_json",
+                return_value=unsupported_threat_register,
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError,
+                "unsupported lifecycle status",
+            ),
+        ):
+            release_audit.validate_threat_register()
         cross_repo_threat = next(
             row
             for row in threat_register["threats"]
@@ -253,9 +996,9 @@ class ReviewToolsTest(unittest.TestCase):
                 "author": "Sepehr Mahmoudian",
                 "doi": None,
                 "zenodo": None,
-                "publication_channel": "GitHub source release",
+                "publication_channel": freeze.PUBLICATION_CHANNEL,
             },
-            "audit_date": "2026-07-14",
+            "audit_date": "2026-07-23",
             "baseline_repository": {
                 "url": "https://github.com/sepahead/galadriel",
                 "commit": baseline,
@@ -270,7 +1013,25 @@ class ReviewToolsTest(unittest.TestCase):
         }
         (release / "handoff-source.json").write_bytes(canonical_json(handoff_source))
         (release / "audit-inputs.json").write_bytes(canonical_json(audit_inputs))
+        threat_register = release / "audit/threat-register.json"
+        threat_register.parent.mkdir()
+        threat_register.write_bytes(
+            canonical_json({"status": freeze.THREAT_STATUS_FROZEN})
+        )
         (repo / "input.txt").write_text("release input\n", encoding="utf-8")
+        subprocess.run(
+            [
+                "git",
+                "add",
+                "--",
+                "release/0.9.0/audit-inputs.json",
+                freeze.THREAT_REGISTER_PATH,
+                "release/0.9.0/handoff-source.json",
+                "input.txt",
+            ],
+            cwd=repo,
+            check=True,
+        )
 
         key = self.root / f"{name}-signing-key"
         subprocess.run(
@@ -297,6 +1058,7 @@ class ReviewToolsTest(unittest.TestCase):
         allowed_signers = self.root / f"{name}-ALLOWED_SIGNERS"
         release_inputs = (
             "release/0.9.0/audit-inputs.json",
+            freeze.THREAT_REGISTER_PATH,
             "release/0.9.0/handoff-source.json",
             "input.txt",
         )
@@ -482,13 +1244,19 @@ class ReviewToolsTest(unittest.TestCase):
             (False, '{"value": NaN}'),
             (True, '{"value": 1, "value": 2}'),
         )
+        cargo_home = self.root / "isolated-cargo-home"
+        cargo_home.mkdir()
+        report_environment = {
+            "CARGO_HOME": str(cargo_home),
+            "PATH": os.environ["PATH"],
+        }
         for json_lines, document in report_cases:
             with self.subTest(json_lines=json_lines):
                 with self.assertRaisesRegex(ReviewError, "invalid JSON evidence"):
                     capture_report(
                         [sys.executable, "-c", f"print({document!r})"],
                         worktree=self.root,
-                        environment=os.environ.copy(),
+                        environment=report_environment,
                         output=self.root / "reports" / "report.json",
                         json_lines=json_lines,
                         report_stream="stdout",
@@ -531,12 +1299,136 @@ class ReviewToolsTest(unittest.TestCase):
     def test_repository_instruction_files_are_frozen(self) -> None:
         self.assertIn("AGENTS.md", freeze.RELEASE_INPUTS)
         self.assertIn("CLAUDE.mdc", freeze.RELEASE_INPUTS)
+        self.assertIn("docs/DEPENDENCY-POLICY.md", freeze.RELEASE_INPUTS)
+        self.assertIn("release/0.9.0/RELEASE-RUNBOOK.md", freeze.RELEASE_INPUTS)
+
+        instructions = (TOOLS / "README.md").read_text(encoding="utf-8")
+        exact_name = "FROZEN-AUDIT-INPUTS-0.9.0.json"
+        self.assertGreaterEqual(instructions.count(exact_name), 8)
+        self.assertNotIn('"$freeze_dir/FROZEN-AUDIT-INPUTS.json"', instructions)
+
+    def test_release_input_manifest_requires_exact_index_bytes(self) -> None:
+        def make_repository(name: str) -> Path:
+            repo = self.root / name
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Sepehr Mahmoudian"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "sepmhn@gmail.com"],
+                cwd=repo,
+                check=True,
+            )
+            (repo / "input.txt").write_text("indexed input\n", encoding="utf-8")
+            subprocess.run(["git", "add", "input.txt"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "Create input"],
+                cwd=repo,
+                check=True,
+            )
+            return repo
+
+        staged = make_repository("release-input-staged")
+        staged_data = b"staged candidate input\n"
+        (staged / "input.txt").write_bytes(staged_data)
+        subprocess.run(["git", "add", "input.txt"], cwd=staged, check=True)
+        with mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)):
+            self.assertEqual(
+                freeze.release_input_manifest(staged),
+                [
+                    {
+                        "path": "input.txt",
+                        "sha256": hashlib.sha256(staged_data).hexdigest(),
+                        "size_bytes": len(staged_data),
+                    }
+                ],
+            )
+
+        untracked = make_repository("release-input-untracked")
+        (untracked / "untracked.txt").write_text("not indexed\n", encoding="utf-8")
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("untracked.txt",)),
+            self.assertRaisesRegex(ReviewError, "exactly one stage-zero tracked entry"),
+        ):
+            freeze.release_input_manifest(untracked)
+
+        conflict = make_repository("release-input-conflict")
+        blob_ids = []
+        for data in (b"base\n", b"current\n", b"incoming\n"):
+            process = subprocess.run(
+                ["git", "hash-object", "-w", "--stdin"],
+                cwd=conflict,
+                input=data,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            blob_ids.append(process.stdout.decode("ascii").strip())
+        index_rows = (
+            f"0 {'0' * 40}\tinput.txt\n"
+            f"100644 {blob_ids[0]} 1\tinput.txt\n"
+            f"100644 {blob_ids[1]} 2\tinput.txt\n"
+            f"100644 {blob_ids[2]} 3\tinput.txt\n"
+        )
+        subprocess.run(
+            ["git", "update-index", "--index-info"],
+            cwd=conflict,
+            input=index_rows.encode("ascii"),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)),
+            self.assertRaisesRegex(ReviewError, "exactly one stage-zero tracked entry"),
+        ):
+            freeze.release_input_manifest(conflict)
+
+        divergent = make_repository("release-input-divergent")
+        (divergent / "input.txt").write_text("changed input\n", encoding="utf-8")
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)),
+            self.assertRaisesRegex(ReviewError, "differs from its indexed blob"),
+        ):
+            freeze.release_input_manifest(divergent)
+
+        replaced = make_repository("release-input-replaced")
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=replaced, text=True
+        ).strip()
+        subprocess.run(
+            ["git", "update-ref", f"refs/replace/{head}", head],
+            cwd=replaced,
+            check=True,
+        )
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)),
+            self.assertRaisesRegex(ReviewError, "replacement references are forbidden"),
+        ):
+            freeze.release_input_manifest(replaced)
 
     def test_frozen_input_verifier_accepts_exact_inputs_and_optional_handoff(
         self,
     ) -> None:
         fixture = self.make_frozen_input_fixture("valid-freeze")
         self.verify_frozen_fixture(fixture)
+        self.verify_frozen_fixture(fixture, with_handoff=False)
+        output = fixture["output"]
+        assert isinstance(output, Path)
+        self.assertEqual(
+            load_json(output)["repository_ref_inputs"]["origin"],
+            "https://github.com/sepahead/galadriel",
+        )
+
+        self.mutate_frozen_fixture(
+            fixture,
+            lambda manifest: manifest["repository_ref_inputs"].__setitem__(
+                "origin", "git@github.com:sepahead/galadriel.git"
+            ),
+        )
         self.verify_frozen_fixture(fixture, with_handoff=False)
 
         repo = fixture["repo"]
@@ -555,6 +1447,176 @@ class ReviewToolsTest(unittest.TestCase):
         self.verify_frozen_fixture(fixture, with_handoff=False)
         with self.assertRaisesRegex(ReviewError, "supplied handoff inventory differs"):
             self.verify_frozen_fixture(fixture)
+
+    def test_frozen_input_generator_rejects_credential_bearing_origin_rewrites(
+        self,
+    ) -> None:
+        for name, configure in (
+            (
+                "credential-origin",
+                lambda repo: subprocess.run(
+                    [
+                        "git",
+                        "remote",
+                        "set-url",
+                        "origin",
+                        (
+                            "https://fixture-user:fixture-password@github.com/"
+                            "sepahead/galadriel.git"
+                        ),
+                    ],
+                    cwd=repo,
+                    check=True,
+                ),
+            ),
+            (
+                "instead-of-origin",
+                lambda repo: (
+                    subprocess.run(
+                        [
+                            "git",
+                            "remote",
+                            "set-url",
+                            "origin",
+                            "https://github.com/sepahead/galadriel.git",
+                        ],
+                        cwd=repo,
+                        check=True,
+                    ),
+                    subprocess.run(
+                        [
+                            "git",
+                            "config",
+                            (
+                                "url.https://fixture-user:fixture-password@"
+                                "github.com/.insteadOf"
+                            ),
+                            "https://github.com/",
+                        ],
+                        cwd=repo,
+                        check=True,
+                    ),
+                ),
+            ),
+            (
+                "whitespace-origin",
+                lambda repo: subprocess.run(
+                    [
+                        "git",
+                        "remote",
+                        "set-url",
+                        "origin",
+                        " https://github.com/sepahead/galadriel.git ",
+                    ],
+                    cwd=repo,
+                    check=True,
+                ),
+            ),
+            (
+                "alternate-push-origin",
+                lambda repo: subprocess.run(
+                    [
+                        "git",
+                        "remote",
+                        "set-url",
+                        "--push",
+                        "origin",
+                        "https://example.invalid/other.git",
+                    ],
+                    cwd=repo,
+                    check=True,
+                ),
+            ),
+            (
+                "multiple-push-origins",
+                lambda repo: (
+                    subprocess.run(
+                        [
+                            "git",
+                            "remote",
+                            "set-url",
+                            "--add",
+                            "--push",
+                            "origin",
+                            "git@github.com:sepahead/galadriel.git",
+                        ],
+                        cwd=repo,
+                        check=True,
+                    ),
+                    subprocess.run(
+                        [
+                            "git",
+                            "remote",
+                            "set-url",
+                            "--add",
+                            "--push",
+                            "origin",
+                            "ssh://git@github.com/sepahead/galadriel.git",
+                        ],
+                        cwd=repo,
+                        check=True,
+                    ),
+                ),
+            ),
+        ):
+            with self.subTest(name=name):
+                fixture = self.make_frozen_input_fixture(name)
+                repo = fixture["repo"]
+                handoff = fixture["handoff"]
+                release_inputs = fixture["release_inputs"]
+                baseline = fixture["baseline"]
+                baseline_tree = fixture["baseline_tree"]
+                assert isinstance(repo, Path)
+                assert isinstance(handoff, Path)
+                assert isinstance(release_inputs, tuple)
+                assert isinstance(baseline, str)
+                assert isinstance(baseline_tree, str)
+                configure(repo)
+                output = self.root / f"{name}-rejected.json"
+                allowed = self.root / f"{name}-rejected-signers"
+                with (
+                    mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+                    mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+                    mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+                    self.assertRaises(ReviewError) as caught,
+                ):
+                    freeze.generate_frozen_inputs(repo, handoff, output, allowed)
+                diagnostic = str(caught.exception)
+                self.assertIn("canonical credential-free repository", diagnostic)
+                self.assertNotIn("fixture-password", diagnostic)
+                self.assertFalse(output.exists())
+                self.assertFalse(allowed.exists())
+
+    def test_frozen_manifest_cannot_change_basename_after_signing(self) -> None:
+        fixture = self.make_frozen_input_fixture("signed-basename")
+        repo = fixture["repo"]
+        output = fixture["output"]
+        allowed = fixture["allowed_signers"]
+        release_inputs = fixture["release_inputs"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(repo, Path)
+        assert isinstance(output, Path)
+        assert isinstance(allowed, Path)
+        assert isinstance(release_inputs, tuple)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+
+        renamed = self.root / "renamed-frozen-inputs.json"
+        renamed.write_bytes(output.read_bytes())
+        renamed.with_name(renamed.name + ".sig").write_bytes(
+            output.with_name(output.name + ".sig").read_bytes()
+        )
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            self.assertRaisesRegex(
+                ReviewError,
+                "signature contract signature_path",
+            ),
+        ):
+            freeze.verify_frozen_inputs(repo, None, renamed, allowed)
 
     def test_feature_contract_rejects_upstream_alias_and_resolved_feature_drift(
         self,
@@ -754,18 +1816,18 @@ class ReviewToolsTest(unittest.TestCase):
 
     def test_feature_graph_disables_cargo_terminal_color(self) -> None:
         profile = next(profile for profile in PROFILES if profile.name == "pure")
-        completed = mock.Mock(
-            returncode=0,
-            stdout=b"galadriel-cli v0.9.0|default\n",
-            stderr=b"",
+        completed = assurance.BoundedHostResult(
+            0,
+            b"galadriel-cli v0.9.0|default\n",
+            b"",
         )
         with (
             mock.patch.dict(os.environ, {"CARGO_TERM_COLOR": "always"}),
             mock.patch(
-                "check_feature_graph.subprocess.run", return_value=completed
+                "check_feature_graph.run_bounded_host_command",
+                return_value=completed,
             ) as run_cargo,
         ):
-            inherited_environment = dict(os.environ)
             self.assertEqual(
                 package_graph(self.root, profile),
                 {"galadriel-cli": frozenset({"default"})},
@@ -773,22 +1835,37 @@ class ReviewToolsTest(unittest.TestCase):
             self.assertEqual(os.environ["CARGO_TERM_COLOR"], "always")
 
         self.assertEqual(
-            run_cargo.call_args.kwargs["env"],
-            {**inherited_environment, "CARGO_TERM_COLOR": "never"},
+            run_cargo.call_args.kwargs["environment"],
+            release_tool_environment(),
+        )
+        self.assertEqual(run_cargo.call_args.kwargs["cwd"], self.root)
+        self.assertEqual(run_cargo.call_args.kwargs["context"], "feature graph pure")
+        self.assertEqual(
+            run_cargo.call_args.kwargs["max_stdout_bytes"],
+            MAX_FEATURE_GRAPH_STDOUT_BYTES,
+        )
+        self.assertEqual(
+            run_cargo.call_args.kwargs["max_stderr_bytes"],
+            MAX_FEATURE_GRAPH_STDERR_BYTES,
+        )
+        self.assertEqual(
+            run_cargo.call_args.kwargs["timeout_seconds"],
+            FEATURE_GRAPH_TIMEOUT_SECONDS,
         )
         self.assertIn("--color=never", run_cargo.call_args.args[0])
-        self.assertIs(run_cargo.call_args.kwargs["text"], False)
 
-        invalid_utf8 = mock.Mock(returncode=0, stdout=b"\xff", stderr=b"")
+        invalid_utf8 = assurance.BoundedHostResult(0, b"\xff", b"")
         with mock.patch(
-            "check_feature_graph.subprocess.run", return_value=invalid_utf8
+            "check_feature_graph.run_bounded_host_command",
+            return_value=invalid_utf8,
         ):
             with self.assertRaisesRegex(ReviewError, "non-UTF-8 stdout"):
                 package_graph(self.root, profile)
 
-        invalid_failure = mock.Mock(returncode=101, stdout=b"", stderr=b"\xff")
+        invalid_failure = assurance.BoundedHostResult(101, b"", b"\xff")
         with mock.patch(
-            "check_feature_graph.subprocess.run", return_value=invalid_failure
+            "check_feature_graph.run_bounded_host_command",
+            return_value=invalid_failure,
         ):
             with self.assertRaisesRegex(
                 ReviewError,
@@ -796,13 +1873,13 @@ class ReviewToolsTest(unittest.TestCase):
             ):
                 package_graph(self.root, profile)
 
-        failed_with_junk_stdout = mock.Mock(
-            returncode=101,
-            stdout=b"\xff",
-            stderr=b"error: failed to parse lock file\n",
+        failed_with_junk_stdout = assurance.BoundedHostResult(
+            101,
+            b"\xff",
+            b"error: failed to parse lock file\n",
         )
         with mock.patch(
-            "check_feature_graph.subprocess.run",
+            "check_feature_graph.run_bounded_host_command",
             return_value=failed_with_junk_stdout,
         ):
             with self.assertRaisesRegex(
@@ -811,26 +1888,27 @@ class ReviewToolsTest(unittest.TestCase):
             ):
                 package_graph(self.root, profile)
 
-        unsafe_stderr = mock.Mock(
-            returncode=101,
-            stdout=b"",
-            stderr=b"\x1b[31merror\x1b[0m: failed\n",
+        unsafe_stderr = assurance.BoundedHostResult(
+            101,
+            b"",
+            b"\x1b[31merror\x1b[0m: failed\n",
         )
         with mock.patch(
-            "check_feature_graph.subprocess.run", return_value=unsafe_stderr
+            "check_feature_graph.run_bounded_host_command",
+            return_value=unsafe_stderr,
         ):
             with self.assertRaisesRegex(
                 ReviewError, "unsafe non-printable characters in stderr"
             ):
                 package_graph(self.root, profile)
 
-        unsafe_success_stderr = mock.Mock(
-            returncode=0,
-            stdout=b"galadriel-cli v0.9.0|default\n",
-            stderr=b"\x1b[33mwarning\x1b[0m\n",
+        unsafe_success_stderr = assurance.BoundedHostResult(
+            0,
+            b"galadriel-cli v0.9.0|default\n",
+            b"\x1b[33mwarning\x1b[0m\n",
         )
         with mock.patch(
-            "check_feature_graph.subprocess.run",
+            "check_feature_graph.run_bounded_host_command",
             return_value=unsafe_success_stderr,
         ):
             with self.assertRaisesRegex(
@@ -862,7 +1940,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(cut["author"], "Sepehr Mahmoudian")
         self.assertEqual(
             (cut["inspected_at"], cut["timestamp_precision"]),
-            ("2026-07-22", "date"),
+            ("2026-07-23", "date"),
         )
         observations = cut["observations"]
         expected_observations = [
@@ -1019,16 +2097,44 @@ class ReviewToolsTest(unittest.TestCase):
             {
                 "id": "ECO-011",
                 "project": "Haldir",
-                "relationship": "prospective_downstream_status_reinspection",
-                "ref": "main",
+                "relationship": "prospective_downstream_consumer",
+                "ref": "refs/heads/main",
                 "object": "c0e4b3d156500684329a92bcb16e0609894fd738",
-                "identity_kind": "mutable_head_observation",
+                "identity_kind": "mutable_head_reinspection",
                 "observed_at": "2026-07-22",
                 "timestamp_precision": "date",
                 "required_by_default": False,
                 "required_for": [],
                 "supersedes": "ECO-006",
                 "why": "Records the activated CH-T001 repository-inventory evidence update, whose retained downstream disposition says the runtime surface and external conformance did not change; no Galadriel adapter or route was added.",
+            },
+            {
+                "id": "ECO-012",
+                "project": "Haldir",
+                "relationship": "prospective_downstream_consumer",
+                "ref": "refs/heads/main",
+                "object": "590ba767b32a27d9dd61a2462968306c1052434e",
+                "identity_kind": "mutable_head_reinspection",
+                "observed_at": "2026-07-23",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": "ECO-011",
+                "why": "Records the mutable Haldir head observed on 2026-07-23 after its evidence-tool updates. Galadriel still has no Haldir adapter, route, or runtime edge.",
+            },
+            {
+                "id": "ECO-013",
+                "project": "Paper2Brain",
+                "relationship": "external_application_without_integration",
+                "ref": "refs/heads/main",
+                "object": "24e74b781a5bf8af069f69cbc2d0c42d89008211",
+                "identity_kind": "mutable_head_observation",
+                "observed_at": "2026-07-23",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": None,
+                "why": "Records the mutable Paper2Brain head observed on 2026-07-23 as read-only provenance. Galadriel has no Paper2Brain dependency, API, route, adapter, or runtime edge.",
             },
         ]
         self.assertEqual(observations, expected_observations)
@@ -1043,7 +2149,7 @@ class ReviewToolsTest(unittest.TestCase):
         )
         self.assertEqual(
             [row["id"] for row in observations],
-            [f"ECO-{index:03d}" for index in range(1, 12)],
+            [f"ECO-{index:03d}" for index in range(1, 14)],
         )
         self.assertEqual(
             [row["project"] for row in observations],
@@ -1059,6 +2165,8 @@ class ReviewToolsTest(unittest.TestCase):
                 "ROS / ROS 2",
                 "external authority",
                 "Haldir",
+                "Haldir",
+                "Paper2Brain",
             ],
         )
         self.assertTrue(
@@ -1078,7 +2186,11 @@ class ReviewToolsTest(unittest.TestCase):
                 for row in observations
                 if row["supersedes"] is not None
             },
-            {"ECO-006": "ECO-005", "ECO-011": "ECO-006"},
+            {
+                "ECO-006": "ECO-005",
+                "ECO-011": "ECO-006",
+                "ECO-012": "ECO-011",
+            },
         )
         self.assertEqual(
             observations[0]["required_for"],
@@ -1095,6 +2207,10 @@ class ReviewToolsTest(unittest.TestCase):
                 if row["identity_kind"] == "declared_absent_runtime_edge"
             ],
             ["ECO-008", "ECO-009", "ECO-010"],
+        )
+        self.assertNotEqual(
+            observations[12]["identity_kind"],
+            "declared_absent_runtime_edge",
         )
 
         public_api = (repo / "release/0.9.0/api/galadriel-core.0.9.0.txt").read_text(
@@ -1202,9 +2318,7 @@ class ReviewToolsTest(unittest.TestCase):
         assert isinstance(repo, Path)
         (repo / "input.txt").write_text("mutated release input\n", encoding="utf-8")
 
-        with self.assertRaisesRegex(
-            ReviewError, "exact ordered current RELEASE_INPUTS set"
-        ):
+        with self.assertRaisesRegex(ReviewError, "differs from its indexed blob"):
             self.verify_frozen_fixture(fixture, with_handoff=False)
 
     def test_frozen_input_verifier_rejects_broken_baseline_handoff_and_ref_bindings(
@@ -1304,7 +2418,7 @@ class ReviewToolsTest(unittest.TestCase):
                 lambda manifest: manifest["repository_ref_inputs"].__setitem__(
                     "origin", "https://example.invalid/repo\ninjected"
                 ),
-                "historical origin contains a control separator",
+                "historical origin is not a canonical credential-free repository",
             ),
             (
                 "annotated-tag-without-peel",
@@ -1365,6 +2479,130 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertFalse(output.exists())
         self.assertFalse(allowed_signers.exists())
 
+    def test_frozen_input_operations_require_frozen_threat_status(self) -> None:
+        fixture = self.make_frozen_input_fixture("threat-status-freeze")
+        repo = fixture["repo"]
+        handoff = fixture["handoff"]
+        release_inputs = fixture["release_inputs"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(repo, Path)
+        assert isinstance(handoff, Path)
+        assert isinstance(release_inputs, tuple)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+
+        threat_register = repo / freeze.THREAT_REGISTER_PATH
+        threat_register.write_bytes(
+            canonical_json({"status": freeze.THREAT_STATUS_LIVING})
+        )
+        subprocess.run(
+            ["git", "add", "--", freeze.THREAT_REGISTER_PATH],
+            cwd=repo,
+            check=True,
+        )
+        output = self.root / "living-generation.json"
+        allowed_signers = self.root / "living-generation-signers"
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            self.assertRaisesRegex(
+                ReviewError,
+                "indexed threat register must have lifecycle status "
+                "FROZEN_AT_CANDIDATE",
+            ),
+        ):
+            freeze.generate_frozen_inputs(repo, handoff, output, allowed_signers)
+        self.assertFalse(output.exists())
+        self.assertFalse(allowed_signers.exists())
+
+        with self.assertRaisesRegex(
+            ReviewError,
+            "indexed threat register must have lifecycle status FROZEN_AT_CANDIDATE",
+        ):
+            self.verify_frozen_fixture(fixture, with_handoff=False)
+
+    def test_freeze_lifecycle_verifier_is_phase_exact(self) -> None:
+        fixture = self.make_frozen_input_fixture("phase-exact-freeze")
+        repo = fixture["repo"]
+        output = fixture["output"]
+        allowed_signers = fixture["allowed_signers"]
+        release_inputs = fixture["release_inputs"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(repo, Path)
+        assert isinstance(output, Path)
+        assert isinstance(allowed_signers, Path)
+        assert isinstance(release_inputs, tuple)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+        ):
+            self.assertEqual(
+                freeze.verify_freeze_lifecycle(
+                    repo,
+                    None,
+                    output,
+                    allowed_signers,
+                ),
+                freeze.THREAT_STATUS_FROZEN,
+            )
+
+        threat_register = repo / freeze.THREAT_REGISTER_PATH
+        threat_register.write_bytes(
+            canonical_json({"status": freeze.THREAT_STATUS_LIVING})
+        )
+        subprocess.run(
+            ["git", "add", "--", freeze.THREAT_REGISTER_PATH],
+            cwd=repo,
+            check=True,
+        )
+        absent_output = self.root / "phase-exact-active.json"
+        absent_signature = absent_output.with_name(absent_output.name + ".sig")
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+        ):
+            self.assertEqual(
+                freeze.verify_freeze_lifecycle(
+                    repo,
+                    None,
+                    absent_output,
+                    allowed_signers,
+                ),
+                freeze.THREAT_STATUS_LIVING,
+            )
+            absent_output.write_bytes(b"partial manifest")
+            with self.assertRaisesRegex(
+                ReviewError,
+                "active frozen manifest must be absent",
+            ):
+                freeze.verify_freeze_lifecycle(
+                    repo,
+                    None,
+                    absent_output,
+                    allowed_signers,
+                )
+            absent_output.unlink()
+            absent_signature.write_bytes(b"partial signature")
+            with self.assertRaisesRegex(
+                ReviewError,
+                "active frozen signature must be absent",
+            ):
+                freeze.verify_freeze_lifecycle(
+                    repo,
+                    None,
+                    absent_output,
+                    allowed_signers,
+                )
+            absent_signature.unlink()
+
     def test_historical_tag_inventory_has_a_pre_subprocess_bound(self) -> None:
         tag = {
             "ref": "refs/tags/example",
@@ -1373,14 +2611,14 @@ class ReviewToolsTest(unittest.TestCase):
             "peeled_object": None,
         }
         refs = {
-            "origin": "https://example.invalid/repo",
+            "origin": "https://github.com/sepahead/galadriel",
             "local_tags_at_freeze": [tag] * (freeze.MAX_HISTORICAL_TAGS + 1),
             "note": freeze.REF_INPUT_NOTE,
         }
         with (
             mock.patch.object(
-                freeze.subprocess,
-                "run",
+                freeze,
+                "run_bounded_host_command",
                 side_effect=AssertionError("oversize tag inventory must not spawn"),
             ),
             self.assertRaisesRegex(ReviewError, "historical tag inventory exceeds"),
@@ -1540,17 +2778,20 @@ class ReviewToolsTest(unittest.TestCase):
             self.verify_frozen_fixture(duplicate, with_handoff=False)
 
     def test_signer_fingerprint_requires_canonical_ed25519_shape(self) -> None:
-        forged = subprocess.CompletedProcess(
-            args=["ssh-keygen"],
-            returncode=0,
-            stdout=(
+        forged = assurance.BoundedHostResult(
+            0,
+            (
                 "256 MD5:00:11:22:33:44:55:66:77 "
                 f"{freeze.SIGNATURE_PRINCIPAL} (ED25519)\n"
             ).encode("ascii"),
-            stderr=b"",
+            b"",
         )
         with (
-            mock.patch.object(freeze.subprocess, "run", return_value=forged),
+            mock.patch.object(
+                freeze,
+                "run_bounded_host_command",
+                return_value=forged,
+            ),
             self.assertRaisesRegex(ReviewError, "unexpected Ed25519 shape"),
         ):
             freeze.signer_fingerprint(b"unused signer entry\n")
@@ -1666,8 +2907,8 @@ class ReviewToolsTest(unittest.TestCase):
                 return_value=manifest["signature_contract"]["public_key_fingerprint"],
             ),
             mock.patch.object(
-                freeze.subprocess,
-                "run",
+                freeze,
+                "run_bounded_host_command",
                 side_effect=AssertionError("oversize signature must not be verified"),
             ),
             self.assertRaisesRegex(ReviewError, "signature exceeds the 64 KiB limit"),
@@ -1720,17 +2961,24 @@ class ReviewToolsTest(unittest.TestCase):
                 path, 0, label="fixture", limit_label="zero-byte"
             )
 
+        path_swap_calls = 0
+
         def replace_path(descriptor: int) -> os.stat_result:
+            nonlocal path_swap_calls
+            path_swap_calls += 1
             metadata = real_fstat(descriptor)
-            path.unlink()
-            path.write_bytes(b"x" * 129)
+            if path_swap_calls == 1:
+                path.unlink()
+                path.write_bytes(b"x" * 129)
             return metadata
 
-        with mock.patch.object(freeze.os, "fstat", side_effect=replace_path):
-            data = freeze.read_bounded_regular_file(
+        with (
+            mock.patch.object(freeze.os, "fstat", side_effect=replace_path),
+            self.assertRaisesRegex(ReviewError, "changed while being read"),
+        ):
+            freeze.read_bounded_regular_file(
                 path, 128, label="fixture", limit_label="128-byte"
             )
-        self.assertEqual(data, original)
 
         path.write_bytes(original)
 
@@ -1743,6 +2991,28 @@ class ReviewToolsTest(unittest.TestCase):
         with (
             mock.patch.object(freeze.os, "fstat", side_effect=grow_open_file),
             self.assertRaisesRegex(ReviewError, "exceeds the 128-byte limit"),
+        ):
+            freeze.read_bounded_regular_file(
+                path, 128, label="fixture", limit_label="128-byte"
+            )
+
+        path.write_bytes(original)
+        fstat_calls = 0
+
+        def mutate_before_final_identity(descriptor: int) -> os.stat_result:
+            nonlocal fstat_calls
+            fstat_calls += 1
+            if fstat_calls == 2:
+                path.write_bytes(b"changed data")
+            return real_fstat(descriptor)
+
+        with (
+            mock.patch.object(
+                freeze.os,
+                "fstat",
+                side_effect=mutate_before_final_identity,
+            ),
+            self.assertRaisesRegex(ReviewError, "changed while being read"),
         ):
             freeze.read_bounded_regular_file(
                 path, 128, label="fixture", limit_label="128-byte"
@@ -1779,6 +3049,37 @@ raise SystemExit(3)
             )
         except subprocess.TimeoutExpired as error:
             self.fail(f"bounded regular-file reader blocked on a FIFO: {error}")
+        self.assertEqual(process.returncode, 0, process.stderr)
+
+    def test_common_bounded_regular_reader_does_not_block_on_fifo(self) -> None:
+        fifo = self.root / "common-bounded-fifo"
+        os.mkfifo(fifo)
+        program = """
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from common import ReviewError, read_bounded_regular_file
+try:
+    read_bounded_regular_file(Path(sys.argv[2]), max_bytes=128, label="fixture")
+except ReviewError as error:
+    if "not a regular file" in str(error):
+        raise SystemExit(0)
+    print(error, file=sys.stderr)
+    raise SystemExit(2)
+raise SystemExit(3)
+"""
+        try:
+            process = subprocess.run(
+                [sys.executable, "-c", program, str(TOOLS), str(fifo)],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=2,
+            )
+        except subprocess.TimeoutExpired as error:
+            self.fail(f"common bounded reader blocked on a FIFO: {error}")
         self.assertEqual(process.returncode, 0, process.stderr)
 
     def test_frozen_input_verify_cli_returns_controlled_nonzero(self) -> None:
@@ -1975,12 +3276,72 @@ raise SystemExit(3)
             self.head,
             "--out",
             "audit/qualification",
+            "--signing-key",
+            str(self.root.parent / "external-signing-key.pub"),
+            "--allowed-signers",
+            str(self.root.parent / "external-allowed-signers"),
+            "--advisory-db",
+            str(self.root.parent / "external-advisory-db"),
             "--skip-evidence",
             cwd=self.root,
             expected=2,
         )
 
         self.assertIn("outside --repo", process.stderr)
+
+    def test_candidate_qualifier_refuses_a_dangling_output_symlink(self) -> None:
+        with tempfile.TemporaryDirectory(dir=self.root.parent) as directory:
+            external = Path(directory)
+            output = external / "qualification"
+            output.symlink_to(external / "missing-target")
+
+            process = run(
+                str(TOOLS / "qualify_candidate.py"),
+                "--repo",
+                ".",
+                "--expected",
+                self.head,
+                "--out",
+                str(output),
+                "--signing-key",
+                str(external / "signing-key.pub"),
+                "--allowed-signers",
+                str(external / "allowed-signers"),
+                "--advisory-db",
+                str(external / "advisory-db"),
+                "--skip-evidence",
+                cwd=self.root,
+                expected=2,
+            )
+
+            self.assertIn("new directory outside --repo", process.stderr)
+            self.assertTrue(output.is_symlink())
+
+    def test_mutation_assembler_refuses_a_dangling_output_symlink(self) -> None:
+        with tempfile.TemporaryDirectory(dir=self.root.parent) as directory:
+            external = Path(directory)
+            output = external / "mutation-evidence"
+            output.symlink_to(external / "missing-target")
+            arguments = [
+                str(TOOLS / "prepare_mutation_evidence.py"),
+                "--repo",
+                ".",
+                "--candidate",
+                self.head,
+                "--out",
+                str(output),
+                "--signing-key",
+                str(external / "signing-key.pub"),
+                "--allowed-signers",
+                str(external / "allowed-signers"),
+            ]
+            for shard in ("0/4", "1/4", "2/4", "3/4"):
+                arguments.extend(("--shard", f"{shard}={external / shard}"))
+
+            process = run(*arguments, cwd=self.root, expected=2)
+
+            self.assertIn("new directory outside --repo", process.stderr)
+            self.assertTrue(output.is_symlink())
 
     def test_inventory_has_one_unreviewed_row_per_tracked_path(self) -> None:
         run(
@@ -2318,6 +3679,23 @@ raise SystemExit(3)
             self.assertRaisesRegex(ReviewError, "per-file byte limit"),
         ):
             freeze.digest_bounded_handoff_file(growing, growing.name, 0)
+
+        stable_size = self.root / "same-size-handoff-file"
+        stable_size.write_bytes(b"1234")
+        fstat_calls = 0
+
+        def mutate_same_size(descriptor: int) -> os.stat_result:
+            nonlocal fstat_calls
+            fstat_calls += 1
+            if fstat_calls == 2:
+                stable_size.write_bytes(b"5678")
+            return real_fstat(descriptor)
+
+        with (
+            mock.patch.object(freeze.os, "fstat", side_effect=mutate_same_size),
+            self.assertRaisesRegex(ReviewError, "changed while read"),
+        ):
+            freeze.digest_bounded_handoff_file(stable_size, stable_size.name, 0)
 
     def test_handoff_manifest_rows_reject_declared_resource_overflow(self) -> None:
         regular = {

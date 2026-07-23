@@ -931,8 +931,8 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
     /// subscription declaration, or assembler-configuration failure.
     pub async fn open_secure(
         keys: Keys,
-        session_id: impl Into<String>,
-        producer_id: impl Into<String>,
+        session_id: impl AsRef<str>,
+        producer_id: impl AsRef<str>,
         registry: R,
         assembler_limits: AssemblerLimits,
     ) -> Result<Self, OperationalLiveOpenError> {
@@ -955,19 +955,13 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
     /// subscription declaration, or assembler-configuration failure.
     pub async fn open_secure_with_config(
         keys: Keys,
-        session_id: impl Into<String>,
-        producer_id: impl Into<String>,
+        session_id: impl AsRef<str>,
+        producer_id: impl AsRef<str>,
         registry: R,
         assembler_limits: AssemblerLimits,
         config: OperationalLiveConfig,
     ) -> Result<Self, OperationalLiveOpenError> {
-        let prepared = Self::prepare(
-            &keys,
-            session_id.into(),
-            producer_id.into(),
-            registry,
-            assembler_limits,
-        )?;
+        let prepared = Self::prepare(&keys, session_id, producer_id, registry, assembler_limits)?;
         let bus = crate::secure_live::open_secure_bus(keys).await?;
         Self::from_prepared(
             bus,
@@ -990,8 +984,8 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
     /// declaration, or assembler-configuration failure.
     pub async fn from_bus(
         bus: ZenohBus,
-        session_id: impl Into<String>,
-        producer_id: impl Into<String>,
+        session_id: impl AsRef<str>,
+        producer_id: impl AsRef<str>,
         registry: R,
         assembler_limits: AssemblerLimits,
     ) -> Result<Self, OperationalLiveOpenError> {
@@ -1016,16 +1010,16 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
     /// declaration, or assembler-configuration failure.
     pub async fn from_bus_with_config(
         bus: ZenohBus,
-        session_id: impl Into<String>,
-        producer_id: impl Into<String>,
+        session_id: impl AsRef<str>,
+        producer_id: impl AsRef<str>,
         registry: R,
         assembler_limits: AssemblerLimits,
         config: OperationalLiveConfig,
     ) -> Result<Self, OperationalLiveOpenError> {
         Self::from_parts(
             bus,
-            session_id.into(),
-            producer_id.into(),
+            session_id,
+            producer_id,
             registry,
             assembler_limits,
             config,
@@ -1036,8 +1030,8 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
 
     async fn from_parts(
         bus: ZenohBus,
-        session_id: String,
-        producer_id: String,
+        session_id: impl AsRef<str>,
+        producer_id: impl AsRef<str>,
         registry: R,
         assembler_limits: AssemblerLimits,
         config: OperationalLiveConfig,
@@ -1055,30 +1049,32 @@ impl<R: RegistryVerifier> OperationalLiveReceiver<R> {
 
     fn prepare(
         keys: &Keys,
-        session_id: String,
-        producer_id: String,
+        session_id: impl AsRef<str>,
+        producer_id: impl AsRef<str>,
         registry: R,
         assembler_limits: AssemblerLimits,
     ) -> Result<PreparedOperational<R>, OperationalLiveOpenError> {
-        let observation_key = keys
-            .try_sensor_named(&session_id, SIDECAR_SENSOR_NAME)
-            .map_err(|error| OperationalLiveOpenError::Route(error.to_string()))?;
-        let monitor_key = keys
-            .try_sensor_named(&session_id, MONITOR_SENSOR_NAME)
-            .map_err(|error| OperationalLiveOpenError::Route(error.to_string()))?;
-        let realm = keys.realm().to_owned();
+        let session_id = session_id.as_ref();
+        let producer_id = producer_id.as_ref();
         let assembler = CrossRouteAssembler::new(
-            session_id.clone(),
-            producer_id.clone(),
+            session_id,
+            producer_id,
             registry,
             assembler_limits,
             Instant::now(),
         )?;
+        let observation_key = keys
+            .try_sensor_named(session_id, SIDECAR_SENSOR_NAME)
+            .map_err(|error| OperationalLiveOpenError::Route(error.to_string()))?;
+        let monitor_key = keys
+            .try_sensor_named(session_id, MONITOR_SENSOR_NAME)
+            .map_err(|error| OperationalLiveOpenError::Route(error.to_string()))?;
+        let realm = keys.realm().to_owned();
         Ok(PreparedOperational {
             assembler,
             realm,
-            session_id,
-            producer_id,
+            session_id: session_id.to_owned(),
+            producer_id: producer_id.to_owned(),
             observation_key,
             monitor_key,
         })
@@ -1555,6 +1551,8 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
 
+    use galadriel_core::observation::{ConsistencyProjection, Modality};
+    use ncp_core::Keys;
     use tokio::sync::{mpsc, Notify};
 
     use super::{
@@ -1564,12 +1562,90 @@ mod tests {
         take_deadline_ingress, CallbackPayload, CallbackPhase, IngressCloseGuard, IngressState,
         OperationalIngressFault, OperationalLiveConfig, OperationalLiveConfigError,
         OperationalLiveFault, OperationalLiveHealthSnapshot, OperationalLiveOpenError,
-        OperationalLiveProfile, OperationalTransportSecurity, PriorityIngressBudget, RawIngress,
-        SharedIngress, StartupActivationGuard, INGRESS_ACTIVATING, INGRESS_ACTIVE, INGRESS_CLOSED,
-        INGRESS_STARTING, MAX_MONITOR_EVENT_BYTES, MAX_OPERATIONAL_INGRESS_CAPACITY,
+        OperationalLiveProfile, OperationalLiveReceiver, OperationalTransportSecurity,
+        PriorityIngressBudget, RawIngress, SharedIngress, StartupActivationGuard,
+        INGRESS_ACTIVATING, INGRESS_ACTIVE, INGRESS_CLOSED, INGRESS_STARTING,
+        MAX_MONITOR_EVENT_BYTES, MAX_OPERATIONAL_INGRESS_CAPACITY,
         MAX_OPERATIONAL_INGRESS_STATE_BYTES,
     };
-    use crate::assembler::EvidenceRoute;
+    use crate::assembler::{
+        AssemblerConfigError, AssemblerProfile, EvidenceRoute, FrameIdentity,
+        RegistryOpportunityPolicy, RegistryVerifier, RegistryViolation,
+    };
+
+    struct RegistryMustNotBeRead;
+
+    impl RegistryVerifier for RegistryMustNotBeRead {
+        fn opportunity_policy(&self) -> Result<RegistryOpportunityPolicy, RegistryViolation> {
+            panic!("identity validation must precede registry access")
+        }
+
+        fn verify_summary(
+            &self,
+            _identity: FrameIdentity,
+            _registry_digest: &str,
+            _expected_modalities: &[Modality],
+        ) -> Result<(), RegistryViolation> {
+            panic!("identity validation must precede registry access")
+        }
+
+        fn verify_projection(
+            &self,
+            _identity: FrameIdentity,
+            _modality: Modality,
+            _projection: &ConsistencyProjection,
+        ) -> Result<(), RegistryViolation> {
+            panic!("identity validation must precede registry access")
+        }
+    }
+
+    fn assert_prepare_identity_error(
+        session_id: &str,
+        producer_id: &str,
+        expected_field: &'static str,
+    ) {
+        let keys = Keys::try_new("engram/ncp").expect("test realm is valid");
+        let limits = AssemblerProfile::BoundedV0_9
+            .try_limits()
+            .expect("test assembler profile is valid");
+        let error = match OperationalLiveReceiver::<RegistryMustNotBeRead>::prepare(
+            &keys,
+            session_id,
+            producer_id,
+            RegistryMustNotBeRead,
+            limits,
+        ) {
+            Err(error) => error,
+            Ok(_) => panic!("noncanonical identity must fail before preparation"),
+        };
+        let diagnostic = error.to_string();
+
+        match error {
+            OperationalLiveOpenError::Assembler(AssemblerConfigError::InvalidIdentity {
+                field,
+            }) => {
+                assert_eq!(field, expected_field);
+                assert_eq!(diagnostic, format!("invalid assembler {expected_field}"));
+            }
+            other => panic!("unexpected preparation error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn prepare_rejects_noncanonical_session_before_registry_access() {
+        assert_prepare_identity_error("uav+3", "crebain", "session_id");
+    }
+
+    #[test]
+    fn prepare_rejects_noncanonical_producer_before_registry_access() {
+        assert_prepare_identity_error("uav3", "crebain+1", "producer_id");
+    }
+
+    #[test]
+    fn prepare_rejects_oversized_identity_without_retaining_it() {
+        let oversized = "sensitive-invalid-identity".repeat(1_024);
+        assert_prepare_identity_error(&oversized, "crebain", "session_id");
+    }
 
     fn shared_ingress(
         capacity: usize,

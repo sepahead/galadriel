@@ -9,12 +9,17 @@ import hashlib
 import io
 import json
 import os
+import selectors
+import signal
 import shlex
+import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
+from collections import Counter
 from pathlib import Path
 from unittest import mock
 
@@ -22,11 +27,17 @@ TOOLS = Path(__file__).resolve().parents[1]
 ROOT = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 
-from common import ReviewError, canonical_json  # noqa: E402
+from common import (  # noqa: E402
+    SAFE_GIT_CONFIGURATION,
+    ReviewError,
+    canonical_json,
+    git as common_git,
+)
 from check_focused_mutation import assert_new_output_path  # noqa: E402
 from finalize_release import (  # noqa: E402
     CLOSURE_MANIFEST,
     CLOSURE_SIGNATURE,
+    EXPECTED_QUALIFICATION_TOOLS,
     LOCAL_CONVERGENCE,
     LOCAL_CONVERGENCE_SIGNATURE,
     RELEASE_DECISION,
@@ -36,6 +47,8 @@ from finalize_release import (  # noqa: E402
     cleanup_finalization_inputs,
     emit_closure_bundle,
     emit_publication_result,
+    finalization_candidate_control,
+    finalization_signing_key_source,
     main as finalize_release_main,
     publish_staged_output,
     postpublication_cleanup_status,
@@ -45,6 +58,8 @@ from finalize_release import (  # noqa: E402
     validate_candidate_plan_documents,
     validate_finalization_dag_evidence,
     validate_qualification_commands,
+    validate_qualification_environment,
+    validate_qualification_tools,
     validate_qualification_record,
     validate_supply_chain_report_records,
     verify_sha256sums,
@@ -65,31 +80,64 @@ from local_convergence import (  # noqa: E402
     validate_document as validate_local_convergence,
     validate_schema as validate_local_convergence_schema,
 )
+import qualify_candidate as qualifier  # noqa: E402
 from qualify_candidate import (  # noqa: E402
     BASE_COMMANDS,
+    DEPENDENCY_FETCH_COMMAND_NAMES,
     DEEP_COMMANDS,
+    EXPECTED_CANDIDATE_EVIDENCE_FILES,
     CommandSpec,
+    QUALIFICATION_ENVIRONMENT_KEYS,
+    QUALIFICATION_PATH_TOOLS,
+    build_qualification_environment,
     capture_report,
+    decode_candidate_evidence_json,
+    execution_policy_contract,
+    network_command_preconditions_met,
+    qualification_environment_contract,
+    qualification_outcome,
+    reject_cargo_configuration,
+    retain_candidate_evidence,
+    repository_control_snapshot,
+    run_bounded_process,
     run_command,
+    source_archive,
+    write_atomic_canonical_json,
+    write_receipt_log,
+    write_candidate_sandbox_profile,
 )
 from prepare_mutation_evidence import mutation_command  # noqa: E402
 from release_assurance import (  # noqa: E402
     ACCEPTANCE_METRIC_DOMAINS,
+    BoundedHostResult,
+    BROAD_MUTATION_RECEIPT,
     CARGO_IDENTITY,
     CARGO_MUTANTS_IDENTITY,
     FOCUSED_MUTATION_RECEIPT,
+    FOCUSED_MUTATION_ENVIRONMENT_CONTRACT,
     FocusedMutant,
     MUTATION_DIFF_OPTIONS,
+    MUTATION_BASELINE_COMMIT,
+    MUTATION_ENVIRONMENT_CONTRACT,
     MUTATION_LIVENESS_CHECKS,
     RUSTC_IDENTITY,
     assert_tracked_allowed_signer,
+    broad_mutation_command,
+    canonical_repository_identity,
     derive_external_allowed_signers,
     evaluate_acceptance,
     focused_liveness_mutation_command,
     git_tree_inventory,
+    require_agent_backed_public_signing_key,
+    require_origin_main_candidate,
+    refresh_canonical_origin_main,
+    run_bounded_host_command,
     sha256_bytes,
     sign_file,
+    snapshot_agent_backed_public_signing_key,
+    snapshot_independent_allowed_signers,
     validate_completed_file_ledger,
+    validate_broad_mutation_receipt,
     validate_decision_input,
     validate_evidence_config_binding,
     validate_mutation_outcomes,
@@ -98,7 +146,13 @@ from release_assurance import (  # noqa: E402
     validate_focused_mutation_receipt,
     validate_reviewed_task_dispositions,
     verify_artifact_manifest,
+    verify_candidate_commit,
     verify_signature,
+)
+from run_broad_mutation import (  # noqa: E402
+    assert_untracked_allowlist,
+    github_run_provenance,
+    run_shard as run_broad_mutation_shard,
 )
 
 
@@ -108,6 +162,87 @@ def focused_span_document(span: tuple[int, int, int, int]) -> dict[str, object]:
         "start": {"line": start_line, "column": start_column},
         "end": {"line": end_line, "column": end_column},
     }
+
+
+def command_test_environment(root: Path) -> dict[str, str]:
+    cargo_home = root.resolve(strict=True) / "test-cargo-home"
+    cargo_home.mkdir(exist_ok=True)
+    return {"CARGO_HOME": str(cargo_home), "PATH": os.environ["PATH"]}
+
+
+def test_tool_read_root() -> Path:
+    """Return a stable read root for the active Python executable."""
+
+    executable = Path(sys.executable).resolve()
+    parts = executable.parts
+    if len(parts) >= 3 and parts[:2] == ("/", "opt"):
+        return Path("/", "opt", parts[2])
+    if len(parts) >= 3 and parts[:3] == ("/", "usr", "local"):
+        return Path("/usr/local")
+    return executable.parent
+
+
+def candidate_sandbox_profile(
+    root: Path,
+    *,
+    worktree: Path,
+    writable_paths: tuple[Path, ...] = (),
+) -> Path:
+    profile = root / "test-candidate.sb"
+    write_candidate_sandbox_profile(
+        profile,
+        worktree=worktree,
+        source_repo=ROOT,
+        writable_paths=writable_paths,
+        tool_read_paths=(test_tool_read_root(),),
+    )
+    return profile
+
+
+def exact_test_candidate(root: Path) -> tuple[Path, str, str, dict[str, str]]:
+    worktree = root / "worktree"
+    worktree.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=worktree, check=True)
+    subprocess.run(
+        ["git", "config", "user.name", "Sepehr Mahmoudian"],
+        cwd=worktree,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "sepmhn@gmail.com"],
+        cwd=worktree,
+        check=True,
+    )
+    (worktree / "README.md").write_text("fixture\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README.md"], cwd=worktree, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "--no-gpg-sign", "-m", "Create fixture"],
+        cwd=worktree,
+        check=True,
+    )
+    commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD^{commit}"], cwd=worktree, text=True
+    ).strip()
+    tree = subprocess.check_output(
+        ["git", "rev-parse", "HEAD^{tree}"], cwd=worktree, text=True
+    ).strip()
+    subprocess.run(
+        [
+            "git",
+            "remote",
+            "add",
+            "origin",
+            "git@github.com:sepahead/galadriel.git",
+        ],
+        cwd=worktree,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "update-ref", "refs/remotes/origin/main", commit],
+        cwd=worktree,
+        check=True,
+    )
+    return worktree, commit, tree, repository_control_snapshot(worktree)
 
 
 def focused_mutant_document(mutant: FocusedMutant) -> dict[str, object]:
@@ -127,40 +262,54 @@ def focused_mutant_document(mutant: FocusedMutant) -> dict[str, object]:
 
 
 def focused_phase_results(
-    check: dict[str, object], *, test_status: object
+    check: dict[str, object], *, summary: str
 ) -> list[dict[str, object]]:
     cargo = "/fixture/toolchain/bin/cargo"
-    return [
+    if check["kind"] == "direct-test":
+        package = "--package=galadriel-ncp@0.9.0"
+        extra_build: list[str] = ["--locked"]
+        extra_test = ["--locked", "--lib", str(check["test"]), "--", "--exact"]
+    else:
+        package = "--package=galadriel-eval@0.9.0"
+        extra_build = ["--locked"]
+        extra_test = ["--locked", "--bin", str(check["binary"])]
+
+    phases: list[dict[str, object]] = [
         {
             "phase": "Build",
             "duration": 1.0,
-            "process_status": "Success",
+            "process_status": (
+                {"Failure": 101} if summary == "Unviable" else "Success"
+            ),
             "argv": [
                 cargo,
                 "test",
                 "--no-run",
                 "--verbose",
-                "--package=galadriel-ncp@0.9.0",
+                package,
                 "--all-features",
+                *extra_build,
             ],
-        },
+        }
+    ]
+    if summary == "Unviable":
+        return phases
+    phases.append(
         {
             "phase": "Test",
             "duration": 1.0,
-            "process_status": test_status,
+            "process_status": ("Success" if summary == "Success" else {"Failure": 101}),
             "argv": [
                 cargo,
                 "test",
                 "--verbose",
-                "--package=galadriel-ncp@0.9.0",
+                package,
                 "--all-features",
-                "--lib",
-                str(check["test"]),
-                "--",
-                "--exact",
+                *extra_test,
             ],
-        },
-    ]
+        }
+    )
+    return phases
 
 
 def focused_outcomes_document(check: dict[str, object]) -> dict[str, object]:
@@ -170,32 +319,33 @@ def focused_outcomes_document(check: dict[str, object]) -> dict[str, object]:
             "summary": "Success",
             "log_path": "log/baseline.log",
             "diff_path": None,
-            "phase_results": focused_phase_results(check, test_status="Success"),
+            "phase_results": focused_phase_results(check, summary="Success"),
         }
     ]
     required = check["required_mutants"]
     assert isinstance(required, tuple)
+    unviable = Counter(check.get("unviable_mutants", ()))
     for index, mutant in enumerate(required):
         assert isinstance(mutant, FocusedMutant)
+        summary = "Unviable" if unviable[mutant] else "CaughtMutant"
         outcomes.append(
             {
                 "scenario": {"Mutant": focused_mutant_document(mutant)},
-                "summary": "CaughtMutant",
+                "summary": summary,
                 "log_path": f"log/focused-{index}.log",
                 "diff_path": f"diff/focused-{index}.diff",
-                "phase_results": focused_phase_results(
-                    check, test_status={"Failure": 101}
-                ),
+                "phase_results": focused_phase_results(check, summary=summary),
             }
         )
     count = len(required)
+    unviable_count = sum(unviable.values())
     return {
         "outcomes": outcomes,
         "total_mutants": count,
         "missed": 0,
-        "caught": count,
+        "caught": count - unviable_count,
         "timeout": 0,
-        "unviable": 0,
+        "unviable": unviable_count,
         "success": 0,
         "start_time": "2026-07-14T00:00:00Z",
         "end_time": "2026-07-14T00:01:00Z",
@@ -213,6 +363,7 @@ def focused_receipt_document(
         outcomes = root / relative
         data = outcomes.read_bytes()
         count = len(check["required_mutants"])
+        unviable_count = len(check.get("unviable_mutants", ()))
         records.append(
             {
                 "id": check_id,
@@ -221,9 +372,9 @@ def focused_receipt_document(
                 "counts": {
                     "total_mutants": count,
                     "missed": 0,
-                    "caught": count,
+                    "caught": count - unviable_count,
                     "timeout": 0,
-                    "unviable": 0,
+                    "unviable": unviable_count,
                     "success": 0,
                 },
                 "outcomes": {
@@ -234,8 +385,10 @@ def focused_receipt_document(
             }
         )
     return {
-        "schema": "galadriel.focused-mutation-run.v1",
+        "schema": "galadriel.focused-mutation-run.v2",
         "candidate": {"commit": commit, "tree": tree},
+        "github_run": None,
+        "environment_contract": FOCUSED_MUTATION_ENVIRONMENT_CONTRACT,
         "toolchain": {
             "cargo": CARGO_IDENTITY,
             "cargo_executable": "/fixture/toolchain/bin/cargo",
@@ -243,6 +396,176 @@ def focused_receipt_document(
             "rustc": RUSTC_IDENTITY,
         },
         "checks": records,
+    }
+
+
+def broad_receipt_document(
+    root: Path,
+    *,
+    commit: str,
+    tree: str,
+    baseline: str,
+    shard: str,
+    diff: bytes,
+) -> dict[str, object]:
+    outcomes = root / "mutants.out" / "outcomes.json"
+    data = outcomes.read_bytes()
+    document = json.loads(data)
+    counts = {
+        field: document[field]
+        for field in (
+            "total_mutants",
+            "missed",
+            "caught",
+            "timeout",
+            "unviable",
+            "success",
+        )
+    }
+    return {
+        "schema": "galadriel.broad-mutation-run.v2",
+        "candidate": {"commit": commit, "tree": tree},
+        "baseline_commit": baseline,
+        "shard": shard,
+        "github_run": None,
+        "git_diff": {
+            "path": "git.diff",
+            "sha256": hashlib.sha256(diff).hexdigest(),
+            "size_bytes": len(diff),
+        },
+        "command_argv": broad_mutation_command(shard),
+        "environment_contract": MUTATION_ENVIRONMENT_CONTRACT,
+        "toolchain": {
+            "cargo": CARGO_IDENTITY,
+            "cargo_executable": "/fixture/toolchain/bin/cargo",
+            "cargo_mutants": CARGO_MUTANTS_IDENTITY,
+            "rustc": RUSTC_IDENTITY,
+        },
+        "exit_code": 0,
+        "status": "PASS",
+        "counts": counts,
+        "outcomes": {
+            "path": "mutants.out/outcomes.json",
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "size_bytes": len(data),
+        },
+    }
+
+
+def broad_phase_results(
+    *,
+    package: str,
+    summary: str,
+    baseline_packages: tuple[str, ...] | None = None,
+) -> list[dict[str, object]]:
+    packages = baseline_packages if baseline_packages is not None else (package,)
+    selectors = [f"--package={name}@0.9.0" for name in packages]
+    phases: list[dict[str, object]] = [
+        {
+            "phase": "Build",
+            "duration": 1.0,
+            "process_status": (
+                {"Failure": 101} if summary == "Unviable" else "Success"
+            ),
+            "argv": [
+                "/fixture/toolchain/bin/cargo",
+                "test",
+                "--no-run",
+                "--verbose",
+                *selectors,
+                "--all-features",
+                "--locked",
+            ],
+        }
+    ]
+    if summary != "Unviable":
+        phases.append(
+            {
+                "phase": "Test",
+                "duration": 1.0,
+                "process_status": (
+                    "Success" if summary == "Success" else {"Failure": 101}
+                ),
+                "argv": [
+                    "/fixture/toolchain/bin/cargo",
+                    "test",
+                    "--verbose",
+                    *selectors,
+                    "--all-features",
+                    "--locked",
+                ],
+            }
+        )
+    return phases
+
+
+def broad_outcomes_document(
+    *,
+    total: int = 500,
+    caught: int = 400,
+    offset: int = 0,
+    package: str = "galadriel-core",
+) -> dict[str, object]:
+    if total < caught:
+        raise ValueError("caught mutants cannot exceed total mutants")
+    source = f"crates/{package}/src/fixture.rs"
+    function_end = offset + total + 3
+    outcomes: list[dict[str, object]] = [
+        {
+            "scenario": "Baseline",
+            "summary": "Success",
+            "log_path": "log/baseline.log",
+            "diff_path": None,
+            "phase_results": broad_phase_results(
+                package=package,
+                summary="Success",
+                baseline_packages=(package,),
+            ),
+        }
+    ]
+    for index in range(total):
+        line = offset + index + 2
+        summary = "CaughtMutant" if index < caught else "Unviable"
+        outcomes.append(
+            {
+                "scenario": {
+                    "Mutant": {
+                        "name": (
+                            f"{source}:{line}:1: replace fixture_{line} -> bool "
+                            "with false"
+                        ),
+                        "package": package,
+                        "file": source,
+                        "function": {
+                            "function_name": f"fixture_{line}",
+                            "return_type": "-> bool",
+                            "span": focused_span_document((1, 1, function_end, 2)),
+                        },
+                        "span": focused_span_document((line, 1, line, 2)),
+                        "replacement": "false",
+                        "genre": "FnValue",
+                    }
+                },
+                "summary": summary,
+                "log_path": f"log/mutant-{line}.log",
+                "diff_path": f"diff/mutant-{line}.diff",
+                "phase_results": broad_phase_results(
+                    package=package,
+                    summary=summary,
+                ),
+            }
+        )
+    return {
+        "outcomes": outcomes,
+        "total_mutants": total,
+        "missed": 0,
+        "caught": caught,
+        "timeout": 0,
+        "unviable": total - caught,
+        "success": 0,
+        "start_time": "2026-07-22T00:00:00Z",
+        "end_time": "2026-07-22T00:01:00Z",
+        "cargo_mutants_version": "27.1.0",
     }
 
 
@@ -577,6 +900,434 @@ class GitFixture(unittest.TestCase):
         self.temporary.cleanup()
 
 
+class CandidateCommitIdentityTests(GitFixture):
+    def configure_signing_key(self, name: str) -> tuple[Path, Path]:
+        key = self.root / name
+        subprocess.run(
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.signingkey", str(key)],
+            cwd=self.repo,
+            check=True,
+        )
+        allowed = self.root / f"{name}.allowed"
+        derive_external_allowed_signers(key.with_suffix(".pub"), allowed)
+        return key, allowed
+
+    def signed_commit(
+        self,
+        *,
+        key: Path,
+        message: str,
+        author_name: str = "Sepehr Mahmoudian",
+        author_email: str = "sepmhn@gmail.com",
+    ) -> str:
+        (self.repo / "README.md").write_text(f"{message}\n", encoding="utf-8")
+        subprocess.run(["git", "add", "README.md"], cwd=self.repo, check=True)
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                f"user.name={author_name}",
+                "-c",
+                f"user.email={author_email}",
+                "-c",
+                f"user.signingkey={key}",
+                "-c",
+                "gpg.format=ssh",
+                "commit",
+                "-q",
+                "-S",
+                "-m",
+                message,
+            ],
+            cwd=self.repo,
+            check=True,
+        )
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, text=True
+        ).strip()
+
+    def test_signed_candidate_binds_exact_author_and_tree(self) -> None:
+        key, allowed = self.configure_signing_key("candidate-key")
+        commit = self.signed_commit(key=key, message="Sign candidate")
+        expected_tree = subprocess.check_output(
+            ["git", "rev-parse", f"{commit}^{{tree}}"],
+            cwd=self.repo,
+            text=True,
+        ).strip()
+        self.assertEqual(
+            verify_candidate_commit(self.repo, commit, allowed), expected_tree
+        )
+
+    def test_replacement_reference_is_rejected_before_signature_check(self) -> None:
+        original = self.commit
+        key, allowed = self.configure_signing_key("replacement-key")
+        replacement = self.signed_commit(key=key, message="Sign replacement")
+        subprocess.run(
+            ["git", "replace", original, replacement], cwd=self.repo, check=True
+        )
+        with self.assertRaisesRegex(ReviewError, "replacement references"):
+            verify_candidate_commit(self.repo, original, allowed)
+
+    def test_signed_candidate_with_substituted_identity_is_rejected(self) -> None:
+        key, allowed = self.configure_signing_key("identity-key")
+        commit = self.signed_commit(
+            key=key,
+            message="Sign substituted identity",
+            author_name="Another Author",
+            author_email="another@example.com",
+        )
+        with self.assertRaisesRegex(ReviewError, "author and committer identities"):
+            verify_candidate_commit(self.repo, commit, allowed)
+
+    def test_foreign_independent_trust_root_is_rejected(self) -> None:
+        key, _allowed = self.configure_signing_key("candidate-key")
+        commit = self.signed_commit(key=key, message="Sign candidate")
+        _foreign_key, foreign_allowed = self.configure_signing_key("foreign-key")
+        with self.assertRaisesRegex(ReviewError, "required signature"):
+            verify_candidate_commit(self.repo, commit, foreign_allowed)
+
+    def test_local_signature_format_is_rejected_before_verification(self) -> None:
+        key, allowed = self.configure_signing_key("candidate-key")
+        commit = self.signed_commit(key=key, message="Sign candidate")
+        subprocess.run(
+            ["git", "config", "gpg.format", "openpgp"],
+            cwd=self.repo,
+            check=True,
+        )
+        with (
+            mock.patch(
+                "release_assurance.run_bounded_host_command"
+            ) as signature_verification,
+            self.assertRaisesRegex(ReviewError, "alter a release Git operation"),
+        ):
+            verify_candidate_commit(self.repo, commit, allowed)
+        signature_verification.assert_not_called()
+
+    def test_independent_trust_root_snapshot_rejects_symlink(self) -> None:
+        _key, allowed = self.configure_signing_key("snapshot-key")
+        link = self.root / "allowed-link"
+        link.symlink_to(allowed)
+        with self.assertRaisesRegex(ReviewError, "cannot open"):
+            snapshot_independent_allowed_signers(link, self.root / "allowed-snapshot")
+
+    def test_origin_main_must_identify_the_exact_candidate(self) -> None:
+        with self.assertRaisesRegex(ReviewError, "origin/main"):
+            require_origin_main_candidate(self.repo, self.commit)
+        subprocess.run(
+            [
+                "git",
+                "update-ref",
+                "refs/remotes/origin/main",
+                self.commit,
+            ],
+            cwd=self.repo,
+            check=True,
+        )
+        self.assertEqual(
+            require_origin_main_candidate(self.repo, self.commit),
+            self.commit,
+        )
+        (self.repo / "README.md").write_text("later candidate\n", encoding="utf-8")
+        subprocess.run(["git", "add", "README.md"], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Create later candidate"],
+            cwd=self.repo,
+            check=True,
+        )
+        later = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.repo,
+            text=True,
+        ).strip()
+        with self.assertRaisesRegex(ReviewError, "exact candidate"):
+            require_origin_main_candidate(self.repo, later)
+
+    def test_canonical_refresh_uses_the_literal_public_fetch_contract(self) -> None:
+        with (
+            mock.patch(
+                "release_assurance.canonical_repository_identity",
+                return_value="https://github.com/sepahead/galadriel",
+            ),
+            mock.patch("release_assurance._reject_unsafe_local_git_configuration"),
+            mock.patch("release_assurance.assert_no_replace_refs") as no_replace,
+            mock.patch("release_assurance.git", return_value="") as git_run,
+            mock.patch(
+                "release_assurance.require_origin_main_candidate",
+                return_value=self.commit,
+            ) as require_main,
+        ):
+            self.assertEqual(
+                refresh_canonical_origin_main(self.repo, self.commit),
+                ("https://github.com/sepahead/galadriel", self.commit),
+            )
+        fetch_arguments = git_run.call_args.args[1:]
+        self.assertIn("https://github.com/sepahead/galadriel.git", fetch_arguments)
+        self.assertIn("refs/heads/main:refs/remotes/origin/main", fetch_arguments)
+        self.assertIn("--no-auto-maintenance", fetch_arguments)
+        self.assertIn("--no-prune", fetch_arguments)
+        self.assertIn("--no-prune-tags", fetch_arguments)
+        self.assertIn("--no-write-commit-graph", fetch_arguments)
+        self.assertIn("--show-forced-updates", fetch_arguments)
+        self.assertIn("--no-write-fetch-head", fetch_arguments)
+        self.assertEqual(git_run.call_args.kwargs["max_bytes"], 0)
+        self.assertEqual(no_replace.call_count, 2)
+        require_main.assert_called_once_with(self.repo, self.commit)
+
+    def test_canonical_refresh_fails_closed_before_or_during_fetch(self) -> None:
+        with (
+            mock.patch("release_assurance._reject_unsafe_local_git_configuration"),
+            mock.patch(
+                "release_assurance.canonical_repository_identity",
+                side_effect=ReviewError("noncanonical origin"),
+            ),
+            mock.patch("release_assurance.git") as git_run,
+        ):
+            with self.assertRaisesRegex(ReviewError, "noncanonical origin"):
+                refresh_canonical_origin_main(self.repo, self.commit)
+            git_run.assert_not_called()
+
+        with (
+            mock.patch(
+                "release_assurance.canonical_repository_identity",
+                return_value="https://github.com/sepahead/galadriel",
+            ),
+            mock.patch("release_assurance._reject_unsafe_local_git_configuration"),
+            mock.patch("release_assurance.assert_no_replace_refs"),
+            mock.patch(
+                "release_assurance.git",
+                side_effect=ReviewError("canonical fetch failed"),
+            ),
+            mock.patch(
+                "release_assurance.require_origin_main_candidate"
+            ) as require_main,
+        ):
+            with self.assertRaisesRegex(ReviewError, "canonical fetch failed"):
+                refresh_canonical_origin_main(self.repo, self.commit)
+            require_main.assert_not_called()
+
+    def test_canonical_refresh_rejects_remote_advancement(self) -> None:
+        with (
+            mock.patch(
+                "release_assurance.canonical_repository_identity",
+                return_value="https://github.com/sepahead/galadriel",
+            ),
+            mock.patch("release_assurance._reject_unsafe_local_git_configuration"),
+            mock.patch("release_assurance.assert_no_replace_refs"),
+            mock.patch("release_assurance.git", return_value=""),
+            mock.patch(
+                "release_assurance.require_origin_main_candidate",
+                side_effect=ReviewError(
+                    "origin/main does not identify the exact candidate"
+                ),
+            ),
+        ):
+            with self.assertRaisesRegex(ReviewError, "exact candidate"):
+                refresh_canonical_origin_main(self.repo, self.commit)
+
+    def test_canonical_refresh_rejects_local_url_rewrite_before_fetch(self) -> None:
+        subprocess.run(
+            [
+                "git",
+                "config",
+                "url.file:///tmp/substitute.insteadOf",
+                "https://github.com/",
+            ],
+            cwd=self.repo,
+            check=True,
+        )
+        with (
+            mock.patch(
+                "release_assurance.canonical_repository_identity",
+                return_value="https://github.com/sepahead/galadriel",
+            ),
+            mock.patch("release_assurance.git", wraps=common_git) as git_run,
+            self.assertRaisesRegex(ReviewError, "alter a release Git operation"),
+        ):
+            refresh_canonical_origin_main(self.repo, self.commit)
+        self.assertFalse(
+            any("fetch" in call.args[1:] for call in git_run.call_args_list)
+        )
+
+    def test_canonical_refresh_rejects_local_execution_and_integrity_overrides(
+        self,
+    ) -> None:
+        alternate_worktree = self.root / "alternate-worktree"
+        alternate_worktree.mkdir()
+        skip_list = self.root / "fsck-skip-list"
+        skip_list.write_text(f"{self.commit}\n", encoding="ascii")
+        cases = (
+            ("core.worktree", str(alternate_worktree)),
+            ("extensions.worktreeConfig", "true"),
+            ("fetch.fsck.missingEmail", "ignore"),
+            ("fetch.fsck.skipList", str(skip_list)),
+            ("gc.recentObjectsHook", "touch ignored"),
+            ("gpg.format", "openpgp"),
+            ("gpg.ssh.program", "touch ignored"),
+        )
+        for key, value in cases:
+            with self.subTest(key=key):
+                subprocess.run(
+                    ["git", "config", key, value],
+                    cwd=self.repo,
+                    check=True,
+                )
+                with (
+                    mock.patch(
+                        "release_assurance.canonical_repository_identity",
+                        return_value="https://github.com/sepahead/galadriel",
+                    ) as canonical_identity,
+                    mock.patch("release_assurance.git", wraps=common_git) as git_run,
+                    self.assertRaisesRegex(
+                        ReviewError, "alter a release Git operation"
+                    ),
+                ):
+                    refresh_canonical_origin_main(self.repo, self.commit)
+                canonical_identity.assert_not_called()
+                self.assertFalse(
+                    any("fetch" in call.args[1:] for call in git_run.call_args_list)
+                )
+                subprocess.run(
+                    ["git", "config", "--unset-all", key],
+                    cwd=self.repo,
+                    check=True,
+                )
+
+    def test_canonical_refresh_rejects_alternate_refs_command_before_fetch(
+        self,
+    ) -> None:
+        marker = self.root / "alternate-refs-command-ran"
+        subprocess.run(
+            [
+                "git",
+                "config",
+                "core.alternateRefsCommand",
+                f"touch {shlex.quote(str(marker))}",
+            ],
+            cwd=self.repo,
+            check=True,
+        )
+        with (
+            mock.patch(
+                "release_assurance.canonical_repository_identity",
+                return_value="https://github.com/sepahead/galadriel",
+            ),
+            mock.patch("release_assurance.git", wraps=common_git) as git_run,
+            self.assertRaisesRegex(ReviewError, "alter a release Git operation"),
+        ):
+            refresh_canonical_origin_main(self.repo, self.commit)
+        self.assertFalse(marker.exists())
+        self.assertFalse(
+            any("fetch" in call.args[1:] for call in git_run.call_args_list)
+        )
+
+
+class FinalizationCandidateControlTests(GitFixture):
+    def setUp(self) -> None:
+        super().setUp()
+        subprocess.run(
+            [
+                "git",
+                "remote",
+                "add",
+                "origin",
+                "git@github.com:sepahead/galadriel.git",
+            ],
+            cwd=self.repo,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "update-ref", "refs/remotes/origin/main", self.commit],
+            cwd=self.repo,
+            check=True,
+        )
+
+    def capture(self, expected_state: dict[str, object] | None = None):
+        def refresh(repo: Path, commit: str) -> tuple[str, str]:
+            return (
+                canonical_repository_identity(repo),
+                require_origin_main_candidate(repo, commit),
+            )
+
+        with mock.patch(
+            "finalize_release.refresh_canonical_origin_main",
+            side_effect=refresh,
+        ):
+            return finalization_candidate_control(
+                self.repo,
+                expected_commit=self.commit,
+                expected_tree=self.tree,
+                required_branch="main",
+                expected_state=expected_state,
+            )
+
+    def test_control_rejects_remote_ref_drift(self) -> None:
+        initial = self.capture()
+        other = subprocess.check_output(
+            ["git", "commit-tree", self.tree, "-m", "Create other ref target"],
+            cwd=self.repo,
+            text=True,
+        ).strip()
+        subprocess.run(
+            ["git", "update-ref", "refs/remotes/origin/main", other],
+            cwd=self.repo,
+            check=True,
+        )
+        with self.assertRaisesRegex(ReviewError, "origin/main"):
+            self.capture(initial)
+
+    def test_control_rejects_origin_and_local_config_drift(self) -> None:
+        initial = self.capture()
+        subprocess.run(
+            [
+                "git",
+                "remote",
+                "set-url",
+                "origin",
+                "https://example.invalid/other.git",
+            ],
+            cwd=self.repo,
+            check=True,
+        )
+        with self.assertRaisesRegex(ReviewError, "canonical credential-free"):
+            self.capture(initial)
+
+        subprocess.run(
+            [
+                "git",
+                "remote",
+                "set-url",
+                "origin",
+                "git@github.com:sepahead/galadriel.git",
+            ],
+            cwd=self.repo,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "fixture.changed", "true"],
+            cwd=self.repo,
+            check=True,
+        )
+        with self.assertRaisesRegex(ReviewError, "control changed"):
+            self.capture(initial)
+
+    def test_control_rejects_dirty_checkout_and_branch_drift(self) -> None:
+        initial = self.capture()
+        (self.repo / "README.md").write_text("dirty\n", encoding="utf-8")
+        with self.assertRaisesRegex(ReviewError, "clean candidate"):
+            self.capture(initial)
+        (self.repo / "README.md").write_text("fixture\n", encoding="utf-8")
+
+        subprocess.run(
+            ["git", "switch", "-q", "-c", "other"], cwd=self.repo, check=True
+        )
+        with self.assertRaisesRegex(ReviewError, "candidate branch"):
+            self.capture(initial)
+
+
 class FileLedgerTests(GitFixture):
     fields = [
         "path",
@@ -706,7 +1457,7 @@ class BindingAndManifestTests(GitFixture):
             check=True,
         )
         allowed = self.root / "qualification-allowed"
-        derive_external_allowed_signers(key, allowed)
+        derive_external_allowed_signers(key.with_suffix(".pub"), allowed)
         source = self.root / "qualification"
         artifact = source / "nested" / "evidence.json"
         artifact.parent.mkdir(parents=True)
@@ -950,7 +1701,7 @@ class BindingAndManifestTests(GitFixture):
             check=True,
         )
         allowed = self.root / "mutation-allowed"
-        derive_external_allowed_signers(key, allowed)
+        derive_external_allowed_signers(key.with_suffix(".pub"), allowed)
         candidate_repo = self.root / "candidate-repo"
         subprocess.run(
             ["git", "clone", "-q", "--shared", str(ROOT), str(candidate_repo)],
@@ -991,29 +1742,26 @@ class BindingAndManifestTests(GitFixture):
             "--",
         ]
         diff = subprocess.check_output(diff_argv, cwd=candidate_repo)
+        retained_diff = self.root / "git.diff"
+        retained_diff.write_bytes(diff)
+        github_run = {
+            "run_id": "123456789",
+            "run_attempt": "1",
+            "job": "mutation-diff",
+            "workflow": "Deep quality",
+            "repository": "sepahead/galadriel",
+            "ref": "refs/heads/main",
+            "sha": repository_commit,
+        }
         shards = []
+        broad_receipts = []
         for index in range(4):
             shard_id = f"{index}/4"
-            outcomes = self.root / f"shard-{index}" / "outcomes.json"
-            outcomes.parent.mkdir()
+            broad_root = self.root / "broad-runs" / f"{index}-of-4"
+            outcomes = broad_root / "mutants.out" / "outcomes.json"
+            outcomes.parent.mkdir(parents=True)
             outcomes.write_bytes(
-                canonical_json(
-                    {
-                        "outcomes": [
-                            {"scenario": "Baseline", "summary": "Success"},
-                            {"scenario": {"Mutant": {}}, "summary": "CaughtMutant"},
-                        ],
-                        "total_mutants": 1,
-                        "missed": 0,
-                        "caught": 1,
-                        "timeout": 0,
-                        "unviable": 0,
-                        "success": 0,
-                        "start_time": "2026-07-14T00:00:00Z",
-                        "end_time": "2026-07-14T00:01:00Z",
-                        "cargo_mutants_version": "27.1.0",
-                    }
-                )
+                canonical_json(broad_outcomes_document(offset=index * 1_000))
             )
             data = outcomes.read_bytes()
             shards.append(
@@ -1025,6 +1773,28 @@ class BindingAndManifestTests(GitFixture):
                         "path": outcomes.relative_to(self.root).as_posix(),
                         "sha256": hashlib.sha256(data).hexdigest(),
                         "size_bytes": len(data),
+                    },
+                }
+            )
+            receipt = broad_root / BROAD_MUTATION_RECEIPT
+            receipt_document = broad_receipt_document(
+                broad_root,
+                commit=repository_commit,
+                tree=repository_tree,
+                baseline=baseline,
+                shard=shard_id,
+                diff=diff,
+            )
+            receipt_document["github_run"] = github_run
+            receipt.write_bytes(canonical_json(receipt_document))
+            receipt_data = receipt.read_bytes()
+            broad_receipts.append(
+                {
+                    "shard": shard_id,
+                    "artifact": {
+                        "path": receipt.relative_to(self.root).as_posix(),
+                        "sha256": hashlib.sha256(receipt_data).hexdigest(),
+                        "size_bytes": len(receipt_data),
                     },
                 }
             )
@@ -1049,44 +1819,46 @@ class BindingAndManifestTests(GitFixture):
                 }
             )
         receipt = self.root / FOCUSED_MUTATION_RECEIPT
-        receipt.write_bytes(
-            canonical_json(
-                focused_receipt_document(
-                    self.root,
-                    commit=repository_commit,
-                    tree=repository_tree,
-                )
-            )
+        focused_receipt = focused_receipt_document(
+            self.root,
+            commit=repository_commit,
+            tree=repository_tree,
         )
+        focused_receipt["github_run"] = github_run
+        receipt.write_bytes(canonical_json(focused_receipt))
         receipt_data = receipt.read_bytes()
         manifest = self.root / "mutation-evidence.json"
-        manifest.write_bytes(
-            canonical_json(
-                {
-                    "schema": "galadriel.mutation-evidence.v3",
-                    "release": "0.9.0",
-                    "author": "Sepehr Mahmoudian",
-                    "candidate": {
-                        "commit": repository_commit,
-                        "tree": repository_tree,
-                    },
-                    "baseline_commit": baseline,
-                    "git_diff_argv": diff_argv,
-                    "git_diff_sha256": hashlib.sha256(diff).hexdigest(),
-                    "tool": {"name": "cargo-mutants", "version": "27.1.0"},
-                    "shards": shards,
-                    "focused_run_receipt": {
-                        "source_shard": "2/4",
-                        "artifact": {
-                            "path": FOCUSED_MUTATION_RECEIPT,
-                            "sha256": hashlib.sha256(receipt_data).hexdigest(),
-                            "size_bytes": len(receipt_data),
-                        },
-                    },
-                    "focused_checks": focused_checks,
-                }
-            )
-        )
+        manifest_document = {
+            "schema": "galadriel.mutation-evidence.v5",
+            "release": "0.9.0",
+            "author": "Sepehr Mahmoudian",
+            "candidate": {
+                "commit": repository_commit,
+                "tree": repository_tree,
+            },
+            "baseline_commit": baseline,
+            "github_run": github_run,
+            "git_diff_argv": diff_argv,
+            "git_diff_sha256": hashlib.sha256(diff).hexdigest(),
+            "git_diff": {
+                "path": "git.diff",
+                "sha256": hashlib.sha256(diff).hexdigest(),
+                "size_bytes": len(diff),
+            },
+            "tool": {"name": "cargo-mutants", "version": "27.1.0"},
+            "shards": shards,
+            "broad_run_receipts": broad_receipts,
+            "focused_run_receipt": {
+                "source_shard": "2/4",
+                "artifact": {
+                    "path": FOCUSED_MUTATION_RECEIPT,
+                    "sha256": hashlib.sha256(receipt_data).hexdigest(),
+                    "size_bytes": len(receipt_data),
+                },
+            },
+            "focused_checks": focused_checks,
+        }
+        manifest.write_bytes(canonical_json(manifest_document))
         signature = sign_file(manifest, key, "galadriel-mutation-evidence")
         _document, artifacts = validate_mutation_evidence(
             manifest,
@@ -1096,7 +1868,84 @@ class BindingAndManifestTests(GitFixture):
             commit=repository_commit,
             tree=repository_tree,
         )
-        self.assertEqual(len(artifacts), 7)
+        self.assertEqual(len(artifacts), 13)
+
+        retained_diff.unlink()
+        with self.assertRaisesRegex(ReviewError, "retained mutation Git diff"):
+            validate_mutation_evidence(
+                manifest,
+                signature,
+                allowed_signers=allowed,
+                repo=candidate_repo,
+                commit=repository_commit,
+                tree=repository_tree,
+            )
+        retained_diff.write_bytes(diff)
+
+        broad_receipt = self.root / "broad-runs/0-of-4" / BROAD_MUTATION_RECEIPT
+        valid_receipt = broad_receipt.read_bytes()
+        wrong_run_receipt = json.loads(valid_receipt)
+        wrong_run_receipt["github_run"]["run_attempt"] = "2"
+        wrong_run_bytes = canonical_json(wrong_run_receipt)
+        broad_receipt.write_bytes(wrong_run_bytes)
+        manifest_document["broad_run_receipts"][0]["artifact"] = {
+            "path": broad_receipt.relative_to(self.root).as_posix(),
+            "sha256": hashlib.sha256(wrong_run_bytes).hexdigest(),
+            "size_bytes": len(wrong_run_bytes),
+        }
+        signature.unlink()
+        manifest.write_bytes(canonical_json(manifest_document))
+        signature = sign_file(manifest, key, "galadriel-mutation-evidence")
+        with self.assertRaisesRegex(ReviewError, "targets another GitHub run"):
+            validate_mutation_evidence(
+                manifest,
+                signature,
+                allowed_signers=allowed,
+                repo=candidate_repo,
+                commit=repository_commit,
+                tree=repository_tree,
+            )
+
+        broad_receipt.write_bytes(valid_receipt)
+        manifest_document["broad_run_receipts"][0]["artifact"] = {
+            "path": broad_receipt.relative_to(self.root).as_posix(),
+            "sha256": hashlib.sha256(valid_receipt).hexdigest(),
+            "size_bytes": len(valid_receipt),
+        }
+        first_outcomes = self.root / "broad-runs/0-of-4/mutants.out/outcomes.json"
+        second_outcomes = self.root / "broad-runs/1-of-4/mutants.out/outcomes.json"
+        duplicate_outcomes = first_outcomes.read_bytes()
+        second_outcomes.write_bytes(duplicate_outcomes)
+        manifest_document["shards"][1]["artifact"] = {
+            "path": second_outcomes.relative_to(self.root).as_posix(),
+            "sha256": hashlib.sha256(duplicate_outcomes).hexdigest(),
+            "size_bytes": len(duplicate_outcomes),
+        }
+        second_receipt = self.root / "broad-runs/1-of-4" / BROAD_MUTATION_RECEIPT
+        second_receipt_document = json.loads(second_receipt.read_bytes())
+        second_receipt_document["outcomes"]["sha256"] = hashlib.sha256(
+            duplicate_outcomes
+        ).hexdigest()
+        second_receipt_document["outcomes"]["size_bytes"] = len(duplicate_outcomes)
+        second_receipt_bytes = canonical_json(second_receipt_document)
+        second_receipt.write_bytes(second_receipt_bytes)
+        manifest_document["broad_run_receipts"][1]["artifact"] = {
+            "path": second_receipt.relative_to(self.root).as_posix(),
+            "sha256": hashlib.sha256(second_receipt_bytes).hexdigest(),
+            "size_bytes": len(second_receipt_bytes),
+        }
+        signature.unlink()
+        manifest.write_bytes(canonical_json(manifest_document))
+        signature = sign_file(manifest, key, "galadriel-mutation-evidence")
+        with self.assertRaisesRegex(ReviewError, "duplicates another shard mutant"):
+            validate_mutation_evidence(
+                manifest,
+                signature,
+                allowed_signers=allowed,
+                repo=candidate_repo,
+                commit=repository_commit,
+                tree=repository_tree,
+            )
 
     def test_tracked_evidence_config_is_bound_to_accepted_output(self) -> None:
         source = json.loads(
@@ -1206,7 +2055,7 @@ class BindingAndManifestTests(GitFixture):
             check=True,
         )
         external = self.root / "external" / "allowed"
-        expected = derive_external_allowed_signers(key, external)
+        expected = derive_external_allowed_signers(key.with_suffix(".pub"), external)
         tracked = self.root / "tracked-allowed"
         tracked.write_bytes(expected)
         assert_tracked_allowed_signer(tracked, expected)
@@ -1221,19 +2070,121 @@ class BindingAndManifestTests(GitFixture):
         with self.assertRaisesRegex(ReviewError, "replaced or altered"):
             assert_tracked_allowed_signer(tracked, expected)
 
-    def test_agent_backed_public_signing_key_derives_the_same_trust_root(self) -> None:
+    def test_allowed_signer_derivation_accepts_only_a_public_handle(self) -> None:
         key = self.root / "agent-key"
         subprocess.run(
             ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)],
             check=True,
         )
-        from_private = derive_external_allowed_signers(
-            key, self.root / "private-allowed"
-        )
-        from_public = derive_external_allowed_signers(
+        allowed = derive_external_allowed_signers(
             key.with_suffix(".pub"), self.root / "public-allowed"
         )
-        self.assertEqual(from_public, from_private)
+        self.assertTrue(allowed.startswith(b"sepmhn@gmail.com ssh-ed25519 "))
+        with self.assertRaisesRegex(ReviewError, "exactly one line"):
+            derive_external_allowed_signers(key, self.root / "private-allowed")
+        self.assertFalse((self.root / "private-allowed").exists())
+
+    def test_agent_backed_public_signing_key_returns_canonical_identity(self) -> None:
+        public = (
+            b"ssh-ed25519 "
+            b"AAAAC3NzaC1lZDI1NTE5AAAAIFixtureAgentBackedPublicKey "
+            b"fixture-comment\n"
+        )
+        handle = self.root / "agent-handle.pub"
+        handle.write_bytes(public)
+        with mock.patch(
+            "release_assurance.run_bounded_host_command",
+            return_value=BoundedHostResult(0, public, b""),
+        ):
+            self.assertEqual(
+                require_agent_backed_public_signing_key(handle),
+                (
+                    b"sepmhn@gmail.com ssh-ed25519 "
+                    b"AAAAC3NzaC1lZDI1NTE5AAAAIFixtureAgentBackedPublicKey\n"
+                ),
+            )
+
+    def test_finalizer_signing_handle_is_external_and_public_only(self) -> None:
+        qualification = self.root / "qualification"
+        output = self.root / "output"
+        snapshots = self.root / "snapshots"
+        qualification.mkdir()
+        snapshots.mkdir()
+        external = self.root / "external"
+        external.mkdir()
+        public_handle = external / "signing-key.pub"
+        public_handle.write_text(
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFixturePublicKey comment\n",
+            encoding="ascii",
+        )
+
+        self.assertEqual(
+            finalization_signing_key_source(
+                str(public_handle),
+                repo=self.repo,
+                qualification_root=qualification,
+                final_output=output,
+                snapshot_parent=snapshots,
+            ),
+            public_handle.resolve(),
+        )
+        for root, label in (
+            (self.repo, "candidate repository"),
+            (qualification, "qualification tier"),
+            (output, "finalization output"),
+            (snapshots, "snapshot root"),
+        ):
+            root.mkdir(parents=True, exist_ok=True)
+            contained = root / f"{label.replace(' ', '-')}.pub"
+            contained.write_bytes(public_handle.read_bytes())
+            with (
+                self.subTest(label=label),
+                self.assertRaisesRegex(ReviewError, "outside"),
+            ):
+                finalization_signing_key_source(
+                    str(contained),
+                    repo=self.repo,
+                    qualification_root=qualification,
+                    final_output=output,
+                    snapshot_parent=snapshots,
+                )
+
+        destination = snapshots / "canonical-handle.pub"
+        signer = (
+            b"sepmhn@gmail.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFixturePublicKey\n"
+        )
+        with mock.patch(
+            "release_assurance.require_agent_backed_public_signing_key",
+            return_value=signer,
+        ):
+            retained, observed = snapshot_agent_backed_public_signing_key(
+                public_handle,
+                destination,
+            )
+        self.assertEqual(observed, signer)
+        self.assertEqual(
+            retained.read_bytes(),
+            b"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFixturePublicKey\n",
+        )
+        with (
+            mock.patch(
+                "release_assurance.require_agent_backed_public_signing_key",
+                return_value=signer,
+            ),
+            self.assertRaisesRegex(ReviewError, "refusing to replace"),
+        ):
+            snapshot_agent_backed_public_signing_key(public_handle, destination)
+
+    def test_finalizer_does_not_snapshot_private_signing_material(self) -> None:
+        private = self.root / "private-key"
+        subprocess.run(
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(private)],
+            check=True,
+        )
+        destination = self.root / "snapshot" / "SIGNING_KEY.pub"
+        with self.assertRaisesRegex(ReviewError, "exactly one line"):
+            snapshot_agent_backed_public_signing_key(private, destination)
+        self.assertFalse(destination.exists())
 
     def test_unsigned_input_is_rejected(self) -> None:
         document = self.root / "unsigned.json"
@@ -1243,9 +2194,7 @@ class BindingAndManifestTests(GitFixture):
             "sepmhn@gmail.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFixture\n",
             encoding="ascii",
         )
-        with self.assertRaisesRegex(
-            ReviewError, "missing or unsafe detached signature"
-        ):
+        with self.assertRaisesRegex(ReviewError, "cannot open detached signature"):
             verify_signature(
                 document,
                 self.root / "missing.sig",
@@ -1425,6 +2374,213 @@ class DispositionTests(GitFixture):
 
 
 class DecisionAndRunnerTests(unittest.TestCase):
+    @staticmethod
+    def make_candidate_evidence(root: Path) -> Path:
+        evidence = root / "candidate-evidence"
+        evidence.mkdir()
+        for name in EXPECTED_CANDIDATE_EVIDENCE_FILES:
+            payload = b"{}\n" if name.endswith(".json") else b"fixture\n"
+            (evidence / name).write_bytes(payload)
+        return evidence
+
+    def test_candidate_evidence_snapshot_rejects_special_and_oversized_files(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            evidence = self.make_candidate_evidence(root)
+            (evidence / "report.md").unlink()
+            os.mkfifo(evidence / "report.md")
+            with self.assertRaisesRegex(ReviewError, "special file"):
+                retain_candidate_evidence(evidence, root)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            evidence = self.make_candidate_evidence(root)
+            with (
+                mock.patch("qualify_candidate.MAX_QUALIFICATION_ARTIFACT_BYTES", 1),
+                self.assertRaisesRegex(ReviewError, "file exceeds"),
+            ):
+                retain_candidate_evidence(evidence, root)
+
+    def test_candidate_evidence_json_has_structural_bounds(self) -> None:
+        payload = (b'{"nested":' * 300) + b"null" + (b"}" * 300)
+        with self.assertRaisesRegex(ReviewError, "depth|strict JSON"):
+            decode_candidate_evidence_json(payload, "candidate evidence summary")
+
+    def test_candidate_evidence_snapshot_detects_post_inventory_change(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            evidence = self.make_candidate_evidence(root)
+            real_inventory = qualifier.candidate_evidence_inventory
+            changed = False
+
+            def mutate_after_inventory(
+                path: Path, *, capture_json: bool
+            ) -> tuple[dict[str, tuple[str, int]], dict[str, bytes]]:
+                nonlocal changed
+                result = real_inventory(path, capture_json=capture_json)
+                if path == evidence and not changed:
+                    (evidence / "summary.json").write_bytes(b"[]\n")
+                    changed = True
+                return result
+
+            with (
+                mock.patch(
+                    "qualify_candidate.candidate_evidence_inventory",
+                    side_effect=mutate_after_inventory,
+                ),
+                self.assertRaisesRegex(ReviewError, "changed before quarantine"),
+            ):
+                retain_candidate_evidence(evidence, root)
+
+    def test_shallow_qualification_cannot_report_pass(self) -> None:
+        self.assertEqual(
+            qualification_outcome(
+                command_status="PASS",
+                archive_present=True,
+                acceptance_status="PASS",
+                deep_requested=False,
+            ),
+            ("FAIL", "FAIL"),
+        )
+        self.assertEqual(
+            qualification_outcome(
+                command_status="PASS",
+                archive_present=True,
+                acceptance_status="PASS",
+                deep_requested=True,
+            ),
+            ("PASS", "PASS"),
+        )
+
+    def test_host_runner_interrupt_kills_and_reaps_process_group(self) -> None:
+        candidate_pid: int | None = None
+        real_popen = subprocess.Popen
+        real_selector = selectors.DefaultSelector
+
+        class InterruptSelector:
+            def __init__(self) -> None:
+                self.delegate = real_selector()
+
+            def register(self, *args: object, **kwargs: object) -> object:
+                return self.delegate.register(*args, **kwargs)
+
+            def get_map(self) -> object:
+                return self.delegate.get_map()
+
+            def select(self, timeout: float | None = None) -> object:
+                del timeout
+                raise KeyboardInterrupt
+
+            def close(self) -> None:
+                self.delegate.close()
+
+        def start(*args: object, **kwargs: object) -> subprocess.Popen[bytes]:
+            nonlocal candidate_pid
+            process = real_popen(*args, **kwargs)
+            candidate_pid = process.pid
+            return process
+
+        with (
+            mock.patch(
+                "common.selectors.DefaultSelector",
+                InterruptSelector,
+            ),
+            mock.patch("common.subprocess.Popen", side_effect=start),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            run_bounded_host_command(
+                [sys.executable, "-I", "-c", "import time; time.sleep(20)"],
+                context="interrupt fixture",
+                environment={"PATH": os.environ["PATH"]},
+                timeout_seconds=2,
+            )
+        self.assertIsNotNone(candidate_pid)
+        assert candidate_pid is not None
+        with self.assertRaises(ProcessLookupError):
+            os.kill(candidate_pid, 0)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
+    def test_launch_interrupt_kills_and_reaps_candidate(self) -> None:
+        candidate_pid: int | None = None
+
+        def interrupt(process: subprocess.Popen[bytes]) -> None:
+            nonlocal candidate_pid
+            candidate_pid = process.pid
+            raise KeyboardInterrupt
+
+        with tempfile.TemporaryDirectory() as directory:
+            with (
+                mock.patch(
+                    "qualify_candidate._wait_for_launch_gate",
+                    side_effect=interrupt,
+                ),
+                self.assertRaises(KeyboardInterrupt),
+            ):
+                run_bounded_process(
+                    [sys.executable, "-I", "-c", "import time; time.sleep(20)"],
+                    cwd=Path(directory),
+                    environment=os.environ,
+                    timeout_seconds=2,
+                    separate_stderr=True,
+                )
+        self.assertIsNotNone(candidate_pid)
+        assert candidate_pid is not None
+        with self.assertRaises(ProcessLookupError):
+            os.kill(candidate_pid, signal.SIGCONT)
+
+    def test_atomic_failure_record_replaces_a_prior_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "qualification.json"
+            write_atomic_canonical_json(path, {"status": "PASS"})
+            write_atomic_canonical_json(
+                path,
+                {"status": "FAIL", "error": "late validation failed"},
+            )
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {"error": "late validation failed", "status": "FAIL"},
+            )
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+            self.assertEqual(
+                tuple(path.parent.glob(".qualification.json.*.tmp")),
+                (),
+            )
+
+    def test_locked_fetch_requires_passing_preflight(self) -> None:
+        fetches = [
+            spec
+            for spec in BASE_COMMANDS
+            if spec.name in DEPENDENCY_FETCH_COMMAND_NAMES
+        ]
+        self.assertEqual(
+            [spec.name for spec in fetches],
+            [
+                "fetch-locked-dependencies",
+                "fetch-locked-fuzz-dependencies",
+            ],
+        )
+        self.assertEqual(
+            fetches[1].argv,
+            ("cargo", "fetch", "--locked", "--manifest-path", "fuzz/Cargo.toml"),
+        )
+        passing = [{"status": "PASS"}, {"status": "PASS"}]
+        failed = [{"status": "PASS"}, {"status": "FAIL"}]
+        for fetch in fetches:
+            self.assertTrue(network_command_preconditions_met(fetch, passing))
+            self.assertFalse(network_command_preconditions_met(fetch, failed))
+        self.assertTrue(
+            network_command_preconditions_met(
+                CommandSpec("offline-check", ("true",)),
+                failed,
+            )
+        )
+        with self.assertRaisesRegex(ReviewError, "no prior preflight"):
+            network_command_preconditions_met(fetches[0], [])
+        with self.assertRaisesRegex(ReviewError, "invalid status"):
+            network_command_preconditions_met(fetches[0], [{"status": "SKIP"}])
+
     def test_semantic_freeze_verification_precedes_release_audit(self) -> None:
         names = [spec.name for spec in BASE_COMMANDS]
         freeze_index = names.index("frozen-audit-inputs-verify")
@@ -1439,11 +2595,36 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 "--repo",
                 ".",
                 "--out",
-                "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
+                "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json",
                 "--allowed-signers",
                 "release/0.9.0/audit/ALLOWED_SIGNERS",
             ),
         )
+
+    def test_release_tool_qualification_matches_the_ci_module_set(self) -> None:
+        command = next(
+            spec for spec in BASE_COMMANDS if spec.name == "release-tool-tests"
+        )
+        modules = command.argv[4:]
+        expected = (
+            "scripts.tests.test_release_audit",
+            "repo_work.tests.test_package_release_assets",
+            "repo_work.tests.test_review_tools",
+            "repo_work.tests.test_task_dispositions",
+            "repo_work.tests.test_release_assurance",
+            "repo_work.tests.test_finalize_qualification",
+            "repo_work.tests.test_qualification_artifacts",
+            "repo_work.tests.test_host_process_bounds",
+        )
+        self.assertEqual(modules, expected)
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        runbook = (ROOT / "release/0.9.0/RELEASE-RUNBOOK.md").read_text(
+            encoding="utf-8"
+        )
+        for module in expected:
+            with self.subTest(module=module):
+                self.assertIn(module, workflow)
+                self.assertIn(module, runbook)
 
     def test_qualification_commands_are_argv_and_output_bound(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1452,12 +2633,16 @@ class DecisionAndRunnerTests(unittest.TestCase):
             logs.mkdir()
             recorded_root = root.resolve()
             inventory = recorded_root / "source-inventory"
-            trust = "/tmp/galadriel-recorded-trust/EXTERNAL_ALLOWED_SIGNERS"
+            trust = "/tmp/galadriel-recorded-trust/INDEPENDENT_ALLOWED_SIGNERS"
             dynamic = (
                 CommandSpec(
                     "verify-commit-signature-external-key",
                     (
                         "git",
+                        "--no-replace-objects",
+                        *SAFE_GIT_CONFIGURATION,
+                        "-c",
+                        "gpg.format=ssh",
                         "-c",
                         f"gpg.ssh.allowedSignersFile={trust}",
                         "verify-commit",
@@ -1530,48 +2715,72 @@ class DecisionAndRunnerTests(unittest.TestCase):
             ]
             commands = []
             manifest = {}
+            candidate_policy_sha256 = "a" * 64
+            dependency_fetch_policy_sha256 = "b" * 64
             for index, spec in enumerate(specs, 1):
                 relative = f"logs/{index:02d}-{spec.name}.log"
+                sandbox = {
+                    "executor": "/usr/bin/sandbox-exec",
+                    "policy_sha256": (
+                        dependency_fetch_policy_sha256
+                        if spec.name in DEPENDENCY_FETCH_COMMAND_NAMES
+                        else candidate_policy_sha256
+                    ),
+                    "network_policy": (
+                        "LOCKED_DEPENDENCY_FETCH"
+                        if spec.name in DEPENDENCY_FETCH_COMMAND_NAMES
+                        else "DENY"
+                    ),
+                }
                 header = {
                     "argv": list(spec.argv),
                     "cwd": spec.cwd,
                     "environment_overrides": dict(spec.environment),
-                    "started_at": "2026-07-14T00:00:00Z",
+                    "sandbox": sandbox,
+                    "started_at": "2026-07-14T00:00:00.000+00:00",
                     "timeout_seconds": spec.timeout_seconds,
                 }
                 log = root / relative
-                log.write_bytes(
-                    canonical_json(header) + b"--- combined stdout/stderr ---\nPASS\n"
+                combined_output = b"PASS\n"
+                receipt = {
+                    "name": spec.name,
+                    "argv": list(spec.argv),
+                    "cwd": spec.cwd,
+                    "environment_overrides": dict(spec.environment),
+                    "sandbox": sandbox,
+                    "execution_policy": execution_policy_contract(spec.timeout_seconds),
+                    "started_at": "2026-07-14T00:00:00.000+00:00",
+                    "finished_at": "2026-07-14T00:00:01.000+00:00",
+                    "duration_seconds": 1.0,
+                    "timeout_seconds": spec.timeout_seconds,
+                    "timed_out": False,
+                    "exit_code": 0,
+                    "status": "PASS",
+                    "log": relative,
+                    "combined_output_sha256": hashlib.sha256(
+                        combined_output
+                    ).hexdigest(),
+                    "combined_output_size_bytes": len(combined_output),
+                }
+                receipt = write_receipt_log(
+                    log,
+                    canonical_json(header)
+                    + b"--- combined stdout/stderr ---\n"
+                    + combined_output,
+                    receipt,
                 )
-                digest = hashlib.sha256(log.read_bytes()).hexdigest()
-                size = log.stat().st_size
                 manifest[relative] = {
                     "path": relative,
-                    "sha256": digest,
-                    "size_bytes": size,
+                    "sha256": receipt["log_sha256"],
+                    "size_bytes": receipt["log_size_bytes"],
                 }
-                commands.append(
-                    {
-                        "name": spec.name,
-                        "argv": list(spec.argv),
-                        "cwd": spec.cwd,
-                        "environment_overrides": dict(spec.environment),
-                        "started_at": "2026-07-14T00:00:00Z",
-                        "finished_at": "2026-07-14T00:00:01Z",
-                        "duration_seconds": 1.0,
-                        "timeout_seconds": spec.timeout_seconds,
-                        "timed_out": False,
-                        "exit_code": 0,
-                        "status": "PASS",
-                        "log": relative,
-                        "log_sha256": digest,
-                        "log_size_bytes": size,
-                    }
-                )
+                commands.append(receipt)
             validate_qualification_commands(
                 commands,
                 manifest_artifacts=manifest,
                 qualification_root=root,
+                sandbox_policy_sha256=candidate_policy_sha256,
+                dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
             )
             wrong_output = copy.deepcopy(commands)
             wrong_output[1]["argv"][-1] = "/tmp/another-qualification/source-inventory"
@@ -1580,6 +2789,8 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     wrong_output,
                     manifest_artifacts=manifest,
                     qualification_root=root,
+                    sandbox_policy_sha256=candidate_policy_sha256,
+                    dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
                 )
             commands[5]["argv"] = ["true"]
             with self.assertRaisesRegex(ReviewError, "command contract drifted"):
@@ -1587,29 +2798,16 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     commands,
                     manifest_artifacts=manifest,
                     qualification_root=root,
+                    sandbox_policy_sha256=candidate_policy_sha256,
+                    dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
                 )
 
     def test_mutation_outcomes_are_nonvacuous_and_internally_consistent(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "outcomes.json"
-            valid = {
-                "outcomes": [
-                    {"scenario": "Baseline", "summary": "Success"},
-                    {"scenario": {"Mutant": {}}, "summary": "CaughtMutant"},
-                    {"scenario": {"Mutant": {}}, "summary": "Unviable"},
-                ],
-                "total_mutants": 2,
-                "missed": 0,
-                "caught": 1,
-                "timeout": 0,
-                "unviable": 1,
-                "success": 0,
-                "start_time": "2026-07-14T00:00:00Z",
-                "end_time": "2026-07-14T00:01:00Z",
-                "cargo_mutants_version": "27.1.0",
-            }
+            valid = broad_outcomes_document()
             path.write_bytes(canonical_json(valid))
-            self.assertEqual(validate_mutation_outcomes(path, "0/4")["caught"], 1)
+            self.assertEqual(validate_mutation_outcomes(path, "0/4")["caught"], 400)
             for name, mutate in (
                 (
                     "vacuous",
@@ -1622,13 +2820,9 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 ),
                 (
                     "missed",
-                    lambda item: item.update(
-                        missed=1,
-                        caught=0,
-                        outcomes=[
-                            item["outcomes"][0],
-                            {"scenario": {"Mutant": {}}, "summary": "MissedMutant"},
-                        ],
+                    lambda item: (
+                        item.update(missed=1, caught=item["caught"] - 1),
+                        item["outcomes"][1].update(summary="MissedMutant"),
                     ),
                 ),
                 ("contradictory", lambda item: item["outcomes"].pop()),
@@ -1639,6 +2833,51 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     path.write_bytes(canonical_json(altered))
                     with self.assertRaises(ReviewError):
                         validate_mutation_outcomes(path, "0/4")
+
+            variants: list[tuple[str, dict[str, object], str]] = []
+            empty_descriptor = copy.deepcopy(valid)
+            empty_descriptor["outcomes"][1]["scenario"]["Mutant"] = {}
+            variants.append(("empty descriptor", empty_descriptor, "missing="))
+            missing_phase = copy.deepcopy(valid)
+            missing_phase["outcomes"][1]["phase_results"].pop()
+            variants.append(("missing phase", missing_phase, "phase or summary"))
+            duplicate = copy.deepcopy(valid)
+            duplicate["outcomes"][2]["scenario"]["Mutant"] = copy.deepcopy(
+                duplicate["outcomes"][1]["scenario"]["Mutant"]
+            )
+            variants.append(("duplicate descriptor", duplicate, "duplicates"))
+            wrong_cargo = copy.deepcopy(valid)
+            wrong_cargo["outcomes"][1]["phase_results"][0]["argv"].insert(2, "--quiet")
+            variants.append(
+                ("wrong Cargo command", wrong_cargo, "another Cargo command")
+            )
+            ambiguous_replacement = copy.deepcopy(valid)
+            ambiguous_replacement["outcomes"][1]["scenario"]["Mutant"][
+                "replacement"
+            ] = ""
+            variants.append(
+                (
+                    "ambiguous empty replacement",
+                    ambiguous_replacement,
+                    "ambiguous empty replacement",
+                )
+            )
+            for name, altered, message in variants:
+                with self.subTest(name=name):
+                    path.write_bytes(canonical_json(altered))
+                    with self.assertRaisesRegex(ReviewError, message):
+                        validate_mutation_outcomes(path, "0/4")
+
+            path.write_bytes(
+                canonical_json(broad_outcomes_document(total=499, caught=400))
+            )
+            with self.assertRaisesRegex(ReviewError, "fewer than 500"):
+                validate_mutation_outcomes(path, "0/4")
+            path.write_bytes(
+                canonical_json(broad_outcomes_document(total=500, caught=1))
+            )
+            with self.assertRaisesRegex(ReviewError, "less than 70%"):
+                validate_mutation_outcomes(path, "0/4")
             path.write_bytes(canonical_json(valid))
             linked = Path(directory) / "linked" / "outcomes.json"
             linked.parent.mkdir()
@@ -1722,6 +2961,76 @@ class DecisionAndRunnerTests(unittest.TestCase):
             with self.assertRaisesRegex(ReviewError, "canonical text"):
                 validate_focused_liveness_outcomes(path, check)
 
+    def test_focused_acceptance_mutation_binds_caught_and_unviable_sets(self) -> None:
+        check = MUTATION_LIVENESS_CHECKS[2]
+        document = focused_outcomes_document(check)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "outcomes.json"
+            path.write_bytes(canonical_json(document))
+            self.assertEqual(
+                validate_focused_liveness_outcomes(path, check),
+                {
+                    "total_mutants": 26,
+                    "missed": 0,
+                    "caught": 23,
+                    "timeout": 0,
+                    "unviable": 3,
+                    "success": 0,
+                },
+            )
+
+            unviable_index = next(
+                index
+                for index, outcome in enumerate(document["outcomes"])
+                if outcome["summary"] == "Unviable"
+            )
+            wrong_classification = copy.deepcopy(document)
+            wrong_classification["outcomes"][unviable_index]["summary"] = "CaughtMutant"
+            wrong_classification["unviable"] -= 1
+            wrong_classification["caught"] += 1
+            path.write_bytes(canonical_json(wrong_classification))
+            with self.assertRaisesRegex(ReviewError, "another outcome summary"):
+                validate_focused_liveness_outcomes(path, check)
+
+            added_test_phase = copy.deepcopy(document)
+            added_test_phase["outcomes"][unviable_index]["phase_results"].append(
+                copy.deepcopy(document["outcomes"][1]["phase_results"][1])
+            )
+            path.write_bytes(canonical_json(added_test_phase))
+            with self.assertRaisesRegex(ReviewError, "exactly Build phases"):
+                validate_focused_liveness_outcomes(path, check)
+
+            caught_index = next(
+                index
+                for index, outcome in enumerate(document["outcomes"])
+                if outcome["summary"] == "CaughtMutant"
+            )
+            removed_test_phase = copy.deepcopy(document)
+            removed_test_phase["outcomes"][caught_index]["phase_results"].pop()
+            path.write_bytes(canonical_json(removed_test_phase))
+            with self.assertRaisesRegex(ReviewError, "exactly Build and Test phases"):
+                validate_focused_liveness_outcomes(path, check)
+
+            category_swap = copy.deepcopy(document)
+            (
+                category_swap["outcomes"][caught_index]["scenario"],
+                category_swap["outcomes"][unviable_index]["scenario"],
+            ) = (
+                category_swap["outcomes"][unviable_index]["scenario"],
+                category_swap["outcomes"][caught_index]["scenario"],
+            )
+            path.write_bytes(canonical_json(category_swap))
+            with self.assertRaises(ReviewError):
+                validate_focused_liveness_outcomes(path, check)
+
+            empty_replacement = copy.deepcopy(document)
+            empty_replacement["outcomes"][caught_index]["scenario"]["Mutant"][
+                "replacement"
+            ] = ""
+            path.write_bytes(canonical_json(empty_replacement))
+            with self.assertRaisesRegex(ReviewError, "another mutant set"):
+                validate_focused_liveness_outcomes(path, check)
+
     def test_focused_receipt_binds_outer_invocation_and_cargo_executable(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1740,7 +3049,14 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 commit=commit,
                 tree=tree,
             )
-            self.assertEqual(len(artifacts), 2)
+            self.assertEqual(
+                tuple(artifacts),
+                (
+                    "delivery-boundary-state",
+                    "delivery-boundary-guards",
+                    "acceptance-evidence-estimation",
+                ),
+            )
 
             wrong_command = copy.deepcopy(valid)
             wrong_command["checks"][0]["command_argv"][
@@ -1756,6 +3072,14 @@ class DecisionAndRunnerTests(unittest.TestCase):
             wrong_cargo["toolchain"]["cargo_executable"] = "/tmp/another/cargo"
             receipt.write_bytes(canonical_json(wrong_cargo))
             with self.assertRaisesRegex(ReviewError, "another Cargo command"):
+                validate_focused_mutation_receipt(
+                    receipt, root=root, commit=commit, tree=tree
+                )
+
+            wrong_environment = copy.deepcopy(valid)
+            wrong_environment["environment_contract"]["base_keys"].append("RUSTFLAGS")
+            receipt.write_bytes(canonical_json(wrong_environment))
+            with self.assertRaisesRegex(ReviewError, "another environment contract"):
                 validate_focused_mutation_receipt(
                     receipt, root=root, commit=commit, tree=tree
                 )
@@ -1788,8 +3112,247 @@ class DecisionAndRunnerTests(unittest.TestCase):
         ]
         for command in commands:
             self.assertEqual(command[:3], ["cargo", "mutants", "--no-config"])
+            self.assertIn("--no-shuffle", command)
+            self.assertIn("--cargo-arg=--locked", command)
+            self.assertEqual(
+                command[command.index("--copy-vcs") : command.index("--copy-vcs") + 2],
+                ["--copy-vcs", "true"],
+            )
+        acceptance = focused_liveness_mutation_command(MUTATION_LIVENESS_CHECKS[2])
+        self.assertEqual(acceptance[-3:], ["--", "--bin", "galadriel-evidence"])
 
-    def test_ci_focused_mutation_validator_checks_both_outputs(self) -> None:
+    def test_broad_receipt_rejects_execution_contract_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "mutants.out" / "outcomes.json"
+            output.parent.mkdir()
+            output.write_bytes(canonical_json(broad_outcomes_document()))
+            diff = b"frozen diff\n"
+            commit = "1" * 40
+            tree = "2" * 40
+            valid = broad_receipt_document(
+                root,
+                commit=commit,
+                tree=tree,
+                baseline=MUTATION_BASELINE_COMMIT,
+                shard="0/4",
+                diff=diff,
+            )
+            receipt = root / BROAD_MUTATION_RECEIPT
+            receipt.write_bytes(canonical_json(valid))
+            validate_broad_mutation_receipt(
+                receipt,
+                root=root,
+                commit=commit,
+                tree=tree,
+                shard="0/4",
+                diff=diff,
+            )
+
+            variants: list[tuple[str, dict[str, object], str]] = []
+            wrong_command = copy.deepcopy(valid)
+            wrong_command["command_argv"].append("--list")
+            variants.append(("command", wrong_command, "another command"))
+            wrong_environment = copy.deepcopy(valid)
+            wrong_environment["environment_contract"]["base_keys"].append("RUSTFLAGS")
+            variants.append(
+                ("environment", wrong_environment, "another environment contract")
+            )
+            wrong_diff = copy.deepcopy(valid)
+            wrong_diff["git_diff"]["sha256"] = "0" * 64
+            variants.append(("diff", wrong_diff, "other diff bytes"))
+            wrong_outcome = copy.deepcopy(valid)
+            wrong_outcome["outcomes"]["sha256"] = "0" * 64
+            variants.append(("outcome", wrong_outcome, "outcome digest mismatch"))
+            wrong_exit = copy.deepcopy(valid)
+            wrong_exit["exit_code"] = 1
+            variants.append(("exit", wrong_exit, "zero exit status"))
+
+            for label, document, message in variants:
+                with self.subTest(label=label):
+                    receipt.write_bytes(canonical_json(document))
+                    with self.assertRaisesRegex(ReviewError, message):
+                        validate_broad_mutation_receipt(
+                            receipt,
+                            root=root,
+                            commit=commit,
+                            tree=tree,
+                            shard="0/4",
+                            diff=diff,
+                        )
+
+    def test_mutation_stage_allowlist_requires_each_named_input(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", "-b", "main"], cwd=root, check=True)
+            (root / "git.diff").write_bytes(b"diff")
+            expected = frozenset({"SUBJECT.txt", "git.diff", "git.diff.sha256"})
+            with self.assertRaisesRegex(ReviewError, "lacks required stage artifacts"):
+                assert_untracked_allowlist(
+                    root,
+                    exact=expected,
+                    prefixes=(),
+                    required=expected,
+                )
+            (root / "git.diff.sha256").write_text(
+                f"{hashlib.sha256(b'diff').hexdigest()}  git.diff\n",
+                encoding="ascii",
+            )
+            (root / "SUBJECT.txt").write_text("subject\n", encoding="utf-8")
+            self.assertEqual(
+                assert_untracked_allowlist(
+                    root,
+                    exact=expected,
+                    prefixes=(),
+                    required=expected,
+                ),
+                expected,
+            )
+            (root / "unexpected").write_bytes(b"x")
+            with self.assertRaisesRegex(ReviewError, "unlisted stage artifact"):
+                assert_untracked_allowlist(
+                    root,
+                    exact=expected,
+                    prefixes=(),
+                    required=expected,
+                )
+
+    def test_github_mutation_provenance_uses_the_explicit_candidate(self) -> None:
+        candidate = "a" * 40
+        environment = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_RUN_ID": "123456789",
+            "GITHUB_RUN_ATTEMPT": "2",
+            "GITHUB_JOB": "mutation-diff",
+            "GITHUB_WORKFLOW": "Deep quality",
+            "GITHUB_REPOSITORY": "sepahead/galadriel",
+            "GITHUB_REF": "refs/pull/42/merge",
+            "GITHUB_SHA": "b" * 40,
+            "MUTATION_CANDIDATE_SHA": candidate,
+        }
+        record = github_run_provenance(environment, candidate)
+        self.assertIsNotNone(record)
+        assert record is not None
+        self.assertEqual(record["sha"], candidate)
+        environment["MUTATION_CANDIDATE_SHA"] = "c" * 40
+        with self.assertRaisesRegex(ReviewError, "differs from checked HEAD"):
+            github_run_provenance(environment, candidate)
+
+    def test_broad_mutation_runner_uses_the_exact_isolated_environment(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", "-b", "main"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Sepehr Mahmoudian"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "sepmhn@gmail.com"],
+                cwd=root,
+                check=True,
+            )
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "--no-gpg-sign", "-m", "Create fixture"],
+                cwd=root,
+                check=True,
+            )
+            baseline = subprocess.check_output(
+                ["git", "rev-parse", "HEAD^{commit}"], cwd=root, text=True
+            ).strip()
+            (root / "README.md").write_text("fixture changed\n", encoding="utf-8")
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "--no-gpg-sign", "-m", "Change fixture"],
+                cwd=root,
+                check=True,
+            )
+            candidate = subprocess.check_output(
+                ["git", "rev-parse", "HEAD^{commit}"], cwd=root, text=True
+            ).strip()
+            candidate_tree = subprocess.check_output(
+                ["git", "rev-parse", "HEAD^{tree}"], cwd=root, text=True
+            ).strip()
+            diff = subprocess.check_output(
+                ["git", *MUTATION_DIFF_OPTIONS, f"{baseline}..{candidate}", "--"],
+                cwd=root,
+            )
+            (root / "git.diff").write_bytes(diff)
+            diff_digest = hashlib.sha256(diff).hexdigest()
+            (root / "git.diff.sha256").write_text(
+                f"{diff_digest}  git.diff\n",
+                encoding="ascii",
+            )
+            (root / "SUBJECT.txt").write_text(
+                "\n".join(
+                    (
+                        f"candidate_commit={candidate}",
+                        f"candidate_tree={candidate_tree}",
+                        f"baseline_commit={baseline}",
+                        f"diff_sha256={diff_digest}",
+                        "shard=0/4",
+                        "",
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            outcomes = broad_outcomes_document()
+            observed_environments: list[dict[str, str]] = []
+
+            def run_process(argv: list[str], **kwargs: object) -> BoundedHostResult:
+                environment = kwargs.get("environment")
+                assert isinstance(environment, dict)
+                observed_environments.append(environment)
+                if argv == ["cargo", "fetch", "--locked"]:
+                    return BoundedHostResult(0, b"", b"")
+                self.assertEqual(argv, broad_mutation_command("0/4"))
+                output = root / "mutants.out"
+                output.mkdir()
+                (output / "outcomes.json").write_bytes(canonical_json(outcomes))
+                return BoundedHostResult(0, b"", b"")
+
+            identities = {
+                "Cargo": CARGO_IDENTITY,
+                "cargo-mutants": CARGO_MUTANTS_IDENTITY,
+                "Cargo executable": "/fixture/toolchain/bin/cargo",
+                "rustc": RUSTC_IDENTITY,
+            }
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {"GALADRIEL_UNRELATED_INPUT": "must-not-propagate"},
+                    clear=False,
+                ),
+                mock.patch(
+                    "run_broad_mutation.exact_output",
+                    side_effect=lambda *args, **kwargs: identities[kwargs["context"]],
+                ),
+                mock.patch(
+                    "run_broad_mutation.run_bounded_host_command",
+                    side_effect=run_process,
+                ),
+                mock.patch("run_broad_mutation.MUTATION_BASELINE_COMMIT", baseline),
+                mock.patch("release_assurance.MUTATION_BASELINE_COMMIT", baseline),
+            ):
+                self.assertEqual(
+                    run_broad_mutation_shard(root, "0/4")["caught"],
+                    400,
+                )
+
+            self.assertEqual(len(observed_environments), 2)
+            for environment in observed_environments:
+                self.assertEqual(tuple(environment), QUALIFICATION_ENVIRONMENT_KEYS)
+                self.assertNotIn("GALADRIEL_UNRELATED_INPUT", environment)
+            receipt = root / BROAD_MUTATION_RECEIPT
+            self.assertTrue(receipt.is_file())
+
+        with self.assertRaisesRegex(ReviewError, "0/4 through 3/4"):
+            run_broad_mutation_shard(Path("."), "4/4")
+
+    def test_ci_focused_mutation_validator_checks_all_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             commit = "1" * 40
@@ -1934,6 +3497,59 @@ class DecisionAndRunnerTests(unittest.TestCase):
             self.assertTrue(linked_staging.is_dir())
             self.assertFalse(os.path.lexists(linked_output))
 
+    def test_finalizer_publication_guard_runs_after_flush_and_before_rename(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            staging = root / ".closure.staging"
+            staging.mkdir()
+            (staging / "artifact").write_bytes(b"complete\n")
+            output = root / "closure"
+            events: list[str] = []
+            real_fsync_tree = sys.modules["finalize_release"].fsync_tree
+            real_rename = atomic_rename_no_replace
+
+            def record_fsync(path: Path) -> None:
+                events.append("fsync")
+                real_fsync_tree(path)
+
+            def guard() -> None:
+                events.append("guard")
+
+            def record_rename(source: Path, destination: Path) -> None:
+                events.append("rename")
+                real_rename(source, destination)
+
+            with (
+                mock.patch("finalize_release.fsync_tree", side_effect=record_fsync),
+                mock.patch(
+                    "finalize_release.atomic_rename_no_replace",
+                    side_effect=record_rename,
+                ),
+            ):
+                publish_staged_output(
+                    staging,
+                    output,
+                    pre_publish_guard=guard,
+                )
+            self.assertEqual(events, ["fsync", "guard", "rename"])
+            self.assertTrue(output.is_dir())
+
+            blocked_staging = root / ".blocked.staging"
+            blocked_staging.mkdir()
+            blocked_output = root / "blocked"
+            with self.assertRaisesRegex(ReviewError, "candidate changed"):
+                publish_staged_output(
+                    blocked_staging,
+                    blocked_output,
+                    pre_publish_guard=lambda: (_ for _ in ()).throw(
+                        ReviewError("candidate changed")
+                    ),
+                )
+            self.assertTrue(blocked_staging.is_dir())
+            self.assertFalse(os.path.lexists(blocked_output))
+
     def test_publication_durability_opens_files_and_directories_nonblocking(
         self,
     ) -> None:
@@ -2069,7 +3685,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 check=True,
             )
             allowed = root / "ALLOWED_SIGNERS"
-            derive_external_allowed_signers(key, allowed)
+            derive_external_allowed_signers(key.with_suffix(".pub"), allowed)
             source = root / "source-inputs"
             source.mkdir()
 
@@ -2155,6 +3771,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 local_convergence_schema=schema,
                 signing_key=key,
                 allowed_signers=allowed,
+                pre_publish_guard=lambda: None,
             )
 
             expected_files = set(retained_inputs) | {
@@ -2259,13 +3876,15 @@ class DecisionAndRunnerTests(unittest.TestCase):
     def test_supply_chain_reports_must_be_nonempty_valid_json(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            sandbox = candidate_sandbox_profile(root, worktree=root)
             valid = capture_report(
                 ["python3", "-c", 'print(\'{"type":"summary"}\')'],
                 worktree=root,
-                environment=dict(os.environ),
+                environment=command_test_environment(root),
                 output=root / "reports" / "valid.jsonl",
                 json_lines=True,
                 report_stream="stdout",
+                sandbox_profile=sandbox,
             )
             self.assertGreater(valid["size_bytes"], 0)
             for name, program in (
@@ -2279,15 +3898,17 @@ class DecisionAndRunnerTests(unittest.TestCase):
                         capture_report(
                             ["python3", "-c", program],
                             worktree=root,
-                            environment=dict(os.environ),
+                            environment=command_test_environment(root),
                             output=root / "reports" / f"{name}.json",
                             json_lines=False,
                             report_stream="stdout",
+                            sandbox_profile=sandbox,
                         )
 
     def test_supply_chain_reports_retain_the_declared_stream(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            sandbox = candidate_sandbox_profile(root, worktree=root)
             cases = (
                 (
                     "cargo-deny-stderr-jsonl",
@@ -2296,6 +3917,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     "stderr",
                     "stdout",
                     "",
+                    b"",
                     b'{"type":"summary"}\n',
                 ),
                 (
@@ -2309,6 +3931,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     "stdout",
                     "stderr",
                     "audit diagnostic",
+                    b"audit diagnostic\n",
                     b'{"vulnerabilities":{}}\n',
                 ),
             )
@@ -2319,6 +3942,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 report_stream,
                 diagnostics_stream,
                 diagnostics_text,
+                diagnostics_payload,
                 expected_report,
             ) in cases:
                 with self.subTest(name=name):
@@ -2326,10 +3950,11 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     report = capture_report(
                         [sys.executable, "-c", program],
                         worktree=root,
-                        environment=dict(os.environ),
+                        environment=command_test_environment(root),
                         output=output,
                         json_lines=json_lines,
                         report_stream=report_stream,
+                        sandbox_profile=sandbox,
                     )
                     self.assertEqual(
                         set(report),
@@ -2339,19 +3964,27 @@ class DecisionAndRunnerTests(unittest.TestCase):
                             "sha256",
                             "size_bytes",
                             "report_stream",
+                            "receipt",
                             "diagnostics",
                         },
                     )
                     self.assertEqual(report["report_stream"], report_stream)
+                    self.assertEqual(report["receipt"], "report")
                     self.assertEqual(
                         report["diagnostics"],
-                        {"stream": diagnostics_stream, "text": diagnostics_text},
+                        {
+                            "stream": diagnostics_stream,
+                            "text": diagnostics_text,
+                            "sha256": hashlib.sha256(diagnostics_payload).hexdigest(),
+                            "size_bytes": len(diagnostics_payload),
+                        },
                     )
                     self.assertEqual(output.read_bytes(), expected_report)
 
     def test_supply_chain_reports_reject_wrong_or_invalid_selected_stream(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            sandbox = candidate_sandbox_profile(root, worktree=root)
             cases = (
                 (
                     "wrong-stream",
@@ -2411,20 +4044,22 @@ class DecisionAndRunnerTests(unittest.TestCase):
                         capture_report(
                             [sys.executable, "-c", program],
                             worktree=root,
-                            environment=dict(os.environ),
+                            environment=command_test_environment(root),
                             output=root / "reports" / f"{name}.json",
                             json_lines=False,
                             report_stream=report_stream,
+                            sandbox_profile=sandbox,
                         )
 
             with self.assertRaisesRegex(ReviewError, "report_stream must be exactly"):
                 capture_report(
                     [sys.executable, "-c", "pass"],
                     worktree=root,
-                    environment=dict(os.environ),
+                    environment=command_test_environment(root),
                     output=root / "reports" / "unknown.json",
                     json_lines=False,
                     report_stream="unknown",
+                    sandbox_profile=sandbox,
                 )
 
             with self.assertRaisesRegex(ReviewError, "report failed"):
@@ -2435,41 +4070,118 @@ class DecisionAndRunnerTests(unittest.TestCase):
                         "import sys; print('{\"valid\":true}'); sys.exit(7)",
                     ],
                     worktree=root,
-                    environment=dict(os.environ),
+                    environment=command_test_environment(root),
                     output=root / "reports" / "nonzero.json",
                     json_lines=False,
                     report_stream="stdout",
+                    sandbox_profile=sandbox,
                 )
 
     def test_finalizer_binds_supply_chain_report_streams_and_diagnostics(self) -> None:
+        reproducibility_root = Path("/qualification/reproducibility")
+        metadata_path = reproducibility_root / "cargo-metadata.json"
+        license_inventory_path = "reports/license-inventory.json"
         license_path = "reports/license-report.jsonl"
         vulnerability_path = "reports/vulnerability-report.json"
         manifest_artifacts = {
+            license_inventory_path: {"sha256": "c" * 64, "size_bytes": 303},
             license_path: {"sha256": "a" * 64, "size_bytes": 101},
             vulnerability_path: {"sha256": "b" * 64, "size_bytes": 202},
         }
+        empty_digest = hashlib.sha256(b"").hexdigest()
+        warning_payload = b"audit warning\n"
+        warning_digest = hashlib.sha256(warning_payload).hexdigest()
+        auxiliary_receipts = {
+            "license-inventory": {
+                "stdout_sha256": "c" * 64,
+                "stdout_size_bytes": 303,
+                "stderr_sha256": empty_digest,
+                "stderr_size_bytes": 0,
+                "_diagnostics_text_sha256": empty_digest,
+            },
+            "license-report": {
+                "stdout_sha256": empty_digest,
+                "stdout_size_bytes": 0,
+                "stderr_sha256": "a" * 64,
+                "stderr_size_bytes": 101,
+                "_diagnostics_text_sha256": empty_digest,
+            },
+            "vulnerability-report": {
+                "stdout_sha256": "b" * 64,
+                "stdout_size_bytes": 202,
+                "stderr_sha256": warning_digest,
+                "stderr_size_bytes": len(warning_payload),
+                "_diagnostics_text_sha256": hashlib.sha256(
+                    b"audit warning"
+                ).hexdigest(),
+            },
+        }
         qualification = {
+            "sandbox": {
+                "bindings": {
+                    "reproducibility_root": str(reproducibility_root),
+                }
+            },
+            "license_inventory": {
+                "argv": [
+                    "cargo",
+                    "deny",
+                    "--offline",
+                    "--all-features",
+                    "--locked",
+                    "list",
+                    "--metadata-path",
+                    str(metadata_path),
+                    "--format",
+                    "json",
+                    "--layout",
+                    "crate",
+                ],
+                "path": license_inventory_path,
+                "sha256": "c" * 64,
+                "size_bytes": 303,
+                "report_stream": "stdout",
+                "receipt": "license-inventory",
+                "scope": "CARGO_DENY_HOST_FILTERED_GRAPH",
+                "diagnostics": {
+                    "stream": "stderr",
+                    "text": "",
+                    "sha256": empty_digest,
+                    "size_bytes": 0,
+                },
+            },
             "license_report": {
                 "argv": [
                     "cargo",
                     "deny",
+                    "--offline",
                     "--format",
                     "json",
                     "--all-features",
                     "--locked",
                     "check",
+                    "--metadata-path",
+                    str(metadata_path),
                     "licenses",
                 ],
                 "path": license_path,
                 "sha256": "a" * 64,
                 "size_bytes": 101,
                 "report_stream": "stderr",
-                "diagnostics": {"stream": "stdout", "text": ""},
+                "receipt": "license-report",
+                "diagnostics": {
+                    "stream": "stdout",
+                    "text": "",
+                    "sha256": empty_digest,
+                    "size_bytes": 0,
+                },
             },
             "vulnerability_report": {
                 "argv": [
                     "cargo",
                     "audit",
+                    "--no-fetch",
+                    "--stale",
                     "--no-yanked",
                     "--ignore",
                     "RUSTSEC-2026-0041",
@@ -2480,10 +4192,20 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 "sha256": "b" * 64,
                 "size_bytes": 202,
                 "report_stream": "stdout",
-                "diagnostics": {"stream": "stderr", "text": "audit warning"},
+                "receipt": "vulnerability-report",
+                "diagnostics": {
+                    "stream": "stderr",
+                    "text": "audit warning",
+                    "sha256": warning_digest,
+                    "size_bytes": len(warning_payload),
+                },
             },
         }
-        validate_supply_chain_report_records(qualification, manifest_artifacts)
+        validate_supply_chain_report_records(
+            qualification,
+            manifest_artifacts,
+            auxiliary_receipts,
+        )
 
         variants: list[tuple[str, dict[str, object], str]] = []
         swapped = copy.deepcopy(qualification)
@@ -2515,7 +4237,11 @@ class DecisionAndRunnerTests(unittest.TestCase):
         for name, document, field in variants:
             with self.subTest(name=name):
                 with self.assertRaisesRegex(ReviewError, f"qualification {field}"):
-                    validate_supply_chain_report_records(document, manifest_artifacts)
+                    validate_supply_chain_report_records(
+                        document,
+                        manifest_artifacts,
+                        auxiliary_receipts,
+                    )
 
     def test_failed_acceptance_requires_exact_narrowed_disposition(self) -> None:
         acceptance = {
@@ -2539,7 +4265,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 "final_twenty_lens_review_signature_sha256": "7" * 64,
             },
             "decision": "NARROWED_GO",
-            "publication_scope": "GitHub research source release",
+            "publication_scope": "review-gated GitHub research source release",
             "doi": None,
             "zenodo": None,
             "removed_claim_ids": ["CLM-007"],
@@ -2616,19 +4342,46 @@ class DecisionAndRunnerTests(unittest.TestCase):
             )
 
     def test_shallow_or_unbound_qualification_is_rejected(self) -> None:
+        source_date_epoch = 1_753_225_600
         base = {
-            "schema": "galadriel.candidate-qualification.v2",
+            "schema": "galadriel.candidate-qualification.v3",
             "release": "0.9.0",
             "author": "Sepehr Mahmoudian",
             "doi": None,
             "zenodo": None,
             "status": "PASS",
             "command_status": "PASS",
-            "candidate": {"commit": "a" * 40, "tree": "b" * 40},
+            "release_gate": "PASS",
+            "candidate": {
+                "repository": "https://github.com/sepahead/galadriel",
+                "branch": "main",
+                "commit": "a" * 40,
+                "tree": "b" * 40,
+                "source_date_epoch": source_date_epoch,
+            },
+            "host": {},
+            "tools": {},
+            "tool_files": {},
+            "environment_contract": {},
+            "repository_control": {},
+            "sandbox": {},
+            "advisory_database": {},
             "deep_campaigns_requested": False,
             "evidence_config": "evidence/galadriel-0.9-candidate.json",
+            "commands": [],
+            "auxiliary_commands": [],
+            "acceptance": {},
             "evidence_config_binding": {},
+            "source_archive": {},
+            "cargo_metadata": {},
+            "packages": [],
+            "sboms": [],
+            "license_inventory": {},
+            "license_report": {},
+            "vulnerability_report": {},
+            "reproducibility": {},
             "mutation_evidence": {},
+            "limitations": "This record has component and source scope.",
         }
         with self.assertRaisesRegex(ReviewError, "deep campaigns"):
             validate_qualification_record(
@@ -2636,6 +4389,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 commit="a" * 40,
                 tree="b" * 40,
                 expected_evidence_config_sha256="c" * 64,
+                source_date_epoch=source_date_epoch,
             )
         base["deep_campaigns_requested"] = True
         with self.assertRaisesRegex(ReviewError, "preregistered config binding"):
@@ -2644,6 +4398,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 commit="a" * 40,
                 tree="b" * 40,
                 expected_evidence_config_sha256="c" * 64,
+                source_date_epoch=source_date_epoch,
             )
 
     def test_real_source_plan_schema_matches_tasks(self) -> None:
@@ -2979,7 +4734,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 check=True,
             )
             allowed = root / "ALLOWED_SIGNERS"
-            derive_external_allowed_signers(key, allowed)
+            derive_external_allowed_signers(key.with_suffix(".pub"), allowed)
             signature = sign_file(manifest, key, LOCAL_CONVERGENCE_NAMESPACE)
 
             def verify(
@@ -3077,9 +4832,292 @@ class DecisionAndRunnerTests(unittest.TestCase):
             self.assertEqual(fifo_result.returncode, 2)
             self.assertIn("missing or not regular", fifo_result.stderr)
 
+    def test_qualification_environment_has_an_exact_allowlist(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private = root / "private"
+            private.mkdir()
+            source = {
+                "PATH": os.environ["PATH"],
+                "HOME": "/host/home",
+                "RUSTUP_HOME": "/host/rustup",
+                "RUSTFLAGS": "unexpected",
+                "RUSTC_WRAPPER": "/tmp/wrapper",
+                "CARGO_HOME": "/host/cargo",
+                "HTTP_PROXY": "http://proxy.invalid",
+                "DYLD_INSERT_LIBRARIES": "/tmp/library",
+                "PYTHONPATH": "/tmp/python",
+                "TOKEN": "secret",
+            }
+            environment = build_qualification_environment(
+                source,
+                private_root=private,
+                target=private / "target",
+                source_date_epoch="1234567890",
+            )
+
+            self.assertEqual(tuple(environment), QUALIFICATION_ENVIRONMENT_KEYS)
+            self.assertEqual(set(environment), set(QUALIFICATION_ENVIRONMENT_KEYS))
+            self.assertNotEqual(environment["PATH"], source["PATH"])
+            for tool in QUALIFICATION_PATH_TOOLS:
+                self.assertIsNotNone(
+                    shutil.which(tool, path=environment["PATH"]),
+                    tool,
+                )
+            self.assertEqual(environment["RUSTUP_HOME"], source["RUSTUP_HOME"])
+            self.assertEqual(environment["GIT_ATTR_NOSYSTEM"], "1")
+            self.assertEqual(environment["GIT_CONFIG_GLOBAL"], os.devnull)
+            self.assertEqual(environment["GIT_CONFIG_NOSYSTEM"], "1")
+            self.assertEqual(environment["GIT_OPTIONAL_LOCKS"], "0")
+            self.assertEqual(environment["GIT_TERMINAL_PROMPT"], "0")
+            for name in (
+                "RUSTFLAGS",
+                "RUSTC_WRAPPER",
+                "HTTP_PROXY",
+                "DYLD_INSERT_LIBRARIES",
+                "PYTHONPATH",
+                "TOKEN",
+            ):
+                self.assertNotIn(name, environment)
+            for name in ("CARGO_HOME", "CARGO_TARGET_DIR", "HOME", "TMPDIR"):
+                path = Path(environment[name])
+                self.assertTrue(path.is_dir())
+                self.assertTrue(path.is_relative_to(private.resolve()))
+            self.assertNotEqual(environment["HOME"], source["HOME"])
+            self.assertNotEqual(environment["CARGO_HOME"], source["CARGO_HOME"])
+
+    def test_qualification_environment_rejects_unsafe_tool_paths(self) -> None:
+        cases = (
+            ({"HOME": "/host/home"}, "requires PATH"),
+            ({"PATH": "/usr/bin::/bin", "HOME": "/host/home"}, "absolute nonempty"),
+            ({"PATH": "relative:/bin", "HOME": "/host/home"}, "absolute nonempty"),
+            (
+                {
+                    "PATH": os.environ["PATH"],
+                    "HOME": "/host/home",
+                    "RUSTUP_HOME": "relative-rustup",
+                },
+                "RUSTUP_HOME must be absolute",
+            ),
+        )
+        for index, (source, message) in enumerate(cases):
+            with self.subTest(index=index), tempfile.TemporaryDirectory() as directory:
+                private = Path(directory) / "private"
+                private.mkdir()
+                with self.assertRaisesRegex(ReviewError, message):
+                    build_qualification_environment(
+                        source,
+                        private_root=private,
+                        target=private / "target",
+                        source_date_epoch="1234567890",
+                    )
+
+    def test_cargo_configuration_is_rejected_at_each_search_level(self) -> None:
+        cases = (
+            "worktree-config",
+            "ancestor-config-toml",
+            "cargo-home",
+            "link",
+            "dangling",
+        )
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                ancestor = root / "ancestor"
+                worktree = ancestor / "worktree"
+                cargo_home = root / "cargo-home"
+                worktree.mkdir(parents=True)
+                cargo_home.mkdir()
+                reject_cargo_configuration(worktree, cargo_home)
+
+                if case == "worktree-config":
+                    cargo = worktree / ".cargo"
+                    cargo.mkdir()
+                    (cargo / "config").write_text("[build]\n", encoding="utf-8")
+                elif case == "ancestor-config-toml":
+                    cargo = ancestor / ".cargo"
+                    cargo.mkdir()
+                    (cargo / "config.toml").write_text("[build]\n", encoding="utf-8")
+                elif case == "cargo-home":
+                    (cargo_home / "config.toml").write_text(
+                        "[build]\n", encoding="utf-8"
+                    )
+                elif case == "link":
+                    cargo = worktree / ".cargo"
+                    cargo.mkdir()
+                    target = root / "target-config"
+                    target.write_text("[build]\n", encoding="utf-8")
+                    (cargo / "config").symlink_to(target)
+                else:
+                    cargo = worktree / ".cargo"
+                    cargo.mkdir()
+                    (cargo / "config.toml").symlink_to(root / "missing-config")
+
+                with self.assertRaisesRegex(ReviewError, "Cargo configuration"):
+                    reject_cargo_configuration(worktree, cargo_home)
+
+    def test_command_created_cargo_configuration_fails_the_command(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            worktree, commit, tree, clone_control = exact_test_candidate(root)
+            logs = root / "logs"
+            logs.mkdir()
+            environment = command_test_environment(root)
+            self.assertEqual(
+                Path(environment["CARGO_HOME"]),
+                root.resolve(strict=True) / "test-cargo-home",
+            )
+            sandbox = candidate_sandbox_profile(
+                root,
+                worktree=worktree,
+                writable_paths=(Path(environment["CARGO_HOME"]),),
+            )
+            program = (
+                "import os,pathlib; "
+                "pathlib.Path(os.environ['CARGO_HOME'],'config.toml').write_text('[build]\\n')"
+            )
+            result = run_command(
+                CommandSpec("create-cargo-config", (sys.executable, "-c", program)),
+                worktree=worktree,
+                commit=commit,
+                tree=tree,
+                clone_control=clone_control,
+                sandbox_profile=sandbox,
+                environment=environment,
+                logs=logs,
+                index=1,
+            )
+            self.assertEqual(result["status"], "FAIL")
+            log = root / result["log"]
+            self.assertIn(
+                "QUALIFICATION_POLICY_FAILURE", log.read_text(encoding="utf-8")
+            )
+
+    def test_finalizer_requires_exact_qualification_environment_contract(self) -> None:
+        expected = qualification_environment_contract("1234567890")
+        qualification = {"environment_contract": expected}
+        validate_qualification_environment(qualification, 1_234_567_890)
+
+        mutations = []
+        added = copy.deepcopy(expected)
+        added["unexpected"] = True
+        mutations.append(added)
+        removed = copy.deepcopy(expected)
+        removed["isolated_paths"].pop()
+        mutations.append(removed)
+        policy = copy.deepcopy(expected)
+        policy["cargo_config_policy"] = "ALLOW"
+        mutations.append(policy)
+        epoch = copy.deepcopy(expected)
+        epoch["fixed_values"]["SOURCE_DATE_EPOCH"] = "1234567891"
+        mutations.append(epoch)
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                with self.assertRaisesRegex(ReviewError, "environment contract"):
+                    validate_qualification_environment(
+                        {"environment_contract": mutation}, 1_234_567_890
+                    )
+
+    def test_finalizer_requires_every_pinned_qualification_tool(self) -> None:
+        valid = {
+            "tools": copy.deepcopy(EXPECTED_QUALIFICATION_TOOLS),
+            "host": {
+                "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+                "machine": "arm64",
+                "python_implementation": "CPython",
+            },
+        }
+        validate_qualification_tools(valid)
+
+        for name in EXPECTED_QUALIFICATION_TOOLS:
+            without = copy.deepcopy(valid)
+            del without["tools"][name]
+            with (
+                self.subTest(tool=name, attack="omission"),
+                self.assertRaisesRegex(ReviewError, "toolchain or release tool set"),
+            ):
+                validate_qualification_tools(without)
+
+            substituted = copy.deepcopy(valid)
+            substituted["tools"][name] = f"different {name}"
+            with (
+                self.subTest(tool=name, attack="substitution"),
+                self.assertRaisesRegex(ReviewError, "toolchain or release tool set"),
+            ):
+                validate_qualification_tools(substituted)
+
+        for field, value in (
+            ("python_implementation", "PyPy"),
+            ("machine", "x86_64"),
+        ):
+            changed_host = copy.deepcopy(valid)
+            changed_host["host"][field] = value
+            with (
+                self.subTest(host_field=field),
+                self.assertRaisesRegex(ReviewError, "host or Python implementation"),
+            ):
+                validate_qualification_tools(changed_host)
+
+    def test_source_archive_pins_git_config_and_rejects_mode_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", "-b", "main"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Sepehr Mahmoudian"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "sepmhn@gmail.com"],
+                cwd=root,
+                check=True,
+            )
+            (root / "README.md").write_text("archive fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "--no-gpg-sign", "-m", "Create fixture"],
+                cwd=root,
+                check=True,
+            )
+            commit = subprocess.check_output(
+                ["git", "rev-parse", "HEAD^{commit}"], cwd=root, text=True
+            ).strip()
+            subprocess.run(["git", "config", "tar.umask", "0077"], cwd=root, check=True)
+            environment = command_test_environment(root)
+            record = source_archive(
+                root,
+                commit,
+                root / "canonical.tar.gz",
+                environment,
+            )
+            self.assertEqual(record["tracked_entries"], 1)
+
+            real_run = run_bounded_process
+
+            def run_with_wrong_mode(
+                argv: list[str] | tuple[str, ...], **kwargs: object
+            ) -> object:
+                changed = list(argv)
+                if "tar.umask=0022" in changed:
+                    changed[changed.index("tar.umask=0022")] = "tar.umask=0077"
+                return real_run(changed, **kwargs)
+
+            with mock.patch(
+                "qualify_candidate.run_bounded_process",
+                side_effect=run_with_wrong_mode,
+            ):
+                with self.assertRaisesRegex(ReviewError, "another type or mode"):
+                    source_archive(
+                        root,
+                        commit,
+                        root / "wrong-mode.tar.gz",
+                        environment,
+                    )
+
     def test_timeout_kills_child_process_group(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            worktree, commit, tree, clone_control = exact_test_candidate(root)
             logs = root / "logs"
             logs.mkdir()
             sentinel = root / "child-survived"
@@ -3091,14 +5129,20 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 "import subprocess,time; "
                 f"subprocess.Popen(['python3','-c',{child!r}]); time.sleep(60)"
             )
+            environment = command_test_environment(root)
+            sandbox = candidate_sandbox_profile(root, worktree=worktree)
             result = run_command(
                 CommandSpec(
                     "process-group-timeout",
                     ("python3", "-c", parent),
                     timeout_seconds=1,
                 ),
-                worktree=root,
-                environment=dict(os.environ),
+                worktree=worktree,
+                commit=commit,
+                tree=tree,
+                clone_control=clone_control,
+                sandbox_profile=sandbox,
+                environment=environment,
                 logs=logs,
                 index=1,
             )
@@ -3177,6 +5221,8 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 str(root / "decision.sig"),
                 "--signing-key",
                 str(root / "signing-key"),
+                "--allowed-signers",
+                str(root / "allowed-signers"),
                 "--out",
                 str(root / "closure"),
             ]
@@ -3201,12 +5247,19 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     side_effect=lambda _source, destination, **_kwargs: destination,
                 ),
                 mock.patch(
-                    "finalize_release.derive_external_allowed_signers",
+                    "finalize_release.snapshot_independent_allowed_signers",
                     return_value=b"allowed signer fixture\n",
                 ),
                 mock.patch("finalize_release.assert_tracked_allowed_signer"),
                 mock.patch(
                     "finalize_release.verify_candidate_commit", return_value="b" * 40
+                ),
+                mock.patch(
+                    "finalize_release.refresh_canonical_origin_main",
+                    return_value=(
+                        "https://github.com/sepahead/galadriel",
+                        candidate,
+                    ),
                 ),
                 mock.patch("finalize_release.candidate_json", return_value={}),
                 mock.patch(
@@ -3223,6 +5276,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
         script = TOOLS / "finalize_release.py"
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            repo, candidate, _, _ = exact_test_candidate(root)
             qualification = root / "qualification"
             qualification.mkdir()
             (qualification / "QUALIFICATION-MANIFEST.json").write_text(
@@ -3240,9 +5294,35 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 "decision-input": root / "decision.json",
                 "decision-input-signature": root / "decision.sig",
                 "signing-key": root / "signing-key",
+                "allowed-signers": root / "allowed-signers",
             }
             for path in inputs.values():
                 path.write_text("placeholder\n", encoding="utf-8")
+            fixture_key = root / "fixture-key"
+            subprocess.run(
+                [
+                    "ssh-keygen",
+                    "-q",
+                    "-t",
+                    "ed25519",
+                    "-N",
+                    "",
+                    "-f",
+                    str(fixture_key),
+                ],
+                check=True,
+            )
+            public_fields = (
+                fixture_key.with_suffix(".pub").read_text(encoding="ascii").split()
+            )
+            inputs["signing-key"].write_text(
+                f"{public_fields[0]} {public_fields[1]}\n",
+                encoding="ascii",
+            )
+            inputs["allowed-signers"].write_text(
+                (f"sepmhn@gmail.com {public_fields[0]} {public_fields[1]}\n"),
+                encoding="ascii",
+            )
             target = root / "symlink-target"
             target.write_text("replacement\n", encoding="utf-8")
 
@@ -3250,9 +5330,9 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 sys.executable,
                 str(script),
                 "--repo",
-                str(root / "missing-repository"),
+                str(repo),
                 "--candidate",
-                "0" * 40,
+                candidate,
                 "--qualification",
                 str(qualification),
             ]
@@ -3270,7 +5350,14 @@ class DecisionAndRunnerTests(unittest.TestCase):
                         text=True,
                     )
                     self.assertEqual(process.returncode, 2, process.stderr)
-                    self.assertIn("missing or not regular", process.stderr)
+                    expected_error = (
+                        "cannot open independent allowed-signers file"
+                        if option == "allowed-signers"
+                        else "must not be a symbolic link"
+                        if option == "signing-key"
+                        else "missing or not regular"
+                    )
+                    self.assertIn(expected_error, process.stderr)
                     path.unlink()
                     path.write_bytes(original)
 

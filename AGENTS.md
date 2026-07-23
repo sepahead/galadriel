@@ -13,6 +13,7 @@ Use the linked contracts as the technical source of truth.
 | ASD-STE100 | ASD-STE100 Simplified Technical English |
 | CI | continuous integration |
 | CLI | command-line interface |
+| CPU | central processing unit |
 | DOI | digital object identifier |
 | JSON | JavaScript Object Notation |
 | JSONL | JavaScript Object Notation Lines |
@@ -48,7 +49,7 @@ Read the documents that own the changed surface.
 | PID research code | `docs/PID_RS_1_0_MIGRATION.md`, `docs/EVALUATION.md`, and `docs/JUSTIFICATION.md` |
 | NCP, JSONL, Zenoh, producer, or live receiver code | `docs/PRODUCER-CONTRACT.md`, `docs/SECURE-DEPLOYMENT.md`, and `docs/ECOSYSTEM-CONNECTIONS.md` |
 | Advisory or downstream behavior | `docs/ADVISORY-BOUNDARY.md` and `docs/ECOSYSTEM-CONNECTIONS.md` |
-| Evidence, qualification, tags, assets, or publication | `release/0.9.0/RELEASE-RUNBOOK.md` and `repo_work/README.md` |
+| Evidence, qualification, tags, assets, or publication | `docs/DEPENDENCY-POLICY.md`, `release/0.9.0/RELEASE-RUNBOOK.md`, and `repo_work/README.md` |
 
 Treat each commit as an exact candidate identity.
 Do not use a mutable branch name as retained evidence.
@@ -57,7 +58,7 @@ Restart candidate-bound checks after each tracked change.
 ## Release identity
 
 The release version is `0.9.0`.
-The release channel is a GitHub research source release.
+The release channel is a review-gated GitHub research source release.
 Sepehr Mahmoudian is the release author and commit author.
 The canonical GitHub owner is `sepahead`.
 Every workspace package must keep `publish = false`.
@@ -71,6 +72,34 @@ Do not claim production support without exact evidence.
 Do not claim field validation without exact evidence.
 Do not claim deployment qualification without exact evidence.
 Do not claim independent replication without exact evidence.
+
+The evidence scope is the exact signed candidate and its recorded qualification contract.
+It does not extend to a deployed system, another host, or another repository.
+
+## Candidate freeze
+
+Keep the threat register at `LIVING_UNTIL_CANDIDATE_FREEZE` during implementation.
+Only the release operator can change it to `FROZEN_AT_CANDIDATE`.
+Make that change only with the final staged release inputs.
+
+The signed audit-input manifest is the only permitted pre-commit evidence record.
+It binds the exact stage-zero index blobs and external inputs.
+It does not bind a candidate commit or tree.
+The next signed commit creates the candidate identity.
+
+Install the active pair at these paths:
+
+- `release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json`
+- `release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig`
+
+After a tracked change, reopen the freeze.
+Create a new signed pair and a new signed candidate.
+Then, restart every candidate-bound check.
+
+Use `verify-lifecycle` during implementation.
+It requires the active pair to be absent while the threat register is living.
+It verifies the active signed pair after the threat register is frozen.
+Use the strict `verify` action for the release-candidate procedure.
 
 ## Architecture invariants
 
@@ -185,6 +214,11 @@ Create closure output outside the checkout.
 Use a new output directory for each run.
 Do not edit signed evidence.
 
+Run candidate-controlled qualification commands with the exact 16-key base environment in the qualification contract.
+Isolate `HOME`, `CARGO_HOME`, `CARGO_TARGET_DIR`, and `TMPDIR` in the private qualification root.
+Reject a file, directory, or link at each Cargo configuration path before and after each retained command.
+Do not pass ambient credentials, proxies, wrappers, loader variables, or compiler flags to candidate-controlled commands.
+
 Do not omit a negative result.
 Do not convert observational evidence into a successful gate.
 
@@ -195,12 +229,56 @@ It MUST NOT certify a security property or deployment.
 Use an independently obtained allowed-signers file.
 Do not let a candidate authenticate itself with its tracked trust file.
 Keep private signing material outside the repository.
+
+Use an agent-backed Ed25519 public-key handle for release-tool signing.
+Keep that handle outside the repository, evidence tier, output, and snapshot root.
+Require that handle to match the independent allowed-signers file.
 Use the SSH namespace in the release runbook.
+
+Require exactly one credential-free canonical fetch URL and push URL for `origin`.
+Fetch canonical `main` before you compare `HEAD` with `origin/main`.
 
 Follow `release/0.9.0/RELEASE-RUNBOOK.md` for release work.
 Preserve an obsolete release identity before you remove its reference.
 Remove obsolete references only after public release verification passes.
 Never move or reuse `v0.9.0`.
+
+The qualification record schema is `galadriel.candidate-qualification.v3`.
+Supply `--allowed-signers` from an independent trust root.
+Supply `--advisory-db` from the exact pinned external RustSec clone.
+Do not expose the original RustSec clone to candidate commands.
+Expose only the installed detached database copies.
+
+The release input pins that RustSec identity at the 2026-07-23 inspection cut.
+A qualification result remains bound to that pinned input.
+
+The qualification tier must contain exactly 22 auxiliary command receipts.
+It must contain 15 two-run reproducibility comparisons.
+These comparisons cover one source archive, seven package archives, and seven software bills of materials.
+
+Candidate evidence must contain the exact six-file flat set in the release contract.
+Apply the 1 GiB per-file limit and 4 GiB aggregate limit.
+Use only bounded JSON bytes captured from the verified host snapshot.
+Only a run that uses `--deep` can have qualification status `PASS`.
+
+Each retained command uses a stop-before-exec launch gate.
+It applies fixed CPU, core-file, output-file, open-file, and stream limits.
+macOS does not provide atomic recursive descendant tracking.
+A short-lived reparented process can exit between scans.
+The process scan detects a detached process that remains active.
+
+The inherited sandbox and resource limits apply before candidate execution.
+A sandboxed process can request work from an existing external service.
+The process scan cannot attribute that external service work.
+
+The license inventory scope is `CARGO_DENY_HOST_FILTERED_GRAPH`.
+It contains exactly 382 host-filtered packages from the validated 437-package Cargo graph.
+It is not a complete all-target license inventory.
+
+Use `CPython 3.14.6` for canonical release-asset construction, verification, and reconstruction.
+Require the asset tool to authenticate both internal tier signatures.
+Require it to bind both tiers to the expected candidate commit and tree.
+Require it to verify both complete manifest inventories and `SHA256SUMS` files.
 
 ## Secrets
 
@@ -210,6 +288,8 @@ Do not print a secret value.
 Do not put a secret in a command argument.
 Do not put a secret in a log, prompt, document, commit, or evidence file.
 Pass an approved secret through the process environment.
+
+Do not pass a secret to a candidate-controlled qualification command.
 
 Use only environment variable names in diagnostics.
 Stop the affected operation if output contains a secret.
@@ -228,9 +308,9 @@ At minimum, run these repository gates:
 python3 scripts/secure_deployment.py check
 python3 repo_work/build_task_dispositions.py verify
 python3 repo_work/local_convergence.py schema --repo .
-python3 repo_work/freeze_audit_inputs.py verify \
+python3 repo_work/freeze_audit_inputs.py verify-lifecycle \
   --repo . \
-  --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json \
+  --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
   --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
 python3 scripts/release_audit.py verify
 python3 repo_work/check_public_api.py
@@ -240,19 +320,42 @@ python3 repo_work/check_feature_graph.py
 cargo test --workspace --all-features --locked
 RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked
 cargo build -p galadriel-core --no-default-features --locked
-cargo deny --all-features --locked check
+cargo fetch --locked
+cargo fetch --locked --manifest-path fuzz/Cargo.toml
+cargo deny --offline --all-features --locked check
+cargo deny --offline --manifest-path fuzz/Cargo.toml --all-features --locked check --config fuzz/deny.toml
+```
+
+For a frozen candidate, also run this strict audit-input gate:
+
+```bash
+python3 repo_work/freeze_audit_inputs.py verify \
+  --repo . \
+  --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
+  --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
 ```
 
 Run the complete Python test command from `.github/workflows/ci.yml`.
 Run each feature-isolated CLI check from that workflow.
 Run the fuzz-workspace dependency check from that workflow.
+Run the vulnerable-feature check from that workflow.
+
+Run both current-stable Rust commands from that workflow.
+Run both offline supply-chain commands from that workflow.
+Materialize both locked dependency graphs before the offline supply-chain commands.
+
+Do not describe the minimum command block above as the complete CI mirror.
+The complete mirror includes every command in all three CI jobs.
 
 Use Rust `1.89.0` for the workspace gate.
+Use Rust and Cargo `1.97.1` for the current-stable gate.
 Use `nightly-2026-06-16` for the public API gate.
 Use `cargo-public-api 0.52.0` for that gate.
+
 Run the exact fuzz and mutation jobs for a release candidate.
-Require all four exact-candidate mutation shards to pass.
-Treat the observational mutation baseline as residual evidence.
+Require all four exact-candidate broad mutation shards to pass.
+Require all three focused mutation outcomes to pass.
+Treat the observational mutation-baseline job as residual evidence.
 
 Do not describe the deep workflow as green when an observational job fails.
 Do not claim that a skipped gate passed.
@@ -308,6 +411,10 @@ Use Sepehr Mahmoudian as the sole commit author.
 Use a concise professional imperative subject.
 Do not add automated attribution.
 
+A matching author or signer label is only a consistency check.
+It does not authenticate a commit or evidence file.
+Use the required cryptographic signature and independent trust root for authentication.
+
 Do not add a co-author trailer.
 Do not force-push `main`.
 
@@ -315,7 +422,7 @@ Push accepted milestones to the active remote review branch.
 Push the accepted exact candidate to `origin/main`.
 Confirm that local `HEAD` equals `origin/main` after promotion.
 
-Only the release operator can merge, tag, publish, or change repository settings.
+Only the release operator can merge, tag, publish, delete references, or change repository settings.
 A delegated agent MUST NOT do those actions.
 
 ## Completion check

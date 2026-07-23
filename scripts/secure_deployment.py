@@ -106,7 +106,20 @@ def _valid_segment(value: object) -> bool:
     )
 
 
-def _require_exact_fields(value: object, expected: set[str], label: str) -> dict[str, Any]:
+def _valid_core_identity(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and 1 <= len(value) <= 64
+        and value.isascii()
+        and value[0].isalnum()
+        and value[-1].isalnum()
+        and all(char.isalnum() or char in "-_.:" for char in value)
+    )
+
+
+def _require_exact_fields(
+    value: object, expected: set[str], label: str
+) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ProfileError(f"{label} must be an object")
     actual = set(value)
@@ -128,14 +141,18 @@ def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _require_path(value: object, label: str) -> str:
     if not isinstance(value, str) or not value or value != value.strip():
-        raise ProfileError(f"{label} must be a non-empty path without surrounding whitespace")
+        raise ProfileError(
+            f"{label} must be a non-empty path without surrounding whitespace"
+        )
     if (
         _has_forbidden_control(value)
         or "-----BEGIN" in value
         or "\n" in value
         or "$" in value
     ):
-        raise ProfileError(f"{label} must name a file; embedded credential material is forbidden")
+        raise ProfileError(
+            f"{label} must name a file; embedded credential material is forbidden"
+        )
     if value.startswith(("base64:", "data:")):
         raise ProfileError(f"{label} must be a file path, not inline data")
     return value
@@ -164,7 +181,9 @@ def _require_sha256(value: object, label: str) -> str:
         or len(value) != 64
         or any(char not in "0123456789abcdef" for char in value)
     ):
-        raise ProfileError(f"{label} must be exactly 64 lowercase SHA-256 hex characters")
+        raise ProfileError(
+            f"{label} must be exactly 64 lowercase SHA-256 hex characters"
+        )
     return value
 
 
@@ -175,7 +194,11 @@ def _require_tls_endpoint(value: object, label: str, *, listener: bool) -> str:
         raise ProfileError(
             f"{label} must be ASCII and at most {ZENOH_ENDPOINT_MAX_BYTES} bytes"
         )
-    if value != value.strip() or _has_forbidden_control(value) or any(c in value for c in "*$#?"):
+    if (
+        value != value.strip()
+        or _has_forbidden_control(value)
+        or any(c in value for c in "*$#?")
+    ):
         raise ProfileError(f"{label} contains an unsafe character")
     authority = value.removeprefix("tls/")
     if not authority:
@@ -202,26 +225,25 @@ def _require_tls_endpoint(value: object, label: str, *, listener: bool) -> str:
         except ValueError:
             parsed_host = None
             labels = host.split(".")
-            if (
-                len(host) > 253
+            if len(host) > 253 or any(
+                not part
+                or len(part) > 63
+                or part[0] == "-"
+                or part[-1] == "-"
                 or any(
-                    not part
-                    or len(part) > 63
-                    or part[0] == "-"
-                    or part[-1] == "-"
-                    or any(
-                        not (char.isascii() and (char.isalnum() or char == "-"))
-                        for char in part
-                    )
-                    for part in labels
+                    not (char.isascii() and (char.isalnum() or char == "-"))
+                    for char in part
                 )
+                for part in labels
             ):
                 raise ProfileError(f"{label} has an invalid DNS host")
 
     if not port.isascii() or not port.isdigit() or not 1 <= int(port) <= 65_535:
         raise ProfileError(f"{label} port must be a decimal integer in 1..=65535")
     if not listener and parsed_host is not None and parsed_host.is_unspecified:
-        raise ProfileError(f"{label} client endpoint must name a verifiable router host")
+        raise ProfileError(
+            f"{label} client endpoint must name a verifiable router host"
+        )
     return value
 
 
@@ -233,25 +255,33 @@ def validate_profile(raw: object) -> dict[str, Any]:
         raise ProfileError(f"profile_version must be {PROFILE_VERSION!r}")
 
     realm = profile["realm"]
-    if not isinstance(realm, str) or not realm or not all(
-        _valid_segment(segment) for segment in realm.split("/")
+    if (
+        not isinstance(realm, str)
+        or not realm
+        or not all(_valid_segment(segment) for segment in realm.split("/"))
     ):
-        raise ProfileError("realm must contain only exact, non-wildcard NCP path segments")
-    if not _valid_segment(profile["epoch"]):
-        raise ProfileError("epoch must be one exact 1..=64-byte NCP path segment")
-    if not _valid_segment(profile["producer_id"]):
-        raise ProfileError("producer_id must be one exact 1..=64-byte NCP path segment")
-    _require_sha256(
-        profile["registry_canonical_sha256"], "registry_canonical_sha256"
-    )
+        raise ProfileError(
+            "realm must contain only exact, non-wildcard NCP path segments"
+        )
+    if not _valid_core_identity(profile["epoch"]):
+        raise ProfileError("epoch must be one canonical Galadriel core identity")
+    if not _valid_core_identity(profile["producer_id"]):
+        raise ProfileError("producer_id must be one canonical Galadriel core identity")
+    _require_sha256(profile["registry_canonical_sha256"], "registry_canonical_sha256")
 
     producer_cn = _require_cn(profile["producer_cert_common_name"], "producer CN")
     observer_cn = _require_cn(profile["observer_cert_common_name"], "observer CN")
     if producer_cn == observer_cn:
-        raise ProfileError("producer and observer certificates must have distinct common names")
+        raise ProfileError(
+            "producer and observer certificates must have distinct common names"
+        )
 
-    _require_tls_endpoint(profile["router_listen_endpoint"], "router listener", listener=True)
-    _require_tls_endpoint(profile["router_connect_endpoint"], "router client endpoint", listener=False)
+    _require_tls_endpoint(
+        profile["router_listen_endpoint"], "router listener", listener=True
+    )
+    _require_tls_endpoint(
+        profile["router_connect_endpoint"], "router client endpoint", listener=False
+    )
     if profile["transport_max_message_bytes"] != TRANSPORT_MAX_MESSAGE_BYTES:
         raise ProfileError(
             f"transport_max_message_bytes must be {TRANSPORT_MAX_MESSAGE_BYTES}; "
@@ -308,8 +338,7 @@ def validate_render_profile(raw: object) -> dict[str, Any]:
         identity = (metadata.st_dev, metadata.st_ino)
         if identity in file_identities:
             raise ProfileError(
-                f"certificates.{field} aliases certificates."
-                f"{file_identities[identity]}"
+                f"certificates.{field} aliases certificates.{file_identities[identity]}"
             )
         file_identities[identity] = field
         certificates[field] = normalized
@@ -317,7 +346,7 @@ def validate_render_profile(raw: object) -> dict[str, Any]:
 
 
 def _routes(profile: dict[str, Any]) -> tuple[str, str]:
-    prefix = f'{profile["realm"]}/session/{profile["epoch"]}/sensor'
+    prefix = f"{profile['realm']}/session/{profile['epoch']}/sensor"
     return f"{prefix}/galadriel-pid", f"{prefix}/galadriel-monitor"
 
 
@@ -498,13 +527,22 @@ def check_rendered(raw_profile: object, rendered: object) -> list[str]:
     if _nested(router, "listen", "exit_on_failure") is not True:
         errors.append("router listener must fail closed")
 
-    for name, config in (("router", router), ("producer", producer), ("observer", observer)):
+    for name, config in (
+        ("router", router),
+        ("producer", producer),
+        ("observer", observer),
+    ):
         if _nested(config, "scouting", "multicast", "enabled") is not False:
             errors.append(f"{name} multicast discovery must be disabled")
         if _nested(config, "scouting", "gossip", "enabled") is not False:
             errors.append(f"{name} gossip discovery must be disabled")
-        if _nested(config, "transport", "link", "rx", "max_message_size") != TRANSPORT_MAX_MESSAGE_BYTES:
-            errors.append(f"{name} receive message maximum must be {TRANSPORT_MAX_MESSAGE_BYTES}")
+        if (
+            _nested(config, "transport", "link", "rx", "max_message_size")
+            != TRANSPORT_MAX_MESSAGE_BYTES
+        ):
+            errors.append(
+                f"{name} receive message maximum must be {TRANSPORT_MAX_MESSAGE_BYTES}"
+            )
 
     router_tls = _nested(router, "transport", "link", "tls")
     if not isinstance(router_tls, dict):
@@ -524,7 +562,10 @@ def check_rendered(raw_profile: object, rendered: object) -> list[str]:
     if not isinstance(access, dict):
         errors.append("router access_control is missing")
     else:
-        if access.get("enabled") is not True or access.get("default_permission") != "deny":
+        if (
+            access.get("enabled") is not True
+            or access.get("default_permission") != "deny"
+        ):
             errors.append("router ACL must be enabled and default-deny")
         rules = access.get("rules")
         expected_rules = {
@@ -535,8 +576,12 @@ def check_rendered(raw_profile: object, rendered: object) -> list[str]:
                 ["ingress"],
             ),
         }
-        if not isinstance(rules, list) or {rule.get("id") for rule in rules if isinstance(rule, dict)} != set(expected_rules):
-            errors.append("router must contain exactly the three directional Galadriel ACL rules")
+        if not isinstance(rules, list) or {
+            rule.get("id") for rule in rules if isinstance(rule, dict)
+        } != set(expected_rules):
+            errors.append(
+                "router must contain exactly the three directional Galadriel ACL rules"
+            )
             rules = []
         policies = access.get("policies")
         subjects = access.get("subjects")
@@ -544,12 +589,18 @@ def check_rendered(raw_profile: object, rendered: object) -> list[str]:
             "galadriel-producer": [profile["producer_cert_common_name"]],
             "galadriel-observer": [profile["observer_cert_common_name"]],
         }
-        if not isinstance(subjects, list) or {
-            subject.get("id"): subject.get("cert_common_names")
-            for subject in subjects
-            if isinstance(subject, dict)
-        } != expected_subjects:
-            errors.append("router subjects must map the two exact, distinct certificate CNs")
+        if (
+            not isinstance(subjects, list)
+            or {
+                subject.get("id"): subject.get("cert_common_names")
+                for subject in subjects
+                if isinstance(subject, dict)
+            }
+            != expected_subjects
+        ):
+            errors.append(
+                "router subjects must map the two exact, distinct certificate CNs"
+            )
         expected_policies = [
             {
                 "rules": ["galadriel-producer-put-ingress"],
@@ -564,24 +615,28 @@ def check_rendered(raw_profile: object, rendered: object) -> list[str]:
             },
         ]
         if policies != expected_policies:
-            errors.append("router policies must bind each rule to only its intended subject")
+            errors.append(
+                "router policies must bind each rule to only its intended subject"
+            )
         for rule in rules:
             if not isinstance(rule, dict) or rule.get("id") not in expected_rules:
                 continue
             expected_messages, expected_flows = expected_rules[rule["id"]]
             if rule.get("messages") != expected_messages:
-                errors.append(f'{rule["id"]} has an unauthorized message verb')
+                errors.append(f"{rule['id']} has an unauthorized message verb")
             if rule.get("flows") != expected_flows:
-                errors.append(f'{rule["id"]} has an unauthorized message flow')
+                errors.append(f"{rule['id']} has an unauthorized message flow")
             if rule.get("permission") != "allow":
-                errors.append(f'{rule["id"]} must be an explicit allow rule')
+                errors.append(f"{rule['id']} must be an explicit allow rule")
             if rule.get("key_exprs") != allowed_routes:
-                errors.append(f'{rule["id"]} must name only the two exact epoch routes')
+                errors.append(f"{rule['id']} must name only the two exact epoch routes")
 
     for role, config in (("producer", producer), ("observer", observer)):
         if config.get("mode") != "client":
             errors.append(f"{role} must use client mode")
-        if _nested(config, "connect", "endpoints") != [profile["router_connect_endpoint"]]:
+        if _nested(config, "connect", "endpoints") != [
+            profile["router_connect_endpoint"]
+        ]:
             errors.append(f"{role} must connect to exactly the profiled TLS router")
         if _nested(config, "connect", "exit_on_failure") is not True:
             errors.append(f"{role} connect must fail closed")
@@ -655,15 +710,16 @@ def _atomic_write(path: Path, payload: bytes, *, force: bool) -> None:
             pass
 
 
-def write_rendered(raw_profile: object, output_dir: Path, *, force: bool) -> dict[str, str]:
+def write_rendered(
+    raw_profile: object, output_dir: Path, *, force: bool
+) -> dict[str, str]:
     profile = validate_render_profile(raw_profile)
     rendered = render_profile(profile)
     errors = check_rendered(profile, rendered)
     if errors:
         raise ProfileError("renderer produced invalid output: " + "; ".join(errors))
     payloads = {
-        filename: _json_bytes(rendered[role])
-        for role, filename in OUTPUT_NAMES.items()
+        filename: _json_bytes(rendered[role]) for role, filename in OUTPUT_NAMES.items()
     }
     payloads[HANDOFF_NAME] = _json_bytes(_handoff(profile))
     digests = {
@@ -678,7 +734,9 @@ def write_rendered(raw_profile: object, output_dir: Path, *, force: bool) -> dic
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
     except OSError as error:
-        raise ProfileError(f"cannot create output directory {output_dir}: {error}") from error
+        raise ProfileError(
+            f"cannot create output directory {output_dir}: {error}"
+        ) from error
     if not force:
         conflicts = sorted(
             str(output_dir / filename)
@@ -734,44 +792,57 @@ def _assert_mutation_rejected(
         raise ProfileError(f"mutation guard failed open: {label}")
 
 
-def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, Any]]) -> int:
+def run_mutation_checks(
+    profile: dict[str, Any], rendered: dict[str, dict[str, Any]]
+) -> int:
     """Exercise authorization, parsing, handoff, and output-integrity regressions."""
 
     mutations = [
-        ("default allow", lambda c: c["router"]["access_control"].update(default_permission="allow")),
+        (
+            "default allow",
+            lambda c: c["router"]["access_control"].update(default_permission="allow"),
+        ),
         ("ACL disabled", lambda c: c["router"]["access_control"].update(enabled=False)),
         (
             "producer sensor wildcard",
-            lambda c: c["router"]["access_control"]["rules"][0]["key_exprs"].__setitem__(
-                0, f'{profile["realm"]}/session/*/sensor/**'
-            ),
+            lambda c: c["router"]["access_control"]["rules"][0][
+                "key_exprs"
+            ].__setitem__(0, f"{profile['realm']}/session/*/sensor/**"),
         ),
         (
             "producer command grant",
             lambda c: c["router"]["access_control"]["rules"][0]["key_exprs"].append(
-                f'{profile["realm"]}/session/{profile["epoch"]}/command/**'
+                f"{profile['realm']}/session/{profile['epoch']}/command/**"
             ),
         ),
         (
             "producer delete grant",
-            lambda c: c["router"]["access_control"]["rules"][0]["messages"].append("delete"),
+            lambda c: c["router"]["access_control"]["rules"][0]["messages"].append(
+                "delete"
+            ),
         ),
         (
             "producer publication egress grant",
-            lambda c: c["router"]["access_control"]["rules"][0]["flows"].append("egress"),
+            lambda c: c["router"]["access_control"]["rules"][0]["flows"].append(
+                "egress"
+            ),
         ),
         (
             "observer publication ingress grant",
-            lambda c: c["router"]["access_control"]["rules"][1]["flows"].append("ingress"),
+            lambda c: c["router"]["access_control"]["rules"][1]["flows"].append(
+                "ingress"
+            ),
         ),
         (
             "observer write grant",
-            lambda c: c["router"]["access_control"]["rules"][2]["messages"].append("put"),
+            lambda c: c["router"]["access_control"]["rules"][2]["messages"].append(
+                "put"
+            ),
         ),
         (
             "observer RPC grant",
             lambda c: c["router"]["access_control"]["rules"][2]["key_exprs"].append(
-                f'{profile["realm"]}/rpc/*'
+                f"{profile['realm']}/rpc/*"
             ),
         ),
         (
@@ -788,7 +859,9 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
         ),
         (
             "plaintext router listener",
-            lambda c: c["router"]["listen"]["endpoints"].__setitem__(0, "tcp/0.0.0.0:7447"),
+            lambda c: c["router"]["listen"]["endpoints"].__setitem__(
+                0, "tcp/0.0.0.0:7447"
+            ),
         ),
         (
             "mTLS disabled",
@@ -831,8 +904,21 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
     invalid_profiles = [
         ("wildcard epoch", lambda p: p.update(epoch="*")),
         ("wildcard producer", lambda p: p.update(producer_id="crebain-*")),
-        ("shared CN", lambda p: p.update(observer_cert_common_name=p["producer_cert_common_name"])),
-        ("plaintext connect", lambda p: p.update(router_connect_endpoint="tcp/router:7447")),
+        ("plus epoch", lambda p: p.update(epoch="uav+3")),
+        ("Unicode producer", lambda p: p.update(producer_id="époch1")),
+        ("leading identity separator", lambda p: p.update(epoch="-uav3")),
+        ("trailing identity separator", lambda p: p.update(producer_id="uav3-")),
+        ("oversized identity", lambda p: p.update(epoch="a" * 65)),
+        (
+            "shared CN",
+            lambda p: p.update(
+                observer_cert_common_name=p["producer_cert_common_name"]
+            ),
+        ),
+        (
+            "plaintext connect",
+            lambda p: p.update(router_connect_endpoint="tcp/router:7447"),
+        ),
         (
             "invalid connect port",
             lambda p: p.update(router_connect_endpoint="tls/router:notaport"),
@@ -840,17 +926,21 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
         (
             "endpoint-local TLS override",
             lambda p: p.update(
-                router_connect_endpoint=(
-                    "tls/router:7447#verify_name_on_connect=false"
-                )
+                router_connect_endpoint=("tls/router:7447#verify_name_on_connect=false")
             ),
         ),
         (
             "endpoint-local transport metadata",
             lambda p: p.update(router_connect_endpoint="tls/router:7447?rel=0"),
         ),
-        ("loose receive cap", lambda p: p.update(transport_max_message_bytes=1_073_741_824)),
-        ("uppercase registry digest", lambda p: p.update(registry_canonical_sha256="A" * 64)),
+        (
+            "loose receive cap",
+            lambda p: p.update(transport_max_message_bytes=1_073_741_824),
+        ),
+        (
+            "uppercase registry digest",
+            lambda p: p.update(registry_canonical_sha256="A" * 64),
+        ),
         (
             "inline key bytes",
             lambda p: p["certificates"].update(
@@ -873,17 +963,27 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
             continue
         raise ProfileError(f"profile mutation guard failed open: {label}")
 
+    generic_realm = copy.deepcopy(profile)
+    generic_realm["realm"] = "fleet+blue/ncp"
+    validate_profile(generic_realm)
+
     endpoint_corpus = _require_exact_fields(
         _load_json(ENDPOINT_CORPUS), {"valid", "invalid"}, "endpoint corpus"
     )
     for classification in ["valid", "invalid"]:
         values = endpoint_corpus[classification]
-        if not isinstance(values, list) or not values or not all(
-            isinstance(value, str) for value in values
+        if (
+            not isinstance(values, list)
+            or not values
+            or not all(isinstance(value, str) for value in values)
         ):
-            raise ProfileError(f"endpoint corpus {classification} set must be non-empty strings")
+            raise ProfileError(
+                f"endpoint corpus {classification} set must be non-empty strings"
+            )
         if len(values) != len(set(values)):
-            raise ProfileError(f"endpoint corpus {classification} set contains duplicates")
+            raise ProfileError(
+                f"endpoint corpus {classification} set contains duplicates"
+            )
     for endpoint in endpoint_corpus["valid"]:
         candidate = copy.deepcopy(profile)
         candidate["router_connect_endpoint"] = endpoint
@@ -895,7 +995,9 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
             validate_profile(candidate)
         except ProfileError:
             continue
-        raise ProfileError(f"shared invalid endpoint passed profile validation: {endpoint!r}")
+        raise ProfileError(
+            f"shared invalid endpoint passed profile validation: {endpoint!r}"
+        )
 
     production_profile = copy.deepcopy(profile)
     private_key_fixtures = [
@@ -979,7 +1081,10 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
     digest = profile["registry_canonical_sha256"]
     alternate_digest = ("0" if digest[0] != "0" else "1") + digest[1:]
     handoff_mutations = [
-        ("different valid producer", lambda p: p.update(producer_id=alternate_producer)),
+        (
+            "different valid producer",
+            lambda p: p.update(producer_id=alternate_producer),
+        ),
         (
             "different valid registry digest",
             lambda p: p.update(registry_canonical_sha256=alternate_digest),
@@ -1017,7 +1122,9 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
         if conflict.read_bytes() != b"sentinel":
             raise ProfileError("output-conflict preflight replaced an existing target")
 
-    with tempfile.TemporaryDirectory(prefix="galadriel-secure-no-replace-") as directory:
+    with tempfile.TemporaryDirectory(
+        prefix="galadriel-secure-no-replace-"
+    ) as directory:
         target = Path(directory) / "concurrent-target.json5"
         target.write_bytes(b"concurrent creator")
         try:
@@ -1039,7 +1146,7 @@ def run_mutation_checks(profile: dict[str, Any], rendered: dict[str, dict[str, A
         + len(endpoint_corpus["invalid"])
         + len(invalid_render_paths)
         + len(handoff_mutations)
-        + 5
+        + 6
     )
 
 
@@ -1073,7 +1180,9 @@ def check_reference(profile_path: Path) -> tuple[dict[str, str], int]:
     except OSError as error:
         raise ProfileError(f"cannot read reference digest manifest: {error}") from error
     if actual_manifest != expected_manifest:
-        raise ProfileError("reference SHA256SUMS does not match the committed artifacts")
+        raise ProfileError(
+            "reference SHA256SUMS does not match the committed artifacts"
+        )
     return digests, mutations
 
 
@@ -1081,7 +1190,9 @@ def _main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    check_parser = subparsers.add_parser("check", help="verify committed references and mutations")
+    check_parser = subparsers.add_parser(
+        "check", help="verify committed references and mutations"
+    )
     check_parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE)
 
     render_parser = subparsers.add_parser("render", help="render a deployment profile")
@@ -1095,7 +1206,9 @@ def _main() -> int:
             digests, mutations = check_reference(args.profile)
             for filename, digest in sorted(digests.items()):
                 print(f"{digest}  {filename}")
-            print(f"secure deployment profile: PASS ({mutations} security regression checks)")
+            print(
+                f"secure deployment profile: PASS ({mutations} security regression checks)"
+            )
             return 0
 
         raw_profile = _load_json(args.profile)

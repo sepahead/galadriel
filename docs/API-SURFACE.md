@@ -4,11 +4,14 @@
 
 | Short form | Meaning |
 |---|---|
+| ASCII | American Standard Code for Information Interchange |
 | MSRV | minimum supported Rust version |
+| NCP | Neuro-Cybernetic Protocol |
 | NIS | normalized innovation squared |
 | PID | partial information decomposition |
 
-Galadriel 0.9.0 is a GitHub source release. All crates have `publish = false`.
+Galadriel 0.9.0 is a review-gated GitHub research source release.
+All crates have `publish = false`.
 This policy defines source compatibility in the 0.9 release line.
 It makes no crates.io or long-term support promise.
 
@@ -32,9 +35,13 @@ Their feature names and wire adapters are also experimental or supporting
 surfaces. They **SHALL NOT** be described as stable 1.0 APIs or
 deployment-qualified protocols.
 
+The sidecar and monitor schemas accept only the Galadriel core identity grammar.
+An accepted identity contains 1 through 64 ASCII bytes.
+This rule is part of the supporting wire behavior for schema version 1.0.
+
 **GLD-090-API-003:** Default features **SHALL** remain empty. The optional `pid`,
 `ncp`, and `ncp-live` features **SHALL NOT** enter the pure default dependency
-graph. `galadriel-core --no-default-features` shall continue to build at the
+graph. `galadriel-core --no-default-features` **SHALL** continue to build at the
 pinned MSRV.
 
 **GLD-090-API-004:** Numerical implementation helpers outside the detector

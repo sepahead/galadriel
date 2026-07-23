@@ -17,7 +17,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 use galadriel_core::observation::{ConsistencyProjection, Modality, PidObservation};
-use ncp_core::{valid_id_segment, ContractStatus, JSON_SAFE_INTEGER_MAX};
+use ncp_core::{ContractStatus, JSON_SAFE_INTEGER_MAX};
 
 use crate::monitor::{
     FrameSummary, Heartbeat, ModalityMiss, ModalityMissReason, ModalityOutcome,
@@ -25,8 +25,8 @@ use crate::monitor::{
     MAX_FRAME_ITEMS, MAX_HEARTBEAT_DURATION_MS, MAX_MONITOR_EVENT_BYTES,
 };
 use crate::{
-    config_identity::ConfigurationIdentityBuilder, ConfigurationIdentity, SidecarEnvelope,
-    SidecarEnvelopeError, MAX_ID_SEGMENT_BYTES,
+    config_identity::ConfigurationIdentityBuilder, valid_producer_identity, valid_session_identity,
+    ConfigurationIdentity, SidecarDecodeError, SidecarEnvelope, SidecarEnvelopeError,
 };
 
 /// Maximum sidecar bytes admitted by the pure assembler before JSON decoding.
@@ -677,13 +677,11 @@ pub enum AssemblerDurationViolation {
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AssemblerConfigError {
-    /// Session or producer is not a bounded NCP path segment.
-    #[error("invalid assembler {field}: {value:?}")]
+    /// Session or producer is not a canonical Galadriel core identity.
+    #[error("invalid assembler {field}")]
     InvalidIdentity {
         /// Invalid field.
         field: &'static str,
-        /// Invalid value.
-        value: String,
     },
     /// A resource limit is zero or exceeds its hard ceiling.
     #[error("invalid assembler limit {field}: {value}, maximum {maximum}")]
@@ -1057,23 +1055,31 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
     /// excessive hard limits, a non-millisecond/invalid deadline profile, or a
     /// registry that cannot expose externally pinned opportunity policy.
     pub fn new(
-        session_id: impl Into<String>,
-        producer_id: impl Into<String>,
+        session_id: impl AsRef<str>,
+        producer_id: impl AsRef<str>,
         registry: R,
         limits: AssemblerLimits,
         started_at: Instant,
     ) -> Result<Self, AssemblerConfigError> {
-        let session_id = session_id.into();
-        let producer_id = producer_id.into();
-        validate_identity("session_id", &session_id)?;
-        validate_identity("producer_id", &producer_id)?;
+        let session_id = session_id.as_ref();
+        let producer_id = producer_id.as_ref();
+        if !valid_session_identity(session_id) {
+            return Err(AssemblerConfigError::InvalidIdentity {
+                field: "session_id",
+            });
+        }
+        if !valid_producer_identity(producer_id) {
+            return Err(AssemblerConfigError::InvalidIdentity {
+                field: "producer_id",
+            });
+        }
         validate_limits(limits, started_at)?;
         let registry_policy = registry
             .opportunity_policy()
             .map_err(AssemblerConfigError::Registry)?;
         Ok(Self {
-            session_id,
-            producer_id,
+            session_id: session_id.to_owned(),
+            producer_id: producer_id.to_owned(),
             registry,
             registry_policy,
             limits,
@@ -1365,11 +1371,21 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             ));
             return events;
         }
-        let envelope = match serde_json::from_slice::<SidecarEnvelope>(encoded) {
+        let envelope = match SidecarEnvelope::decode(encoded) {
             Ok(envelope) => envelope,
-            Err(_) => {
+            Err(SidecarDecodeError::MalformedJson) => {
                 events.push(self.fail(
                     AssemblyFaultKind::MalformedPayload {
+                        route: EvidenceRoute::Observation,
+                    },
+                    None,
+                    received_at,
+                ));
+                return events;
+            }
+            Err(SidecarDecodeError::InvalidEnvelope | SidecarDecodeError::Semantic(_)) => {
+                events.push(self.fail(
+                    AssemblyFaultKind::InvalidEnvelope {
                         route: EvidenceRoute::Observation,
                     },
                     None,
@@ -2440,16 +2456,6 @@ fn validate_frame_ledger(
     Ok(expected_observations)
 }
 
-fn validate_identity(field: &'static str, value: &str) -> Result<(), AssemblerConfigError> {
-    if !valid_id_segment(value) || value.len() > MAX_ID_SEGMENT_BYTES {
-        return Err(AssemblerConfigError::InvalidIdentity {
-            field,
-            value: value.to_owned(),
-        });
-    }
-    Ok(())
-}
-
 fn validate_limits(
     limits: AssemblerLimits,
     started_at: Instant,
@@ -3317,13 +3323,32 @@ mod tests {
 
     #[test]
     fn identity_validation_covers_character_and_byte_boundaries() {
-        let exact = "a".repeat(MAX_ID_SEGMENT_BYTES);
-        let oversized = "a".repeat(MAX_ID_SEGMENT_BYTES + 1);
+        let exact = "a".repeat(crate::MAX_ID_SEGMENT_BYTES);
+        let oversized = "a".repeat(crate::MAX_ID_SEGMENT_BYTES + 1);
+        assert!(valid_session_identity(&exact));
+        assert!(valid_producer_identity(&exact));
+        for invalid in ["", "bad*", "uav+3", "époch1", "-uav3", "uav3-"] {
+            assert!(!valid_session_identity(invalid));
+            assert!(!valid_producer_identity(invalid));
+        }
+        assert!(!valid_session_identity(&oversized));
+        assert!(!valid_producer_identity(&oversized));
 
-        assert!(validate_identity("producer_id", &exact).is_ok());
-        assert!(validate_identity("producer_id", "").is_err());
-        assert!(validate_identity("producer_id", "bad*").is_err());
-        assert!(validate_identity("producer_id", &oversized).is_err());
+        let limits = AssemblerProfile::BoundedV0_9.try_limits().unwrap();
+        assert!(matches!(
+            CrossRouteAssembler::new("uav+3", "crebain", TestRegistry, limits, Instant::now()),
+            Err(AssemblerConfigError::InvalidIdentity {
+                field: "session_id",
+                ..
+            })
+        ));
+        assert!(matches!(
+            CrossRouteAssembler::new("uav3", "crebain+1", TestRegistry, limits, Instant::now()),
+            Err(AssemblerConfigError::InvalidIdentity {
+                field: "producer_id",
+                ..
+            })
+        ));
     }
 
     #[test]
@@ -4637,6 +4662,29 @@ mod tests {
             fault_kind(&events),
             Some(&AssemblyFaultKind::MalformedPayload {
                 route: EvidenceRoute::Monitor,
+            })
+        );
+
+        let mut observation_assembler = assembler(start);
+        let events = observation_assembler.ingest_observation_bytes(b"{", start);
+        assert_eq!(
+            fault_kind(&events),
+            Some(&AssemblyFaultKind::MalformedPayload {
+                route: EvidenceRoute::Observation,
+            })
+        );
+
+        let envelope = SidecarEnvelope::try_new("epoch-1", "crebain", observation(1, 101))
+            .expect("test observation envelope validates");
+        let mut invalid = serde_json::to_value(envelope).expect("test envelope serializes");
+        invalid["session_id"] = serde_json::json!("epoch+1");
+        let invalid = serde_json::to_vec(&invalid).expect("test envelope encodes");
+        let mut observation_assembler = assembler(start);
+        let events = observation_assembler.ingest_observation_bytes(&invalid, start);
+        assert_eq!(
+            fault_kind(&events),
+            Some(&AssemblyFaultKind::InvalidEnvelope {
+                route: EvidenceRoute::Observation,
             })
         );
 

@@ -9,6 +9,7 @@ It does not present pre-audit synthetic numbers as current detector evidence.
 > The reproduction includes complete-channel geometry gates and an explicit observation-noise model.
 > It also includes bounded circular delete-block settings and fail-closed fusion.
 > This result is compatibility evidence, not calibration.
+>
 > It does not show that recorded Crebain residuals occupy a PID-justified regime.
 
 ## 1. Linear-Gaussian dependence: PID is forced
@@ -108,6 +109,7 @@ It checks the direction without claiming high-precision Monte Carlo estimates.
 Replacing `n` with Bartlett's effective sample size improves calibration for moderate persistence.
 The value is `n_eff = n (1 - phi^2) / (1 + phi^2)`.
 This method is not an exact finite-sample correction.
+
 At `phi = 0.9`, `n_eff` is only about 13.4.
 The deterministic 1,000-trial seed-7 study is conservative at this value.
 It gives `FPR@.05 = .023` with Wilson interval `[.015,.034]`.
@@ -162,7 +164,7 @@ Cross-correlation, PID, and fused attribution remain `InsufficientEvidence`.
 ## 8. Reproduce the canonical studies
 
 ```bash
-cargo run -p galadriel-justify --release
+cargo run --locked -p galadriel-justify --release
 cargo test -p galadriel-justify --locked
 ```
 

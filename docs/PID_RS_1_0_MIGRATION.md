@@ -10,7 +10,7 @@
 
 Galadriel pins immutable pid-rs revision `1cd2424f7967e1752dcc8e53859e8fdad3566f51`.
 Its `pid-core` manifest declares version 1.0.0.
-At this snapshot, pid-rs has no public v1 tag or released upstream 1.x artifact.
+The retained 2026-07-22 inspection found no public v1 tag or released upstream 1.x artifact.
 The term “1.0” below identifies the pinned source and application programming interface (API) migration.
 It does not identify a published dependency release.
 

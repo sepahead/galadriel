@@ -9,19 +9,31 @@ alwaysApply: true
 
 `AGENTS.md` is the primary repository instruction file.
 Read it before you act.
+Run its start commands before you change a file.
+Read its required repository files.
+Read each contract that owns the changed surface.
+
 Read `RELEASE-POLICY.md` before release work.
 Read `release/0.9.0/RELEASE-RUNBOOK.md` before qualification or publication.
+
+Use the release runbook for every operator-only action.
 
 ## Abbreviations
 
 | Short form | Meaning |
 |---|---|
+| API | application programming interface |
 | ASD-STE100 | ASD-STE100 Simplified Technical English |
 | CI | continuous integration |
+| CLI | command-line interface |
+| CPU | central processing unit |
 | DOI | digital object identifier |
 | JSON | JavaScript Object Notation |
+| JSONL | JavaScript Object Notation Lines |
 | NCP | Neuro-Cybernetic Protocol |
 | PID | partial information decomposition |
+| ROS / ROS 2 | Robot Operating System / Robot Operating System 2 |
+| SSH | Secure Shell |
 
 ## Start each task
 
@@ -34,105 +46,315 @@ Preserve unrelated changes.
 
 Stop before an edit that conflicts with another owner.
 
-## Non-negotiable boundary
+## Architecture invariants
 
-Galadriel reports advisory evidence only.
-Galadriel MUST NOT grant or widen authority.
+Galadriel is advisory instrumentation.
+Galadriel is not an authority service.
+A Galadriel result MUST NOT create or widen authority.
 `Nominal` MUST NOT create permission.
-Missing or incompatible evidence MUST NOT become `Nominal`.
+`InsufficientEvidence` MUST NOT become `Nominal`.
 Invalid input or invalid configuration MUST return an error.
 
-Keep PID and NCP integrations off by default.
-Keep the PID path additive.
-PID evidence MUST NOT repair a failed core prerequisite.
-Keep all Rust targets free of unsafe code.
-Bind cross-channel input to one track and one exact sequence.
-Bind it to a common projection and physical frame.
+Missing, stale, incompatible, or incomplete evidence MUST fail closed.
 
-Bind live input to its session, producer, epoch, route, and lifecycle.
-Bound resources before expensive work.
-Preserve abstention and negative results.
+A cross-channel assessment MUST bind one track and one exact sequence.
+It MUST bind a common projection and physical frame.
+It MUST bind the projection context and frozen prior.
+It MUST preserve session, producer, epoch, and lifecycle identity.
+Equal dimensions alone do not prove comparability.
+
+PID evidence is an optional research diagnostic.
+PID evidence MUST NOT repair a failed core prerequisite.
+PID evidence MUST NOT override signed-correlation evidence.
+PID evidence MUST NOT create authority.
+
+The default build must remain pure and small.
+The default CLI MUST NOT resolve PID or NCP integration crates.
+The `pid`, `ncp`, and `ncp-live` features MUST remain off by default.
+The `ncp-live` feature can add Zenoh and Tokio only in its declared graph.
+All Rust targets MUST remain free of unsafe code.
+Bound input size and work before the processor starts high-cost work.
+
+Preserve negative results, abstention, and unsupported states.
+
+## Ecosystem boundaries
+
+Use `required`, `optional`, and `absent` only for the named mode.
+
+The exact pid-rs revision is `1cd2424f7967e1752dcc8e53859e8fdad3566f51`.
+The exact NCP revision is `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
+Galadriel uses NCP wire 0.8.
+Do not infer NCP wire 1.0 compatibility.
+
+The default build does not require pid-rs or NCP.
+PID, evaluation, and justification paths require the exact pid-rs pin.
+NCP paths require the exact NCP pin.
+Crebain is an optional reference producer.
+Galadriel has no Cargo dependency on Crebain.
+
+Live use needs an authorized producer that conforms to the producer contract.
+That producer does not have to be Crebain.
+
+Haldir has no version 0.9.0 runtime edge.
+It is a prospective record-only consumer.
+If Haldir gains a policy effect, that effect requires separate admission.
+Such an effect MUST remain restrict-only.
+
+Prisoma has no version 0.9.0 runtime edge.
+It is a prospective immutable offline consumer.
+Shared PID or NCP code does not prove Prisoma compatibility.
+It does not prove independent replication.
+
+Engram and Paper2Brain have no integration edge.
+The `engram/ncp` value is an example realm string.
+ROS and ROS 2 have no binding, topic, service, action, bridge, node, or bag import.
+Galadriel has no command, control, credential, lease, watchdog, or authority path to external authority.
+
+Keep the declared graph acyclic.
+Do not add an evidence-to-command feedback loop.
+Do not change a peer repository for convenience.
+Check for concurrent work before an approved peer-repository change.
 
 ## Release identity
 
 The current release version is `0.9.0`.
-Sepehr Mahmoudian is the author.
+The release channel is a review-gated GitHub research source release.
+Sepehr Mahmoudian is the release author and commit author.
 The canonical GitHub owner is `sepahead`.
-Keep every workspace package at `publish = false`.
-Do not add a project DOI or Zenodo record.
-Do not claim production support or deployment qualification.
+Every workspace package must keep `publish = false`.
+Do not publish a crate to crates.io.
 
-Each tracked edit creates a new candidate identity.
+No project DOI exists.
+No project Zenodo record exists.
+Do not add a project DOI or Zenodo record.
+
+Do not claim production support without exact evidence.
+Do not claim field validation without exact evidence.
+Do not claim deployment qualification without exact evidence.
+Do not claim independent replication without exact evidence.
+
+The evidence scope is the exact signed candidate and its recorded qualification contract.
+It does not extend to a deployed system, another host, or another repository.
+
+Each tracked edit invalidates the prior candidate evidence.
+Only a new commit creates a new candidate identity.
 Rerun candidate-bound verification after each tracked edit.
 Do not reuse evidence from an earlier candidate.
 Do not modify a signed evidence file.
 Do not overwrite an evidence directory.
 
-## Protected records
+## Candidate freeze
 
-Do not edit a file in the protected-record list in `AGENTS.md`.
-Do not hand-edit a generated artifact.
-Change its declared generator.
-Do not rewrite contract, fixture, schema, or evidence JSON as style work.
+Keep the threat register at `LIVING_UNTIL_CANDIDATE_FREEZE` during implementation.
+Only the release operator can change it to `FROZEN_AT_CANDIDATE`.
+Make that change only with the final staged release inputs.
 
-## Change method
+The signed audit-input manifest is the only permitted pre-commit evidence record.
+It binds the exact stage-zero index blobs and external inputs.
+It does not bind a candidate commit or tree.
+The next signed commit creates the candidate identity.
 
-Use `rg` for search.
+Install the active pair at these paths:
+
+- `release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json`
+- `release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig`
+
+After a tracked change, reopen the freeze.
+Create a new signed pair and a new signed candidate.
+Then, restart every candidate-bound check.
+
+Use `verify-lifecycle` during implementation.
+It requires the active pair to be absent while the threat register is living.
+It verifies the active signed pair after the threat register is frozen.
+Use the strict `verify` action for the release-candidate procedure.
+
+## Implementation rules
+
+Inspect the applicable type, implementation, tests, schema, and documentation.
+Preserve unrelated work in a dirty worktree.
+Use `rg` for repository search.
 Use `apply_patch` for manual edits.
 Do not use destructive Git commands.
 Do not weaken a guard to make a test pass.
+
+Keep pure domain logic separate from external effects.
+Represent identity, time, units, frame, estimand, schema, and profile explicitly.
+Represent session, lifecycle, and authority explicitly.
+Reject duplicate keys and unsafe integers.
+Reject non-finite values and ambiguous defaults.
+Reject unknown required semantics.
+
 Add a negative test for each new accept path.
 Add a positive test for each new fail-closed path.
-
 Test feature-disabled behavior when an optional feature changes.
+Change a generated artifact through its declared generator.
+Do not hand-edit retained generated evidence.
+
+## Protected records
+
+Do not edit a file in the protected-record list in `AGENTS.md`.
+Preserve license files byte-for-byte.
+Do not rewrite contract, fixture, schema, or evidence JSON as style work.
+
+## Evidence and release work
+
+Bind retained results to the exact commit and tree.
+Record the command, tool, configuration, input, and exit status.
+Create qualification output outside the checkout.
+Create closure output outside the checkout.
+Use a new output directory for each run.
+Do not edit signed evidence.
+
+Run candidate-controlled commands with the exact 16-key qualification base environment.
+Isolate `HOME`, `CARGO_HOME`, `CARGO_TARGET_DIR`, and `TMPDIR`.
+Use the private qualification root for these paths.
+Reject each Cargo configuration path before and after each retained command.
+Reject a file, directory, or link at each path.
+Do not pass ambient credentials, proxies, wrappers, loader variables, or compiler flags.
+
+Do not omit a negative result.
+Do not convert observational evidence into a successful gate.
 
 Treat external model output as advisory review.
 Do not treat that output as release evidence.
 Do not let an external model decide a security or authority boundary.
 Verify each suggestion against code, tests, and retained evidence.
 
+Use an independently obtained allowed-signers file.
+Do not let a candidate authenticate itself with its tracked trust file.
+Keep private signing material outside the repository.
+
+Use an agent-backed Ed25519 public-key handle for release-tool signing.
+Keep that handle outside the repository, evidence tier, output, and snapshot root.
+Require that handle to match the independent allowed-signers file.
+Use the SSH namespace in the release runbook.
+
+Require exactly one credential-free canonical fetch URL and push URL for `origin`.
+Fetch canonical `main` before you compare `HEAD` with `origin/main`.
+
+Follow `release/0.9.0/RELEASE-RUNBOOK.md` for release work.
+Preserve an obsolete release identity before you remove its reference.
+Remove obsolete references only after public release verification passes.
+Never move or reuse `v0.9.0`.
+
+The qualification record schema is `galadriel.candidate-qualification.v3`.
+Supply `--allowed-signers` from an independent trust root.
+Supply `--advisory-db` from the exact pinned external RustSec clone.
+Do not expose the original RustSec clone to candidate commands.
+Expose only the installed detached database copies.
+
+The release input pins that RustSec identity at the 2026-07-23 inspection cut.
+A qualification result remains bound to that pinned input.
+
+The qualification tier must contain exactly 22 auxiliary command receipts.
+It must contain 15 two-run reproducibility comparisons.
+These comparisons cover one source archive, seven package archives, and seven software bills of materials.
+
+Candidate evidence must contain the exact six-file flat set in the release contract.
+Apply the 1 GiB per-file limit and 4 GiB aggregate limit.
+Use only bounded JSON bytes captured from the verified host snapshot.
+Only a run that uses `--deep` can have qualification status `PASS`.
+
+Each retained command uses a stop-before-exec launch gate.
+It applies fixed CPU, core-file, output-file, open-file, and stream limits.
+macOS does not provide atomic recursive descendant tracking.
+A short-lived reparented process can exit between scans.
+The process scan detects a detached process that remains active.
+
+The inherited sandbox and resource limits apply before candidate execution.
+A sandboxed process can request work from an existing external service.
+The process scan cannot attribute that external service work.
+
+The license inventory scope is `CARGO_DENY_HOST_FILTERED_GRAPH`.
+It contains exactly 382 host-filtered packages from the validated 437-package Cargo graph.
+It is not a complete all-target license inventory.
+
+Use `CPython 3.14.6` for canonical release-asset construction, verification, and reconstruction.
+Require the asset tool to authenticate both internal tier signatures.
+Require it to bind both tiers to the expected candidate commit and tree.
+Require it to verify both complete manifest inventories and `SHA256SUMS` files.
+
 ## Secrets
 
-Keep `.env` ignored.
+The local `.env` file MUST remain ignored.
+Do not stage `.env` or a variant that contains a secret.
 Do not print a secret value.
 Do not put a secret in a command argument.
 Do not put a secret in a prompt, log, commit, document, or evidence file.
-Pass an approved secret through the process environment.
-Stop if output contains a secret.
 
+Pass an approved secret through the process environment.
+Do not pass a secret to a candidate-controlled qualification command.
+
+Use only environment variable names in diagnostics.
+Stop the affected operation if output contains a secret.
 Rotate an exposed credential before you continue.
+Use the private process in `SECURITY.md` to report a vulnerability.
 
 ## Verification
 
 Run focused tests during implementation.
 Run the complete command set in `AGENTS.md` before a push.
 Use `.github/workflows/ci.yml` as the exact CI command source.
-Run the four mutation-diff shards for a release candidate.
-Keep the observational mutation result as residual evidence.
-Do not claim that a skipped or failed gate passed.
+Run the strict audit-input gate from `AGENTS.md` for a frozen candidate.
+Run the complete Python test command from that workflow.
+Run each feature-isolated CLI check from that workflow.
 
-Use an external trust root for signature verification.
-Do not let the candidate authenticate itself.
+Run the fuzz-workspace dependency check from that workflow.
+Run the vulnerable-feature check from that workflow.
+Run both current-stable Rust commands from that workflow.
+Run both offline supply-chain commands from that workflow.
+Materialize both locked dependency graphs before the offline supply-chain commands.
+
+Do not describe the minimum command set in `AGENTS.md` as the complete CI mirror.
+The complete mirror includes every command in all three CI jobs.
+
+Use Rust `1.89.0` for the workspace gate.
+Use Rust and Cargo `1.97.1` for the current-stable gate.
+Use `nightly-2026-06-16` for the public API gate.
+Use `cargo-public-api 0.52.0` for that gate.
+
+Run the exact fuzz and mutation jobs for a release candidate.
+Require all four exact-candidate broad mutation shards to pass.
+Require all three focused mutation outcomes to pass.
+Treat the observational mutation-baseline job as residual evidence.
+
+Do not describe the deep workflow as green when an observational job fails.
+Do not claim that a skipped or failed gate passed.
 
 ## Documentation
 
 Use the project ASD-STE100 Issue 9 style.
 Use short active sentences.
-Put one instruction or topic in each sentence.
+Put one instruction in each sentence.
+Use one topic in each descriptive sentence.
 Use American English word forms.
 Do not use contractions.
 
 Do not use semicolons.
 Define each abbreviation at first use.
 Use one term for one concept.
-Preserve exact technical data.
+Use the same technical term in each document.
+Use `MUST` and `MUST NOT` only for normative boundaries.
+
+Keep a procedure sentence at 20 words or fewer when practical.
+Keep a descriptive sentence at 25 words or fewer when practical.
+Keep a paragraph at six sentences or fewer.
+Use a vertical list for complex information.
+
 State the scope and evidence tier of each result.
 State what each result does not prove.
+Qualify claims about safety, security, validation, and verification.
+Qualify claims about stability, qualification, and production.
+
+Do not change exact technical data for editorial reasons.
+Check each changed command and link.
+Keep all affected documents consistent.
+Do not include credentials, private conversation, or personal context.
 
 ## Collaboration and Git
 
 Edit only assigned files during delegated work.
-Do not merge, tag, publish, or change repository settings during delegated work.
+Do not merge, tag, publish, delete references, or change repository settings during delegated work.
 The release operator must review each returned line.
 The release operator must rerun decisive tests.
 
@@ -143,7 +365,20 @@ Use a concise professional imperative subject.
 Do not add automated attribution or a co-author trailer.
 
 Do not force-push `main`.
+Push accepted milestones to the active remote review branch.
 Push the accepted exact candidate to `origin/main`.
+Confirm that local `HEAD` equals `origin/main` after promotion.
+
+## Completion check
+
+Confirm that the worktree is clean.
+Confirm that all affected gates pass.
+Confirm that all affected claims and documents agree.
+Confirm that the repository tracks no secret.
+Confirm that retained output contains no secret.
+
+Confirm that signed evidence binds the current candidate.
+Confirm that the signed candidate exists on `origin/main`.
 
 ## Stop conditions
 

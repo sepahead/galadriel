@@ -37,7 +37,7 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, Cursor, Read, Write};
 use std::path::Path;
 
-use galadriel_core::{Modality, PidObservation, Sequence, TrackId};
+use galadriel_core::{EpochId, Modality, PidObservation, ProducerId, Sequence, SessionId, TrackId};
 use ncp_core::{
     contract_status, valid_id_segment, ContractStatus, Keys, CONTRACT_HASH, DEFAULT_REALM,
     JSON_SAFE_INTEGER_MAX, NCP_VERSION,
@@ -73,10 +73,29 @@ pub use ncp_zenoh;
 
 /// Maximum bytes accepted for the sidecar `session_id` / `producer_id` segments.
 ///
-/// NCP 0.8 bounds a transport-neutral session identifier to 1..=64 bytes
-/// (`ncp-core` `validate_session_id_str`); the sidecar mirrors that ceiling so an
-/// envelope can never carry an identity the NCP control plane itself would reject.
-pub const MAX_ID_SEGMENT_BYTES: usize = 64;
+/// NCP 0.8 bounds a transport-neutral session identifier to 1..=64 bytes.
+/// Galadriel also requires the stricter core identity grammar so that a valid
+/// envelope cannot fail when the lifecycle layer creates typed identities.
+pub const MAX_ID_SEGMENT_BYTES: usize = EpochId::MAX_BYTES;
+
+/// Whether a sidecar session is both NCP-safe and a canonical core epoch.
+#[must_use]
+pub fn valid_session_identity(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_ID_SEGMENT_BYTES
+        && valid_id_segment(value)
+        && EpochId::new(value).is_ok()
+}
+
+/// Whether a sidecar producer is valid in both core roles used by wire v1.
+#[must_use]
+pub fn valid_producer_identity(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_ID_SEGMENT_BYTES
+        && valid_id_segment(value)
+        && ProducerId::new(value).is_ok()
+        && SessionId::new(value).is_ok()
+}
 
 /// Stable named-perception entity carrying Galadriel sidecar envelopes.
 ///
@@ -147,6 +166,13 @@ struct RawSidecarEnvelope {
     observation: PidObservation,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum SidecarDecodeError {
+    MalformedJson,
+    InvalidEnvelope,
+    Semantic(SidecarEnvelopeError),
+}
+
 /// Semantic failure in a decoded [`SidecarEnvelope`].
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 #[non_exhaustive]
@@ -165,12 +191,12 @@ pub enum SidecarEnvelopeError {
     /// The advertised contract hash is not a canonical 64-bit lowercase hex value.
     #[error("invalid NCP contract hash in sidecar envelope: {0:?}")]
     InvalidContractHash(String),
-    /// The declared session is unsafe as an NCP key segment.
-    #[error("invalid sidecar session_id: {0:?}")]
-    InvalidSessionId(String),
-    /// The declared producer is unsafe as an NCP key segment.
-    #[error("invalid sidecar producer_id: {0:?}")]
-    InvalidProducerId(String),
+    /// The declared session is not a canonical Galadriel core identity.
+    #[error("invalid sidecar session_id")]
+    InvalidSessionId,
+    /// The declared producer is not a canonical Galadriel core identity.
+    #[error("invalid sidecar producer_id")]
+    InvalidProducerId,
     /// The payload declares different provenance from the subscribed stream.
     #[error("sidecar {field} mismatch: got {received:?}, expected {expected:?}")]
     ProvenanceMismatch {
@@ -187,20 +213,39 @@ pub enum SidecarEnvelopeError {
 }
 
 impl SidecarEnvelope {
+    pub(crate) fn decode(encoded: &[u8]) -> Result<Self, SidecarDecodeError> {
+        let raw = serde_json::from_slice::<RawSidecarEnvelope>(encoded).map_err(|error| {
+            if error.classify() == serde_json::error::Category::Data {
+                SidecarDecodeError::InvalidEnvelope
+            } else {
+                SidecarDecodeError::MalformedJson
+            }
+        })?;
+        Self::try_from(raw).map_err(SidecarDecodeError::Semantic)
+    }
+
     /// Construct and validate an envelope stamped with the local NCP and sidecar
     /// contract identities.
     pub fn try_new(
-        session_id: impl Into<String>,
-        producer_id: impl Into<String>,
+        session_id: impl AsRef<str>,
+        producer_id: impl AsRef<str>,
         observation: PidObservation,
     ) -> Result<Self, SidecarEnvelopeError> {
+        let session_id = session_id.as_ref();
+        let producer_id = producer_id.as_ref();
+        if !valid_session_identity(session_id) {
+            return Err(SidecarEnvelopeError::InvalidSessionId);
+        }
+        if !valid_producer_identity(producer_id) {
+            return Err(SidecarEnvelopeError::InvalidProducerId);
+        }
         Self::try_from(RawSidecarEnvelope {
             kind: SIDECAR_KIND.to_string(),
             schema_version: SIDECAR_SCHEMA_VERSION.to_string(),
             ncp_version: NCP_VERSION.to_string(),
             contract_hash: CONTRACT_HASH.to_string(),
-            session_id: session_id.into(),
-            producer_id: producer_id.into(),
+            session_id: session_id.to_owned(),
+            producer_id: producer_id.to_owned(),
             observation,
         })
     }
@@ -279,15 +324,11 @@ impl SidecarEnvelope {
                 self.contract_hash.clone(),
             ));
         }
-        if !valid_id_segment(&self.session_id) || self.session_id.len() > MAX_ID_SEGMENT_BYTES {
-            return Err(SidecarEnvelopeError::InvalidSessionId(
-                self.session_id.clone(),
-            ));
+        if !valid_session_identity(&self.session_id) {
+            return Err(SidecarEnvelopeError::InvalidSessionId);
         }
-        if !valid_id_segment(&self.producer_id) || self.producer_id.len() > MAX_ID_SEGMENT_BYTES {
-            return Err(SidecarEnvelopeError::InvalidProducerId(
-                self.producer_id.clone(),
-            ));
+        if !valid_producer_identity(&self.producer_id) {
+            return Err(SidecarEnvelopeError::InvalidProducerId);
         }
         self.validate_json_integer("observation.track_id", self.observation.track_id().get())?;
         self.validate_json_integer(
@@ -321,6 +362,12 @@ impl SidecarEnvelope {
         expected_session_id: &str,
         expected_producer_id: &str,
     ) -> Result<ContractStatus, SidecarEnvelopeError> {
+        if !valid_session_identity(expected_session_id) {
+            return Err(SidecarEnvelopeError::InvalidSessionId);
+        }
+        if !valid_producer_identity(expected_producer_id) {
+            return Err(SidecarEnvelopeError::InvalidProducerId);
+        }
         let status = self.validate()?;
         if self.session_id != expected_session_id {
             return Err(SidecarEnvelopeError::ProvenanceMismatch {
@@ -616,6 +663,9 @@ pub fn observation_key(realm: &str, session_id: &str) -> Option<String> {
 /// The route is built by NCP's fallible key API, so an invalid realm or session ID
 /// returns `None` rather than panicking or widening a subscription.
 pub fn sidecar_key(realm: &str, session_id: &str) -> Option<String> {
+    if !valid_session_identity(session_id) {
+        return None;
+    }
     Keys::try_new(realm)
         .ok()?
         .try_sensor_named(session_id, SIDECAR_SENSOR_NAME)
@@ -1327,13 +1377,24 @@ mod tests {
             JSON_SAFE_INTEGER_MAX
         );
         assert_eq!(
-            schema["$defs"]["ncpKeySegment"]["maxLength"],
+            schema["$defs"]["galadrielCoreIdentity"]["maxLength"],
             MAX_ID_SEGMENT_BYTES
         );
+        assert_eq!(schema["$defs"]["galadrielCoreIdentity"]["minLength"], 1);
         assert_eq!(
-            schema["$defs"]["ncpKeySegment"]["pattern"],
-            r"^[^/\*\$#\?\s\u0000-\u001F\u007F-\u009F\uFEFF]+$"
+            schema["$defs"]["galadrielCoreIdentity"]["pattern"],
+            r"^[A-Za-z0-9](?:[A-Za-z0-9_.:-]{0,62}[A-Za-z0-9])?$"
         );
+        assert_eq!(
+            schema["$defs"]["galadrielCoreIdentity"]["not"]["pattern"],
+            r"[^A-Za-z0-9_.:-]"
+        );
+        for field in ["session_id", "producer_id"] {
+            assert_eq!(
+                schema["properties"][field]["$ref"],
+                "#/$defs/galadrielCoreIdentity"
+            );
+        }
         assert_eq!(
             schema["$defs"]["pidObservation"]["properties"]["track_id"]["$ref"],
             "#/$defs/safeUnsignedInteger"
@@ -1352,22 +1413,78 @@ mod tests {
     }
 
     #[test]
-    fn sidecar_envelope_rejects_oversized_identity_segments() {
+    fn sidecar_envelope_requires_core_compatible_identities() {
         let observation = test_observation(1, 1, 1, Modality::Visual, 1.0, 3);
         let oversized = "x".repeat(MAX_ID_SEGMENT_BYTES + 1);
         let at_bound = "x".repeat(MAX_ID_SEGMENT_BYTES);
 
-        // NCP 0.8 bounds session identifiers to 1..=64 bytes; the envelope mirrors it.
         assert!(matches!(
             SidecarEnvelope::try_new(oversized.clone(), "crebain", observation.clone()),
-            Err(SidecarEnvelopeError::InvalidSessionId(_))
+            Err(SidecarEnvelopeError::InvalidSessionId)
         ));
         assert!(matches!(
             SidecarEnvelope::try_new("uav3", oversized, observation.clone()),
-            Err(SidecarEnvelopeError::InvalidProducerId(_))
+            Err(SidecarEnvelopeError::InvalidProducerId)
         ));
-        // Exactly 64 bytes remains valid on both segments.
+        for invalid in ["uav+3", "époch1", "-uav3", "uav3-", "uav3\n"] {
+            assert!(matches!(
+                SidecarEnvelope::try_new(invalid, "crebain", observation.clone()),
+                Err(SidecarEnvelopeError::InvalidSessionId)
+            ));
+            assert!(matches!(
+                SidecarEnvelope::try_new("uav3", invalid, observation.clone()),
+                Err(SidecarEnvelopeError::InvalidProducerId)
+            ));
+        }
         assert!(SidecarEnvelope::try_new(at_bound.clone(), at_bound, observation).is_ok());
+    }
+
+    #[test]
+    fn sidecar_wire_decode_rejects_each_noncanonical_identity() {
+        let envelope = SidecarEnvelope::try_new(
+            "uav3",
+            "crebain",
+            test_observation(1, 1, 1, Modality::Visual, 1.0, 3),
+        )
+        .unwrap();
+        let valid = serde_json::to_value(envelope).unwrap();
+        for (field, invalid, expected) in [
+            ("session_id", "uav+3", "invalid sidecar session_id"),
+            ("producer_id", "crébain", "invalid sidecar producer_id"),
+        ] {
+            let mut value = valid.clone();
+            value[field] = serde_json::json!(invalid);
+            let error = serde_json::from_value::<SidecarEnvelope>(value).unwrap_err();
+            assert!(error.to_string().contains(expected));
+        }
+    }
+
+    #[test]
+    fn sidecar_decode_distinguishes_syntax_structure_and_semantics() {
+        assert!(matches!(
+            SidecarEnvelope::decode(b"{"),
+            Err(SidecarDecodeError::MalformedJson)
+        ));
+        assert!(matches!(
+            SidecarEnvelope::decode(br#"{"kind":"galadriel.sidecar.pid"}"#),
+            Err(SidecarDecodeError::InvalidEnvelope)
+        ));
+
+        let envelope = SidecarEnvelope::try_new(
+            "uav3",
+            "crebain",
+            test_observation(1, 1, 1, Modality::Visual, 1.0, 3),
+        )
+        .unwrap();
+        let mut invalid = serde_json::to_value(envelope).unwrap();
+        invalid["session_id"] = serde_json::json!("uav+3");
+        let invalid = serde_json::to_vec(&invalid).unwrap();
+        assert!(matches!(
+            SidecarEnvelope::decode(&invalid),
+            Err(SidecarDecodeError::Semantic(
+                SidecarEnvelopeError::InvalidSessionId
+            ))
+        ));
     }
 
     #[test]
@@ -1409,6 +1526,34 @@ mod tests {
     }
 
     #[test]
+    fn validate_for_rejects_invalid_expected_session_without_retaining_it() {
+        let observation = test_observation(1, 1, 1, Modality::Visual, 1.0, 3);
+        let envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
+        let oversized = "x".repeat(MAX_ID_SEGMENT_BYTES + 1);
+
+        for invalid in ["uav+3", oversized.as_str()] {
+            assert_eq!(
+                envelope.validate_for(invalid, "crebain"),
+                Err(SidecarEnvelopeError::InvalidSessionId)
+            );
+        }
+    }
+
+    #[test]
+    fn validate_for_rejects_invalid_expected_producer_without_retaining_it() {
+        let observation = test_observation(1, 1, 1, Modality::Visual, 1.0, 3);
+        let envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
+        let oversized = "x".repeat(MAX_ID_SEGMENT_BYTES + 1);
+
+        for invalid in ["producer+1", oversized.as_str()] {
+            assert_eq!(
+                envelope.validate_for("uav3", invalid),
+                Err(SidecarEnvelopeError::InvalidProducerId)
+            );
+        }
+    }
+
+    #[test]
     fn sidecar_envelope_surfaces_contract_drift_but_rejects_unsafe_integers() {
         let observation = test_observation(1, 1, 1, Modality::Visual, 1.0, 3);
         let envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
@@ -1445,6 +1590,9 @@ mod tests {
         assert!(sidecar_key("ncp//fleet", "uav3").is_none());
         assert!(sidecar_key("/ncp", "uav3").is_none());
         assert!(sidecar_key("ncp/\0fleet", "uav3").is_none());
+        for invalid in ["uav+3", "époch1", "-uav3", "uav3-"] {
+            assert!(sidecar_key("ncp", invalid).is_none());
+        }
         assert!(default_sidecar_key("uav3").is_some());
     }
 

@@ -14,6 +14,7 @@ It also states what the current evidence does **not** establish.
 > The implementation now validates inputs and joins channels by exact sequence.
 > It uses signed correlation with a unique strict-majority consensus.
 > It controls each assessment family and fails closed.
+>
 > The published `post-audit-v1` artifact gives exact streaming results for the Normalized Innovation Squared (NIS) and signed-correlation vertical slice.
 >
 > Those results cover false alerts, delay, abstention, and attribution.
@@ -240,7 +241,7 @@ cargo run --locked -p galadriel-eval --release -- 20
 # No argument uses the same minimum 20-trial default
 cargo run --locked -p galadriel-eval --release
 
-# Larger synthetic study; choose and report the trial count explicitly
+# Larger synthetic study. Choose and report the trial count explicitly.
 cargo run --locked -p galadriel-eval --release -- 200
 
 # Hypothesis and edge-case tests
@@ -248,7 +249,7 @@ cargo test -p galadriel-eval --locked
 cargo test --workspace --all-features --locked
 
 # Relative cost on the current machine
-cargo bench -p galadriel-eval --bench detectors
+cargo bench --locked -p galadriel-eval --bench detectors
 ```
 
 The CLI completes preflight before it prints a partial report.

@@ -7,13 +7,14 @@ import argparse
 import json
 import os
 import stat
-import subprocess
 import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from check_public_api import bounded_diagnostic, release_tool_environment
 from common import ReviewError
+from release_assurance import run_bounded_host_command
 
 
 PID_SOURCE = (
@@ -131,6 +132,12 @@ TOKIO_RESOLVED_FEATURES = frozenset(
         "tokio-macros",
     }
 )
+FEATURE_GRAPH_TIMEOUT_SECONDS = 120
+MAX_FEATURE_GRAPH_STDOUT_BYTES = 8 * 1024 * 1024
+MAX_FEATURE_GRAPH_STDERR_BYTES = 1024 * 1024
+METADATA_TIMEOUT_SECONDS = 120
+MAX_METADATA_STDOUT_BYTES = 8 * 1024 * 1024
+MAX_METADATA_STDERR_BYTES = 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -319,8 +326,6 @@ def parse_graph_output(profile: Profile, output: str) -> dict[str, frozenset[str
 def package_graph(repo: Path, profile: Profile) -> dict[str, frozenset[str]]:
     """Return packages and resolved features selected for one exact CLI profile."""
 
-    environment = dict(os.environ)
-    environment["CARGO_TERM_COLOR"] = "never"
     command = [
         "cargo",
         "tree",
@@ -337,15 +342,14 @@ def package_graph(repo: Path, profile: Profile) -> dict[str, frozenset[str]]:
         "{p}|{f}",
         "--color=never",
     ]
-    process = subprocess.run(
+    process = run_bounded_host_command(
         command,
         cwd=repo,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=False,
-        check=False,
-        env=environment,
+        environment=release_tool_environment(),
+        context=f"feature graph {profile.name}",
+        max_stdout_bytes=MAX_FEATURE_GRAPH_STDOUT_BYTES,
+        max_stderr_bytes=MAX_FEATURE_GRAPH_STDERR_BYTES,
+        timeout_seconds=FEATURE_GRAPH_TIMEOUT_SECONDS,
     )
     try:
         stderr = process.stderr.decode("utf-8", "strict")
@@ -458,7 +462,7 @@ def validate_upstream_package_records(packages: object) -> None:
 def validate_upstream_manifests(repo: Path) -> None:
     """Read dependency feature declarations from Cargo's locked metadata."""
 
-    process = subprocess.run(
+    process = run_bounded_host_command(
         [
             "cargo",
             "metadata",
@@ -468,17 +472,20 @@ def validate_upstream_manifests(repo: Path) -> None:
             "--all-features",
         ],
         cwd=repo,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=False,
+        environment=release_tool_environment(),
+        context="locked Cargo metadata",
+        max_stdout_bytes=MAX_METADATA_STDOUT_BYTES,
+        max_stderr_bytes=MAX_METADATA_STDERR_BYTES,
+        timeout_seconds=METADATA_TIMEOUT_SECONDS,
     )
     if process.returncode != 0:
-        raise ReviewError(f"cargo metadata failed: {process.stderr.strip()}")
+        raise ReviewError(
+            "cargo metadata failed with "
+            f"{process.returncode}: {bounded_diagnostic(process.stderr)}"
+        )
     try:
-        metadata = json.loads(process.stdout)
-    except json.JSONDecodeError as error:
+        metadata = json.loads(process.stdout.decode("utf-8", "strict"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ReviewError(f"cargo metadata returned invalid JSON: {error}") from error
     if not isinstance(metadata, dict):
         raise ReviewError("cargo metadata root must be an object")

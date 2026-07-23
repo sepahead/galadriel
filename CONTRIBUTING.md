@@ -13,6 +13,7 @@ Thank you for your interest. Galadriel is **Galadriel's Mirror**.
 It is an information-theoretic monitor for cross-sensor statistical consistency in multi-sensor fusion.
 It is part of the [`sepahead`](https://github.com/sepahead) ecosystem.
 It consumes accepted `(track, modality, frame)` innovation records (`PidObservation`).
+Version 0.9.0 is a review-gated GitHub research source release.
 
 The bundled historical Crebain fixture supports contract and baseline smoke tests.
 It is not a valid source of cross-modal correlation or PID evidence.
@@ -42,10 +43,12 @@ No accepted recorded study establishes field performance, calibration, deployed 
   The off-by-default `pid` feature adds `pid-core`.
   The off-by-default `ncp` feature adds `ncp-core`.
   The `ncp-live` feature also adds `ncp-zenoh`, Zenoh, and Tokio.
-  Do not enable these features by default. Do not add Zenoh or Tokio to the default graph.
+
+  Do not enable these features by default.
+  Do not add Zenoh or Tokio to the default graph.
 - **Safe Rust.** Workspace lint policy forbids unsafe code in every target.
 
-## Before you push
+## Focused local checks
 
 ```bash
 cargo fmt --all
@@ -53,8 +56,16 @@ cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-features --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps --locked
 cargo build -p galadriel-core --no-default-features --locked
-cargo deny --all-features --locked check
+cargo fetch --locked
+cargo fetch --locked --manifest-path fuzz/Cargo.toml
+cargo deny --offline --all-features --locked check
+cargo deny --offline --manifest-path fuzz/Cargo.toml --all-features --locked check --config fuzz/deny.toml
 ```
+
+These commands are a focused development subset.
+They are not the complete continuous integration (CI) mirror.
+Use `.github/workflows/ci.yml` as the exact command source.
+Follow `AGENTS.md` for the complete pre-push gate set.
 
 The pinned workspace MSRV is **Rust 1.89**.
 Version 0.9.x freezes the public `galadriel-core` source surface in `docs/API-SURFACE.md`.

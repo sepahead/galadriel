@@ -135,9 +135,17 @@ fn run_observe(
     registry_path: &std::path::Path,
     registry_sha256: &str,
 ) -> anyhow::Result<()> {
-    let registry = load_deployment_registry(registry_path, registry_sha256)?;
+    anyhow::ensure!(
+        galadriel_ncp::valid_session_identity(epoch),
+        "invalid Galadriel epoch identity"
+    );
+    anyhow::ensure!(
+        galadriel_ncp::valid_producer_identity(producer_id),
+        "invalid Galadriel producer identity"
+    );
     let keys = galadriel_ncp::ncp_core::Keys::try_new(realm)
-        .map_err(|error| anyhow::anyhow!("invalid NCP realm {realm:?}: {error}"))?;
+        .map_err(|_| anyhow::anyhow!("invalid NCP realm"))?;
+    let registry = load_deployment_registry(registry_path, registry_sha256)?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

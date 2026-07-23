@@ -23,18 +23,31 @@ from pathlib import Path, PurePosixPath
 from typing import Any, BinaryIO, Iterator
 
 from common import ReviewError, canonical_json, contained_path, loads_json
-from finalize_release import PublicationDurabilityError, publish_staged_output
+from finalize_release import (
+    CLOSURE_MANIFEST,
+    CLOSURE_RESERVED_ROOT_PATHS,
+    CLOSURE_SIGNATURE,
+    QUALIFICATION_MANIFEST,
+    QUALIFICATION_SIGNATURE,
+    PublicationDurabilityError,
+    load_canonical_object,
+    publish_staged_output,
+    qualification_tier_inventory,
+    verify_sha256sums,
+)
 from release_assurance import (
     AUTHOR,
     GIT_OBJECT,
     SHA256,
     SIGNING_PRINCIPAL,
     VERSION,
-    derive_external_allowed_signers,
     digest_file,
     require_digest_record,
     require_keys,
     sign_file,
+    snapshot_agent_backed_public_signing_key,
+    snapshot_independent_allowed_signers,
+    verify_artifact_manifest,
     verify_signature,
 )
 
@@ -63,6 +76,23 @@ ROOT_PREFIXES = {
     "closure": "galadriel-0.9.0-closure",
 }
 EXPECTED_ASSET_FILES = frozenset({MANIFEST_NAME, SIGNATURE_NAME, *ASSET_NAMES.values()})
+INNER_MANIFEST_SCHEMA = "galadriel.tiered-artifact-manifest.v1"
+INNER_TIER_CONTRACTS = {
+    "qualification": {
+        "manifest": QUALIFICATION_MANIFEST,
+        "signature": QUALIFICATION_SIGNATURE,
+        "namespace": "galadriel-qualification-manifest",
+        "forbidden_paths": CLOSURE_RESERVED_ROOT_PATHS,
+    },
+    "closure": {
+        "manifest": CLOSURE_MANIFEST,
+        "signature": CLOSURE_SIGNATURE,
+        "namespace": "galadriel-closure-manifest",
+        "forbidden_paths": frozenset(
+            {CLOSURE_MANIFEST, CLOSURE_SIGNATURE, "SHA256SUMS"}
+        ),
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -739,6 +769,79 @@ def _validate_manifest(
     return assets
 
 
+def _authenticate_inner_tier(
+    root: Path,
+    tier: str,
+    allowed_signers: Path,
+    *,
+    expected_candidate: str,
+    expected_tree: str,
+) -> dict[str, Any]:
+    """Authenticate one reconstructed tier and its complete file inventory."""
+
+    contract = INNER_TIER_CONTRACTS[tier]
+    manifest_name = str(contract["manifest"])
+    signature_name = str(contract["signature"])
+    namespace = str(contract["namespace"])
+    forbidden_paths = set(contract["forbidden_paths"])
+    inventory = qualification_tier_inventory(
+        root,
+        context=f"{tier} release-asset tier",
+    )
+    controls = {manifest_name, signature_name, "SHA256SUMS"}
+    missing_controls = sorted(controls - inventory)
+    if missing_controls:
+        raise ReviewError(f"{tier} tier lacks fixed control files: {missing_controls}")
+
+    manifest_path = root / manifest_name
+    signature_path = root / signature_name
+    verify_signature(
+        manifest_path,
+        signature_path,
+        allowed_signers,
+        namespace,
+    )
+    manifest = load_canonical_object(
+        manifest_path,
+        f"{tier} tier manifest",
+        max_bytes=MAX_MANIFEST_BYTES,
+    )
+    require_keys(
+        manifest,
+        {"schema", "tier", "candidate", "artifacts"},
+        f"{tier} tier manifest",
+    )
+    if manifest["schema"] != INNER_MANIFEST_SCHEMA:
+        raise ReviewError(f"{tier} tier manifest has the wrong schema")
+    if manifest["tier"] != tier:
+        raise ReviewError(f"{tier} tier manifest has the wrong tier")
+    expected_identity = {"commit": expected_candidate, "tree": expected_tree}
+    if manifest["candidate"] != expected_identity:
+        raise ReviewError(f"{tier} tier manifest targets another candidate")
+
+    verified = verify_artifact_manifest(
+        root,
+        manifest_path,
+        expected_schema=INNER_MANIFEST_SCHEMA,
+        forbidden_paths=forbidden_paths,
+    )
+    if verified != manifest:
+        raise ReviewError(f"{tier} tier manifest changed during verification")
+    artifact_paths = [row["path"] for row in manifest["artifacts"]]
+    if artifact_paths != sorted(artifact_paths):
+        raise ReviewError(f"{tier} tier artifact inventory is not ordered")
+    expected_inventory = set(artifact_paths) | controls
+    if inventory != expected_inventory:
+        missing = sorted(expected_inventory - inventory)
+        extra = sorted(inventory - expected_inventory)
+        raise ReviewError(
+            f"{tier} tier inventory differs from its manifest: "
+            f"missing={missing[:10]}, extra={extra[:10]}"
+        )
+    verify_sha256sums(root)
+    return manifest
+
+
 def _write_exclusive(path: Path, data: bytes, mode: int = 0o600) -> None:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0)
     no_follow = getattr(os, "O_NOFOLLOW", None)
@@ -1058,28 +1161,57 @@ def _verify_release_assets(
     signature_bytes = _read_snapshot_file(
         snapshot, files[SIGNATURE_NAME], MAX_SIGNATURE_BYTES, "detached signature"
     )
-    _verify_manifest_signature(manifest_bytes, signature_bytes, allowed_signers)
-    try:
-        document = loads_json(manifest_bytes)
-    except (UnicodeError, ValueError) as error:
-        raise ReviewError(f"cannot parse release-assets manifest: {error}") from error
-    if canonical_json(document) != manifest_bytes:
-        raise ReviewError("release-assets manifest is not canonical JSON")
-    asset_rows = _validate_manifest(
-        document,
-        expected_candidate=expected_candidate,
-        expected_tree=expected_tree,
-        expected_tag_name=expected_tag_name,
-        expected_tag_object=expected_tag_object,
-        expected_tag_target=expected_tag_target,
-    )
-    for asset in asset_rows:
-        _verify_archive(
-            snapshot,
-            files[asset["asset_name"]],
-            asset,
-            extract_root=extract_root,
+    with tempfile.TemporaryDirectory(
+        prefix="galadriel-release-assets-inner-verification-"
+    ) as temporary:
+        verification_root = Path(temporary)
+        os.chmod(verification_root, 0o700)
+        allowed_signers_snapshot = verification_root / "ALLOWED_SIGNERS"
+        snapshot_independent_allowed_signers(
+            _absolute(allowed_signers),
+            allowed_signers_snapshot,
+            max_bytes=MAX_ALLOWED_SIGNERS_BYTES,
         )
+        _verify_manifest_signature(
+            manifest_bytes,
+            signature_bytes,
+            allowed_signers_snapshot,
+        )
+        try:
+            document = loads_json(manifest_bytes)
+        except (UnicodeError, ValueError) as error:
+            raise ReviewError(
+                f"cannot parse release-assets manifest: {error}"
+            ) from error
+        if canonical_json(document) != manifest_bytes:
+            raise ReviewError("release-assets manifest is not canonical JSON")
+        asset_rows = _validate_manifest(
+            document,
+            expected_candidate=expected_candidate,
+            expected_tree=expected_tree,
+            expected_tag_name=expected_tag_name,
+            expected_tag_object=expected_tag_object,
+            expected_tag_target=expected_tag_target,
+        )
+        reconstructed = extract_root
+        if reconstructed is None:
+            reconstructed = verification_root / "reconstructed"
+            reconstructed.mkdir(mode=0o700)
+        for asset in asset_rows:
+            _verify_archive(
+                snapshot,
+                files[asset["asset_name"]],
+                asset,
+                extract_root=reconstructed,
+            )
+        for tier in TIER_ORDER:
+            _authenticate_inner_tier(
+                reconstructed / ROOT_PREFIXES[tier],
+                tier,
+                allowed_signers_snapshot,
+                expected_candidate=expected_candidate,
+                expected_tree=expected_tree,
+            )
     if _flat_asset_snapshot(snapshot.root) != snapshot:
         raise ReviewError("release-assets directory changed while verified")
     return document
@@ -1139,17 +1271,19 @@ def _reject_path_overlap(inputs: list[Path], destination: Path) -> None:
                 raise ReviewError("qualification and closure roots must not overlap")
 
 
-def _reject_signing_key_in_inputs(signing_key: Path, inputs: list[Path]) -> None:
+def _reject_external_input_in_evidence(
+    path: Path,
+    inputs: list[Path],
+    label: str,
+) -> None:
     try:
-        resolved_key = signing_key.resolve(strict=True)
+        resolved = path.resolve(strict=True)
     except (OSError, RuntimeError) as error:
-        raise ReviewError(f"SSH signing key is unavailable: {signing_key}") from error
+        raise ReviewError(f"{label} is unavailable: {path}") from error
     for root in inputs:
         resolved_root = root.resolve(strict=True)
-        if resolved_key == resolved_root or resolved_root in resolved_key.parents:
-            raise ReviewError(
-                "the signing-key handle must remain outside both evidence roots"
-            )
+        if resolved == resolved_root or resolved_root in resolved.parents:
+            raise ReviewError(f"the {label} must remain outside both evidence roots")
 
 
 def _remove_staging(staging: Path, original: BaseException) -> None:
@@ -1169,6 +1303,7 @@ def build_release_assets(
     closure_root: Path | str,
     output: Path | str,
     signing_key: Path | str,
+    allowed_signers: Path | str,
     *,
     candidate_commit: str,
     candidate_tree: str,
@@ -1181,8 +1316,19 @@ def build_release_assets(
     qualification_path = _absolute(qualification_root)
     closure_path = _absolute(closure_root)
     destination = _absolute(output)
-    key = _absolute(signing_key)
-    _reject_signing_key_in_inputs(key, [qualification_path, closure_path])
+    key_source = _absolute(signing_key)
+    allowed_signers_source = _absolute(allowed_signers)
+    evidence_roots = [qualification_path, closure_path]
+    _reject_external_input_in_evidence(
+        key_source,
+        evidence_roots,
+        "signing-key handle",
+    )
+    _reject_external_input_in_evidence(
+        allowed_signers_source,
+        evidence_roots,
+        "allowed-signers trust root",
+    )
     qualification = _snapshot_tree(qualification_path)
     closure = _snapshot_tree(closure_path)
     _validate_identity_values(
@@ -1195,45 +1341,60 @@ def build_release_assets(
     )
     os.chmod(staging, 0o700)
     try:
-        assets = [
-            _write_archive(
-                qualification, staging / ASSET_NAMES["qualification"], "qualification"
-            ),
-            _write_archive(closure, staging / ASSET_NAMES["closure"], "closure"),
-        ]
-        if _snapshot_tree(qualification.root) != qualification:
-            raise ReviewError("qualification evidence changed during packaging")
-        if _snapshot_tree(closure.root) != closure:
-            raise ReviewError("closure evidence changed during packaging")
-        document = _manifest_document(
-            candidate_commit,
-            candidate_tree,
-            tag_name,
-            tag_object,
-            tag_target,
-            assets,
-        )
-        manifest = staging / MANIFEST_NAME
-        manifest_bytes = canonical_json(document)
-        if len(manifest_bytes) > MAX_MANIFEST_BYTES:
-            raise ReviewError(
-                "generated release-assets manifest exceeds its "
-                f"{MAX_MANIFEST_BYTES}-byte limit"
-            )
-        _write_exclusive(manifest, manifest_bytes)
-        signature = sign_file(manifest, key, SIGNATURE_NAMESPACE)
-        os.chmod(signature, 0o600)
-        _require_generated_regular_file(
-            signature, MAX_SIGNATURE_BYTES, "detached signature"
-        )
         with tempfile.TemporaryDirectory(
-            prefix="galadriel-release-assets-trust-"
+            prefix="galadriel-release-assets-signing-"
         ) as temporary:
-            allowed_signers = Path(temporary) / "ALLOWED_SIGNERS"
-            derive_external_allowed_signers(key, allowed_signers)
+            signing_root = Path(temporary)
+            allowed_signers_snapshot = signing_root / "ALLOWED_SIGNERS"
+            expected_signer = snapshot_independent_allowed_signers(
+                allowed_signers_source,
+                allowed_signers_snapshot,
+                max_bytes=MAX_ALLOWED_SIGNERS_BYTES,
+            )
+            key, signer_metadata = snapshot_agent_backed_public_signing_key(
+                key_source,
+                signing_root / "SIGNING_KEY.pub",
+            )
+            if signer_metadata != expected_signer:
+                raise ReviewError(
+                    "signing-key public handle does not match independent trust root"
+                )
+            assets = [
+                _write_archive(
+                    qualification,
+                    staging / ASSET_NAMES["qualification"],
+                    "qualification",
+                ),
+                _write_archive(closure, staging / ASSET_NAMES["closure"], "closure"),
+            ]
+            if _snapshot_tree(qualification.root) != qualification:
+                raise ReviewError("qualification evidence changed during packaging")
+            if _snapshot_tree(closure.root) != closure:
+                raise ReviewError("closure evidence changed during packaging")
+            document = _manifest_document(
+                candidate_commit,
+                candidate_tree,
+                tag_name,
+                tag_object,
+                tag_target,
+                assets,
+            )
+            manifest = staging / MANIFEST_NAME
+            manifest_bytes = canonical_json(document)
+            if len(manifest_bytes) > MAX_MANIFEST_BYTES:
+                raise ReviewError(
+                    "generated release-assets manifest exceeds its "
+                    f"{MAX_MANIFEST_BYTES}-byte limit"
+                )
+            _write_exclusive(manifest, manifest_bytes)
+            signature = sign_file(manifest, key, SIGNATURE_NAMESPACE)
+            os.chmod(signature, 0o600)
+            _require_generated_regular_file(
+                signature, MAX_SIGNATURE_BYTES, "detached signature"
+            )
             _verify_release_assets(
                 staging,
-                allowed_signers,
+                allowed_signers_snapshot,
                 expected_candidate=candidate_commit,
                 expected_tree=candidate_tree,
                 expected_tag_name=tag_name,
@@ -1307,6 +1468,7 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument("--closure-root", required=True, type=Path)
     build.add_argument("--out", required=True, type=Path)
     build.add_argument("--signing-key", required=True, type=Path)
+    build.add_argument("--allowed-signers", required=True, type=Path)
     build.add_argument("--candidate-commit", required=True)
     build.add_argument("--candidate-tree", required=True)
     build.add_argument("--tag-name", default=TAG_NAME)
@@ -1339,6 +1501,7 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.closure_root,
                 arguments.out,
                 arguments.signing_key,
+                arguments.allowed_signers,
                 candidate_commit=arguments.candidate_commit,
                 candidate_tree=arguments.candidate_tree,
                 tag_name=arguments.tag_name,

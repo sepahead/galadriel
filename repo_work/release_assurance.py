@@ -6,6 +6,7 @@ It never supplies reviewer findings or task outcomes.
 
 from __future__ import annotations
 
+import base64
 import csv
 import hashlib
 import json
@@ -13,21 +14,51 @@ import math
 import os
 import re
 import shlex
-import subprocess
+import tempfile
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
-from common import ReviewError, contained_path, git, load_json
+from common import (
+    BoundedHostResult as BoundedHostResult,
+    SAFE_GIT_CONFIGURATION,
+    ReviewError,
+    assert_no_replace_refs,
+    contained_path,
+    git,
+    git_bounded_output,
+    load_json,
+    loads_json,
+    read_bounded_regular_file,
+    run_bounded_host_command,
+    safe_git_environment,
+    sanitized_host_environment as sanitized_host_environment,
+    validate_json_structure,
+)
 
 
 VERSION = "0.9.0"
 AUTHOR = "Sepehr Mahmoudian"
+AUTHOR_EMAIL = "sepmhn@gmail.com"
 SIGNING_PRINCIPAL = "sepmhn@gmail.com"
 LENSES = tuple(f"L{number:02d}" for number in range(1, 21))
 GIT_OBJECT = re.compile(r"[0-9a-f]{40}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+MAX_EVIDENCE_DOCUMENT_BYTES = 64 * 1024 * 1024
+MAX_EVIDENCE_JSON_DEPTH = 256
+MAX_EVIDENCE_JSON_NODES = 2_000_000
+MAX_CANDIDATE_TREE_LISTING_BYTES = 64 * 1024 * 1024
+MAX_CANDIDATE_TREE_ENTRIES = 100_000
+MAX_CANDIDATE_PATH_BYTES = 4 * 1024
+MAX_CANDIDATE_PATH_COMPONENT_BYTES = 255
+MAX_CANDIDATE_PATH_DEPTH = 64
+MAX_CANDIDATE_BLOB_BYTES = 256 * 1024 * 1024
+MAX_CANDIDATE_TREE_BLOB_BYTES = 4 * 1024 * 1024 * 1024
+MAX_GIT_IDENTITY_BYTES = 16 * 1024
+CANONICAL_REPOSITORY = "https://github.com/sepahead/galadriel"
+CANONICAL_FETCH_URL = f"{CANONICAL_REPOSITORY}.git"
+CANONICAL_MAIN_REFSPEC = "refs/heads/main:refs/remotes/origin/main"
 TIMESTAMP = re.compile(
     r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})\Z"
 )
@@ -50,10 +81,96 @@ MUTATION_LIVENESS_EXCLUDE_RES = (
     r"replace != with == in DeliveryBoundaryState::blocks_delivery$",
     r"replace <impl Drop for (DeliveryGuard|ResetGuard)<'_>>::drop with \(\)$",
 )
+MUTATION_BASELINE_COMMIT = "94e2f8cc01f352d2bf899b7f656997f143a2588f"
+BROAD_MUTATION_RECEIPT = "BROAD-MUTATION-RUN.json"
 FOCUSED_MUTATION_RECEIPT = "FOCUSED-MUTATION-RUN.json"
+MUTATION_PATH_TOOLS = (
+    "git",
+    "python3",
+    "rustc",
+    "cargo",
+    "rustup",
+    "cargo-mutants",
+    "cc",
+    "clang",
+    "ar",
+    "ld",
+    "make",
+    "cmake",
+    "pkg-config",
+)
+MUTATION_ENVIRONMENT_CONTRACT = {
+    "schema": "galadriel.mutation-environment.v1",
+    "base_keys": [
+        "CARGO_HOME",
+        "CARGO_INCREMENTAL",
+        "CARGO_TARGET_DIR",
+        "CARGO_TERM_COLOR",
+        "GIT_ATTR_NOSYSTEM",
+        "GIT_CONFIG_GLOBAL",
+        "GIT_CONFIG_NOSYSTEM",
+        "GIT_OPTIONAL_LOCKS",
+        "GIT_TERMINAL_PROMPT",
+        "HOME",
+        "LC_ALL",
+        "PATH",
+        "RUSTUP_HOME",
+        "SOURCE_DATE_EPOCH",
+        "TMPDIR",
+        "TZ",
+    ],
+    "cargo_config_policy": "REJECT_FILE_DIRECTORY_OR_LINK",
+    "host_tool_inputs": ["HOME", "PATH", "RUSTUP_HOME"],
+    "git_configuration_policy": "NO_SYSTEM_OR_GLOBAL_CONFIGURATION",
+    "path_policy": "RESOLVED_REQUIRED_TOOL_DIRECTORIES",
+    "path_tools": list(MUTATION_PATH_TOOLS),
+    "rustup_home_policy": "RUSTUP_HOME_OR_HOME_DOT_RUSTUP",
+    "isolated_paths": ["CARGO_HOME", "CARGO_TARGET_DIR", "HOME", "TMPDIR"],
+    "fixed_values": {
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_TERM_COLOR": "never",
+        "GIT_ATTR_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_OPTIONAL_LOCKS": "0",
+        "GIT_TERMINAL_PROMPT": "0",
+        "LC_ALL": "C",
+        "TZ": "UTC",
+    },
+    "source_date_epoch": "CANDIDATE_COMMIT_TIME",
+}
+# Keep the focused name as a compatibility alias for callers that use the
+# narrower receipt vocabulary.
+FOCUSED_MUTATION_ENVIRONMENT_CONTRACT = MUTATION_ENVIRONMENT_CONTRACT
 CARGO_MUTANTS_IDENTITY = "cargo-mutants 27.1.0"
 CARGO_IDENTITY = "cargo 1.89.0 (c24e10642 2025-06-23)"
 RUSTC_IDENTITY = "rustc 1.89.0 (29483883e 2025-08-04)"
+MAX_ALLOWED_SIGNERS_BYTES = 64 * 1024
+MAX_SIGNING_HANDLE_BYTES = 64 * 1024
+MAX_SIGNATURE_BYTES = 256 * 1024
+MAX_SIGNED_DOCUMENT_BYTES = 64 * 1024 * 1024
+MAX_MUTATION_MANIFEST_BYTES = 4 * 1024 * 1024
+MAX_MUTATION_RECEIPT_BYTES = 1 * 1024 * 1024
+MAX_MUTATION_OUTCOMES_BYTES = 32 * 1024 * 1024
+MAX_MUTATION_DIFF_BYTES = 128 * 1024 * 1024
+MAX_MUTATION_EVIDENCE_BYTES = 512 * 1024 * 1024
+BROAD_MUTATION_SHARDS = ("0/4", "1/4", "2/4", "3/4")
+BROAD_MUTATION_MINIMUM_TOTAL = 500
+BROAD_MUTATION_MINIMUM_CAUGHT_RATIO = 0.70
+BROAD_MUTATION_PACKAGES = (
+    "galadriel-cli",
+    "galadriel-core",
+    "galadriel-ncp",
+    "galadriel-pid",
+    "galadriel-sim",
+)
+BROAD_MUTATION_GENRES = {
+    "BinaryOperator",
+    "FnValue",
+    "MatchArm",
+    "MatchArmGuard",
+    "UnaryOperator",
+}
 MetricDomain = Literal["probability", "rate", "delay"]
 ACCEPTANCE_METRIC_DOMAINS: dict[str, MetricDomain] = {
     "false_alerts_per_hour": "rate",
@@ -79,9 +196,307 @@ class FocusedMutant(NamedTuple):
     genre: str
 
 
+def _ssh_host_environment(*, use_agent: bool) -> dict[str, str]:
+    """Return a sanitized SSH environment with one optional agent socket."""
+
+    environment = sanitized_host_environment()
+    if use_agent:
+        agent_socket = os.environ.get("SSH_AUTH_SOCK")
+        if agent_socket is not None:
+            if not agent_socket or "\0" in agent_socket:
+                raise ReviewError("SSH agent socket selector is invalid")
+            environment["SSH_AUTH_SOCK"] = agent_socket
+    return environment
+
+
+ACCEPTANCE_MUTANT_FILE = "crates/galadriel-eval/src/evidence_main.rs"
+
+
+def _acceptance_mutant(
+    function_name: str,
+    return_type: str,
+    function_span: tuple[int, int, int, int],
+    span: tuple[int, int, int, int],
+    replacement: str,
+    genre: str,
+    transformation: str,
+) -> FocusedMutant:
+    """Construct one exact acceptance-evidence mutant identity."""
+
+    return FocusedMutant(
+        f"{ACCEPTANCE_MUTANT_FILE}:{span[0]}:{span[1]}: {transformation}",
+        "galadriel-eval",
+        ACCEPTANCE_MUTANT_FILE,
+        function_name,
+        return_type,
+        function_span,
+        span,
+        replacement,
+        genre,
+    )
+
+
+ACCEPTANCE_EVIDENCE_MUTANTS = (
+    _acceptance_mutant(
+        "interval_envelope",
+        "-> [f64; 2]",
+        (2754, 1, 2758, 2),
+        (2755, 5, 2757, 7),
+        "[0.0; 2]",
+        "FnValue",
+        "replace interval_envelope -> [f64; 2] with [0.0; 2]",
+    ),
+    _acceptance_mutant(
+        "interval_envelope",
+        "-> [f64; 2]",
+        (2754, 1, 2758, 2),
+        (2755, 5, 2757, 7),
+        "[-1.0; 2]",
+        "FnValue",
+        "replace interval_envelope -> [f64; 2] with [-1.0; 2]",
+    ),
+    _acceptance_mutant(
+        "bootstrap_sample_is_sufficient",
+        "-> bool",
+        (2807, 1, 2809, 2),
+        (2808, 5, 2808, 60),
+        "true",
+        "FnValue",
+        "replace bootstrap_sample_is_sufficient -> bool with true",
+    ),
+    _acceptance_mutant(
+        "bootstrap_sample_is_sufficient",
+        "-> bool",
+        (2807, 1, 2809, 2),
+        (2808, 5, 2808, 60),
+        "false",
+        "FnValue",
+        "replace bootstrap_sample_is_sufficient -> bool with false",
+    ),
+    _acceptance_mutant(
+        "interval_envelope",
+        "-> [f64; 2]",
+        (2754, 1, 2758, 2),
+        (2755, 5, 2757, 7),
+        "[1.0; 2]",
+        "FnValue",
+        "replace interval_envelope -> [f64; 2] with [1.0; 2]",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2822, 5, 2991, 6),
+        "Default::default()",
+        "FnValue",
+        "replace estimate_metric -> MetricEstimate with Default::default()",
+    ),
+    _acceptance_mutant(
+        "bootstrap_sample_is_sufficient",
+        "-> bool",
+        (2807, 1, 2809, 2),
+        (2808, 30, 2808, 32),
+        "<",
+        "BinaryOperator",
+        "replace >= with < in bootstrap_sample_is_sufficient",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2845, 7, 2845, 9),
+        "||",
+        "BinaryOperator",
+        "replace && with || in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2845, 26, 2845, 27),
+        "==",
+        "BinaryOperator",
+        "replace < with == in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2845, 26, 2845, 27),
+        ">",
+        "BinaryOperator",
+        "replace < with > in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2845, 26, 2845, 27),
+        "<=",
+        "BinaryOperator",
+        "replace < with <= in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2865, 46, 2865, 47),
+        "|",
+        "BinaryOperator",
+        "replace ^ with | in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2865, 46, 2865, 47),
+        "&",
+        "BinaryOperator",
+        "replace ^ with & in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2865, 26, 2865, 27),
+        "|",
+        "BinaryOperator",
+        "replace ^ with | in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2865, 26, 2865, 27),
+        "&",
+        "BinaryOperator",
+        "replace ^ with & in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2880, 25, 2880, 26),
+        "",
+        "UnaryOperator",
+        "delete ! in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2911, 20, 2911, 22),
+        "!=",
+        "BinaryOperator",
+        "replace == with != in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2928, 20, 2928, 22),
+        "!=",
+        "BinaryOperator",
+        "replace == with != in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "summarize_condition",
+        "-> ConditionSummary",
+        (3118, 1, 3217, 2),
+        (3122, 5, 3216, 6),
+        "Default::default()",
+        "FnValue",
+        "replace summarize_condition -> ConditionSummary with Default::default()",
+    ),
+    _acceptance_mutant(
+        "estimate_metric",
+        "-> MetricEstimate",
+        (2816, 1, 2992, 2),
+        (2944, 20, 2944, 22),
+        "!=",
+        "BinaryOperator",
+        "replace == with != in estimate_metric",
+    ),
+    _acceptance_mutant(
+        "summarize_condition",
+        "-> ConditionSummary",
+        (3118, 1, 3217, 2),
+        (3124, 35, 3124, 37),
+        "!=",
+        "BinaryOperator",
+        "replace == with != in summarize_condition",
+    ),
+    _acceptance_mutant(
+        "summarize_condition",
+        "-> ConditionSummary",
+        (3118, 1, 3217, 2),
+        (3126, 47, 3126, 49),
+        "!=",
+        "BinaryOperator",
+        "replace == with != in summarize_condition",
+    ),
+    _acceptance_mutant(
+        "summarize_condition",
+        "-> ConditionSummary",
+        (3118, 1, 3217, 2),
+        (3139, 53, 3139, 54),
+        "%",
+        "BinaryOperator",
+        "replace / with % in summarize_condition",
+    ),
+    _acceptance_mutant(
+        "summarize_condition",
+        "-> ConditionSummary",
+        (3118, 1, 3217, 2),
+        (3139, 53, 3139, 54),
+        "*",
+        "BinaryOperator",
+        "replace / with * in summarize_condition",
+    ),
+    _acceptance_mutant(
+        "summarize_condition",
+        "-> ConditionSummary",
+        (3118, 1, 3217, 2),
+        (3147, 30, 3147, 31),
+        "",
+        "UnaryOperator",
+        "delete ! in summarize_condition",
+    ),
+    _acceptance_mutant(
+        "build_summary",
+        "-> EvidenceSummary",
+        (3258, 1, 3306, 2),
+        (3263, 5, 3305, 6),
+        "Default::default()",
+        "FnValue",
+        "replace build_summary -> EvidenceSummary with Default::default()",
+    ),
+)
+ACCEPTANCE_EVIDENCE_UNVIABLE_NAMES = frozenset(
+    {
+        "crates/galadriel-eval/src/evidence_main.rs:2822:5: replace "
+        "estimate_metric -> MetricEstimate with Default::default()",
+        "crates/galadriel-eval/src/evidence_main.rs:3122:5: replace "
+        "summarize_condition -> ConditionSummary with Default::default()",
+        "crates/galadriel-eval/src/evidence_main.rs:3263:5: replace "
+        "build_summary -> EvidenceSummary with Default::default()",
+    }
+)
+ACCEPTANCE_EVIDENCE_UNVIABLE_MUTANTS = tuple(
+    mutant
+    for mutant in ACCEPTANCE_EVIDENCE_MUTANTS
+    if mutant.name in ACCEPTANCE_EVIDENCE_UNVIABLE_NAMES
+)
+if {
+    mutant.name for mutant in ACCEPTANCE_EVIDENCE_UNVIABLE_MUTANTS
+} != ACCEPTANCE_EVIDENCE_UNVIABLE_NAMES:
+    raise RuntimeError("the frozen acceptance-evidence unviable set is incomplete")
+
+
 MUTATION_LIVENESS_CHECKS = (
     {
         "id": "delivery-boundary-state",
+        "kind": "direct-test",
         "examine_re": "DeliveryBoundaryState::blocks_delivery",
         "test": "live::tests::each_delivery_boundary_state_independently_blocks_delivery",
         "output": "mutants-delivery-boundary",
@@ -150,6 +565,7 @@ MUTATION_LIVENESS_CHECKS = (
     },
     {
         "id": "delivery-boundary-guards",
+        "kind": "direct-test",
         "examine_re": r"<impl Drop for (DeliveryGuard|ResetGuard)",
         "test": "live::tests::delivery_and_reset_guards_release_their_exact_boundary_state",
         "output": "mutants-delivery-guards",
@@ -180,6 +596,18 @@ MUTATION_LIVENESS_CHECKS = (
             ),
         ),
     },
+    {
+        "id": "acceptance-evidence-estimation",
+        "kind": "acceptance-binary",
+        "examine_re": (
+            "interval_envelope|bootstrap_sample_is_sufficient|estimate_metric|"
+            "summarize_condition|build_summary"
+        ),
+        "binary": "galadriel-evidence",
+        "output": "mutants-acceptance-evidence",
+        "required_mutants": ACCEPTANCE_EVIDENCE_MUTANTS,
+        "unviable_mutants": ACCEPTANCE_EVIDENCE_UNVIABLE_MUTANTS,
+    },
 )
 
 
@@ -192,6 +620,8 @@ def broad_mutation_command(shard_id: str) -> list[str]:
         "--no-config",
         "--workspace",
         "--no-shuffle",
+        "--baseline",
+        "run",
         "--in-diff",
         "git.diff",
         "--exclude",
@@ -210,39 +640,87 @@ def broad_mutation_command(shard_id: str) -> list[str]:
             "--shard",
             shard_id,
             "--all-features",
+            "--cargo-arg=--locked",
+            "--copy-vcs",
+            "true",
+            "--colors",
+            "never",
         )
     )
     return command
 
 
 def focused_liveness_mutation_command(check: dict[str, Any]) -> list[str]:
-    """Return one exact direct-test mutation command for a blocking invariant."""
+    """Return one exact focused mutation command."""
 
-    return [
-        "cargo",
-        "mutants",
-        "--no-config",
-        "--package",
-        "galadriel-ncp",
-        "--file",
-        "crates/galadriel-ncp/src/live.rs",
-        "--re",
-        str(check["examine_re"]),
-        "--line-col",
-        "true",
-        "--all-features",
-        "--timeout",
-        "120",
-        "--jobs",
-        "2",
-        "--output",
-        str(check["output"]),
-        "--",
-        "--lib",
-        str(check["test"]),
-        "--",
-        "--exact",
-    ]
+    kind = check.get("kind")
+    if kind == "direct-test":
+        return [
+            "cargo",
+            "mutants",
+            "--no-config",
+            "--package",
+            "galadriel-ncp",
+            "--file",
+            "crates/galadriel-ncp/src/live.rs",
+            "--re",
+            str(check["examine_re"]),
+            "--line-col",
+            "true",
+            "--no-shuffle",
+            "--baseline",
+            "run",
+            "--timeout",
+            "120",
+            "--jobs",
+            "2",
+            "--all-features",
+            "--cargo-arg=--locked",
+            "--copy-vcs",
+            "true",
+            "--colors",
+            "never",
+            "--output",
+            str(check["output"]),
+            "--",
+            "--lib",
+            str(check["test"]),
+            "--",
+            "--exact",
+        ]
+    if kind == "acceptance-binary":
+        return [
+            "cargo",
+            "mutants",
+            "--no-config",
+            "--package",
+            "galadriel-eval",
+            "--file",
+            ACCEPTANCE_MUTANT_FILE,
+            "--re",
+            str(check["examine_re"]),
+            "--line-col",
+            "true",
+            "--no-shuffle",
+            "--baseline",
+            "run",
+            "--timeout",
+            "120",
+            "--jobs",
+            "2",
+            "--all-features",
+            "--cargo-arg=--locked",
+            "--copy-vcs",
+            "true",
+            "--colors",
+            "never",
+            "--output",
+            str(check["output"]),
+            "--",
+            "--bin",
+            str(check["binary"]),
+        ]
+    raise ReviewError(f"unknown focused mutation check kind: {kind!r}")
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -257,6 +735,13 @@ def digest_file(path: Path) -> tuple[str, int]:
             size += len(block)
             digest.update(block)
     return digest.hexdigest(), size
+
+
+def bounded_digest_file(path: Path, *, max_bytes: int, context: str) -> tuple[str, int]:
+    """Hash one stable no-follow regular file within an exact byte bound."""
+
+    document = read_bounded_regular_file(path, max_bytes=max_bytes, label=context)
+    return sha256_bytes(document), len(document)
 
 
 def require_keys(value: Any, expected: set[str], context: str) -> None:
@@ -289,63 +774,149 @@ def sign_file(document: Path, key: Path, namespace: str) -> Path:
 
     if not document.is_file() or document.is_symlink():
         raise ReviewError(f"signed document is not a regular file: {document}")
-    if not key.is_file():
+    if not key.is_file() or key.is_symlink():
         raise ReviewError(f"SSH signing key is unavailable: {key}")
     signature = Path(f"{document}.sig")
     if signature.exists():
         raise ReviewError(f"refusing to replace signature: {signature}")
-    process = subprocess.run(
+    process = run_bounded_host_command(
         ["ssh-keygen", "-Y", "sign", "-f", str(key), "-n", namespace, str(document)],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-        text=True,
+        context="SSH signing command",
+        environment=_ssh_host_environment(use_agent=True),
     )
     if process.returncode != 0 or not signature.is_file():
         raise ReviewError(
-            f"cannot sign {document.name} in namespace {namespace}: {process.stderr.strip()}"
+            f"cannot sign {document.name} in namespace {namespace}: "
+            f"command exited with {process.returncode}"
         )
     return signature
 
 
-def derive_external_allowed_signers(signing_key: Path, destination: Path) -> bytes:
-    """Derive a public trust root from an external signing-key handle.
+def _public_key_fields(document: bytes, context: str) -> tuple[str, str]:
+    """Return one exact Ed25519 key from public OpenSSH text."""
 
-    ``signing_key`` may be a private key or an exact OpenSSH public key whose
-    private half is available through ``ssh-agent``. Only the public output is
-    written. The destination must be outside the candidate and is normally
-    inside a short-lived temporary directory.
-    """
-
-    if not signing_key.is_file():
-        raise ReviewError(f"SSH signing key is unavailable: {signing_key}")
     try:
-        configured_fields = signing_key.read_bytes().strip().split()
-    except OSError as error:
-        raise ReviewError(f"cannot read SSH signing key: {error}") from error
-    if configured_fields and configured_fields[0] == b"ssh-ed25519":
-        try:
-            public_key = [
-                field.decode("ascii", "strict") for field in configured_fields[:2]
-            ]
-        except UnicodeDecodeError as error:
-            raise ReviewError("external signing public key is not ASCII") from error
-    else:
-        process = subprocess.run(
-            ["ssh-keygen", "-y", "-f", str(signing_key)],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
+        lines = document.decode("ascii", "strict").splitlines()
+    except UnicodeDecodeError as error:
+        raise ReviewError(f"{context} is not ASCII") from error
+    if len(lines) != 1:
+        raise ReviewError(f"{context} must contain exactly one line")
+    fields = lines[0].split()
+    if len(fields) not in {2, 3} or fields[0] != "ssh-ed25519":
+        raise ReviewError(f"{context} must contain one Ed25519 public key")
+    try:
+        decoded = base64.b64decode(fields[1], validate=True)
+    except ValueError as error:
+        raise ReviewError(f"{context} has invalid public-key encoding") from error
+    if len(decoded) < 32:
+        raise ReviewError(f"{context} has an invalid Ed25519 public key")
+    return fields[0], fields[1]
+
+
+def snapshot_independent_allowed_signers(
+    source: Path,
+    destination: Path,
+    *,
+    max_bytes: int = MAX_ALLOWED_SIGNERS_BYTES,
+) -> bytes:
+    """Copy and validate an independently obtained signer allowlist."""
+
+    document = read_bounded_regular_file(
+        source,
+        max_bytes=max_bytes,
+        label="independent allowed-signers file",
+    )
+    try:
+        lines = document.decode("ascii", "strict").splitlines()
+    except UnicodeDecodeError as error:
+        raise ReviewError("independent allowed-signers file is not ASCII") from error
+    if len(lines) != 1:
+        raise ReviewError(
+            "independent allowed-signers file must contain exactly one line"
         )
-        if process.returncode != 0:
-            detail = process.stderr.decode("utf-8", "replace").strip()
-            raise ReviewError(f"cannot derive external signing public key: {detail}")
-        public_key = process.stdout.decode("ascii", "strict").strip().split()
-    if len(public_key) < 2 or public_key[0] != "ssh-ed25519":
-        raise ReviewError("external release signing key must be Ed25519")
-    retained = f"{SIGNING_PRINCIPAL} {public_key[0]} {public_key[1]}\n".encode("ascii")
+    fields = lines[0].split()
+    if len(fields) != 3 or fields[0] != SIGNING_PRINCIPAL:
+        raise ReviewError(
+            "independent allowed-signers file has the wrong principal or field count"
+        )
+    _public_key_fields(" ".join(fields[1:]).encode("ascii"), "allowed signer")
+    canonical = f"{fields[0]} {fields[1]} {fields[2]}\n".encode("ascii")
+    if document != canonical:
+        raise ReviewError("independent allowed-signers file is not canonical")
+    if destination.exists():
+        raise ReviewError(f"refusing to replace external trust root: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(canonical)
+    os.chmod(destination, 0o600)
+    return canonical
+
+
+def require_agent_backed_public_signing_key(signing_key: Path) -> bytes:
+    """Require an agent-backed public handle and return canonical signer metadata."""
+
+    document = read_bounded_regular_file(
+        signing_key,
+        max_bytes=MAX_SIGNING_HANDLE_BYTES,
+        label="agent-backed signing-key handle",
+    )
+    key_type, encoded = _public_key_fields(document.strip(), "signing-key handle")
+    process = run_bounded_host_command(
+        ["ssh-add", "-L"],
+        context="SSH agent key inspection",
+        environment=_ssh_host_environment(use_agent=True),
+    )
+    if process.returncode != 0:
+        raise ReviewError(
+            "cannot inspect ssh-agent signing keys: "
+            f"command exited with {process.returncode}"
+        )
+    agent_keys: set[tuple[str, str]] = set()
+    for line in process.stdout.splitlines():
+        try:
+            agent_keys.add(_public_key_fields(line, "ssh-agent public key"))
+        except ReviewError:
+            continue
+    if (key_type, encoded) not in agent_keys:
+        raise ReviewError("the signing-key public handle is not available in ssh-agent")
+    return f"{SIGNING_PRINCIPAL} {key_type} {encoded}\n".encode("ascii")
+
+
+def snapshot_agent_backed_public_signing_key(
+    source: Path,
+    destination: Path,
+) -> tuple[Path, bytes]:
+    """Validate one public handle and snapshot only its canonical public fields."""
+
+    signer_metadata = require_agent_backed_public_signing_key(source)
+    fields = signer_metadata.split()
+    if len(fields) != 3:
+        raise ReviewError("agent-backed signing metadata is malformed")
+    public_handle = b" ".join(fields[1:]) + b"\n"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with destination.open("xb") as handle:
+            handle.write(public_handle)
+    except FileExistsError as error:
+        raise ReviewError(
+            f"refusing to replace signing-key public snapshot: {destination}"
+        ) from error
+    os.chmod(destination, 0o600)
+    return destination, signer_metadata
+
+
+def derive_external_allowed_signers(signing_key: Path, destination: Path) -> bytes:
+    """Derive a canonical trust root from one external Ed25519 public handle."""
+
+    document = read_bounded_regular_file(
+        signing_key,
+        max_bytes=MAX_SIGNING_HANDLE_BYTES,
+        label="external signing-key public handle",
+    )
+    key_type, encoded = _public_key_fields(
+        document.strip(),
+        "external signing-key public handle",
+    )
+    retained = f"{SIGNING_PRINCIPAL} {key_type} {encoded}\n".encode("ascii")
     if destination.exists():
         raise ReviewError(f"refusing to replace external trust root: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -357,14 +928,11 @@ def derive_external_allowed_signers(signing_key: Path, destination: Path) -> byt
 def assert_tracked_allowed_signer(path: Path, expected: bytes) -> None:
     """Require byte-identical candidate signer metadata, never use it as trust root."""
 
-    if not path.is_file() or path.is_symlink():
-        raise ReviewError(
-            "candidate tracked allowed-signers metadata is missing or unsafe"
-        )
-    try:
-        actual = path.read_bytes()
-    except OSError as error:
-        raise ReviewError(f"cannot read candidate signer metadata: {error}") from error
+    actual = read_bounded_regular_file(
+        path,
+        max_bytes=MAX_ALLOWED_SIGNERS_BYTES,
+        label="candidate tracked allowed-signers metadata",
+    )
     if actual != expected:
         raise ReviewError(
             "candidate replaced or altered the externally derived allowed signer"
@@ -379,66 +947,296 @@ def verify_signature(
     *,
     principal: str = SIGNING_PRINCIPAL,
 ) -> None:
-    for path, label in (
-        (document, "signed document"),
-        (signature, "detached signature"),
-        (allowed_signers, "allowed-signers trust root"),
-    ):
-        if not path.is_file() or path.is_symlink():
-            raise ReviewError(f"missing or unsafe {label}: {path}")
-    process = subprocess.run(
-        [
-            "ssh-keygen",
-            "-Y",
-            "verify",
-            "-f",
-            str(allowed_signers),
-            "-I",
-            principal,
-            "-n",
-            namespace,
-            "-s",
-            str(signature),
-        ],
-        input=document.read_bytes(),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
+    document_bytes = read_bounded_regular_file(
+        document,
+        max_bytes=MAX_SIGNED_DOCUMENT_BYTES,
+        label="signed document",
     )
+    signature_bytes = read_bounded_regular_file(
+        signature,
+        max_bytes=MAX_SIGNATURE_BYTES,
+        label="detached signature",
+    )
+    allowed_signers_bytes = read_bounded_regular_file(
+        allowed_signers,
+        max_bytes=MAX_ALLOWED_SIGNERS_BYTES,
+        label="allowed-signers trust root",
+    )
+    with tempfile.TemporaryDirectory(
+        prefix="galadriel-signature-verification-"
+    ) as name:
+        root = Path(name)
+        signature_snapshot = root / "signature"
+        allowed_signers_snapshot = root / "allowed-signers"
+        signature_snapshot.write_bytes(signature_bytes)
+        allowed_signers_snapshot.write_bytes(allowed_signers_bytes)
+        os.chmod(signature_snapshot, 0o600)
+        os.chmod(allowed_signers_snapshot, 0o600)
+        process = run_bounded_host_command(
+            [
+                "ssh-keygen",
+                "-Y",
+                "verify",
+                "-f",
+                str(allowed_signers_snapshot),
+                "-I",
+                principal,
+                "-n",
+                namespace,
+                "-s",
+                str(signature_snapshot),
+            ],
+            context="SSH signature verification",
+            stdin_document=document_bytes,
+            environment=_ssh_host_environment(use_agent=False),
+        )
     if process.returncode != 0:
-        detail = process.stderr.decode("utf-8", "replace").strip()
         raise ReviewError(
-            f"invalid {namespace} signature for {document.name}: {detail}"
+            f"invalid {namespace} signature for {document.name}: "
+            f"command exited with {process.returncode}"
         )
 
 
 def verify_candidate_commit(repo: Path, commit: str, allowed_signers: Path) -> str:
     if not GIT_OBJECT.fullmatch(commit):
         raise ReviewError("candidate commit must be a full lowercase Git object")
-    resolved = str(git(repo, "rev-parse", f"{commit}^{{commit}}")).strip()
+    _reject_unsafe_local_git_configuration(repo)
+    assert_no_replace_refs(repo)
+    resolved = str(
+        git(
+            repo,
+            "rev-parse",
+            "--verify",
+            f"{commit}^{{commit}}",
+            max_bytes=64,
+        )
+    ).strip()
     if resolved != commit:
         raise ReviewError(f"candidate commit resolves differently: {resolved}")
-    process = subprocess.run(
-        [
-            "git",
-            "-C",
-            str(repo),
-            "-c",
-            f"gpg.ssh.allowedSignersFile={allowed_signers}",
-            "verify-commit",
-            commit,
-        ],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-        text=True,
+    identities = (
+        str(
+            git(
+                repo,
+                "-c",
+                "log.showSignature=false",
+                "show",
+                "-s",
+                "--format=%an%x00%ae%x00%cn%x00%ce",
+                commit,
+                max_bytes=MAX_GIT_IDENTITY_BYTES,
+            )
+        )
+        .rstrip("\n")
+        .split("\0")
     )
+    expected_identities = [AUTHOR, AUTHOR_EMAIL, AUTHOR, AUTHOR_EMAIL]
+    if identities != expected_identities:
+        raise ReviewError(
+            "candidate author and committer identities must both equal "
+            f"{AUTHOR} <{AUTHOR_EMAIL}>"
+        )
+    with tempfile.TemporaryDirectory(prefix="galadriel-commit-verification-") as name:
+        allowed_signers_snapshot = Path(name) / "allowed-signers"
+        snapshot_independent_allowed_signers(allowed_signers, allowed_signers_snapshot)
+        process = run_bounded_host_command(
+            [
+                "git",
+                "--no-replace-objects",
+                "--literal-pathspecs",
+                *SAFE_GIT_CONFIGURATION,
+                "-C",
+                str(repo),
+                "-c",
+                "gpg.format=ssh",
+                "-c",
+                f"gpg.ssh.allowedSignersFile={allowed_signers_snapshot}",
+                "verify-commit",
+                commit,
+            ],
+            context="candidate commit signature verification",
+            environment=safe_git_environment(),
+        )
     if process.returncode != 0:
         raise ReviewError(
-            f"candidate commit lacks the required signature: {process.stdout.strip()}"
+            "candidate commit lacks the required signature: "
+            f"command exited with {process.returncode}"
         )
-    return str(git(repo, "rev-parse", f"{commit}^{{tree}}")).strip()
+    tree = str(
+        git(
+            repo,
+            "rev-parse",
+            "--verify",
+            f"{commit}^{{tree}}",
+            max_bytes=64,
+        )
+    ).strip()
+    assert_no_replace_refs(repo)
+    return tree
+
+
+def canonical_repository_identity(repo: Path) -> str:
+    """Require exact canonical fetch and push endpoints for the origin remote."""
+
+    accepted = {
+        "git@github.com:sepahead/galadriel.git",
+        "ssh://git@github.com/sepahead/galadriel.git",
+        "https://github.com/sepahead/galadriel.git",
+        "https://github.com/sepahead/galadriel",
+    }
+
+    for arguments in (
+        ("remote", "get-url", "--all", "origin"),
+        ("remote", "get-url", "--push", "--all", "origin"),
+    ):
+        raw_endpoint = str(
+            git(
+                repo,
+                *arguments,
+                max_bytes=MAX_GIT_IDENTITY_BYTES,
+            )
+        )
+        if not raw_endpoint.endswith("\n") or raw_endpoint.count("\n") != 1:
+            raise ReviewError(
+                "candidate origin is not the canonical credential-free repository"
+            )
+        endpoint = raw_endpoint[:-1]
+        if endpoint not in accepted or any(
+            ord(character) < 0x20 for character in endpoint
+        ):
+            raise ReviewError(
+                "candidate origin is not the canonical credential-free repository"
+            )
+    return CANONICAL_REPOSITORY
+
+
+def _reject_unsafe_local_git_configuration(repo: Path) -> None:
+    """Reject local configuration that can alter a release Git operation."""
+
+    raw = bytes(
+        git(
+            repo,
+            "config",
+            "--local",
+            "--no-includes",
+            "--null",
+            "--name-only",
+            "--list",
+            text=False,
+            max_bytes=MAX_GIT_IDENTITY_BYTES,
+        )
+    )
+    try:
+        names = [
+            item.decode("utf-8", "strict").casefold()
+            for item in raw.split(b"\0")
+            if item
+        ]
+    except UnicodeDecodeError as error:
+        raise ReviewError(
+            "candidate local Git configuration is not valid UTF-8"
+        ) from error
+    unsafe = any(
+        name.startswith(
+            (
+                "credential.",
+                "extensions.",
+                "gpg.",
+                "http.",
+                "https.",
+                "include.",
+                "includeif.",
+                "protocol.",
+                "url.",
+            )
+        )
+        or name
+        in {
+            "core.alternaterefscommand",
+            "core.askpass",
+            "core.gitproxy",
+            "core.sshcommand",
+            "core.worktree",
+            "gc.recentobjectshook",
+        }
+        or name.startswith("fetch.fsck.")
+        or (
+            name.startswith("remote.")
+            and name
+            not in {
+                "remote.origin.fetch",
+                "remote.origin.pushurl",
+                "remote.origin.url",
+            }
+        )
+        for name in names
+    )
+    if unsafe:
+        raise ReviewError(
+            "candidate local Git configuration can alter a release Git operation"
+        )
+
+
+def refresh_canonical_origin_main(repo: Path, commit: str) -> tuple[str, str]:
+    """Fetch canonical public main and require it to equal one exact candidate."""
+
+    _reject_unsafe_local_git_configuration(repo)
+    repository = canonical_repository_identity(repo)
+    assert_no_replace_refs(repo)
+    git(
+        repo,
+        "-c",
+        "credential.helper=",
+        "-c",
+        "credential.interactive=never",
+        "-c",
+        "core.askPass=",
+        "-c",
+        "fetch.fsckObjects=true",
+        "-c",
+        "transfer.fsckObjects=true",
+        "fetch",
+        "--quiet",
+        "--no-tags",
+        "--no-recurse-submodules",
+        "--no-auto-maintenance",
+        "--no-prune",
+        "--no-prune-tags",
+        "--no-write-commit-graph",
+        "--show-forced-updates",
+        "--no-write-fetch-head",
+        CANONICAL_FETCH_URL,
+        CANONICAL_MAIN_REFSPEC,
+        max_bytes=0,
+        timeout_seconds=600,
+    )
+    assert_no_replace_refs(repo)
+    return repository, require_origin_main_candidate(repo, commit)
+
+
+def require_origin_main_candidate(repo: Path, commit: str) -> str:
+    """Require the exact candidate at the local origin/main tracking ref."""
+
+    if not GIT_OBJECT.fullmatch(commit):
+        raise ReviewError("candidate commit must be a full lowercase Git object")
+    assert_no_replace_refs(repo)
+    try:
+        origin_main = str(
+            git(
+                repo,
+                "rev-parse",
+                "--verify",
+                "refs/remotes/origin/main^{commit}",
+                max_bytes=64,
+            )
+        ).strip()
+    except ReviewError as error:
+        raise ReviewError(
+            "origin/main does not identify an available commit"
+        ) from error
+    if origin_main != commit:
+        raise ReviewError("origin/main does not identify the exact candidate")
+    assert_no_replace_refs(repo)
+    return origin_main
 
 
 def _required_row(
@@ -804,21 +1602,60 @@ def evaluate_acceptance(
     }
 
 
-def validate_evidence_config_binding(
-    tracked_config_path: Path,
-    evidence_output: Path,
+def _bounded_evidence_object(payload: bytes, label: str) -> dict[str, Any]:
+    """Parse one bounded evidence object with strict JSON rules."""
+
+    if (
+        not isinstance(payload, bytes)
+        or not payload
+        or len(payload) > MAX_EVIDENCE_DOCUMENT_BYTES
+    ):
+        raise ReviewError(f"{label} has an invalid byte length")
+    try:
+        value = loads_json(payload)
+        validate_json_structure(
+            value,
+            max_depth=MAX_EVIDENCE_JSON_DEPTH,
+            max_nodes=MAX_EVIDENCE_JSON_NODES,
+            label=label,
+        )
+    except (
+        MemoryError,
+        RecursionError,
+        ReviewError,
+        UnicodeError,
+        ValueError,
+    ) as error:
+        raise ReviewError(f"{label} is invalid: {error}") from error
+    if not isinstance(value, dict):
+        raise ReviewError(f"{label} is not a JSON object")
+    return value
+
+
+def validate_evidence_config_bytes(
+    tracked_config_bytes: bytes,
+    accepted_config_bytes: bytes,
+    evidence_manifest_bytes: bytes,
     *,
     tracked_relative_path: str,
 ) -> dict[str, Any]:
-    """Bind accepted evidence output to the tracked preregistered input."""
+    """Bind retained evidence bytes to the preregistered candidate config."""
 
-    source = load_json(tracked_config_path)
-    accepted_path = evidence_output / "config.json"
-    manifest_path = evidence_output / "manifest.json"
-    accepted = load_json(accepted_path)
-    manifest = load_json(manifest_path)
-    source_sha, source_size = digest_file(tracked_config_path)
-    accepted_sha, _accepted_size = digest_file(accepted_path)
+    source = _bounded_evidence_object(
+        tracked_config_bytes,
+        "tracked candidate evidence config",
+    )
+    accepted = _bounded_evidence_object(
+        accepted_config_bytes,
+        "accepted candidate evidence config",
+    )
+    manifest = _bounded_evidence_object(
+        evidence_manifest_bytes,
+        "candidate evidence manifest",
+    )
+    source_sha = hashlib.sha256(tracked_config_bytes).hexdigest()
+    source_size = len(tracked_config_bytes)
+    accepted_sha = hashlib.sha256(accepted_config_bytes).hexdigest()
     inputs = manifest.get("inputs")
     if not isinstance(inputs, dict):
         raise ReviewError("candidate evidence manifest lacks input provenance")
@@ -912,6 +1749,231 @@ def validate_evidence_config_binding(
     }
 
 
+def validate_evidence_config_binding(
+    tracked_config_path: Path,
+    evidence_output: Path,
+    *,
+    tracked_relative_path: str,
+) -> dict[str, Any]:
+    """Bind accepted evidence output to the tracked preregistered input."""
+
+    tracked_config_bytes = read_bounded_regular_file(
+        tracked_config_path,
+        max_bytes=MAX_EVIDENCE_DOCUMENT_BYTES,
+        label="tracked candidate evidence config",
+    )
+    accepted_config_bytes = read_bounded_regular_file(
+        evidence_output / "config.json",
+        max_bytes=MAX_EVIDENCE_DOCUMENT_BYTES,
+        label="accepted candidate evidence config",
+    )
+    evidence_manifest_bytes = read_bounded_regular_file(
+        evidence_output / "manifest.json",
+        max_bytes=MAX_EVIDENCE_DOCUMENT_BYTES,
+        label="candidate evidence manifest",
+    )
+    return validate_evidence_config_bytes(
+        tracked_config_bytes,
+        accepted_config_bytes,
+        evidence_manifest_bytes,
+        tracked_relative_path=tracked_relative_path,
+    )
+
+
+def validate_github_mutation_run(
+    value: Any,
+    *,
+    commit: str,
+    context: str,
+    allow_null: bool = False,
+) -> dict[str, str] | None:
+    """Validate exact GitHub Actions provenance for one mutation job."""
+
+    if value is None and allow_null:
+        return None
+    require_keys(
+        value,
+        {"run_id", "run_attempt", "job", "workflow", "repository", "ref", "sha"},
+        context,
+    )
+    result: dict[str, str] = {}
+    for field in (
+        "run_id",
+        "run_attempt",
+        "job",
+        "workflow",
+        "repository",
+        "ref",
+        "sha",
+    ):
+        result[field] = _focused_exact_text(value[field], f"{context} {field}")
+        if len(result[field].encode("utf-8")) > 512:
+            raise ReviewError(f"{context} {field} exceeds 512 bytes")
+    if len(result["run_id"]) > 20 or not re.fullmatch(r"[1-9][0-9]*", result["run_id"]):
+        raise ReviewError(f"{context} has an invalid run ID")
+    if len(result["run_attempt"]) > 20 or not re.fullmatch(
+        r"[1-9][0-9]*", result["run_attempt"]
+    ):
+        raise ReviewError(f"{context} has an invalid run attempt")
+    if (
+        result["job"] != "mutation-diff"
+        or result["workflow"] != "Deep quality"
+        or result["repository"] != "sepahead/galadriel"
+        or result["sha"] != commit
+    ):
+        raise ReviewError(f"{context} targets another workflow or candidate")
+    ref = result["ref"]
+    branch_prefix = "refs/heads/"
+    branch = ref.removeprefix(branch_prefix)
+    branch_parts = branch.split("/")
+    canonical_branch = (
+        ref.startswith(branch_prefix)
+        and re.fullmatch(r"[A-Za-z0-9._/-]+", branch) is not None
+        and ".." not in branch
+        and "//" not in branch
+        and not branch.endswith(".")
+        and all(
+            part and not part.startswith(".") and not part.endswith(".lock")
+            for part in branch_parts
+        )
+    )
+    canonical_pull = re.fullmatch(r"refs/pull/[1-9][0-9]*/merge", ref)
+    if not canonical_branch and not canonical_pull:
+        raise ReviewError(f"{context} has an invalid GitHub reference")
+    return result
+
+
+def validate_broad_mutation_receipt(
+    path: Path,
+    *,
+    root: Path,
+    commit: str,
+    tree: str,
+    shard: str,
+    diff: bytes,
+) -> tuple[dict[str, Any], Path]:
+    """Bind one broad mutation outcome to its exact isolated execution."""
+
+    root = root.resolve()
+    if not path.is_file() or path.is_symlink():
+        raise ReviewError("broad mutation run receipt is missing or unsafe")
+    path = path.resolve()
+    if path != root / BROAD_MUTATION_RECEIPT:
+        raise ReviewError("broad mutation run receipt is outside its artifact root")
+    document = load_json(
+        path,
+        max_bytes=MAX_MUTATION_RECEIPT_BYTES,
+        max_depth=16,
+        max_nodes=100_000,
+        label="broad mutation run receipt",
+    )
+    require_keys(
+        document,
+        {
+            "schema",
+            "candidate",
+            "baseline_commit",
+            "shard",
+            "github_run",
+            "git_diff",
+            "command_argv",
+            "environment_contract",
+            "toolchain",
+            "exit_code",
+            "status",
+            "counts",
+            "outcomes",
+        },
+        "broad mutation run receipt",
+    )
+    if document["schema"] != "galadriel.broad-mutation-run.v2":
+        raise ReviewError("broad mutation run receipt has another schema")
+    if document["candidate"] != {"commit": commit, "tree": tree}:
+        raise ReviewError("broad mutation run receipt targets another candidate")
+    if document["baseline_commit"] != MUTATION_BASELINE_COMMIT:
+        raise ReviewError("broad mutation run receipt targets another baseline")
+    if shard not in {"0/4", "1/4", "2/4", "3/4"} or document["shard"] != shard:
+        raise ReviewError("broad mutation run receipt targets another shard")
+    validate_github_mutation_run(
+        document["github_run"],
+        commit=commit,
+        context="broad mutation GitHub run",
+        allow_null=True,
+    )
+
+    diff_record = document["git_diff"]
+    require_digest_record(diff_record, "broad mutation run diff")
+    if (
+        diff_record["path"] != "git.diff"
+        or diff_record["sha256"] != sha256_bytes(diff)
+        or diff_record["size_bytes"] != len(diff)
+    ):
+        raise ReviewError("broad mutation run receipt targets other diff bytes")
+    if not diff:
+        raise ReviewError("broad mutation run receipt targets an empty diff")
+    if len(diff) > MAX_MUTATION_DIFF_BYTES:
+        raise ReviewError("broad mutation run diff exceeds its byte limit")
+    if document["command_argv"] != broad_mutation_command(shard):
+        raise ReviewError("broad mutation run receipt used another command")
+    if document["environment_contract"] != MUTATION_ENVIRONMENT_CONTRACT:
+        raise ReviewError("broad mutation run used another environment contract")
+
+    toolchain = document["toolchain"]
+    require_keys(
+        toolchain,
+        {"cargo", "cargo_executable", "cargo_mutants", "rustc"},
+        "broad mutation run toolchain",
+    )
+    cargo_executable = _focused_exact_text(
+        toolchain["cargo_executable"], "broad mutation Cargo executable"
+    )
+    if (
+        not Path(cargo_executable).is_absolute()
+        or Path(cargo_executable).name != "cargo"
+    ):
+        raise ReviewError(
+            "broad mutation Cargo executable is not an absolute cargo path"
+        )
+    if toolchain != {
+        "cargo": CARGO_IDENTITY,
+        "cargo_executable": cargo_executable,
+        "cargo_mutants": CARGO_MUTANTS_IDENTITY,
+        "rustc": RUSTC_IDENTITY,
+    }:
+        raise ReviewError("broad mutation run used another pinned toolchain")
+    if type(document["exit_code"]) is not int or document["exit_code"] != 0:
+        raise ReviewError("broad mutation run did not retain a zero exit status")
+    if document["status"] != "PASS":
+        raise ReviewError("broad mutation run did not pass")
+
+    outcome_record = document["outcomes"]
+    require_digest_record(outcome_record, "broad mutation run outcomes")
+    if outcome_record["path"] != "mutants.out/outcomes.json":
+        raise ReviewError("broad mutation run receipt targets another outcome path")
+    target = contained_path(root, outcome_record["path"])
+    if not target.is_file() or target.is_symlink():
+        raise ReviewError("broad mutation run outcome is missing or unsafe")
+    digest, size = bounded_digest_file(
+        target,
+        max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+        context="broad mutation outcomes",
+    )
+    if outcome_record["sha256"] != digest or outcome_record["size_bytes"] != size:
+        raise ReviewError("broad mutation run outcome digest mismatch")
+    counts = validate_mutation_outcomes(
+        target,
+        shard,
+        expected_cargo_executable=cargo_executable,
+    )
+    recorded_counts = document["counts"]
+    require_keys(recorded_counts, set(counts), "broad mutation run counts")
+    if any(type(value) is not int or value < 0 for value in recorded_counts.values()):
+        raise ReviewError("broad mutation run has noncanonical counts")
+    if recorded_counts != counts:
+        raise ReviewError("broad mutation run count record drifted")
+    return document, target
+
+
 def validate_mutation_evidence(
     manifest_path: Path,
     signature_path: Path,
@@ -929,7 +1991,23 @@ def validate_mutation_evidence(
         allowed_signers,
         "galadriel-mutation-evidence",
     )
-    document = load_json(manifest_path)
+    _, manifest_size = bounded_digest_file(
+        manifest_path,
+        max_bytes=MAX_MUTATION_MANIFEST_BYTES,
+        context="mutation evidence manifest",
+    )
+    _, signature_size = bounded_digest_file(
+        signature_path,
+        max_bytes=MAX_SIGNATURE_BYTES,
+        context="mutation evidence signature",
+    )
+    document = load_json(
+        manifest_path,
+        max_bytes=MAX_MUTATION_MANIFEST_BYTES,
+        max_depth=32,
+        max_nodes=250_000,
+        label="mutation evidence manifest",
+    )
     require_keys(
         document,
         {
@@ -938,17 +2016,20 @@ def validate_mutation_evidence(
             "author",
             "candidate",
             "baseline_commit",
+            "github_run",
             "git_diff_argv",
             "git_diff_sha256",
+            "git_diff",
             "tool",
             "shards",
+            "broad_run_receipts",
             "focused_run_receipt",
             "focused_checks",
         },
         "mutation evidence",
     )
     if (
-        document["schema"] != "galadriel.mutation-evidence.v3"
+        document["schema"] != "galadriel.mutation-evidence.v5"
         or document["release"] != VERSION
         or document["author"] != AUTHOR
     ):
@@ -956,17 +2037,45 @@ def validate_mutation_evidence(
     if document["candidate"] != {"commit": commit, "tree": tree}:
         raise ReviewError("mutation evidence targets the wrong candidate")
     baseline = document["baseline_commit"]
-    if baseline != "94e2f8cc01f352d2bf899b7f656997f143a2588f":
+    if baseline != MUTATION_BASELINE_COMMIT:
         raise ReviewError("mutation evidence targets the wrong frozen baseline")
+    github_run = validate_github_mutation_run(
+        document["github_run"],
+        commit=commit,
+        context="mutation evidence GitHub run",
+    )
+    if github_run is None:
+        raise ReviewError("mutation evidence lacks GitHub run provenance")
     expected_diff_argv = ["git", *MUTATION_DIFF_OPTIONS, f"{baseline}..{commit}", "--"]
     if document["git_diff_argv"] != expected_diff_argv:
         raise ReviewError("mutation evidence used another Git diff contract")
     git(repo, "merge-base", "--is-ancestor", baseline, commit)
-    diff = bytes(git(repo, *expected_diff_argv[1:], text=False))
+    diff = git_bounded_output(
+        repo,
+        *expected_diff_argv[1:],
+        max_bytes=MAX_MUTATION_DIFF_BYTES,
+    )
     if not diff:
         raise ReviewError("mutation evidence has an empty frozen-baseline diff")
-    if document["git_diff_sha256"] != sha256_bytes(diff):
+    diff_digest = sha256_bytes(diff)
+    if document["git_diff_sha256"] != diff_digest:
         raise ReviewError("mutation evidence targets different candidate diff bytes")
+    diff_record = document["git_diff"]
+    require_digest_record(diff_record, "mutation evidence retained Git diff")
+    if (
+        diff_record["path"] != "git.diff"
+        or diff_record["sha256"] != diff_digest
+        or diff_record["size_bytes"] != len(diff)
+    ):
+        raise ReviewError("mutation evidence retained Git diff record is not exact")
+    diff_target = contained_path(manifest_path.parent, "git.diff")
+    retained_diff = read_bounded_regular_file(
+        diff_target,
+        max_bytes=MAX_MUTATION_DIFF_BYTES,
+        label="retained mutation Git diff",
+    )
+    if retained_diff != diff:
+        raise ReviewError("mutation evidence retained other Git diff bytes")
     if document["tool"] != {"name": "cargo-mutants", "version": "27.1.0"}:
         raise ReviewError("mutation evidence uses another tool or version")
     shards = document["shards"]
@@ -978,8 +2087,13 @@ def validate_mutation_evidence(
         raise ReviewError(
             "mutation evidence must contain ordered shards 0/4 through 3/4"
         )
-    artifacts = []
-    artifact_paths: set[Path] = set()
+    artifacts = [diff_target]
+    artifact_paths: set[Path] = {diff_target}
+    aggregate_size = manifest_size + signature_size + len(diff)
+    if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
+        raise ReviewError("mutation evidence exceeds its aggregate byte limit")
+    shard_outcomes: dict[str, Path] = {}
+    broad_signatures: set[FocusedMutant] = set()
     for shard in shards:
         require_keys(shard, {"id", "status", "command", "artifact"}, "mutation shard")
         if shard["status"] != "PASS":
@@ -1001,6 +2115,11 @@ def validate_mutation_evidence(
         artifact = shard["artifact"]
         require_digest_record(artifact, "mutation shard artifact")
         relative = require_text(artifact["path"], "mutation artifact path")
+        expected_relative = (
+            f"broad-runs/{shard['id'].replace('/', '-of-')}/mutants.out/outcomes.json"
+        )
+        if relative != expected_relative:
+            raise ReviewError(f"mutation shard {shard['id']} has another outcome path")
         target = contained_path(manifest_path.parent, relative)
         if target in {manifest_path, signature_path}:
             raise ReviewError(
@@ -1014,10 +2133,81 @@ def validate_mutation_evidence(
             raise ReviewError(
                 f"mutation shard artifact is missing or unsafe: {relative}"
             )
-        digest, size = digest_file(target)
+        digest, size = bounded_digest_file(
+            target,
+            max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+            context=f"mutation shard {shard['id']} outcomes",
+        )
         if artifact["sha256"] != digest or artifact["size_bytes"] != size:
             raise ReviewError(f"mutation shard artifact digest mismatch: {relative}")
         validate_mutation_outcomes(target, shard["id"])
+        signatures = broad_mutation_signatures(target, shard["id"])
+        overlap = broad_signatures.intersection(signatures)
+        if overlap:
+            raise ReviewError(
+                f"mutation shard {shard['id']} duplicates another shard mutant"
+            )
+        broad_signatures.update(signatures)
+        aggregate_size += size
+        if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
+            raise ReviewError("mutation evidence exceeds its aggregate byte limit")
+        artifact_paths.add(target)
+        artifacts.append(target)
+        shard_outcomes[shard["id"]] = target
+
+    broad_receipts = document["broad_run_receipts"]
+    if (
+        not isinstance(broad_receipts, list)
+        or [item.get("shard") for item in broad_receipts if isinstance(item, dict)]
+        != expected_ids
+    ):
+        raise ReviewError("mutation evidence must contain ordered broad run receipts")
+    for record in broad_receipts:
+        require_keys(record, {"shard", "artifact"}, "broad mutation run record")
+        shard_id = record["shard"]
+        artifact = record["artifact"]
+        require_digest_record(artifact, "broad mutation run receipt artifact")
+        expected_path = (
+            f"broad-runs/{shard_id.replace('/', '-of-')}/{BROAD_MUTATION_RECEIPT}"
+        )
+        if artifact["path"] != expected_path:
+            raise ReviewError(f"broad mutation run receipt {shard_id} has another path")
+        target = contained_path(manifest_path.parent, expected_path)
+        if (
+            target in {manifest_path, signature_path}
+            or target in artifact_paths
+            or not target.is_file()
+            or target.is_symlink()
+        ):
+            raise ReviewError(
+                f"broad mutation run receipt {shard_id} is missing or unsafe"
+            )
+        digest, size = bounded_digest_file(
+            target,
+            max_bytes=MAX_MUTATION_RECEIPT_BYTES,
+            context=f"broad mutation run receipt {shard_id}",
+        )
+        if artifact["sha256"] != digest or artifact["size_bytes"] != size:
+            raise ReviewError(f"broad mutation run receipt {shard_id} digest mismatch")
+        receipt_document, receipt_outcome = validate_broad_mutation_receipt(
+            target,
+            root=target.parent,
+            commit=commit,
+            tree=tree,
+            shard=shard_id,
+            diff=diff,
+        )
+        if receipt_document["github_run"] != github_run:
+            raise ReviewError(
+                f"broad mutation run receipt {shard_id} targets another GitHub run"
+            )
+        if receipt_outcome != shard_outcomes[shard_id]:
+            raise ReviewError(
+                f"broad mutation shard {shard_id} differs from its run receipt"
+            )
+        aggregate_size += size
+        if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
+            raise ReviewError("mutation evidence exceeds its aggregate byte limit")
         artifact_paths.add(target)
         artifacts.append(target)
 
@@ -1044,7 +2234,11 @@ def validate_mutation_evidence(
         or receipt_target.is_symlink()
     ):
         raise ReviewError("focused mutation run receipt artifact is missing or unsafe")
-    receipt_digest, receipt_size = digest_file(receipt_target)
+    receipt_digest, receipt_size = bounded_digest_file(
+        receipt_target,
+        max_bytes=MAX_MUTATION_RECEIPT_BYTES,
+        context="focused mutation run receipt",
+    )
     if (
         receipt_artifact["sha256"] != receipt_digest
         or receipt_artifact["size_bytes"] != receipt_size
@@ -1056,6 +2250,11 @@ def validate_mutation_evidence(
         commit=commit,
         tree=tree,
     )
+    if receipt_document["github_run"] != github_run:
+        raise ReviewError("focused mutation run receipt targets another GitHub run")
+    aggregate_size += receipt_size
+    if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
+        raise ReviewError("mutation evidence exceeds its aggregate byte limit")
     artifact_paths.add(receipt_target)
     artifacts.append(receipt_target)
 
@@ -1114,21 +2313,39 @@ def validate_mutation_evidence(
             raise ReviewError(
                 f"focused mutation artifact is missing or unsafe: {relative}"
             )
-        digest, size = digest_file(target)
+        digest, size = bounded_digest_file(
+            target,
+            max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+            context=f"focused mutation check {check_id} outcomes",
+        )
         if artifact["sha256"] != digest or artifact["size_bytes"] != size:
             raise ReviewError(f"focused mutation artifact digest mismatch: {relative}")
         validate_focused_liveness_outcomes(target, check)
+        aggregate_size += size
+        if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
+            raise ReviewError("mutation evidence exceeds its aggregate byte limit")
         artifact_paths.add(target)
         artifacts.append(target)
     return document, artifacts
 
 
-def validate_mutation_outcomes(path: Path, shard_id: str) -> dict[str, int]:
-    """Reject vacuous, incomplete, missed, or timed-out cargo-mutants outcomes."""
+def validate_mutation_outcomes(
+    path: Path,
+    shard_id: str,
+    *,
+    expected_cargo_executable: str | None = None,
+) -> dict[str, int]:
+    """Reject incomplete, missed, timed-out, or weak cargo-mutants outcomes."""
 
     if path.name != "outcomes.json" or not path.is_file() or path.is_symlink():
         raise ReviewError(f"mutation shard {shard_id} artifact must be outcomes.json")
-    document = load_json(path)
+    document = load_json(
+        path,
+        max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+        max_depth=16,
+        max_nodes=500_000,
+        label=f"mutation shard {shard_id} outcomes",
+    )
     require_keys(
         document,
         {
@@ -1166,6 +2383,7 @@ def validate_mutation_outcomes(path: Path, shard_id: str) -> dict[str, int]:
             ) from error
     if parsed_times[1] < parsed_times[0]:
         raise ReviewError(f"mutation shard {shard_id} ends before it starts")
+
     counts: dict[str, int] = {}
     for field in (
         "total_mutants",
@@ -1176,14 +2394,14 @@ def validate_mutation_outcomes(path: Path, shard_id: str) -> dict[str, int]:
         "success",
     ):
         value = document[field]
-        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        if type(value) is not int or value < 0:
             raise ReviewError(f"mutation shard {shard_id} has an invalid {field} count")
         counts[field] = value
     if counts["total_mutants"] <= 0 or counts["caught"] <= 0:
         raise ReviewError(f"mutation shard {shard_id} is vacuous or caught no mutants")
     if counts["missed"] or counts["timeout"] or counts["success"]:
         raise ReviewError(
-            f"mutation shard {shard_id} contains missed, timed-out, or unclassified mutants"
+            f"mutation shard {shard_id} contains missed, timed-out, or surviving mutants"
         )
     if counts["total_mutants"] != sum(
         counts[field]
@@ -1194,23 +2412,27 @@ def validate_mutation_outcomes(path: Path, shard_id: str) -> dict[str, int]:
     outcomes = document["outcomes"]
     if not isinstance(outcomes, list):
         raise ReviewError(f"mutation shard {shard_id} outcomes must be a list")
-    baseline = []
+    if len(outcomes) != counts["total_mutants"] + 1:
+        raise ReviewError(f"mutation shard {shard_id} outcome count is inconsistent")
+    baseline: list[str] = []
     mutant_summaries: Counter[str] = Counter()
     for index, outcome in enumerate(outcomes):
-        if not isinstance(outcome, dict):
-            raise ReviewError(f"mutation shard {shard_id} outcome {index} is malformed")
-        scenario = outcome.get("scenario")
-        summary = outcome.get("summary")
+        context = f"mutation shard {shard_id} outcome {index}"
+        require_keys(
+            outcome,
+            {"scenario", "summary", "log_path", "diff_path", "phase_results"},
+            context,
+        )
+        scenario = outcome["scenario"]
+        summary = outcome["summary"]
         if scenario == "Baseline":
             baseline.append(summary)
         elif isinstance(scenario, dict) and set(scenario) == {"Mutant"}:
             if not isinstance(summary, str):
-                raise ReviewError(
-                    f"mutation shard {shard_id} mutant outcome lacks a summary"
-                )
+                raise ReviewError(f"{context} mutant outcome lacks a summary")
             mutant_summaries[summary] += 1
         else:
-            raise ReviewError(f"mutation shard {shard_id} contains an unknown scenario")
+            raise ReviewError(f"{context} contains an unknown scenario")
     if baseline != ["Success"]:
         raise ReviewError(f"mutation shard {shard_id} lacks one successful baseline")
     expected_summaries = Counter(
@@ -1227,6 +2449,24 @@ def validate_mutation_outcomes(path: Path, shard_id: str) -> dict[str, int]:
     if mutant_summaries != expected_summaries:
         raise ReviewError(
             f"mutation shard {shard_id} outcome details contradict its summary"
+        )
+    if shard_id in BROAD_MUTATION_SHARDS:
+        if counts["total_mutants"] < BROAD_MUTATION_MINIMUM_TOTAL:
+            raise ReviewError(
+                f"mutation shard {shard_id} has fewer than "
+                f"{BROAD_MUTATION_MINIMUM_TOTAL} mutants"
+            )
+        if counts["caught"] * 100 < counts["total_mutants"] * int(
+            BROAD_MUTATION_MINIMUM_CAUGHT_RATIO * 100
+        ):
+            raise ReviewError(
+                f"mutation shard {shard_id} caught less than "
+                f"{BROAD_MUTATION_MINIMUM_CAUGHT_RATIO:.0%} of mutants"
+            )
+        _validate_broad_outcome_details(
+            document,
+            shard_id=shard_id,
+            expected_cargo_executable=expected_cargo_executable,
         )
     return counts
 
@@ -1246,7 +2486,10 @@ def _focused_span_signature(value: Any, context: str) -> tuple[int, int, int, in
                     f"{context} {endpoint} {coordinate} must be a positive integer"
                 )
             coordinates.append(number)
-    return coordinates[0], coordinates[1], coordinates[2], coordinates[3]
+    result = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
+    if result[:2] > result[2:]:
+        raise ReviewError(f"{context} ends before it starts")
+    return result
 
 
 def _focused_exact_text(value: Any, context: str, *, allow_empty: bool = False) -> str:
@@ -1283,8 +2526,267 @@ def _focused_mutant_signature(value: Any, context: str) -> FocusedMutant:
         ),
         _focused_span_signature(function["span"], f"{context} function span"),
         _focused_span_signature(value["span"], f"{context} span"),
-        _focused_exact_text(value["replacement"], f"{context} replacement"),
+        _focused_exact_text(
+            value["replacement"], f"{context} replacement", allow_empty=True
+        ),
         _focused_exact_text(value["genre"], f"{context} genre"),
+    )
+
+
+def _validate_broad_phase(
+    value: Any,
+    *,
+    context: str,
+    expected_phase: str,
+    expected_status: Any,
+    expected_package: str | None,
+    expected_packages: tuple[str, ...] | None,
+    expected_cargo_executable: str | None,
+) -> tuple[str, ...]:
+    """Validate one broad mutation phase and return its target packages."""
+
+    require_keys(value, {"phase", "duration", "process_status", "argv"}, context)
+    if value["phase"] != expected_phase:
+        raise ReviewError(f"{context} is not the expected {expected_phase} phase")
+    duration = value["duration"]
+    if (
+        not isinstance(duration, (int, float))
+        or isinstance(duration, bool)
+        or not math.isfinite(duration)
+        or duration < 0
+    ):
+        raise ReviewError(f"{context} has an invalid duration")
+    argv = value["argv"]
+    if (
+        not isinstance(argv, list)
+        or not argv
+        or not all(isinstance(argument, str) for argument in argv)
+    ):
+        raise ReviewError(f"{context} used a malformed Cargo command")
+    executable = argv[0]
+    if (
+        not Path(executable).is_absolute()
+        or Path(executable).name != "cargo"
+        or (
+            expected_cargo_executable is not None
+            and executable != expected_cargo_executable
+        )
+    ):
+        raise ReviewError(f"{context} used another Cargo executable")
+    prefix = (
+        ["test", "--no-run", "--verbose"]
+        if expected_phase == "Build"
+        else ["test", "--verbose"]
+    )
+    suffix = ["--all-features", "--locked"]
+    arguments = argv[1:]
+    if arguments[: len(prefix)] != prefix or arguments[-len(suffix) :] != suffix:
+        raise ReviewError(f"{context} used another Cargo command")
+    package_arguments = arguments[len(prefix) : -len(suffix)]
+    package_prefix = "--package="
+    if not package_arguments or any(
+        not argument.startswith(package_prefix) for argument in package_arguments
+    ):
+        raise ReviewError(f"{context} lacks exact Cargo package selectors")
+    packages = tuple(
+        argument.removeprefix(package_prefix).removesuffix("@0.9.0")
+        for argument in package_arguments
+    )
+    if any(
+        argument != f"--package={package}@0.9.0"
+        for argument, package in zip(package_arguments, packages, strict=True)
+    ):
+        raise ReviewError(f"{context} has another Cargo package version")
+    if (
+        tuple(sorted(packages)) != packages
+        or len(set(packages)) != len(packages)
+        or any(package not in BROAD_MUTATION_PACKAGES for package in packages)
+    ):
+        raise ReviewError(f"{context} has another Cargo package set")
+    if expected_package is not None and packages != (expected_package,):
+        raise ReviewError(f"{context} does not target its mutant package")
+    if expected_packages is not None and packages != expected_packages:
+        raise ReviewError(f"{context} changed its Cargo package set")
+
+    process_status = value["process_status"]
+    if expected_status == "Success":
+        status_matches = type(process_status) is str and process_status == "Success"
+    else:
+        status_matches = (
+            isinstance(process_status, dict)
+            and set(process_status) == {"Failure"}
+            and type(process_status["Failure"]) is int
+            and process_status["Failure"] == 101
+        )
+    if not status_matches:
+        raise ReviewError(f"{context} has another process status")
+    return packages
+
+
+def _broad_mutant_signature(value: Any, context: str) -> FocusedMutant:
+    """Validate one complete broad mutant descriptor."""
+
+    signature = _focused_mutant_signature(value, context)
+    (
+        name,
+        package,
+        file,
+        function_name,
+        return_type,
+        function_span,
+        span,
+        replacement,
+        genre,
+    ) = signature
+    text_limits = (
+        (name, 8_192, "name"),
+        (package, 128, "package"),
+        (file, 1_024, "file"),
+        (function_name, 4_096, "function name"),
+        (return_type, 4_096, "return type"),
+        (replacement, 8_192, "replacement"),
+        (genre, 128, "genre"),
+    )
+    for text, maximum, field in text_limits:
+        if len(text.encode("utf-8")) > maximum:
+            raise ReviewError(f"{context} {field} exceeds {maximum} bytes")
+    if package not in BROAD_MUTATION_PACKAGES:
+        raise ReviewError(f"{context} targets another package")
+    expected_prefix = f"crates/{package}/"
+    file_path = Path(file)
+    if (
+        file_path.is_absolute()
+        or ".." in file_path.parts
+        or not file.startswith(expected_prefix)
+        or file_path.suffix != ".rs"
+    ):
+        raise ReviewError(f"{context} targets another source path")
+    if genre not in BROAD_MUTATION_GENRES:
+        raise ReviewError(f"{context} has an unknown mutation genre")
+    if not name.startswith(f"{file}:{span[0]}:{span[1]}: "):
+        raise ReviewError(f"{context} name does not bind its source span")
+    if span[:2] < function_span[:2] or span[2:] > function_span[2:]:
+        raise ReviewError(f"{context} mutation span escapes its function")
+    if not replacement and (
+        genre not in {"MatchArm", "UnaryOperator"} or "delete " not in name
+    ):
+        raise ReviewError(f"{context} has an ambiguous empty replacement")
+    return signature
+
+
+def _validate_broad_outcome_details(
+    document: dict[str, Any],
+    *,
+    shard_id: str,
+    expected_cargo_executable: str | None,
+) -> tuple[FocusedMutant, ...]:
+    """Validate all descriptors and build/test phases for one broad shard."""
+
+    signatures: list[FocusedMutant] = []
+    descriptor_set: set[FocusedMutant] = set()
+    artifact_paths: set[str] = set()
+    baseline_packages: tuple[str, ...] | None = None
+    for index, outcome in enumerate(document["outcomes"]):
+        context = f"mutation shard {shard_id} outcome {index}"
+        scenario = outcome["scenario"]
+        phases = outcome["phase_results"]
+        if not isinstance(phases, list):
+            raise ReviewError(f"{context} phases must be a list")
+        if scenario == "Baseline":
+            if (
+                outcome["summary"] != "Success"
+                or outcome["log_path"] != "log/baseline.log"
+                or outcome["diff_path"] is not None
+                or len(phases) != 2
+            ):
+                raise ReviewError(f"{context} baseline details are not canonical")
+            baseline_packages = _validate_broad_phase(
+                phases[0],
+                context=f"{context} build",
+                expected_phase="Build",
+                expected_status="Success",
+                expected_package=None,
+                expected_packages=None,
+                expected_cargo_executable=expected_cargo_executable,
+            )
+            _validate_broad_phase(
+                phases[1],
+                context=f"{context} test",
+                expected_phase="Test",
+                expected_status="Success",
+                expected_package=None,
+                expected_packages=baseline_packages,
+                expected_cargo_executable=expected_cargo_executable,
+            )
+            artifact_paths.add("log/baseline.log")
+            continue
+
+        mutant = scenario.get("Mutant") if isinstance(scenario, dict) else None
+        signature = _broad_mutant_signature(mutant, f"{context} mutant")
+        if signature in descriptor_set:
+            raise ReviewError(f"{context} duplicates another mutant descriptor")
+        descriptor_set.add(signature)
+        signatures.append(signature)
+        summary = outcome["summary"]
+        expected_phase_count = 1 if summary == "Unviable" else 2
+        if (
+            summary not in {"CaughtMutant", "Unviable"}
+            or len(phases) != expected_phase_count
+        ):
+            raise ReviewError(f"{context} has another phase or summary contract")
+        _validate_broad_phase(
+            phases[0],
+            context=f"{context} build",
+            expected_phase="Build",
+            expected_status={"Failure": 101} if summary == "Unviable" else "Success",
+            expected_package=signature.package,
+            expected_packages=None,
+            expected_cargo_executable=expected_cargo_executable,
+        )
+        if summary == "CaughtMutant":
+            _validate_broad_phase(
+                phases[1],
+                context=f"{context} test",
+                expected_phase="Test",
+                expected_status={"Failure": 101},
+                expected_package=signature.package,
+                expected_packages=None,
+                expected_cargo_executable=expected_cargo_executable,
+            )
+        _validate_focused_artifact_path(
+            outcome["log_path"], context=f"{context} log path", directory="log"
+        )
+        _validate_focused_artifact_path(
+            outcome["diff_path"], context=f"{context} diff path", directory="diff"
+        )
+        for artifact_path in (outcome["log_path"], outcome["diff_path"]):
+            if artifact_path in artifact_paths:
+                raise ReviewError(f"{context} reuses another outcome artifact path")
+            artifact_paths.add(artifact_path)
+    if baseline_packages is None:
+        raise ReviewError(f"mutation shard {shard_id} lacks baseline package details")
+    if set(baseline_packages) != {signature.package for signature in signatures}:
+        raise ReviewError(
+            f"mutation shard {shard_id} baseline targets another package set"
+        )
+    return tuple(signatures)
+
+
+def broad_mutation_signatures(path: Path, shard_id: str) -> tuple[FocusedMutant, ...]:
+    """Return the already validated, unique broad mutant identities."""
+
+    validate_mutation_outcomes(path, shard_id)
+    document = load_json(
+        path,
+        max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+        max_depth=16,
+        max_nodes=500_000,
+        label=f"mutation shard {shard_id} outcomes",
+    )
+    return _validate_broad_outcome_details(
+        document,
+        shard_id=shard_id,
+        expected_cargo_executable=None,
     )
 
 
@@ -1354,43 +2856,79 @@ def validate_focused_liveness_outcomes(
     *,
     expected_cargo_executable: str | None = None,
 ) -> dict[str, int]:
-    """Require an exact focused mutant set to be caught by one exact direct test."""
+    """Require the exact outcomes from one exact focused mutation command."""
 
     check_id = str(check["id"])
     counts = validate_mutation_outcomes(path, f"focused/{check_id}")
     required: Counter[FocusedMutant] = Counter(check["required_mutants"])
+    unviable: Counter[FocusedMutant] = Counter(check.get("unviable_mutants", ()))
+    if unviable - required:
+        raise ReviewError(
+            f"focused mutation check {check_id} has an invalid unviable set"
+        )
     required_count = sum(required.values())
+    unviable_count = sum(unviable.values())
     if counts != {
         "total_mutants": required_count,
         "missed": 0,
-        "caught": required_count,
+        "caught": required_count - unviable_count,
         "timeout": 0,
-        "unviable": 0,
+        "unviable": unviable_count,
         "success": 0,
     }:
         raise ReviewError(
-            f"focused mutation check {check_id} did not catch its exact mutant set"
+            f"focused mutation check {check_id} has another outcome summary"
         )
 
-    document = load_json(path)
+    document = load_json(
+        path,
+        max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+        max_depth=16,
+        max_nodes=500_000,
+        label=f"focused mutation check {check_id} outcomes",
+    )
     observed: Counter[FocusedMutant] = Counter()
-    expected_build_argv = (
-        "test",
-        "--no-run",
-        "--verbose",
-        "--package=galadriel-ncp@0.9.0",
-        "--all-features",
-    )
-    expected_test_argv = (
-        "test",
-        "--verbose",
-        "--package=galadriel-ncp@0.9.0",
-        "--all-features",
-        "--lib",
-        str(check["test"]),
-        "--",
-        "--exact",
-    )
+    if check.get("kind") == "direct-test":
+        expected_build_argv = (
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=galadriel-ncp@0.9.0",
+            "--all-features",
+            "--locked",
+        )
+        expected_test_argv = (
+            "test",
+            "--verbose",
+            "--package=galadriel-ncp@0.9.0",
+            "--all-features",
+            "--locked",
+            "--lib",
+            str(check["test"]),
+            "--",
+            "--exact",
+        )
+    elif check.get("kind") == "acceptance-binary":
+        expected_build_argv = (
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=galadriel-eval@0.9.0",
+            "--all-features",
+            "--locked",
+        )
+        expected_test_argv = (
+            "test",
+            "--verbose",
+            "--package=galadriel-eval@0.9.0",
+            "--all-features",
+            "--locked",
+            "--bin",
+            str(check["binary"]),
+        )
+    else:
+        raise ReviewError(f"focused mutation check {check_id} has another kind")
+
     for index, outcome in enumerate(document["outcomes"]):
         context = f"focused mutation check {check_id} outcome {index}"
         require_keys(
@@ -1398,29 +2936,37 @@ def validate_focused_liveness_outcomes(
             {"scenario", "summary", "log_path", "diff_path", "phase_results"},
             context,
         )
-        phases = outcome["phase_results"]
-        if not isinstance(phases, list) or len(phases) != 2:
-            raise ReviewError(f"{context} must contain exactly Build and Test phases")
-
         scenario = outcome["scenario"]
         baseline = scenario == "Baseline"
+        mutant = scenario.get("Mutant") if isinstance(scenario, dict) else None
+        signature = (
+            None if baseline else _focused_mutant_signature(mutant, f"{context} mutant")
+        )
+        is_unviable = signature is not None and unviable[signature] > 0
+        phases = outcome["phase_results"]
+        expected_phase_count = 1 if is_unviable else 2
+        if not isinstance(phases, list) or len(phases) != expected_phase_count:
+            expected_names = "Build" if is_unviable else "Build and Test"
+            raise ReviewError(f"{context} must contain exactly {expected_names} phases")
+
         test_status: Any = "Success" if baseline else {"Failure": 101}
         _validate_focused_phase(
             phases[0],
             context=f"{context} build",
             expected_phase="Build",
             expected_argv=expected_build_argv,
-            expected_status="Success",
+            expected_status={"Failure": 101} if is_unviable else "Success",
             expected_cargo_executable=expected_cargo_executable,
         )
-        _validate_focused_phase(
-            phases[1],
-            context=f"{context} test",
-            expected_phase="Test",
-            expected_argv=expected_test_argv,
-            expected_status=test_status,
-            expected_cargo_executable=expected_cargo_executable,
-        )
+        if not is_unviable:
+            _validate_focused_phase(
+                phases[1],
+                context=f"{context} test",
+                expected_phase="Test",
+                expected_argv=expected_test_argv,
+                expected_status=test_status,
+                expected_cargo_executable=expected_cargo_executable,
+            )
         _validate_focused_artifact_path(
             outcome["log_path"], context=f"{context} log path", directory="log"
         )
@@ -1435,13 +2981,15 @@ def validate_focused_liveness_outcomes(
                 raise ReviewError(f"{context} baseline paths are not canonical")
             continue
 
-        if outcome["summary"] != "CaughtMutant":
-            raise ReviewError(f"{context} mutant summary is not caught")
+        expected_summary = "Unviable" if is_unviable else "CaughtMutant"
+        if outcome["summary"] != expected_summary:
+            raise ReviewError(f"{context} mutant summary has another classification")
         _validate_focused_artifact_path(
             outcome["diff_path"], context=f"{context} diff path", directory="diff"
         )
-        mutant = scenario.get("Mutant") if isinstance(scenario, dict) else None
-        observed[_focused_mutant_signature(mutant, f"{context} mutant")] += 1
+        if signature is None:
+            raise ReviewError(f"{context} lacks a mutant identity")
+        observed[signature] += 1
     if observed != required:
         raise ReviewError(
             f"focused mutation check {check_id} targets another mutant set"
@@ -1464,16 +3012,37 @@ def validate_focused_mutation_receipt(
     path = path.resolve()
     if path != root / FOCUSED_MUTATION_RECEIPT:
         raise ReviewError("focused mutation run receipt is outside its artifact root")
-    document = load_json(path)
+    document = load_json(
+        path,
+        max_bytes=MAX_MUTATION_RECEIPT_BYTES,
+        max_depth=16,
+        max_nodes=100_000,
+        label="focused mutation run receipt",
+    )
     require_keys(
         document,
-        {"schema", "candidate", "toolchain", "checks"},
+        {
+            "schema",
+            "candidate",
+            "github_run",
+            "environment_contract",
+            "toolchain",
+            "checks",
+        },
         "focused mutation run receipt",
     )
-    if document["schema"] != "galadriel.focused-mutation-run.v1":
+    if document["schema"] != "galadriel.focused-mutation-run.v2":
         raise ReviewError("focused mutation run receipt has another schema")
     if document["candidate"] != {"commit": commit, "tree": tree}:
         raise ReviewError("focused mutation run receipt targets another candidate")
+    validate_github_mutation_run(
+        document["github_run"],
+        commit=commit,
+        context="focused mutation GitHub run",
+        allow_null=True,
+    )
+    if document["environment_contract"] != FOCUSED_MUTATION_ENVIRONMENT_CONTRACT:
+        raise ReviewError("focused mutation run used another environment contract")
     toolchain = document["toolchain"]
     require_keys(
         toolchain,
@@ -1534,7 +3103,11 @@ def validate_focused_mutation_receipt(
             raise ReviewError(
                 f"focused mutation receipt check {check_id} output is missing or duplicate"
             )
-        digest, size = digest_file(target)
+        digest, size = bounded_digest_file(
+            target,
+            max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+            context=f"focused mutation check {check_id} outcomes",
+        )
         if artifact["sha256"] != digest or artifact["size_bytes"] != size:
             raise ReviewError(
                 f"focused mutation receipt check {check_id} output digest mismatch"
@@ -1564,31 +3137,236 @@ def validate_focused_mutation_receipt(
     return document, outcomes
 
 
-def git_tree_inventory(repo: Path, commit: str) -> dict[str, dict[str, Any]]:
-    raw = bytes(git(repo, "ls-tree", "-rz", "-r", "--full-tree", commit, text=False))
-    result: dict[str, dict[str, Any]] = {}
-    for encoded in raw.split(b"\0"):
+class _GitTreeEntry(NamedTuple):
+    """One bounded recursive Git tree entry."""
+
+    path: str
+    mode: str
+    object_type: str
+    object_id: str
+    size: int | None
+
+
+def _exact_git_commit(repo: Path, commit: str) -> str:
+    """Require one immutable full commit object without replacement refs."""
+
+    if not isinstance(commit, str) or not GIT_OBJECT.fullmatch(commit):
+        raise ReviewError("candidate tree commit must be a full lowercase Git object")
+    assert_no_replace_refs(repo)
+    raw = git_bounded_output(
+        repo,
+        "rev-parse",
+        "--verify",
+        f"{commit}^{{commit}}",
+        max_bytes=64,
+    )
+    try:
+        resolved = raw.decode("ascii", "strict")
+    except UnicodeDecodeError as error:
+        raise ReviewError("candidate tree commit resolution is not ASCII") from error
+    if resolved != f"{commit}\n":
+        raise ReviewError("candidate tree commit resolves to another object")
+    return commit
+
+
+def _candidate_git_path(path_bytes: bytes, context: str) -> str:
+    """Decode one bounded portable Git path without normalizing it."""
+
+    if not path_bytes or len(path_bytes) > MAX_CANDIDATE_PATH_BYTES:
+        raise ReviewError(f"{context} path exceeds its byte bound")
+    try:
+        path = path_bytes.decode("utf-8", "strict")
+    except UnicodeDecodeError as error:
+        raise ReviewError(f"{context} path is not valid UTF-8") from error
+    parts = path.split("/")
+    if (
+        path.startswith("/")
+        or "\\" in path
+        or any(part in {"", ".", ".."} for part in parts)
+        or len(parts) > MAX_CANDIDATE_PATH_DEPTH
+        or (len(parts[0]) == 2 and parts[0][0].isalpha() and parts[0][1] == ":")
+        or any(ord(character) < 0x20 or ord(character) == 0x7F for character in path)
+    ):
+        raise ReviewError(f"{context} path is unsafe: {path!r}")
+    if any(
+        len(part.encode("utf-8")) > MAX_CANDIDATE_PATH_COMPONENT_BYTES for part in parts
+    ):
+        raise ReviewError(f"{context} path component exceeds its byte bound")
+    return path
+
+
+def _parse_git_tree_listing(raw: bytes, context: str) -> list[_GitTreeEntry]:
+    """Parse one bounded `git ls-tree -rzl` result before any blob read."""
+
+    if not raw:
+        return []
+    if not raw.endswith(b"\0"):
+        raise ReviewError(f"{context} listing lacks its final separator")
+    record_count = raw.count(b"\0")
+    if record_count > MAX_CANDIDATE_TREE_ENTRIES:
+        raise ReviewError(f"{context} exceeds its entry-count bound")
+
+    entries: list[_GitTreeEntry] = []
+    seen_paths: set[str] = set()
+    aggregate_bytes = 0
+    records = raw.split(b"\0")
+    if records[-1]:
+        raise ReviewError(f"{context} listing is malformed")
+    for index, encoded in enumerate(records[:-1]):
         if not encoded:
-            continue
-        metadata, path_bytes = encoded.split(b"\t", 1)
-        mode, object_type, object_id = metadata.decode("ascii").split()
-        path = path_bytes.decode("utf-8", "surrogateescape")
-        if path in result:
-            raise ReviewError(f"candidate tree contains duplicate path: {path}")
+            raise ReviewError(f"{context} contains an empty entry")
+        if len(encoded) > MAX_CANDIDATE_PATH_BYTES + 128:
+            raise ReviewError(f"{context} entry {index} exceeds its byte bound")
+        try:
+            metadata, path_bytes = encoded.split(b"\t", 1)
+            fields = metadata.decode("ascii", "strict").split()
+        except (UnicodeDecodeError, ValueError) as error:
+            raise ReviewError(f"{context} entry {index} is malformed") from error
+        if len(fields) != 4:
+            raise ReviewError(f"{context} entry {index} has another field count")
+        mode, object_type, object_id, size_text = fields
+        expected_type = {
+            "100644": "blob",
+            "100755": "blob",
+            "120000": "blob",
+            "160000": "commit",
+        }.get(mode)
+        if expected_type is None or object_type != expected_type:
+            raise ReviewError(f"{context} entry {index} has another mode or type")
+        if not GIT_OBJECT.fullmatch(object_id):
+            raise ReviewError(f"{context} entry {index} has an invalid object ID")
         if mode == "160000":
-            data = object_id.encode("ascii") + b"\n"
+            if size_text != "-":
+                raise ReviewError(f"{context} Git link has an invalid size")
+            size = None
+            logical_size = len(object_id) + 1
         else:
-            data = bytes(git(repo, "cat-file", "blob", object_id, text=False))
-        result[path] = {
-            "mode": mode,
-            "object_type": object_type,
-            "git_blob_id": object_id,
-            "sha256": sha256_bytes(data),
-            "bytes": len(data),
-        }
-    if not result:
+            if (
+                not size_text.isascii()
+                or not size_text.isdecimal()
+                or (len(size_text) > 1 and size_text.startswith("0"))
+            ):
+                raise ReviewError(f"{context} blob has an invalid size")
+            size = int(size_text)
+            if size > MAX_CANDIDATE_BLOB_BYTES:
+                raise ReviewError(f"{context} blob exceeds its per-blob byte bound")
+            logical_size = size
+        aggregate_bytes += logical_size
+        if aggregate_bytes > MAX_CANDIDATE_TREE_BLOB_BYTES:
+            raise ReviewError(f"{context} exceeds its aggregate blob-byte bound")
+        path = _candidate_git_path(path_bytes, f"{context} entry {index}")
+        if path in seen_paths:
+            raise ReviewError(f"{context} contains duplicate path: {path}")
+        seen_paths.add(path)
+        entries.append(_GitTreeEntry(path, mode, object_type, object_id, size))
+    return entries
+
+
+def _read_git_blob(repo: Path, entry: _GitTreeEntry, context: str) -> bytes:
+    """Read one exact blob within its declared per-blob size."""
+
+    if entry.object_type != "blob" or entry.size is None:
+        raise ReviewError(f"{context} does not identify a Git blob")
+    if entry.size > MAX_CANDIDATE_BLOB_BYTES:
+        raise ReviewError(f"{context} exceeds its per-blob byte bound")
+    data = git_bounded_output(
+        repo,
+        "cat-file",
+        "blob",
+        entry.object_id,
+        max_bytes=entry.size,
+    )
+    if len(data) != entry.size:
+        raise ReviewError(f"{context} differs from its declared Git blob size")
+    object_digest = hashlib.sha1(usedforsecurity=False)
+    object_digest.update(f"blob {entry.size}\0".encode("ascii"))
+    object_digest.update(data)
+    actual_object_id = object_digest.hexdigest()
+    if actual_object_id != entry.object_id:
+        raise ReviewError(f"{context} differs from its declared Git blob identity")
+    return data
+
+
+def git_tree_inventory(repo: Path, commit: str) -> dict[str, dict[str, Any]]:
+    """Inventory one exact recursive tree within fixed path and blob bounds."""
+
+    commit = _exact_git_commit(repo, commit)
+    raw = git_bounded_output(
+        repo,
+        "ls-tree",
+        "-rz",
+        "-l",
+        "-r",
+        "--full-tree",
+        commit,
+        max_bytes=MAX_CANDIDATE_TREE_LISTING_BYTES,
+    )
+    entries = _parse_git_tree_listing(raw, "candidate tree")
+    if not entries:
         raise ReviewError("candidate tree inventory is empty")
+
+    result: dict[str, dict[str, Any]] = {}
+    blob_cache: dict[str, tuple[str, int]] = {}
+    for entry in entries:
+        if entry.mode == "160000":
+            data = entry.object_id.encode("ascii") + b"\n"
+            digest_and_size = (sha256_bytes(data), len(data))
+        else:
+            digest_and_size = blob_cache.get(entry.object_id)
+            if digest_and_size is None:
+                data = _read_git_blob(
+                    repo,
+                    entry,
+                    f"candidate tree blob {entry.path}",
+                )
+                digest_and_size = (sha256_bytes(data), len(data))
+                blob_cache[entry.object_id] = digest_and_size
+            elif digest_and_size[1] != entry.size:
+                raise ReviewError(
+                    f"candidate tree blob size is inconsistent: {entry.path}"
+                )
+        result[entry.path] = {
+            "mode": entry.mode,
+            "object_type": entry.object_type,
+            "git_blob_id": entry.object_id,
+            "sha256": digest_and_size[0],
+            "bytes": digest_and_size[1],
+        }
     return result
+
+
+def candidate_blob(repo: Path, commit: str, relative: str) -> bytes:
+    """Read one exact regular candidate blob without using a mutable ref."""
+
+    if not isinstance(relative, str):
+        raise ReviewError("candidate evidence path is not text")
+    try:
+        path_bytes = relative.encode("utf-8", "strict")
+    except UnicodeEncodeError as error:
+        raise ReviewError("candidate evidence path is not valid UTF-8") from error
+    path = _candidate_git_path(path_bytes, "candidate evidence")
+    commit = _exact_git_commit(repo, commit)
+    raw = git_bounded_output(
+        repo,
+        "--literal-pathspecs",
+        "ls-tree",
+        "-rz",
+        "-l",
+        "--full-tree",
+        commit,
+        "--",
+        path,
+        max_bytes=MAX_CANDIDATE_PATH_BYTES + 128,
+    )
+    entries = _parse_git_tree_listing(raw, "candidate evidence tree lookup")
+    if len(entries) != 1 or entries[0].path != path:
+        raise ReviewError("candidate evidence path does not identify one exact blob")
+    entry = entries[0]
+    if entry.mode == "120000":
+        raise ReviewError("candidate evidence path identifies a symbolic link")
+    if entry.mode not in {"100644", "100755"}:
+        raise ReviewError("candidate evidence path does not identify a regular file")
+    return _read_git_blob(repo, entry, f"candidate evidence blob {path}")
 
 
 FILE_LEDGER_COLUMNS = (
@@ -1762,17 +3540,6 @@ def verify_artifact_manifest(
     if unlisted:
         raise ReviewError(f"artifact manifest omits retained files: {unlisted[:10]}")
     return document
-
-
-def candidate_blob(repo: Path, commit: str, relative: str) -> bytes:
-    candidate = Path(relative)
-    if (
-        not relative
-        or candidate.is_absolute()
-        or any(part in {"", ".", ".."} for part in candidate.parts)
-    ):
-        raise ReviewError(f"candidate evidence path is unsafe: {relative!r}")
-    return bytes(git(repo, "show", f"{commit}:{relative}", text=False))
 
 
 def validate_evidence_reference(
@@ -2313,7 +4080,7 @@ def validate_decision_input(
         raise ReviewError(
             "release decision must be NO_GO before local reconciliation passes"
         )
-    if document["publication_scope"] != "GitHub research source release":
+    if document["publication_scope"] != ("review-gated GitHub research source release"):
         raise ReviewError("release decision has the wrong publication scope")
     if document["doi"] is not None or document["zenodo"] is not None:
         raise ReviewError("release decision must not claim DOI or Zenodo metadata")

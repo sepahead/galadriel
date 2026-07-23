@@ -43,7 +43,7 @@ that every Galadriel build needs the project.
 | Crebain | External upstream producer relationship | No Cargo dependency. It is not required for demos, simulation, evaluation, or offline replay. Live use needs an authorized conforming producer. That producer does not have to be Crebain. | Serves as the inspected reference producer for observation and monitor sidecars and the retained registry fixture. |
 | Haldir | Prospective downstream consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither required nor an enabled option. | Shows how a future authorization consumer can record evidence. Any later effect must be independently admitted and restrict-only. |
 | Prisoma | Prospective downstream offline consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither required nor an enabled option. | Shows a possible immutable covariate or comparator import. Shared NCP or PID dependencies do not establish compatibility or independence. |
-| Engram/Paper2Brain | External application and realm context | No dependency, API, process, adapter, route, or runtime edge. `engram/ncp` is an example realm string, not an application binding. | Separates the realm example from NCP, which is the linked wire and transport interface. |
+| Engram and Paper2Brain | External application names and realm context | No dependency, API, process, adapter, route, or runtime edge. `engram/ncp` is an example realm string, not an application binding. | Separates the realm example from NCP, which is the linked wire and transport interface. The dated Paper2Brain observation records provenance only. |
 | ROS / ROS 2 | External robotics middleware | No dependency, message binding, topic, service, action, bridge, node, bag importer, or runtime edge. | Records that a future robotics adapter is a new and separately qualified interface. Sensor terms do not imply this interface. |
 | External authority or controller | Prospective downstream policy or control boundary | No command, control, credential, lease, watchdog, or authority path. It is neither required nor enabled. | Preserves advisory-only behavior. A future consumer can record evidence. It can apply only an independently admitted restrict-only policy. |
 
@@ -85,20 +85,24 @@ were observed on 2026-07-18.
 | Crebain | `0a58a5b8dd799884ddb06f1308b1748216fab322` | Mutable producer head inspected for component alignment. It is not a reciprocal Galadriel pin. |
 | Haldir discovery observation | remote `main` `0e94f61cfd5c78482198a765157571746a256181` | Mutable downstream design and status observation. No dependency, adapter, route, or runtime edge was found. |
 | Haldir later reinspection | remote `main` `dd3d8a1c993721f89a1edb04dec5247761c694ad` | Later 2026-07-18 observation of the same mutable branch. It replaces only the discovery-head reference, not frozen evidence. |
-| Haldir current reinspection | remote `main` `c0e4b3d156500684329a92bcb16e0609894fd738` | A 2026-07-22 descendant. Its CH-T001 activation adds repository inventory and release evidence. It records no runtime or external-conformance change. |
+| Haldir 2026-07-22 retained reinspection | remote `main` `c0e4b3d156500684329a92bcb16e0609894fd738` | A retained descendant observation. Its CH-T001 activation adds repository inventory and release evidence. It records no runtime or external-conformance change. |
+| Haldir 2026-07-23 reinspection | remote `main` `590ba767b32a27d9dd61a2462968306c1052434e` | A retained descendant observation. Its intervening changes affect audit, evidence, and release tooling only. It records no runtime or external-conformance change. |
 | Prisoma | `63cff105e0e40281376e6f827d7782e9b351961a` | Downstream design and status inspection only. No runtime edge exists. |
+| Paper2Brain | remote `main` `24e74b781a5bf8af069f69cbc2d0c42d89008211` | Mutable application inventory inspected on 2026-07-23. No Galadriel dependency, API, process, route, adapter, or runtime edge exists. |
 
-The local source inventory from 2026-07-22 records three more non-edges.
-Engram/Paper2Brain has only the example realm-label relationship. ROS and ROS 2 have
-no code or runtime edge. External authority also has no code or runtime edge.
+The local source inventory records three more non-edges.
+Engram has only the example realm-label relationship.
+ROS and ROS 2 have no code or runtime edge.
+External authority also has no code or runtime edge.
 
-These absent relationships have no external object identity. Do not create a
-repository pin for them.
+The Paper2Brain object is inspection provenance.
+It is not a repository dependency pin.
 
-Haldir history retains all three observations. Commit
+The release inspection cut retains all four Haldir observations. Commit
 `0e94f61cfd5c78482198a765157571746a256181` is an ancestor of
 `dd3d8a1c993721f89a1edb04dec5247761c694ad`. That commit is an ancestor of
-`c0e4b3d156500684329a92bcb16e0609894fd738`.
+`c0e4b3d156500684329a92bcb16e0609894fd738`. That commit is an ancestor of
+`590ba767b32a27d9dd61a2462968306c1052434e`.
 
 The first interval activates current-head qualification. It also starts CH-T001
 repository-inventory work. The second interval completes and activates this
@@ -270,10 +274,12 @@ pending in the release ledger.
 Haldir is a prospective record-only consumer. It is not part of a Galadriel build
 or runtime mode.
 
-The three inspected Haldir objects directly pin NCP 0.8. They contain no
+The four Haldir objects retained in the inspection cut directly pin NCP 0.8. They contain no
 Galadriel dependency, import, deployed route, subscriber, publisher, or adapter.
-The two descendants add and activate qualification and repository-inventory
-evidence. They do not change this boundary.
+The descendants add and activate qualification, inventory, and release evidence.
+They do not change this boundary.
+
+The 2026-07-23 mutable observation changes no runtime or conformance surface.
 
 The Haldir frozen audit cut records Galadriel
 `94e2f8cc01f352d2bf899b7f656997f143a2588f` as an input. This record is not
@@ -301,7 +307,7 @@ Its optional NCP 0.8 observer accepts only these exact base session keys:
 
 An existing negative test rejects named sensor subkeys. Thus, Prisoma cannot
 consume the two Galadriel sidecar routes by mistake. Its living overlay records an
-older Galadriel audit object and classifies the relationship as E0.
+older Galadriel audit object. The inspected tier records intention or adjacency only.
 
 A future importer must be offline and immutable. It must bind exact Galadriel
 source, configuration, profile, session, epoch, source window, and receipt time.
@@ -321,8 +327,8 @@ is a multi-segment NCP realm. Realm validation treats it as data. Operators can
 select another valid realm.
 
 Galadriel has no Paper2Brain dependency, import, API, process, route, adapter, or
-runtime discovery path. The release inventory retains the Paper2Brain repository
-only to record that it supplies no Galadriel integration evidence.
+runtime discovery path. The release inventory retains the dated remote-head
+observation and an absent-edge declaration.
 
 ## ROS / ROS 2 non-edge
 
@@ -348,7 +354,8 @@ state.
 
 A future consumer must start in record-only mode. The consumer must independently
 admit each future restrict-only effect. `Nominal` is evidence, never permission.
-The command path must remain safe and available without Galadriel.
+The command path must remain available without Galadriel.
+Its governance must remain independent of Galadriel.
 
 ## Qualification boundary
 

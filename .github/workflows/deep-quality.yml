@@ -3,29 +3,7 @@ name: Deep quality
 on:
   push:
     branches: [main]
-    paths:
-      - "crates/**"
-      - "fuzz/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "rust-toolchain.toml"
-      - "deny.toml"
-      - "repo_work/check_focused_mutation.py"
-      - "repo_work/common.py"
-      - "repo_work/release_assurance.py"
-      - ".github/workflows/deep-quality.yml"
   pull_request:
-    paths:
-      - "crates/**"
-      - "fuzz/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "rust-toolchain.toml"
-      - "deny.toml"
-      - "repo_work/check_focused_mutation.py"
-      - "repo_work/common.py"
-      - "repo_work/release_assurance.py"
-      - ".github/workflows/deep-quality.yml"
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
@@ -89,6 +67,9 @@ jobs:
       github.event_name == 'pull_request' ||
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch'
+    env:
+      MUTATION_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PYTHONDONTWRITEBYTECODE: "1"
     runs-on: ubuntu-24.04
     # The frozen release diff currently spans every runtime package. Four
     # deterministic shards retain complete coverage without turning a runner
@@ -134,6 +115,8 @@ jobs:
 
       - name: Restore Cargo cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          cache-targets: false
 
       - name: Install pinned cargo-mutants
         run: cargo install cargo-mutants --version 27.1.0 --locked
@@ -174,28 +157,18 @@ jobs:
         run: python3 repo_work/check_focused_mutation.py
 
       - name: Mutate changed Rust
-        # The evaluation/justification harnesses contain long Monte Carlo studies,
-        # and the evidence publisher deliberately rejects cargo-mutants' temporary
-        # dirty worktree. Exclude their source before cargo-mutants computes the
-        # baseline package union; all runtime workspace packages, including future
-        # additions, remain in the bounded PR mutation gate. Four synchronization
-        # mutants are caught above by direct state tests because activating them
-        # blocks unrelated full-suite worker threads after the decisive assertion.
+        # The evaluation and justification harnesses contain long Monte Carlo studies.
+        # The evidence publisher rejects temporary dirty worktrees that cargo-mutants creates.
+        # The broad runner excludes those harness sources before package selection.
+        # All other runtime packages remain in the bounded pull-request mutation gate.
+        #
+        # Direct state tests catch the four broad-excluded synchronization mutants.
+        # Those mutants can block unrelated worker threads after the decisive assertion.
+        # The focused command covers functions that the broad runner excludes with the study harness.
         run: >-
-          cargo mutants
-          --no-config
-          --workspace
-          --no-shuffle
-          --in-diff git.diff
-          --exclude 'crates/galadriel-eval/**'
-          --exclude 'crates/galadriel-justify/**'
-          --exclude-re 'DeliveryBoundaryState::blocks_delivery -> bool with true$'
-          --exclude-re 'replace != with == in DeliveryBoundaryState::blocks_delivery$'
-          --exclude-re "replace <impl Drop for (DeliveryGuard|ResetGuard)<'_>>::drop with \(\)$"
-          --timeout 600
-          --jobs 2
+          python3 repo_work/run_broad_mutation.py
+          --root .
           --shard '${{ matrix.shard }}'
-          --all-features
 
       - name: Archive mutation results
         if: always()
@@ -207,6 +180,8 @@ jobs:
             mutants.out
             mutants-delivery-boundary
             mutants-delivery-guards
+            mutants-acceptance-evidence
+            BROAD-MUTATION-RUN.json
             FOCUSED-MUTATION-RUN.json
             git.diff
             git.diff.sha256

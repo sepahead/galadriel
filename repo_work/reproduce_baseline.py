@@ -16,17 +16,26 @@ import json
 import os
 import platform
 import shutil
-import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
 
-from common import ReviewError, canonical_json, git
+from common import ReviewError, canonical_json, git, safe_git_environment
+from release_assurance import (
+    run_bounded_host_command,
+    sanitized_host_environment,
+)
 
 
 SCHEMA = "galadriel.baseline-reproduction.v1"
+BASELINE_COMMAND_TIMEOUT_SECONDS = 60 * 60
+MAX_BASELINE_COMMAND_OUTPUT_BYTES = 32 * 1024 * 1024
+MAX_BASELINE_LOG_BYTES = 512 * 1024 * 1024
+METADATA_TIMEOUT_SECONDS = 10 * 60
+MAX_METADATA_STDOUT_BYTES = 64 * 1024 * 1024
+MAX_METADATA_STDERR_BYTES = 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -40,10 +49,14 @@ class CommandSpec:
 
 COMMANDS = (
     CommandSpec("git-status-before", ("git", "status", "--porcelain=v1")),
-    CommandSpec("git-show-signature", ("git", "show", "--show-signature", "--no-patch", "HEAD")),
+    CommandSpec(
+        "git-show-signature", ("git", "show", "--show-signature", "--no-patch", "HEAD")
+    ),
     CommandSpec("rustc-version", ("rustc", "-Vv")),
     CommandSpec("cargo-version", ("cargo", "-Vv")),
-    CommandSpec("cargo-metadata", ("cargo", "metadata", "--locked", "--format-version=1")),
+    CommandSpec(
+        "cargo-metadata", ("cargo", "metadata", "--locked", "--format-version=1")
+    ),
     CommandSpec("format", ("cargo", "fmt", "--all", "--", "--check")),
     CommandSpec(
         "tests-all-features",
@@ -95,6 +108,32 @@ def write_log_header(handle: BinaryIO, label: str, value: str) -> None:
     handle.write(f"[{label}] {value}\n".encode("utf-8", "replace"))
 
 
+def assert_log_bound(handle: BinaryIO) -> None:
+    """Reject a baseline log that exceeds its fixed aggregate byte bound."""
+
+    if handle.tell() > MAX_BASELINE_LOG_BYTES:
+        raise ReviewError(f"baseline log exceeds {MAX_BASELINE_LOG_BYTES} bytes")
+
+
+def baseline_environment(
+    source: dict[str, str],
+    *,
+    target: Path,
+    source_date_epoch: int,
+) -> dict[str, str]:
+    """Build the baseline tool environment without ambient secret selectors."""
+
+    environment = safe_git_environment(sanitized_host_environment(source))
+    environment.update(
+        {
+            "CARGO_TARGET_DIR": str(target),
+            "CARGO_TERM_COLOR": "never",
+            "SOURCE_DATE_EPOCH": str(source_date_epoch),
+        }
+    )
+    return environment
+
+
 def run_command(
     spec: CommandSpec,
     *,
@@ -111,23 +150,28 @@ def run_command(
     write_log_header(log, "started_utc", started)
     write_log_header(log, "argv_json", json.dumps(spec.argv))
     if spec.extra_env:
-        write_log_header(log, "extra_env_json", json.dumps(dict(spec.extra_env), sort_keys=True))
+        write_log_header(
+            log, "extra_env_json", json.dumps(dict(spec.extra_env), sort_keys=True)
+        )
     log.write(b"[combined_output_begin]\n")
     log.flush()
-    process = subprocess.run(
+    process = run_bounded_host_command(
         spec.argv,
         cwd=checkout,
-        env=environment,
-        stdin=subprocess.DEVNULL,
-        stdout=log,
-        stderr=subprocess.STDOUT,
-        check=False,
+        environment=environment,
+        context=f"baseline command {spec.name}",
+        merge_stderr=True,
+        max_stdout_bytes=MAX_BASELINE_COMMAND_OUTPUT_BYTES,
+        max_stderr_bytes=0,
+        timeout_seconds=BASELINE_COMMAND_TIMEOUT_SECONDS,
     )
     ended = utc_now()
+    log.write(process.stdout)
     log.write(b"\n[combined_output_end]\n")
     write_log_header(log, "exit_code", str(process.returncode))
     write_log_header(log, "ended_utc", ended)
     log.write(b"\n")
+    assert_log_bound(log)
     log.flush()
     return {
         "name": spec.name,
@@ -157,13 +201,18 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", default=".", help="source Git checkout")
     parser.add_argument("--commit", required=True, help="immutable baseline revision")
-    parser.add_argument("--out", required=True, help="output directory (must not exist)")
+    parser.add_argument(
+        "--out", required=True, help="output directory (must not exist)"
+    )
     arguments = parser.parse_args()
 
     repo = Path(arguments.repo).resolve()
     output = Path(arguments.out).resolve()
     if output.exists():
-        print(f"baseline reproduction failed: output already exists: {output}", file=sys.stderr)
+        print(
+            f"baseline reproduction failed: output already exists: {output}",
+            file=sys.stderr,
+        )
         return 2
 
     try:
@@ -177,21 +226,21 @@ def main() -> int:
             temporary_root = Path(temporary)
             checkout = temporary_root / "checkout"
             target = temporary_root / "target"
-            subprocess.run(
-                ["git", "-C", str(repo), "worktree", "add", "--detach", str(checkout), commit],
-                check=True,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+            git(
+                repo,
+                "worktree",
+                "add",
+                "--detach",
+                str(checkout),
+                commit,
+                max_bytes=1024 * 1024,
+                timeout_seconds=120,
             )
             try:
-                base_env = dict(os.environ)
-                base_env.update(
-                    {
-                        "CARGO_TARGET_DIR": str(target),
-                        "CARGO_TERM_COLOR": "never",
-                        "SOURCE_DATE_EPOCH": str(source_date_epoch),
-                    }
+                base_env = baseline_environment(
+                    dict(os.environ),
+                    target=target,
+                    source_date_epoch=source_date_epoch,
                 )
                 commands: list[dict[str, object]] = []
                 started = utc_now()
@@ -219,14 +268,14 @@ def main() -> int:
                 # Preserve the exact metadata payload separately while keeping its
                 # command result in the complete execution log.  Re-run only this
                 # read-only command because stdout was deliberately combined above.
-                metadata = subprocess.run(
+                metadata = run_bounded_host_command(
                     ["cargo", "metadata", "--locked", "--format-version=1"],
                     cwd=checkout,
-                    env=base_env,
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    check=False,
+                    environment=base_env,
+                    context="baseline Cargo metadata artifact",
+                    max_stdout_bytes=MAX_METADATA_STDOUT_BYTES,
+                    max_stderr_bytes=MAX_METADATA_STDERR_BYTES,
+                    timeout_seconds=METADATA_TIMEOUT_SECONDS,
                 )
                 if metadata.returncode != 0:
                     raise ReviewError(
@@ -266,15 +315,17 @@ def main() -> int:
                 result_path.write_bytes(canonical_json(result))
                 passed = bool(result["passed"])
             finally:
-                subprocess.run(
-                    ["git", "-C", str(repo), "worktree", "remove", "--force", str(checkout)],
-                    check=False,
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                git(
+                    repo,
+                    "worktree",
+                    "remove",
+                    "--force",
+                    str(checkout),
+                    max_bytes=1024 * 1024,
+                    timeout_seconds=120,
                 )
                 shutil.rmtree(target, ignore_errors=True)
-    except (OSError, ReviewError, subprocess.SubprocessError) as error:
+    except (OSError, ReviewError) as error:
         print(f"baseline reproduction failed: {error}", file=sys.stderr)
         return 2
 

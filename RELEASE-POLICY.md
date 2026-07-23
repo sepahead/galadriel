@@ -4,7 +4,10 @@ Owner and author: Sepehr Mahmoudian
 
 Candidate branch: protected `main`
 
-Release target: `0.9.0` GitHub source release
+Release target: review-gated `0.9.0` GitHub research source release
+
+No project digital object identifier exists.
+No project Zenodo record exists.
 
 ## Freeze and change control
 
@@ -28,13 +31,32 @@ Assistants **SHALL NOT** appear as authors or co-authors.
 **GLD-090-CTL-004:** An emergency freeze exception **SHALL** correct only a release-blocking defect.
 The defect **SHALL** affect correctness, security, reproducibility, or metadata.
 The review record **SHALL** explain the defect and the smallest coherent repair.
-It **SHALL** state the regression coverage and why the candidate evidence remains valid.
+It **SHALL** identify the regression coverage, replacement candidate evidence, and repeated gates.
 Defer cosmetic changes.
 
 **GLD-090-CTL-005:** Cross-repository edits **SHALL** apply only to a claimed adapter, conformance fixture, immutable pin, migration, or truthful documentation.
 Before an edit, the operator **SHALL** check for concurrent work and preserve it.
 Unqualified integrations **SHALL** be `NOT_CLAIMED`.
 Do not force an unqualified integration into another repository.
+
+**GLD-090-CTL-006:** The threat register **SHALL** remain `LIVING_UNTIL_CANDIDATE_FREEZE` during implementation.
+Only the release operator **SHALL** change it to `FROZEN_AT_CANDIDATE`.
+The operator **SHALL** make that change with the final staged release inputs.
+Freeze generation and strict verification **SHALL** reject the living status.
+Implementation verification **SHALL** reject an active pair while the status is living.
+
+The signed audit-input manifest is the sole pre-commit evidence exception.
+It binds exact stage-zero index blobs and external inputs.
+It does not claim a candidate commit or tree.
+The next signed commit establishes the exact candidate identity.
+
+A later tracked change **SHALL** reopen the freeze.
+It **SHALL** require a new active signed input pair and candidate.
+
+**GLD-090-CTL-007:** Only the release operator **SHALL** merge, tag, publish, delete references, or change repository settings.
+A delegated agent **SHALL NOT** perform these actions.
+An agent can prepare and verify a reviewed milestone.
+The release operator must accept that milestone before promotion.
 
 ## Candidate and publication gates
 
@@ -54,7 +76,7 @@ It requires clean candidate qualification and a final multi-lens review.
 It also requires withdrawal instructions, rollback instructions, and remote post-publication verification.
 
 Independent clean-room reproduction is necessary only when the release claims that reproduction occurred.
-A `NARROWED_GO` GitHub source release can instead close that task as `NOT_CLAIMED`.
+A `NARROWED_GO` GitHub research source release can instead close that task as `NOT_CLAIMED`.
 The claims matrix, decision, and release notes must preserve the exclusion.
 
 Remove old tags and releases only after the 0.9.0 release record retains their exact identities and withdrawal reasons.

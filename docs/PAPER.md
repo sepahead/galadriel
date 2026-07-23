@@ -376,9 +376,9 @@ A current reciprocal producer qualification and an accepted recorded field study
 ## Reproducibility
 
 ```bash
-cargo run -p galadriel-eval --release -- 200
-cargo run -p galadriel-justify --release
-cargo bench -p galadriel-eval --bench detectors
+cargo run --locked -p galadriel-eval --release -- 200
+cargo run --locked -p galadriel-justify --release
+cargo bench --locked -p galadriel-eval --bench detectors
 cargo test --workspace --all-features --locked
 ```
 

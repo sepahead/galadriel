@@ -2,7 +2,7 @@
   "schema": "galadriel.ecosystem-inspection-cut.v1",
   "release": "0.9.0",
   "author": "Sepehr Mahmoudian",
-  "inspected_at": "2026-07-22",
+  "inspected_at": "2026-07-23",
   "timestamp_precision": "date",
   "scope": "Read-only external identity and local relationship-absence record; only Cargo revisions are release pins.",
   "observations": [
@@ -149,16 +149,44 @@
     {
       "id": "ECO-011",
       "project": "Haldir",
-      "relationship": "prospective_downstream_status_reinspection",
-      "ref": "main",
+      "relationship": "prospective_downstream_consumer",
+      "ref": "refs/heads/main",
       "object": "c0e4b3d156500684329a92bcb16e0609894fd738",
-      "identity_kind": "mutable_head_observation",
+      "identity_kind": "mutable_head_reinspection",
       "observed_at": "2026-07-22",
       "timestamp_precision": "date",
       "required_by_default": false,
       "required_for": [],
       "supersedes": "ECO-006",
       "why": "Records the activated CH-T001 repository-inventory evidence update, whose retained downstream disposition says the runtime surface and external conformance did not change; no Galadriel adapter or route was added."
+    },
+    {
+      "id": "ECO-012",
+      "project": "Haldir",
+      "relationship": "prospective_downstream_consumer",
+      "ref": "refs/heads/main",
+      "object": "590ba767b32a27d9dd61a2462968306c1052434e",
+      "identity_kind": "mutable_head_reinspection",
+      "observed_at": "2026-07-23",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": "ECO-011",
+      "why": "Records the mutable Haldir head observed on 2026-07-23 after its evidence-tool updates. Galadriel still has no Haldir adapter, route, or runtime edge."
+    },
+    {
+      "id": "ECO-013",
+      "project": "Paper2Brain",
+      "relationship": "external_application_without_integration",
+      "ref": "refs/heads/main",
+      "object": "24e74b781a5bf8af069f69cbc2d0c42d89008211",
+      "identity_kind": "mutable_head_observation",
+      "observed_at": "2026-07-23",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": null,
+      "why": "Records the mutable Paper2Brain head observed on 2026-07-23 as read-only provenance. Galadriel has no Paper2Brain dependency, API, route, adapter, or runtime edge."
     }
   ],
   "limitations": [

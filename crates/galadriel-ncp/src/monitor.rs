@@ -7,12 +7,12 @@
 
 use galadriel_core::observation::{ConsistencyProjection, Modality};
 use ncp_core::{
-    contract_status, valid_id_segment, ContractStatus, Keys, CONTRACT_HASH, DEFAULT_REALM,
-    JSON_SAFE_INTEGER_MAX, NCP_VERSION,
+    contract_status, ContractStatus, Keys, CONTRACT_HASH, DEFAULT_REALM, JSON_SAFE_INTEGER_MAX,
+    NCP_VERSION,
 };
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::MAX_ID_SEGMENT_BYTES;
+use crate::{valid_producer_identity, valid_session_identity};
 
 /// Stable named-perception entity carrying producer-monitor envelopes.
 pub const MONITOR_SENSOR_NAME: &str = "galadriel-monitor";
@@ -324,12 +324,12 @@ pub enum MonitorError {
     /// The advertised contract hash is not canonical lowercase 64-bit hex.
     #[error("invalid NCP contract hash in monitor envelope: {0:?}")]
     InvalidContractHash(String),
-    /// The declared session is unsafe as an NCP key segment.
-    #[error("invalid monitor session_id: {0:?}")]
-    InvalidSessionId(String),
-    /// The declared producer is unsafe as an NCP key segment.
-    #[error("invalid monitor producer_id: {0:?}")]
-    InvalidProducerId(String),
+    /// The declared session is not a canonical Galadriel core identity.
+    #[error("invalid monitor session_id")]
+    InvalidSessionId,
+    /// The declared producer is not a canonical Galadriel core identity.
+    #[error("invalid monitor producer_id")]
+    InvalidProducerId,
     /// The payload declares different provenance from the subscribed stream.
     #[error("monitor {field} mismatch: got {received:?}, expected {expected:?}")]
     ProvenanceMismatch {
@@ -449,18 +449,22 @@ pub enum MonitorError {
 impl MonitorEnvelope {
     /// Construct and validate an envelope stamped with local NCP identities.
     pub fn try_new(
-        session_id: impl Into<String>,
-        producer_id: impl Into<String>,
+        session_id: impl AsRef<str>,
+        producer_id: impl AsRef<str>,
         event_seq: u64,
         event: ProducerEvent,
     ) -> Result<Self, MonitorError> {
+        let session_id = session_id.as_ref();
+        let producer_id = producer_id.as_ref();
+        validate_identity(session_id, IdentityRole::Session)?;
+        validate_identity(producer_id, IdentityRole::Producer)?;
         Self::try_from(RawMonitorEnvelope {
             kind: MONITOR_KIND.to_string(),
             schema_version: MONITOR_SCHEMA_VERSION.to_string(),
             ncp_version: NCP_VERSION.to_string(),
             contract_hash: CONTRACT_HASH.to_string(),
-            session_id: session_id.into(),
-            producer_id: producer_id.into(),
+            session_id: session_id.to_owned(),
+            producer_id: producer_id.to_owned(),
             event_seq,
             event,
         })
@@ -551,6 +555,8 @@ impl MonitorEnvelope {
         expected_session_id: &str,
         expected_producer_id: &str,
     ) -> Result<ContractStatus, MonitorError> {
+        validate_identity(expected_session_id, IdentityRole::Session)?;
+        validate_identity(expected_producer_id, IdentityRole::Producer)?;
         let status = self.validate()?;
         if self.session_id != expected_session_id {
             return Err(MonitorError::ProvenanceMismatch {
@@ -941,7 +947,7 @@ impl FrameSummary {
 /// The named perception-plane monitor route:
 /// `{realm}/session/{id}/sensor/galadriel-monitor`.
 pub fn monitor_key(realm: &str, session_id: &str) -> Option<String> {
-    if !valid_id_segment(session_id) || session_id.len() > MAX_ID_SEGMENT_BYTES {
+    if !valid_session_identity(session_id) {
         return None;
     }
     Keys::try_new(realm)
@@ -967,12 +973,16 @@ fn validate_contract_hash(contract_hash: &str) -> Result<(), MonitorError> {
 }
 
 fn validate_identity(identity: &str, role: IdentityRole) -> Result<(), MonitorError> {
-    if valid_id_segment(identity) && identity.len() <= MAX_ID_SEGMENT_BYTES {
+    let valid = match role {
+        IdentityRole::Session => valid_session_identity(identity),
+        IdentityRole::Producer => valid_producer_identity(identity),
+    };
+    if valid {
         return Ok(());
     }
     match role {
-        IdentityRole::Session => Err(MonitorError::InvalidSessionId(identity.to_string())),
-        IdentityRole::Producer => Err(MonitorError::InvalidProducerId(identity.to_string())),
+        IdentityRole::Session => Err(MonitorError::InvalidSessionId),
+        IdentityRole::Producer => Err(MonitorError::InvalidProducerId),
     }
 }
 
@@ -1448,14 +1458,29 @@ mod tests {
     }
 
     #[test]
-    fn identities_use_utf8_byte_ceiling_and_provenance_binding() {
-        let at_bound = "é".repeat(MAX_ID_SEGMENT_BYTES / 2);
-        let oversized = format!("{at_bound}é");
+    fn identities_use_core_grammar_and_provenance_binding() {
+        let at_bound = "a".repeat(crate::MAX_ID_SEGMENT_BYTES);
+        let oversized = format!("{at_bound}a");
         let event = ProducerEvent::Heartbeat(heartbeat());
         let envelope = MonitorEnvelope::try_new(at_bound.clone(), at_bound, 1, event.clone())
-            .expect("exactly 64 UTF-8 bytes is valid");
+            .expect("exactly 64 ASCII bytes is valid");
 
         assert!(MonitorEnvelope::try_new(oversized, "crebain", 1, event).is_err());
+        for invalid in ["uav+3", "époch1", "-uav3", "uav3-", "uav3\n"] {
+            assert!(matches!(
+                MonitorEnvelope::try_new(
+                    invalid,
+                    "crebain",
+                    1,
+                    ProducerEvent::Heartbeat(heartbeat())
+                ),
+                Err(MonitorError::InvalidSessionId)
+            ));
+            assert!(matches!(
+                MonitorEnvelope::try_new("uav3", invalid, 1, ProducerEvent::Heartbeat(heartbeat())),
+                Err(MonitorError::InvalidProducerId)
+            ));
+        }
         assert!(matches!(
             envelope.validate_for("other", envelope.producer_id()),
             Err(MonitorError::ProvenanceMismatch {
@@ -1470,6 +1495,59 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn validate_for_rejects_invalid_expected_session_without_retaining_it() {
+        let envelope =
+            MonitorEnvelope::try_new("uav3", "crebain", 1, ProducerEvent::Heartbeat(heartbeat()))
+                .unwrap();
+        let oversized = "x".repeat(crate::MAX_ID_SEGMENT_BYTES + 1);
+
+        for invalid in ["uav+3", oversized.as_str()] {
+            assert_eq!(
+                envelope.validate_for(invalid, "crebain"),
+                Err(MonitorError::InvalidSessionId)
+            );
+        }
+    }
+
+    #[test]
+    fn validate_for_rejects_invalid_expected_producer_without_retaining_it() {
+        let envelope =
+            MonitorEnvelope::try_new("uav3", "crebain", 1, ProducerEvent::Heartbeat(heartbeat()))
+                .unwrap();
+        let oversized = "x".repeat(crate::MAX_ID_SEGMENT_BYTES + 1);
+
+        for invalid in ["producer+1", oversized.as_str()] {
+            assert_eq!(
+                envelope.validate_for("uav3", invalid),
+                Err(MonitorError::InvalidProducerId)
+            );
+        }
+    }
+
+    #[test]
+    fn monitor_wire_decode_rejects_each_noncanonical_identity() {
+        let envelope =
+            MonitorEnvelope::try_new("uav3", "crebain", 1, ProducerEvent::Heartbeat(heartbeat()))
+                .unwrap();
+        let valid = serde_json::to_value(envelope).unwrap();
+        for (field, invalid) in [("session_id", "uav+3"), ("producer_id", "crébain")] {
+            let mut value = valid.clone();
+            value[field] = serde_json::json!(invalid);
+            let encoded = serde_json::to_vec(&value).unwrap();
+            let error = MonitorEnvelope::decode(&encoded).unwrap_err();
+            match field {
+                "session_id" => {
+                    assert!(matches!(error, MonitorError::InvalidSessionId));
+                }
+                "producer_id" => {
+                    assert!(matches!(error, MonitorError::InvalidProducerId));
+                }
+                _ => unreachable!(),
+            }
+        }
     }
 
     #[test]
@@ -2027,10 +2105,25 @@ mod tests {
             schema["properties"]["contract_hash"]["maxLength"],
             CONTRACT_HASH.len()
         );
+        assert_eq!(schema["$defs"]["galadrielCoreIdentity"]["minLength"], 1);
         assert_eq!(
-            schema["$defs"]["ncpKeySegment"]["not"]["pattern"],
-            r"[\r\n]"
+            schema["$defs"]["galadrielCoreIdentity"]["maxLength"],
+            crate::MAX_ID_SEGMENT_BYTES
         );
+        assert_eq!(
+            schema["$defs"]["galadrielCoreIdentity"]["pattern"],
+            r"^[A-Za-z0-9](?:[A-Za-z0-9_.:-]{0,62}[A-Za-z0-9])?$"
+        );
+        assert_eq!(
+            schema["$defs"]["galadrielCoreIdentity"]["not"]["pattern"],
+            r"[^A-Za-z0-9_.:-]"
+        );
+        for field in ["session_id", "producer_id"] {
+            assert_eq!(
+                schema["properties"][field]["$ref"],
+                "#/$defs/galadrielCoreIdentity"
+            );
+        }
         assert_eq!(
             schema["$defs"]["safeUnsignedInteger"]["maximum"],
             JSON_SAFE_INTEGER_MAX
@@ -2129,11 +2222,14 @@ mod tests {
         );
         assert!(monitor_key("ncp/**", "uav3").is_none());
         assert!(monitor_key("ncp", "bad id").is_none());
+        for invalid in ["uav+3", "époch1", "-uav3", "uav3-"] {
+            assert!(monitor_key("ncp", invalid).is_none());
+        }
         assert_eq!(
             default_monitor_key("uav3").as_deref(),
             Some("ncp/session/uav3/sensor/galadriel-monitor")
         );
-        assert!(default_monitor_key(&"a".repeat(MAX_ID_SEGMENT_BYTES)).is_some());
-        assert!(default_monitor_key(&"a".repeat(MAX_ID_SEGMENT_BYTES + 1)).is_none());
+        assert!(default_monitor_key(&"a".repeat(crate::MAX_ID_SEGMENT_BYTES)).is_some());
+        assert!(default_monitor_key(&"a".repeat(crate::MAX_ID_SEGMENT_BYTES + 1)).is_none());
     }
 }

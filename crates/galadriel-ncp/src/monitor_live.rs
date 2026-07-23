@@ -34,8 +34,8 @@ use crate::monitor::{
     monitor_key, MonitorEnvelope, MonitorError, MAX_MONITOR_EVENT_BYTES, MAX_MONITOR_QUEUE_EVENTS,
 };
 use crate::{
-    config_identity::ConfigurationIdentityBuilder, valid_realm, ConfigurationIdentity,
-    MAX_ID_SEGMENT_BYTES,
+    config_identity::ConfigurationIdentityBuilder, valid_producer_identity, valid_realm,
+    ConfigurationIdentity,
 };
 
 /// Default number of contiguous monitor receipts retained for a consumer.
@@ -1641,7 +1641,7 @@ impl MonitorTap {
         producer_id: &str,
     ) -> Result<(MonitorSubscriptionHealth, LiveMonitorReceiver), ZenohError> {
         let key = monitor_key(&self.realm, session_id)
-            .ok_or_else(|| ZenohError(format!("invalid NCP session id segment: {session_id:?}")))?;
+            .ok_or_else(|| ZenohError("invalid Galadriel session identity".to_string()))?;
         validate_monitor_producer_id(producer_id)?;
         let lifecycle_lease = reserve_monitor_receiver(&self.lifecycle, &self.lifecycle_poisoned)?;
 
@@ -1838,15 +1838,10 @@ fn fault_for_monitor_error(error: &MonitorError) -> MonitorIngressFault {
 }
 
 fn validate_monitor_producer_id(producer_id: &str) -> Result<(), ZenohError> {
-    if !ncp_core::valid_id_segment(producer_id) {
-        return Err(ZenohError(format!(
-            "invalid monitor producer id segment: {producer_id:?}"
-        )));
-    }
-    if producer_id.len() > MAX_ID_SEGMENT_BYTES {
-        return Err(ZenohError(format!(
-            "invalid monitor producer id segment: {producer_id:?}"
-        )));
+    if !valid_producer_identity(producer_id) {
+        return Err(ZenohError(
+            "invalid Galadriel producer identity".to_string(),
+        ));
     }
     Ok(())
 }
@@ -2302,11 +2297,13 @@ mod tests {
 
     #[test]
     fn monitor_producer_id_validation_covers_character_and_byte_boundaries() {
-        let exact = "a".repeat(MAX_ID_SEGMENT_BYTES);
-        let oversized = "a".repeat(MAX_ID_SEGMENT_BYTES + 1);
+        let exact = "a".repeat(crate::MAX_ID_SEGMENT_BYTES);
+        let oversized = "a".repeat(crate::MAX_ID_SEGMENT_BYTES + 1);
         assert!(validate_monitor_producer_id(&exact).is_ok());
         assert!(validate_monitor_producer_id(&oversized).is_err());
-        assert!(validate_monitor_producer_id("*").is_err());
+        for invalid in ["*", "uav+3", "époch1", "-uav3", "uav3-"] {
+            assert!(validate_monitor_producer_id(invalid).is_err());
+        }
     }
 
     #[test]
@@ -3093,6 +3090,56 @@ mod tests {
         assert_eq!(tap.internal_faults(), 1);
 
         tap.lifecycle_poisoned.store(false, Ordering::Release);
+        tap.close().await.expect("the owned test tap closes");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn subscribe_channel_rejects_identities_before_monitor_runtime_effects() {
+        let realm = format!(
+            "galadriel/test/invalid-monitor-identity-{}",
+            std::process::id()
+        );
+        let tap = MonitorTap::open_realm(realm, TransportMode::QuietDevelopment)
+            .await
+            .expect("the isolated quiet-development monitor tap opens");
+        let oversized = "a".repeat(crate::MAX_ID_SEGMENT_BYTES + 1);
+
+        for (session_id, producer_id, expected_error) in [
+            ("*", PRODUCER_ID, "invalid Galadriel session identity"),
+            (
+                oversized.as_str(),
+                PRODUCER_ID,
+                "invalid Galadriel session identity",
+            ),
+            (SESSION_ID, "*", "invalid Galadriel producer identity"),
+            (
+                SESSION_ID,
+                oversized.as_str(),
+                "invalid Galadriel producer identity",
+            ),
+        ] {
+            let result = tap.subscribe_channel(session_id, producer_id).await;
+            let error = match result {
+                Err(error) => error,
+                Ok(_) => panic!("an invalid identity created a monitor subscription"),
+            };
+            assert_eq!(error.to_string(), expected_error);
+
+            let lifecycle = tap
+                .lifecycle
+                .lock()
+                .expect("the monitor tap lifecycle remains healthy");
+            assert_eq!(lifecycle.active_receivers, 0);
+            assert!(!lifecycle.close_started);
+            assert!(!lifecycle.close_complete);
+        }
+
+        assert_eq!(tap.payloads_received(), 0);
+        assert_eq!(tap.events_validated(), 0);
+        assert_eq!(tap.events_delivered(), 0);
+        assert_eq!(tap.events_discarded(), 0);
+        assert_eq!(tap.internal_fault(), None);
+
         tap.close().await.expect("the owned test tap closes");
     }
 

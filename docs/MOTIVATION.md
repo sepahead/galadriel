@@ -37,6 +37,7 @@ It also states where Galadriel can and cannot help.
 > Galadriel's current detector evidence is synthetic.
 > The bundled Crebain capture proves parsing and baseline smoke behavior only.
 > It contains native research fields but no attested common projection.
+>
 > Its modalities use mixed residual frames, and its sequential updates do not share a frozen prior.
 >
 > Gating also censors misses.

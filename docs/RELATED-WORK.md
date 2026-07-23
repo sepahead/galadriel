@@ -54,6 +54,7 @@ It also complements the threat evidence in [`MOTIVATION.md`](MOTIVATION.md).
 > Galadriel's current performance evidence is synthetic.
 > The bundled historical Crebain output lacks comparable cross-modal residuals.
 > It lacks a common frame and common frozen prior.
+>
 > Association and gating cause selection bias.
 >
 > The output proves parsing and baseline smoke behavior only.

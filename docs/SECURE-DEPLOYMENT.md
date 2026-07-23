@@ -4,7 +4,10 @@
 
 | Short form | Meaning |
 |---|---|
+| ASCII | American Standard Code for Information Interchange |
 | CN | certificate common name |
+| JSON | JavaScript Object Notation |
+| JSON5 | JavaScript Object Notation 5 |
 | NCP | Neuro-Cybernetic Protocol |
 | PEM | Privacy-Enhanced Mail |
 | SHA-256 | Secure Hash Algorithm 256 |
@@ -34,10 +37,17 @@ Before either application opens a route, an operator fixes this operational join
 
 The `epoch` identifies a producer process.
 It does not identify an NCP control session.
+The `epoch` and `producer_id` use the Galadriel core identity grammar.
+
+Each value contains 1 through 64 ASCII bytes.
+Each identity starts and ends with a letter or digit.
+Each identity can contain letters, digits, hyphens, underscores, periods, and colons.
+Galadriel rejects other generic NCP segment forms, such as Unicode text or `+`.
+
 Before any sequence, replay, or prior-identity reset, create a new epoch.
 Never reuse an epoch.
 
-Galadriel v1 has no wildcard discovery protocol.
+The Galadriel sidecar schema version 1.0 has no wildcard discovery protocol.
 Before startup, an operator or deployment orchestrator must distribute the exact epoch out of band.
 Then, render the access control list (ACL) for that epoch.
 Start the producer and receiver with the same epoch.
@@ -113,7 +123,7 @@ The 128 KiB transport value permits bounded frame overhead around a maximum 64 K
 An increase changes the security profile and intentionally breaks the checker.
 Before a decrease, record an interoperability test with all maximum valid envelopes.
 
-The renderer requires regular files that exist at absolute production paths.
+The renderer requires regular files that exist at absolute deployment paths.
 It rejects relative paths, inline PEM material, and inline base64 material.
 It rejects duplicate JSON keys at each JSON object depth.
 It canonicalizes each path.

@@ -41,8 +41,8 @@ use ncp_zenoh::{ZenohBus, ZenohError};
 use tokio::sync::mpsc;
 
 use crate::{
-    config_identity::ConfigurationIdentityBuilder, sidecar_key, valid_realm, ConfigurationIdentity,
-    SidecarEnvelope, SidecarEnvelopeError,
+    config_identity::ConfigurationIdentityBuilder, sidecar_key, valid_producer_identity,
+    valid_realm, ConfigurationIdentity, SidecarDecodeError, SidecarEnvelope, SidecarEnvelopeError,
 };
 
 /// Maximum live sidecar payload accepted under the bounded 0.9 profile.
@@ -2104,11 +2104,11 @@ impl SidecarTap {
         F: Fn(PidObservation) + Send + Sync + 'static,
     {
         let key = sidecar_key(&self.realm, session_id)
-            .ok_or_else(|| ZenohError(format!("invalid NCP session id segment: {session_id:?}")))?;
-        if !ncp_core::valid_id_segment(producer_id) {
-            return Err(ZenohError(format!(
-                "invalid sidecar producer id segment: {producer_id:?}"
-            )));
+            .ok_or_else(|| ZenohError("invalid Galadriel session identity".to_string()))?;
+        if !valid_producer_identity(producer_id) {
+            return Err(ZenohError(
+                "invalid Galadriel producer identity".to_string(),
+            ));
         }
         let expected_session_id = session_id.to_owned();
         let expected_producer_id = producer_id.to_owned();
@@ -2166,11 +2166,11 @@ impl SidecarTap {
         config: HandoffConfig,
     ) -> Result<(SubscriptionHealth, LiveObservationReceiver), ZenohError> {
         let key = sidecar_key(&self.realm, session_id)
-            .ok_or_else(|| ZenohError(format!("invalid NCP session id segment: {session_id:?}")))?;
-        if !ncp_core::valid_id_segment(producer_id) {
-            return Err(ZenohError(format!(
-                "invalid sidecar producer id segment: {producer_id:?}"
-            )));
+            .ok_or_else(|| ZenohError("invalid Galadriel session identity".to_string()))?;
+        if !valid_producer_identity(producer_id) {
+            return Err(ZenohError(
+                "invalid Galadriel producer identity".to_string(),
+            ));
         }
         let expected_session_id = session_id.to_owned();
         let expected_producer_id = producer_id.to_owned();
@@ -2300,21 +2300,25 @@ where
     // occurrence wins) before `deny_unknown_fields` could reject them — a parser
     // differential with first-wins JSON consumers on a security boundary. Keeping
     // conversion separate also preserves typed compatibility rejection.
-    let raw = match serde_json::from_slice::<crate::RawSidecarEnvelope>(bytes) {
-        Ok(raw) => raw,
-        Err(error) => {
-            let reason = if error.classify() == serde_json::error::Category::Data {
-                RejectionReason::InvalidEnvelope
-            } else {
-                RejectionReason::MalformedJson
-            };
-            reject_pair(context.tap_counters, context.subscription_counters, reason);
+    let envelope = match SidecarEnvelope::decode(bytes) {
+        Ok(envelope) => envelope,
+        Err(SidecarDecodeError::MalformedJson) => {
+            reject_pair(
+                context.tap_counters,
+                context.subscription_counters,
+                RejectionReason::MalformedJson,
+            );
             return;
         }
-    };
-    let envelope = match SidecarEnvelope::try_from(raw) {
-        Ok(envelope) => envelope,
-        Err(error) => {
+        Err(SidecarDecodeError::InvalidEnvelope) => {
+            reject_pair(
+                context.tap_counters,
+                context.subscription_counters,
+                RejectionReason::InvalidEnvelope,
+            );
+            return;
+        }
+        Err(SidecarDecodeError::Semantic(error)) => {
             reject_pair(
                 context.tap_counters,
                 context.subscription_counters,
@@ -3580,6 +3584,104 @@ mod tests {
             Some(LiveInternalFault::CallbackPanicked)
         );
         assert_eq!(tap.internal_faults(), 1);
+
+        tap.close().await.expect("the owned test tap closes");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn subscribe_with_health_rejects_identities_before_retaining_a_subscription() {
+        let realm = format!(
+            "galadriel/test/invalid-callback-identity-{}",
+            std::process::id()
+        );
+        let tap = SidecarTap::open_realm(realm, TransportMode::QuietDevelopment)
+            .await
+            .expect("the isolated quiet-development tap opens");
+        let oversized = "a".repeat(crate::MAX_ID_SEGMENT_BYTES + 1);
+
+        for (session_id, producer_id, expected_error) in [
+            ("*", TEST_PRODUCER_ID, "invalid Galadriel session identity"),
+            (
+                oversized.as_str(),
+                TEST_PRODUCER_ID,
+                "invalid Galadriel session identity",
+            ),
+            (TEST_SESSION_ID, "*", "invalid Galadriel producer identity"),
+            (
+                TEST_SESSION_ID,
+                oversized.as_str(),
+                "invalid Galadriel producer identity",
+            ),
+        ] {
+            let result = tap
+                .subscribe_with_health(session_id, producer_id, |_| {})
+                .await;
+            let error = match result {
+                Err(error) => error,
+                Ok(_) => panic!("an invalid identity created a callback subscription"),
+            };
+            assert_eq!(error.to_string(), expected_error);
+        }
+
+        assert_eq!(
+            tap.bus()
+                .unsubscribe_session(TEST_SESSION_ID)
+                .expect("the valid session lookup succeeds"),
+            0
+        );
+        assert_eq!(tap.payloads_received(), 0);
+        assert_eq!(tap.observations_accepted(), 0);
+        assert_eq!(tap.rejections().total(), 0);
+
+        tap.close().await.expect("the owned test tap closes");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn subscribe_channel_rejects_identities_before_handoff_or_subscription_effects() {
+        let realm = format!(
+            "galadriel/test/invalid-handoff-identity-{}",
+            std::process::id()
+        );
+        let tap = SidecarTap::open_realm(realm, TransportMode::QuietDevelopment)
+            .await
+            .expect("the isolated quiet-development tap opens");
+        let handoff = HandoffConfig::new(1).expect("the test handoff is valid");
+        let oversized = "a".repeat(crate::MAX_ID_SEGMENT_BYTES + 1);
+
+        for (session_id, producer_id, expected_error) in [
+            ("*", TEST_PRODUCER_ID, "invalid Galadriel session identity"),
+            (
+                oversized.as_str(),
+                TEST_PRODUCER_ID,
+                "invalid Galadriel session identity",
+            ),
+            (TEST_SESSION_ID, "*", "invalid Galadriel producer identity"),
+            (
+                TEST_SESSION_ID,
+                oversized.as_str(),
+                "invalid Galadriel producer identity",
+            ),
+        ] {
+            let result = tap
+                .subscribe_channel(session_id, producer_id, handoff)
+                .await;
+            let error = match result {
+                Err(error) => error,
+                Ok(_) => panic!("an invalid identity created a handoff subscription"),
+            };
+            assert_eq!(error.to_string(), expected_error);
+        }
+
+        assert_eq!(
+            tap.bus()
+                .unsubscribe_session(TEST_SESSION_ID)
+                .expect("the valid session lookup succeeds"),
+            0
+        );
+        assert_eq!(tap.handoff_enqueued(), 0);
+        assert_eq!(tap.handoff_delivered(), 0);
+        assert_eq!(tap.handoff_drops(), 0);
+        assert_eq!(tap.payloads_received(), 0);
 
         tap.close().await.expect("the owned test tap closes");
     }

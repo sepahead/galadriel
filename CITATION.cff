@@ -6,7 +6,7 @@ message: >-
 type: software
 title: "Galadriel's Mirror"
 version: 0.9.0
-date-released: 2026-07-22
+date-released: 2026-07-23
 authors:
   - family-names: Mahmoudian
     given-names: Sepehr
