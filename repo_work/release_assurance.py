@@ -174,6 +174,14 @@ BROAD_MUTATION_GENRES = {
     "MatchArmGuard",
     "UnaryOperator",
 }
+FUNCTIONLESS_BROAD_MUTATION_GENRES = frozenset(
+    {
+        "BinaryOperator",
+        "MatchArm",
+        "MatchArmGuard",
+        "UnaryOperator",
+    }
+)
 MetricDomain = Literal["probability", "rate", "delay"]
 ACCEPTANCE_METRIC_DOMAINS: dict[str, MetricDomain] = {
     "false_alerts_per_hour": "rate",
@@ -194,6 +202,26 @@ class FocusedMutant(NamedTuple):
     function_name: str
     return_type: str
     function_span: tuple[int, int, int, int]
+    span: tuple[int, int, int, int]
+    replacement: str
+    genre: str
+
+
+class BroadMutantFunction(NamedTuple):
+    """One optional cargo-mutants function identity."""
+
+    function_name: str
+    return_type: str
+    span: tuple[int, int, int, int]
+
+
+class BroadMutant(NamedTuple):
+    """One fully identified broad mutation at a frozen source span."""
+
+    name: str
+    package: str
+    file: str
+    function: BroadMutantFunction | None
     span: tuple[int, int, int, int]
     replacement: str
     genre: str
@@ -2096,7 +2124,7 @@ def validate_mutation_evidence(
     if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
         raise ReviewError("mutation evidence exceeds its aggregate byte limit")
     shard_outcomes: dict[str, Path] = {}
-    broad_signatures: set[FocusedMutant] = set()
+    broad_signatures: set[BroadMutant] = set()
     for shard in shards:
         require_keys(shard, {"id", "status", "command", "artifact"}, "mutation shard")
         if shard["status"] != "PASS":
@@ -2626,30 +2654,64 @@ def _validate_broad_phase(
     return packages
 
 
-def _broad_mutant_signature(value: Any, context: str) -> FocusedMutant:
+def _broad_mutant_signature(value: Any, context: str) -> BroadMutant:
     """Validate one complete broad mutant descriptor."""
 
-    signature = _focused_mutant_signature(value, context)
-    (
+    require_keys(
+        value,
+        {"name", "package", "file", "function", "span", "replacement", "genre"},
+        context,
+    )
+    name = _focused_exact_text(value["name"], f"{context} name")
+    package = _focused_exact_text(value["package"], f"{context} package")
+    file = _focused_exact_text(value["file"], f"{context} file")
+    span = _focused_span_signature(value["span"], f"{context} span")
+    replacement = _focused_exact_text(
+        value["replacement"], f"{context} replacement", allow_empty=True
+    )
+    genre = _focused_exact_text(value["genre"], f"{context} genre")
+    function_value = value["function"]
+    function: BroadMutantFunction | None
+    if function_value is None:
+        function = None
+    else:
+        require_keys(
+            function_value,
+            {"function_name", "return_type", "span"},
+            f"{context} function",
+        )
+        function = BroadMutantFunction(
+            _focused_exact_text(
+                function_value["function_name"], f"{context} function name"
+            ),
+            _focused_exact_text(
+                function_value["return_type"],
+                f"{context} function return type",
+                allow_empty=True,
+            ),
+            _focused_span_signature(function_value["span"], f"{context} function span"),
+        )
+    signature = BroadMutant(
         name,
         package,
         file,
-        function_name,
-        return_type,
-        function_span,
+        function,
         span,
         replacement,
         genre,
-    ) = signature
+    )
     text_limits = (
         (name, 8_192, "name"),
         (package, 128, "package"),
         (file, 1_024, "file"),
-        (function_name, 4_096, "function name"),
-        (return_type, 4_096, "return type"),
         (replacement, 8_192, "replacement"),
         (genre, 128, "genre"),
     )
+    if function is not None:
+        text_limits += (
+            (function.function_name, 4_096, "function name"),
+            (function.return_type, 4_096, "return type"),
+        )
     for text, maximum, field in text_limits:
         if len(text.encode("utf-8")) > maximum:
             raise ReviewError(f"{context} {field} exceeds {maximum} bytes")
@@ -2668,7 +2730,13 @@ def _broad_mutant_signature(value: Any, context: str) -> FocusedMutant:
         raise ReviewError(f"{context} has an unknown mutation genre")
     if not name.startswith(f"{file}:{span[0]}:{span[1]}: "):
         raise ReviewError(f"{context} name does not bind its source span")
-    if span[:2] < function_span[:2] or span[2:] > function_span[2:]:
+    if function is None and genre not in FUNCTIONLESS_BROAD_MUTATION_GENRES:
+        raise ReviewError(
+            f"{context} functionless descriptor has a function-only mutation genre"
+        )
+    if function is not None and (
+        span[:2] < function.span[:2] or span[2:] > function.span[2:]
+    ):
         raise ReviewError(f"{context} mutation span escapes its function")
     if not replacement and (
         genre not in {"MatchArm", "UnaryOperator"} or "delete " not in name
@@ -2682,11 +2750,11 @@ def _validate_broad_outcome_details(
     *,
     shard_id: str,
     expected_cargo_executable: str | None,
-) -> tuple[FocusedMutant, ...]:
+) -> tuple[BroadMutant, ...]:
     """Validate all descriptors and build/test phases for one broad shard."""
 
-    signatures: list[FocusedMutant] = []
-    descriptor_set: set[FocusedMutant] = set()
+    signatures: list[BroadMutant] = []
+    descriptor_set: set[BroadMutant] = set()
     artifact_paths: set[str] = set()
     baseline_packages: tuple[str, ...] | None = None
     for index, outcome in enumerate(document["outcomes"]):
@@ -2775,7 +2843,7 @@ def _validate_broad_outcome_details(
     return tuple(signatures)
 
 
-def broad_mutation_signatures(path: Path, shard_id: str) -> tuple[FocusedMutant, ...]:
+def broad_mutation_signatures(path: Path, shard_id: str) -> tuple[BroadMutant, ...]:
     """Return the already validated, unique broad mutant identities."""
 
     validate_mutation_outcomes(path, shard_id)

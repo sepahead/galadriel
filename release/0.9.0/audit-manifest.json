@@ -1063,8 +1063,8 @@
     {
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0f0f91053457ec02a81c88a871a6ec9a92be213c71e3368140dbb133a9f8f477",
-      "size_bytes": 31256
+      "sha256": "58b17ac6dd704918027ccb03dc3886504b30972131f0d1d1cff02171d0a63648",
+      "size_bytes": 31381
     },
     {
       "path": "repo_work/audit_tracked_files.py",
@@ -1165,8 +1165,8 @@
     {
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "685562c516ff2d6aa172c25169626afaff609ff7c48f84177d0542c6e49f2e05",
-      "size_bytes": 151853
+      "sha256": "3b6e5b688dc26426aa9e4598d89f77098f1df294f9fd5f4bbf04215aeee332df",
+      "size_bytes": 154006
     },
     {
       "path": "repo_work/reproduce_baseline.py",
@@ -1213,8 +1213,8 @@
     {
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "cb318005ab49de6c2e529e90e18b6a7667b02822517f27693f19be347add8cf2",
-      "size_bytes": 226759
+      "sha256": "a11c0f99abb2b7be63eed062e30a88c7a906a62247b3a3741f622abdd6c03234",
+      "size_bytes": 231318
     },
     {
       "path": "repo_work/tests/test_review_tools.py",

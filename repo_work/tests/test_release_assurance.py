@@ -2878,6 +2878,39 @@ class DecisionAndRunnerTests(unittest.TestCase):
             valid = broad_outcomes_document()
             path.write_bytes(canonical_json(valid))
             self.assertEqual(validate_mutation_outcomes(path, "0/4")["caught"], 400)
+
+            functionless = copy.deepcopy(valid)
+            top_level = functionless["outcomes"][1]["scenario"]["Mutant"]
+            top_level.update(
+                {
+                    "name": (
+                        "crates/galadriel-core/src/fixture.rs:2:1: replace * with +"
+                    ),
+                    "function": None,
+                    "replacement": "+",
+                    "genre": "BinaryOperator",
+                }
+            )
+            path.write_bytes(canonical_json(functionless))
+            self.assertEqual(
+                validate_mutation_outcomes(path, "0/4")["caught"],
+                400,
+            )
+            functionless_unary = copy.deepcopy(functionless)
+            top_level_unary = functionless_unary["outcomes"][1]["scenario"]["Mutant"]
+            top_level_unary.update(
+                {
+                    "name": "crates/galadriel-core/src/fixture.rs:2:1: delete !",
+                    "replacement": "",
+                    "genre": "UnaryOperator",
+                }
+            )
+            path.write_bytes(canonical_json(functionless_unary))
+            self.assertEqual(
+                validate_mutation_outcomes(path, "0/4")["caught"],
+                400,
+            )
+
             for name, mutate in (
                 (
                     "vacuous",
@@ -2916,6 +2949,81 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 duplicate["outcomes"][1]["scenario"]["Mutant"]
             )
             variants.append(("duplicate descriptor", duplicate, "duplicates"))
+            duplicate_functionless = copy.deepcopy(functionless)
+            duplicate_functionless["outcomes"][2]["scenario"]["Mutant"] = copy.deepcopy(
+                duplicate_functionless["outcomes"][1]["scenario"]["Mutant"]
+            )
+            variants.append(
+                (
+                    "duplicate functionless descriptor",
+                    duplicate_functionless,
+                    "duplicates",
+                )
+            )
+            wrong_functionless_genre = copy.deepcopy(functionless)
+            wrong_functionless_genre["outcomes"][1]["scenario"]["Mutant"]["genre"] = (
+                "FnValue"
+            )
+            variants.append(
+                (
+                    "wrong functionless genre",
+                    wrong_functionless_genre,
+                    "functionless descriptor has a function-only mutation genre",
+                )
+            )
+            malformed_function = copy.deepcopy(valid)
+            malformed_function["outcomes"][1]["scenario"]["Mutant"]["function"] = []
+            variants.append(
+                (
+                    "function list",
+                    malformed_function,
+                    "function must be an object",
+                )
+            )
+            scalar_function = copy.deepcopy(valid)
+            scalar_function["outcomes"][1]["scenario"]["Mutant"]["function"] = (
+                "fixture_2"
+            )
+            variants.append(
+                (
+                    "function scalar",
+                    scalar_function,
+                    "function must be an object",
+                )
+            )
+            missing_function_field = copy.deepcopy(valid)
+            del missing_function_field["outcomes"][1]["scenario"]["Mutant"]["function"][
+                "return_type"
+            ]
+            variants.append(
+                (
+                    "missing function field",
+                    missing_function_field,
+                    "missing=\\['return_type'\\]",
+                )
+            )
+            extra_function_field = copy.deepcopy(valid)
+            extra_function_field["outcomes"][1]["scenario"]["Mutant"]["function"][
+                "identifier"
+            ] = "fixture_2"
+            variants.append(
+                (
+                    "extra function field",
+                    extra_function_field,
+                    "unexpected=\\['identifier'\\]",
+                )
+            )
+            escaped_function_span = copy.deepcopy(valid)
+            escaped_function_span["outcomes"][1]["scenario"]["Mutant"]["function"][
+                "span"
+            ] = focused_span_document((3, 1, 503, 2))
+            variants.append(
+                (
+                    "escaped function span",
+                    escaped_function_span,
+                    "mutation span escapes its function",
+                )
+            )
             wrong_cargo = copy.deepcopy(valid)
             wrong_cargo["outcomes"][1]["phase_results"][0]["argv"].insert(2, "--quiet")
             variants.append(
@@ -3029,6 +3137,14 @@ class DecisionAndRunnerTests(unittest.TestCase):
             )
             path.write_bytes(canonical_json(padded_descriptor))
             with self.assertRaisesRegex(ReviewError, "canonical text"):
+                validate_focused_liveness_outcomes(path, check)
+
+            functionless_descriptor = copy.deepcopy(document)
+            functionless_descriptor["outcomes"][1]["scenario"]["Mutant"]["function"] = (
+                None
+            )
+            path.write_bytes(canonical_json(functionless_descriptor))
+            with self.assertRaisesRegex(ReviewError, "function must be an object"):
                 validate_focused_liveness_outcomes(path, check)
 
     def test_focused_acceptance_mutation_binds_caught_and_unviable_sets(self) -> None:

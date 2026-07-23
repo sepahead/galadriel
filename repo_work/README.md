@@ -241,7 +241,9 @@ The assembler requires these items from each job:
 - one broad shard receipt that binds the exact execution to its outcome
 
 It binds the focused runs to the exact Cargo build and test commands.
-It also binds process outcomes and complete package, file, function, and span mutant descriptors.
+It binds each broad descriptor to its complete package, file, span, and mutation identity.
+A broad descriptor binds a complete function identity or a null value.
+The null value records the absence of an enclosing function.
 The synchronization records include the named `non-blocking` tests.
 The acceptance record contains exactly 26 mutants.
 It requires 23 caught mutants and three exact compile-unviable `Default::default()` replacements.
