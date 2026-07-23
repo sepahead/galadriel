@@ -430,6 +430,8 @@ mod observe_cli_tests {
     use galadriel_ncp::SidecarEnvelope;
 
     const TEST_DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const FIXTURE_REGISTRY_DIGEST: &str =
+        "7644ec2bbf0e400303aaad62c647eea36bd919913f1a28a81c52c13e00dd45ba";
 
     #[derive(Clone, Copy)]
     struct TestRegistry;
@@ -654,6 +656,38 @@ mod observe_cli_tests {
         assert_eq!(producer_id, "crebain");
         assert_eq!(registry, PathBuf::from("registry.json"));
         assert_eq!(registry_sha256.len(), 64);
+    }
+
+    #[test]
+    fn observe_epoch_rejects_invalid_session_before_transport_open() {
+        let registry = galadriel_ncp::registry::DeploymentRegistry::from_json_pinned(
+            include_bytes!("../tests/fixtures/crebain_registry_v1.json"),
+            FIXTURE_REGISTRY_DIGEST,
+        )
+        .expect("package-owned registry fixture and deployment pin are valid");
+        let keys =
+            galadriel_ncp::ncp_core::Keys::try_new("engram/ncp").expect("test realm is valid");
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("test runtime starts");
+
+        let error = runtime
+            .block_on(observe_epoch(keys, "invalid/session", "crebain", registry))
+            .expect_err("invalid session fails before transport open");
+
+        assert!(
+            matches!(
+                error.downcast_ref::<galadriel_ncp::operational_live::OperationalLiveOpenError>(),
+                Some(
+                    galadriel_ncp::operational_live::OperationalLiveOpenError::Assembler(
+                        galadriel_ncp::assembler::AssemblerConfigError::InvalidIdentity {
+                            field: "session_id"
+                        }
+                    )
+                )
+            ),
+            "unexpected observe error: {error:#}"
+        );
     }
 
     #[test]

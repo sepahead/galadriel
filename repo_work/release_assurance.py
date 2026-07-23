@@ -155,6 +155,9 @@ MAX_MUTATION_OUTCOMES_BYTES = 32 * 1024 * 1024
 MAX_MUTATION_DIFF_BYTES = 128 * 1024 * 1024
 MAX_MUTATION_EVIDENCE_BYTES = 512 * 1024 * 1024
 BROAD_MUTATION_SHARDS = ("0/4", "1/4", "2/4", "3/4")
+# The exact-candidate runner supplies one absolute CARGO_TARGET_DIR.
+# One worker prevents concurrent mutant copies from sharing build artifacts.
+MUTATION_JOBS = "1"
 BROAD_MUTATION_MINIMUM_TOTAL = 500
 BROAD_MUTATION_MINIMUM_CAUGHT_RATIO = 0.70
 BROAD_MUTATION_PACKAGES = (
@@ -636,7 +639,7 @@ def broad_mutation_command(shard_id: str) -> list[str]:
             "--timeout",
             "600",
             "--jobs",
-            "2",
+            MUTATION_JOBS,
             "--shard",
             shard_id,
             "--all-features",
@@ -673,7 +676,7 @@ def focused_liveness_mutation_command(check: dict[str, Any]) -> list[str]:
             "--timeout",
             "120",
             "--jobs",
-            "2",
+            MUTATION_JOBS,
             "--all-features",
             "--cargo-arg=--locked",
             "--copy-vcs",
@@ -707,7 +710,7 @@ def focused_liveness_mutation_command(check: dict[str, Any]) -> list[str]:
             "--timeout",
             "120",
             "--jobs",
-            "2",
+            MUTATION_JOBS,
             "--all-features",
             "--cargo-arg=--locked",
             "--copy-vcs",

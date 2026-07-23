@@ -62,7 +62,7 @@ from common import ReviewError, canonical_json, load_json, loads_json
 from finalize_release import candidate_json
 import freeze_audit_inputs as freeze
 from freeze_audit_inputs import assert_release_tool_coverage, strict_relative_files
-from qualify_candidate import capture_report
+from qualify_candidate import BoundedProcessResult, capture_report
 import release_assurance as assurance
 from scripts import release_audit
 
@@ -1251,7 +1251,23 @@ class ReviewToolsTest(unittest.TestCase):
             "PATH": os.environ["PATH"],
         }
         for json_lines, document in report_cases:
-            with self.subTest(json_lines=json_lines):
+            process = BoundedProcessResult(
+                returncode=0,
+                timed_out=False,
+                stdout=f"{document}\n".encode(),
+                stderr=b"",
+                output_limit_exceeded=False,
+                containment_error=None,
+            )
+            runner = (
+                contextlib.nullcontext()
+                if sys.platform == "darwin"
+                else mock.patch(
+                    "qualify_candidate.run_bounded_process",
+                    return_value=process,
+                )
+            )
+            with self.subTest(json_lines=json_lines), runner:
                 with self.assertRaisesRegex(ReviewError, "invalid JSON evidence"):
                     capture_report(
                         [sys.executable, "-c", f"print({document!r})"],

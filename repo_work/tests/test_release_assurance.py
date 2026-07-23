@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import contextlib
 import errno
 import hashlib
 import io
@@ -20,6 +21,7 @@ import tempfile
 import time
 import unittest
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 from unittest import mock
 
@@ -168,6 +170,74 @@ def command_test_environment(root: Path) -> dict[str, str]:
     cargo_home = root.resolve(strict=True) / "test-cargo-home"
     cargo_home.mkdir(exist_ok=True)
     return {"CARGO_HOME": str(cargo_home), "PATH": os.environ["PATH"]}
+
+
+def run_portable_test_process(
+    argv: list[str] | tuple[str, ...],
+    *,
+    cwd: Path,
+    environment: Mapping[str, str] | None,
+    timeout_seconds: int,
+    separate_stderr: bool,
+    max_stdout_bytes: int = qualifier.MAX_COMMAND_STREAM_BYTES,
+    max_stderr_bytes: int = qualifier.MAX_COMMAND_STREAM_BYTES,
+) -> qualifier.BoundedProcessResult:
+    """Run a trusted test fixture without candidate containment."""
+
+    try:
+        process = subprocess.run(
+            list(argv),
+            cwd=cwd,
+            env=None if environment is None else dict(environment),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE if separate_stderr else subprocess.STDOUT,
+            check=False,
+            timeout=timeout_seconds,
+        )
+        stdout = process.stdout
+        stderr = process.stderr if separate_stderr else b""
+        returncode = process.returncode
+        timed_out = False
+    except subprocess.TimeoutExpired as error:
+        stdout = error.stdout or b""
+        stderr = (error.stderr or b"") if separate_stderr else b""
+        returncode = 124
+        timed_out = True
+    output_limit_exceeded = (
+        len(stdout) > max_stdout_bytes or len(stderr) > max_stderr_bytes
+    )
+    return qualifier.BoundedProcessResult(
+        returncode=returncode,
+        timed_out=timed_out,
+        stdout=stdout[:max_stdout_bytes],
+        stderr=stderr[:max_stderr_bytes],
+        output_limit_exceeded=output_limit_exceeded,
+        containment_error=None,
+    )
+
+
+def portable_test_process_patch() -> contextlib.AbstractContextManager[object]:
+    """Use the production process runner on macOS and a test runner elsewhere."""
+
+    if sys.platform == "darwin":
+        return contextlib.nullcontext()
+    return mock.patch(
+        "qualify_candidate.run_bounded_process",
+        side_effect=run_portable_test_process,
+    )
+
+
+def qualification_tool_fixture(root: Path) -> Path:
+    """Create executable fixtures for every qualification PATH tool."""
+
+    tools = root / "qualification-tools"
+    tools.mkdir()
+    for name in QUALIFICATION_PATH_TOOLS:
+        executable = tools / name
+        executable.write_bytes(b"#!/bin/sh\nexit 0\n")
+        executable.chmod(0o700)
+    return tools
 
 
 def test_tool_read_root() -> Path:
@@ -3114,6 +3184,11 @@ class DecisionAndRunnerTests(unittest.TestCase):
             self.assertEqual(command[:3], ["cargo", "mutants", "--no-config"])
             self.assertIn("--no-shuffle", command)
             self.assertIn("--cargo-arg=--locked", command)
+            self.assertEqual(command.count("--jobs"), 1)
+            self.assertEqual(
+                command[command.index("--jobs") : command.index("--jobs") + 2],
+                ["--jobs", "1"],
+            )
             self.assertEqual(
                 command[command.index("--copy-vcs") : command.index("--copy-vcs") + 2],
                 ["--copy-vcs", "true"],
@@ -3234,6 +3309,10 @@ class DecisionAndRunnerTests(unittest.TestCase):
         self.assertIsNotNone(record)
         assert record is not None
         self.assertEqual(record["sha"], candidate)
+        missing_candidate = dict(environment)
+        del missing_candidate["MUTATION_CANDIDATE_SHA"]
+        with self.assertRaisesRegex(ReviewError, "MUTATION_CANDIDATE_SHA"):
+            github_run_provenance(missing_candidate, candidate)
         environment["MUTATION_CANDIDATE_SHA"] = "c" * 40
         with self.assertRaisesRegex(ReviewError, "differs from checked HEAD"):
             github_run_provenance(environment, candidate)
@@ -3320,10 +3399,24 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 "Cargo executable": "/fixture/toolchain/bin/cargo",
                 "rustc": RUSTC_IDENTITY,
             }
+            tool_root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+            tools = qualification_tool_fixture(tool_root)
+            host_git = shutil.which("git")
+            self.assertIsNotNone(host_git)
+            assert host_git is not None
+            (tools / "git").unlink()
+            (tools / "git").symlink_to(host_git)
+            cargo_mutants = tools / "cargo-mutants"
+            cargo_mutants.write_bytes(b"#!/bin/sh\nexit 0\n")
+            cargo_mutants.chmod(0o700)
             with (
                 mock.patch.dict(
                     os.environ,
-                    {"GALADRIEL_UNRELATED_INPUT": "must-not-propagate"},
+                    {
+                        "GALADRIEL_UNRELATED_INPUT": "must-not-propagate",
+                        "GITHUB_ACTIONS": "false",
+                        "PATH": str(tools),
+                    },
                     clear=False,
                 ),
                 mock.patch(
@@ -3876,7 +3969,12 @@ class DecisionAndRunnerTests(unittest.TestCase):
     def test_supply_chain_reports_must_be_nonempty_valid_json(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            sandbox = candidate_sandbox_profile(root, worktree=root)
+            self.enterContext(portable_test_process_patch())
+            sandbox = (
+                candidate_sandbox_profile(root, worktree=root)
+                if sys.platform == "darwin"
+                else None
+            )
             valid = capture_report(
                 ["python3", "-c", 'print(\'{"type":"summary"}\')'],
                 worktree=root,
@@ -3908,7 +4006,12 @@ class DecisionAndRunnerTests(unittest.TestCase):
     def test_supply_chain_reports_retain_the_declared_stream(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            sandbox = candidate_sandbox_profile(root, worktree=root)
+            self.enterContext(portable_test_process_patch())
+            sandbox = (
+                candidate_sandbox_profile(root, worktree=root)
+                if sys.platform == "darwin"
+                else None
+            )
             cases = (
                 (
                     "cargo-deny-stderr-jsonl",
@@ -3984,7 +4087,12 @@ class DecisionAndRunnerTests(unittest.TestCase):
     def test_supply_chain_reports_reject_wrong_or_invalid_selected_stream(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            sandbox = candidate_sandbox_profile(root, worktree=root)
+            self.enterContext(portable_test_process_patch())
+            sandbox = (
+                candidate_sandbox_profile(root, worktree=root)
+                if sys.platform == "darwin"
+                else None
+            )
             cases = (
                 (
                     "wrong-stream",
@@ -4072,6 +4180,31 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     worktree=root,
                     environment=command_test_environment(root),
                     output=root / "reports" / "nonzero.json",
+                    json_lines=False,
+                    report_stream="stdout",
+                    sandbox_profile=sandbox,
+                )
+
+            containment_failure = qualifier.BoundedProcessResult(
+                returncode=0,
+                timed_out=False,
+                stdout=b'{"valid":true}\n',
+                stderr=b"",
+                output_limit_exceeded=False,
+                containment_error="test containment failure",
+            )
+            with (
+                mock.patch(
+                    "qualify_candidate.run_bounded_process",
+                    return_value=containment_failure,
+                ),
+                self.assertRaisesRegex(ReviewError, "report failed"),
+            ):
+                capture_report(
+                    [sys.executable, "-c", "print('{\"valid\":true}')"],
+                    worktree=root,
+                    environment=command_test_environment(root),
+                    output=root / "reports" / "containment-failure.json",
                     json_lines=False,
                     report_stream="stdout",
                     sandbox_profile=sandbox,
@@ -4837,8 +4970,9 @@ class DecisionAndRunnerTests(unittest.TestCase):
             root = Path(directory)
             private = root / "private"
             private.mkdir()
+            tools = qualification_tool_fixture(root)
             source = {
-                "PATH": os.environ["PATH"],
+                "PATH": str(tools),
                 "HOME": "/host/home",
                 "RUSTUP_HOME": "/host/rustup",
                 "RUSTFLAGS": "unexpected",
@@ -4893,7 +5027,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
             ({"PATH": "relative:/bin", "HOME": "/host/home"}, "absolute nonempty"),
             (
                 {
-                    "PATH": os.environ["PATH"],
+                    "PATH": str(Path(sys.executable).resolve().parent),
                     "HOME": "/host/home",
                     "RUSTUP_HOME": "relative-rustup",
                 },
@@ -4910,7 +5044,26 @@ class DecisionAndRunnerTests(unittest.TestCase):
                         private_root=private,
                         target=private / "target",
                         source_date_epoch="1234567890",
+                        required_path_tools=("python3",),
                     )
+
+    def test_qualification_environment_rejects_a_missing_required_tool(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private = root / "private"
+            private.mkdir()
+            tools = root / "tools"
+            tools.mkdir()
+            with self.assertRaisesRegex(
+                ReviewError, "does not resolve required tool missing-tool"
+            ):
+                build_qualification_environment(
+                    {"PATH": str(tools), "HOME": "/host/home"},
+                    private_root=private,
+                    target=private / "target",
+                    source_date_epoch="1234567890",
+                    required_path_tools=("missing-tool",),
+                )
 
     def test_cargo_configuration_is_rejected_at_each_search_level(self) -> None:
         cases = (
@@ -4967,26 +5120,54 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 Path(environment["CARGO_HOME"]),
                 root.resolve(strict=True) / "test-cargo-home",
             )
-            sandbox = candidate_sandbox_profile(
-                root,
-                worktree=worktree,
-                writable_paths=(Path(environment["CARGO_HOME"]),),
-            )
+            if sys.platform == "darwin":
+                sandbox = candidate_sandbox_profile(
+                    root,
+                    worktree=worktree,
+                    writable_paths=(Path(environment["CARGO_HOME"]),),
+                )
+                runner = contextlib.nullcontext()
+            else:
+                sandbox = root / "test-candidate.sb"
+                sandbox.write_bytes(b"test-only sandbox policy\n")
+
+                def create_cargo_configuration(
+                    _argv: list[str] | tuple[str, ...], **kwargs: object
+                ) -> qualifier.BoundedProcessResult:
+                    process_environment = kwargs["environment"]
+                    assert isinstance(process_environment, Mapping)
+                    Path(process_environment["CARGO_HOME"], "config.toml").write_text(
+                        "[build]\n", encoding="utf-8"
+                    )
+                    return qualifier.BoundedProcessResult(
+                        returncode=0,
+                        timed_out=False,
+                        stdout=b"",
+                        stderr=b"",
+                        output_limit_exceeded=False,
+                        containment_error=None,
+                    )
+
+                runner = mock.patch(
+                    "qualify_candidate.run_bounded_process",
+                    side_effect=create_cargo_configuration,
+                )
             program = (
                 "import os,pathlib; "
                 "pathlib.Path(os.environ['CARGO_HOME'],'config.toml').write_text('[build]\\n')"
             )
-            result = run_command(
-                CommandSpec("create-cargo-config", (sys.executable, "-c", program)),
-                worktree=worktree,
-                commit=commit,
-                tree=tree,
-                clone_control=clone_control,
-                sandbox_profile=sandbox,
-                environment=environment,
-                logs=logs,
-                index=1,
-            )
+            with runner:
+                result = run_command(
+                    CommandSpec("create-cargo-config", (sys.executable, "-c", program)),
+                    worktree=worktree,
+                    commit=commit,
+                    tree=tree,
+                    clone_control=clone_control,
+                    sandbox_profile=sandbox,
+                    environment=environment,
+                    logs=logs,
+                    index=1,
+                )
             self.assertEqual(result["status"], "FAIL")
             log = root / result["log"]
             self.assertIn(
@@ -5084,15 +5265,20 @@ class DecisionAndRunnerTests(unittest.TestCase):
             ).strip()
             subprocess.run(["git", "config", "tar.umask", "0077"], cwd=root, check=True)
             environment = command_test_environment(root)
-            record = source_archive(
-                root,
-                commit,
-                root / "canonical.tar.gz",
-                environment,
-            )
+            with portable_test_process_patch():
+                record = source_archive(
+                    root,
+                    commit,
+                    root / "canonical.tar.gz",
+                    environment,
+                )
             self.assertEqual(record["tracked_entries"], 1)
 
-            real_run = run_bounded_process
+            archive_runner = (
+                run_bounded_process
+                if sys.platform == "darwin"
+                else run_portable_test_process
+            )
 
             def run_with_wrong_mode(
                 argv: list[str] | tuple[str, ...], **kwargs: object
@@ -5100,7 +5286,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 changed = list(argv)
                 if "tar.umask=0022" in changed:
                     changed[changed.index("tar.umask=0022")] = "tar.umask=0077"
-                return real_run(changed, **kwargs)
+                return archive_runner(changed, **kwargs)
 
             with mock.patch(
                 "qualify_candidate.run_bounded_process",
@@ -5114,6 +5300,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
                         environment,
                     )
 
+    @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
     def test_timeout_kills_child_process_group(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

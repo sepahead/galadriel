@@ -193,14 +193,20 @@
     {
       "path": "crates/galadriel-cli/src/main.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "eb449b31a9ccde192d34c11060e933e46e172a0e4956a2bfefb5640e34118f81",
-      "size_bytes": 90051
+      "sha256": "8aa8f936f239f99a5efc5de530cdcd8e9e907b7e6455017187651729e0e8d758",
+      "size_bytes": 91509
     },
     {
       "path": "crates/galadriel-cli/tests/demo_output.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "bcfd5191a5c0b912c8cdc548e0cdebf10e885d77f3527e7420adba8edf3be0e0",
       "size_bytes": 3104
+    },
+    {
+      "path": "crates/galadriel-cli/tests/fixtures/crebain_registry_v1.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "506ce1437acc20ee5d36fd1e3551dd020095cc4d30d22d959c5df3cca81715a6",
+      "size_bytes": 3053
     },
     {
       "path": "crates/galadriel-cli/tests/fixtures/replay_three_tracks.jsonl",
@@ -1159,8 +1165,8 @@
     {
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "488b937ecf422400d444bee9249945c87571528d0d8a9f4c7e76e1b816f4b46f",
-      "size_bytes": 151657
+      "sha256": "685562c516ff2d6aa172c25169626afaff609ff7c48f84177d0542c6e49f2e05",
+      "size_bytes": 151853
     },
     {
       "path": "repo_work/reproduce_baseline.py",
@@ -1207,14 +1213,14 @@
     {
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "592262eba52bbd62fac585ef0a43077245ad732455a7ec803660a7d8712701c1",
-      "size_bytes": 219347
+      "sha256": "cb318005ab49de6c2e529e90e18b6a7667b02822517f27693f19be347add8cf2",
+      "size_bytes": 226759
     },
     {
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2ce908cc8b66209041d2155f606008818f3db6dd34ec7fd70f53a2d9c4f4f4ac",
-      "size_bytes": 146513
+      "sha256": "70bd703a20b811db9308ea454ed35ca1c3a77a671ff32e7032b327bd5ca0bd07",
+      "size_bytes": 147102
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",
