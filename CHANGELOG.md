@@ -48,7 +48,7 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-07-23
+## [0.9.0] - 2026-07-24
 
 ### Release contract
 
@@ -423,9 +423,11 @@ Before `1.0`, minor releases can contain breaking changes.
   It prohibits self-asserted calibration and a `StateUnusable` verdict.
 - Clarify that "signed" (the sign of the correlation) and "producer-attested" (a provenance
   claim on the projection input) are not cryptographic signatures (README intro).
-- Document that `Mirror::new` enforces no expected-modality set.
-  A sensor subset can reach `Nominal`.
-  `Mirror::with_modalities` is the fail-closed cross-sensor constructor.
+- Remove the former `Mirror::new` and `Mirror::with_modalities` constructors.
+  The former `Mirror::new` had no expected-modality set.
+  A sensor subset could reach `Nominal`.
+  Release code now uses `ReleaseSuite` and `Mirror::from_release_suite`.
+  Explicit subset research uses `Mirror::for_exploratory_subset`.
 - Record that the `galadriel-pid` sidecar route and kind name is historical.
   PID is now optional.
   Defer a rename to the next sidecar-schema version change.

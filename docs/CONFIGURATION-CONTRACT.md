@@ -242,11 +242,11 @@ semantic states.
 **SHALL** contain a validated and nonempty expected-modality set. Its cardinality
 must be compatible with `min_channels`.
 
-The empty-vector sentinel in exploratory `Mirror::new` **SHALL NOT** select
-release behavior. Subset-only exploratory assessment MAY remain available through
-an explicit research capability or constructor. Its type or value **SHALL NOT**
-be interchangeable with a release suite that can report cross-sensor nominal
-evidence.
+The removed `Mirror::new` interface used an empty-vector sentinel.
+This sentinel **SHALL NOT** select release behavior in migration code.
+Subset-only exploratory assessment MAY remain available through an explicit
+research capability or constructor. Its type or value **SHALL NOT** be
+interchangeable with a release suite that can report cross-sensor nominal evidence.
 
 ## Required type and profile boundaries
 

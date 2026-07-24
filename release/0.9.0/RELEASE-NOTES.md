@@ -21,7 +21,7 @@
 
 Release author: Sepehr Mahmoudian
 
-Release date: 2026-07-23
+Release date: 2026-07-24
 
 Channel: review-gated GitHub research source release
 

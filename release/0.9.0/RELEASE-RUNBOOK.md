@@ -596,7 +596,7 @@ python3 repo_work/local_convergence.py verify \
    Run the locked build, test, and documentation gates from that downloaded source.
 7. Publish the draft only after each authenticated-download check passes.
    Also wait until Coordinated Universal Time (UTC) reaches the declared release date.
-   Stop if the UTC date is later than `2026-07-23`.
+   Stop if the UTC date is later than `2026-07-24`.
    Update every declared release date.
    Create and qualify a new candidate.
 

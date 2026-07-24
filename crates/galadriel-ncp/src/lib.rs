@@ -93,8 +93,10 @@ pub fn valid_producer_identity(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= MAX_ID_SEGMENT_BYTES
         && valid_id_segment(value)
-        && ProducerId::new(value).is_ok()
-        && SessionId::new(value).is_ok()
+        && matches!(
+            (ProducerId::new(value), SessionId::new(value)),
+            (Ok(_), Ok(_))
+        )
 }
 
 /// Stable named-perception entity carrying Galadriel sidecar envelopes.
@@ -1410,6 +1412,22 @@ mod tests {
             );
         }
         assert!(schema["$defs"].get("projectionIdentity").is_none());
+    }
+
+    #[test]
+    fn producer_identity_intersects_ncp_and_core_grammars() {
+        let generic_ncp_segment = "producer+1";
+
+        assert_eq!(
+            (
+                valid_id_segment(generic_ncp_segment),
+                ProducerId::new(generic_ncp_segment).is_ok(),
+                SessionId::new(generic_ncp_segment).is_ok(),
+                valid_producer_identity(generic_ncp_segment),
+            ),
+            (true, false, false, false)
+        );
+        assert!(valid_producer_identity("producer-1"));
     }
 
     #[test]

@@ -17,7 +17,8 @@ Version 0.9.0 is a review-gated GitHub research source release.
 
 The bundled historical Crebain fixture supports contract and baseline smoke tests.
 It is not a valid source of cross-modal correlation or PID evidence.
-The repository implements and tests the operational producer and receiver interface.
+The repository implements and tests its local consumer and receiver boundaries.
+An external producer must conform to the producer contract.
 No accepted recorded study establishes field performance, calibration, deployed validity, or cross-repository qualification.
 
 ## Ground rules

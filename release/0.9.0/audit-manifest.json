@@ -97,13 +97,13 @@
     {
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "568a16c2f8b490d991d2a73ea68421a6bd8c7a5b2ffac7447133adac00b9534b",
-      "size_bytes": 45453
+      "sha256": "b9cc1a6ee15effe3e40e0710ea443fba53e98cb21a35313191cddb31bac5ff2f",
+      "size_bytes": 45591
     },
     {
       "path": "CITATION.cff",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "79cd5a1a1ca988d7313c5e86f9af39494ea9cb6263b91f695dd8c443983dd200",
+      "sha256": "3f2857dfd8c02a5b6f01811aebce47e8830be20a3b34d15abb81a790b67c0d5d",
       "size_bytes": 902
     },
     {
@@ -121,8 +121,8 @@
     {
       "path": "CONTRIBUTING.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e8589622d581f73bb3da5fc37ea8376302019b4111e61a681e8d3fbd36c8cd25",
-      "size_bytes": 4329
+      "sha256": "c76f7cfdaab9d8314d77cb124fbd72b14f4fb3aa2c08eac9e51d52fffc186c2e",
+      "size_bytes": 4384
     },
     {
       "path": "Cargo.lock",
@@ -415,8 +415,8 @@
     {
       "path": "crates/galadriel-ncp/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "95441dcaa07ce058f9fd453970fb1fe7875c7044ad15675a6a25877d7afa9c84",
-      "size_bytes": 62989
+      "sha256": "ab2fde5c182ce65bd64f0f53e642773f6ea8c742bab9e60fceee96c06a77e099",
+      "size_bytes": 63551
     },
     {
       "path": "crates/galadriel-ncp/src/lifecycle.rs",
@@ -655,8 +655,8 @@
     {
       "path": "docs/CONFIGURATION-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0783e75d485feba41eedfc5b1efec80862b8b7f2a7b00650d029623c1835b871",
-      "size_bytes": 31650
+      "sha256": "2f2ffd17cd0b8199b5e19d4ba5ec638a0760cc336fe0c60fe152025364129f79",
+      "size_bytes": 31694
     },
     {
       "path": "docs/CORE-CONTRACT.md",
@@ -865,13 +865,13 @@
     {
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "b367ce39d16239cdd2dee7a8c28dc7271d179c4f66f51bc33fd0df24595febdd",
+      "sha256": "86b21e2e465e0499a7c59c63faa34b7ac35ec353019e6e2c72a8e64117fd83bb",
       "size_bytes": 11141
     },
     {
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "cc7ad49e6beb4660d39d4043abe792a1a0f7bbc5b040bd99f74fceba377cea8e",
+      "sha256": "3279058f7bcf191521f5c8376a68b734184132d613d18101462686362032e28b",
       "size_bytes": 35456
     },
     {
@@ -2078,7 +2078,7 @@
     {
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "cc7ad49e6beb4660d39d4043abe792a1a0f7bbc5b040bd99f74fceba377cea8e",
+      "sha256": "3279058f7bcf191521f5c8376a68b734184132d613d18101462686362032e28b",
       "size_bytes": 35456
     }
   ],
