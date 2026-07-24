@@ -917,6 +917,18 @@
       "size_bytes": 98
     },
     {
+      "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json",
+      "purpose": "release governance, claims, review, and signed audit inputs",
+      "sha256": "48b35f254b8a720ccf4b0acf44636ef513ac5350342b28ec81a8346941b8d06a",
+      "size_bytes": 58955
+    },
+    {
+      "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig",
+      "purpose": "release governance, claims, review, and signed audit inputs",
+      "sha256": "ba10347dce5ef4c3753d274597fbfa177d37e1877bef66454ef645e5f3298bcc",
+      "size_bytes": 322
+    },
+    {
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "88d34fcf3cb997d846603bdf43973055cb672ac7c89046e96299e636973b9d8c",
@@ -931,8 +943,8 @@
     {
       "path": "release/0.9.0/audit/threat-register.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "c6665945cfdd9b3f77c5ee6e9c610b4c6a1d1fc7643814b8b470dfd678c85673",
-      "size_bytes": 30237
+      "sha256": "e26c60ca8b6e8ba78c98cb82da39acc3039b728a21c747106a512dbae2a90aa6",
+      "size_bytes": 30227
     },
     {
       "path": "release/0.9.0/claims.json",
@@ -1219,8 +1231,8 @@
     {
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "70bd703a20b811db9308ea454ed35ca1c3a77a671ff32e7032b327bd5ca0bd07",
-      "size_bytes": 147102
+      "sha256": "2216aa4902f920be5464ade6ce474b152fe1c23b16e896b507dabe8e0c877a87",
+      "size_bytes": 147539
     },
     {
       "path": "repo_work/tests/test_task_dispositions.py",
@@ -2164,8 +2176,8 @@
   "threat_register": {
     "path": "release/0.9.0/audit/threat-register.json",
     "purpose": "repository threat, misuse, and failure register",
-    "sha256": "c6665945cfdd9b3f77c5ee6e9c610b4c6a1d1fc7643814b8b470dfd678c85673",
-    "size_bytes": 30237
+    "sha256": "e26c60ca8b6e8ba78c98cb82da39acc3039b728a21c747106a512dbae2a90aa6",
+    "size_bytes": 30227
   },
   "toolchains": [
     {

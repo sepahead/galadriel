@@ -888,9 +888,22 @@ class ReviewToolsTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        self.assertEqual(
+        self.assertIn(
             threat_register["status"],
-            "LIVING_UNTIL_CANDIDATE_FREEZE",
+            (freeze.THREAT_STATUS_LIVING, freeze.THREAT_STATUS_FROZEN),
+        )
+        active_manifest = (
+            repository
+            / "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json"
+        )
+        self.assertEqual(
+            freeze.verify_freeze_lifecycle(
+                repository,
+                None,
+                active_manifest,
+                repository / "release/0.9.0/audit/ALLOWED_SIGNERS",
+            ),
+            threat_register["status"],
         )
         unsupported_threat_register = copy.deepcopy(threat_register)
         unsupported_threat_register["status"] = "UNSUPPORTED"
