@@ -221,15 +221,35 @@ def run_portable_test_process(
     )
 
 
+def portable_test_argv(
+    _profile: Path,
+    argv: list[str] | tuple[str, ...],
+    **_keywords: object,
+) -> list[str]:
+    """Remove macOS sandbox wrapping from a trusted portable test fixture."""
+
+    return list(argv)
+
+
 def portable_test_process_patch() -> contextlib.AbstractContextManager[object]:
     """Use the production process runner on macOS and a test runner elsewhere."""
 
     if sys.platform == "darwin":
         return contextlib.nullcontext()
-    return mock.patch(
-        "qualify_candidate.run_bounded_process",
-        side_effect=run_portable_test_process,
+    stack = contextlib.ExitStack()
+    stack.enter_context(
+        mock.patch(
+            "qualify_candidate.sandboxed_argv",
+            side_effect=portable_test_argv,
+        )
     )
+    stack.enter_context(
+        mock.patch(
+            "qualify_candidate.run_bounded_process",
+            side_effect=run_portable_test_process,
+        )
+    )
+    return stack
 
 
 def qualification_tool_fixture(root: Path) -> Path:
@@ -3594,9 +3614,21 @@ if child.returncode != -signal.SIGTERM:
             manifest = {}
             candidate_policy_sha256 = "a" * 64
             dependency_fetch_policy_sha256 = "b" * 64
-            git_executable = Path(
-                "/Applications/Xcode.app/Contents/Developer/usr/bin/git"
-            )
+            if sys.platform == "darwin":
+                git_executable = qualifier.resolve_candidate_git_executable()
+            else:
+                resolved_git = shutil.which("git")
+                self.assertIsNotNone(resolved_git)
+                if resolved_git is None:
+                    self.fail("portable test environment does not provide Git")
+                git_executable = Path(resolved_git).resolve(strict=True)
+                self.enterContext(
+                    mock.patch.object(
+                        qualifier,
+                        "DEVELOPER_GIT_PATHS",
+                        (git_executable,),
+                    )
+                )
             for index, spec in enumerate(specs, 1):
                 executed_argv = qualifier.qualification_executed_argv(
                     spec.argv,

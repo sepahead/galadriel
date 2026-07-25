@@ -42,6 +42,11 @@ jobs:
           git rev-parse "HEAD^{commit}"
           git rev-parse "HEAD^{tree}"
 
+      - name: Install pinned release Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.6"
+
       - name: Install pinned workspace toolchain
         uses: dtolnay/rust-toolchain@c1709d61444fb708e6ed87924f95626398d8d115 # 1.89.0
         with:

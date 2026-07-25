@@ -174,6 +174,15 @@
       "role": "exact candidate checkout without persisted credentials"
     },
     {
+      "action": "actions/setup-python",
+      "repository": "https://github.com/actions/setup-python",
+      "commit": "5fda3b95a4ea91299a34e894583c3862153e4b97",
+      "source_ref": "refs/tags/v7.0.0",
+      "source_ref_kind": "lightweight_tag",
+      "version": "v7.0.0",
+      "role": "CPython 3.14.6 installation for release-governance tests"
+    },
+    {
       "action": "dtolnay/rust-toolchain",
       "repository": "https://github.com/dtolnay/rust-toolchain",
       "commit": "c1709d61444fb708e6ed87924f95626398d8d115",

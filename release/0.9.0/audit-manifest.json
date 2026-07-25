@@ -53,12 +53,12 @@
       "size_bytes": 933
     },
     {
-      "git_blob_id": "90bf74ed78dc7e43319591359e60e17eaaa507d6",
+      "git_blob_id": "b04117094d2b8f783a746be4ed4d7ab0bc307bb1",
       "git_mode": "100644",
       "path": ".github/workflows/ci.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "3c1ceb8073d0338b2ba270d8870ac5fbbf7f399d7723fdbed2f6da57ef1912fc",
-      "size_bytes": 8798
+      "sha256": "08e0971f3757bc2c37cc3766dc2e1b35744007bf8c9ff92d159c3c30ab7f64ee",
+      "size_bytes": 8977
     },
     {
       "git_blob_id": "6b2f7140659f85bae8e16b7e7a8fbea5bf8a44ba",
@@ -1205,12 +1205,12 @@
       "size_bytes": 99554
     },
     {
-      "git_blob_id": "fa97eb0b4696970ab038e85e6b754e4b8c6cfb78",
+      "git_blob_id": "0380e7a4ecf5bc0fe6828e2ffbbcca84e4c6c159",
       "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "a7a2e146092d1d015753d0494216ce1c7ac25340645c3fa7daff7b0b8ec6648e",
-      "size_bytes": 12252
+      "sha256": "ba53f789cfaeb3ad1b50e4c4ed979f1410e7745c897c6c0e8aeefdacc65c9e0a",
+      "size_bytes": 12612
     },
     {
       "git_blob_id": "7e563049b65dc6761e76b7d0c96c1cc10bd5c0dc",
@@ -1557,12 +1557,12 @@
       "size_bytes": 257220
     },
     {
-      "git_blob_id": "5de2948f66f3c5a988ab8950222526d8085a9c9e",
+      "git_blob_id": "34290b7d72d6777833100bf481ac315227354a37",
       "git_mode": "100644",
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8cf9cefb723fd99743ddc61791c3f738b153dc8b1dae91bc930803b0160913d7",
-      "size_bytes": 270560
+      "sha256": "de0be94d4aa98a4935316a043416fc95b503e8de6ec744e41e2a0d92426f50b2",
+      "size_bytes": 270565
     },
     {
       "git_blob_id": "3dc0129f528c1a7031dcdbba666d0c0b9b890a98",
@@ -1653,12 +1653,12 @@
       "size_bytes": 12931
     },
     {
-      "git_blob_id": "6543cc20118625dbe087d99cdf08b7aab3baf277",
+      "git_blob_id": "95089a783e928353a2596245803d3148b7556081",
       "git_mode": "100644",
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "cd9d9e2e221e445699cfc86857d9cab3db58793b502a6ad596a9b05033e31795",
-      "size_bytes": 281615
+      "sha256": "cf7b521ff5d4d0ba76e8c3ffb114abba00146bbf296a8c7f27202a29ff2ade96",
+      "size_bytes": 282637
     },
     {
       "git_blob_id": "bf7c1a3caa4c775b4addca1e762a7bc627dfa251",
@@ -2430,6 +2430,15 @@
       "commit": "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
       "repository": "https://github.com/actions/checkout",
       "role": "exact candidate checkout without persisted credentials",
+      "source_ref": "refs/tags/v7.0.0",
+      "source_ref_kind": "lightweight_tag",
+      "version": "v7.0.0"
+    },
+    {
+      "action": "actions/setup-python",
+      "commit": "5fda3b95a4ea91299a34e894583c3862153e4b97",
+      "repository": "https://github.com/actions/setup-python",
+      "role": "CPython 3.14.6 installation for release-governance tests",
       "source_ref": "refs/tags/v7.0.0",
       "source_ref_kind": "lightweight_tag",
       "version": "v7.0.0"
