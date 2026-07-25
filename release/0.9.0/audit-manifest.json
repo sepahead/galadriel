@@ -1653,12 +1653,12 @@
       "size_bytes": 12931
     },
     {
-      "git_blob_id": "95089a783e928353a2596245803d3148b7556081",
+      "git_blob_id": "7371aab52443238f3fea9d45d194c821b50c33f2",
       "git_mode": "100644",
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "cf7b521ff5d4d0ba76e8c3ffb114abba00146bbf296a8c7f27202a29ff2ade96",
-      "size_bytes": 282637
+      "sha256": "945a497d5bde436dda2d4bdcbc289dadeb06e788cbe1c0236b675759ee878ba2",
+      "size_bytes": 282901
     },
     {
       "git_blob_id": "bf7c1a3caa4c775b4addca1e762a7bc627dfa251",

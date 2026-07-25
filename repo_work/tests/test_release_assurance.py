@@ -231,6 +231,19 @@ def portable_test_argv(
     return list(argv)
 
 
+def portable_test_git_executable(root: Path) -> Path:
+    """Copy Git to a non-system path for a trusted portable test fixture."""
+
+    resolved_git = shutil.which("git")
+    if resolved_git is None:
+        raise AssertionError("portable test environment does not provide Git")
+    destination = root / "portable-developer-tools" / "git"
+    destination.parent.mkdir()
+    shutil.copyfile(resolved_git, destination)
+    destination.chmod(0o500)
+    return destination.resolve(strict=True)
+
+
 def portable_test_process_patch() -> contextlib.AbstractContextManager[object]:
     """Use the production process runner on macOS and a test runner elsewhere."""
 
@@ -3617,11 +3630,7 @@ if child.returncode != -signal.SIGTERM:
             if sys.platform == "darwin":
                 git_executable = qualifier.resolve_candidate_git_executable()
             else:
-                resolved_git = shutil.which("git")
-                self.assertIsNotNone(resolved_git)
-                if resolved_git is None:
-                    self.fail("portable test environment does not provide Git")
-                git_executable = Path(resolved_git).resolve(strict=True)
+                git_executable = portable_test_git_executable(root)
                 self.enterContext(
                     mock.patch.object(
                         qualifier,
