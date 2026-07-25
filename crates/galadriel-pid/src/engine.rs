@@ -1587,6 +1587,10 @@ enum StandardizedColumn {
     NumericallyDegenerate,
 }
 
+fn standardized_variance_is_unusable(sum_squares: f64, sample_count: f64) -> bool {
+    !sum_squares.is_finite() || sum_squares <= f64::EPSILON * sample_count
+}
+
 fn standardize_column(values: &[f64]) -> galadriel_core::Result<StandardizedColumn> {
     if values.iter().any(|value| !value.is_finite()) {
         return Err(GaladrielError::NonFinite("PID standardisation"));
@@ -1611,7 +1615,7 @@ fn standardize_column(values: &[f64]) -> galadriel_core::Result<StandardizedColu
         .map(|value| (value - center) / scale - mean)
         .collect();
     let sum_squares = centered.iter().map(|value| value * value).sum::<f64>();
-    if !sum_squares.is_finite() || sum_squares <= f64::EPSILON * n {
+    if standardized_variance_is_unusable(sum_squares, n) {
         return Ok(StandardizedColumn::NumericallyDegenerate);
     }
     let rms = (sum_squares / n).sqrt();
@@ -2678,11 +2682,67 @@ mod tests {
             .iter()
             .map(|(modality, values)| (*modality, values[..16].to_vec()))
             .collect::<Vec<_>>();
+        let short_report = analyze(&short, &confirmed_config()).unwrap();
+        assert_eq!(short_report.verdict(), &PidVerdict::InsufficientEvidence);
+        assert!(short_report.channels().is_empty());
         assert_eq!(
-            analyze(&short, &confirmed_config()).unwrap().verdict(),
-            &PidVerdict::InsufficientEvidence,
-            "too few samples are inconclusive, even when the observed prefix is constant"
+            short_report.note(),
+            "need >=3 channels and >=100 aligned samples (have 3 channels, w=16)"
         );
+    }
+
+    #[test]
+    fn degenerate_channel_notes_identify_only_the_degenerate_modality() {
+        let config = point_config();
+        let samples = config.required_samples();
+        let channels = vec![
+            (Modality::Visual, vec![1.0; samples]),
+            (Modality::Radar, pseudo_random_series(samples, 17)),
+            (Modality::Acoustic, pseudo_random_series(samples, 29)),
+        ];
+
+        let report = analyze(&channels, &config).unwrap();
+        let notes = report
+            .channels()
+            .iter()
+            .map(|channel| (channel.modality(), channel.gate_note()))
+            .collect::<Vec<_>>();
+        assert_eq!(report.verdict(), &PidVerdict::InsufficientEvidence);
+        assert_eq!(
+            notes,
+            vec![
+                (
+                    Modality::Visual,
+                    "exactly degenerate column; PID estimand unavailable",
+                ),
+                (
+                    Modality::Radar,
+                    "PID family unavailable because another requested column is degenerate",
+                ),
+                (
+                    Modality::Acoustic,
+                    "PID family unavailable because another requested column is degenerate",
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn exact_readiness_boundary_enters_column_validation() {
+        let config = point_config();
+        let constant = vec![1.0; config.required_samples()];
+        let channels = vec![
+            (Modality::Visual, constant.clone()),
+            (Modality::Radar, constant.clone()),
+            (Modality::Acoustic, constant),
+        ];
+
+        let report = analyze(&channels, &config).unwrap();
+        assert_eq!(report.verdict(), &PidVerdict::InsufficientEvidence);
+        assert_eq!(report.channels().len(), channels.len());
+        assert!(report
+            .note()
+            .starts_with("requested channel column(s) cannot support PID estimation:"));
     }
 
     #[test]
@@ -2912,6 +2972,21 @@ mod tests {
     }
 
     #[test]
+    fn standardized_variance_guard_rejects_each_unusable_input() {
+        let sample_count = 64.0;
+        let floor = f64::EPSILON * sample_count;
+
+        assert_eq!(
+            [
+                standardized_variance_is_unusable(f64::NAN, sample_count),
+                standardized_variance_is_unusable(floor, sample_count),
+                standardized_variance_is_unusable(1.0, sample_count),
+            ],
+            [true, true, false]
+        );
+    }
+
+    #[test]
     fn seven_channels_are_rejected_before_modality_or_column_scans() {
         let exact_closed_vocabulary = Modality::ALL
             .into_iter()
@@ -2920,20 +2995,6 @@ mod tests {
         let exact_report = analyze(&exact_closed_vocabulary, &confirmed_config())
             .expect("the exact closed modality vocabulary is admissible");
         assert_eq!(exact_report.verdict(), &PidVerdict::InsufficientEvidence);
-
-        let point = point_config();
-        let constant = vec![1.0; point.required_samples()];
-        let exact_readiness_boundary = vec![
-            (Modality::Visual, constant.clone()),
-            (Modality::Radar, constant.clone()),
-            (Modality::Acoustic, constant),
-        ];
-        assert_eq!(
-            analyze(&exact_readiness_boundary, &point)
-                .unwrap()
-                .verdict(),
-            &PidVerdict::InsufficientEvidence
-        );
 
         let channels = vec![
             (Modality::Visual, Vec::new()),

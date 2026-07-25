@@ -888,7 +888,7 @@ mod observe_cli_tests {
     }
 
     #[test]
-    fn observe_output_returns_a_broken_pipe_error_without_panicking() {
+    fn observe_output_preserves_a_broken_pipe_error_without_panicking() {
         let output = ObserveOutput {
             stdout: vec!["{\"schema\":\"test\"}".to_owned()],
             stderr: Vec::new(),
@@ -900,9 +900,19 @@ mod observe_cli_tests {
         let error = emit_observe_output(&output, &mut stdout, &mut stderr)
             .expect_err("a closed standard-output pipe must return an error");
 
-        assert!(error
-            .to_string()
-            .contains("cannot write a lifecycle record to standard output"));
+        let error_kind = error
+            .chain()
+            .find_map(|source| source.downcast_ref::<io::Error>())
+            .map(io::Error::kind);
+        assert_eq!(
+            (
+                error
+                    .to_string()
+                    .contains("cannot write a lifecycle record to standard output"),
+                error_kind,
+            ),
+            (true, Some(io::ErrorKind::BrokenPipe))
+        );
     }
 
     #[test]

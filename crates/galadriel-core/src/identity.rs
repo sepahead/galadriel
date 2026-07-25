@@ -229,11 +229,16 @@ impl AssessmentBinding {
         stream: &[PidObservation],
         suite: &ReleaseSuite,
     ) -> bool {
-        if scope != &self.scope
-            || stream.len() != self.observation_count
-            || suite.identity() != self.suite_identity
-            || crate::validate_consistency_input_len(stream.len()).is_err()
-        {
+        if scope != &self.scope {
+            return false;
+        }
+        if stream.len() != self.observation_count {
+            return false;
+        }
+        if suite.identity() != self.suite_identity {
+            return false;
+        }
+        if crate::validate_consistency_input_len(stream.len()).is_err() {
             return false;
         }
         self.digest == Self::for_release_stream(scope, stream, suite).digest

@@ -680,6 +680,13 @@ enum PearsonEstimate {
     NumericallyDegenerate,
 }
 
+fn pearson_variances_are_unusable(sxx: f64, syy: f64, sample_count: f64) -> bool {
+    !sxx.is_finite()
+        || !syy.is_finite()
+        || sxx <= f64::EPSILON * sample_count
+        || syy <= f64::EPSILON * sample_count
+}
+
 fn pearson_estimate(x: &[f64], y: &[f64]) -> crate::Result<PearsonEstimate> {
     if x.len() != y.len() {
         return Err(crate::GaladrielError::InvalidChannels(format!(
@@ -741,8 +748,7 @@ fn pearson_estimate(x: &[f64], y: &[f64]) -> crate::Result<PearsonEstimate> {
         sxx += dx * dx;
         syy += dy * dy;
     }
-    if !sxx.is_finite() || !syy.is_finite() || sxx <= f64::EPSILON * nf || syy <= f64::EPSILON * nf
-    {
+    if pearson_variances_are_unusable(sxx, syy, nf) {
         Ok(PearsonEstimate::NumericallyDegenerate)
     } else {
         let correlation = sxy / (sxx.sqrt() * syy.sqrt());
@@ -757,6 +763,11 @@ fn pearson_estimate(x: &[f64], y: &[f64]) -> crate::Result<PearsonEstimate> {
 /// studies sign-invariant dependence. The production detector uses [`pearson`].
 pub fn abs_pearson(x: &[f64], y: &[f64]) -> crate::Result<f64> {
     pearson(x, y).map(f64::abs)
+}
+
+fn distinct_pair_indices(channel_count: usize) -> impl Iterator<Item = (usize, usize)> {
+    (0..channel_count)
+        .flat_map(move |left| ((left + 1)..channel_count).map(move |right| (left, right)))
 }
 
 /// Analyse aligned per-channel signed-scalar series for linear cross-sensor decoupling.
@@ -809,14 +820,12 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
     // make the finite producer projection invalid.
     let mut corr = vec![vec![None; c]; c];
     let mut undefined_pair = false;
-    for i in 0..c {
-        for j in (i + 1)..c {
-            if let PearsonEstimate::Defined(correlation) = pearson_estimate(cols[i], cols[j])? {
-                corr[i][j] = Some(correlation);
-                corr[j][i] = Some(correlation);
-            } else {
-                undefined_pair = true;
-            }
+    for (i, j) in distinct_pair_indices(c) {
+        if let PearsonEstimate::Defined(correlation) = pearson_estimate(cols[i], cols[j])? {
+            corr[i][j] = Some(correlation);
+            corr[j][i] = Some(correlation);
+        } else {
+            undefined_pair = true;
         }
     }
 
@@ -1410,6 +1419,49 @@ mod tests {
         assert!((pearson(&x, &y).unwrap() + 1.0).abs() < 1e-9);
         assert!(abs_pearson(&x, &y).unwrap() > 1.0 - 1e-9);
         assert!(pearson(&x, &vec![1.0; 100]).is_err());
+    }
+
+    #[test]
+    fn distinct_pair_indices_cover_each_off_diagonal_pair_once() {
+        assert_eq!(
+            distinct_pair_indices(3).collect::<Vec<_>>(),
+            vec![(0, 1), (0, 2), (1, 2)]
+        );
+    }
+
+    #[test]
+    fn pearson_classifies_each_single_constant_column_as_exactly_degenerate() {
+        let constant = vec![1.0; 64];
+        let varying = series(64, |index| index as f64);
+
+        assert_eq!(
+            (
+                pearson_estimate(&constant, &varying).unwrap(),
+                pearson_estimate(&varying, &constant).unwrap(),
+            ),
+            (
+                PearsonEstimate::ExactlyDegenerate,
+                PearsonEstimate::ExactlyDegenerate,
+            )
+        );
+    }
+
+    #[test]
+    fn pearson_variance_guard_rejects_each_unusable_input() {
+        let sample_count = 64.0;
+        let floor = f64::EPSILON * sample_count;
+        let usable = 1.0;
+
+        assert_eq!(
+            [
+                pearson_variances_are_unusable(f64::NAN, usable, sample_count),
+                pearson_variances_are_unusable(usable, f64::INFINITY, sample_count),
+                pearson_variances_are_unusable(floor, usable, sample_count),
+                pearson_variances_are_unusable(usable, floor, sample_count),
+                pearson_variances_are_unusable(usable, usable, sample_count),
+            ],
+            [true, true, true, true, false]
+        );
     }
 
     #[test]

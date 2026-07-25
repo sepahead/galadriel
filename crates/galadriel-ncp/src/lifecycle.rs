@@ -521,15 +521,28 @@ impl LifecycleReceipt {
                     history_reset,
                     report,
                 } => {
-                    if (self.transition.resets_history() && !*history_reset)
-                        || report.suite_identity() != release_suite.identity()
-                        || report.assessment_binding().suite_identity() != release_suite.identity()
-                        || report.assessment_scope().producer_id() != &self.producer_id
-                        || report.assessment_scope().position() != &self.position
-                        || report.assessment_binding().scope() != report.assessment_scope()
-                        || report.baseline().track_id().get() != *track_id
-                        || report.baseline().sequence().get() != *fusion_seq
-                    {
+                    if self.transition.resets_history() && !*history_reset {
+                        return false;
+                    }
+                    if report.suite_identity() != release_suite.identity() {
+                        return false;
+                    }
+                    if report.assessment_binding().suite_identity() != release_suite.identity() {
+                        return false;
+                    }
+                    if report.assessment_scope().producer_id() != &self.producer_id {
+                        return false;
+                    }
+                    if report.assessment_scope().position() != &self.position {
+                        return false;
+                    }
+                    if report.assessment_binding().scope() != report.assessment_scope() {
+                        return false;
+                    }
+                    if report.baseline().track_id().get() != *track_id {
+                        return false;
+                    }
+                    if report.baseline().sequence().get() != *fusion_seq {
                         return false;
                     }
                     (*track_id, *fusion_seq)
@@ -2478,6 +2491,41 @@ mod tests {
         receipt
     }
 
+    fn rebind_first_evaluated_assessment(
+        frame: &AssembledFrame,
+        outcome: &LifecycleTransitionOutcome,
+        release_suite: &ReleaseSuite,
+        scope: &AssessmentScope,
+    ) -> LifecycleAssessment {
+        let (track_id, fusion_seq, history_reset) = outcome
+            .assessments()
+            .iter()
+            .find_map(|assessment| match assessment {
+                LifecycleAssessment::Evaluated {
+                    track_id,
+                    fusion_seq,
+                    history_reset,
+                    ..
+                } => Some((*track_id, *fusion_seq, *history_reset)),
+                LifecycleAssessment::Abstained { .. } => None,
+            })
+            .expect("complete fixture contains one evaluated report");
+        let stream = frame
+            .observations()
+            .iter()
+            .filter(|observation| observation.track_id().get() == track_id)
+            .cloned()
+            .collect::<Vec<_>>();
+        let report = assess_default(scope, &stream, release_suite)
+            .expect("alternate declared scope still forms a sealed report");
+        LifecycleAssessment::Evaluated {
+            track_id,
+            fusion_seq,
+            history_reset,
+            report: Box::new(report),
+        }
+    }
+
     fn assert_invalid_frame(frame: AssembledFrame, expected_reason: &str) {
         let mut detector = detector();
         let error = detector
@@ -3055,6 +3103,101 @@ mod tests {
     }
 
     #[test]
+    fn assessment_verification_rejects_rehashed_report_with_other_declared_producer() {
+        let mut detector = detector();
+        let frame = complete_frame(1, 11);
+        let release_suite = detector
+            .release_suite_for(&[Modality::Visual, Modality::Radar])
+            .expect("fixture modalities form the detector's release suite");
+        let outcome = detector
+            .assess_frame_transition(&frame)
+            .expect("complete frame commits");
+        let scope = AssessmentScope::new(
+            ProducerId::new("other-producer").expect("alternate producer is valid"),
+            outcome.receipt().position().clone(),
+        );
+        let assessment =
+            rebind_first_evaluated_assessment(&frame, &outcome, &release_suite, &scope);
+        let LifecycleAssessment::Evaluated { report, .. } = &assessment else {
+            panic!("rebound fixture must remain evaluated")
+        };
+        assert_ne!(
+            report.assessment_scope().producer_id(),
+            outcome.receipt().producer_id()
+        );
+        assert_eq!(
+            report.assessment_scope().position(),
+            outcome.receipt().position()
+        );
+        assert_eq!(
+            report.assessment_binding().scope(),
+            report.assessment_scope()
+        );
+
+        let assessments = vec![assessment];
+        let forged =
+            rehash_receipt_for_assessments(outcome.receipt().clone(), &release_suite, &assessments);
+        assert!(forged.verifies());
+        assert!(!forged.verifies_assessments(&release_suite, &assessments));
+    }
+
+    #[test]
+    fn assessment_verification_rejects_rehashed_report_with_other_stream_position() {
+        let mut detector = detector();
+        let frame = complete_frame(1, 11);
+        let release_suite = detector
+            .release_suite_for(&[Modality::Visual, Modality::Radar])
+            .expect("fixture modalities form the detector's release suite");
+        let outcome = detector
+            .assess_frame_transition(&frame)
+            .expect("complete frame commits");
+        let receipt_position = outcome.receipt().position();
+        let alternate_position = StreamPosition::try_new(
+            receipt_position.identity().epoch().session_id().as_str(),
+            receipt_position.identity().epoch().epoch_id().as_str(),
+            "other-fusion",
+            receipt_position.state_generation().get(),
+            receipt_position.sequence().get(),
+            receipt_position.timestamp_ms().get(),
+            receipt_position.clock_domain(),
+        )
+        .expect("alternate stream position is valid");
+        let scope =
+            AssessmentScope::new(outcome.receipt().producer_id().clone(), alternate_position);
+        let assessment =
+            rebind_first_evaluated_assessment(&frame, &outcome, &release_suite, &scope);
+        let LifecycleAssessment::Evaluated { report, .. } = &assessment else {
+            panic!("rebound fixture must remain evaluated")
+        };
+        assert_eq!(
+            report.assessment_scope().producer_id(),
+            outcome.receipt().producer_id()
+        );
+        assert_ne!(
+            report.assessment_scope().position(),
+            outcome.receipt().position()
+        );
+        assert_eq!(
+            report.assessment_scope().position().sequence(),
+            outcome.receipt().position().sequence()
+        );
+        assert_eq!(
+            report.assessment_scope().position().timestamp_ms(),
+            outcome.receipt().position().timestamp_ms()
+        );
+        assert_eq!(
+            report.assessment_binding().scope(),
+            report.assessment_scope()
+        );
+
+        let assessments = vec![assessment];
+        let forged =
+            rehash_receipt_for_assessments(outcome.receipt().clone(), &release_suite, &assessments);
+        assert!(forged.verifies());
+        assert!(!forged.verifies_assessments(&release_suite, &assessments));
+    }
+
+    #[test]
     fn assessment_verification_rejects_each_detector_impossible_shape() {
         let mut detector = detector();
         let release_suite = detector
@@ -3230,6 +3373,60 @@ mod tests {
         assert!(impossible.verifies());
         assert!(!impossible.has_valid_detector_shape());
         assert!(!impossible.verifies_assessments(&release_suite, outcome.assessments()));
+    }
+
+    #[test]
+    fn assessment_verification_accepts_exact_cardinality_and_numeric_boundaries() {
+        let mut detector = detector();
+        let release_suite = detector
+            .release_suite_for(&[Modality::Visual, Modality::Radar])
+            .expect("fixture modalities form the detector's release suite");
+        let outcome = detector
+            .assess_frame_transition(&complete_frame(1, 11))
+            .expect("complete frame commits");
+        let fusion_seq = outcome.receipt().position().sequence().get();
+
+        let maximum = release_suite.detector().max_tracks();
+        let exact_count = (0..maximum)
+            .map(|track| LifecycleAssessment::Abstained {
+                track_id: u64::try_from(track).expect("track ceiling fits u64"),
+                fusion_seq,
+                unavailable_modalities: vec![Modality::Visual],
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(exact_count.len(), maximum);
+        let exact_count_receipt =
+            rehash_receipt_for_assessments(outcome.receipt().clone(), &release_suite, &exact_count);
+        assert!(exact_count_receipt.verifies());
+        assert!(exact_count_receipt.verifies_assessments(&release_suite, &exact_count));
+
+        let exact_track = vec![LifecycleAssessment::Abstained {
+            track_id: galadriel_core::JSON_SAFE_INTEGER_MAX,
+            fusion_seq,
+            unavailable_modalities: vec![Modality::Visual],
+        }];
+        let exact_track_receipt =
+            rehash_receipt_for_assessments(outcome.receipt().clone(), &release_suite, &exact_track);
+        assert!(exact_track_receipt.verifies());
+        assert!(exact_track_receipt.verifies_assessments(&release_suite, &exact_track));
+
+        let all_modalities_suite = detector
+            .release_suite_for(&Modality::ALL)
+            .expect("the complete modality vocabulary forms a release suite");
+        let exact_modalities = vec![LifecycleAssessment::Abstained {
+            track_id: 1,
+            fusion_seq,
+            unavailable_modalities: Modality::ALL.to_vec(),
+        }];
+        let exact_modalities_receipt = rehash_receipt_for_assessments(
+            outcome.receipt().clone(),
+            &all_modalities_suite,
+            &exact_modalities,
+        );
+        assert!(exact_modalities_receipt.verifies());
+        assert!(
+            exact_modalities_receipt.verifies_assessments(&all_modalities_suite, &exact_modalities)
+        );
     }
 
     #[test]

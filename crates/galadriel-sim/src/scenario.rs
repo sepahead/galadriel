@@ -344,16 +344,14 @@ impl ScenarioConfig {
                 message: error.to_string(),
             }
         })?;
-        if params.frames > 0 {
-            let frozen_prior = last_frame
-                .checked_add(1)
-                .ok_or(ScenarioConfigError::FrozenPriorOverflow)?;
-            FrozenPriorId::new(frozen_prior).map_err(|error| {
-                ScenarioConfigError::InvalidTerminalFrozenPrior {
-                    message: error.to_string(),
-                }
-            })?;
-        }
+        let frozen_prior = last_frame
+            .checked_add(1)
+            .ok_or(ScenarioConfigError::FrozenPriorOverflow)?;
+        FrozenPriorId::new(frozen_prior).map_err(|error| {
+            ScenarioConfigError::InvalidTerminalFrozenPrior {
+                message: error.to_string(),
+            }
+        })?;
 
         let canonical_digest = scenario_digest(&params, origin);
         Ok(Self {
