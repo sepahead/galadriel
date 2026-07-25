@@ -8,9 +8,9 @@
 use std::collections::HashSet;
 
 use galadriel_core::{
-    combine, prepare_release_assessment, AxisCorrelationReport, ConsistencyEvidence, CorrReport,
-    CorrVerdict, FusedVerdict, GaladrielError, MirrorReport, Modality, PidObservation,
-    MAX_CONSISTENCY_PROJECTION_AXES,
+    combine, prepare_release_assessment, AssessmentScope, AxisCorrelationReport,
+    ConsistencyEvidence, CorrReport, CorrVerdict, FusedVerdict, GaladrielError, MirrorReport,
+    Modality, PidObservation, MAX_CONSISTENCY_PROJECTION_AXES,
 };
 
 #[cfg(test)]
@@ -52,7 +52,7 @@ pub struct FusedReport {
     suite_identity: PidResearchSuiteDigest,
     /// Named-profile or custom-research classification.
     classification: PidResearchClassification,
-    /// Canonical exact release-suite-and-input binding shared by every component.
+    /// Canonical scoped release binding shared by every component.
     assessment_binding: PidAssessmentBinding,
 }
 
@@ -92,16 +92,21 @@ impl FusedReport {
         self.classification
     }
 
-    /// Canonical exact release-suite-and-input binding shared by every component.
+    /// Canonical scoped release binding shared by every component.
     pub const fn assessment_binding(&self) -> &PidAssessmentBinding {
         &self.assessment_binding
+    }
+
+    /// Validated lifecycle labels included in the nested core binding.
+    pub const fn assessment_scope(&self) -> &AssessmentScope {
+        self.assessment_binding.release_binding().scope()
     }
 }
 
 /// PID detail for one producer-attested consistency-projection axis.
 ///
-/// Axis labels are assigned only while analysing an attested projection family;
-/// callers cannot relabel an analyser-produced PID report:
+/// Axis labels are assigned only while analyzing an attested projection family.
+/// Callers cannot relabel an analyzer-produced PID report.
 ///
 /// ```compile_fail
 /// use galadriel_pid::{analyze, AxisPidReport, PidResearchProfile};
@@ -111,7 +116,7 @@ impl FusedReport {
 /// ```
 ///
 /// ```compile_fail
-/// // Even a genuine returned axis report cannot be relabelled.
+/// // A caller cannot relabel a genuine returned axis report.
 /// fn relabel(mut axis: galadriel_pid::AxisPidReport) { axis.axis = 7; }
 /// ```
 #[derive(Debug, Clone)]
@@ -348,9 +353,9 @@ fn pid_axis_attribution(
 /// signed-correlation result remains the minimum consistency contract: an
 /// optional PID limitation cannot downgrade an assessable signed default, while a
 /// nominal sign-invariant PID result cannot substitute for unavailable signed
-/// evidence. Positive PID decoupling can still add evidence when correlation is
-/// insufficient. This compatibility surface cannot mint a sealed [`FusedReport`];
-/// use [`assess_stream`] for an accepted whole-stream assessment.
+/// evidence. Positive PID evidence beside unavailable signed evidence remains an
+/// unclassified anomaly. This compatibility surface cannot mint a sealed
+/// [`FusedReport`]. Use [`assess_stream`] for an accepted whole-stream assessment.
 ///
 /// # Errors
 ///
@@ -409,7 +414,8 @@ fn fusion_decision(
     let signed_default_is_complete = !correlation_insufficient
         && correlation_axis_conflict.is_none()
         && !correlation_decoupled.is_empty();
-    let incomplete_positive = (correlation_insufficient && !correlation_decoupled.is_empty())
+    let incomplete_positive = (correlation_insufficient
+        && (!correlation_decoupled.is_empty() || !pid_decoupled.is_empty()))
         || (pid_insufficient && !pid_decoupled.is_empty() && !signed_default_is_complete);
     // Two assessable consistency detectors naming different channels is positive
     // evidence, but not honest attribution. Preserve the union for investigation
@@ -476,9 +482,9 @@ fn fusion_decision(
 ///
 /// # Errors
 ///
-/// Returns an error unless every component has the expected accepted
-/// configuration, covers one matching contiguous axis family, and carries the
-/// exact same suite-and-observation binding.
+/// Returns an error unless every component has the accepted configuration.
+/// Each component must cover one matching contiguous axis family. Each component
+/// must also carry the same scope, suite, and ordered-stream binding.
 pub fn fuse_axes(
     suite: &PidResearchSuite,
     baseline: MirrorReport,
@@ -500,14 +506,25 @@ pub fn fuse_axes(
     })
 }
 
-/// Run the magnitude baseline, default signed-correlation configuration, and PID
-/// escalation over a whole single-track stream.
+/// Run the accepted PID path on one scoped, single-track stream.
+///
+/// The function runs the magnitude baseline, signed correlation, and PID path.
+/// The returned report nests the core assessment binding v2. It also binds the
+/// complete PID research suite.
+///
+/// The scope is declared provenance. It does not authenticate the producer.
+///
+/// # Errors
+///
+/// Returns an error when core preparation rejects the scope, stream, or release
+/// suite. It also returns an error for invalid PID work or component provenance.
 pub fn assess_stream(
+    scope: &AssessmentScope,
     stream: &[PidObservation],
     suite: &PidResearchSuite,
 ) -> galadriel_core::Result<FusedReport> {
     let release_suite = suite.release_suite();
-    let prepared = prepare_release_assessment(stream, release_suite)?;
+    let prepared = prepare_release_assessment(scope, stream, release_suite)?;
     let assessment_binding =
         PidAssessmentBinding::new(prepared.assessment_binding(), suite.identity());
     // A sealed `ConsistencyProjection` cannot represent zero axes, and the
@@ -542,8 +559,9 @@ mod tests {
         PidConfig, PidConfirmationParams, PidResearchProfile, PidResearchSuiteParams, PidVerdict,
     };
     use galadriel_core::{
-        CorrConfig, DetectorConfig, DetectorParams, MagnitudeEvidence, ProducerAxisFamilyPolicy,
-        ReleaseSuite, ReleaseSuiteParams, Sequence, TimestampMillis, TrackId,
+        AssessmentScope, ClockDomain, ConsistencyProjection, CorrConfig, DetectorConfig,
+        DetectorParams, MagnitudeEvidence, ProducerAxisFamilyPolicy, ProducerId, ReleaseSuite,
+        ReleaseSuiteParams, Sequence, StreamPosition, TimestampMillis, TrackId,
     };
     use galadriel_sim::injection::{inject, BroadbandJam, PhantomAcousticDoa};
     use galadriel_sim::scenario::{
@@ -558,8 +576,12 @@ mod tests {
             .unwrap()
     }
 
+    fn research_suite_for(modalities: &[Modality]) -> PidResearchSuite {
+        PidResearchSuite::circular_delete_block_v0_9(modalities).unwrap()
+    }
+
     fn research_suite() -> PidResearchSuite {
-        PidResearchSuite::circular_delete_block_v0_9(&MODALITIES).unwrap()
+        research_suite_for(&MODALITIES)
     }
 
     fn pid_report(verdict: PidVerdict, note: &str, axis_count: usize) -> PidReport {
@@ -618,6 +640,23 @@ mod tests {
             .try_for_axis_family(axis_count)
             .unwrap();
         correlation::analyze(&[], &config).unwrap()
+    }
+
+    fn positive_pid_report(
+        suite: &PidResearchSuite,
+        modalities: &[Modality],
+        target: Modality,
+    ) -> PidReport {
+        let config = suite.pid_config().try_for_axis_family(1).unwrap();
+        PidReport::new(
+            crate::PidEstimatorEvidence::from_config(&config),
+            modalities
+                .iter()
+                .map(|&modality| pid_channel(modality, modality == target))
+                .collect(),
+            PidVerdict::Decoupled(vec![target]),
+            "test PID decoupling".into(),
+        )
     }
 
     fn axis_correlation(
@@ -679,21 +718,80 @@ mod tests {
         observation
     }
 
+    fn with_degenerate_third_axis(source: &PidObservation) -> PidObservation {
+        let mut observation = PidObservation::try_scalar(
+            source.track_id(),
+            source.timestamp_ms(),
+            source.sequence(),
+            source.modality(),
+            source.nis(),
+            source.dof(),
+        )
+        .unwrap();
+        if let (Some(innovation), Some(covariance)) =
+            (source.innovation(), source.innovation_covariance())
+        {
+            observation = observation
+                .try_with_research(innovation, covariance)
+                .unwrap();
+        }
+        let source_projection = source.consistency_projection().unwrap();
+        let mut values = source_projection.padded_values();
+        if source.modality() == Modality::Acoustic {
+            values[2] = 0.0;
+        }
+        observation.with_consistency_projection(
+            ConsistencyProjection::try_new(
+                values,
+                source_projection.dimensions(),
+                source_projection.identity(),
+            )
+            .unwrap(),
+        )
+    }
+
+    fn scope_for_stream(stream: &[PidObservation]) -> AssessmentScope {
+        let terminal_sequence = stream
+            .iter()
+            .map(PidObservation::sequence)
+            .max()
+            .expect("test stream is nonempty");
+        let terminal_timestamp = stream
+            .iter()
+            .filter(|observation| observation.sequence() == terminal_sequence)
+            .map(PidObservation::timestamp_ms)
+            .max()
+            .expect("test terminal frame is nonempty");
+        AssessmentScope::new(
+            ProducerId::new("pid-test-producer").expect("test producer"),
+            StreamPosition::try_new(
+                "pid-test-session",
+                "pid-test-epoch",
+                "pid-test-stream",
+                0,
+                terminal_sequence.get(),
+                terminal_timestamp.get(),
+                ClockDomain::SimulationTime,
+            )
+            .expect("test position"),
+        )
+    }
+
     fn fused(stream: &[PidObservation]) -> FusedVerdict {
-        assess_stream(stream, &research_suite())
+        assess_stream(&scope_for_stream(stream), stream, &research_suite())
             .unwrap()
             .verdict()
             .clone()
     }
 
-    fn nominal_baseline() -> MirrorReport {
-        let suite = ReleaseSuite::standalone_advisory_v0_9(&MODALITIES).unwrap();
+    fn nominal_baseline_for(modalities: &[Modality]) -> MirrorReport {
+        let suite = ReleaseSuite::standalone_advisory_v0_9(modalities).unwrap();
         let mut mirror = Mirror::from_release_suite(&suite);
         let track = TrackId::new(1).unwrap();
         for raw_sequence in 0..64 {
             let sequence = Sequence::new(raw_sequence).unwrap();
             let timestamp = TimestampMillis::new(raw_sequence * 100).unwrap();
-            for modality in MODALITIES {
+            for &modality in modalities {
                 mirror
                     .ingest(
                         &PidObservation::try_scalar(track, timestamp, sequence, modality, 3.0, 3)
@@ -703,6 +801,10 @@ mod tests {
             }
         }
         mirror.assess(track, Sequence::new(63).unwrap()).unwrap()
+    }
+
+    fn nominal_baseline() -> MirrorReport {
+        nominal_baseline_for(&MODALITIES)
     }
 
     fn diagnostics(
@@ -718,7 +820,8 @@ mod tests {
     fn clean_is_nominal() {
         let suite = research_suite();
         let stream = generate(&scenario()).unwrap();
-        let report = assess_stream(&stream, &suite).unwrap();
+        let scope = scope_for_stream(&stream);
+        let report = assess_stream(&scope, &stream, &suite).unwrap();
 
         assert_eq!(report.correlations().len(), 3);
         assert_eq!(report.pids().len(), 3);
@@ -731,10 +834,12 @@ mod tests {
             report.assessment_binding().suite_identity(),
             suite.identity()
         );
-        assert!(report
-            .assessment_binding()
-            .release_binding()
-            .verifies(&stream, suite.release_suite()));
+        assert!(report.assessment_binding().release_binding().verifies(
+            &scope,
+            &stream,
+            suite.release_suite()
+        ));
+        assert_eq!(report.assessment_scope(), &scope);
         assert_eq!(
             report.baseline().assessment_binding(),
             Some(report.assessment_binding().release_binding())
@@ -749,13 +854,41 @@ mod tests {
     }
 
     #[test]
+    fn pid_stream_assessment_retains_a_degenerate_correlation_axis_as_insufficient() {
+        let suite = research_suite();
+        let stream = generate(&scenario())
+            .unwrap()
+            .iter()
+            .map(with_degenerate_third_axis)
+            .collect::<Vec<_>>();
+        let scope = scope_for_stream(&stream);
+
+        let report = assess_stream(&scope, &stream, &suite).unwrap();
+
+        assert_eq!(
+            report.correlations()[2].report().verdict(),
+            &CorrVerdict::InsufficientEvidence
+        );
+        assert_eq!(
+            report.pids()[2].report().verdict(),
+            &PidVerdict::InsufficientEvidence
+        );
+        assert!(report.assessment_binding().release_binding().verifies(
+            &scope,
+            &stream,
+            suite.release_suite()
+        ));
+    }
+
+    #[test]
     fn accepted_pid_fusion_rejects_equal_shape_stream_and_suite_substitution() {
         let suite = PidResearchSuite::point_estimate_only_v0_9(&MODALITIES).unwrap();
         let stream_a = generate(&scenario()).unwrap();
         let mut stream_b = stream_a.clone();
         stream_b[0] = with_nis(&stream_a[0], stream_a[0].nis() + 0.125);
-        let report_a = assess_stream(&stream_a, &suite).unwrap();
-        let report_b = assess_stream(&stream_b, &suite).unwrap();
+        let scope = scope_for_stream(&stream_a);
+        let report_a = assess_stream(&scope, &stream_a, &suite).unwrap();
+        let report_b = assess_stream(&scope, &stream_b, &suite).unwrap();
 
         assert_ne!(report_a.assessment_binding(), report_b.assessment_binding());
         assert!(fuse_axes(
@@ -778,7 +911,8 @@ mod tests {
             pid: suite.pid_config().clone(),
         })
         .unwrap();
-        let custom_report = assess_stream(&stream_a, &equal_components_custom_suite).unwrap();
+        let custom_report =
+            assess_stream(&scope, &stream_a, &equal_components_custom_suite).unwrap();
         assert_ne!(suite.identity(), equal_components_custom_suite.identity());
         assert_eq!(
             report_a
@@ -818,7 +952,8 @@ mod tests {
             pid: suite.pid_config().clone(),
         })
         .unwrap();
-        let detector_changed_report = assess_stream(&stream_a, &detector_changed_suite).unwrap();
+        let detector_changed_report =
+            assess_stream(&scope, &stream_a, &detector_changed_suite).unwrap();
         assert_ne!(
             report_a
                 .assessment_binding()
@@ -848,7 +983,8 @@ mod tests {
         for observation in &mut stream {
             *observation = without_projection(observation);
         }
-        let report = assess_stream(&stream, &research_suite()).unwrap();
+        let scope = scope_for_stream(&stream);
+        let report = assess_stream(&scope, &stream, &research_suite()).unwrap();
 
         assert!(report.correlations().is_empty());
         assert!(report.pids().is_empty());
@@ -865,7 +1001,8 @@ mod tests {
             },
         )
         .unwrap();
-        let report = assess_stream(&stream, &research_suite()).unwrap();
+        let scope = scope_for_stream(&stream);
+        let report = assess_stream(&scope, &stream, &research_suite()).unwrap();
         assert!(report
             .pids()
             .iter()
@@ -1061,27 +1198,118 @@ mod tests {
     }
 
     #[test]
-    fn positive_pid_evidence_is_not_erased_when_signed_correlation_is_insufficient() {
+    fn positive_pid_evidence_cannot_repair_unavailable_signed_correlation() {
         let suite = research_suite();
         let correlation = insufficient_correlation(1);
-        let pid_config = confirmed_config().try_for_axis_family(1).unwrap();
-        let pid = PidReport::new(
-            crate::PidEstimatorEvidence::from_config(&pid_config),
-            MODALITIES
-                .iter()
-                .map(|&modality| pid_channel(modality, modality == Modality::Acoustic))
-                .collect(),
-            PidVerdict::Decoupled(vec![Modality::Acoustic]),
-            "test PID decoupling".into(),
-        );
+        let pid = positive_pid_report(&suite, &MODALITIES, Modality::Acoustic);
 
-        assert!(matches!(
-            fuse(&suite, nominal_baseline(), correlation, pid)
-                .unwrap()
-                .0,
-            FusedVerdict::AttributedInconsistency { channels, .. }
-                if channels.contains(&Modality::Acoustic)
-        ));
+        let report = fuse(&suite, nominal_baseline(), correlation, pid).unwrap();
+        assert_eq!(
+            report.0,
+            FusedVerdict::UnclassifiedAnomaly {
+                channels: vec![Modality::Acoustic]
+            }
+        );
+        assert!(report.1.contains("insufficient projection axis"));
+    }
+
+    #[test]
+    fn positive_pid_evidence_cannot_resolve_tied_signed_cliques() {
+        let modalities = [
+            Modality::Visual,
+            Modality::Radar,
+            Modality::Acoustic,
+            Modality::Lidar,
+        ];
+        let suite = research_suite_for(&modalities);
+        let n = 128;
+        let first = (0..n)
+            .map(|index| (index as f64 / 5.0).sin())
+            .collect::<Vec<_>>();
+        let second = (0..n)
+            .map(|index| (index as f64 / 11.0).cos())
+            .collect::<Vec<_>>();
+        let channels = vec![
+            (Modality::Visual, first.clone()),
+            (Modality::Radar, first),
+            (Modality::Acoustic, second.clone()),
+            (Modality::Lidar, second),
+        ];
+        let config = suite
+            .release_suite()
+            .correlation()
+            .try_for_axis_family(1)
+            .unwrap();
+        let correlation = correlation::analyze(&channels, &config).unwrap();
+        assert_eq!(correlation.verdict(), &CorrVerdict::InsufficientEvidence);
+        assert!(correlation.note().contains("ambiguous positive-consensus"));
+
+        let report = fuse(
+            &suite,
+            nominal_baseline_for(&modalities),
+            correlation,
+            positive_pid_report(&suite, &modalities, Modality::Lidar),
+        )
+        .unwrap();
+        assert_eq!(
+            report.0,
+            FusedVerdict::UnclassifiedAnomaly {
+                channels: vec![Modality::Lidar]
+            }
+        );
+    }
+
+    #[test]
+    fn positive_pid_evidence_cannot_resolve_a_bridged_signed_outsider() {
+        use std::f64::consts::PI;
+
+        let modalities = [
+            Modality::Visual,
+            Modality::Radar,
+            Modality::Acoustic,
+            Modality::Lidar,
+        ];
+        let suite = research_suite_for(&modalities);
+        let n = 128;
+        let common = (0..n)
+            .map(|index| (2.0 * PI * index as f64 / n as f64).sin())
+            .collect::<Vec<_>>();
+        let private = (0..n)
+            .map(|index| (4.0 * PI * index as f64 / n as f64).sin())
+            .collect::<Vec<_>>();
+        let bridge = common
+            .iter()
+            .zip(&private)
+            .map(|(shared, private)| shared + private)
+            .collect::<Vec<_>>();
+        let channels = vec![
+            (Modality::Visual, bridge),
+            (Modality::Radar, common.clone()),
+            (Modality::Acoustic, common),
+            (Modality::Lidar, private),
+        ];
+        let config = suite
+            .release_suite()
+            .correlation()
+            .try_for_axis_family(1)
+            .unwrap();
+        let correlation = correlation::analyze(&channels, &config).unwrap();
+        assert_eq!(correlation.verdict(), &CorrVerdict::InsufficientEvidence);
+        assert!(correlation.note().contains("attribution is ambiguous"));
+
+        let report = fuse(
+            &suite,
+            nominal_baseline_for(&modalities),
+            correlation,
+            positive_pid_report(&suite, &modalities, Modality::Lidar),
+        )
+        .unwrap();
+        assert_eq!(
+            report.0,
+            FusedVerdict::UnclassifiedAnomaly {
+                channels: vec![Modality::Lidar]
+            }
+        );
     }
 
     #[test]
@@ -1305,7 +1533,8 @@ mod tests {
             pid: confirmed_config(),
         })
         .unwrap();
-        let report = assess_stream(&stream, &suite).unwrap();
+        let scope = scope_for_stream(&stream);
+        let report = assess_stream(&scope, &stream, &suite).unwrap();
 
         assert!(report
             .correlations()

@@ -1637,6 +1637,7 @@ impl<R: RegistryVerifier> CrossRouteAssembler<R> {
             self.limits.frame_deadline,
             self.limits.reorder_deadline,
             self.limits.heartbeat_deadline,
+            self.limits.initial_heartbeat_deadline,
         ]
         .into_iter()
         .any(|duration| now.checked_add(duration).is_none())
@@ -3225,6 +3226,18 @@ mod tests {
                 field: "frame_deadline",
                 violation: AssemblerDurationViolation::AnchorOverflow,
             })
+        ));
+    }
+
+    #[test]
+    fn runtime_guard_includes_the_initial_heartbeat_deadline() {
+        let start = Instant::now();
+        let mut assembler = assembler(start);
+        assembler.limits.initial_heartbeat_deadline = Duration::MAX;
+
+        assert!(matches!(
+            fault_kind(&assembler.advance_time(start)),
+            Some(AssemblyFaultKind::MonotonicDeadlineOverflow)
         ));
     }
 

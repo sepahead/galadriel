@@ -26,8 +26,8 @@ use crate::correlation::CorrConfig;
 use crate::correlation::{self, CorrReport, CorrVerdict};
 use crate::{
     AnomalyEvidence, AssessmentBinding, AssessmentClassification, AssessmentFailure,
-    AssessmentOutcome, ConfigDigest, ConsistencyChannels, Mirror, MirrorReport, Modality,
-    PidObservation, ProducerAxisFamilyPolicy, ReleaseSuite,
+    AssessmentOutcome, AssessmentScope, ConfigDigest, ConsistencyChannels, Mirror, MirrorReport,
+    Modality, PidObservation, ProducerAxisFamilyPolicy, ReleaseSuite,
 };
 use serde::Serialize;
 
@@ -157,8 +157,8 @@ impl ConsistencyEvidence {
 /// "positive attribution and insufficient evidence" combination unrepresentable.
 /// [`MirrorReport`] is sealed and fusion consumes the config-bound outcome that
 /// the detector retained when it created the report. The returned tuple is an
-/// explicitly unbound diagnostic; only [`assess_default`] can mint a sealed
-/// accepted [`DefaultReport`] with exact suite-and-input provenance.
+/// explicitly unbound diagnostic. Only [`assess_default`] can mint a sealed
+/// accepted [`DefaultReport`] with exact scope, suite, and stream provenance.
 pub fn combine(
     baseline: &MirrorReport,
     consistency: ConsistencyEvidence,
@@ -367,7 +367,9 @@ pub struct DefaultReport {
     suite_identity: ConfigDigest,
     /// Named/custom release classification.
     classification: AssessmentClassification,
-    /// Canonical exact suite-and-input binding shared by every component.
+    /// Validated lifecycle labels for this accepted assessment.
+    assessment_scope: AssessmentScope,
+    /// Canonical scope, suite, and ordered-stream binding for every component.
     assessment_binding: AssessmentBinding,
 }
 
@@ -396,7 +398,11 @@ impl DefaultReport {
     pub const fn classification(&self) -> AssessmentClassification {
         self.classification
     }
-    /// Canonical exact suite-and-input binding shared by every component.
+    /// Validated lifecycle labels bound to this assessment.
+    pub const fn assessment_scope(&self) -> &AssessmentScope {
+        &self.assessment_scope
+    }
+    /// Canonical scope, suite, and ordered-stream binding for every component.
     pub const fn assessment_binding(&self) -> &AssessmentBinding {
         &self.assessment_binding
     }
@@ -631,7 +637,7 @@ fn validate_correlation_provenance(
 /// Positive attributions that disagree across axes, or coexist with an
 /// insufficient axis, become [`FusedVerdict::UnclassifiedAnomaly`]. An empty slice means the
 /// producer supplied no valid common projection and therefore marks consistency
-/// insufficient; the magnitude baseline still contributes normally.
+/// insufficient. The magnitude baseline still contributes normally.
 ///
 /// This compatibility function returns tuple diagnostics, not a sealed accepted
 /// report. All-unbound inputs remain available for offline component inspection.
@@ -642,7 +648,7 @@ fn validate_correlation_provenance(
 /// Returns an error unless the baseline belongs to `suite` and every correlation
 /// axis is contiguous and was produced by that suite's exact axis-family-derived
 /// correlation configuration. Bound inputs must also share one exact suite-and-
-/// observation binding; mixing bound and unbound components is rejected.
+/// observation binding. Mixing bound and unbound components is rejected.
 pub fn combine_correlation_axes(
     suite: &ReleaseSuite,
     baseline: &MirrorReport,
@@ -659,10 +665,11 @@ pub fn combine_correlation_axes(
 
 /// Sealed preparation shared by the default and PID whole-stream assessors.
 ///
-/// Construction validates the single-track stream, derives one canonical binding
-/// from every exact observation and the complete release suite, and produces only
-/// components carrying that same binding. Fields are private so downstream code
-/// cannot replace a component while retaining the accepted binding.
+/// Construction validates the single-track stream and its exact lifecycle scope.
+/// It derives one canonical binding from the scope, every exact observation, and
+/// the complete release suite. It produces only components with that binding.
+/// Fields are private so downstream code cannot replace a component while it
+/// retains the accepted binding.
 #[derive(Debug, Clone)]
 pub struct PreparedReleaseAssessment {
     binding: AssessmentBinding,
@@ -672,9 +679,14 @@ pub struct PreparedReleaseAssessment {
 }
 
 impl PreparedReleaseAssessment {
-    /// Canonical exact suite-and-input binding.
+    /// Canonical scope, suite, and ordered-stream binding.
     pub const fn assessment_binding(&self) -> &AssessmentBinding {
         &self.binding
+    }
+
+    /// Validated lifecycle labels included in the exact binding.
+    pub const fn assessment_scope(&self) -> &AssessmentScope {
+        self.binding.scope()
     }
 
     /// Bound magnitude component.
@@ -700,17 +712,46 @@ impl PreparedReleaseAssessment {
 ///
 /// # Errors
 ///
-/// Returns an error for an empty or malformed stream, release-suite mismatch,
-/// temporal/projection incoherence, detector failure, or correlation failure.
+/// Returns an error when the stream is empty, malformed, or over its work bound.
+/// It rejects a terminal sequence or terminal timestamp mismatch. It also rejects
+/// suite, temporal, projection, detector, and correlation failures.
 pub fn prepare_release_assessment(
+    scope: &AssessmentScope,
     stream: &[PidObservation],
     suite: &ReleaseSuite,
 ) -> crate::Result<PreparedReleaseAssessment> {
+    crate::validate_consistency_input_len(stream.len())?;
     let first = stream.first().ok_or_else(|| {
         crate::GaladrielError::InvalidChannels(
             "release assessment requires at least one observation".into(),
         )
     })?;
+    let last_seq = stream
+        .iter()
+        .map(PidObservation::sequence)
+        .fold(first.sequence(), std::cmp::max);
+    if scope.position().sequence() != last_seq {
+        return Err(crate::GaladrielError::InvalidChannels(format!(
+            "assessment scope terminal sequence {} differs from stream terminal sequence {last_seq}",
+            scope.position().sequence()
+        )));
+    }
+    let terminal_timestamp = stream
+        .iter()
+        .filter(|observation| observation.sequence() == last_seq)
+        .map(PidObservation::timestamp_ms)
+        .max()
+        .ok_or_else(|| {
+            crate::GaladrielError::InvalidChannels(
+                "release assessment terminal frame is unavailable".into(),
+            )
+        })?;
+    if scope.position().timestamp_ms() != terminal_timestamp {
+        return Err(crate::GaladrielError::InvalidChannels(format!(
+            "assessment scope terminal timestamp {} differs from stream terminal-frame timestamp {terminal_timestamp}",
+            scope.position().timestamp_ms()
+        )));
+    }
     let modalities = suite.expected_modalities();
     let baseline_cfg = suite.detector();
     let projection = crate::consistency_channels_with_temporal_limits(
@@ -720,17 +761,13 @@ pub fn prepare_release_assessment(
         baseline_cfg.max_timestamp_skew_ms(),
         baseline_cfg.max_inter_sample_gap_ms(),
     )?;
-    let binding = AssessmentBinding::for_release_stream(stream, suite);
+    let binding = AssessmentBinding::for_release_stream(scope, stream, suite);
 
     let mut mirror = Mirror::from_release_suite(suite);
     for observation in stream {
         mirror.ingest(observation)?;
     }
     let track = first.track_id();
-    let last_seq = stream
-        .iter()
-        .map(PidObservation::sequence)
-        .fold(first.sequence(), std::cmp::max);
     let mut baseline = mirror.assess(track, last_seq)?;
     baseline.bind_assessment(binding.clone());
 
@@ -759,14 +796,25 @@ pub fn prepare_release_assessment(
     })
 }
 
-/// The **pure default** cross-sensor detector: run the NIS baseline and the cheap
-/// correlation consistency check over a whole (single-track) stream, and fuse them.
-/// No heavy dependency; this is the default advisory detector path.
+/// Run the pure default detector on one scoped, single-track stream.
+///
+/// The function runs the NIS baseline and signed-correlation consistency path.
+/// It returns one sealed [`DefaultReport`]. The report binds the exact scope,
+/// release suite, and ordered observations with assessment binding v2.
+///
+/// The scope is declared provenance. It does not authenticate the producer.
+///
+/// # Errors
+///
+/// Returns an error for every failure described by
+/// [`prepare_release_assessment`]. It also returns an error when accepted
+/// components cannot pass the final provenance checks.
 pub fn assess_default(
+    scope: &AssessmentScope,
     stream: &[PidObservation],
     suite: &ReleaseSuite,
 ) -> crate::Result<DefaultReport> {
-    let prepared = prepare_release_assessment(stream, suite)?;
+    let prepared = prepare_release_assessment(scope, stream, suite)?;
     let (verdict, note) =
         combine_correlation_axes(suite, prepared.baseline(), prepared.correlations())?;
     let classification = suite.source_profile().map_or(
@@ -780,6 +828,7 @@ pub fn assess_default(
         note,
         suite_identity: suite.identity(),
         classification,
+        assessment_scope: prepared.binding.scope().clone(),
         assessment_binding: prepared.binding,
     })
 }
@@ -791,8 +840,9 @@ mod tests {
     use super::*;
     use crate::decision::ChannelReport;
     use crate::{
-        ConsistencyProjection, DetectorConfig, DetectorParams, ProjectionIdentity, ReleaseSuite,
-        Sequence, TimestampMillis, TrackId, Verdict,
+        AssessmentScope, ClockDomain, ConsistencyProjection, DetectorConfig, DetectorParams,
+        ProducerId, ProjectionIdentity, ReleaseSuite, Sequence, StreamPosition, TimestampMillis,
+        TrackId, Verdict,
     };
 
     fn scalar(
@@ -822,6 +872,37 @@ mod tests {
         dof: u8,
     ) -> PidObservation {
         PidObservation::try_scalar(track_id, timestamp_ms, sequence, modality, nis, dof).unwrap()
+    }
+
+    fn scope_at(sequence: u64, timestamp_ms: u64) -> AssessmentScope {
+        AssessmentScope::new(
+            ProducerId::new("test-producer").expect("test producer"),
+            StreamPosition::try_new(
+                "test-session",
+                "test-epoch",
+                "test-stream",
+                0,
+                sequence,
+                timestamp_ms,
+                ClockDomain::SimulationTime,
+            )
+            .expect("test assessment position"),
+        )
+    }
+
+    fn scope_for_stream(stream: &[PidObservation]) -> AssessmentScope {
+        let terminal_sequence = stream
+            .iter()
+            .map(PidObservation::sequence)
+            .max()
+            .expect("test stream is nonempty");
+        let terminal_timestamp = stream
+            .iter()
+            .filter(|observation| observation.sequence() == terminal_sequence)
+            .map(PidObservation::timestamp_ms)
+            .max()
+            .expect("test terminal frame is nonempty");
+        scope_at(terminal_sequence.get(), terminal_timestamp.get())
     }
 
     fn ch(modality: Modality, elevated: bool) -> ChannelReport {
@@ -1163,6 +1244,33 @@ mod tests {
             .collect()
     }
 
+    fn stream_with_one_degenerate_projection_axis(nis: f64) -> Vec<PidObservation> {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let mut stream = Vec::new();
+        for sequence in 0..128_u64 {
+            let x = sequence as f64;
+            let shared = [(x * 0.17).sin(), (x * 0.23).cos(), (x * 0.29).sin()];
+            for modality in modalities {
+                let mut values = shared;
+                if modality == Modality::Acoustic {
+                    values[2] = 0.0;
+                }
+                stream.push(
+                    scalar(1, sequence * 100, sequence, modality, nis, 3)
+                        .with_consistency_projection(
+                            ConsistencyProjection::try_new(
+                                values,
+                                3,
+                                ProjectionIdentity::try_new(1, 1, sequence + 1).unwrap(),
+                            )
+                            .unwrap(),
+                        ),
+                );
+            }
+        }
+        stream
+    }
+
     fn same_shape_different_stream() -> Vec<PidObservation> {
         let mut stream = projected_stream();
         let source = &stream[0];
@@ -1188,7 +1296,8 @@ mod tests {
         let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
         let stream = projected_stream();
-        let prepared = prepare_release_assessment(&stream, &suite).unwrap();
+        let scope = scope_for_stream(&stream);
+        let prepared = prepare_release_assessment(&scope, &stream, &suite).unwrap();
         let projection = prepared
             .projection()
             .expect("the projected fixture retains a common projection");
@@ -1203,14 +1312,98 @@ mod tests {
             .correlations()
             .iter()
             .all(|axis| { axis.assessment_binding() == Some(prepared.assessment_binding()) }));
-        assert!(prepared.assessment_binding().verifies(&stream, &suite));
+        assert!(prepared
+            .assessment_binding()
+            .verifies(&scope, &stream, &suite));
+        assert_eq!(prepared.assessment_scope(), &scope);
+    }
+
+    #[test]
+    fn release_assessment_rejects_a_mismatched_terminal_sequence_scope() {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
+        let stream = projected_stream();
+        let valid = scope_for_stream(&stream);
+        let mismatched = scope_at(
+            valid.position().sequence().get() + 1,
+            valid.position().timestamp_ms().get(),
+        );
+
+        let error = prepare_release_assessment(&mismatched, &stream, &suite).unwrap_err();
+
+        assert!(matches!(
+            error,
+            crate::GaladrielError::InvalidChannels(message)
+                if message.contains("scope terminal sequence")
+        ));
+    }
+
+    #[test]
+    fn release_assessment_rejects_a_mismatched_terminal_timestamp_scope() {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
+        let stream = projected_stream();
+        let valid = scope_for_stream(&stream);
+        let mismatched = scope_at(
+            valid.position().sequence().get(),
+            valid.position().timestamp_ms().get() + 1,
+        );
+
+        let error = prepare_release_assessment(&mismatched, &stream, &suite).unwrap_err();
+
+        assert!(matches!(
+            error,
+            crate::GaladrielError::InvalidChannels(message)
+                if message.contains("scope terminal timestamp")
+        ));
+    }
+
+    #[test]
+    fn release_assessment_rejects_oversize_input_before_scope_scans() {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
+        let stream = vec![
+            scalar(1, 0, 0, Modality::Visual, 3.0, 3);
+            crate::MAX_CONSISTENCY_INPUT_OBSERVATIONS + 1
+        ];
+        let deliberately_mismatched_scope = scope_at(7, 7);
+
+        let error = prepare_release_assessment(&deliberately_mismatched_scope, &stream, &suite)
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            crate::GaladrielError::InvalidChannels(message)
+                if message.contains("consistency input has")
+                    && !message.contains("scope terminal sequence")
+        ));
+    }
+
+    #[test]
+    fn default_report_serializes_the_exact_scope_once_at_top_level() {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
+        let stream = projected_stream();
+        let scope = scope_for_stream(&stream);
+        let report = assess_default(&scope, &stream, &suite).unwrap();
+
+        let encoded = serde_json::to_string(&report).unwrap();
+        let value = serde_json::from_str::<serde_json::Value>(&encoded).unwrap();
+
+        assert_eq!(
+            value["assessment_scope"],
+            serde_json::to_value(&scope).unwrap()
+        );
+        assert_eq!(encoded.matches("\"assessment_scope\"").count(), 1);
     }
 
     #[test]
     fn default_assessment_checks_all_axes_and_rejects_conflicting_attribution() {
         let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
-        let report = assess_default(&projected_stream(), &suite).unwrap();
+        let stream = projected_stream();
+        let scope = scope_for_stream(&stream);
+        let report = assess_default(&scope, &stream, &suite).unwrap();
 
         assert_eq!(report.correlations().len(), 3);
         assert_eq!(report.suite_identity(), suite.identity());
@@ -1233,7 +1426,8 @@ mod tests {
         }
         assert!(report
             .assessment_binding()
-            .verifies(&projected_stream(), &suite));
+            .verifies(&scope, &stream, &suite));
+        assert_eq!(report.assessment_scope(), &scope);
         assert_eq!(
             report.verdict(),
             &FusedVerdict::UnclassifiedAnomaly {
@@ -1247,7 +1441,8 @@ mod tests {
         let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
         let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
         let stream = one_axis_projected_stream();
-        let report = assess_default(&stream, &suite).unwrap();
+        let scope = scope_for_stream(&stream);
+        let report = assess_default(&scope, &stream, &suite).unwrap();
 
         assert_eq!(report.correlations().len(), 1);
         assert_eq!(report.correlations()[0].axis(), 0);
@@ -1255,7 +1450,57 @@ mod tests {
             report.correlations()[0].assessment_binding(),
             Some(report.assessment_binding())
         );
-        assert!(report.assessment_binding().verifies(&stream, &suite));
+        assert!(report
+            .assessment_binding()
+            .verifies(&scope, &stream, &suite));
+    }
+
+    #[test]
+    fn degenerate_projection_axis_abstains_without_aborting_the_assessment() {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
+        let stream = stream_with_one_degenerate_projection_axis(3.0);
+        let scope = scope_for_stream(&stream);
+
+        let report = assess_default(&scope, &stream, &suite).unwrap();
+
+        assert_eq!(report.correlations().len(), 3);
+        assert_eq!(
+            report.correlations()[0].report().verdict(),
+            &CorrVerdict::Nominal
+        );
+        assert_eq!(
+            report.correlations()[1].report().verdict(),
+            &CorrVerdict::Nominal
+        );
+        assert_eq!(
+            report.correlations()[2].report().verdict(),
+            &CorrVerdict::InsufficientEvidence
+        );
+        assert_eq!(report.verdict(), &FusedVerdict::InsufficientEvidence);
+        assert!(report
+            .assessment_binding()
+            .verifies(&scope, &stream, &suite));
+    }
+
+    #[test]
+    fn degenerate_projection_axis_cannot_suppress_a_magnitude_alarm() {
+        let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+        let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
+        let stream = stream_with_one_degenerate_projection_axis(100.0);
+        let scope = scope_for_stream(&stream);
+
+        let report = assess_default(&scope, &stream, &suite).unwrap();
+
+        assert_eq!(report.baseline().verdict(), &Verdict::BroadDegradation);
+        assert_eq!(report.verdict(), &FusedVerdict::BroadDegradation);
+        assert_eq!(
+            report.correlations()[2].report().verdict(),
+            &CorrVerdict::InsufficientEvidence
+        );
+        assert!(report
+            .assessment_binding()
+            .verifies(&scope, &stream, &suite));
     }
 
     #[test]
@@ -1264,12 +1509,17 @@ mod tests {
         let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
         let stream_a = projected_stream();
         let stream_b = same_shape_different_stream();
-        let report_a = assess_default(&stream_a, &suite).unwrap();
-        let report_b = assess_default(&stream_b, &suite).unwrap();
+        let scope = scope_for_stream(&stream_a);
+        let report_a = assess_default(&scope, &stream_a, &suite).unwrap();
+        let report_b = assess_default(&scope, &stream_b, &suite).unwrap();
 
         assert_ne!(report_a.assessment_binding(), report_b.assessment_binding());
-        assert!(report_a.assessment_binding().verifies(&stream_a, &suite));
-        assert!(!report_a.assessment_binding().verifies(&stream_b, &suite));
+        assert!(report_a
+            .assessment_binding()
+            .verifies(&scope, &stream_a, &suite));
+        assert!(!report_a
+            .assessment_binding()
+            .verifies(&scope, &stream_b, &suite));
         assert!(
             combine_correlation_axes(&suite, report_a.baseline(), report_b.correlations(),)
                 .is_err()
@@ -1294,8 +1544,9 @@ mod tests {
         })
         .unwrap();
         let stream = projected_stream();
-        let report_a = assess_default(&stream, &suite_a).unwrap();
-        let report_b = assess_default(&stream, &suite_b).unwrap();
+        let scope = scope_for_stream(&stream);
+        let report_a = assess_default(&scope, &stream, &suite_a).unwrap();
+        let report_b = assess_default(&scope, &stream, &suite_b).unwrap();
 
         assert_ne!(suite_a.identity(), suite_b.identity());
         assert_eq!(
@@ -1326,8 +1577,10 @@ mod tests {
             axis_policy: suite_a.axis_policy(),
         })
         .unwrap();
-        let report_a = assess_default(&projected_stream(), &suite_a).unwrap();
-        let report_b = assess_default(&projected_stream(), &suite_b).unwrap();
+        let stream = projected_stream();
+        let scope = scope_for_stream(&stream);
+        let report_a = assess_default(&scope, &stream, &suite_a).unwrap();
+        let report_b = assess_default(&scope, &stream, &suite_b).unwrap();
 
         assert!(
             combine_correlation_axes(&suite_b, report_a.baseline(), report_a.correlations(),)
@@ -1364,7 +1617,8 @@ mod tests {
             })
             .collect::<Vec<_>>();
         let suite = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
-        let report = assess_default(&stream, &suite).unwrap();
+        let scope = scope_for_stream(&stream);
+        let report = assess_default(&scope, &stream, &suite).unwrap();
 
         assert!(report.correlations().is_empty());
         assert_eq!(report.verdict(), &FusedVerdict::InsufficientEvidence);

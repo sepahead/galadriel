@@ -13,6 +13,7 @@ import argparse
 import contextlib
 import hashlib
 import os
+import platform
 import shutil
 import stat
 import sys
@@ -30,6 +31,7 @@ from finalize_release import (
     QUALIFICATION_MANIFEST,
     QUALIFICATION_SIGNATURE,
     PublicationDurabilityError,
+    PublicationIntegrityError,
     load_canonical_object,
     publish_staged_output,
     qualification_tier_inventory,
@@ -65,6 +67,7 @@ MAX_ALLOWED_SIGNERS_BYTES = 4 * 1024
 MAX_TREE_ENTRIES = 100_000
 MAX_TREE_DEPTH = 128
 COPY_BLOCK_BYTES = 1024 * 1024
+REQUIRED_PYTHON = (3, 14, 6)
 
 TIER_ORDER = ("qualification", "closure")
 ASSET_NAMES = {
@@ -93,6 +96,16 @@ INNER_TIER_CONTRACTS = {
         ),
     },
 }
+
+
+def require_canonical_python() -> None:
+    """Require the Python runtime that defines the canonical asset bytes."""
+
+    if (
+        platform.python_implementation() != "CPython"
+        or sys.version_info[:3] != REQUIRED_PYTHON
+    ):
+        raise ReviewError("release asset operations require CPython 3.14.6")
 
 
 @dataclass(frozen=True)
@@ -1229,6 +1242,7 @@ def verify_release_assets(
 ) -> dict[str, Any]:
     """Authenticate and semantically verify one complete release-asset set."""
 
+    require_canonical_python()
     return _verify_release_assets(
         assets_root,
         allowed_signers,
@@ -1313,6 +1327,7 @@ def build_release_assets(
 ) -> Path:
     """Build, self-verify, and atomically publish a new four-file asset pack."""
 
+    require_canonical_python()
     qualification_path = _absolute(qualification_root)
     closure_path = _absolute(closure_root)
     destination = _absolute(output)
@@ -1406,6 +1421,8 @@ def build_release_assets(
         if _snapshot_tree(closure.root) != closure:
             raise ReviewError("closure evidence changed before publication")
         publish_staged_output(staging, destination)
+    except (PublicationDurabilityError, PublicationIntegrityError):
+        raise
     except BaseException as error:
         _remove_staging(staging, error)
         raise
@@ -1425,6 +1442,7 @@ def extract_release_assets(
 ) -> Path:
     """Verify and safely reconstruct both fixed-prefix evidence trees."""
 
+    require_canonical_python()
     assets = _absolute(assets_root)
     destination = _absolute(output)
     _assert_new_directory_destination(destination, "reconstruction output")
@@ -1446,6 +1464,8 @@ def extract_release_assets(
             extract_root=staging,
         )
         publish_staged_output(staging, destination)
+    except (PublicationDurabilityError, PublicationIntegrityError):
+        raise
     except BaseException as error:
         _remove_staging(staging, error)
         raise
@@ -1530,6 +1550,9 @@ def main(argv: list[str] | None = None) -> int:
                 expected_tag_object=arguments.expected_tag_object,
                 expected_tag_target=arguments.expected_tag_target,
             )
+    except PublicationIntegrityError as error:
+        print(f"integrity error after atomic rename: {error}", file=sys.stderr)
+        return 4
     except PublicationDurabilityError as error:
         print(f"error: {error}", file=sys.stderr)
         return 3

@@ -15,7 +15,7 @@
 | SHA-256 | Secure Hash Algorithm 256 |
 | SSH | Secure Shell |
 | UTC | Coordinated Universal Time |
-| URLs | Uniform Resource Locators |
+| URL | Uniform Resource Locator |
 | ZIP | ZIP archive format |
 
 Owner and release author: Sepehr Mahmoudian
@@ -49,7 +49,10 @@ Stage the final release inputs before you generate the active signed freeze pair
 Only the release operator can set the register to `FROZEN_AT_CANDIDATE`.
 
 The signed audit-input manifest is the only pre-commit evidence exception.
-It binds exact stage-zero index blobs and external inputs.
+It uses schema `galadriel.frozen-audit-inputs.v2`.
+It binds each release-input path, Git mode, blob identifier, SHA-256 value, and size.
+One bounded index capture supplies the source semantics and complete release-tool coverage.
+The external handoff inventory binds each regular-file mode.
 It does not bind a candidate commit or tree.
 The next signed commit creates the exact candidate identity.
 
@@ -58,7 +61,28 @@ Install the active pair at these paths:
 - `release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json`
 - `release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig`
 
-A later tracked change reopens the freeze.
+Use one bounded transaction to install the pair and generate the audit manifest.
+Use an independently obtained `ALLOWED_SIGNERS` file for each strict verification.
+Use the tracked signer file only as a consistency check.
+The frozen release-input set includes the requirements ledger.
+It excludes the active pair and the audit manifest.
+The audit manifest inventories the staged pair and excludes only itself.
+It uses schema `galadriel.release-audit-manifest.v2`.
+Each artifact row binds its path, Git mode, blob identifier, SHA-256 value, size, and purpose.
+Its semantic checks use bytes from one bounded stage-zero index capture.
+One held-root transaction compares the worktree with those captured identities.
+The signed candidate commit binds the complete tracked result.
+Generate and stage the requirements ledger before you generate the pair.
+Record its staged blob identifier.
+Stage the installed pair before you generate the audit manifest again.
+The second generation MUST NOT change the requirements-ledger blob.
+Stage the audit manifest after this check.
+Reject each untracked, nonignored path.
+Then, run strict freeze verification and release-audit verification.
+
+A release-input change during this transaction MUST abort the transaction.
+Generate a new signed pair after such a change.
+After the final generated inventory is staged, a tracked change reopens the freeze.
 Generate a new signed pair.
 Create a new signed candidate.
 Restart every candidate-bound check.
@@ -111,7 +135,10 @@ Restart every candidate-bound check.
    The changelog, support policy, and GitHub metadata also agree.
 6. The signed finalization manifest records exact artifacts and checksums.
    It records review dispositions, negative results, and residual risks.
-   It records a `GO` or `NARROWED_GO` decision for this source release.
+   It records `NARROWED_GO` for this source release.
+   It preserves every failed acceptance criterion and its exact disposition.
+   A `NO_GO` decision stops publication.
+   A `GO` decision is prohibited while an acceptance criterion fails.
 7. Finalization emits and signs a schema-valid `LOCAL-CONVERGENCE.json` file.
    All ten waves are `WAVE_ACCEPTED`.
    The task set is exactly T000 through T115.
@@ -154,19 +181,28 @@ cargo fetch --locked
 python3 scripts/secure_deployment.py check
 python3 -m unittest -v \
   scripts.tests.test_release_audit \
+  repo_work.tests.test_release_audit_snapshot \
+  repo_work.tests.test_evidence_batch_transaction \
+  repo_work.tests.test_file_mode_identity \
   repo_work.tests.test_package_release_assets \
   repo_work.tests.test_review_tools \
   repo_work.tests.test_task_dispositions \
   repo_work.tests.test_release_assurance \
+  repo_work.tests.test_candidate_evidence_bundle \
+  repo_work.tests.test_qualify_candidate_evidence \
   repo_work.tests.test_finalize_qualification \
   repo_work.tests.test_qualification_artifacts \
   repo_work.tests.test_host_process_bounds
 python3 repo_work/build_task_dispositions.py verify
 python3 repo_work/local_convergence.py schema --repo .
-python3 repo_work/freeze_audit_inputs.py verify \
+python3 repo_work/freeze_audit_inputs.py verify-lifecycle \
   --repo . \
   --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
   --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
+python3 repo_work/freeze_audit_inputs.py verify \
+  --repo . \
+  --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
+  --allowed-signers /independent/path/ALLOWED_SIGNERS
 python3 scripts/release_audit.py verify
 python3 repo_work/check_public_api.py
 cargo fmt --all --check
@@ -226,6 +262,21 @@ Keep their order from shard `0/4` through shard `3/4`.
 Use the agent-backed Ed25519 public-key handle from `user.signingkey`.
 Require that handle to match the independent allowed-signers file.
 
+Each exact mutation command uses environment schema `galadriel.mutation-environment.v2`.
+The command requires the Linux process file system (`procfs`), process file descriptors, and serialized child-subreaper ownership.
+It starts behind a stop-before-exec gate.
+It reaps the root only after the tracked candidate tree becomes extinct.
+It fails before process creation when a required host control is unavailable.
+It verifies the default disposition of the child-status signal (`SIGCHLD`) at each containment checkpoint.
+It also verifies the active child-subreaper state.
+A control change poisons the process and prevents verified success.
+The runner cleans a stable process file descriptor (`pidfd`) identity when it can prove extinction.
+It cannot signal an identity that escaped before stable capture during a subreaper control gap.
+A control change that starts and ends between checkpoints is not observable.
+The contract therefore requires exclusive single-threaded ownership by the trusted runner.
+An uninterruptible process can outlive the stop deadline and fails the run.
+This cleanup control is not a control group, container, or deployment-isolation boundary.
+
 ```bash
 set -euo pipefail
 signing_key="$(git config --get user.signingkey)"
@@ -276,7 +327,30 @@ The complete set has a 4 GiB limit.
 The host snapshot does not follow links or open blocking special files.
 It compares source, snapshot, quarantine, and installed identities.
 
-It parses only bounded JSON bytes captured from the verified snapshot.
+The summary uses schema `galadriel.evidence.summary.v3`.
+The manifest uses schema `galadriel.evidence.manifest.v3`.
+Acceptance uses profile `galadriel-0.9-frozen-acceptance-metrics-v3`.
+Bootstrap uses profile `splitmix64-rejection-group-metric-v1`.
+The bootstrap profile uses SplitMix64 with unbiased rejection sampling over complete tracks.
+
+The qualifier runs a separate `candidate-evidence-build` command.
+It builds `galadriel-evidence` with the release profile and the locked graph.
+The host creates a private directory with mode `0700`.
+It copies the executable into that directory with mode `0500`.
+The copy uses no-follow descriptors and binds the complete executable identity.
+
+The qualifier then runs the exact snapshot directly.
+The manifest runner digest must match that snapshot.
+
+The host parses only bounded bytes captured from the verified snapshot.
+It streams all trial records in exact order.
+It derives the accepted configuration from the frozen tracked input.
+
+It independently rebuilds the complete summary and report.
+It verifies the manifest and exact checksum document.
+It binds all identities to the exact candidate commit and tree.
+It evaluates acceptance only from the rebuilt holdout summary.
+Finalization repeats this semantic replay against the signed outer inventory.
 Only a run that uses `--deep` can have qualification status `PASS`.
 
 ```bash
@@ -307,9 +381,28 @@ It must retain exactly 15 two-run reproducibility comparisons.
 The comparisons cover one source archive, seven package archives, and seven software bills of materials.
 
 Each command uses a stop-before-exec gate and fixed resource limits.
+The host requires macOS `kqueue` and `/usr/bin/sandbox-exec`.
+It fails before candidate execution if either control is absent.
+The qualifier installs one mode-0500 dispatch for 19 required command names.
+It verifies every dispatch target before and after each bounded process.
+The dispatch binds direct Apple developer Git, its developer tools, and `CPython 3.14.6`.
+The sandbox denies direct execution of `/usr/bin/git` and `/usr/bin/python3`.
+Critical host Git and SSH operations pin direct Apple developer Git, `/usr/bin/ssh-add`, and `/usr/bin/ssh-keygen`.
+The host verifies each root-owned no-follow identity before and after execution.
+It pins `sandbox-exec` to `/usr/bin/sandbox-exec` and its expected byte identity.
+It records the resolved path, owner, group, and mode.
+It removes dynamic-loader and toolchain selectors from host command environments.
+
+The candidate sandbox denies signal operations by default.
+It permits signals only to self and children.
+
+The qualifier signals only the original process group before it reaps the root.
+It does not send a signal to an escaped numeric process identifier.
+An observed escaped sandbox identity fails the run.
+After root reap, it uses only read-only extinction checks.
 macOS does not provide atomic recursive descendant tracking.
 A short-lived reparented process can exit between scans.
-The process scan detects a detached process that remains active.
+The sandbox-identity scan detects an active detached process that retains that identity.
 
 The inherited sandbox and resource limits apply before candidate execution.
 A sandboxed process can request work from an existing external service.
@@ -317,6 +410,28 @@ The process scan cannot attribute that external service work.
 
 The license inventory covers the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope.
 It does not cover all 437 packages for every target.
+
+The frozen evidence design uses 100 holdout tracks for each condition.
+`GLD-090-ACC-001` has a zero-event upper Garwood bound of `0.3689904` episodes per hour.
+Its limit is `0.10` episodes per hour.
+It needs at least 369 tracks.
+
+`GLD-090-ACC-006` has a minimum Hoeffding radius of `0.1358102`.
+Its limit is `0.05`.
+It needs at least 738 tracks.
+
+The current condition grid and 25,000,000-observation ceiling permit at most 248 holdout tracks.
+Thus, the frozen suite cannot pass these two criteria.
+Preserve both failures in `candidate-acceptance.json`.
+
+Executable qualification and candidate acceptance are separate results.
+Passing executable gates with failed acceptance gives `release_gate=NARROWED_REVIEW_REQUIRED`.
+The qualifier does not make the publication decision.
+The signed human decision must select `NARROWED_GO` or `NO_GO`.
+For publication, it must select `NARROWED_GO`.
+It must map each failed criterion to removed claim `CLM-007` and a residual risk.
+It must retain every other failed criterion in the same way.
+It cannot select `GO`.
 
 Create the signed T114 review and detached-signed canonical version 3 decision.
 Create the signed ordered task dispositions.
@@ -371,12 +486,19 @@ It publishes only after those actions pass.
 An error before the atomic no-replace rename leaves the requested output absent.
 An abandoned hidden stage directory is never a valid closure tier.
 
-Atomic publication needs macOS `renamex_np` or Linux `renameat2` support.
+Atomic publication needs macOS `renameatx_np` or Linux `renameat2` support.
+The finalizer uses held directory descriptors for the rename.
 An unsupported platform fails closed before publication.
 Status 3 means that the rename committed a complete output.
-The tool did not confirm durability, cleanup, or result output.
+
+The tool did not confirm at least one of durability, cleanup, or result output.
 A cleanup failure also reports `publication_status: COMMITTED_WITH_CLEANUP_WARNING` and the output path.
 Retain that output.
+
+Status 4 means that the rename completed without confirmed destination identity or tree completeness.
+Do not describe the requested path as a complete output.
+Preserve the parent directory.
+Stop publication and investigate the path identities.
 
 Resolve each reported snapshot path.
 Run the independent verification below before you use or remove the output.
@@ -457,6 +579,10 @@ python3 repo_work/local_convergence.py verify \
    Retain that path and verify it independently.
    Resolve the durability warning before upload.
    Do not repeat or delete the output without verification.
+
+   Exit status 4 means that the rename completed without confirmed output integrity.
+   Stop asset publication.
+   Preserve the parent directory and investigate the path identities.
 
    The directory must contain exactly:
 
@@ -555,6 +681,7 @@ python3 repo_work/local_convergence.py verify \
    ```
 
    Apply the same retain-and-verify rule if reconstruction reports status 3.
+   If reconstruction reports status 4, preserve its parent directory and stop.
 
    Reconstruction already authenticates both tier manifests with the independent trust root.
    It also verifies both exact candidate identities, complete inventories, and `SHA256SUMS` files.
@@ -596,7 +723,7 @@ python3 repo_work/local_convergence.py verify \
    Run the locked build, test, and documentation gates from that downloaded source.
 7. Publish the draft only after each authenticated-download check passes.
    Also wait until Coordinated Universal Time (UTC) reaches the declared release date.
-   Stop if the UTC date is later than `2026-07-24`.
+   Stop if the UTC date is later than `2026-07-25`.
    Update every declared release date.
    Create and qualify a new candidate.
 

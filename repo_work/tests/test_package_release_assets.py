@@ -417,6 +417,44 @@ class PackageReleaseAssetsTest(unittest.TestCase):
             self.assertLess(asset["size_bytes"], 2 * 1024**3)
             self.assertIn("SHA256SUMS", [row["path"] for row in asset["files"]])
 
+    def test_public_operations_require_the_canonical_python_runtime(self) -> None:
+        operations = (
+            lambda: pack.verify_release_assets(
+                self.root / "missing-assets",
+                self.allowed_signers,
+                **self.expectations(),
+            ),
+            lambda: pack.build_release_assets(
+                self.qualification,
+                self.closure,
+                self.root / "wrong-python-assets",
+                self.key,
+                self.allowed_signers,
+                candidate_commit=COMMIT,
+                candidate_tree=TREE,
+                tag_name=pack.TAG_NAME,
+                tag_object=TAG_OBJECT,
+                tag_target=COMMIT,
+            ),
+            lambda: pack.extract_release_assets(
+                self.root / "missing-assets",
+                self.allowed_signers,
+                self.root / "wrong-python-reconstruction",
+                **self.expectations(),
+            ),
+        )
+        with mock.patch.object(
+            pack.platform,
+            "python_implementation",
+            return_value="PyPy",
+        ):
+            for operation in operations:
+                with self.subTest(operation=operation), self.assertRaisesRegex(
+                    ReviewError,
+                    "require CPython 3.14.6",
+                ):
+                    operation()
+
     def test_cli_verify_reconstructs_inner_tiers_in_a_private_directory(
         self,
     ) -> None:
@@ -634,6 +672,7 @@ class PackageReleaseAssetsTest(unittest.TestCase):
             (ReviewError("review failure"), 2),
             (OSError("operating-system failure"), 2),
             (pack.PublicationDurabilityError("durability uncertain"), 3),
+            (pack.PublicationIntegrityError("integrity unconfirmed"), 4),
         )
         for error, expected in cases:
             with self.subTest(error=type(error).__name__):
@@ -643,6 +682,143 @@ class PackageReleaseAssetsTest(unittest.TestCase):
                 ):
                     self.assertEqual(pack.main(arguments), expected)
                 self.assertIn(str(error), stderr.getvalue())
+
+    def test_cli_build_preserves_replaced_staging_after_publication_error(
+        self,
+    ) -> None:
+        cases = (
+            ("directory", pack.PublicationDurabilityError, 3),
+            ("symlink", pack.PublicationIntegrityError, 4),
+        )
+        for replacement, error_type, expected_status in cases:
+            with self.subTest(replacement=replacement):
+                output = self.root / f"build-{replacement}"
+                observed_staging: list[Path] = []
+                message = f"{replacement} build publication failure"
+
+                def fail_after_rename(staging: Path, destination: Path) -> None:
+                    staging.rename(destination)
+                    observed_staging.append(staging)
+                    if replacement == "directory":
+                        staging.mkdir()
+                        (staging / "unrelated.txt").write_text(
+                            "unrelated replacement\n",
+                            encoding="utf-8",
+                        )
+                    else:
+                        staging.symlink_to(destination, target_is_directory=True)
+                    raise error_type(message)
+
+                arguments = [
+                    "build",
+                    "--qualification-root",
+                    str(self.qualification),
+                    "--closure-root",
+                    str(self.closure),
+                    "--out",
+                    str(output),
+                    "--signing-key",
+                    str(self.key),
+                    "--allowed-signers",
+                    str(self.allowed_signers),
+                    "--candidate-commit",
+                    COMMIT,
+                    "--candidate-tree",
+                    TREE,
+                    "--tag-object",
+                    TAG_OBJECT,
+                    "--tag-target",
+                    COMMIT,
+                ]
+                with (
+                    mock.patch.object(
+                        pack,
+                        "publish_staged_output",
+                        side_effect=fail_after_rename,
+                    ),
+                    mock.patch("sys.stderr", new_callable=io.StringIO) as stderr,
+                ):
+                    self.assertEqual(pack.main(arguments), expected_status)
+
+                self.assertTrue(output.is_dir())
+                self.assertEqual(len(observed_staging), 1)
+                staging = observed_staging[0]
+                if replacement == "directory":
+                    self.assertEqual(
+                        (staging / "unrelated.txt").read_text(encoding="utf-8"),
+                        "unrelated replacement\n",
+                    )
+                else:
+                    self.assertTrue(staging.is_symlink())
+                    self.assertEqual(os.readlink(staging), str(output))
+                self.assertIn(message, stderr.getvalue())
+
+    def test_cli_extract_preserves_replaced_staging_after_publication_error(
+        self,
+    ) -> None:
+        assets = self.build("extract-publication-assets")
+        cases = (
+            ("directory", pack.PublicationDurabilityError, 3),
+            ("symlink", pack.PublicationIntegrityError, 4),
+        )
+        for replacement, error_type, expected_status in cases:
+            with self.subTest(replacement=replacement):
+                output = self.root / f"extract-{replacement}"
+                observed_staging: list[Path] = []
+                message = f"{replacement} extract publication failure"
+
+                def fail_after_rename(staging: Path, destination: Path) -> None:
+                    staging.rename(destination)
+                    observed_staging.append(staging)
+                    if replacement == "directory":
+                        staging.mkdir()
+                        (staging / "unrelated.txt").write_text(
+                            "unrelated replacement\n",
+                            encoding="utf-8",
+                        )
+                    else:
+                        staging.symlink_to(destination, target_is_directory=True)
+                    raise error_type(message)
+
+                arguments = [
+                    "extract",
+                    "--assets",
+                    str(assets),
+                    "--allowed-signers",
+                    str(self.allowed_signers),
+                    "--out",
+                    str(output),
+                    "--expected-candidate",
+                    COMMIT,
+                    "--expected-tree",
+                    TREE,
+                    "--expected-tag-object",
+                    TAG_OBJECT,
+                    "--expected-tag-target",
+                    COMMIT,
+                ]
+                with (
+                    mock.patch.object(
+                        pack,
+                        "publish_staged_output",
+                        side_effect=fail_after_rename,
+                    ),
+                    mock.patch("sys.stderr", new_callable=io.StringIO) as stderr,
+                ):
+                    self.assertEqual(pack.main(arguments), expected_status)
+
+                self.assertTrue(output.is_dir())
+                self.assertEqual(len(observed_staging), 1)
+                staging = observed_staging[0]
+                if replacement == "directory":
+                    self.assertEqual(
+                        (staging / "unrelated.txt").read_text(encoding="utf-8"),
+                        "unrelated replacement\n",
+                    )
+                else:
+                    self.assertTrue(staging.is_symlink())
+                    self.assertEqual(os.readlink(staging), str(output))
+                self.assertIn(message, stderr.getvalue())
 
     def test_archives_and_manifest_are_deterministic(self) -> None:
         first = self.build("first")

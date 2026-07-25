@@ -6,13 +6,15 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
-from common import ReviewError, canonical_json, git
+from common import ReviewError, canonical_json, digest_rooted_regular_file, git
 
 
 TEXT_EXTENSIONS = {
@@ -70,6 +72,12 @@ LANGUAGES = {
     ".yaml": "YAML",
     ".yml": "YAML",
 }
+
+MAX_TRACKED_FILES = 100_000
+MAX_TRACKED_BLOB_BYTES = 256 * 1024 * 1024
+MAX_TRACKED_AGGREGATE_BYTES = 4 * 1024 * 1024 * 1024
+MAX_SUSPICIOUS_FINDINGS = 100_000
+MAX_IGNORED_PATHS = 100_000
 
 REVIEWER_BY_LANGUAGE = {
     "Rust": "Sepehr Mahmoudian / Rust and statistical implementation",
@@ -162,6 +170,7 @@ def criticality(path: str) -> tuple[bool, bool, bool, bool]:
     } or path.startswith(("deploy/", "crates/galadriel-ncp/"))
     return public, security, science, authority
 
+
 SUSPICIOUS = re.compile(
     r"(?i)\b(TODO|FIXME|HACK|XXX|temporary|experimental|unimplemented|"
     r"unreachable|unwrap|expect|panic|unsafe|fallback|default)\b"
@@ -169,6 +178,7 @@ SUSPICIOUS = re.compile(
 
 LEDGER_COLUMNS = [
     "path",
+    "git_mode",
     "git_blob_id",
     "sha256",
     "bytes",
@@ -220,9 +230,9 @@ def parse_index(repo: Path) -> list[tuple[str, str, str]]:
         mode, object_id, stage = metadata.decode("ascii").split()
         if stage != "0":
             raise ReviewError("unmerged index entries cannot be reviewed")
-        rows.append(
-            (mode, object_id, encoded_path.decode("utf-8", "surrogateescape"))
-        )
+        rows.append((mode, object_id, encoded_path.decode("utf-8", "surrogateescape")))
+        if len(rows) > MAX_TRACKED_FILES:
+            raise ReviewError("tracked-file index exceeds the file-count limit")
     return rows
 
 
@@ -231,7 +241,16 @@ def blob_bytes(repo: Path, mode: str, object_id: str) -> bytes:
 
     if mode == "160000":
         return object_id.encode("ascii") + b"\n"
-    return bytes(git(repo, "cat-file", "blob", object_id, text=False))
+    return bytes(
+        git(
+            repo,
+            "cat-file",
+            "blob",
+            object_id,
+            text=False,
+            max_bytes=MAX_TRACKED_BLOB_BYTES,
+        )
+    )
 
 
 def decode_text(path: str, data: bytes) -> str | None:
@@ -246,17 +265,72 @@ def decode_text(path: str, data: bytes) -> str | None:
         return None
 
 
-def tracked_worktree_bytes(repo: Path, mode: str, path: str) -> bytes | None:
-    """Return working-tree material in the same representation as a Git blob."""
+def tracked_worktree_digest(
+    repo: Path, mode: str, path: str, *, expected_size: int
+) -> tuple[str, int] | None:
+    """Return the stable working-tree digest for one matching indexed mode."""
 
     filesystem_path = repo / path
     try:
         if mode == "120000":
-            return os.readlink(filesystem_path).encode("utf-8", "surrogateescape")
+            data = os.readlink(filesystem_path).encode("utf-8", "surrogateescape")
+            return hashlib.sha256(data).hexdigest(), len(data)
         if mode == "160000":
             return None
-        return filesystem_path.read_bytes()
-    except OSError:
+        if mode not in {"100644", "100755"}:
+            return None
+
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_NONBLOCK", 0)
+        )
+        descriptor = os.open(filesystem_path, flags)
+        try:
+            before = os.fstat(descriptor)
+            before_identity = (
+                before.st_dev,
+                before.st_ino,
+                before.st_mode,
+                before.st_nlink,
+                before.st_size,
+                before.st_mtime_ns,
+                before.st_ctime_ns,
+            )
+            if (
+                not stat.S_ISREG(before.st_mode)
+                or before.st_nlink != 1
+                or bool(before.st_mode & stat.S_IXUSR) != (mode == "100755")
+            ):
+                return None
+            result = digest_rooted_regular_file(
+                repo,
+                path,
+                max_bytes=expected_size,
+                expected_size=expected_size,
+                label=f"tracked working-tree file {path!r}",
+                max_directory_entries=MAX_TRACKED_FILES,
+            )
+            after = os.fstat(descriptor)
+            after_identity = (
+                after.st_dev,
+                after.st_ino,
+                after.st_mode,
+                after.st_nlink,
+                after.st_size,
+                after.st_mtime_ns,
+                after.st_ctime_ns,
+            )
+            if after_identity != before_identity or (result.device, result.inode) != (
+                before.st_dev,
+                before.st_ino,
+            ):
+                return None
+            return result.sha256, result.size_bytes
+        finally:
+            os.close(descriptor)
+    except (OSError, ReviewError):
         return None
 
 
@@ -289,9 +363,13 @@ def main() -> int:
         ledger_rows: list[dict[str, object]] = []
         manifest_rows: list[dict[str, object]] = []
         findings: list[dict[str, object]] = []
+        aggregate_bytes = 0
 
         for mode, object_id, relative in parse_index(repo):
             data = blob_bytes(repo, mode, object_id)
+            aggregate_bytes += len(data)
+            if aggregate_bytes > MAX_TRACKED_AGGREGATE_BYTES:
+                raise ReviewError("tracked blobs exceed the aggregate byte limit")
             text = decode_text(relative, data)
             line_count = (
                 0
@@ -299,8 +377,17 @@ def main() -> int:
                 else text.count("\n") + (1 if text and not text.endswith("\n") else 0)
             )
             digest = hashlib.sha256(data).hexdigest()
-            worktree = tracked_worktree_bytes(repo, mode, relative)
-            matches = worktree is None if mode == "160000" else worktree == data
+            worktree = tracked_worktree_digest(
+                repo,
+                mode,
+                relative,
+                expected_size=len(data),
+            )
+            matches = (
+                worktree is None
+                if mode == "160000"
+                else worktree == (digest, len(data))
+            )
             language = classify_language(relative, text)
             generator = generated_by(relative)
             public, security, science, authority = criticality(relative)
@@ -310,6 +397,7 @@ def main() -> int:
             ledger_rows.append(
                 {
                     "path": relative,
+                    "git_mode": mode,
                     "git_blob_id": object_id,
                     "sha256": digest,
                     "bytes": len(data),
@@ -360,9 +448,15 @@ def main() -> int:
             if not matches:
                 raise ReviewError(f"working tree differs from indexed blob: {relative}")
             if text is not None:
-                for line_number, line in enumerate(text.splitlines(), 1):
-                    tokens = sorted({match.group(0).lower() for match in SUSPICIOUS.finditer(line)})
+                for line_number, line in enumerate(io.StringIO(text), 1):
+                    tokens = sorted(
+                        {match.group(0).lower() for match in SUSPICIOUS.finditer(line)}
+                    )
                     if tokens:
+                        if len(findings) >= MAX_SUSPICIOUS_FINDINGS:
+                            raise ReviewError(
+                                "suspicious-token findings exceed the item limit"
+                            )
                         findings.append(
                             {
                                 "path": relative,
@@ -394,6 +488,8 @@ def main() -> int:
             for entry in ignored_raw.split(b"\0")
             if entry.startswith(b"!! ")
         )
+        if len(ignored) > MAX_IGNORED_PATHS:
+            raise ReviewError("ignored-path inventory exceeds the item limit")
         head = str(git(repo, "rev-parse", "HEAD")).strip()
         tree = str(git(repo, "rev-parse", "HEAD^{tree}")).strip()
         manifest = {

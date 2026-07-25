@@ -51,6 +51,10 @@ python3 repo_work/make_review_packets.py audit/generated/FILE_REVIEW_LEDGER.csv 
 python3 repo_work/scan_claim_language.py --repo . --out audit/generated/CLAIM_LANGUAGE.json
 ```
 
+The file ledger binds each tracked path, Git mode, blob identifier, SHA-256 value, and size.
+Each review packet carries the same Git mode and blob identifier.
+The claim scan includes tracked Markdown, Markdown configuration, reStructuredText, and text files.
+
 The feature-graph gate reads `.ncp-consumer` one time through a bounded regular-file descriptor.
 The descriptor does not follow links or block.
 The gate binds the exact PID, NCP, Zenoh, and Tokio feature sets.
@@ -81,6 +85,10 @@ At the start, the release operator sets it to `FROZEN_AT_CANDIDATE`.
 Stage that change with every final release input.
 Require each staged blob to equal its worktree file.
 
+Generate the requirements ledger before you generate the signed pair.
+Stage the ledger and record its exact blob identifier.
+Do not stage the interim audit manifest.
+
 Generate the artifacts in a new temporary directory.
 The tool refuses a manifest, signer file, or signature that already exists.
 Create a new immutable active manifest pair.
@@ -92,9 +100,16 @@ Then, regenerate the audit inventory:
 ```bash
 set -euo pipefail
 handoff_root=/path/to/SEPAHEAD_V1_0_CURRENT_HEAD_MAX_EFFORT_MASTER_HANDOFF
+independent_allowed_signers=/independent/path/ALLOWED_SIGNERS
 freeze_dir="$(mktemp -d "${TMPDIR:-/tmp}/galadriel-0.9.0-freeze.XXXXXX")"
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
+test "$(basename "$independent_allowed_signers")" = ALLOWED_SIGNERS
+python3 scripts/release_audit.py generate
+git add release/0.9.0/requirements-ledger.json
+ledger_blob="$(git rev-parse :release/0.9.0/requirements-ledger.json)"
+test "$(git hash-object release/0.9.0/requirements-ledger.json)" = \
+  "$ledger_blob"
 python3 repo_work/freeze_audit_inputs.py \
   --repo . \
   --handoff-root "$handoff_root" \
@@ -108,25 +123,57 @@ python3 repo_work/freeze_audit_inputs.py verify \
   --repo . \
   --handoff-root "$handoff_root" \
   --out "$freeze_dir/FROZEN-AUDIT-INPUTS-0.9.0.json" \
-  --allowed-signers "$freeze_dir/ALLOWED_SIGNERS"
-cmp "$freeze_dir/ALLOWED_SIGNERS" release/0.9.0/audit/ALLOWED_SIGNERS
+  --allowed-signers "$independent_allowed_signers"
+cmp "$freeze_dir/ALLOWED_SIGNERS" "$independent_allowed_signers"
+cmp "$independent_allowed_signers" release/0.9.0/audit/ALLOWED_SIGNERS
 install -m 0644 "$freeze_dir/FROZEN-AUDIT-INPUTS-0.9.0.json" \
   release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json
 install -m 0644 "$freeze_dir/FROZEN-AUDIT-INPUTS-0.9.0.json.sig" \
   release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig
+git add \
+  release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
+  release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig
 python3 scripts/release_audit.py generate
+test "$(git rev-parse :release/0.9.0/requirements-ledger.json)" = \
+  "$ledger_blob"
+test "$(git hash-object release/0.9.0/requirements-ledger.json)" = \
+  "$ledger_blob"
+git diff --exit-code -- release/0.9.0/requirements-ledger.json
+git add release/0.9.0/audit-manifest.json
+git diff --exit-code
+test -z "$(git ls-files --others --exclude-standard)"
 python3 repo_work/freeze_audit_inputs.py verify \
   --repo . \
   --handoff-root "$handoff_root" \
   --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
-  --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
+  --allowed-signers "$independent_allowed_signers"
 python3 scripts/release_audit.py verify
+git diff --cached --check
 ```
 
 The semantic verifier checks canonical manifest bytes and the detached signature.
+It authenticates the pair with the independently obtained allowed-signers file.
+The tracked allowed-signers file is only a consistency check.
 It checks the ordered release-input set and current digests.
 It also checks baseline object bindings, handoff cross-bindings, and signer metadata.
 The `generate` and `verify` actions require `FROZEN_AT_CANDIDATE`.
+The first generation finalizes the frozen requirements ledger.
+The second generation inventories the staged active pair.
+Only the audit manifest can change during the second generation.
+The frozen release-input set excludes the active pair and audit manifest.
+The audit manifest excludes only itself from its tracked inventory.
+The signed candidate commit binds all three output paths.
+
+The audit manifest uses schema `galadriel.release-audit-manifest.v2`.
+Each artifact row binds its path, Git mode, blob identifier, SHA-256 value, size, and purpose.
+One bounded stage-zero index capture supplies all semantic source bytes.
+One bounded Git batch authenticates every captured blob identifier.
+One held-root transaction compares each worktree regular file with the captured identity.
+
+A release-input change during the transaction invalidates the temporary pair.
+Remove the active pair.
+Return the threat register to the living state.
+Then, correct the input and restart the complete transaction.
 
 Continuous integration uses `verify-lifecycle`.
 In the living state, this action requires the active pair to be absent.
@@ -139,8 +186,10 @@ They also validate the declared child-archive and task-ledger digests.
 
 The recorded origin and tag list are historical discovery inputs.
 The verifier validates their shape but does not compare them with mutable live references.
-During the pre-commit freeze, release-input digests bind exact stage-zero index blobs.
+The version 2 freeze binds each release-input path, Git mode, blob identifier, SHA-256 value, and size.
+One bounded index capture supplies the source semantics and complete release-tool coverage.
 Each blob must equal its current worktree file.
+The external handoff inventory also binds each regular-file mode.
 Candidate qualification accepts those bytes only from a clean checkout at the exact signed commit.
 
 The signed audit-input manifest is the only pre-commit evidence exception.
@@ -152,11 +201,11 @@ Only the release operator can set the threat register to `FROZEN_AT_CANDIDATE`.
 The operator makes that change with the final staged release inputs.
 A later tracked change reopens the freeze and invalidates candidate-bound evidence.
 
-For the first trust-file bootstrap, confirm that no tracked trust file exists.
+For the initial trust-file setup, confirm that no tracked trust file exists.
 Then, independently inspect the temporary public key.
 Install `ALLOWED_SIGNERS` only after that inspection.
 
-A key rotation after bootstrap is a release-boundary change.
+A key rotation after initial setup is a release-boundary change.
 Replace the tracked public key deliberately.
 Regenerate and sign the frozen manifest again.
 Restart candidacy and each candidate-bound check.
@@ -193,6 +242,21 @@ Inspect each directory.
 Each job contains one broad outcome and one broad shard receipt.
 Shard `2/4` also contains three focused outcomes and one focused receipt.
 All four broad shards and all three focused outcomes are exact-candidate gates.
+
+Each exact mutation command uses environment schema `galadriel.mutation-environment.v2`.
+The command requires the Linux process file system (`procfs`), process file descriptors, and serialized child-subreaper ownership.
+It starts behind a stop-before-exec gate.
+It reaps the root only after the tracked candidate tree becomes extinct.
+It fails before process creation when a required host control is unavailable.
+It verifies the default disposition of the child-status signal (`SIGCHLD`) at each containment checkpoint.
+It also verifies the active child-subreaper state.
+A control change poisons the process and prevents verified success.
+The runner cleans a stable process file descriptor (`pidfd`) identity when it can prove extinction.
+It cannot signal an identity that escaped before stable capture during a subreaper control gap.
+A control change that starts and ends between checkpoints is not observable.
+The contract therefore requires exclusive single-threaded ownership by the trusted runner.
+An uninterruptible process can outlive the stop deadline and fails the run.
+This cleanup control is not a control group, container, or deployment-isolation boundary.
 
 The separate observational mutation-baseline job is residual evidence.
 It is not a successful release gate.
@@ -244,6 +308,7 @@ It binds the focused runs to the exact Cargo build and test commands.
 It binds each broad descriptor to its complete package, file, span, and mutation identity.
 A broad descriptor binds a complete function identity or a null value.
 The null value records the absence of an enclosing function.
+
 The synchronization records include the named `non-blocking` tests.
 The acceptance record contains exactly 26 mutants.
 It requires 23 caught mutants and three exact compile-unviable `Default::default()` replacements.
@@ -305,10 +370,28 @@ It must retain exactly 15 two-run reproducibility comparisons.
 These comparisons cover one source archive, seven package archives, and seven software bills of materials.
 
 Each command uses a stop-before-exec gate and fixed resource limits.
+The host requires macOS `kqueue` and `/usr/bin/sandbox-exec`.
+The qualifier installs one mode-0500 dispatch for 19 required command names.
+It verifies every dispatch target before and after each bounded process.
+The dispatch binds direct Apple developer Git, its developer tools, and `CPython 3.14.6`.
+The sandbox denies direct execution of `/usr/bin/git` and `/usr/bin/python3`.
+Critical host Git and SSH operations pin direct Apple developer Git, `/usr/bin/ssh-add`, and `/usr/bin/ssh-keygen`.
+The host verifies each root-owned no-follow identity before and after execution.
+It pins `sandbox-exec` to `/usr/bin/sandbox-exec` and its expected byte identity.
+It records the resolved path, owner, group, and mode.
+It removes dynamic-loader and toolchain selectors from host command environments.
+
+The candidate sandbox denies signal operations by default.
+It permits signals only to self and children.
+
 The macOS tracker observes the process group and scans for the inherited sandbox identity.
+The tracker signals only the original group before it reaps the root.
+It does not send a signal to an escaped numeric process identifier.
+An observed escaped sandbox identity fails the run.
+After root reap, it uses only read-only extinction checks.
 macOS does not provide atomic recursive descendant tracking.
 A short-lived reparented process can exit between scans.
-The process scan detects a detached process that remains active.
+The sandbox-identity scan detects an active detached process that retains that identity.
 
 The inherited sandbox and resource limits apply before candidate execution.
 A sandboxed process can request work from an existing external service.
@@ -372,9 +455,56 @@ It renames the verified snapshot into the retained path.
 It compares the quarantined source and installed snapshot with the verified snapshot.
 It fails closed on any drift.
 
-The host parses only `config.json`, `manifest.json`, and `summary.json`.
-It parses the bounded bytes captured from the verified snapshot.
+Candidate evidence uses these exact identifiers:
+
+- trial schema `galadriel.evidence.trial.v3`
+- summary schema `galadriel.evidence.summary.v3`
+- manifest schema `galadriel.evidence.manifest.v3`
+- acceptance profile `galadriel-0.9-frozen-acceptance-metrics-v3`
+- bootstrap profile `splitmix64-rejection-group-metric-v1`
+
+The bootstrap profile samples complete tracks with SplitMix64 and unbiased rejection sampling.
+
+The qualifier builds the release evidence runner in a separate retained command.
+It copies the built executable into a private mode-`0700` host directory.
+The executable copy has mode `0500`.
+The copy uses no-follow descriptors and a bounded byte count.
+The qualifier executes the exact snapshot directly.
+The command receipt binds its direct executable identity.
+The evidence manifest must bind the same runner digest.
+
+The host parses bounded bytes from the verified snapshot.
+It streams `trials.jsonl` through a held no-follow descriptor.
+It verifies exact order, schema, identities, trace states, and paired detector invariants.
+It derives `config.json` from the frozen tracked input.
+
+It independently rebuilds `summary.json` from validated trial projections.
+It independently renders `report.md`.
+It verifies the exact manifest and five-row `SHA256SUMS` document.
+It compares the six-file tree before and after replay.
 It does not reopen candidate-writable JSON for acceptance decisions.
+
+The replay binds the exact candidate commit and tree.
+It binds `Cargo.toml`, `Cargo.lock`, the fixture, toolchain, target, and runner executable.
+Finalization repeats the replay from the signed qualification snapshot.
+It compares the exact six files with the signed outer inventory.
+
+The trusted host summary supplies the acceptance input.
+A candidate-provided summary cannot certify itself.
+This replay verifies internal contract agreement.
+It does not prove statistical model validity or field calibration.
+
+The frozen 100-track design cannot pass two interval criteria.
+`GLD-090-ACC-001` needs at least 369 tracks under its zero-event Garwood bound.
+`GLD-090-ACC-006` needs at least 738 tracks under its Hoeffding bound.
+The frozen grid and observation ceiling permit at most 248 holdout tracks.
+
+Executable qualification can pass while acceptance fails.
+This combination records `release_gate=NARROWED_REVIEW_REQUIRED`.
+The qualifier does not select a publication disposition.
+A signed human decision must select `NARROWED_GO` or `NO_GO`.
+It must preserve every failed criterion and residual risk.
+It cannot select `GO` while acceptance fails.
 
 It refuses these conditions:
 
@@ -463,7 +593,7 @@ It snapshots only the canonical public fields.
 The supplied decision already has the detached `galadriel-release-decision` signature.
 Finalization retains those exact bytes and does not create a second self-referential decision.
 It stages, verifies, and flushes the complete tier before one atomic no-replace same-parent rename.
-Thus, the requested path never contains a partial result.
+The publication operation does not place a partial staged tree at the requested path.
 Failures before publication leave the path absent.
 
 Status 3 means that the rename committed a complete output.
@@ -473,7 +603,12 @@ That result names the complete output.
 Before use, independently verify the retained bundle.
 Resolve each retained snapshot path.
 
-Atomic no-replace publication requires macOS `renamex_np` or a Linux libc that exposes `renameat2`.
+Status 4 means that the rename completed without confirmed destination identity or tree completeness.
+The requested path is not a confirmed output.
+Preserve the parent directory and stop publication.
+
+Atomic no-replace publication requires macOS `renameatx_np` or a Linux libc that exposes `renameat2`.
+The finalizer uses held directory descriptors for the rename.
 Other platforms fail closed before publication.
 Do not replace finalization with a check-then-rename sequence.
 
@@ -512,8 +647,21 @@ Binary, symbolic-link, generated, and data paths remain separate review items.
 External comments remain open until an identified human records them.
 
 `verify_evidence_manifest.py` verifies a strict JSON artifact manifest.
-It does not follow paths outside the selected root.
-It rejects duplicate keys, duplicate paths, non-regular artifacts, and digest or size drift.
+It accepts a manifest of at most 4 MiB.
+It accepts at most 4,096 artifact rows.
+Each declared artifact can contain at most 1 GiB.
+The declared aggregate can contain at most 4 GiB.
+
+Each artifact path must use canonical POSIX relative-path syntax.
+The stored path name must use the same spelling.
+The verifier reads all declared rows in one held-root transaction.
+It opens each path component through held no-follow descriptors.
+It rechecks each touched file, directory, and lexical root at transaction end.
+It rejects links, special files, multiply linked files, path replacement, and content change.
+It also rejects duplicate keys, duplicate paths, and digest or size drift.
+
+The verifier checks only the declared artifacts.
+It does not prove that the selected root contains no other file.
 
 <!-- BEGIN RELEASE-ASSET-PACKAGER -->
 ## Deterministic GitHub release evidence assets
@@ -598,6 +746,11 @@ Retain the output.
 Verify it independently.
 Before upload, resolve the parent-directory durability uncertainty.
 Do not repeat or delete the output without verification.
+
+Exit status 4 means that the rename completed without confirmed output integrity.
+Preserve the parent directory.
+Stop asset publication and investigate the path identities.
+The packager does not remove a replacement at the former staging path after either status.
 
 The audit qualifies canonical asset construction, verification, and reconstruction with `CPython 3.14.6`.
 A different interpreter can emit different PAX bytes and fail closed.

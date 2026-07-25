@@ -1,9 +1,10 @@
 #![forbid(unsafe_code)]
-//! Reproducible, machine-readable post-audit evidence runner.
+//! Generates reproducible machine-readable post-audit evidence.
 //!
-//! This binary intentionally evaluates the streaming NIS baseline and the default
-//! signed-correlation fusion path. PID remains a terminal-only replay experiment in
-//! the current product, so this runner does not invent a PID assessment cadence.
+//! This binary evaluates the streaming normalized innovation squared (NIS) baseline.
+//! It also evaluates the default signed-correlation fusion path.
+//! Partial information decomposition (PID) remains a separate terminal research study.
+//! This runner does not create a PID assessment cadence.
 
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::env;
@@ -21,7 +22,7 @@ use galadriel_core::{
 };
 use galadriel_eval::wilson_ci;
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use serde::de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -31,12 +32,13 @@ use thiserror::Error;
 
 const ARTIFACT_SCHEMA_VERSION: u32 = 1;
 const TRIAL_SCHEMA: &str = "galadriel.evidence.trial.v3";
-const SUMMARY_SCHEMA: &str = "galadriel.evidence.summary.v2";
-const MANIFEST_SCHEMA: &str = "galadriel.evidence.manifest.v2";
+const SUMMARY_SCHEMA: &str = "galadriel.evidence.summary.v3";
+const MANIFEST_SCHEMA: &str = "galadriel.evidence.manifest.v3";
 const GENERATOR_PROFILE: &str = "galadriel-evidence-synthetic-generator-v3";
 const RECORDED_REPLAY_PROFILE: &str = "verified-recorded-fixture-replay-v1";
 const MISSINGNESS_PROFILE: &str = "deterministic-independent-bernoulli-acoustic-v1";
-const ACCEPTANCE_METRIC_PROFILE: &str = "galadriel-0.9-frozen-acceptance-metrics-v2";
+const ACCEPTANCE_METRIC_PROFILE: &str = "galadriel-0.9-frozen-acceptance-metrics-v3";
+const BOOTSTRAP_PROFILE: &str = "splitmix64-rejection-group-metric-v1";
 const MAX_GENERATED_OBSERVATIONS: usize = 25_000_000;
 const MAX_CORRELATION_SAMPLE_PRODUCTS: usize = 500_000_000;
 const MAX_TRACE_ASSESSMENTS: usize = 2_000_000;
@@ -764,6 +766,7 @@ fn accepted_config_value(
             "recorded_replay_profile": RECORDED_REPLAY_PROFILE,
             "missingness_profile": MISSINGNESS_PROFILE,
             "acceptance_metric_profile": ACCEPTANCE_METRIC_PROFILE,
+            "bootstrap_profile": BOOTSTRAP_PROFILE,
             "delay_p95_definition": "nearest_rank_empirical_p95_milliseconds",
             "attribution_error_definition": "wrong_first_emitted_attribution_after_onset_over_emitted_attributions",
         },
@@ -1145,6 +1148,32 @@ fn mix64(mut value: u64) -> u64 {
     value = (value ^ (value >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
     value = (value ^ (value >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
     value ^ (value >> 31)
+}
+
+fn bootstrap_seed(base_seed: u64, group_id: &str, metric: MetricKind) -> u64 {
+    mix64(base_seed ^ fnv1a64(group_id) ^ fnv1a64(metric.id()))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct BootstrapRng(u64);
+
+impl BootstrapRng {
+    fn next_u64(&mut self) -> u64 {
+        self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        mix64(self.0)
+    }
+
+    fn below(&mut self, bound: usize) -> usize {
+        debug_assert!(bound > 0);
+        let bound = bound as u64;
+        let threshold = bound.wrapping_neg() % bound;
+        loop {
+            let draw = self.next_u64();
+            if draw >= threshold {
+                return (draw % bound) as usize;
+            }
+        }
+    }
 }
 
 fn synthetic_track_id(seed: u64) -> AppResult<TrackId> {
@@ -2396,7 +2425,7 @@ impl MetricKind {
         match self {
             Self::FalseAlertsPerHour => "pooled alert episodes / pooled track exposure",
             Self::Arl0Assessments => {
-                "restricted mean time to first alert; right-censored at each track end"
+                "restricted mean time to first alert. Each track end creates right censoring"
             }
             Self::ConditionalDelayFrames => {
                 "median first post-onset alert delay among detected tracks without pre-onset alert"
@@ -2861,15 +2890,13 @@ fn estimate_metric(
             bootstrap_usable: 0,
         };
     }
-    let mut rng = StdRng::seed_from_u64(mix64(
-        config.base_seed ^ fnv1a64(group_id) ^ fnv1a64(kind.id()),
-    ));
+    let mut rng = BootstrapRng(bootstrap_seed(config.base_seed, group_id, kind));
     let mut sample = Vec::with_capacity(records.len());
     let mut bootstrap = Vec::with_capacity(config.bootstrap_resamples);
     for _ in 0..config.bootstrap_resamples {
         sample.clear();
         for _ in 0..records.len() {
-            sample.push(records[rng.gen_range(0..records.len())]);
+            sample.push(records[rng.below(records.len())]);
         }
         if let (Some(value), _) = statistic(&sample, kind) {
             bootstrap.push(value);
@@ -2904,7 +2931,7 @@ fn estimate_metric(
             Some([lower, upper]),
             "estimated".into(),
             format!(
-                "95% Wilson score interval for a track-level binomial proportion; whole-track bootstrap is retained as a diagnostic but does not replace or envelope the preregistered Wilson bound ({bootstrap_usable} usable of {} requested)",
+                "95% Wilson score interval for a track-level binomial proportion. The whole-track bootstrap is diagnostic. It does not replace or envelope the preregistered Wilson bound. Usable replicates: {bootstrap_usable} of {} requested.",
                 config.bootstrap_resamples,
             ),
         )
@@ -2915,7 +2942,7 @@ fn estimate_metric(
                 Some(interval_envelope(garwood, usable_bootstrap_ci)),
                 "estimated".into(),
                 format!(
-                    "95% Garwood exact Poisson count-rate interval under a homogeneous episode-rate model; whole-track bootstrap envelope used only when at least 80% of replicates are usable ({bootstrap_usable} usable of {} requested)",
+                    "95% Garwood exact Poisson count-rate interval under a homogeneous episode-rate model. A whole-track bootstrap envelope applies only when at least 80% of replicates are usable. Usable replicates: {bootstrap_usable} of {} requested.",
                     config.bootstrap_resamples,
                 ),
             ),
@@ -2931,7 +2958,7 @@ fn estimate_metric(
                 Some(interval_envelope(hoeffding, usable_bootstrap_ci)),
                 "estimated".into(),
                 format!(
-                    "95% distribution-free weighted-track Hoeffding interval for bounded post-warm-up abstention fractions; whole-track bootstrap envelope used only when at least 80% of replicates are usable ({bootstrap_usable} usable of {} requested)",
+                    "95% distribution-free weighted-track Hoeffding interval for bounded post-warm-up abstention fractions. A whole-track bootstrap envelope applies only when at least 80% of replicates are usable. Usable replicates: {bootstrap_usable} of {} requested.",
                     config.bootstrap_resamples
                 ),
             ),
@@ -2947,7 +2974,7 @@ fn estimate_metric(
                 Some(interval_envelope(hoeffding, usable_bootstrap_ci)),
                 "estimated".into(),
                 format!(
-                    "95% distribution-free Hoeffding interval for track-level time-to-first-alert bounded by the configured assessment horizon; whole-track bootstrap envelope used only when at least 80% of replicates are usable ({bootstrap_usable} usable of {} requested)",
+                    "95% distribution-free Hoeffding interval for track-level time to first alert. The configured assessment horizon bounds each track. A whole-track bootstrap envelope applies only when at least 80% of replicates are usable. Usable replicates: {bootstrap_usable} of {} requested.",
                     config.bootstrap_resamples
                 ),
             ),
@@ -2962,7 +2989,7 @@ fn estimate_metric(
             Some(ci),
             "estimated".into(),
             format!(
-                "95% percentile bootstrap; {bootstrap_usable} usable of {} requested whole-track resamples (minimum 80% required)",
+                "95% whole-track percentile bootstrap interval. Usable replicates: {bootstrap_usable} of {} requested. The minimum usable fraction is 80%.",
                 config.bootstrap_resamples
             ),
         )
@@ -3244,6 +3271,7 @@ struct EvidenceSummary {
     recorded_replay_profile: String,
     missingness_profile: String,
     acceptance_metric_profile: String,
+    bootstrap_profile: String,
     study_id: String,
     base_seed_hex: String,
     claim_partition: String,
@@ -3266,19 +3294,21 @@ fn build_summary(
         recorded_replay_profile: RECORDED_REPLAY_PROFILE.into(),
         missingness_profile: MISSINGNESS_PROFILE.into(),
         acceptance_metric_profile: ACCEPTANCE_METRIC_PROFILE.into(),
+        bootstrap_profile: BOOTSTRAP_PROFILE.into(),
         study_id: config.study_id.clone(),
         base_seed_hex: format!("0x{:016x}", config.base_seed),
-        claim_partition: "holdout_results only; calibration_diagnostics are descriptive and never pooled with holdout"
+        claim_partition: "Only the holdout_results field supports reported results. The calibration_diagnostics field is descriptive. The runner does not pool it with holdout_results."
             .into(),
         interval_method: format!(
-            "Boundary-safe 95% intervals: preregistered Wilson bounds for track proportions; Garwood Poisson count-rate intervals for alert episodes and distribution-free bounded-track Hoeffding intervals for ARL0 and post-warm-up abstention, conservatively enveloped by whole-track bootstrap when >=80% of {} requested replicates are usable; whole-track percentile bootstrap for delay summaries. Delay p95 is the nearest-rank empirical percentile in milliseconds",
+            "Track proportions use preregistered 95% Wilson intervals. Alert-episode rates use 95% Garwood Poisson intervals. Average run length under no-alert conditions (ARL0) and post-warm-up abstention use bounded-track 95% Hoeffding intervals. Garwood and Hoeffding intervals use a conservative whole-track bootstrap envelope when at least 80% of {} requested replicates are usable. The bootstrap envelope does not replace the analytic interval. Delay summaries use whole-track percentile bootstrap intervals, and the delay 95th percentile uses the nearest-rank empirical percentile in milliseconds.",
             config.bootstrap_resamples
         ),
         sensitivity_axes: vec![
-            "clean_autocorrelation varies AR(1) phi at covariance_scale=1".into(),
-            "clean_covariance_sensitivity varies declared covariance scale at phi=0; clean_autocorrelation phi=0 is the scale=1 reference"
+            "The clean_autocorrelation arm varies the first-order autoregressive phi. It keeps covariance_scale at 1."
                 .into(),
-            "ordinary_missingness applies deterministic independent Bernoulli acoustic misses; continuity holes create explicit, recorded whole-detector generation resets"
+            "The clean_covariance_sensitivity arm varies the declared covariance scale at phi 0. The clean_autocorrelation phi 0 arm is the scale 1 reference."
+                .into(),
+            "The ordinary_missingness arm applies deterministic, independent Bernoulli acoustic misses. A continuity hole creates an explicit whole-detector generation reset. The record includes each reset."
                 .into(),
         ],
         calibration_diagnostics: summarize_partition(records, Role::Calibration, config),
@@ -3287,19 +3317,19 @@ fn build_summary(
         limitations: vec![
             "Synthetic observations are controlled stress tests, not a deployed residual population or operational accuracy claim."
                 .into(),
-            "Configured family_alpha is a per-assessment family-wise bound under the detector model; it is not a stream false-alert-rate guarantee."
+            "The configured family_alpha value is a per-assessment family-wise bound under the detector model. It is not a stream false-alert-rate guarantee."
                 .into(),
-            "Garwood episode-rate intervals assume a homogeneous Poisson count process; whole-track bootstrap envelopes are reported when sufficiently estimable, but neither turns the controlled stream into an operational FAR claim."
+            "Garwood episode-rate intervals assume a homogeneous Poisson count process. A whole-track bootstrap can expand these intervals when at least 80% of replicates are usable. Neither method creates an operational false-alert-rate claim for the controlled stream."
                 .into(),
-            "ARL0 is a finite-horizon restricted mean and must be read with its censoring fraction."
+            "ARL0 is a finite-horizon restricted mean. Read it with its censoring fraction."
                 .into(),
-            "Attack delay and attribution are conditional on no pre-onset alert; delay is also conditional on detection."
+            "Attack delay and attribution are conditional on no pre-onset alert. Delay is also conditional on detection."
                 .into(),
-            "Alert episodes use the configured nominal_only reset policy: abstention preserves an active episode, and only a nominal assessment clears it."
+            "Alert episodes use the configured nominal_only reset policy. Abstention preserves an active episode. Only a nominal assessment clears it."
                 .into(),
-            "The default runner evaluates streaming NIS and signed correlation only; PID has no product streaming cadence in this revision."
+            "The default runner evaluates streaming normalized innovation squared (NIS) and signed correlation only. Partial information decomposition (PID) has no product streaming cadence in this revision."
                 .into(),
-            "Independent missingness may cross an accepted continuity limit. Each such event creates a recorded whole-detector generation boundary; post-reset warm-up remains abstention and is never recoded as nominal."
+            "Independent missingness can cross an accepted continuity limit. Each such event creates a recorded whole-detector generation boundary. Post-reset warm-up remains abstention. The runner does not recode it as nominal."
                 .into(),
         ],
     }
@@ -3308,6 +3338,7 @@ fn build_summary(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct GitProvenance {
     commit: String,
+    tree: String,
     dirty: bool,
     status_porcelain_v1: String,
 }
@@ -3344,6 +3375,7 @@ struct EvidenceManifest {
     recorded_replay_profile: String,
     missingness_profile: String,
     acceptance_metric_profile: String,
+    bootstrap_profile: String,
     study_id: String,
     base_seed_hex: String,
     git: GitProvenance,
@@ -3433,6 +3465,7 @@ fn git_snapshot(config_path: &Path) -> AppResult<(PathBuf, GitProvenance)> {
         ));
     }
     let commit = command_stdout(&workspace_root, "git", &["rev-parse", "HEAD"])?;
+    let tree = command_stdout(&workspace_root, "git", &["rev-parse", "HEAD^{tree}"])?;
     let status = command_stdout(
         &workspace_root,
         "git",
@@ -3442,6 +3475,7 @@ fn git_snapshot(config_path: &Path) -> AppResult<(PathBuf, GitProvenance)> {
         workspace_root,
         GitProvenance {
             commit,
+            tree,
             dirty: !status.is_empty(),
             status_porcelain_v1: status,
         },
@@ -3454,7 +3488,7 @@ fn require_publication_clean(
 ) -> AppResult<()> {
     if git.dirty && policy == PublicationSourcePolicy::RequireClean {
         return Err(
-            "Git worktree is dirty; commit/stash changes for publication or pass --allow-dirty only for a development smoke run"
+            "The Git worktree is dirty. Commit or stash changes for publication. Use --allow-dirty only for a development smoke run."
                 .into(),
         );
     }
@@ -3503,6 +3537,7 @@ fn build_manifest(input: ManifestBuild<'_>) -> AppResult<EvidenceManifest> {
         recorded_replay_profile: RECORDED_REPLAY_PROFILE.into(),
         missingness_profile: MISSINGNESS_PROFILE.into(),
         acceptance_metric_profile: ACCEPTANCE_METRIC_PROFILE.into(),
+        bootstrap_profile: BOOTSTRAP_PROFILE.into(),
         study_id: config.study_id.clone(),
         base_seed_hex: format!("0x{:016x}", config.base_seed),
         git,
@@ -3536,11 +3571,10 @@ fn build_manifest(input: ManifestBuild<'_>) -> AppResult<EvidenceManifest> {
             runner_binary_sha256: sha256_file(&executable)?,
         },
         scope: vec![
-            "streaming NIS baseline".into(),
+            "streaming normalized innovation squared (NIS) baseline".into(),
             "streaming default signed-correlation fusion over producer-attested projections"
                 .into(),
-            "PID excluded because this revision exposes only a terminal replay assessment"
-                .into(),
+            "partial information decomposition (PID) excluded because this revision has only a terminal replay assessment".into(),
         ],
         trial_records: records.len(),
         synthetic_tracks,
@@ -3550,7 +3584,7 @@ fn build_manifest(input: ManifestBuild<'_>) -> AppResult<EvidenceManifest> {
         publication_source_policy,
         accepted_config_profile: "galadriel-evidence/custom-v0.9".into(),
         accepted_config_digest: config.canonical_digest.clone(),
-        deterministic_time_policy: "No wall-clock timestamp is stored; deterministic artifacts depend only on declared inputs and recorded tool/source provenance."
+        deterministic_time_policy: "The artifacts do not store a wall-clock timestamp. Deterministic artifacts depend only on declared inputs and recorded tool and source provenance."
             .into(),
     })
 }
@@ -3600,9 +3634,10 @@ fn render_report(summary: &EvidenceSummary, manifest: &EvidenceManifest) -> Stri
         "Dirty worktree at invocation: `{}`\n\n",
         manifest.git.dirty
     ));
-    report.push_str("Only holdout rows below support reported results. Calibration tracks are retained in `summary.json` as separate diagnostics and are never pooled. Track proportions use preregistered Wilson intervals; alert-episode rates use labeled Garwood Poisson intervals; ARL0 and abstention use bounded-track Hoeffding intervals; delay summaries use whole-track bootstrap. Where an envelope is declared, bootstrap never replaces the boundary-safe analytic interval.\n\n");
-    report.push_str("Alert episodes reset only on an explicit nominal assessment. Insufficient or rejected-input outcomes preserve any active episode; rejected inputs count toward abstention.\n\n");
-    report.push_str("| condition | detector | exposure h | generation resets (tracks) | false alerts/hour | mission P(any) | restricted ARL0 | ARL0 censored | abstention | provenance P(any alert) | pre-onset P | conditional detection | delay median (frames) | delay p95 (ms) | attribution coverage | attribution error | attribution accuracy |\n");
+    report.push_str("Only holdout rows below support reported results. `summary.json` retains calibration tracks as separate diagnostics. The runner does not pool calibration and holdout tracks.\n\n");
+    report.push_str("Track proportions use preregistered Wilson intervals. Alert-episode rates use labeled Garwood Poisson intervals. Average run length under no-alert conditions (ARL0) and abstention use bounded-track Hoeffding intervals. Delay summaries use whole-track bootstrap intervals. A declared bootstrap envelope does not replace its boundary-safe analytic interval.\n\n");
+    report.push_str("Alert episodes reset only on an explicit nominal assessment. Insufficient and rejected-input outcomes preserve an active episode. Rejected inputs count toward abstention.\n\n");
+    report.push_str("| condition | detector | exposure hours | generation resets (affected tracks) | false alerts per hour | mission probability of any alert | restricted ARL0 | ARL0 censored fraction | abstention | provenance probability of any alert | pre-onset probability | conditional detection | median delay in frames | delay 95th percentile in milliseconds | attribution coverage | attribution error | attribution accuracy |\n");
     report.push_str(
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n",
     );
@@ -3630,10 +3665,10 @@ fn render_report(summary: &EvidenceSummary, manifest: &EvidenceManifest) -> Stri
             metric_text(&metrics.conditional_attribution_accuracy),
         ));
     }
-    report.push_str("\nExact event, eligibility, undetected, emitted-attribution, correct-attribution, and wrong-attribution counts are retained per row in `summary.json`; per-track delays and outcomes are retained in `trials.jsonl`.\n");
+    report.push_str("\n`summary.json` retains exact event, eligibility, undetected, emitted-attribution, correct-attribution, and wrong-attribution counts for each row. `trials.jsonl` retains per-track delays and outcomes.\n");
     report.push_str("\n## Recorded fixture\n\n");
     report.push_str(&format!(
-        "Status: `{}`; {} observations across {} track(s), {} ms total observed duration, {} observations with a consistency projection, and {} explicit detector-generation reset(s) across {} track(s).\n\n",
+        "Status: `{}`.\n\nThe fixture contains {} observations across {} tracks. Its total observed duration is {} milliseconds. It contains {} observations with a consistency projection. It records {} explicit detector-generation resets across {} tracks.\n\n",
         summary.recorded_fixture.evidence_status,
         summary.recorded_fixture.observations,
         summary.recorded_fixture.tracks,
@@ -3651,7 +3686,7 @@ fn render_report(summary: &EvidenceSummary, manifest: &EvidenceManifest) -> Stri
         }
         report.push('\n');
     }
-    report.push_str("The checked-in capture is therefore a parser/provenance/abstention smoke test. The runner does not extrapolate its short duration into an operational false-alert rate or detection claim.\n\n");
+    report.push_str("The checked-in capture is a parser, provenance, and abstention smoke test. The runner does not extrapolate its short duration into an operational false-alert rate or detection claim.\n\n");
     report.push_str("## Interpretation limits\n\n");
     for limitation in &summary.limitations {
         report.push_str(&format!("- {limitation}\n"));
@@ -3724,7 +3759,7 @@ fn parse_arguments() -> AppResult<Option<Arguments>> {
         match argument.as_str() {
             "-h" | "--help" => {
                 println!(
-                    "galadriel-evidence --config <config.json> --out <new-directory> [--allow-dirty]\n\nRuns deterministic synthetic calibration/holdout tracks plus the configured recorded fixture, then writes JSONL trials, JSON summary, manifest, report, and SHA-256 checksums. Publication runs refuse a dirty Git tree; --allow-dirty is only for development smoke runs and is recorded in the manifest."
+                    "Usage: galadriel-evidence --config <config.json> --out <new-directory> [--allow-dirty]\n\nRuns deterministic synthetic calibration and holdout tracks.\nReplays the configured recorded fixture.\n\nWrites these artifacts:\n- Accepted JavaScript Object Notation (JSON) configuration\n- JavaScript Object Notation Lines (JSONL) trial records\n- JSON summary and manifest\n- Markdown report\n- Secure Hash Algorithm 256 (SHA-256) checksum file\n\nThe default publication mode rejects a dirty Git worktree.\nUse --allow-dirty only for a development smoke run.\nThe manifest records this override."
                 );
                 return Ok(None);
             }
@@ -3944,10 +3979,12 @@ mod tests {
             recorded_replay_profile: RECORDED_REPLAY_PROFILE.into(),
             missingness_profile: MISSINGNESS_PROFILE.into(),
             acceptance_metric_profile: ACCEPTANCE_METRIC_PROFILE.into(),
+            bootstrap_profile: BOOTSTRAP_PROFILE.into(),
             study_id: config.study_id.clone(),
             base_seed_hex: format!("0x{:016x}", config.base_seed),
             git: GitProvenance {
                 commit: "test".into(),
+                tree: "test-tree".into(),
                 dirty: true,
                 status_porcelain_v1: "test fixture".into(),
             },
@@ -4367,7 +4404,7 @@ mod tests {
 
         assert_eq!(estimate.value, Some(100.0));
         assert_eq!(estimate.bootstrap_usable, 200);
-        assert_eq!(estimate.ci95, Some([50.0, 100.0]));
+        assert_eq!(estimate.ci95, Some([0.0, 100.0]));
     }
 
     #[test]
@@ -4601,6 +4638,7 @@ mod tests {
     fn dirty_publication_requires_an_explicit_development_override() {
         let git = GitProvenance {
             commit: "test".into(),
+            tree: "test-tree".into(),
             dirty: true,
             status_porcelain_v1: " M test".into(),
         };
@@ -4614,6 +4652,57 @@ mod tests {
             .expect_err("provenance must not bind to a config outside this worktree");
         assert!(error.contains("compiled Galadriel worktree"));
         fs::remove_file(outside_config).expect("temporary config should be removable");
+    }
+
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn bootstrap_rng_rejection_and_seed_domains_have_a_stable_profile() {
+        let initial_state = 0x0123_4567_89ab_cdef;
+        let mut rejection_rng = BootstrapRng(initial_state);
+        let rejection_bound = (1_usize << 63) + 1;
+        assert_eq!(
+            rejection_rng.below(rejection_bound),
+            6_157_355_942_102_028_434
+        );
+        assert_eq!(
+            rejection_rng.0,
+            initial_state.wrapping_add(2_u64.wrapping_mul(0x9e37_79b9_7f4a_7c15))
+        );
+
+        let config = tiny_config();
+        let group = "attack_loud_acoustic:Holdout:NisBaseline";
+        let other_group = "attack_broad_degradation:Holdout:NisBaseline";
+        let mut group_metric_rng = BootstrapRng(bootstrap_seed(
+            config.base_seed,
+            group,
+            MetricKind::ConditionalDelayFrames,
+        ));
+        let mut other_metric_rng = BootstrapRng(bootstrap_seed(
+            config.base_seed,
+            group,
+            MetricKind::ConditionalDelayP95Millis,
+        ));
+        let mut other_group_rng = BootstrapRng(bootstrap_seed(
+            config.base_seed,
+            other_group,
+            MetricKind::ConditionalDelayFrames,
+        ));
+        assert_eq!(
+            (0..8)
+                .map(|_| group_metric_rng.below(4))
+                .collect::<Vec<_>>(),
+            [0, 3, 1, 0, 2, 3, 2, 2]
+        );
+        assert_eq!(
+            (0..8)
+                .map(|_| other_metric_rng.below(4))
+                .collect::<Vec<_>>(),
+            [2, 2, 0, 2, 2, 2, 0, 2]
+        );
+        assert_eq!(
+            (0..8).map(|_| other_group_rng.below(4)).collect::<Vec<_>>(),
+            [2, 3, 0, 3, 1, 1, 0, 0]
+        );
     }
 
     #[test]
@@ -4683,11 +4772,11 @@ mod tests {
         );
         assert_eq!(
             config.canonical_digest,
-            "5f4ac9d98e087cbfaff6e6fd3bc51b10699190884af1782254bb8ddf72a23e8f"
+            "e07036531b908e36e0eb827b478046b1b93d544d1cf46cfa8242b936fc3952f9"
         );
         assert_eq!(
             sha256_bytes(&config.artifact_config),
-            "ff1dc462ba196371113b4e2d8068ea94343f964c98468b47ecc245a1c6a0d6bc"
+            "f72ea1de3101006dc51c43349e45866e4c066633c4c29f42b50823112cb4bf2d"
         );
         let accepted_wire: serde_json::Value = serde_json::from_slice(&config.artifact_config)
             .expect("accepted config JSON should decode");
@@ -4941,21 +5030,54 @@ mod tests {
         .expect("accepted config should be JSON");
         assert_eq!(config_json["runner_contract"]["trial_schema"], TRIAL_SCHEMA);
         assert_eq!(
+            config_json["runner_contract"]["summary_schema"],
+            "galadriel.evidence.summary.v3"
+        );
+        assert_eq!(
+            config_json["runner_contract"]["manifest_schema"],
+            "galadriel.evidence.manifest.v3"
+        );
+        assert_eq!(
             config_json["runner_contract"]["acceptance_metric_profile"],
-            ACCEPTANCE_METRIC_PROFILE
+            "galadriel-0.9-frozen-acceptance-metrics-v3"
+        );
+        assert_eq!(
+            config_json["runner_contract"]["bootstrap_profile"],
+            "splitmix64-rejection-group-metric-v1"
         );
         let summary_json: serde_json::Value = serde_json::from_slice(
             &fs::read(output.join("summary.json")).expect("summary should be readable"),
         )
         .expect("summary should be JSON");
-        assert_eq!(summary_json["schema"], SUMMARY_SCHEMA);
+        assert_eq!(summary_json["schema"], "galadriel.evidence.summary.v3");
+        assert_eq!(
+            summary_json["acceptance_metric_profile"],
+            "galadriel-0.9-frozen-acceptance-metrics-v3"
+        );
+        assert_eq!(
+            summary_json["bootstrap_profile"],
+            "splitmix64-rejection-group-metric-v1"
+        );
         assert!(summary_json["holdout_results"][0]["raw_counts"]["tracks"].is_u64());
         let manifest_json: serde_json::Value = serde_json::from_slice(
             &fs::read(output.join("manifest.json")).expect("manifest should be readable"),
         )
         .expect("manifest should be JSON");
-        assert_eq!(manifest_json["schema"], MANIFEST_SCHEMA);
+        assert_eq!(manifest_json["schema"], "galadriel.evidence.manifest.v3");
         assert_eq!(manifest_json["trial_schema"], TRIAL_SCHEMA);
+        assert_eq!(
+            manifest_json["summary_schema"],
+            "galadriel.evidence.summary.v3"
+        );
+        assert_eq!(
+            manifest_json["acceptance_metric_profile"],
+            "galadriel-0.9-frozen-acceptance-metrics-v3"
+        );
+        assert_eq!(
+            manifest_json["bootstrap_profile"],
+            "splitmix64-rejection-group-metric-v1"
+        );
+        assert_eq!(manifest_json["git"]["tree"], "test-tree");
         let trials =
             fs::read_to_string(output.join("trials.jsonl")).expect("trials should be readable");
         let first_trial: serde_json::Value = serde_json::from_str(
@@ -4969,7 +5091,26 @@ mod tests {
         assert_eq!(first_trial["source_profile"], GENERATOR_PROFILE);
         let checksums = fs::read_to_string(output.join("SHA256SUMS"))
             .expect("checksum file should be readable");
-        for line in checksums.lines() {
+        let checksum_lines = checksums.lines().collect::<Vec<_>>();
+        let checksum_names = checksum_lines
+            .iter()
+            .map(|line| {
+                line.split_once("  ")
+                    .expect("checksum line should have two fields")
+                    .1
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            checksum_names,
+            [
+                "config.json",
+                "manifest.json",
+                "report.md",
+                "summary.json",
+                "trials.jsonl",
+            ]
+        );
+        for line in checksum_lines {
             let (expected, name) = line
                 .split_once("  ")
                 .expect("checksum line should have two fields");

@@ -1,8 +1,9 @@
 #![no_main]
 
 use galadriel_core::{
-    assess_default, consistency_channels_with_temporal_limits, DetectorConfig, DetectorParams,
-    Mirror, Modality, PidObservation, ReleaseSuite,
+    assess_default, consistency_channels_with_temporal_limits, AssessmentScope, ClockDomain,
+    DetectorConfig, DetectorParams, Mirror, Modality, PidObservation, ProducerId, ReleaseSuite,
+    StreamPosition,
 };
 use libfuzzer_sys::fuzz_target;
 
@@ -58,5 +59,31 @@ fuzz_target!(|data: &[u8]| {
 
     // Bound the expensive fused assessment while exercising projection provenance,
     // axis conflict, and fail-closed extraction behavior.
-    let _ = assess_default(&observations, &suite);
+    let terminal_sequence = observations
+        .iter()
+        .map(|observation| observation.sequence().get())
+        .max()
+        .unwrap_or(0);
+    let terminal_timestamp = observations
+        .iter()
+        .filter(|observation| observation.sequence().get() == terminal_sequence)
+        .map(|observation| observation.timestamp_ms().get())
+        .max()
+        .unwrap_or(0);
+    let Ok(producer_id) = ProducerId::new("fuzz-harness") else {
+        return;
+    };
+    let Ok(position) = StreamPosition::try_new(
+        "fuzz-session",
+        "fuzz-epoch",
+        "detector-boundaries",
+        0,
+        terminal_sequence,
+        terminal_timestamp,
+        ClockDomain::SimulationTime,
+    ) else {
+        return;
+    };
+    let scope = AssessmentScope::new(producer_id, position);
+    let _ = assess_default(&scope, &observations, &suite);
 });

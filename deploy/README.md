@@ -1,4 +1,4 @@
-# Galadriel secure deployment profile
+# Galadriel Zenoh deployment security profile
 
 ## Abbreviations
 
@@ -17,21 +17,25 @@
 | TLS | Transport Layer Security |
 | UTF-8 | 8-bit Unicode Transformation Format |
 
-This directory contains a deterministic, fail-closed Zenoh deployment profile.
-The profile applies to one Galadriel producer process epoch.
-It is narrower than the generic NCP sensor ACL.
+This directory contains deterministic, fail-closed Zenoh configuration templates.
+The templates define a security profile for one prospective Galadriel producer process epoch.
+They do not establish or qualify a deployment.
+This profile is narrower than the generic NCP sensor ACL.
 The epoch and producer identity use the Galadriel core identity grammar.
 A generic NCP segment is not sufficient for these two fields.
 
-- One authenticated producer CN can send `put` ingress only on two exact keys.
+- An authenticated producer identity with one exact CN can send `put` ingress only on two exact keys.
   The keys are `.../session/{epoch}/sensor/galadriel-{pid,monitor}`.
-- One different authenticated observer CN can send `declare_subscriber` ingress on the same keys.
+- A different authenticated observer identity can send `declare_subscriber` ingress on the same keys.
+  The ACL selects this identity by one exact CN.
   It can receive the matching `put` egress only on those keys.
 - No subject receives a wildcard epoch or `sensor/**` permission.
   No subject receives delete, command, action, lease, query/RPC, or other control-plane permission.
 - The router is default-deny and mTLS-only.
-  It has no upstream connection. It disables multicast discovery and gossip discovery.
-- Both clients use TLS only. They do not listen and do not use discovery.
+  It has no upstream connection.
+  It disables multicast discovery and gossip discovery.
+- Both clients use TLS only.
+  They do not listen or use discovery.
   They enable connector-side mTLS so Zenoh presents their certificates.
   They require router hostname verification.
 - Each receive-side Zenoh defragmentation limit is 128 KiB.
@@ -40,7 +44,7 @@ A generic NCP segment is not sufficient for these two fields.
 Zenoh uses the certificate common name as the ACL subject.
 It does not use a leaf fingerprint as the subject.
 If the configured CA accepts a certificate with an authorized exact CN, that certificate receives that CN's permissions.
-The issuing CA must reserve each permitted CN and prevent unintended duplicate issuance.
+The issuing CA **MUST** reserve each permitted CN and prevent unintended duplicate issuance.
 Keep certificate serial and fingerprint evidence for every rotation.
 
 The publication permissions are directional.
@@ -55,9 +59,10 @@ They are inert review fixtures. They are not credentials or a production deploym
 
 ## Render one deployment epoch
 
-1. Mint a process epoch before the producer starts. Never reuse this epoch.
+1. Mint a process epoch before the producer starts.
+   Never reuse this epoch.
    Give the exact value to the producer, router profile, and receiver subscription.
-   Persist or otherwise coordinate the value.
+   Persist the value or use another controlled coordination method.
    Do not use `session/*` to avoid this coordination requirement.
 2. Put the externally pinned canonical registry SHA-256 in `registry_canonical_sha256`.
    Give the same value to the authorized producer and Galadriel.
@@ -67,13 +72,14 @@ They are inert review fixtures. They are not credentials or a production deploym
    The renderer rejects CNs that look like wildcards.
    It also rejects reused certificate and key paths.
 
-   Each deployment credential path must identify a regular file that exists.
-   Each path must be absolute.
+   Each deployment credential path MUST identify a regular file that exists.
+   Each path MUST be absolute.
    The renderer rejects textual, symbolic-link, case-folded, and hard-link aliases.
    On POSIX, make each private key readable by its owner.
    Do not make a private key executable or accessible to a group or other users.
 
-   Only `check` accepts the committed relative placeholders. The renderer does not accept them.
+   Only `check` accepts the committed relative placeholders.
+   The renderer does not accept them.
 
    Protect issuance so no other CA-valid leaf can get either authorized CN.
 4. Copy `galadriel-security-profile.example.json` outside the source tree.
@@ -101,7 +107,8 @@ They are inert review fixtures. They are not credentials or a production deploym
    ```
 
    The handoff binds `profile_version`, realm, epoch, producer identifier, and canonical registry digest.
-   It also binds both exact client CNs. It contains no credential material.
+   It also binds both exact client CNs.
+   It contains no credential material.
 5. Start the router with the generated `zenoh-router.json5`.
    Start the authorized contract-conforming producer with `zenoh-producer.json5`.
    Start Galadriel with `zenoh-observer.json5`.
@@ -113,15 +120,16 @@ They are inert review fixtures. They are not credentials or a production deploym
 
    Galadriel accepts the JSON claim only when its route, session, and producer validators agree.
    The transport ACL separately requires a CA-valid connection with the authorized CN.
-6. Retain the sanitized profile, handoff, and digest as deployment evidence.
-   Retain configuration digests, software revisions, certificate fingerprints and serials, and authorization-test results.
+6. Retain the sanitized profile, handoff, and digest as deployment configuration evidence.
+   Retain configuration digests and software revisions.
+   Retain certificate fingerprints, certificate serials, and authorization-test results.
    Never copy private-key bytes or credentials into logs or evidence bundles.
 
 The renderer and checker use strict UTF-8 JSON.
 They reject duplicate object members and nonstandard constants before profile validation.
 They also reject non-finite floats and floats with overflow or nonzero underflow.
 They reject integer tokens that exceed the fixed resource bound.
-Each profile field must then satisfy its closed type, identity, path, endpoint, and size domain.
+Each profile field MUST then satisfy its closed type, identity, path, endpoint, and size domain.
 
 Run the reference fixture and maintained security regression suite with this command:
 
@@ -129,9 +137,10 @@ Run the reference fixture and maintained security regression suite with this com
 python3 scripts/secure_deployment.py check
 ```
 
-The static check is necessary.
+The static check verifies the committed configuration fixture.
 It does not prove that a specific router runs these files.
-Before operational acceptance, exercise a real multi-process router over mTLS.
+Deployment acceptance remains an external gate.
+Exercise a real multi-process router over mTLS before you record that gate as passed.
 Record at least these cases:
 
 - A CA-valid certificate with the configured producer CN can publish both exact routes.
@@ -145,5 +154,5 @@ Record at least these cases:
 
 Zenoh client construction alone cannot attest to the active ACL on the remote router.
 It also cannot attest to the authenticated peer principal.
-These live results remain a separate deployment evidence gate.
-See [the secure deployment runbook](../docs/SECURE-DEPLOYMENT.md).
+Retained results from these tests remain a separate deployment evidence gate.
+See [the deployment security runbook](../docs/SECURE-DEPLOYMENT.md).

@@ -1,6 +1,7 @@
 # Galadriel fuzz targets
 
-These targets exercise fail-closed parser, temporal-state, and projection-provenance boundaries.
+These targets exercise fail-closed parser and temporal-state boundaries.
+They also exercise projection provenance and assessment-scope terminal coordinates.
 They stay outside the primary workspace because `cargo-fuzz` uses nightly compiler instrumentation.
 
 ```bash
@@ -14,6 +15,6 @@ cargo deny --offline --all-features --locked check
 cargo deny --offline --manifest-path fuzz/Cargo.toml --all-features --locked check --config fuzz/deny.toml
 ```
 
-For a bounded smoke run, append `-runs=10000`.
+For a bounded short run, append `-runs=10000`.
 A crash corpus alone is not evidence of a vulnerability.
 Reproduce the minimized input with the standard workspace build and its resource limits.

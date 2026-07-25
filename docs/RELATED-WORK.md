@@ -17,7 +17,7 @@
 | IEEE | Institute of Electrical and Electronics Engineers |
 | ION | Institute of Navigation |
 | J. Inst. | Journal of the Institute |
-| KSG | Kraskov-Stögbauer-Grassberger |
+| KSG | Kraskov–Stögbauer–Grassberger |
 | LiDAR | light detection and ranging |
 | MDPI | Multidisciplinary Digital Publishing Institute |
 | NCP | Neuro-Cybernetic Protocol |
@@ -30,9 +30,9 @@
 | Trans. | Transactions |
 
 Galadriel's Mirror is one detector in a large and layered field.
-Spoof and fault detection for multi-sensor systems has a fifty-year literature.
-Accurate positioning requires clear statements about each alternative.
-It also requires a fair comparison method.
+Spoof and fault detection for multi-sensor systems has a large body of research.
+A useful comparison requires clear statements about each alternative.
+It also requires a common comparison method.
 
 This document has five purposes:
 
@@ -57,7 +57,7 @@ It also complements the threat evidence in [`MOTIVATION.md`](MOTIVATION.md).
 >
 > Association and gating cause selection bias.
 >
-> The output proves parsing and baseline smoke behavior only.
+> This output supports bounded parsing and basic NIS baseline checks only.
 > A retained historical opt-in producer revision implemented the contract shape.
 > It does not qualify a current reciprocal integration.
 > No accepted field or calibration result exists.
@@ -92,7 +92,7 @@ It must also supply explicit lifecycle and missingness information.
 The central result in `PAPER.md` section 4 selects a dependence statistic at this layer.
 The default uses a low-cost correlation check.
 Mutual information or Partial Information Decomposition (MI/PID) is an escalation.
-The coupling must leave the Gaussian manifold to justify that escalation.
+Recorded evidence must show that signed correlation does not represent the registered coupling.
 
 One attack can affect several layers.
 For example, a GNSS spoof is an L0 RF event.
@@ -117,7 +117,7 @@ See [*A Survey of GNSS Spoofing and Anti-Spoofing Technology*, Remote Sensing 14
 Also see [spatial-processing detection, NAVIGATION 68(2):243](https://navi.ion.org/content/68/2/243).
 
 **Threat model.** The attacker is an external transmitter that injects counterfeit RF.
-DOA methods are among the most effective methods because they do not need key infrastructure.
+DOA methods do not need key infrastructure.
 
 **Limit.** Power and AGC methods operate mainly during initial capture.
 They can miss a spoofer after smooth tracking-loop takeover.
@@ -128,7 +128,7 @@ They do not identify a false non-RF modality, such as radar or acoustic bearing.
 **Relation to Galadriel.** These methods use L0, while Galadriel uses L2.
 They also have a narrower modality scope.
 A signal-level GNSS defense can stop an external RF spoof before residual generation.
-Galadriel can flag some insider or post-capture inconsistencies that an L0 check cannot observe.
+Galadriel can report some post-capture cross-channel inconsistencies that an L0 check cannot observe.
 Neither method gives a guarantee outside its assumptions.
 
 ### 2.2 Cryptographic authentication at L0 or L1
@@ -220,14 +220,14 @@ See [Cao et al., IEEE S&P 2021](https://arxiv.org/abs/2106.09249) and [Hallyburt
 
 **Threat model.** A minority of channels stops agreeing with the physical world observed by the other channels.
 
-**Limit.** A statistics-matching FDI preserves cross-sensor consistency and defeats this method.
-The frustum attack has this property.
-It is “stealthy to existing defenses against LiDAR spoofing as it preserves consistencies between camera and LiDAR semantics” [Hallyburton2022].
-This is the disclosed Galadriel limit in `PAPER.md` sections 2 and 7.
-The limit includes a current state-of-the-art attack.
+**Limit.** A statistics-matching FDI can preserve every evaluated Galadriel statistic and defeat this method.
+The frustum attack preserves camera and LiDAR semantic consistency [Hallyburton2022].
+The cited result does not establish preservation of every Galadriel estimand.
+It is a published example of a related semantic-consistency limit.
+`PAPER.md` sections 2 and 7 disclose the separate Galadriel limit.
 
 **Relation to Galadriel.** This is the Galadriel detector family.
-Galadriel generalizes Broumandan's pairwise GNSS and INS check to an $N$-channel test.
+Galadriel adapts Broumandan's pairwise GNSS and INS comparison question to an $N$-channel test.
 It asks whether an information-theoretic statistic is forced or justified.
 It also supplies advisory per-channel attribution instead of one accept or reject result.
 It does not need a training set.
@@ -251,7 +251,7 @@ It also requires an observability and redundancy condition.
 
 **Limit.** The method needs a system model and satisfied redundancy bounds.
 It estimates through the attack instead of flagging it.
-Thus, it gives weaker attribution or operator information.
+Its primary guarantee is state recovery, not Galadriel-style channel attribution.
 The method also has an honest-majority limit.
 Its guarantee does not apply when more than *p* sensors are corrupt.
 
@@ -259,9 +259,9 @@ Its guarantee does not apply when more than *p* sensors are corrupt.
 It can provably recover state when a validated LTI model and corruption bound apply.
 That result is stronger than a Galadriel advisory flag.
 
-Galadriel can apply when the model assumptions do not apply.
-Examples include heterogeneous modalities or absence of a clean dynamics model.
-It can also apply when an operator needs attribution instead of silent correction.
+Galadriel addresses a different setting.
+Examples include heterogeneous modalities or the absence of a clean dynamics model.
+It can also report attribution evidence instead of silently correcting an estimate.
 Its residual-registration contract must still hold.
 The two methods are complementary along the guarantee and assumption trade-off.
 A resilient estimator is a natural L3 partner for the Galadriel L2 flag.
@@ -330,7 +330,7 @@ The methods can combine when actuation is available.
 
 ## 3. Direct comparison
 
-Table A summarizes the field.
+Table A summarizes the compared method families.
 An insider is a compromised but authenticated sensor that sends false data.
 An external attacker is an unauthenticated injector.
 
@@ -340,14 +340,14 @@ An external attacker is an unauthenticated injector.
 | Cryptographic authentication or OSNMA, section 2.2 | L0/L1 | Per signal or node | External forgery | **Prevent** impersonation | Key infrastructure | Key management |
 | RAIM, section 2.3 | L1 | GNSS, one modality | Faulty or spoofed satellite | Detect and exclude | Known geometry and measurement model | Compute only |
 | Innovation NIS/CUSUM, section 2.4 | L2 | Per channel | Magnitude fault | Detect | Filter innovations available | Negligible |
-| **Cross-sensor consistency and Galadriel, section 2.5** | **L2** | **N heterogeneous channels** | **Insider that breaks agreement** | **Detect and attribute, advisory** | **Comparable innovations. Unique strict majority.** | **Low for correlation. Higher for PID and benchmark-dependent.** |
+| **Cross-sensor consistency and Galadriel, section 2.5** | **L2** | **N heterogeneous channels** | **Minority channel that breaks agreement** | **Report inconsistency and attribution evidence, advisory** | **Comparable innovations. Unique strict majority.** | **Low for correlation. Higher for PID and benchmark-dependent.** |
 | Resilient state estimation, section 2.6 | L3 | N modeled channels | At most p corrupted sensors | **Recover state**, provable | Known LTI model and redundancy bound | Optimization compute |
 | Byzantine-robust fusion, section 2.7 | L3 | N channels | Corrupted minority | **Tolerate** by masking | Honest majority | Negligible |
 | Learning-based, section 2.8 | L2/L4 | N channels | Learned-normal anomaly | Detect statistically | Representative training data | Training and inference |
 | Challenge-response or PyCRA, section 2.9 | L0 | Active sensors | Active-sensor spoof | Detect at source | Actuation authority | Probe emissions |
 
-Table B compares the two attacks that define the Galadriel scope.
-The moment-matched insider spoof is the Galadriel target.
+Table B compares the two attacks that define the Galadriel synthetic scope.
+The moment-matched insider spoof is the synthetic target model.
 The statistics-matching FDI is the disclosed blind spot.
 A partial or negative result identifies the observation layer.
 It is not a general criticism of the method.
@@ -398,7 +398,7 @@ Another can require a common-frame and common-prior residual contract.
 
 The Galadriel harness includes accuracy, latency, cost, adaptive, non-stationary, and attribution experiments.
 No complete post-audit comparative report exists for the revised detector.
-The published streaming artifact is a narrower vertical slice.
+The retained streaming evidence subset covers a narrower detector subset.
 Its synthetic injected-bias proxy does not measure downstream state displacement.
 
 ### 4.2 Shared attack ontology
@@ -417,7 +417,7 @@ The Galadriel suite is a reusable starting point:
 | Colluding 2-of-3 majority | L2/L3 | Structural honest-majority failure |
 | Adaptive threshold-hugging | L2 | Kerckhoffs-aware evasion ceiling at matched FAR |
 | Non-stationary maneuver | L2 | False-alarm robustness to benign dynamics |
-| Statistics-matching FDI, frustum class | L2/L4 | The disclosed shared blind spot of consistency methods |
+| Statistics-matching FDI and semantic-consistency frustum example | L2/L4 | A shared statistical blind spot and a related published semantic limit |
 
 A cross-approach benchmark must add L0 and L1 attacks.
 Examples include RF power takeover, a single-source DOA, and a forged unauthenticated message.
@@ -434,7 +434,7 @@ A fair comparison fixes a common false-alarm rate (FAR).
 It then measures detection or the adversary's evasion ceiling at that point.
 The Galadriel synthetic harness includes this design.
 No complete post-audit comparative results exist for the revised detector.
-The published streaming artifact does not answer this comparison.
+The retained streaming evidence subset does not answer this comparison.
 Each cross-approach table must use the same operating-point rule.
 
 Otherwise, it compares thresholds instead of detectors.
@@ -462,7 +462,7 @@ The harness provides these research functions within the L2 family:
 - reproducible `cargo` commands for accuracy, latency, and cost experiments
 
 The broader suite still needs regenerated exact results after the audit.
-`post-audit-v1` covers a separate streaming vertical slice.
+`post-audit-v1` covers a separate streaming detector subset.
 
 A complete cross-approach benchmark still needs:
 
@@ -486,7 +486,7 @@ It is not a rigorous cross-family or recorded-data benchmark.
 - **Hidden assumptions.** Report each required model, training set, antenna, frame, and prior contract.
   Treat assumptions as a result.
 - **Omitted shared limit.** Each consistency method can fail against a statistics-matching FDI.
-  A benchmark that omits this attack favors the complete family.
+  A benchmark that omits this attack favors the consistency-detector family.
 
 ## 5. Competing and complementary methods
 
@@ -504,11 +504,14 @@ This stack shows the relationship:
 ```
 
 An attacker can pass L0 signal checks and hold a valid L1 key.
-The attacker must still keep a compromised sensor's residuals consistent with other channels to pass L2.
-Galadriel raises that requirement.
+The accepted residuals must still preserve the registered L2 relation to avoid inconsistency evidence.
+This statement depends on valid producer geometry and sufficient detector evidence.
 
-A frustum-class statistics-matching FDI can preserve this consistency.
-It defeats the L2 and L4 consistency family.
+A statistics-matching FDI can preserve every evaluated Galadriel statistic.
+Such an attack can defeat the L2 detector.
+The frustum attack separately demonstrates preservation of camera and LiDAR semantics [Hallyburton2022].
+The cited result does not establish preservation of every Galadriel estimand.
+
 Thus, cryptographic identity and a safety governor remain the enforcement backstop.
 Galadriel remains advisory instrumentation.
 See `MOTIVATION.md` section 4.2.
@@ -517,7 +520,7 @@ Galadriel directly competes with these methods:
 
 - **Other cross-sensor consistency detectors in section 2.5.** They use the same family and layer.
   Galadriel uses signed correlation by default.
-  It uses additive MI/PID only for a validated nonlinear estimand.
+  It uses additive MI/PID only for a registered nonlinear estimand with supporting evidence.
   It also supplies per-channel attribution.
   It does not need training data, but it still needs producer assumptions.
 - **Learning-based anomaly detectors in section 2.8.** They overlap in the nonlinear regime.
@@ -535,7 +538,7 @@ This taxonomy is not a deployment ranking.
 ## References for this document
 
 Most sources appear inline.
-[`PAPER.md` references](PAPER.md#references) defines the shared key [Hallyburton2022].
+The [reference list in `PAPER.md`](PAPER.md#references) defines the shared key [Hallyburton2022].
 This document also defines these references:
 
 - **[ParkinsonAxelrad1988]** B. W. Parkinson, P. Axelrad. “Autonomous GPS Integrity Monitoring Using the Pseudorange Residual.” *NAVIGATION* **35**(2):255–274, 1988. [ION](https://www.ion.org/publications/abstract.cfm?articleID=100323).

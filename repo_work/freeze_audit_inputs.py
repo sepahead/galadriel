@@ -14,21 +14,22 @@ import sys
 import tempfile
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from check_public_api import bounded_diagnostic, release_tool_environment
 from common import (
     ReviewError,
     assert_no_replace_refs,
+    canonical_relative_parts,
     canonical_json,
     git,
-    load_json,
     loads_json,
+    validate_json_structure,
 )
 from release_assurance import canonical_repository_identity, run_bounded_host_command
 
 
-SCHEMA = "galadriel.frozen-audit-inputs.v1"
+SCHEMA = "galadriel.frozen-audit-inputs.v2"
 PUBLICATION_CHANNEL = "review-gated GitHub research source release"
 THREAT_REGISTER_PATH = "release/0.9.0/audit/threat-register.json"
 THREAT_STATUS_LIVING = "LIVING_UNTIL_CANDIDATE_FREEZE"
@@ -105,16 +106,22 @@ RELEASE_INPUTS = (
     "repo_work/make_review_packets.py",
     "repo_work/package_release_assets.py",
     "repo_work/prepare_mutation_evidence.py",
+    "repo_work/process_containment.py",
     "repo_work/qualification_artifacts.py",
     "repo_work/qualify_candidate.py",
     "repo_work/release_assurance.py",
     "repo_work/reproduce_baseline.py",
     "repo_work/run_broad_mutation.py",
     "repo_work/scan_claim_language.py",
+    "repo_work/tests/test_candidate_evidence_bundle.py",
     "repo_work/tests/test_finalize_qualification.py",
+    "repo_work/tests/test_evidence_batch_transaction.py",
+    "repo_work/tests/test_file_mode_identity.py",
     "repo_work/tests/test_host_process_bounds.py",
     "repo_work/tests/test_package_release_assets.py",
+    "repo_work/tests/test_qualify_candidate_evidence.py",
     "repo_work/tests/test_qualification_artifacts.py",
+    "repo_work/tests/test_release_audit_snapshot.py",
     "repo_work/tests/test_release_assurance.py",
     "repo_work/tests/test_review_tools.py",
     "repo_work/tests/test_task_dispositions.py",
@@ -156,14 +163,66 @@ MAX_HANDOFF_ENTRIES = 4_096
 MAX_HANDOFF_FILE_BYTES = 64 * 1024 * 1024
 MAX_HANDOFF_SYMLINK_BYTES = 16 * 1024
 MAX_HANDOFF_AGGREGATE_BYTES = 512 * 1024 * 1024
+MAX_HANDOFF_DEPTH = 128
+MAX_HANDOFF_PATH_BYTES = 4 * 1024
+MAX_HANDOFF_COMPONENT_BYTES = 255
+MAX_ROOT_PARENT_ENTRIES = 32_768
+MAX_RELEASE_INPUT_INDEX_BYTES = 4 * 1024 * 1024
+MAX_RELEASE_INPUT_FILE_BYTES = 256 * 1024 * 1024
+MAX_RELEASE_INPUT_AGGREGATE_BYTES = 4 * 1024 * 1024 * 1024
+MAX_SOURCE_DOCUMENT_BYTES = 4 * 1024 * 1024
+MAX_SOURCE_JSON_DEPTH = 64
+MAX_SOURCE_JSON_NODES = 250_000
 MAX_THREAT_REGISTER_BYTES = 4 * 1024 * 1024
 HOST_IDENTITY_TIMEOUT_SECONDS = 30
 MAX_HOST_IDENTITY_STDOUT_BYTES = 64 * 1024
 MAX_HOST_IDENTITY_STDERR_BYTES = 64 * 1024
 
 
+class HeldRoot(NamedTuple):
+    """One root and its parent held by no-follow directory descriptors."""
+
+    absolute: Path
+    name: str
+    parent_descriptor: int
+    descriptor: int
+    identity: tuple[int, ...]
+    label: str
+
+
+class RootedRead(NamedTuple):
+    """Bytes and identity captured from one descriptor-rooted regular file."""
+
+    document: bytes
+    identity: tuple[int, ...]
+
+
+class HandoffInventory(NamedTuple):
+    """One bounded identity inventory from a held handoff root."""
+
+    directories: dict[str, tuple[int, ...]]
+    regular_files: dict[str, tuple[int, ...]]
+    symlinks: dict[str, tuple[tuple[int, ...], str, bytes]]
+    aggregate_size: int
+
+
+class ReleaseIndexEntry(NamedTuple):
+    """One bounded entry from the complete relevant stage-zero index capture."""
+
+    mode: str
+    blob: str
+    stage: int
+
+
+class ReleaseInputSnapshot(NamedTuple):
+    """Release rows and source semantics from one coherent index transaction."""
+
+    rows: list[dict[str, Any]]
+    source_documents: tuple[dict[str, Any], dict[str, Any], str, str] | None
+
+
 def _file_identity(metadata: os.stat_result) -> tuple[int, ...]:
-    """Return the fields that bind one open regular-file instance."""
+    """Return the fields that bind one file-system object instance."""
 
     return (
         metadata.st_dev,
@@ -174,6 +233,518 @@ def _file_identity(metadata: os.stat_result) -> tuple[int, ...]:
         metadata.st_mtime_ns,
         metadata.st_ctime_ns,
     )
+
+
+def _close_descriptors(descriptors: list[int], *, context: str) -> None:
+    """Close every descriptor and preserve an active primary failure."""
+
+    close_error: BaseException | None = None
+    for descriptor in descriptors:
+        if descriptor < 0:
+            continue
+        try:
+            os.close(descriptor)
+        except BaseException as error:
+            if close_error is None:
+                close_error = error
+    if close_error is None:
+        return
+    active_error = sys.exception()
+    if active_error is not None:
+        active_error.add_note(f"{context} descriptor cleanup also failed")
+        return
+    raise ReviewError(f"cannot close {context} descriptors") from close_error
+
+
+def _remove_created_paths(paths: list[Path], *, context: str) -> None:
+    """Remove each partial output and preserve an active primary failure."""
+
+    cleanup_error: BaseException | None = None
+    for path in paths:
+        try:
+            path.unlink(missing_ok=True)
+        except BaseException as error:
+            if cleanup_error is None:
+                cleanup_error = error
+    if cleanup_error is None:
+        return
+    active_error = sys.exception()
+    if active_error is not None:
+        active_error.add_note(f"{context} output cleanup also failed")
+        return
+    raise ReviewError(f"cannot remove partial {context} outputs") from cleanup_error
+
+
+def _directory_flags() -> int:
+    """Return the required no-follow flags for one directory descriptor."""
+
+    no_follow = getattr(os, "O_NOFOLLOW", None)
+    non_block = getattr(os, "O_NONBLOCK", None)
+    directory = getattr(os, "O_DIRECTORY", None)
+    close_on_exec = getattr(os, "O_CLOEXEC", None)
+    if (
+        no_follow is None
+        or non_block is None
+        or directory is None
+        or close_on_exec is None
+        or os.open not in os.supports_dir_fd
+        or os.stat not in os.supports_dir_fd
+        or os.readlink not in os.supports_dir_fd
+        or os.scandir not in os.supports_fd
+    ):
+        raise ReviewError("descriptor-relative no-follow traversal is unavailable")
+    return os.O_RDONLY | no_follow | non_block | directory | close_on_exec
+
+
+def _file_flags() -> int:
+    """Return the required no-follow flags for one regular-file descriptor."""
+
+    no_follow = getattr(os, "O_NOFOLLOW", None)
+    non_block = getattr(os, "O_NONBLOCK", None)
+    close_on_exec = getattr(os, "O_CLOEXEC", None)
+    if no_follow is None or non_block is None or close_on_exec is None:
+        raise ReviewError("descriptor-relative no-follow reads are unavailable")
+    return os.O_RDONLY | no_follow | non_block | close_on_exec
+
+
+def _require_exact_entry_name(
+    descriptor: int,
+    name: str,
+    *,
+    label: str,
+    max_entries: int = MAX_ROOT_PARENT_ENTRIES,
+) -> None:
+    """Require one exact stored spelling in a bounded directory."""
+
+    count = 0
+    found = False
+    try:
+        with os.scandir(descriptor) as iterator:
+            for entry in iterator:
+                count += 1
+                if count > max_entries:
+                    raise ReviewError(
+                        f"{label} directory exceeds the entry-count limit"
+                    )
+                if entry.name == name:
+                    found = True
+    except ReviewError:
+        raise
+    except OSError as error:
+        raise ReviewError(f"cannot inspect {label} directory") from error
+    if not found:
+        raise ReviewError(f"{label} does not use its stored path spelling")
+
+
+def _open_held_root(root: Path, *, label: str) -> HeldRoot:
+    """Open one exact root entry and retain its parent descriptor."""
+
+    try:
+        absolute = Path(os.path.abspath(os.fspath(root.expanduser())))
+        if not absolute.name:
+            raise ValueError("a filesystem root is not an accepted input root")
+        parent = absolute.parent.resolve(strict=True)
+        resolved_absolute = parent / absolute.name
+    except (OSError, RuntimeError, ValueError) as error:
+        raise ReviewError(f"{label} root is missing or unsafe: {root}") from error
+
+    parent_descriptor = -1
+    root_descriptor = -1
+    try:
+        parent_descriptor = os.open(parent, _directory_flags())
+        _require_exact_entry_name(
+            parent_descriptor,
+            absolute.name,
+            label=f"{label} root parent",
+        )
+        root_descriptor = os.open(
+            absolute.name,
+            _directory_flags(),
+            dir_fd=parent_descriptor,
+        )
+        identity = _file_identity(os.fstat(root_descriptor))
+        if not stat.S_ISDIR(identity[2]):
+            raise ReviewError(f"{label} root is not a regular directory: {root}")
+        entry_identity = _file_identity(
+            os.stat(
+                absolute.name,
+                dir_fd=parent_descriptor,
+                follow_symlinks=False,
+            )
+        )
+        if entry_identity != identity:
+            raise ReviewError(f"{label} root changed while it was opened")
+        return HeldRoot(
+            resolved_absolute,
+            absolute.name,
+            parent_descriptor,
+            root_descriptor,
+            identity,
+            label,
+        )
+    except BaseException as error:
+        _close_descriptors(
+            [root_descriptor, parent_descriptor],
+            context=f"{label} root",
+        )
+        if isinstance(error, ReviewError):
+            raise
+        if isinstance(error, OSError):
+            raise ReviewError(f"{label} root is missing or unsafe: {root}") from error
+        raise
+
+
+def _close_held_root(root: HeldRoot) -> None:
+    """Close one held root and its parent."""
+
+    _close_descriptors(
+        [root.descriptor, root.parent_descriptor],
+        context=f"{root.label} root",
+    )
+
+
+def _verify_held_root(root: HeldRoot) -> None:
+    """Require the held root and its parent entry to retain one identity."""
+
+    replacement_descriptor = -1
+    try:
+        if _file_identity(os.fstat(root.descriptor)) != root.identity:
+            raise ReviewError(f"{root.label} root changed during traversal")
+        _require_exact_entry_name(
+            root.parent_descriptor,
+            root.name,
+            label=f"{root.label} root parent",
+        )
+        current = _file_identity(
+            os.stat(
+                root.name,
+                dir_fd=root.parent_descriptor,
+                follow_symlinks=False,
+            )
+        )
+        replacement_descriptor = os.open(root.absolute, _directory_flags())
+        replacement_identity = _file_identity(os.fstat(replacement_descriptor))
+    except ReviewError:
+        raise
+    except OSError as error:
+        raise ReviewError(f"{root.label} root was replaced or became unsafe") from error
+    finally:
+        _close_descriptors(
+            [replacement_descriptor],
+            context=f"{root.label} root replacement check",
+        )
+    if current != root.identity:
+        raise ReviewError(f"{root.label} root was replaced during traversal")
+    if replacement_identity != root.identity:
+        raise ReviewError(f"{root.label} root path was replaced during traversal")
+
+
+def _relative_parts(
+    relative: str,
+    *,
+    label: str,
+    max_depth: int = MAX_HANDOFF_DEPTH,
+    max_path_bytes: int = MAX_HANDOFF_PATH_BYTES,
+    max_component_bytes: int = MAX_HANDOFF_COMPONENT_BYTES,
+) -> tuple[str, ...]:
+    """Validate one bounded canonical relative path."""
+
+    return canonical_relative_parts(
+        relative,
+        label=label,
+        max_depth=max_depth,
+        max_path_bytes=max_path_bytes,
+        max_component_bytes=max_component_bytes,
+    )
+
+
+def _read_rooted_regular_file(
+    root_descriptor: int,
+    relative: str,
+    *,
+    max_bytes: int,
+    expected_size: int | None,
+    label: str,
+    directory_identities: dict[str, tuple[int, ...]],
+    record_directories: bool,
+    require_exact_names: bool,
+    expected_git_mode: str | None = None,
+    size_mismatch_message: str | None = None,
+) -> RootedRead:
+    """Read one file through a held root and unchanged directory descriptors."""
+
+    parts = _relative_parts(relative, label=f"{label} path")
+    if (
+        type(max_bytes) is not int
+        or max_bytes < 0
+        or (
+            expected_size is not None
+            and (
+                type(expected_size) is not int
+                or expected_size < 0
+                or expected_size > max_bytes
+            )
+        )
+    ):
+        raise ReviewError(f"{label} byte limits are invalid")
+
+    owned_directories: list[tuple[int, tuple[int, ...]]] = []
+    file_descriptor = -1
+    try:
+        current = os.dup(root_descriptor)
+        try:
+            current_identity = _file_identity(os.fstat(current))
+        except BaseException:
+            _close_descriptors([current], context=f"{label} root acquisition")
+            raise
+        owned_directories.append((current, current_identity))
+        expected_root = directory_identities.get("")
+        if expected_root is None:
+            directory_identities[""] = current_identity
+        elif expected_root != current_identity:
+            raise ReviewError(f"{label} root changed before the read")
+
+        traversed: list[str] = []
+        for part in parts[:-1]:
+            traversed.append(part)
+            directory_path = "/".join(traversed)
+            if require_exact_names:
+                _require_exact_entry_name(
+                    current,
+                    part,
+                    label=f"{label} path",
+                )
+            next_descriptor = os.open(
+                part,
+                _directory_flags(),
+                dir_fd=current,
+            )
+            try:
+                identity = _file_identity(os.fstat(next_descriptor))
+            except BaseException:
+                _close_descriptors(
+                    [next_descriptor],
+                    context=f"{label} directory acquisition",
+                )
+                raise
+            owned_directories.append((next_descriptor, identity))
+            expected = directory_identities.get(directory_path)
+            if expected is None:
+                if not record_directories:
+                    raise ReviewError(
+                        f"{label} entered an unrecorded directory: {directory_path}"
+                    )
+                directory_identities[directory_path] = identity
+            elif expected != identity:
+                raise ReviewError(f"{label} directory changed: {directory_path}")
+            current = next_descriptor
+
+        if require_exact_names:
+            _require_exact_entry_name(
+                current,
+                parts[-1],
+                label=f"{label} path",
+            )
+        file_descriptor = os.open(
+            parts[-1],
+            _file_flags(),
+            dir_fd=current,
+        )
+        before = os.fstat(file_descriptor)
+        identity = _file_identity(before)
+        if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+            raise ReviewError(f"{label} is not one singly linked regular file")
+        if before.st_size > max_bytes:
+            raise ReviewError(f"{label} exceeds the byte limit")
+        if expected_size is not None and before.st_size != expected_size:
+            raise ReviewError(
+                size_mismatch_message or f"{label} size differs from its declared bound"
+            )
+        if expected_git_mode is not None:
+            executable = bool(before.st_mode & stat.S_IXUSR)
+            if executable != (expected_git_mode == "100755"):
+                raise ReviewError(f"{label} executable mode differs from its index")
+
+        chunks: list[bytes] = []
+        total = 0
+        read_limit = before.st_size + 1
+        while total < read_limit:
+            block = os.read(
+                file_descriptor,
+                min(1024 * 1024, read_limit - total),
+            )
+            if not block:
+                break
+            total += len(block)
+            if total > before.st_size or total > max_bytes:
+                raise ReviewError(f"{label} grew while it was read")
+            chunks.append(block)
+        after = os.fstat(file_descriptor)
+        if total != before.st_size or _file_identity(after) != identity:
+            raise ReviewError(f"{label} changed while it was read")
+        for descriptor, expected in owned_directories:
+            if _file_identity(os.fstat(descriptor)) != expected:
+                raise ReviewError(f"{label} path changed while it was read")
+        return RootedRead(b"".join(chunks), identity)
+    except ReviewError:
+        raise
+    except OSError as error:
+        raise ReviewError(f"{label} is missing or unsafe") from error
+    finally:
+        _close_descriptors(
+            [file_descriptor]
+            + [descriptor for descriptor, _identity in reversed(owned_directories)],
+            context=label,
+        )
+
+
+def _verify_rooted_regular_file_identity(
+    root_descriptor: int,
+    relative: str,
+    expected_file: tuple[int, ...],
+    directory_identities: dict[str, tuple[int, ...]],
+    *,
+    label: str,
+) -> None:
+    """Require one touched file and its path to retain their identities."""
+
+    parts = _relative_parts(relative, label=f"{label} path")
+    owned_directories: list[tuple[int, tuple[int, ...]]] = []
+    file_descriptor = -1
+    try:
+        current = os.dup(root_descriptor)
+        try:
+            current_identity = _file_identity(os.fstat(current))
+        except BaseException:
+            _close_descriptors([current], context=f"{label} path")
+            raise
+        if directory_identities.get("") != current_identity:
+            _close_descriptors([current], context=f"{label} path")
+            raise ReviewError(f"{label} root changed during the transaction")
+        owned_directories.append((current, current_identity))
+
+        traversed: list[str] = []
+        for part in parts[:-1]:
+            traversed.append(part)
+            directory_path = "/".join(traversed)
+            _require_exact_entry_name(
+                current,
+                part,
+                label=f"{label} path",
+            )
+            next_descriptor = os.open(
+                part,
+                _directory_flags(),
+                dir_fd=current,
+            )
+            try:
+                identity = _file_identity(os.fstat(next_descriptor))
+            except BaseException:
+                _close_descriptors(
+                    [next_descriptor],
+                    context=f"{label} path",
+                )
+                raise
+            if directory_identities.get(directory_path) != identity:
+                _close_descriptors(
+                    [next_descriptor],
+                    context=f"{label} path",
+                )
+                raise ReviewError(
+                    f"{label} directory changed during the transaction: "
+                    f"{directory_path}"
+                )
+            owned_directories.append((next_descriptor, identity))
+            current = next_descriptor
+
+        _require_exact_entry_name(
+            current,
+            parts[-1],
+            label=f"{label} path",
+        )
+        file_descriptor = os.open(
+            parts[-1],
+            _file_flags(),
+            dir_fd=current,
+        )
+        current_file = _file_identity(os.fstat(file_descriptor))
+        if (
+            not stat.S_ISREG(current_file[2])
+            or current_file[3] != 1
+            or current_file != expected_file
+        ):
+            raise ReviewError(f"{label} changed during the transaction")
+        if _file_identity(os.fstat(file_descriptor)) != expected_file:
+            raise ReviewError(f"{label} changed during the transaction")
+        for descriptor, expected_directory in owned_directories:
+            if _file_identity(os.fstat(descriptor)) != expected_directory:
+                raise ReviewError(f"{label} path changed during the transaction")
+    except ReviewError:
+        raise
+    except OSError as error:
+        raise ReviewError(f"{label} changed or became unsafe") from error
+    finally:
+        _close_descriptors(
+            [file_descriptor]
+            + [descriptor for descriptor, _identity in reversed(owned_directories)],
+            context=f"{label} identity verification",
+        )
+
+
+def _verify_rooted_directories(
+    root_descriptor: int,
+    identities: dict[str, tuple[int, ...]],
+    *,
+    label: str,
+) -> None:
+    """Require each directory used in a rooted transaction to stay unchanged."""
+
+    root_identity = identities.get("")
+    try:
+        current_root = _file_identity(os.fstat(root_descriptor))
+    except OSError as error:
+        raise ReviewError(f"{label} root became unsafe") from error
+    if root_identity is None or current_root != root_identity:
+        raise ReviewError(f"{label} root changed during the transaction")
+    for relative in sorted(
+        (path for path in identities if path),
+        key=lambda path: (path.count("/"), path),
+    ):
+        parts = _relative_parts(relative, label=f"{label} directory path")
+        descriptors: list[int] = []
+        try:
+            descriptor = os.dup(root_descriptor)
+            descriptors.append(descriptor)
+            traversed: list[str] = []
+            for part in parts:
+                traversed.append(part)
+                _require_exact_entry_name(
+                    descriptor,
+                    part,
+                    label=f"{label} directory path",
+                )
+                next_descriptor = os.open(
+                    part,
+                    _directory_flags(),
+                    dir_fd=descriptor,
+                )
+                descriptors.append(next_descriptor)
+                descriptor = next_descriptor
+                traversed_path = "/".join(traversed)
+                expected = identities.get(traversed_path)
+                if expected is None or _file_identity(os.fstat(descriptor)) != expected:
+                    raise ReviewError(f"{label} directory changed: {traversed_path}")
+        except ReviewError:
+            raise
+        except OSError as error:
+            raise ReviewError(
+                f"{label} directory is missing or unsafe: {relative}"
+            ) from error
+        finally:
+            _close_descriptors(
+                list(reversed(descriptors)),
+                context=f"{label} directory verification",
+            )
 
 
 def exact_object(value: Any, keys: set[str], label: str) -> dict[str, Any]:
@@ -364,22 +935,77 @@ def digest_bounded_handoff_file(
         return digest.hexdigest(), size
 
 
-def assert_release_tool_coverage(repo: Path) -> None:
-    """Reject an unenumerated tracked release-tool source or test."""
+def _release_index_pathspecs() -> tuple[str, ...]:
+    """Return the complete relevant release-input index pathspec set."""
 
-    raw = bytes(
+    return (*RELEASE_INPUTS, "repo_work", "scripts")
+
+
+def _read_relevant_release_index(repo: Path) -> bytes:
+    """Capture all declared inputs and tracked release-tool paths once."""
+
+    return bytes(
         git(
             repo,
+            "--literal-pathspecs",
             "ls-files",
+            "--stage",
             "-z",
             "--",
-            "repo_work",
-            "scripts",
+            *_release_index_pathspecs(),
             text=False,
+            max_bytes=MAX_RELEASE_INPUT_INDEX_BYTES,
         )
     )
+
+
+def _parse_relevant_release_index(
+    raw_index: bytes,
+) -> dict[str, list[ReleaseIndexEntry]]:
+    """Parse one bounded complete relevant index capture."""
+
+    entries: dict[str, list[ReleaseIndexEntry]] = {}
+    for raw_entry in raw_index.split(b"\0"):
+        if not raw_entry:
+            continue
+        try:
+            metadata, raw_path = raw_entry.split(b"\t", 1)
+            raw_mode, raw_blob, raw_stage = metadata.split(b" ")
+            relative = raw_path.decode("utf-8")
+            mode = raw_mode.decode("ascii")
+            blob = raw_blob.decode("ascii")
+            stage = int(raw_stage.decode("ascii"), 10)
+        except (UnicodeError, ValueError) as error:
+            raise ReviewError(
+                "release input index contains a malformed entry"
+            ) from error
+        _relative_parts(relative, label="release input index path")
+        if relative not in RELEASE_INPUTS and not (
+            relative == "repo_work"
+            or relative.startswith("repo_work/")
+            or relative == "scripts"
+            or relative.startswith("scripts/")
+        ):
+            raise ReviewError(
+                f"release input index contains an unexpected path: {relative}"
+            )
+        exact_object_id(blob, f"release input index blob for {relative}")
+        entries.setdefault(relative, []).append(ReleaseIndexEntry(mode, blob, stage))
+    return entries
+
+
+def _assert_release_tool_coverage_from_index(
+    entries: dict[str, list[ReleaseIndexEntry]],
+) -> None:
+    """Reject an unenumerated release-tool path from one index capture."""
+
     tracked = {
-        path.decode("utf-8", "surrogateescape") for path in raw.split(b"\0") if path
+        path
+        for path in entries
+        if path == "repo_work"
+        or path.startswith("repo_work/")
+        or path == "scripts"
+        or path.startswith("scripts/")
     }
     declared = set(RELEASE_INPUTS)
     missing = sorted(tracked - declared)
@@ -388,6 +1014,13 @@ def assert_release_tool_coverage(repo: Path) -> None:
             "tracked release-tool paths are absent from the frozen input set: "
             + ", ".join(missing)
         )
+
+
+def assert_release_tool_coverage(repo: Path) -> None:
+    """Reject an unenumerated tracked release-tool source or test."""
+
+    entries = _parse_relevant_release_index(_read_relevant_release_index(repo))
+    _assert_release_tool_coverage_from_index(entries)
 
 
 def git_blob(repo: Path, commit: str, relative: str) -> bytes:
@@ -402,55 +1035,245 @@ def git_blob(repo: Path, commit: str, relative: str) -> bytes:
     )
 
 
-def strict_relative_files(root: Path) -> list[dict[str, Any]]:
-    """Inventory every supplied path without following symlinks."""
+def _inventory_handoff_tree(
+    root_descriptor: int,
+    root_identity: tuple[int, ...],
+) -> HandoffInventory:
+    """Inventory one complete handoff tree through held descriptors."""
 
-    if root.is_symlink() or not root.is_dir():
-        raise ReviewError(f"handoff root is not a regular directory: {root}")
-    resolved_root = root.resolve()
-    rows: list[dict[str, Any]] = []
+    directories = {"": root_identity}
+    regular_files: dict[str, tuple[int, ...]] = {}
+    symlinks: dict[str, tuple[tuple[int, ...], str, bytes]] = {}
+    regular_identities: set[tuple[int, int]] = set()
+    symlink_identities: set[tuple[int, int]] = set()
     entry_count = 0
     aggregate_size = 0
 
-    def symlink_target_bytes(target: str, relative: str) -> bytes:
+    def visit(
+        descriptor: int,
+        prefix: tuple[str, ...],
+        expected_directory: tuple[int, ...],
+    ) -> None:
+        nonlocal entry_count, aggregate_size
+        entries: list[tuple[str, str, tuple[str, ...], tuple[int, ...]]] = []
         try:
-            return target.encode("utf-8")
-        except UnicodeEncodeError as error:
+            with os.scandir(descriptor) as iterator:
+                for entry in iterator:
+                    entry_count += 1
+                    if entry_count > MAX_HANDOFF_ENTRIES:
+                        raise ReviewError(
+                            "handoff inventory exceeds the entry-count limit"
+                        )
+                    relative = "/".join((*prefix, entry.name))
+                    parts = _relative_parts(
+                        relative,
+                        label="handoff path",
+                    )
+                    metadata = entry.stat(follow_symlinks=False)
+                    entries.append(
+                        (
+                            relative,
+                            entry.name,
+                            parts,
+                            _file_identity(metadata),
+                        )
+                    )
+        except ReviewError:
+            raise
+        except OSError as error:
+            raise ReviewError("cannot completely inventory handoff path") from error
+
+        if prefix and not entries:
             raise ReviewError(
-                f"handoff symlink target is not valid UTF-8: {relative}"
-            ) from error
+                "handoff inventory contains an unrepresented empty directory: "
+                + "/".join(prefix)
+            )
 
-    def fail_walk(error: OSError) -> None:
-        detail = error.strerror or str(error)
-        location = error.filename or str(root)
-        raise ReviewError(
-            f"cannot completely inventory handoff path {location}: {detail}"
-        ) from error
-
-    for directory, names, files in os.walk(root, followlinks=False, onerror=fail_walk):
-        entry_count += len(names) + len(files)
-        if entry_count > MAX_HANDOFF_ENTRIES:
-            raise ReviewError("handoff inventory exceeds the entry-count limit")
-        names.sort()
-        files.sort()
-        base = Path(directory)
-        # ``os.walk(..., followlinks=False)`` does not descend through directory
-        # symlinks, but it still places them in ``names``. Record and remove them
-        # explicitly so the manifest covers every supplied directory entry.
-        for name in list(names):
-            path = base / name
-            if not path.is_symlink():
+        for relative, name, parts, identity in sorted(
+            entries,
+            key=lambda row: row[0],
+        ):
+            mode = identity[2]
+            if stat.S_ISREG(mode):
+                if identity[3] != 1:
+                    raise ReviewError(
+                        f"handoff regular file is multiply linked: {relative}"
+                    )
+                inode = (identity[0], identity[1])
+                if inode in regular_identities:
+                    raise ReviewError(
+                        f"handoff regular file identity is duplicated: {relative}"
+                    )
+                if identity[4] > MAX_HANDOFF_FILE_BYTES:
+                    raise ReviewError(
+                        "handoff regular file exceeds the per-file byte limit: "
+                        f"{relative}"
+                    )
+                aggregate_size += identity[4]
+                if aggregate_size > MAX_HANDOFF_AGGREGATE_BYTES:
+                    raise ReviewError(
+                        "handoff inventory exceeds the aggregate byte limit"
+                    )
+                regular_identities.add(inode)
+                regular_files[relative] = identity
                 continue
-            names.remove(name)
-            target = os.readlink(path)
-            relative = path.relative_to(root).as_posix()
-            encoded = symlink_target_bytes(target, relative)
-            if len(encoded) > MAX_HANDOFF_SYMLINK_BYTES:
-                raise ReviewError(
-                    f"handoff symlink target exceeds the byte limit: {relative}"
-                )
-            if aggregate_size + len(encoded) > MAX_HANDOFF_AGGREGATE_BYTES:
-                raise ReviewError("handoff inventory exceeds the aggregate byte limit")
+
+            if stat.S_ISLNK(mode):
+                if identity[3] != 1:
+                    raise ReviewError(f"handoff symlink is multiply linked: {relative}")
+                inode = (identity[0], identity[1])
+                if inode in symlink_identities:
+                    raise ReviewError(
+                        f"handoff symlink identity is duplicated: {relative}"
+                    )
+                try:
+                    target = os.readlink(name, dir_fd=descriptor)
+                    after = _file_identity(
+                        os.stat(
+                            name,
+                            dir_fd=descriptor,
+                            follow_symlinks=False,
+                        )
+                    )
+                except OSError as error:
+                    raise ReviewError(
+                        f"handoff symlink changed or became unsafe: {relative}"
+                    ) from error
+                if after != identity:
+                    raise ReviewError(f"handoff symlink changed while read: {relative}")
+                try:
+                    encoded = target.encode("utf-8", "strict")
+                except UnicodeEncodeError as error:
+                    raise ReviewError(
+                        f"handoff symlink target is not valid UTF-8: {relative}"
+                    ) from error
+                if len(encoded) > MAX_HANDOFF_SYMLINK_BYTES:
+                    raise ReviewError(
+                        f"handoff symlink target exceeds the byte limit: {relative}"
+                    )
+                aggregate_size += len(encoded)
+                if aggregate_size > MAX_HANDOFF_AGGREGATE_BYTES:
+                    raise ReviewError(
+                        "handoff inventory exceeds the aggregate byte limit"
+                    )
+                symlink_identities.add(inode)
+                symlinks[relative] = (identity, target, encoded)
+                continue
+
+            if stat.S_ISDIR(mode):
+                try:
+                    child = os.open(
+                        name,
+                        _directory_flags(),
+                        dir_fd=descriptor,
+                    )
+                except OSError as error:
+                    raise ReviewError(
+                        f"handoff directory changed or became unsafe: {relative}"
+                    ) from error
+                try:
+                    try:
+                        opened_identity = _file_identity(os.fstat(child))
+                    except OSError as error:
+                        raise ReviewError(
+                            f"handoff directory changed or became unsafe: {relative}"
+                        ) from error
+                    if opened_identity != identity:
+                        raise ReviewError(
+                            f"handoff directory changed while opened: {relative}"
+                        )
+                    directories[relative] = identity
+                    visit(child, parts, identity)
+                    try:
+                        final_identity = _file_identity(os.fstat(child))
+                    except OSError as error:
+                        raise ReviewError(
+                            f"handoff directory changed or became unsafe: {relative}"
+                        ) from error
+                    if final_identity != identity:
+                        raise ReviewError(
+                            f"handoff directory changed during traversal: {relative}"
+                        )
+                finally:
+                    _close_descriptors(
+                        [child],
+                        context=f"handoff directory {relative}",
+                    )
+                continue
+
+            kind = "special file"
+            raise ReviewError(f"handoff contains a {kind}: {relative}")
+
+        try:
+            final_directory = _file_identity(os.fstat(descriptor))
+        except OSError as error:
+            relative = "/".join(prefix) or "."
+            raise ReviewError(
+                f"handoff directory changed or became unsafe: {relative}"
+            ) from error
+        if final_directory != expected_directory:
+            relative = "/".join(prefix) or "."
+            raise ReviewError(f"handoff directory changed during traversal: {relative}")
+
+    visit(root_descriptor, (), root_identity)
+    return HandoffInventory(
+        directories,
+        regular_files,
+        symlinks,
+        aggregate_size,
+    )
+
+
+def _digest_rooted_handoff_file(
+    root_descriptor: int,
+    relative: str,
+    expected_identity: tuple[int, ...],
+    directories: dict[str, tuple[int, ...]],
+) -> tuple[str, int]:
+    """Hash one inventoried handoff file through the held root."""
+
+    captured = _read_rooted_regular_file(
+        root_descriptor,
+        relative,
+        max_bytes=MAX_HANDOFF_FILE_BYTES,
+        expected_size=expected_identity[4],
+        label=f"handoff regular file {relative}",
+        directory_identities=directories,
+        record_directories=False,
+        require_exact_names=False,
+    )
+    if captured.identity != expected_identity:
+        raise ReviewError(f"handoff regular file changed before read: {relative}")
+    return digest_bytes(captured.document), len(captured.document)
+
+
+def strict_relative_files(root: Path) -> list[dict[str, Any]]:
+    """Create one coherent bounded inventory from a held handoff root."""
+
+    held = _open_held_root(root, label="handoff")
+    try:
+        before = _inventory_handoff_tree(held.descriptor, held.identity)
+        if not before.regular_files and not before.symlinks:
+            raise ReviewError("handoff root contains no files")
+
+        rows: list[dict[str, Any]] = []
+        for relative, identity in sorted(before.regular_files.items()):
+            digest, size = _digest_rooted_handoff_file(
+                held.descriptor,
+                relative,
+                identity,
+                before.directories,
+            )
+            rows.append(
+                {
+                    "path": relative,
+                    "kind": "regular",
+                    "mode": f"{stat.S_IMODE(identity[2]):04o}",
+                    "sha256": digest,
+                    "size_bytes": size,
+                }
+            )
+        for relative, (_identity, target, encoded) in sorted(before.symlinks.items()):
             rows.append(
                 {
                     "path": relative,
@@ -460,50 +1283,15 @@ def strict_relative_files(root: Path) -> list[dict[str, Any]]:
                     "size_bytes": len(encoded),
                 }
             )
-            aggregate_size += len(encoded)
-        for name in files:
-            path = base / name
-            relative = path.relative_to(root).as_posix()
-            if path.is_symlink():
-                target = os.readlink(path)
-                encoded = symlink_target_bytes(target, relative)
-                if len(encoded) > MAX_HANDOFF_SYMLINK_BYTES:
-                    raise ReviewError(
-                        f"handoff symlink target exceeds the byte limit: {relative}"
-                    )
-                if aggregate_size + len(encoded) > MAX_HANDOFF_AGGREGATE_BYTES:
-                    raise ReviewError(
-                        "handoff inventory exceeds the aggregate byte limit"
-                    )
-                rows.append(
-                    {
-                        "path": relative,
-                        "kind": "symlink",
-                        "target": target,
-                        "sha256": digest_bytes(encoded),
-                        "size_bytes": len(encoded),
-                    }
-                )
-                aggregate_size += len(encoded)
-                continue
-            resolved = path.resolve()
-            if resolved_root not in resolved.parents or not path.is_file():
-                raise ReviewError(
-                    f"handoff path is not a contained regular file: {relative}"
-                )
-            digest, size = digest_bounded_handoff_file(path, relative, aggregate_size)
-            rows.append(
-                {
-                    "path": relative,
-                    "kind": "regular",
-                    "sha256": digest,
-                    "size_bytes": size,
-                }
-            )
-            aggregate_size += size
-    if not rows:
-        raise ReviewError("handoff root contains no files")
-    return rows
+        rows.sort(key=lambda row: str(row["path"]))
+
+        after = _inventory_handoff_tree(held.descriptor, held.identity)
+        if after != before:
+            raise ReviewError("handoff inventory changed during traversal")
+        _verify_held_root(held)
+        return rows
+    finally:
+        _close_held_root(held)
 
 
 def locked_git_dependencies(lock_bytes: bytes) -> list[dict[str, str]]:
@@ -614,11 +1402,82 @@ def submodule_inventory(repo: Path, commit: str) -> list[dict[str, str]]:
 
 def validate_source_documents(
     repo: Path,
+    *,
+    captured_documents: dict[str, bytes] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], str, str]:
     """Load and validate the two repository documents that bind the freeze."""
 
+    source_paths = (
+        ("release/0.9.0/handoff-source.json", "handoff source"),
+        ("release/0.9.0/audit-inputs.json", "release audit inputs"),
+    )
+    if captured_documents is None:
+        held = _open_held_root(repo, label="source-document repository")
+        source_bytes: dict[str, bytes] = {}
+        directory_identities = {"": held.identity}
+        file_identities: set[tuple[int, int]] = set()
+        source_file_identities: dict[str, tuple[int, ...]] = {}
+        try:
+            for relative, label in source_paths:
+                captured = _read_rooted_regular_file(
+                    held.descriptor,
+                    relative,
+                    max_bytes=MAX_SOURCE_DOCUMENT_BYTES,
+                    expected_size=None,
+                    label=label,
+                    directory_identities=directory_identities,
+                    record_directories=True,
+                    require_exact_names=True,
+                )
+                file_identity = (captured.identity[0], captured.identity[1])
+                if file_identity in file_identities:
+                    raise ReviewError("source documents share one file identity")
+                file_identities.add(file_identity)
+                source_bytes[relative] = captured.document
+                source_file_identities[relative] = captured.identity
+                _verify_held_root(held)
+            for relative, label in source_paths:
+                _verify_rooted_regular_file_identity(
+                    held.descriptor,
+                    relative,
+                    source_file_identities[relative],
+                    directory_identities,
+                    label=label,
+                )
+            _verify_rooted_directories(
+                held.descriptor,
+                directory_identities,
+                label="source-document repository",
+            )
+            _verify_held_root(held)
+        finally:
+            _close_held_root(held)
+    else:
+        expected_paths = {relative for relative, _label in source_paths}
+        if set(captured_documents) != expected_paths:
+            raise ReviewError("captured source-document set is incomplete")
+        source_bytes = dict(captured_documents)
+
+    decoded: dict[str, Any] = {}
+    for relative, label in source_paths:
+        if len(source_bytes[relative]) > MAX_SOURCE_DOCUMENT_BYTES:
+            raise ReviewError(f"{label} exceeds the byte limit")
+        try:
+            value = loads_json(source_bytes[relative])
+            validate_json_structure(
+                value,
+                max_depth=MAX_SOURCE_JSON_DEPTH,
+                max_nodes=MAX_SOURCE_JSON_NODES,
+                label=label,
+            )
+        except ReviewError:
+            raise
+        except (UnicodeError, ValueError, RecursionError, MemoryError) as error:
+            raise ReviewError(f"{label} is not strict bounded JSON") from error
+        decoded[relative] = value
+
     handoff_source = exact_object(
-        load_json(repo / "release/0.9.0/handoff-source.json"),
+        decoded["release/0.9.0/handoff-source.json"],
         {
             "schema",
             "prepared",
@@ -642,12 +1501,27 @@ def validate_source_documents(
         raise ReviewError("handoff source original target is not 1.0.0")
     if handoff_source["adapted_release_target"] != RELEASE["version"]:
         raise ReviewError("handoff source does not bind release 0.9.0")
-    for key in ("prepared", "repository", "master_package", "provenance_note"):
+    for key in ("prepared", "repository", "provenance_note"):
         exact_string(handoff_source[key], f"handoff source {key}")
-    child_archive = safe_relative_path(
-        handoff_source["child_archive"], "handoff source child_archive"
+    master_package = exact_string(
+        handoff_source["master_package"],
+        "handoff source master_package",
     )
-    if len(Path(child_archive).parts) != 1 or not child_archive.endswith(".zip"):
+    _relative_parts(
+        master_package,
+        label="handoff source master_package",
+        max_depth=1,
+    )
+    child_archive = exact_string(
+        handoff_source["child_archive"],
+        "handoff source child_archive",
+    )
+    _relative_parts(
+        child_archive,
+        label="handoff source child_archive",
+        max_depth=1,
+    )
+    if not child_archive.endswith(".zip"):
         raise ReviewError("handoff source child_archive must be a root-level ZIP name")
     for key in (
         "child_archive_sha256",
@@ -661,7 +1535,7 @@ def validate_source_documents(
     )
 
     audit_inputs = exact_object(
-        load_json(repo / "release/0.9.0/audit-inputs.json"),
+        decoded["release/0.9.0/audit-inputs.json"],
         {
             "schema",
             "release",
@@ -703,8 +1577,13 @@ def validate_source_documents(
         {"scan_patterns", "declared"},
         "external sources",
     )
-    safe_relative_path(
-        audit_inputs["adaptation_decision"], "release audit adaptation_decision"
+    adaptation_decision = exact_string(
+        audit_inputs["adaptation_decision"],
+        "release audit adaptation_decision",
+    )
+    _relative_parts(
+        adaptation_decision,
+        label="release audit adaptation_decision",
     )
 
     declared_baseline = exact_object(
@@ -778,7 +1657,7 @@ def threat_register_status(document: bytes) -> str:
         raise ReviewError("threat register exceeds the 4 MiB byte limit")
     try:
         value = loads_json(document)
-    except (UnicodeError, ValueError) as error:
+    except (UnicodeError, ValueError, RecursionError, MemoryError) as error:
         raise ReviewError("threat register is not strict JSON") from error
     if type(value) is not dict:
         raise ReviewError("threat register must be a JSON object")
@@ -789,136 +1668,182 @@ def threat_register_status(document: bytes) -> str:
     return status
 
 
-def release_input_manifest(
+def _capture_release_input_snapshot(
     repo: Path,
     *,
     required_threat_status: str | None = None,
-) -> list[dict[str, Any]]:
-    """Bind each declared release input to its exact stage-zero index blob."""
+    bind_source_documents: bool = False,
+) -> ReleaseInputSnapshot:
+    """Capture one coherent release-input and source-document transaction."""
 
     if (
         required_threat_status is not None
         and required_threat_status not in VALID_THREAT_STATUSES
     ):
         raise ReviewError("required threat-register lifecycle status is unsupported")
-    rows: list[dict[str, Any]] = []
-    observed_threat_status: str | None = None
-    resolved_repo = repo.resolve()
     if len(RELEASE_INPUTS) != len(set(RELEASE_INPUTS)):
         raise ReviewError("RELEASE_INPUTS contains a duplicate path")
     for relative in RELEASE_INPUTS:
-        safe_relative_path(relative, "declared release input path")
-    assert_no_replace_refs(repo)
-    raw_index = git(
-        repo,
-        "--literal-pathspecs",
-        "ls-files",
-        "--stage",
-        "-z",
-        "--",
-        *RELEASE_INPUTS,
-        text=False,
-    )
-    index_entries: dict[str, list[tuple[str, str, int]]] = {
-        relative: [] for relative in RELEASE_INPUTS
-    }
-    for raw_entry in raw_index.split(b"\0"):
-        if not raw_entry:
-            continue
-        try:
-            metadata, raw_path = raw_entry.split(b"\t", 1)
-            raw_mode, raw_blob, raw_stage = metadata.split(b" ")
-            relative = raw_path.decode("utf-8")
-            mode = raw_mode.decode("ascii")
-            blob = raw_blob.decode("ascii")
-            stage = int(raw_stage.decode("ascii"), 10)
-        except (UnicodeError, ValueError) as error:
-            raise ReviewError(
-                "release input index contains a malformed entry"
-            ) from error
-        if relative not in index_entries:
-            raise ReviewError(
-                f"release input index contains an unexpected path: {relative}"
-            )
-        index_entries[relative].append((mode, blob, stage))
+        _relative_parts(relative, label="declared release input path")
+    held = _open_held_root(repo, label="release repository")
+    rows: list[dict[str, Any]] = []
+    source_documents: tuple[dict[str, Any], dict[str, Any], str, str] | None = None
+    captured_source_bytes: dict[str, bytes] = {}
+    observed_threat_status: str | None = None
+    directory_identities = {"": held.identity}
+    file_identities: set[tuple[int, int]] = set()
+    release_file_identities: dict[str, tuple[int, ...]] = {}
+    aggregate_size = 0
+    try:
+        assert_no_replace_refs(repo)
+        _verify_held_root(held)
+        raw_index = _read_relevant_release_index(repo)
+        _verify_held_root(held)
+        index_entries = _parse_relevant_release_index(raw_index)
+        _assert_release_tool_coverage_from_index(index_entries)
 
-    for relative in RELEASE_INPUTS:
-        entries = index_entries[relative]
-        if len(entries) != 1 or entries[0][2] != 0:
-            raise ReviewError(
-                "release audit input must have exactly one stage-zero tracked "
-                f"entry: {relative}"
+        for relative in RELEASE_INPUTS:
+            entries = index_entries.get(relative, [])
+            if len(entries) != 1 or entries[0].stage != 0:
+                raise ReviewError(
+                    "release audit input must have exactly one stage-zero tracked "
+                    f"entry: {relative}"
+                )
+            mode = entries[0].mode
+            blob = entries[0].blob
+            if mode not in {"100644", "100755"}:
+                raise ReviewError(
+                    f"release audit input index entry is not a regular file: {relative}"
+                )
+            indexed_data = bytes(
+                git(
+                    repo,
+                    "cat-file",
+                    "blob",
+                    blob,
+                    text=False,
+                    max_bytes=MAX_RELEASE_INPUT_FILE_BYTES,
+                )
             )
-        mode, blob, _stage = entries[0]
-        if mode not in {"100644", "100755"}:
-            raise ReviewError(
-                f"release audit input index entry is not a regular file: {relative}"
-            )
-        exact_object_id(blob, f"release input index blob for {relative}")
-        indexed_data = git(repo, "cat-file", "blob", blob, text=False)
-        if relative == THREAT_REGISTER_PATH:
-            observed_threat_status = threat_register_status(indexed_data)
+            _verify_held_root(held)
+            aggregate_size += len(indexed_data)
+            if aggregate_size > MAX_RELEASE_INPUT_AGGREGATE_BYTES:
+                raise ReviewError(
+                    "release audit inputs exceed the aggregate byte limit"
+                )
+            if relative == THREAT_REGISTER_PATH:
+                observed_threat_status = threat_register_status(indexed_data)
+            if relative in {
+                "release/0.9.0/handoff-source.json",
+                "release/0.9.0/audit-inputs.json",
+            }:
+                if len(indexed_data) > MAX_SOURCE_DOCUMENT_BYTES:
+                    raise ReviewError(
+                        f"source document exceeds the byte limit: {relative}"
+                    )
+                captured_source_bytes[relative] = indexed_data
 
-        path = repo / relative
-        if path.is_symlink() or not path.is_file():
-            raise ReviewError(
-                f"release audit input is missing or not regular: {relative}"
+            captured = _read_rooted_regular_file(
+                held.descriptor,
+                relative,
+                max_bytes=MAX_RELEASE_INPUT_FILE_BYTES,
+                expected_size=len(indexed_data),
+                label=f"release audit input {relative}",
+                directory_identities=directory_identities,
+                record_directories=True,
+                require_exact_names=True,
+                expected_git_mode=mode,
+                size_mismatch_message=(
+                    f"release audit input differs from its indexed blob: {relative}"
+                ),
             )
-        resolved = path.resolve()
-        if resolved_repo not in resolved.parents:
-            raise ReviewError(f"release audit input escapes the repository: {relative}")
-        try:
-            size = path.stat(follow_symlinks=False).st_size
-        except OSError as error:
-            raise ReviewError(
-                f"release audit input is missing or not regular: {relative}"
-            ) from error
-        if size != len(indexed_data):
-            raise ReviewError(
-                f"release audit input differs from its indexed blob: {relative}"
+            file_identity = (captured.identity[0], captured.identity[1])
+            if file_identity in file_identities:
+                raise ReviewError(
+                    f"release audit input shares a file identity: {relative}"
+                )
+            file_identities.add(file_identity)
+            release_file_identities[relative] = captured.identity
+            if captured.document != indexed_data:
+                raise ReviewError(
+                    f"release audit input differs from its indexed blob: {relative}"
+                )
+            rows.append(
+                {
+                    "path": relative,
+                    "git_mode": mode,
+                    "git_blob_id": blob,
+                    "sha256": digest_bytes(indexed_data),
+                    "size_bytes": len(indexed_data),
+                }
             )
-        working_data = read_bounded_regular_file(
-            path,
-            len(indexed_data),
-            label="release audit input",
-            limit_label="indexed blob size",
+            _verify_held_root(held)
+
+        _verify_rooted_directories(
+            held.descriptor,
+            directory_identities,
+            label="release repository",
         )
-        if working_data != indexed_data:
-            raise ReviewError(
-                f"release audit input differs from its indexed blob: {relative}"
+        if bind_source_documents:
+            source_documents = validate_source_documents(
+                repo,
+                captured_documents=captured_source_bytes,
             )
-        rows.append(
-            {
-                "path": relative,
-                "sha256": digest_bytes(indexed_data),
-                "size_bytes": len(indexed_data),
-            }
+        for relative in RELEASE_INPUTS:
+            _verify_rooted_regular_file_identity(
+                held.descriptor,
+                relative,
+                release_file_identities[relative],
+                directory_identities,
+                label=f"release audit input {relative}",
+            )
+        final_index = _read_relevant_release_index(repo)
+        _verify_held_root(held)
+        if final_index != raw_index:
+            raise ReviewError(
+                "complete relevant release index changed during the transaction"
+            )
+        if required_threat_status is not None:
+            if THREAT_REGISTER_PATH not in RELEASE_INPUTS:
+                raise ReviewError(
+                    "the threat register is absent from the release input contract"
+                )
+            if observed_threat_status != required_threat_status:
+                raise ReviewError(
+                    "indexed threat register must have lifecycle status "
+                    f"{required_threat_status}"
+                )
+        assert_no_replace_refs(repo)
+        _verify_rooted_directories(
+            held.descriptor,
+            directory_identities,
+            label="release repository",
         )
+        for relative in RELEASE_INPUTS:
+            _verify_rooted_regular_file_identity(
+                held.descriptor,
+                relative,
+                release_file_identities[relative],
+                directory_identities,
+                label=f"release audit input {relative}",
+            )
+        _verify_held_root(held)
+        return ReleaseInputSnapshot(rows, source_documents)
+    finally:
+        _close_held_root(held)
 
-    final_index = git(
+
+def release_input_manifest(
+    repo: Path,
+    *,
+    required_threat_status: str | None = None,
+) -> list[dict[str, Any]]:
+    """Bind each declared release input to its exact stage-zero index identity."""
+
+    return _capture_release_input_snapshot(
         repo,
-        "--literal-pathspecs",
-        "ls-files",
-        "--stage",
-        "-z",
-        "--",
-        *RELEASE_INPUTS,
-        text=False,
-    )
-    if final_index != raw_index:
-        raise ReviewError("release input index changed while it was read")
-    if required_threat_status is not None:
-        if THREAT_REGISTER_PATH not in RELEASE_INPUTS:
-            raise ReviewError(
-                "the threat register is absent from the release input contract"
-            )
-        if observed_threat_status != required_threat_status:
-            raise ReviewError(
-                "indexed threat register must have lifecycle status "
-                f"{required_threat_status}"
-            )
-    assert_no_replace_refs(repo)
-    return rows
+        required_threat_status=required_threat_status,
+    ).rows
 
 
 def validate_handoff_rows(value: Any) -> list[dict[str, Any]]:
@@ -930,25 +1855,36 @@ def validate_handoff_rows(value: Any) -> list[dict[str, Any]]:
     seen: set[str] = set()
     validated: list[dict[str, Any]] = []
     aggregate_size = 0
+    previous_path = ""
     for index, raw_row in enumerate(rows):
         label = f"handoff file {index}"
         if type(raw_row) is not dict:
             raise ReviewError(f"{label} must be a JSON object")
         kind = raw_row.get("kind")
         keys = {"path", "kind", "sha256", "size_bytes"}
-        if kind == "symlink":
+        if kind == "regular":
+            keys.add("mode")
+        elif kind == "symlink":
             keys.add("target")
-        elif kind != "regular":
+        else:
             raise ReviewError(f"{label} has an unsupported kind")
         row = exact_object(raw_row, keys, label)
-        relative = safe_relative_path(row["path"], f"{label} path")
+        relative = exact_string(row["path"], f"{label} path")
+        _relative_parts(relative, label=f"{label} path")
         if relative in seen:
             raise ReviewError(f"handoff file path is duplicated: {relative}")
+        if relative <= previous_path:
+            raise ReviewError("handoff file paths must be unique and strictly ordered")
         seen.add(relative)
+        previous_path = relative
         exact_digest(row["sha256"], f"{label} sha256")
         size = exact_integer(row["size_bytes"], f"{label} size_bytes")
-        if kind == "regular" and size > MAX_HANDOFF_FILE_BYTES:
-            raise ReviewError(f"{label} exceeds the regular-file byte limit")
+        if kind == "regular":
+            mode = exact_string(row["mode"], f"{label} mode")
+            if re.fullmatch(r"[0-7]{4}", mode) is None:
+                raise ReviewError(f"{label} mode must be four octal digits")
+            if size > MAX_HANDOFF_FILE_BYTES:
+                raise ReviewError(f"{label} exceeds the regular-file byte limit")
         if kind == "symlink":
             target = exact_string(row["target"], f"{label} target", nonempty=False)
             try:
@@ -986,10 +1922,12 @@ def validate_handoff_manifest(
         "frozen handoff",
     )
     root_name = exact_string(handoff["root_name"], "frozen handoff root_name")
-    if (
-        Path(root_name).name != root_name
-        or root_name != handoff_source["master_package"]
-    ):
+    _relative_parts(
+        root_name,
+        label="frozen handoff root_name",
+        max_depth=1,
+    )
+    if root_name != handoff_source["master_package"]:
         raise ReviewError("frozen handoff root name does not match its source binding")
     rows = validate_handoff_rows(handoff["files"])
     if exact_integer(
@@ -1291,16 +2229,19 @@ def generate_frozen_inputs(
         if path.exists() or path.is_symlink():
             raise ReviewError(f"{label} output already exists: {path}")
 
-    assert_release_tool_coverage(repo)
+    release_snapshot = _capture_release_input_snapshot(
+        repo,
+        required_threat_status=THREAT_STATUS_FROZEN,
+        bind_source_documents=True,
+    )
+    if release_snapshot.source_documents is None:
+        raise ReviewError("release source-document capture is incomplete")
     handoff_source, audit_inputs, baseline_commit, declared_tree = (
-        validate_source_documents(repo)
+        release_snapshot.source_documents
     )
     baseline = baseline_manifest(repo, baseline_commit, declared_tree)
     baseline["repository"] = audit_inputs["baseline_repository"]["url"]
-    release_files = release_input_manifest(
-        repo,
-        required_threat_status=THREAT_STATUS_FROZEN,
-    )
+    release_files = release_snapshot.rows
     handoff_files = strict_relative_files(handoff_root)
     handoff = {
         "root_name": handoff_root.name,
@@ -1376,10 +2317,12 @@ def generate_frozen_inputs(
             output_created = True
             handle.write(manifest_bytes)
     except BaseException:
-        if signer_created:
-            allowed_signers.unlink(missing_ok=True)
+        partial_outputs = []
         if output_created:
-            output.unlink(missing_ok=True)
+            partial_outputs.append(output)
+        if signer_created:
+            partial_outputs.append(allowed_signers)
+        _remove_created_paths(partial_outputs, context="frozen audit-input")
         raise
 
 
@@ -1433,9 +2376,15 @@ def verify_frozen_inputs(
         root["signature_contract"], output, allowed_signers, fingerprint
     )
 
-    assert_release_tool_coverage(repo)
+    release_snapshot = _capture_release_input_snapshot(
+        repo,
+        required_threat_status=THREAT_STATUS_FROZEN,
+        bind_source_documents=True,
+    )
+    if release_snapshot.source_documents is None:
+        raise ReviewError("release source-document capture is incomplete")
     handoff_source, audit_inputs, baseline_commit, declared_tree = (
-        validate_source_documents(repo)
+        release_snapshot.source_documents
     )
     expected_baseline = baseline_manifest(repo, baseline_commit, declared_tree)
     expected_baseline["repository"] = audit_inputs["baseline_repository"]["url"]
@@ -1458,11 +2407,33 @@ def verify_frozen_inputs(
 
     release_inputs = exact_list(root["release_input_files"], "release input files")
     for index, row in enumerate(release_inputs):
-        exact_object(row, {"path", "sha256", "size_bytes"}, f"release input {index}")
-    if release_inputs != release_input_manifest(
-        repo,
-        required_threat_status=THREAT_STATUS_FROZEN,
-    ):
+        validated_row = exact_object(
+            row,
+            {"path", "git_mode", "git_blob_id", "sha256", "size_bytes"},
+            f"release input {index}",
+        )
+        _relative_parts(
+            exact_string(validated_row["path"], f"release input {index} path"),
+            label=f"release input {index} path",
+        )
+        mode = exact_string(
+            validated_row["git_mode"],
+            f"release input {index} git_mode",
+        )
+        if mode not in {"100644", "100755"}:
+            raise ReviewError(
+                f"release input {index} git_mode is not a regular-file mode"
+            )
+        exact_object_id(
+            validated_row["git_blob_id"],
+            f"release input {index} git_blob_id",
+        )
+        exact_digest(validated_row["sha256"], f"release input {index} sha256")
+        exact_integer(
+            validated_row["size_bytes"],
+            f"release input {index} size_bytes",
+        )
+    if release_inputs != release_snapshot.rows:
         raise ReviewError(
             "release input files are not the exact ordered current RELEASE_INPUTS set"
         )

@@ -13,7 +13,7 @@
 | ROS | Robot Operating System |
 | SHA-256 | Secure Hash Algorithm 256 |
 | SSH | Secure Shell |
-| URLs | Uniform Resource Locators |
+| URL | Uniform Resource Locator |
 | ZIP | ZIP archive format |
 
 This directory contains the auditable release record for Galadriel's Mirror 0.9.0.
@@ -24,7 +24,8 @@ This release does not claim crates.io publication, a DOI, or a Zenodo record.
 [`handoff-source.json`](handoff-source.json) identifies the current external handoff.
 It records the exact archive and task-ledger digests.
 The repository does not contain the superseded handoff copy.
-Inherited prose supplies provenance and not new evidence.
+Inherited prose supplies provenance.
+It does not supply new evidence.
 
 [`tasks.json`](tasks.json) contains the current 116-task projection.
 [`VERSION-ADAPTATION.md`](VERSION-ADAPTATION.md) maps the 1.0 design target to version 0.9.0.
@@ -40,8 +41,14 @@ The manifest **SHALL** cover each qualification input in these groups:
 - normative documents
 - external sources
 
-Each local artifact **SHALL** record its path, byte length, purpose, and SHA-256 value.
+The audit manifest uses schema `galadriel.release-audit-manifest.v2`.
+Each local artifact **SHALL** record its path, Git mode, blob identifier, byte length, purpose, and SHA-256 value.
 A mutable or abbreviated repository identity **SHALL NOT** qualify.
+
+The generator captures the relevant stage-zero index one time.
+It fetches and authenticates all indexed blobs in one bounded batch.
+All semantic checks use those captured bytes.
+One held-root transaction compares each worktree regular file with the same index identity.
 
 The audit manifest excludes only itself from its tracked-file inventory.
 A file cannot contain its own cryptographic digest.
@@ -59,8 +66,18 @@ Prose alone **SHALL NOT** close a task.
 
 - `RELEASE-NOTES.md` contains the review-gated GitHub release text.
   It preserves each unavailable deployment, integration, archival, and policy-use claim.
-- `audit-inputs.json` contains the reviewed input inventory.
+- `audit-inputs.json` contains the retained release-input inventory.
+  Its peer objects form a separate audit-input cut.
+  They do not claim each mutable peer head on the audit date.
   `audit-manifest.json` is the generated repository inventory.
+  It uses schema `galadriel.release-audit-manifest.v2`.
+  Its artifact rows bind Git modes and blob identifiers.
+- The active signed audit-input manifest uses schema `galadriel.frozen-audit-inputs.v2`.
+  It binds each release-input path, Git mode, blob identifier, SHA-256 value, and size.
+  It derives source semantics and release-tool coverage from one bounded index capture.
+  It also binds each external handoff regular-file mode.
+- The unversioned signed version 1 pair is a historical record.
+  It is not the active pair.
 - `claims.json` separates implemented, validated, deployment-qualified, and unclaimed behavior.
   This release has no deployment-qualified claim.
 - `handoff-source.json` identifies the immutable source package.
@@ -68,18 +85,20 @@ Prose alone **SHALL NOT** close a task.
 - `task-closure-plan.json` records the required task closure.
   `task-dispositions.json` and `requirements-ledger.json` record its source state.
   These records do not represent future review as complete.
-- `ecosystem-cut.json` records each inspected peer object and each relationship direction.
+- `ecosystem-cut.json` records the dated peer observations and each relationship direction.
   It records build and runtime optionality, the graph rationale, and the acyclic boundary.
   It also records the Haldir supersession and dated Paper2Brain observation.
   Paper2Brain remains an explicit integration non-edge.
   Mutable heads record provenance only.
   The two Cargo revisions are the only dependency pins.
+  [`docs/ECOSYSTEM-CONNECTIONS.md`](../../docs/ECOSYSTEM-CONNECTIONS.md)
+  cross-references the separate retained audit-input objects.
 - `local-convergence-schema.json` adapts the supplied convergence schema to version 0.9.0.
   Finalization creates a signed exact-candidate `LOCAL-CONVERGENCE.json` file.
   Creation occurs only after all 116 dispositions and ten wave acceptances pass.
   Complete file review and all retained artifacts must also pass.
   The record must state the fixed local cross-repository requirements.
-- Exact pid-rs and NCP pin graphs receive local qualification.
+- The release process locally qualifies the exact pid-rs and NCP pin graphs.
 - Crebain remains an optional reference producer.
 - Haldir remains a prospective record-only consumer.
 - Prisoma remains a prospective immutable offline consumer.
@@ -118,6 +137,14 @@ Each of the four broad outcome files has one broad shard receipt.
 The three focused outcome files share one focused receipt.
 All four broad shards and all three focused outcomes are exact-candidate gates.
 
+Each exact mutation command uses environment schema `galadriel.mutation-environment.v2`.
+It requires the Linux process file system (`procfs`), process file descriptors, and serialized child-subreaper ownership.
+It starts behind a stop-before-exec gate.
+It reaps the root only after the tracked candidate tree becomes extinct.
+It fails before process creation when a required host control is unavailable.
+An uninterruptible process can outlive the stop deadline and causes a failed run.
+This cleanup control is not a control group, container, or deployment-isolation boundary.
+
 The observational mutation-baseline job is residual evidence.
 It is not a successful release gate.
 The acceptance-estimation scope has exactly 26 mutants.
@@ -147,7 +174,23 @@ The complete set has a 4 GiB limit.
 The host snapshots the set without following links.
 It compares source, quarantine, snapshot, and installed bytes.
 
-It parses only bounded JSON bytes captured from the verified snapshot.
+The summary uses schema `galadriel.evidence.summary.v3`.
+The manifest uses schema `galadriel.evidence.manifest.v3`.
+Acceptance uses profile `galadriel-0.9-frozen-acceptance-metrics-v3`.
+Bootstrap uses profile `splitmix64-rejection-group-metric-v1`.
+
+The qualifier builds the release runner before it executes evidence.
+It creates a private directory with mode `0700`.
+It copies the runner into that directory through no-follow descriptors with mode `0500`.
+It executes that exact runner snapshot directly.
+The evidence manifest binds the runner digest and exact candidate commit and tree.
+
+The host parses only bounded bytes from the verified snapshot.
+It streams each trial record in exact order.
+It independently rebuilds the complete summary and report.
+It verifies the accepted configuration, manifest, and exact checksum document.
+It evaluates acceptance from the rebuilt holdout summary.
+Finalization repeats the complete replay against the signed outer inventory.
 Only a run that uses `--deep` can have qualification status `PASS`.
 
 The qualification record uses schema `galadriel.candidate-qualification.v3`.
@@ -179,9 +222,18 @@ It must compare one source archive, seven package archives, and seven software b
 These 15 comparisons require byte-identical results.
 
 Each command uses a stop-before-exec gate and fixed resource limits.
+Critical host Git and SSH operations bind direct Apple developer Git, `/usr/bin/ssh-add`, and `/usr/bin/ssh-keygen`.
+The host verifies each root-owned no-follow file identity before and after use.
+It pins `sandbox-exec` to `/usr/bin/sandbox-exec` and its expected byte identity.
+It records the resolved path, owner, group, and mode.
+
+The candidate sandbox denies signal operations by default.
+It permits signals only to self and children.
+The qualifier signals the original process group before it reaps the root.
+After root reap, it uses only read-only extinction checks.
 macOS does not provide atomic recursive descendant tracking.
 A short-lived reparented process can exit between scans.
-The process scan detects a detached process that remains active.
+The sandbox-identity scan detects an active detached process that retains that identity.
 
 The inherited sandbox and resource limits apply before candidate execution.
 A sandboxed process can request work from an existing external service.
@@ -189,6 +241,19 @@ The process scan cannot attribute that external service work.
 
 The license inventory covers the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope.
 It does not cover all 437 packages for every target.
+
+The frozen 100-track evidence design has two structural acceptance failures.
+`GLD-090-ACC-001` needs at least 369 tracks under its zero-event Garwood bound.
+`GLD-090-ACC-006` needs at least 738 tracks under its Hoeffding bound.
+The frozen condition grid and observation ceiling permit at most 248 holdout tracks.
+
+Executable qualification can therefore pass while acceptance fails.
+That result uses `release_gate=NARROWED_REVIEW_REQUIRED`.
+The qualifier does not select a publication disposition.
+A signed human decision must select `NARROWED_GO` or `NO_GO`.
+It must preserve each failed criterion and residual risk.
+It must map each failed criterion to removed claim `CLM-007`.
+`GO` is prohibited while an acceptance criterion fails.
 
 The release input pins the external RustSec database identity at the 2026-07-23 inspection cut.
 The inventory contains 1,187 entries.
@@ -205,7 +270,7 @@ Use this exact post-commit evidence order:
 
 `repo_work/finalize_release.py` verifies and copies the exact input bytes.
 It stages the complete closure and flushes it.
-It publishes the closure with one same-parent rename.
+It publishes the closure with one atomic, no-replace, same-parent rename.
 These records remain outside the candidate checkout.
 Their creation cannot change the source identity.
 
@@ -222,9 +287,13 @@ The finalizer snapshots only the canonical public fields.
 It never snapshots private signing material.
 
 The rename is the commit point.
-Status 3 means that the tool retained a complete output.
-It also means that the tool did not confirm durability or the result report.
+Status 3 means that the rename committed a complete output.
+It means that the tool did not confirm one or more items: durability, the result report, or cleanup.
 An independent verifier must check that bundle before use.
+
+Status 4 means that the rename completed without confirmed destination identity or tree completeness.
+Do not describe the requested path as a complete output.
+Preserve the parent directory and stop publication.
 
 ## Publication assets
 

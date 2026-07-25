@@ -30,12 +30,16 @@ from typing import Any
 from common import (
     SAFE_GIT_CONFIGURATION,
     ReviewError,
+    RootedPathIdentity,
     absolute_path_without_final_resolution,
+    canonical_relative_parts,
     canonical_json,
+    digest_rooted_tree,
     git,
     git_bounded_output,
     load_json,
     loads_json,
+    rooted_path_identity,
     validate_json_structure,
 )
 from freeze_audit_inputs import read_bounded_regular_file
@@ -63,15 +67,18 @@ from qualification_artifacts import (
     validate_cyclonedx_sbom,
 )
 from qualify_candidate import (
-    BASE_COMMANDS,
     DEPENDENCY_FETCH_COMMAND_NAMES,
     DEEP_COMMANDS,
     GIT_ARCHIVE_GLOBAL_ARGS,
     QUALIFICATION_PATH_TOOLS,
+    QUALIFICATION_SYSTEM_TOOL_PATHS,
+    QUALIFICATION_TOOL_DISPATCH_PREFIX,
     SANDBOX_SYSTEM_READ_PATHS,
     CommandSpec,
     execution_policy_contract,
     external_input_path,
+    qualification_executed_argv,
+    qualification_base_commands,
     qualification_environment_contract,
     render_candidate_sandbox_profile,
     repository_control_snapshot,
@@ -79,18 +86,20 @@ from qualify_candidate import (
 )
 from release_assurance import (
     AUTHOR,
+    EVIDENCE_FILES,
     VERSION,
+    CandidateEvidenceExpectations,
+    ValidatedCandidateEvidence,
     assert_no_replace_refs,
     assert_tracked_allowed_signer,
     digest_file,
-    evaluate_acceptance,
     refresh_canonical_origin_main,
     sign_file,
     snapshot_agent_backed_public_signing_key,
     snapshot_independent_allowed_signers,
     validate_completed_file_ledger,
+    validate_candidate_evidence_bundle,
     validate_decision_input,
-    validate_evidence_config_bytes,
     validate_final_twenty_lens_review,
     validate_mutation_evidence,
     validate_reviewed_task_dispositions,
@@ -117,8 +126,11 @@ MAX_SIGNATURE_BYTES = 64 * 1024
 MAX_SIGNING_KEY_BYTES = 1024 * 1024
 MAX_QUALIFICATION_ARTIFACT_BYTES = 1024 * 1024 * 1024
 MAX_QUALIFICATION_TIER_BYTES = 8 * 1024 * 1024 * 1024
+MAX_QUALIFICATION_CONTROL_BYTES = 256 * 1024 * 1024
 MAX_QUALIFICATION_ENTRIES = 32_768
 MAX_QUALIFICATION_DEPTH = 128
+MAX_QUALIFICATION_PATH_BYTES = 4 * 1024
+MAX_QUALIFICATION_COMPONENT_BYTES = 255
 MAX_QUALIFICATION_CHECKSUM_BYTES = 16 * 1024 * 1024
 MAX_QUALIFICATION_JSON_BYTES = 64 * 1024 * 1024
 MAX_QUALIFICATION_REPORT_BYTES = 16 * 1024 * 1024
@@ -180,11 +192,91 @@ TOOL_FILE_BASENAMES = {
     "rustdoc-1.97.1": "rustdoc",
     "clippy-driver-1.97.1": "clippy-driver",
 }
+EXPECTED_DEVELOPER_GIT_IDENTITIES = {
+    Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git"): (
+        "10f9c1df894525ae4c7454258febab6d3d25071062b42cb48dbb1842cdffd2a9",
+        3_704_880,
+    ),
+    Path("/Library/Developer/CommandLineTools/usr/bin/git"): (
+        "3121e7e4d16059539731c58d94888709c12904abe922acde8e37caef4607c1d1",
+        7_604_272,
+    ),
+}
+EXPECTED_DEVELOPER_TOOL_IDENTITIES = {
+    Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git"): {
+        "cc": (
+            Path(
+                "/Applications/Xcode.app/Contents/Developer/Toolchains/"
+                "XcodeDefault.xctoolchain/usr/bin/clang"
+            ),
+            "7def90dd8829726686213a747fc5bff1583df933dae5edc55d755479e0bfe00a",
+            141_373_024,
+        ),
+        "clang": (
+            Path(
+                "/Applications/Xcode.app/Contents/Developer/Toolchains/"
+                "XcodeDefault.xctoolchain/usr/bin/clang"
+            ),
+            "7def90dd8829726686213a747fc5bff1583df933dae5edc55d755479e0bfe00a",
+            141_373_024,
+        ),
+        "ar": (
+            Path(
+                "/Applications/Xcode.app/Contents/Developer/Toolchains/"
+                "XcodeDefault.xctoolchain/usr/bin/ar"
+            ),
+            "e49ffad64ad1cee722540fc5ecb00a230fd8071680682c60d9c851029d20e814",
+            73_520,
+        ),
+        "ld": (
+            Path(
+                "/Applications/Xcode.app/Contents/Developer/Toolchains/"
+                "XcodeDefault.xctoolchain/usr/bin/ld"
+            ),
+            "5897b275efd93b201b6df5832dd541262b3f20f290859ba78f2200a6a66ef38b",
+            2_331_792,
+        ),
+        "make": (
+            Path("/Applications/Xcode.app/Contents/Developer/usr/bin/make"),
+            "83284837495b77df7cb0febf564717918abe79f5dc5da1df9a603b2ac55998bb",
+            206_608,
+        ),
+    },
+    Path("/Library/Developer/CommandLineTools/usr/bin/git"): {
+        "cc": (
+            Path("/Library/Developer/CommandLineTools/usr/bin/clang"),
+            "1220c0afafa12a6ae599d097ee7cf8b87c6b4d8e3fbb9783cee6b319a80683ba",
+            290_664_032,
+        ),
+        "clang": (
+            Path("/Library/Developer/CommandLineTools/usr/bin/clang"),
+            "1220c0afafa12a6ae599d097ee7cf8b87c6b4d8e3fbb9783cee6b319a80683ba",
+            290_664_032,
+        ),
+        "ar": (
+            Path("/Library/Developer/CommandLineTools/usr/bin/ar"),
+            "7020135f5004b53ddf787cb025dc983654463eab07237ec200d539c451d91acf",
+            139_056,
+        ),
+        "ld": (
+            Path("/Library/Developer/CommandLineTools/usr/bin/ld"),
+            "765e5fa4e30980ddf2803c8a973b20fcc63e403098d2dd9b6cefa38e0cde3c2e",
+            4_953_232,
+        ),
+        "make": (
+            Path("/Library/Developer/CommandLineTools/usr/bin/make"),
+            "8c221cc6f9e80bd3d48149b5523f932eec8c0656cf98f47655f7bb3064fbc8e4",
+            403_216,
+        ),
+    },
+}
 EXPECTED_TOOL_FILE_IDENTITIES = {
-    "ar": ("179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818", 118928),
+    "ar": EXPECTED_DEVELOPER_TOOL_IDENTITIES[
+        Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
+    ]["ar"][1:],
     "cargo": (
-        "b7a341737d8777ef0e21a71f0af90723ccf692914255110c12bbcfed79d75a53",
-        31259808,
+        "aeb4105778ca1bd3c6b0e75768f581c656633cd51368fa61289b6a71696ac7e1",
+        11_053_296,
     ),
     "cargo-1.89.0": (
         "798a97c06e6fc3a63f1b7e3141f87e515e6bc8da1527bc32e19ba27d86bb89c5",
@@ -218,11 +310,12 @@ EXPECTED_TOOL_FILE_IDENTITIES = {
         "acdc7b1733d52476fc2ce456a2a0292b82c367566fe0d2ab15c12b99974c8d24",
         5550016,
     ),
-    "cc": ("179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818", 118928),
-    "clang": (
-        "179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818",
-        118928,
-    ),
+    "cc": EXPECTED_DEVELOPER_TOOL_IDENTITIES[
+        Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
+    ]["cc"][1:],
+    "clang": EXPECTED_DEVELOPER_TOOL_IDENTITIES[
+        Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
+    ]["clang"][1:],
     "clippy-driver-1.89.0": (
         "d96c5d7a8e3fbb6920ade89d389f96d19003f654c75d96383d7b2fb21b883ab8",
         12354144,
@@ -235,23 +328,26 @@ EXPECTED_TOOL_FILE_IDENTITIES = {
         "b2655889a98005e8ae79785c3e9b2c2db4db341ff47223095b04e95ff4654ef7",
         17732864,
     ),
-    "git": ("179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818", 118928),
-    "ld": ("179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818", 118928),
-    "make": (
-        "179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818",
-        118928,
-    ),
+    "git": EXPECTED_DEVELOPER_GIT_IDENTITIES[
+        Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
+    ],
+    "ld": EXPECTED_DEVELOPER_TOOL_IDENTITIES[
+        Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
+    ]["ld"][1:],
+    "make": EXPECTED_DEVELOPER_TOOL_IDENTITIES[
+        Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
+    ]["make"][1:],
     "pkg-config": (
         "d1c437b9ad16182ee781175ae4e69b439a91c6c6747a7cd50f878514212730e4",
         74928,
     ),
     "python3": (
-        "179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818",
-        118928,
+        "b502cb4c5b46b8d4192ec6bcb600ce8922f1afc396fcf646e8765c6eba74a0bf",
+        52_448,
     ),
     "rustc": (
-        "d69d40bfd2e11825feb3538512b6ffcd63de91c35ec36bb876849f0f9f8fe6bd",
-        343600,
+        "aeb4105778ca1bd3c6b0e75768f581c656633cd51368fa61289b6a71696ac7e1",
+        11_053_296,
     ),
     "rustc-1.89.0": (
         "af4a9eb303553510e9d74220636dc4b21f8574ddeab73741bf6b892adc49c21c",
@@ -289,12 +385,26 @@ EXPECTED_TOOL_FILE_IDENTITIES = {
         "8857d087219f0f39d3e3c163e5d0a0aed690cc22f34b50c7eee3d74f93e69688",
         102560,
     ),
+    "sh": (
+        "ad5c194b05f83bc5e793c1cd67b148a4b680467b5a5730ab1a31fe4e6460ee9f",
+        101_232,
+    ),
     "ssh-keygen": (
         "bddae9c4ea46fd903574ec6ff61eda75e133f940fa538f2adca80af474767596",
         849024,
     ),
 }
 FROZEN_COMMAND_ARGUMENTS = {
+    "candidate-evidence-build": (
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-p",
+        "galadriel-eval",
+        "--bin",
+        "galadriel-evidence",
+    ),
     "fetch-locked-dependencies": ("cargo", "fetch", "--locked"),
     "fetch-locked-fuzz-dependencies": (
         "cargo",
@@ -388,6 +498,7 @@ FROZEN_QUALIFICATION_COMMAND_NAMES = (
     "dependency-policy-fuzz",
     "cargo-audit",
     "public-api-snapshots",
+    "candidate-evidence-build",
     "candidate-evidence",
     "fuzz-ncp-decode-5000",
     "fuzz-detector-boundaries-5000",
@@ -494,7 +605,11 @@ LLVM version: 22.1.7""",
 
 
 class PublicationDurabilityError(ReviewError):
-    """A complete output was renamed into place but its parent sync failed."""
+    """A rename completed but post-publication confirmation failed."""
+
+
+class PublicationIntegrityError(ReviewError):
+    """A rename completed but the complete destination could not be confirmed."""
 
 
 def warn_cleanup_failure(label: str, error: OSError) -> None:
@@ -672,6 +787,8 @@ def snapshot_signed_qualification_tier(
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, list) or not artifacts:
         raise ReviewError("qualification manifest must contain artifacts")
+    if len(artifacts) > MAX_QUALIFICATION_ENTRIES - 3:
+        raise ReviewError("qualification manifest exceeds the artifact-count limit")
     seen: set[str] = set()
     aggregate_size = 0
     forbidden_paths = set(CLOSURE_RESERVED_ROOT_PATHS)
@@ -720,12 +837,62 @@ def snapshot_signed_qualification_tier(
         QUALIFICATION_SIGNATURE,
         "SHA256SUMS",
     }
-    before_inventory = qualification_tier_inventory(source_root)
-    if before_inventory != expected_inventory:
+    source_tree = digest_rooted_tree(
+        source_root,
+        label="qualification source tier",
+        max_entries=MAX_QUALIFICATION_ENTRIES,
+        max_depth=MAX_QUALIFICATION_DEPTH,
+        max_path_bytes=MAX_QUALIFICATION_PATH_BYTES,
+        max_component_bytes=MAX_QUALIFICATION_COMPONENT_BYTES,
+        max_file_bytes=MAX_QUALIFICATION_ARTIFACT_BYTES,
+        max_aggregate_bytes=(
+            MAX_QUALIFICATION_TIER_BYTES + MAX_QUALIFICATION_CONTROL_BYTES
+        ),
+        reject_empty_directories=True,
+    )
+    if set(source_tree) != expected_inventory:
         raise ReviewError("qualification source inventory differs from its manifest")
+    control_size = sum(
+        source_tree[relative].size_bytes
+        for relative in {
+            QUALIFICATION_MANIFEST,
+            QUALIFICATION_SIGNATURE,
+            "SHA256SUMS",
+        }
+    )
+    if control_size > MAX_QUALIFICATION_CONTROL_BYTES:
+        raise ReviewError("qualification controls exceed the aggregate byte limit")
+
+    control_snapshots = {
+        QUALIFICATION_MANIFEST: manifest_path,
+        QUALIFICATION_SIGNATURE: signature_path,
+    }
+    for relative, snapshot in control_snapshots.items():
+        limit = (
+            MAX_SIGNATURE_BYTES
+            if relative == QUALIFICATION_SIGNATURE
+            else MAX_REVIEW_INPUT_BYTES
+        )
+        snapshot_bytes = read_bounded_regular_file(
+            snapshot,
+            limit,
+            label=f"qualification control snapshot {relative}",
+            limit_label="qualification-control-byte",
+        )
+        retained = source_tree[relative]
+        if (
+            hashlib.sha256(snapshot_bytes).hexdigest() != retained.sha256
+            or len(snapshot_bytes) != retained.size_bytes
+        ):
+            raise ReviewError(
+                f"qualification control snapshot differs from source: {relative}"
+            )
 
     for row in artifacts:
         relative = row["path"]
+        retained = source_tree[relative]
+        if retained.sha256 != row["sha256"] or retained.size_bytes != row["size_bytes"]:
+            raise ReviewError(f"qualification artifact digest mismatch: {relative}")
         snapshot_qualification_artifact(
             source_root,
             relative,
@@ -740,9 +907,33 @@ def snapshot_signed_qualification_tier(
         max_bytes=MAX_QUALIFICATION_CHECKSUM_BYTES,
         label="qualification checksum inventory",
     )
+    checksum_bytes = read_bounded_regular_file(
+        destination_root / "SHA256SUMS",
+        MAX_QUALIFICATION_CHECKSUM_BYTES,
+        label="qualification checksum snapshot",
+        limit_label="qualification-checksum-byte",
+    )
+    source_checksum = source_tree["SHA256SUMS"]
+    if (
+        hashlib.sha256(checksum_bytes).hexdigest() != source_checksum.sha256
+        or len(checksum_bytes) != source_checksum.size_bytes
+    ):
+        raise ReviewError("qualification checksum snapshot differs from source")
 
-    after_inventory = qualification_tier_inventory(source_root)
-    if after_inventory != expected_inventory:
+    after_tree = digest_rooted_tree(
+        source_root,
+        label="qualification source tier",
+        max_entries=MAX_QUALIFICATION_ENTRIES,
+        max_depth=MAX_QUALIFICATION_DEPTH,
+        max_path_bytes=MAX_QUALIFICATION_PATH_BYTES,
+        max_component_bytes=MAX_QUALIFICATION_COMPONENT_BYTES,
+        max_file_bytes=MAX_QUALIFICATION_ARTIFACT_BYTES,
+        max_aggregate_bytes=(
+            MAX_QUALIFICATION_TIER_BYTES + MAX_QUALIFICATION_CONTROL_BYTES
+        ),
+        reject_empty_directories=True,
+    )
+    if after_tree != source_tree:
         raise ReviewError("qualification source changed while being snapshotted")
 
     retained_manifest = verify_artifact_manifest(
@@ -1370,57 +1561,563 @@ def validate_finalization_dag_evidence(
 
 
 def fsync_tree(root: Path) -> None:
-    """Flush every staged regular file and directory before publishing the bundle."""
+    """Flush one staged tree through held, descriptor-relative paths."""
+
+    absolute = _canonical_publication_path(root, label="staged closure root")
+    parent_chain = _open_directory_chain(
+        absolute.parent,
+        label="staged closure parent",
+    )
+    parent_descriptor = parent_chain[-1][0]
+    root_descriptor = -1
+    failure: BaseException | None = None
+    try:
+        parent_identity = rooted_path_identity(os.fstat(parent_descriptor))
+        root_descriptor, root_identity = _open_bound_directory(
+            parent_descriptor,
+            absolute.name,
+            label="staged closure root",
+        )
+        tree = _walk_staged_tree(root_descriptor, synchronize=True)
+        if tree.get("") != root_identity:
+            raise ReviewError("staged closure root changed while it was flushed")
+        if (
+            _entry_identity(
+                parent_descriptor,
+                absolute.name,
+                label="staged closure root",
+            )
+            != root_identity
+            or rooted_path_identity(os.fstat(parent_descriptor)) != parent_identity
+        ):
+            raise ReviewError(
+                "staged closure root or parent changed while it was flushed"
+            )
+        _verify_directory_chain(parent_chain, label="staged closure parent")
+    except BaseException as error:
+        failure = error
+
+    descriptors = [root_descriptor] if root_descriptor >= 0 else []
+    descriptors.extend(entry[0] for entry in reversed(parent_chain))
+    close_error = _close_descriptors(descriptors)
+    if failure is not None:
+        raise failure.with_traceback(failure.__traceback__)
+    if close_error is not None:
+        raise close_error
+
+
+def _durability_descriptor_flags(*, directory: bool) -> int:
+    """Return the required descriptor flags for publication operations."""
 
     no_follow = getattr(os, "O_NOFOLLOW", None)
     non_block = getattr(os, "O_NONBLOCK", None)
     directory_flag = getattr(os, "O_DIRECTORY", None)
-    if no_follow is None or non_block is None or directory_flag is None:
+    close_on_exec = getattr(os, "O_CLOEXEC", None)
+    if (
+        no_follow is None
+        or non_block is None
+        or directory_flag is None
+        or close_on_exec is None
+        or os.open not in os.supports_dir_fd
+        or os.stat not in os.supports_dir_fd
+        or os.stat not in os.supports_follow_symlinks
+        or os.scandir not in os.supports_fd
+    ):
         raise ReviewError("no-follow directory durability operations are unavailable")
-    relative_directories: set[str] = set()
-    relative_files = qualification_tier_inventory(
-        root,
-        reject_empty_directories=False,
-        context="staged closure",
-        directory_paths=relative_directories,
+    flags = os.O_RDONLY | no_follow | non_block | close_on_exec
+    if directory:
+        flags |= directory_flag
+    return flags
+
+
+def _canonical_publication_path(path: Path, *, label: str) -> Path:
+    """Return one absolute path with one canonical final component."""
+
+    try:
+        absolute = absolute_path_without_final_resolution(os.fspath(path))
+    except (OSError, RuntimeError, ValueError) as error:
+        raise ReviewError(f"{label} path is missing or unsafe") from error
+    canonical_relative_parts(
+        absolute.name,
+        label=f"{label} name",
+        max_path_bytes=MAX_QUALIFICATION_PATH_BYTES,
+        max_component_bytes=MAX_QUALIFICATION_COMPONENT_BYTES,
+        max_depth=1,
     )
-    for relative in sorted(relative_files):
-        path = root.joinpath(*relative.split("/"))
-        descriptor = os.open(path, os.O_RDONLY | no_follow | non_block)
+    return absolute
+
+
+def _same_object_identity(
+    first: RootedPathIdentity,
+    second: RootedPathIdentity,
+) -> bool:
+    """Compare metadata that remains stable across a same-file-system rename."""
+
+    return (
+        first.device,
+        first.inode,
+        first.mode,
+    ) == (
+        second.device,
+        second.inode,
+        second.mode,
+    )
+
+
+def _same_renamed_root_identity(
+    first: RootedPathIdentity,
+    second: RootedPathIdentity,
+) -> bool:
+    """Compare staged-root metadata while allowing the rename ctime update."""
+
+    return (
+        first.device,
+        first.inode,
+        first.mode,
+        first.links,
+        first.size,
+        first.modified_ns,
+    ) == (
+        second.device,
+        second.inode,
+        second.mode,
+        second.links,
+        second.size,
+        second.modified_ns,
+    )
+
+
+def _same_tree_after_root_rename(
+    staged: dict[str, RootedPathIdentity],
+    published: dict[str, RootedPathIdentity],
+) -> bool:
+    """Compare a tree while allowing only its root ctime to change."""
+
+    if set(staged) != set(published):
+        return False
+    for relative, expected in staged.items():
+        observed = published[relative]
+        if relative == "":
+            if not _same_renamed_root_identity(observed, expected):
+                return False
+        elif observed != expected:
+            return False
+    return True
+
+
+def _close_descriptors(descriptors: list[int]) -> OSError | None:
+    """Close each owned descriptor and return the first close error."""
+
+    first_error: OSError | None = None
+    closed: set[int] = set()
+    for descriptor in descriptors:
+        if descriptor < 0 or descriptor in closed:
+            continue
+        closed.add(descriptor)
         try:
-            metadata = os.fstat(descriptor)
-            if not stat.S_ISREG(metadata.st_mode):
-                raise ReviewError("staged closure contains a non-regular file")
-            os.fsync(descriptor)
-        finally:
             os.close(descriptor)
-    directories = [
-        root.joinpath(*relative.split("/"))
-        for relative in sorted(
-            relative_directories,
-            key=lambda item: (item.count("/"), item),
-            reverse=True,
+        except OSError as error:
+            if first_error is None:
+                first_error = error
+    return first_error
+
+
+def _require_exact_entry_name(
+    directory_descriptor: int,
+    name: str,
+    *,
+    label: str,
+) -> None:
+    """Require one exact stored name in a bounded directory scan."""
+
+    found = False
+    count = 0
+    try:
+        with os.scandir(directory_descriptor) as iterator:
+            for entry in iterator:
+                count += 1
+                if count > MAX_QUALIFICATION_ENTRIES:
+                    raise ReviewError(f"{label} parent exceeds the entry-count limit")
+                if entry.name == name:
+                    found = True
+    except OSError as error:
+        raise ReviewError(f"cannot inspect {label} parent") from error
+    if not found:
+        raise ReviewError(f"{label} does not use its stored canonical name")
+
+
+def _entry_identity(
+    directory_descriptor: int,
+    name: str,
+    *,
+    label: str,
+) -> RootedPathIdentity:
+    """Return one no-follow entry identity relative to a held directory."""
+
+    _require_exact_entry_name(directory_descriptor, name, label=label)
+    return _no_follow_entry_identity(
+        directory_descriptor,
+        name,
+        label=label,
+    )
+
+
+def _no_follow_entry_identity(
+    directory_descriptor: int,
+    name: str,
+    *,
+    label: str,
+) -> RootedPathIdentity:
+    """Read one relative entry identity without following a link."""
+
+    try:
+        return rooted_path_identity(
+            os.stat(name, dir_fd=directory_descriptor, follow_symlinks=False)
         )
-    ]
-    for path in [*directories, root]:
-        descriptor = os.open(path, os.O_RDONLY | no_follow | non_block | directory_flag)
+    except OSError as error:
+        raise ReviewError(f"{label} is missing or unsafe") from error
+
+
+def _open_bound_directory(
+    parent_descriptor: int,
+    name: str,
+    *,
+    label: str,
+) -> tuple[int, RootedPathIdentity]:
+    """Open one exact directory entry and bind its observed identity."""
+
+    listed = _entry_identity(parent_descriptor, name, label=label)
+    if stat.S_ISLNK(listed.mode):
+        raise ReviewError(f"{label} must not be a symbolic link")
+    if not stat.S_ISDIR(listed.mode):
+        raise ReviewError(f"{label} is not a directory")
+    try:
+        descriptor = os.open(
+            name,
+            _durability_descriptor_flags(directory=True),
+            dir_fd=parent_descriptor,
+        )
+    except OSError as error:
+        raise ReviewError(f"{label} is missing or unsafe") from error
+    try:
+        observed = rooted_path_identity(os.fstat(descriptor))
+    except BaseException:
+        _close_descriptors([descriptor])
+        raise
+    if observed != listed:
+        _close_descriptors([descriptor])
+        raise ReviewError(f"{label} changed while it was opened")
+    return descriptor, observed
+
+
+def _open_directory_chain(
+    directory: Path,
+    *,
+    label: str,
+) -> list[tuple[int, str | None, RootedPathIdentity]]:
+    """Open and retain each canonical directory from the file-system root."""
+
+    if not directory.is_absolute():
+        raise ReviewError(f"{label} must be absolute")
+    parts = directory.parts
+    if not parts or parts[0] != directory.anchor:
+        raise ReviewError(f"{label} has an unsafe root")
+    if len(parts) - 1 > MAX_QUALIFICATION_DEPTH:
+        raise ReviewError(f"{label} exceeds the directory-depth limit")
+
+    chain: list[tuple[int, str | None, RootedPathIdentity]] = []
+    try:
+        root_descriptor = os.open(
+            directory.anchor,
+            _durability_descriptor_flags(directory=True),
+        )
         try:
+            root_identity = rooted_path_identity(os.fstat(root_descriptor))
+        except BaseException:
+            _close_descriptors([root_descriptor])
+            raise
+        if not stat.S_ISDIR(root_identity.mode):
+            _close_descriptors([root_descriptor])
+            raise ReviewError(f"{label} file-system root is not a directory")
+        chain.append((root_descriptor, None, root_identity))
+
+        prefix: list[str] = []
+        for name in parts[1:]:
+            prefix.append(name)
+            canonical_relative_parts(
+                "/".join(prefix),
+                label=f"{label} path",
+                max_path_bytes=MAX_QUALIFICATION_PATH_BYTES,
+                max_component_bytes=MAX_QUALIFICATION_COMPONENT_BYTES,
+                max_depth=MAX_QUALIFICATION_DEPTH,
+            )
+            descriptor, identity = _open_bound_directory(
+                chain[-1][0],
+                name,
+                label=f"{label} component {'/'.join(prefix)}",
+            )
+            chain.append((descriptor, name, identity))
+        return chain
+    except BaseException:
+        _close_descriptors([entry[0] for entry in reversed(chain)])
+        raise
+
+
+def _verify_directory_chain(
+    chain: list[tuple[int, str | None, RootedPathIdentity]],
+    *,
+    label: str,
+) -> None:
+    """Require each held directory to retain its path and object identity."""
+
+    for index, (descriptor, name, expected) in enumerate(chain):
+        observed = rooted_path_identity(os.fstat(descriptor))
+        if not stat.S_ISDIR(observed.mode) or not _same_object_identity(
+            observed, expected
+        ):
+            raise ReviewError(f"{label} was replaced")
+        if index == 0:
+            continue
+        if name is None:
+            raise ReviewError(f"{label} chain is malformed")
+        listed = _entry_identity(chain[index - 1][0], name, label=label)
+        if not _same_object_identity(listed, expected):
+            raise ReviewError(f"{label} path was replaced")
+
+
+def _walk_staged_tree(
+    root_descriptor: int,
+    *,
+    synchronize: bool,
+) -> dict[str, RootedPathIdentity]:
+    """Inspect one bounded staged tree and optionally flush every object."""
+
+    identities: dict[str, RootedPathIdentity] = {}
+    entry_count = 0
+    verification_entry_count = 0
+    directory_flags = _durability_descriptor_flags(directory=True)
+    file_flags = _durability_descriptor_flags(directory=False)
+
+    def scan(
+        descriptor: int,
+        prefix: tuple[str, ...],
+        *,
+        charge_entries: bool,
+    ) -> list[tuple[str, str, tuple[str, ...], RootedPathIdentity]]:
+        nonlocal entry_count, verification_entry_count
+        entries: list[tuple[str, str, tuple[str, ...], RootedPathIdentity]] = []
+        local_count = 0
+        try:
+            with os.scandir(descriptor) as iterator:
+                for entry in iterator:
+                    local_count += 1
+                    if local_count > MAX_QUALIFICATION_ENTRIES:
+                        raise ReviewError(
+                            "staged closure directory exceeds the entry-count limit"
+                        )
+                    if charge_entries:
+                        entry_count += 1
+                        if entry_count > MAX_QUALIFICATION_ENTRIES:
+                            raise ReviewError(
+                                "staged closure exceeds the entry-count limit"
+                            )
+                    else:
+                        verification_entry_count += 1
+                        if verification_entry_count > MAX_QUALIFICATION_ENTRIES:
+                            raise ReviewError(
+                                "staged closure verification exceeds the "
+                                "entry-count limit"
+                            )
+                    relative = "/".join((*prefix, entry.name))
+                    parts = canonical_relative_parts(
+                        relative,
+                        label="staged closure path",
+                        max_path_bytes=MAX_QUALIFICATION_PATH_BYTES,
+                        max_component_bytes=MAX_QUALIFICATION_COMPONENT_BYTES,
+                        max_depth=MAX_QUALIFICATION_DEPTH,
+                    )
+                    entries.append(
+                        (
+                            relative,
+                            entry.name,
+                            parts,
+                            rooted_path_identity(entry.stat(follow_symlinks=False)),
+                        )
+                    )
+        except OSError as error:
+            raise ReviewError("cannot completely inspect staged closure") from error
+        return sorted(entries)
+
+    def visit(
+        descriptor: int,
+        prefix: tuple[str, ...],
+        expected_directory: RootedPathIdentity,
+    ) -> None:
+        relative_directory = "/".join(prefix)
+        directory_before = rooted_path_identity(os.fstat(descriptor))
+        if directory_before != expected_directory or not stat.S_ISDIR(
+            directory_before.mode
+        ):
+            raise ReviewError(
+                f"staged closure directory changed: {relative_directory or '.'}"
+            )
+        identities[relative_directory] = directory_before
+        entries = scan(descriptor, prefix, charge_entries=True)
+        for relative, name, parts, listed in entries:
+            if stat.S_ISREG(listed.mode):
+                if listed.links != 1:
+                    raise ReviewError(
+                        f"staged closure contains a multiply linked file: {relative}"
+                    )
+                try:
+                    child_descriptor = os.open(
+                        name,
+                        file_flags,
+                        dir_fd=descriptor,
+                    )
+                except OSError as error:
+                    raise ReviewError(
+                        f"staged closure file changed or became unsafe: {relative}"
+                    ) from error
+                child_error: BaseException | None = None
+                try:
+                    opened = rooted_path_identity(os.fstat(child_descriptor))
+                    if (
+                        opened != listed
+                        or not stat.S_ISREG(opened.mode)
+                        or opened.links != 1
+                    ):
+                        raise ReviewError(f"staged closure file changed: {relative}")
+                    if synchronize:
+                        os.fsync(child_descriptor)
+                    after = rooted_path_identity(os.fstat(child_descriptor))
+                    if after != opened:
+                        raise ReviewError(
+                            f"staged closure file changed while it was flushed: "
+                            f"{relative}"
+                        )
+                    if (
+                        _no_follow_entry_identity(
+                            descriptor,
+                            name,
+                            label=f"staged closure file {relative}",
+                        )
+                        != opened
+                    ):
+                        raise ReviewError(
+                            f"staged closure file path changed: {relative}"
+                        )
+                    identities[relative] = opened
+                except BaseException as error:
+                    child_error = error
+                close_error = _close_descriptors([child_descriptor])
+                if child_error is not None:
+                    raise child_error.with_traceback(child_error.__traceback__)
+                if close_error is not None:
+                    raise close_error
+                continue
+            if stat.S_ISDIR(listed.mode):
+                try:
+                    child_descriptor = os.open(
+                        name,
+                        directory_flags,
+                        dir_fd=descriptor,
+                    )
+                except OSError as error:
+                    raise ReviewError(
+                        f"staged closure directory changed or became unsafe: {relative}"
+                    ) from error
+                child_error = None
+                try:
+                    opened = rooted_path_identity(os.fstat(child_descriptor))
+                    if opened != listed or not stat.S_ISDIR(opened.mode):
+                        raise ReviewError(
+                            f"staged closure directory changed: {relative}"
+                        )
+                    visit(child_descriptor, parts, opened)
+                    if (
+                        _no_follow_entry_identity(
+                            descriptor,
+                            name,
+                            label=f"staged closure directory {relative}",
+                        )
+                        != opened
+                    ):
+                        raise ReviewError(
+                            f"staged closure directory path changed: {relative}"
+                        )
+                except BaseException as error:
+                    child_error = error
+                close_error = _close_descriptors([child_descriptor])
+                if child_error is not None:
+                    raise child_error.with_traceback(child_error.__traceback__)
+                if close_error is not None:
+                    raise close_error
+                continue
+            kind = "symlink" if stat.S_ISLNK(listed.mode) else "special file"
+            raise ReviewError(f"staged closure contains a {kind}: {relative}")
+
+        after_entries = scan(descriptor, prefix, charge_entries=False)
+        if after_entries != entries:
+            raise ReviewError(
+                "staged closure directory changed while it was flushed: "
+                f"{relative_directory or '.'}"
+            )
+        before_sync = rooted_path_identity(os.fstat(descriptor))
+        if before_sync != directory_before:
+            raise ReviewError(
+                "staged closure directory changed while it was flushed: "
+                f"{relative_directory or '.'}"
+            )
+        if synchronize:
             os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
+        after_sync = rooted_path_identity(os.fstat(descriptor))
+        if after_sync != before_sync:
+            raise ReviewError(
+                "staged closure directory changed while it was flushed: "
+                f"{relative_directory or '.'}"
+            )
+
+    root_identity = rooted_path_identity(os.fstat(root_descriptor))
+    if not stat.S_ISDIR(root_identity.mode):
+        raise ReviewError("staged closure root is not a directory")
+    visit(root_descriptor, (), root_identity)
+    return identities
 
 
-def atomic_rename_no_replace(source: Path, destination: Path) -> None:
-    """Rename a directory without replacing any concurrently created path."""
+def _atomic_rename_no_replace_at(
+    source_parent_descriptor: int,
+    source_name: str,
+    destination_parent_descriptor: int,
+    destination_name: str,
+    *,
+    destination: Path,
+) -> None:
+    """Rename one relative entry without replacing the destination."""
 
     library = ctypes.CDLL(None, use_errno=True)
-    source_bytes = os.fsencode(source)
-    destination_bytes = os.fsencode(destination)
-    if sys.platform == "darwin":
-        rename = library.renamex_np
-        rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
+    source_bytes = os.fsencode(source_name)
+    destination_bytes = os.fsencode(destination_name)
+    ctypes.set_errno(0)
+    if sys.platform == "darwin" and hasattr(library, "renameatx_np"):
+        rename = library.renameatx_np
+        rename.argtypes = [
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_uint,
+        ]
         rename.restype = ctypes.c_int
-        result = rename(source_bytes, destination_bytes, 0x00000004)
+        # RENAME_EXCL | RENAME_NOFOLLOW_ANY | RENAME_RESOLVE_BENEATH
+        rename_flags = 0x00000004 | 0x00000010 | 0x00000020
+        result = rename(
+            source_parent_descriptor,
+            source_bytes,
+            destination_parent_descriptor,
+            destination_bytes,
+            rename_flags,
+        )
     elif sys.platform.startswith("linux") and hasattr(library, "renameat2"):
         rename = library.renameat2
         rename.argtypes = [
@@ -1431,7 +2128,14 @@ def atomic_rename_no_replace(source: Path, destination: Path) -> None:
             ctypes.c_uint,
         ]
         rename.restype = ctypes.c_int
-        result = rename(-100, source_bytes, -100, destination_bytes, 1)
+        rename_flags = 1  # RENAME_NOREPLACE
+        result = rename(
+            source_parent_descriptor,
+            source_bytes,
+            destination_parent_descriptor,
+            destination_bytes,
+            rename_flags,
+        )
     else:
         raise ReviewError("atomic no-replace directory rename is unavailable")
     if result == 0:
@@ -1442,6 +2146,169 @@ def atomic_rename_no_replace(source: Path, destination: Path) -> None:
     raise OSError(error_number, os.strerror(error_number), destination)
 
 
+def _require_missing_entry(
+    parent_descriptor: int,
+    name: str,
+    *,
+    label: str,
+) -> None:
+    """Require one relative entry to be absent."""
+
+    try:
+        os.stat(name, dir_fd=parent_descriptor, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    except OSError as error:
+        if error.errno == errno.ENOENT:
+            return
+        raise ReviewError(f"cannot inspect {label}") from error
+    raise ReviewError(f"{label} still exists after publication")
+
+
+def _verify_renamed_directory(
+    source_descriptor: int,
+    destination_parent_descriptor: int,
+    destination_name: str,
+    expected: RootedPathIdentity,
+) -> None:
+    """Bind one open source directory to its new destination entry."""
+
+    opened = rooted_path_identity(os.fstat(source_descriptor))
+    try:
+        destination = rooted_path_identity(
+            os.stat(
+                destination_name,
+                dir_fd=destination_parent_descriptor,
+                follow_symlinks=False,
+            )
+        )
+    except OSError as error:
+        raise ReviewError("published output is missing or unsafe") from error
+    if (
+        not stat.S_ISDIR(opened.mode)
+        or not stat.S_ISDIR(destination.mode)
+        or not _same_object_identity(opened, expected)
+        or not _same_object_identity(destination, expected)
+    ):
+        raise ReviewError("published output identity differs from the staged output")
+
+
+def _raise_descriptor_operation_failure(
+    failure: BaseException | None,
+    close_error: OSError | None,
+    *,
+    renamed: bool,
+    complete_identity_confirmed: bool,
+) -> None:
+    """Raise one operation failure with post-rename durability semantics."""
+
+    error = failure if failure is not None else close_error
+    if error is None:
+        return
+    if renamed and isinstance(
+        error,
+        (PublicationDurabilityError, PublicationIntegrityError),
+    ):
+        raise error.with_traceback(error.__traceback__)
+    if renamed and complete_identity_confirmed:
+        raise PublicationDurabilityError(
+            "complete output was published, but publication durability or "
+            "descriptor cleanup could not be confirmed"
+        ) from error
+    if renamed:
+        raise PublicationIntegrityError(
+            "the atomic rename completed, but the complete destination identity "
+            "could not be confirmed"
+        ) from error
+    raise error.with_traceback(error.__traceback__)
+
+
+def atomic_rename_no_replace(source: Path, destination: Path) -> None:
+    """Rename a directory without replacing any concurrently created path."""
+
+    source = _canonical_publication_path(source, label="rename source")
+    destination = _canonical_publication_path(
+        destination,
+        label="rename destination",
+    )
+    source_chain = _open_directory_chain(
+        source.parent,
+        label="rename source parent",
+    )
+    destination_chain: list[tuple[int, str | None, RootedPathIdentity]]
+    shared_parent = source.parent == destination.parent
+    if shared_parent:
+        destination_chain = source_chain
+    else:
+        try:
+            destination_chain = _open_directory_chain(
+                destination.parent,
+                label="rename destination parent",
+            )
+        except BaseException:
+            _close_descriptors([entry[0] for entry in reversed(source_chain)])
+            raise
+
+    source_parent = source_chain[-1][0]
+    destination_parent = destination_chain[-1][0]
+    source_descriptor = -1
+    renamed = False
+    complete_identity_confirmed = False
+    failure: BaseException | None = None
+    try:
+        source_descriptor, source_identity = _open_bound_directory(
+            source_parent,
+            source.name,
+            label="rename source",
+        )
+        _verify_directory_chain(source_chain, label="rename source parent")
+        if not shared_parent:
+            _verify_directory_chain(
+                destination_chain,
+                label="rename destination parent",
+            )
+        _atomic_rename_no_replace_at(
+            source_parent,
+            source.name,
+            destination_parent,
+            destination.name,
+            destination=destination,
+        )
+        renamed = True
+        _verify_renamed_directory(
+            source_descriptor,
+            destination_parent,
+            destination.name,
+            source_identity,
+        )
+        _require_missing_entry(
+            source_parent,
+            source.name,
+            label="rename source",
+        )
+        _verify_directory_chain(source_chain, label="rename source parent")
+        if not shared_parent:
+            _verify_directory_chain(
+                destination_chain,
+                label="rename destination parent",
+            )
+        complete_identity_confirmed = True
+    except BaseException as error:
+        failure = error
+
+    descriptors = [source_descriptor] if source_descriptor >= 0 else []
+    if not shared_parent:
+        descriptors.extend(entry[0] for entry in reversed(destination_chain))
+    descriptors.extend(entry[0] for entry in reversed(source_chain))
+    close_error = _close_descriptors(descriptors)
+    _raise_descriptor_operation_failure(
+        failure,
+        close_error,
+        renamed=renamed,
+        complete_identity_confirmed=complete_identity_confirmed,
+    )
+
+
 def publish_staged_output(
     staging: Path,
     destination: Path,
@@ -1450,43 +2317,142 @@ def publish_staged_output(
 ) -> None:
     """Flush and atomically publish one complete same-parent staging tree."""
 
+    staging = _canonical_publication_path(staging, label="finalization staging")
+    destination = _canonical_publication_path(
+        destination,
+        label="finalization output",
+    )
     if staging.parent != destination.parent:
         raise ReviewError("finalization staging and output must share one parent")
-    fsync_tree(staging)
-    no_follow = getattr(os, "O_NOFOLLOW", None)
-    non_block = getattr(os, "O_NONBLOCK", None)
-    directory_flag = getattr(os, "O_DIRECTORY", None)
-    if no_follow is None or non_block is None or directory_flag is None:
-        raise ReviewError("no-follow directory durability operations are unavailable")
-    parent_descriptor = os.open(
+    parent_chain = _open_directory_chain(
         destination.parent,
-        os.O_RDONLY | no_follow | non_block | directory_flag,
+        label="finalization output parent",
     )
+    parent_descriptor = parent_chain[-1][0]
+    staging_descriptor = -1
+    renamed = False
+    complete_identity_confirmed = False
+    failure: BaseException | None = None
     try:
+        parent_identity = rooted_path_identity(os.fstat(parent_descriptor))
+        staging_descriptor, staging_identity = _open_bound_directory(
+            parent_descriptor,
+            staging.name,
+            label="finalization staging",
+        )
+        synced_tree = _walk_staged_tree(staging_descriptor, synchronize=True)
+        if synced_tree.get("") != staging_identity:
+            raise ReviewError("finalization staging changed while it was flushed")
+        if (
+            _entry_identity(
+                parent_descriptor,
+                staging.name,
+                label="finalization staging",
+            )
+            != staging_identity
+            or rooted_path_identity(os.fstat(parent_descriptor)) != parent_identity
+        ):
+            raise ReviewError(
+                "finalization staging or parent changed while it was flushed"
+            )
+        _verify_directory_chain(
+            parent_chain,
+            label="finalization output parent",
+        )
+
         if pre_publish_guard is not None:
             pre_publish_guard()
-        atomic_rename_no_replace(staging, destination)
-    except BaseException:
+        if _walk_staged_tree(staging_descriptor, synchronize=False) != synced_tree:
+            raise ReviewError("finalization staging changed during publication guard")
+        if (
+            _entry_identity(
+                parent_descriptor,
+                staging.name,
+                label="finalization staging",
+            )
+            != staging_identity
+            or rooted_path_identity(os.fstat(parent_descriptor)) != parent_identity
+        ):
+            raise ReviewError(
+                "finalization staging or parent changed during publication guard"
+            )
+        _verify_directory_chain(
+            parent_chain,
+            label="finalization output parent",
+        )
+
+        _atomic_rename_no_replace_at(
+            parent_descriptor,
+            staging.name,
+            parent_descriptor,
+            destination.name,
+            destination=destination,
+        )
+        renamed = True
+        _verify_renamed_directory(
+            staging_descriptor,
+            parent_descriptor,
+            destination.name,
+            staging_identity,
+        )
+        published_tree = _walk_staged_tree(
+            staging_descriptor,
+            synchronize=False,
+        )
+        if not _same_tree_after_root_rename(synced_tree, published_tree):
+            raise ReviewError("published output changed during the atomic rename")
+        _require_missing_entry(
+            parent_descriptor,
+            staging.name,
+            label="finalization staging",
+        )
+        if not _same_object_identity(
+            rooted_path_identity(os.fstat(parent_descriptor)),
+            parent_identity,
+        ):
+            raise ReviewError("finalization output parent was replaced")
+        _verify_directory_chain(
+            parent_chain,
+            label="finalization output parent",
+        )
+
+        parent_before_sync = rooted_path_identity(os.fstat(parent_descriptor))
+        complete_identity_confirmed = True
         try:
-            os.close(parent_descriptor)
-        except OSError:
-            pass
-        raise
-    durability_error: OSError | None = None
-    try:
-        os.fsync(parent_descriptor)
-    except OSError as error:
-        durability_error = error
-    try:
-        os.close(parent_descriptor)
-    except OSError as error:
-        if durability_error is None:
-            durability_error = error
-    if durability_error is not None:
-        raise PublicationDurabilityError(
-            "complete output was published, but parent-directory durability "
-            "could not be confirmed"
-        ) from durability_error
+            os.fsync(parent_descriptor)
+        except OSError as error:
+            raise PublicationDurabilityError(
+                "complete output was published, but parent-directory durability "
+                "could not be confirmed"
+            ) from error
+        complete_identity_confirmed = False
+        if rooted_path_identity(os.fstat(parent_descriptor)) != parent_before_sync:
+            raise ReviewError("finalization output parent changed while it was flushed")
+        _verify_renamed_directory(
+            staging_descriptor,
+            parent_descriptor,
+            destination.name,
+            staging_identity,
+        )
+        if _walk_staged_tree(staging_descriptor, synchronize=False) != published_tree:
+            raise ReviewError("published output changed during parent-directory flush")
+        _verify_directory_chain(
+            parent_chain,
+            label="finalization output parent",
+        )
+        complete_identity_confirmed = True
+    except BaseException as error:
+        failure = error
+
+    descriptors = [staging_descriptor] if staging_descriptor >= 0 else []
+    descriptors.extend(entry[0] for entry in reversed(parent_chain))
+    close_error = _close_descriptors(descriptors)
+    _raise_descriptor_operation_failure(
+        failure,
+        close_error,
+        renamed=renamed,
+        complete_identity_confirmed=complete_identity_confirmed,
+    )
 
 
 def candidate_json(repo: Path, commit: str, relative: str) -> dict[str, Any]:
@@ -1688,6 +2654,7 @@ def validate_qualification_record(
         "commands",
         "auxiliary_commands",
         "acceptance",
+        "candidate_evidence_validation",
         "evidence_config_binding",
         "source_archive",
         "cargo_metadata",
@@ -1744,6 +2711,17 @@ def validate_qualification_record(
         or len(binding["accepted_semantic_digest"]) != 64
     ):
         raise ReviewError("qualification lacks the exact preregistered config binding")
+    evidence_validation = qualification.get("candidate_evidence_validation")
+    if (
+        not isinstance(evidence_validation, dict)
+        or set(evidence_validation)
+        != {"status", "semantic_sha256", "artifacts", "expectations"}
+        or evidence_validation.get("status") != "PASS"
+        or not _lower_hex(evidence_validation.get("semantic_sha256"), 64)
+        or not isinstance(evidence_validation.get("artifacts"), dict)
+        or not isinstance(evidence_validation.get("expectations"), dict)
+    ):
+        raise ReviewError("qualification lacks trusted candidate-evidence validation")
     mutation = qualification.get("mutation_evidence")
     if (
         not isinstance(mutation, dict)
@@ -1955,6 +2933,7 @@ def validate_qualification_sandbox(
         "advisory_source_denied_read",
         "advisory_databases",
         "allowed_signers_snapshot",
+        "candidate_evidence_runner_root",
         "rustup_home",
         "home_tool_paths",
         "tool_read_paths",
@@ -1977,8 +2956,13 @@ def validate_qualification_sandbox(
             raise ReviewError(f"qualification sandbox {label} is invalid")
         return path
 
-    def recorded_paths(value: Any, label: str) -> tuple[Path, ...]:
-        if not isinstance(value, list) or not value:
+    def recorded_paths(
+        value: Any,
+        label: str,
+        *,
+        allow_empty: bool = False,
+    ) -> tuple[Path, ...]:
+        if not isinstance(value, list) or (not value and not allow_empty):
             raise ReviewError(f"qualification sandbox {label} is invalid")
         paths = tuple(recorded_path(item, f"{label} entry") for item in value)
         if len(paths) != len(set(paths)):
@@ -2014,8 +2998,16 @@ def validate_qualification_sandbox(
     allowed_signers_snapshot = recorded_path(
         bindings["allowed_signers_snapshot"], "allowed signers snapshot"
     )
+    candidate_evidence_runner_root = recorded_path(
+        bindings["candidate_evidence_runner_root"],
+        "candidate evidence runner root",
+    )
     rustup_home = recorded_path(bindings["rustup_home"], "Rustup home")
-    home_tool_paths = recorded_paths(bindings["home_tool_paths"], "home tool paths")
+    home_tool_paths = recorded_paths(
+        bindings["home_tool_paths"],
+        "home tool paths",
+        allow_empty=True,
+    )
     tool_read_paths = recorded_paths(bindings["tool_read_paths"], "tool read paths")
     candidate_probe_paths = (
         recorded_path(
@@ -2045,6 +3037,7 @@ def validate_qualification_sandbox(
         temporary_directory: "tmp",
         reproducibility_root: "reproducibility",
         allowed_signers_snapshot: "INDEPENDENT_ALLOWED_SIGNERS",
+        candidate_evidence_runner_root: "evidence-runner",
     }
     if any(
         path.parent != private_root or path.name != expected_name
@@ -2072,9 +3065,13 @@ def validate_qualification_sandbox(
     )
     if advisory_databases != expected_advisory_databases:
         raise ReviewError("qualification sandbox advisory database layout is not exact")
+    runner_identity = candidate_evidence_subject_identity(qualification)
+    if Path(runner_identity["invoked_path"]).parent != candidate_evidence_runner_root:
+        raise ReviewError("qualification evidence runner binding is not exact")
     read_only_paths = (
         *advisory_databases,
         allowed_signers_snapshot,
+        candidate_evidence_runner_root,
     )
     writable_paths = (
         isolated_home,
@@ -2234,7 +3231,19 @@ def validate_qualification_tool_files(qualification: dict[str, Any]) -> None:
     ):
         raise ReviewError("qualification executable identity set is incomplete")
 
+    git_record = tool_files["executables"]["git"]
+    selected_developer_git = _absolute_identity_path(
+        git_record.get("resolved_path") if isinstance(git_record, dict) else None,
+        "qualification developer Git resolved path",
+    )
+    developer_tool_identities = EXPECTED_DEVELOPER_TOOL_IDENTITIES.get(
+        selected_developer_git
+    )
+    if developer_tool_identities is None:
+        raise ReviewError("qualification recorded another direct developer Git")
+
     identities_by_resolved_path: dict[str, tuple[Any, ...]] = {}
+    dispatch_directory: Path | None = None
     record_fields = {
         "invoked_path",
         "resolved_path",
@@ -2257,7 +3266,53 @@ def validate_qualification_tool_files(qualification: dict[str, Any]) -> None:
         uid = record["uid"]
         gid = record["gid"]
         mode = record["mode"]
-        expected_identity = EXPECTED_TOOL_FILE_IDENTITIES.get(name)
+        if name in QUALIFICATION_PATH_TOOLS:
+            if invoked == resolved or not invoked.parent.name.startswith(
+                QUALIFICATION_TOOL_DISPATCH_PREFIX
+            ):
+                raise ReviewError(
+                    f"qualification executable bypassed the tool dispatch: {name}"
+                )
+            if dispatch_directory is None:
+                dispatch_directory = invoked.parent
+            elif invoked.parent != dispatch_directory:
+                raise ReviewError(
+                    "qualification executable dispatch directories disagree"
+                )
+        if name == "git":
+            if (
+                invoked == Path("/usr/bin/git")
+                or invoked == resolved
+                or not invoked.parent.name.startswith(
+                    QUALIFICATION_TOOL_DISPATCH_PREFIX
+                )
+                or resolved not in EXPECTED_DEVELOPER_GIT_IDENTITIES
+                or uid != 0
+                or gid != 0
+                or mode != 0o755
+            ):
+                raise ReviewError("qualification recorded another direct developer Git")
+            expected_identity = EXPECTED_DEVELOPER_GIT_IDENTITIES[resolved]
+        elif name in developer_tool_identities:
+            expected_path, expected_sha256, expected_size = developer_tool_identities[
+                name
+            ]
+            if resolved != expected_path or uid != 0 or gid != 0 or mode != 0o755:
+                raise ReviewError(
+                    f"qualification recorded another developer tool: {name}"
+                )
+            expected_identity = (expected_sha256, expected_size)
+        elif name in QUALIFICATION_SYSTEM_TOOL_PATHS:
+            if (
+                resolved != QUALIFICATION_SYSTEM_TOOL_PATHS[name]
+                or uid != 0
+                or gid != 0
+                or mode != 0o755
+            ):
+                raise ReviewError(f"qualification recorded another system tool: {name}")
+            expected_identity = EXPECTED_TOOL_FILE_IDENTITIES.get(name)
+        else:
+            expected_identity = EXPECTED_TOOL_FILE_IDENTITIES.get(name)
         if (
             not _lower_hex(record["sha256"], 64)
             or expected_identity is None
@@ -2294,6 +3349,35 @@ def validate_qualification_tool_files(qualification: dict[str, Any]) -> None:
             or resolved != Path("/usr/bin/sandbox-exec")
         ):
             raise ReviewError("qualification recorded another sandbox executable")
+
+    rustup_proxy_paths = {
+        _absolute_identity_path(
+            tool_files["executables"][name]["resolved_path"],
+            f"qualification {name} proxy path",
+        )
+        for name in ("cargo", "rustc", "rustup")
+    }
+    if len(rustup_proxy_paths) != 1:
+        raise ReviewError("qualification Cargo and Rust compiler proxies disagree")
+
+
+def recorded_qualification_git_executable(qualification: dict[str, Any]) -> Path:
+    """Return the validated direct developer Git path from one record."""
+
+    tool_files = qualification.get("tool_files")
+    executables = (
+        tool_files.get("executables") if isinstance(tool_files, dict) else None
+    )
+    git_record = executables.get("git") if isinstance(executables, dict) else None
+    if not isinstance(git_record, dict):
+        raise ReviewError("qualification developer Git identity is missing")
+    resolved = _absolute_identity_path(
+        git_record.get("resolved_path"),
+        "qualification developer Git resolved path",
+    )
+    if resolved not in EXPECTED_DEVELOPER_GIT_IDENTITIES:
+        raise ReviewError("qualification recorded another direct developer Git")
+    return resolved
 
 
 def _path_is_within(path: Path, root: Path) -> bool:
@@ -2337,9 +3421,9 @@ def validate_qualification_tool_bindings(qualification: dict[str, Any]) -> None:
         bindings.get("rustup_home"), "qualification Rustup home"
     )
 
-    def bound_paths(field: str) -> tuple[Path, ...]:
+    def bound_paths(field: str, *, allow_empty: bool = False) -> tuple[Path, ...]:
         values = bindings.get(field)
-        if not isinstance(values, list) or not values:
+        if not isinstance(values, list) or (not values and not allow_empty):
             raise ReviewError(f"qualification {field} binding is malformed")
         paths = tuple(
             _absolute_identity_path(value, f"qualification {field} entry")
@@ -2351,7 +3435,7 @@ def validate_qualification_tool_bindings(qualification: dict[str, Any]) -> None:
             raise ReviewError(f"qualification {field} binding is not canonical")
         return paths
 
-    home_tool_paths = bound_paths("home_tool_paths")
+    home_tool_paths = bound_paths("home_tool_paths", allow_empty=True)
     tool_read_paths = bound_paths("tool_read_paths")
     if (
         host_home == Path("/")
@@ -2436,10 +3520,11 @@ def _dynamic_qualification_specs(
     qualification_root: Path,
     *,
     expected_allowed_signers_snapshot: Path | None = None,
+    git_executable: Path | None = None,
 ) -> tuple[CommandSpec, ...]:
     verify_argv = by_name["verify-commit-signature-external-key"].get("argv")
     verify_prefix = [
-        "git",
+        str(git_executable) if git_executable is not None else "git",
         "--no-replace-objects",
         *SAFE_GIT_CONFIGURATION,
         "-c",
@@ -2488,6 +3573,31 @@ def _dynamic_qualification_specs(
             "qualification output and external trust roots are not separate"
         )
 
+    evidence_argv = by_name["candidate-evidence"].get("argv")
+    if (
+        not isinstance(evidence_argv, list)
+        or len(evidence_argv) != 5
+        or evidence_argv[1:4]
+        != [
+            "--config",
+            "evidence/galadriel-0.9-candidate.json",
+            "--out",
+        ]
+    ):
+        raise ReviewError("qualification evidence command is malformed")
+    evidence_runner = _absolute_recorded_path(
+        evidence_argv[0], "qualification evidence runner"
+    )
+    evidence_output = _absolute_recorded_path(
+        evidence_argv[4], "qualification candidate-evidence output"
+    )
+    if (
+        evidence_runner.name != "galadriel-evidence"
+        or evidence_runner.parent.name != "evidence-runner"
+        or evidence_output != output_root / "candidate-evidence"
+    ):
+        raise ReviewError("qualification evidence paths are not exact")
+
     dynamic = (
         CommandSpec(
             "verify-commit-signature-external-key",
@@ -2528,23 +3638,15 @@ def _dynamic_qualification_specs(
             ),
         ),
         CommandSpec(
-            "candidate-evidence",
-            (
-                "cargo",
-                "run",
-                "--release",
-                "--locked",
-                "-p",
-                "galadriel-eval",
-                "--bin",
-                "galadriel-evidence",
-                "--",
-                "--config",
-                "evidence/galadriel-0.9-candidate.json",
-                "--out",
-                str(output_root / "candidate-evidence"),
-            ),
+            "candidate-evidence-build",
+            FROZEN_COMMAND_ARGUMENTS["candidate-evidence-build"],
             timeout_seconds=7_200,
+        ),
+        CommandSpec(
+            "candidate-evidence",
+            tuple(evidence_argv),
+            timeout_seconds=7_200,
+            subject_executable=str(evidence_runner),
         ),
     )
     return dynamic
@@ -2557,6 +3659,7 @@ def validate_qualification_commands(
     qualification_root: Path,
     sandbox_policy_sha256: str,
     dependency_fetch_policy_sha256: str,
+    git_executable: Path,
     recorded_root: Path | None = None,
     allowed_signers_snapshot: Path | None = None,
 ) -> None:
@@ -2578,14 +3681,20 @@ def validate_qualification_commands(
         "tracked-source-inventory",
         "review-packets",
         "claim-language-inventory",
+        "candidate-evidence-build",
         "candidate-evidence",
     }
     if not dynamic_names.issubset(by_name):
         raise ReviewError("qualification omitted a dynamic candidate-bound command")
+    if allowed_signers_snapshot is None:
+        raise ReviewError(
+            "qualification command validation lacks the independent signer snapshot"
+        )
     dynamic = _dynamic_qualification_specs(
         by_name,
         recorded_root if recorded_root is not None else qualification_root,
         expected_allowed_signers_snapshot=allowed_signers_snapshot,
+        git_executable=git_executable,
     )
     dynamic_by_name = {spec.name: spec for spec in dynamic}
     ordered_specs = [
@@ -2593,7 +3702,8 @@ def validate_qualification_commands(
         dynamic_by_name["tracked-source-inventory"],
         dynamic_by_name["review-packets"],
         dynamic_by_name["claim-language-inventory"],
-        *BASE_COMMANDS,
+        *qualification_base_commands(allowed_signers_snapshot),
+        dynamic_by_name["candidate-evidence-build"],
         dynamic_by_name["candidate-evidence"],
         *DEEP_COMMANDS,
     ]
@@ -2632,14 +3742,19 @@ def validate_qualification_commands(
         "log_size_bytes",
         "combined_output_sha256",
         "combined_output_size_bytes",
+        "subject_executable",
     }
     for spec, result in zip(ordered_specs, commands, strict=True):
+        expected_argv = qualification_executed_argv(
+            spec.argv,
+            git_executable=git_executable,
+        )
         if set(result) != result_keys:
             raise ReviewError(
                 f"qualification result {spec.name} has an unexpected field set"
             )
         if (
-            result["argv"] != list(spec.argv)
+            result["argv"] != expected_argv
             or result["cwd"] != spec.cwd
             or result["environment_overrides"] != dict(spec.environment)
             or result["timeout_seconds"] != spec.timeout_seconds
@@ -2647,6 +3762,17 @@ def validate_qualification_commands(
             != execution_policy_contract(spec.timeout_seconds)
         ):
             raise ReviewError(f"qualification command contract drifted for {spec.name}")
+        if spec.subject_executable is None:
+            if result["subject_executable"] is not None:
+                raise ReviewError(
+                    f"qualification command has an unexpected subject: {spec.name}"
+                )
+        else:
+            identity = candidate_evidence_subject_identity({"commands": [result]})
+            if identity["invoked_path"] != spec.subject_executable:
+                raise ReviewError(
+                    f"qualification command used another subject: {spec.name}"
+                )
         expected_sandbox = {
             "executor": "/usr/bin/sandbox-exec",
             "policy_sha256": (
@@ -2727,6 +3853,7 @@ def validate_qualification_commands(
             "environment_overrides": result["environment_overrides"],
             "sandbox": result["sandbox"],
             "started_at": result["started_at"],
+            "subject_executable": spec.subject_executable,
             "timeout_seconds": result["timeout_seconds"],
         }:
             raise ReviewError(
@@ -2785,6 +3912,7 @@ def validate_auxiliary_commands(
         raise ReviewError(
             "qualification sandbox bindings are unavailable to artifact receipts"
         )
+    git_executable = recorded_qualification_git_executable(qualification)
     worktree = Path(bindings["candidate_worktree"])
     cargo_home = Path(bindings["cargo_home"])
     reproducibility_root = Path(bindings["reproducibility_root"])
@@ -3076,12 +4204,15 @@ def validate_auxiliary_commands(
         )
         if name.startswith("cargo-package-run-"):
             validate_package_argv(result)
-        elif result["argv"] != fixed_argv[name] or result["cwd"] != str(
-            fixed_cwd[name]
-        ):
-            raise ReviewError(
-                f"qualification artifact command contract drifted: {name}"
+        else:
+            expected_argv = qualification_executed_argv(
+                fixed_argv[name],
+                git_executable=git_executable,
             )
+            if result["argv"] != expected_argv or result["cwd"] != str(fixed_cwd[name]):
+                raise ReviewError(
+                    f"qualification artifact command contract drifted: {name}"
+                )
         relative = result["log"]
         row = manifest_artifacts.get(relative) if isinstance(relative, str) else None
         if (
@@ -3610,6 +4741,218 @@ def validate_recomputed_acceptance_binding(
         )
 
 
+def candidate_evidence_outer_artifacts(
+    manifest_artifacts: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Return the exact six signed inner evidence identities."""
+
+    prefix = "candidate-evidence/"
+    expected_paths = {f"{prefix}{name}" for name in EVIDENCE_FILES}
+    observed_paths = {path for path in manifest_artifacts if path.startswith(prefix)}
+    if observed_paths != expected_paths:
+        raise ReviewError(
+            "qualification manifest has another candidate-evidence file set"
+        )
+
+    normalized: dict[str, dict[str, Any]] = {}
+    for name in EVIDENCE_FILES:
+        outer_path = f"{prefix}{name}"
+        row = manifest_artifacts.get(outer_path)
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"path", "sha256", "size_bytes"}
+            or row.get("path") != outer_path
+        ):
+            raise ReviewError(
+                f"qualification manifest has an invalid evidence row: {outer_path}"
+            )
+        normalized[name] = {
+            "sha256": row["sha256"],
+            "size_bytes": row["size_bytes"],
+        }
+    return normalized
+
+
+def candidate_evidence_subject_identity(
+    qualification: dict[str, Any],
+) -> dict[str, Any]:
+    """Return the unchanged direct runner identity from its command receipt."""
+
+    commands = qualification.get("commands")
+    if not isinstance(commands, list):
+        raise ReviewError("qualification evidence command receipt is missing")
+    matches = [
+        command
+        for command in commands
+        if isinstance(command, dict) and command.get("name") == "candidate-evidence"
+    ]
+    if len(matches) != 1:
+        raise ReviewError("qualification evidence command receipt is not unique")
+    subject = matches[0].get("subject_executable")
+    identity = subject.get("identity") if isinstance(subject, dict) else None
+    expected_fields = {
+        "invoked_path",
+        "resolved_path",
+        "sha256",
+        "size_bytes",
+        "uid",
+        "gid",
+        "mode",
+    }
+    if (
+        not isinstance(subject, dict)
+        or set(subject) != {"status", "identity"}
+        or subject.get("status") != "UNCHANGED"
+        or not isinstance(identity, dict)
+        or set(identity) != expected_fields
+    ):
+        raise ReviewError("qualification evidence runner receipt is malformed")
+    invoked = _absolute_recorded_path(
+        identity.get("invoked_path"), "qualification evidence runner invoked path"
+    )
+    resolved = _absolute_recorded_path(
+        identity.get("resolved_path"), "qualification evidence runner resolved path"
+    )
+    if (
+        invoked != resolved
+        or invoked.name != "galadriel-evidence"
+        or invoked.parent.name != "evidence-runner"
+        or not _lower_hex(identity.get("sha256"), 64)
+        or type(identity.get("size_bytes")) is not int
+        or not 0 < identity["size_bytes"] <= MAX_QUALIFICATION_EXECUTABLE_BYTES
+        or type(identity.get("uid")) is not int
+        or identity["uid"] < 0
+        or type(identity.get("gid")) is not int
+        or identity["gid"] < 0
+        or identity.get("mode") != 0o500
+    ):
+        raise ReviewError("qualification evidence runner identity is invalid")
+    return identity
+
+
+def candidate_evidence_expectations(
+    qualification: dict[str, Any],
+    *,
+    repo: Path,
+    commit: str,
+    tree: str,
+    tracked_config_bytes: bytes,
+    tools: dict[str, str],
+) -> CandidateEvidenceExpectations:
+    """Derive the trusted evidence contract from candidate and receipt inputs."""
+
+    record = qualification.get("candidate_evidence_validation")
+    values = record.get("expectations") if isinstance(record, dict) else None
+    expected_fields = {
+        "commit",
+        "tree",
+        "tracked_config_path",
+        "tracked_config_sha256",
+        "workspace_manifest_sha256",
+        "cargo_lock_sha256",
+        "runner_binary_sha256",
+        "rustc_verbose",
+        "cargo_version",
+        "target_os",
+        "target_arch",
+    }
+    if not isinstance(values, dict) or set(values) != expected_fields:
+        raise ReviewError("qualification lacks exact evidence validator inputs")
+    subject_identity = candidate_evidence_subject_identity(qualification)
+    runner_sha256 = subject_identity["sha256"]
+
+    cargo_version = tools["cargo"].splitlines()[0]
+    expected = CandidateEvidenceExpectations(
+        commit=commit,
+        tree=tree,
+        tracked_config_path="evidence/galadriel-0.9-candidate.json",
+        tracked_config_bytes=tracked_config_bytes,
+        workspace_manifest_sha256=candidate_digest(repo, commit, "Cargo.toml"),
+        cargo_lock_sha256=candidate_digest(repo, commit, "Cargo.lock"),
+        runner_binary_sha256=runner_sha256,
+        rustc_verbose=tools["rustc"],
+        cargo_version=cargo_version,
+        target_os="macos",
+        target_arch="aarch64",
+    )
+    expected_record = {
+        "commit": commit,
+        "tree": tree,
+        "tracked_config_path": expected.tracked_config_path,
+        "tracked_config_sha256": hashlib.sha256(tracked_config_bytes).hexdigest(),
+        "workspace_manifest_sha256": expected.workspace_manifest_sha256,
+        "cargo_lock_sha256": expected.cargo_lock_sha256,
+        "runner_binary_sha256": expected.runner_binary_sha256,
+        "rustc_verbose": expected.rustc_verbose,
+        "cargo_version": expected.cargo_version,
+        "target_os": expected.target_os,
+        "target_arch": expected.target_arch,
+    }
+    if values != expected_record:
+        raise ReviewError("qualification evidence validator inputs drifted")
+    return expected
+
+
+def validate_candidate_evidence_validation_record(
+    qualification: dict[str, Any],
+    expected: CandidateEvidenceExpectations,
+    validated: ValidatedCandidateEvidence,
+) -> None:
+    """Bind the signed qualifier result to finalizer recomputation."""
+
+    expected_record = {
+        "status": "PASS",
+        "semantic_sha256": validated.semantic_sha256,
+        "artifacts": validated.artifacts,
+        "expectations": {
+            "commit": expected.commit,
+            "tree": expected.tree,
+            "tracked_config_path": expected.tracked_config_path,
+            "tracked_config_sha256": hashlib.sha256(
+                expected.tracked_config_bytes
+            ).hexdigest(),
+            "workspace_manifest_sha256": expected.workspace_manifest_sha256,
+            "cargo_lock_sha256": expected.cargo_lock_sha256,
+            "runner_binary_sha256": expected.runner_binary_sha256,
+            "rustc_verbose": expected.rustc_verbose,
+            "cargo_version": expected.cargo_version,
+            "target_os": expected.target_os,
+            "target_arch": expected.target_arch,
+        },
+    }
+    if qualification.get("candidate_evidence_validation") != expected_record:
+        raise ReviewError(
+            "qualification evidence validation differs from finalizer recomputation"
+        )
+
+
+def validate_finalizer_candidate_evidence(
+    root: Path,
+    *,
+    qualification: dict[str, Any],
+    manifest_artifacts: dict[str, dict[str, Any]],
+    expected: CandidateEvidenceExpectations,
+) -> ValidatedCandidateEvidence:
+    """Repeat complete evidence validation against the signed outer inventory."""
+
+    outer_artifacts = candidate_evidence_outer_artifacts(manifest_artifacts)
+    validated = validate_candidate_evidence_bundle(
+        root,
+        expected=expected,
+        expected_outer_artifacts=outer_artifacts,
+    )
+    if validated.artifacts != outer_artifacts:
+        raise ReviewError(
+            "candidate evidence identities differ from the qualification manifest"
+        )
+    validate_candidate_evidence_validation_record(
+        qualification,
+        expected,
+        validated,
+    )
+    return validated
+
+
 def candidate_source_date_epoch(repo: Path, commit: str) -> int:
     """Read one commit timestamp without incidental signature display."""
 
@@ -3672,9 +5015,7 @@ def verify_qualification(
     mandatory = {
         "qualification.json",
         "candidate-acceptance.json",
-        "candidate-evidence/config.json",
-        "candidate-evidence/manifest.json",
-        "candidate-evidence/summary.json",
+        *(f"candidate-evidence/{name}" for name in EVIDENCE_FILES),
         "cargo-metadata.json",
         "REPRODUCIBILITY.json",
         "provenance.json",
@@ -3718,7 +5059,7 @@ def verify_qualification(
         != 7
     ):
         raise ReviewError("qualification tier must contain seven workspace SBOMs")
-    mutation_document, mutation_artifacts = validate_mutation_evidence(
+    validated_mutation = validate_mutation_evidence(
         root / "mutation" / "manifest.json",
         root / "mutation" / "manifest.json.sig",
         allowed_signers=allowed_signers,
@@ -3726,6 +5067,8 @@ def verify_qualification(
         commit=commit,
         tree=tree,
     )
+    mutation_document = validated_mutation.document
+    mutation_artifacts = validated_mutation.artifacts
     focused_check_ids = tuple(
         check.get("id")
         for check in mutation_document.get("focused_checks", [])
@@ -3750,55 +5093,32 @@ def verify_qualification(
         expected_evidence_config_sha256=expected_evidence_config_sha256,
     )
     manifest_artifacts = {item["path"]: item for item in manifest["artifacts"]}
-    if (
-        config_binding.get("accepted_config_sha256")
-        != manifest_artifacts["candidate-evidence/config.json"]["sha256"]
-    ):
-        raise ReviewError(
-            "qualification evidence config binding differs from the retained bytes"
-        )
     tracked_config_bytes = git_bounded_output(
         repo,
         "show",
         f"{commit}:evidence/galadriel-0.9-candidate.json",
         max_bytes=MAX_REVIEW_INPUT_BYTES,
     )
-    accepted_config_bytes = read_bounded_regular_file(
-        root / "candidate-evidence/config.json",
-        MAX_QUALIFICATION_JSON_BYTES,
-        label="accepted candidate evidence config",
-        limit_label="qualification-evidence-config-byte",
+    tools = validate_qualification_tools(qualification)
+    evidence_expectations = candidate_evidence_expectations(
+        qualification,
+        repo=repo,
+        commit=commit,
+        tree=tree,
+        tracked_config_bytes=tracked_config_bytes,
+        tools=tools,
     )
-    evidence_manifest_bytes = read_bounded_regular_file(
-        root / "candidate-evidence/manifest.json",
-        MAX_QUALIFICATION_JSON_BYTES,
-        label="candidate evidence manifest",
-        limit_label="qualification-evidence-manifest-byte",
+    validated_evidence = validate_finalizer_candidate_evidence(
+        root / "candidate-evidence",
+        qualification=qualification,
+        manifest_artifacts=manifest_artifacts,
+        expected=evidence_expectations,
     )
-    recomputed_config_binding = validate_evidence_config_bytes(
-        tracked_config_bytes,
-        accepted_config_bytes,
-        evidence_manifest_bytes,
-        tracked_relative_path="evidence/galadriel-0.9-candidate.json",
-    )
-    if recomputed_config_binding != config_binding:
+    if validated_evidence.config_binding != config_binding:
         raise ReviewError(
             "qualification evidence config binding is not independently reproducible"
         )
-    accepted_config = load_qualification_json(
-        root / "candidate-evidence/config.json",
-        "accepted candidate evidence config",
-    )
-    evidence_summary = load_qualification_json(
-        root / "candidate-evidence/summary.json",
-        "candidate evidence summary",
-    )
-    if not isinstance(accepted_config, dict) or not isinstance(evidence_summary, dict):
-        raise ReviewError("qualification candidate evidence is malformed")
-    recomputed_acceptance = evaluate_acceptance(
-        evidence_summary,
-        accepted_config,
-    )
+    recomputed_acceptance = validated_evidence.acceptance
     (
         sandbox_policy_sha256,
         dependency_fetch_policy_sha256,
@@ -3814,12 +5134,15 @@ def verify_qualification(
         sandbox_bindings["allowed_signers_snapshot"],
         "qualification allowed-signers snapshot",
     )
+    validate_qualification_tool_files(qualification)
+    git_executable = recorded_qualification_git_executable(qualification)
     validate_qualification_commands(
         qualification.get("commands"),
         manifest_artifacts=manifest_artifacts,
         qualification_root=root,
         sandbox_policy_sha256=sandbox_policy_sha256,
         dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
+        git_executable=git_executable,
         recorded_root=recorded_root,
         allowed_signers_snapshot=allowed_signers_snapshot,
     )
@@ -3829,8 +5152,6 @@ def verify_qualification(
         qualification_root=root,
         sandbox_policy_sha256=sandbox_policy_sha256,
     )
-    tools = validate_qualification_tools(qualification)
-    validate_qualification_tool_files(qualification)
     validate_qualification_tool_bindings(qualification)
     validate_qualification_environment(qualification, source_date_epoch)
     validate_repository_control(qualification, commit=commit, tree=tree)
@@ -3868,7 +5189,7 @@ def verify_qualification(
     ):
         raise ReviewError("qualification mutation record is not exact-candidate bound")
     expected_mutation_paths = {
-        path.relative_to(root).as_posix() for path in mutation_artifacts
+        f"mutation/{artifact.relative}" for artifact in mutation_artifacts
     }
     observed_mutation_paths: set[str] = set()
     for artifact in mutation_record["artifacts"]:
@@ -4525,7 +5846,7 @@ def emit_closure_bundle(
             pre_publish_guard=pre_publish_guard,
         )
         staging_output = None
-    except PublicationDurabilityError:
+    except (PublicationDurabilityError, PublicationIntegrityError):
         staging_output = None
         raise
     finally:
@@ -4983,6 +6304,12 @@ def main() -> int:
             input_temporary = None
             signing_key_snapshot = None
         return emit_publication_result(result, cleanup_status)
+    except PublicationIntegrityError as error:
+        print(
+            f"release finalization integrity failure after atomic rename: {error}",
+            file=sys.stderr,
+        )
+        return 4
     except PublicationDurabilityError as error:
         print(f"release finalization durability warning: {error}", file=sys.stderr)
         return 3

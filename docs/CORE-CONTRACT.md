@@ -13,8 +13,8 @@
 
 Status: normative for the stable `galadriel-core` source API selected for 0.9.x.
 This contract defines representation and failure semantics. It does not assert
-producer authenticity, calibrated field performance, malicious intent, or safe
-control authority.
+producer authenticity, calibrated field performance, malicious intent, or
+authority for control.
 
 ## Validated domain identities
 
@@ -41,7 +41,7 @@ constructor or deserializer performs this validation.
 **GLD-090-DOM-002 — bounded canonical representation.** Numeric identifiers,
 counters, and millisecond timestamps use JSON numbers. These values **SHALL** be
 in `0..=9_007_199_254_740_991`. `TrackId` **SHALL** preserve this complete range.
-The range includes zero. The frozen Galadriel/Crebain observation schema v1
+The range includes zero. The frozen Galadriel and Crebain observation schema v1
 requires this range.
 
 Projection frame, projection context, and frozen-prior identifiers **SHALL** also
@@ -78,12 +78,36 @@ meaning. Accepted sets use the declared modality order.
 
 The text grammar is stricter than the pre-0.9 NCP helper. That helper accepted
 arbitrary Unicode path segments. This change is a pre-1.0 compatibility break.
-Adapters must reject or explicitly migrate a legacy identity. They must not
+Adapters **MUST** reject or explicitly migrate a legacy identity. They **MUST NOT**
 silently normalize it.
 
 A syntactically valid identity remains a label. It does not prove who issued the
 identity. The adapter and deployment profile supply authentication and registry
 binding.
+
+**GLD-090-DOM-005 — accepted assessment scope.** Every accepted whole-stream
+assessment **MUST** receive one `AssessmentScope`. The scope contains one
+validated `ProducerId` and one exact `StreamPosition`.
+
+The scope binds these eight coordinates:
+
+- producer identity
+- session identity
+- epoch identity
+- stream identity
+- state generation
+- terminal sequence
+- terminal timestamp in milliseconds
+- clock domain
+
+The terminal sequence **MUST** equal the largest sequence in the assessed
+stream. The terminal timestamp **MUST** equal the largest timestamp at that
+terminal sequence. A mismatch is invalid input and returns an error.
+
+The scope is caller-declared provenance. Its types validate representation and
+identity separation. They do not authenticate the caller or prove that the
+named producer emitted the observations. An adapter or deployment supplies that
+assurance separately.
 
 ## Assessment result taxonomy
 
@@ -137,25 +161,33 @@ sealed `DefaultReport` only after both prerequisites run.
 
 **GLD-090-RES-004 — whole-input binding.** Every accepted whole-stream default
 report **SHALL** carry an opaque `AssessmentBinding`. The binding covers the
-complete canonical release-suite identity. It also covers every field of every
-ordered `PidObservation`.
+complete `AssessmentScope` and canonical release-suite identity. It also covers
+every field of every ordered `PidObservation`.
 
 The input includes optional native research data and the complete consistency
 projection. Every bound magnitude and correlation component **SHALL** carry the
 same binding.
+
+The binding uses domain `galadriel-assessment-binding-v2`. It hashes the eight
+scope coordinates before the suite and ordered observations. A `DefaultReport`
+serializes the complete scope once as top-level field `assessment_scope`.
 
 **GLD-090-RES-005 — no report substitution.** Component constructors and legacy
 fusion helpers MAY produce unbound diagnostic reports. An unbound or mixed-bound
 component family **SHALL NOT** mint a sealed accepted report.
 
 `AssessmentBinding` construction remains private. Callers can inspect its digest,
-suite identity, and observation count. They can also verify it against an exact
-stream and suite.
+suite identity, observation count, and scope. They can verify it only against an
+exact scope, stream, and suite.
+
+The binding identifies the submitted input. Different bindings can carry equal
+detector verdicts. The binding does not require each observation to change an
+estimator or verdict.
 
 The optional PID layer adds `PidAssessmentBinding`. It hashes the core release
 binding with the complete `PidResearchSuite` identity. A sealed PID `FusedReport`
 requires one expected nested binding. Its baseline, signed-correlation axes, and
-PID axes must share that binding.
+PID axes **MUST** share that binding.
 
 These digests establish exact input and configuration identity. They do not
 establish authentication, calibration, or physical truth.

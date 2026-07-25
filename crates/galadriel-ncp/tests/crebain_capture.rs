@@ -26,8 +26,8 @@
 //! only the complete contiguous prefix through sequence 97.
 
 use galadriel_core::{
-    assess_default, FailureCode, FusedVerdict, Mirror, Modality, PidObservation, ReleaseSuite,
-    Verdict,
+    combine_correlation_axes, FailureCode, FusedVerdict, Mirror, Modality, PidObservation,
+    ReleaseSuite, Verdict,
 };
 use galadriel_ncp::{read_jsonl, SidecarEnvelope};
 
@@ -163,11 +163,13 @@ fn crebain_contiguous_prefix_keeps_insufficient_correlation_fail_closed() {
 
     // Native radar-polar and Cartesian innovations are intentionally ignored. The
     // producer supplied no common frame/context/frozen-prior attestation.
-    let fused = assess_default(continuous, &suite).expect("fused assessment succeeds");
-    assert!(fused.correlations().is_empty());
+    // Historical JSONL lacks lifecycle evidence. Keep this check on the
+    // explicitly unbound diagnostic route.
+    let (fused, _) =
+        combine_correlation_axes(&suite, &report, &[]).expect("unbound diagnostic fusion succeeds");
     assert_eq!(
-        fused.verdict(),
-        &FusedVerdict::InsufficientEvidence,
+        fused,
+        FusedVerdict::InsufficientEvidence,
         "fusion must preserve insufficient correlation evidence"
     );
 }

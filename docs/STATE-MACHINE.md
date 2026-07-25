@@ -183,8 +183,8 @@ exact returned fault-reason string.
 
 The detector latches the first error and clears retained statistical history.
 Subsequent calls return that fault. The 0.9 detector cannot recover in the same
-instance after a latched fault. Recovery needs an externally coordinated fresh
-detector and epoch. Late repair is not sufficient.
+instance after a latched fault. Recovery needs an externally coordinated new
+detector instance and a fresh epoch. Late repair is not sufficient.
 
 This fail-closed behavior is not a transactional database claim. A rejection
 appends audit evidence and clears statistical history. It never advances a valid
@@ -192,7 +192,7 @@ assessment or produces `Nominal`.
 
 ## 3. Lifecycle-complete assessment
 
-`CrossRouteAssembler` first proves all route and frame invariants. These include
+`CrossRouteAssembler` first checks all route and frame invariants. These include
 producer, session, monitor order, summary, counts, registry, projection, prior,
 deadlines, and replay. Partial route data remains in staging. It never reaches
 `LifecycleDetector` as a complete frame.
@@ -209,6 +209,27 @@ deterministic track order:
 - It then returns `LifecycleAssessment::Abstained` with the canonical unavailable
   modalities.
 
+The adapter creates one `AssessmentScope` before it evaluates the frame.
+It uses the validated assembled-frame producer and the exact admitted
+`StreamPosition`.
+The same scope applies to every evaluated track in that frame.
+Section 5 defines the local position that the sidecar v1 adapter derives.
+
+Each evaluated `DefaultReport` contains this complete scope:
+
+- producer
+- core session
+- epoch
+- stream
+- state generation
+- terminal sequence
+- terminal timestamp
+- clock domain
+
+The terminal sequence and timestamp equal the admitted frame position.
+The scope does not add authenticated fields to the sidecar v1 wire format.
+It records validated lifecycle labels at the assessment boundary.
+
 The detector does not impute missingness as zero NIS, nominal observation,
 anomaly, or attack cause. The next valid frame starts a new suffix. Observations
 from opposite sides of the absence cannot share a detector window.
@@ -219,7 +240,19 @@ the complete deterministic JSON for each ordered `LifecycleAssessment`.
 
 Evaluated entries bind every serialized numeric and detail field. This includes
 sealed baseline and correlation reports, not only their fused verdicts.
+The serialized report includes its `AssessmentScope`.
 `verifies_assessments` recalculates the exact suite-plus-assessment digest.
+It also requires each evaluated report scope to equal the receipt producer and
+position.
+It requires the nested assessment binding to contain that same scope.
+
+An abstained entry contains no report or assessment scope.
+It still binds its track, terminal sequence, and unavailable modalities.
+The assessment vector uses strictly increasing track order.
+
+These checks establish internal semantic consistency for the supplied values.
+They do not authenticate the producer or any caller-provided control provenance.
+They do not establish that the producer emitted the observations.
 
 Exact numeric reports require a separate publication policy for reconstruction.
 That policy must retain the complete receipt-linked frame evidence and immutable
@@ -247,9 +280,9 @@ Receipts have a frozen strict-JSON representation.
 inclusive. It rejects malformed, wrong-shape, or digest-mismatched input. It
 returns a receipt only after the embedded digest verifies.
 
-This check supplies internal integrity for the frozen encoding. It does not
-give writer authentication, chain membership, durability, or an external
-signature or MAC.
+This check verifies the internal consistency of the frozen encoding.
+It does not give writer authentication, chain membership, durability, or an
+external signature or MAC.
 
 The interoperability vector is
 [`crates/galadriel-ncp/tests/fixtures/lifecycle-receipt-v0.9.json`](../crates/galadriel-ncp/tests/fixtures/lifecycle-receipt-v0.9.json).
@@ -261,6 +294,35 @@ digest before the new oldest entry. `evicted_receipts` exposes the count.
 A release or deployment policy must supply durable persistence when it needs an
 audit journal. Galadriel 0.9 makes no claim for crash consistency, fsync, external
 signatures, or independent receipt archives.
+
+### Operational command-line record
+
+The `observe` command writes one JSON record when a delivered frame creates a
+lifecycle receipt.
+The record uses schema `galadriel.observe.lifecycle.v1`.
+It contains exactly these top-level fields:
+
+- `schema`
+- `calibrated_posterior`, which is always `false`
+- the complete `receipt`
+- the complete ordered `assessments` vector
+
+An accepted transition carries all evaluated and abstained track entries.
+A receipted rejection or fault carries the new terminal receipt and an empty
+assessment vector.
+The command writes that record before it returns the terminal error.
+It uses a fallible write and flushes standard output first.
+
+The command compares the latest receipt index and digest with their prior values.
+It emits a terminal record only when the detector committed a new receipt.
+It does not emit a prior receipt for a new failure.
+A failure before receipt construction therefore has no lifecycle record.
+
+Lifecycle records go to standard output.
+The command writes status, heartbeat, health, advisory, and error text to
+standard error.
+This split supports machine processing of standard output.
+It does not sign or durably retain either stream.
 
 ## 5. Frozen sidecar v1 compatibility mapping
 

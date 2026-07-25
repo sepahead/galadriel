@@ -7,7 +7,8 @@
 # The default-member command-line interface (CLI) build has three additive features.
 # The `pid` feature selects pid-core.
 # The `ncp` feature selects ncp-core.
-# The `ncp-live` feature selects ncp-zenoh, Zenoh, and Tokio.
+# The `ncp-live` feature selects ncp-zenoh, Zenoh, Tokio, and CLI JSON output support.
+# The direct `galadriel-ncp` `zenoh` feature selects the same live stack.
 # Direct workspace-member builds resolve their declared dependencies.
 [workspace]
 resolver = "2"

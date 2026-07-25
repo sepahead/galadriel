@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import ast
 import copy
+import errno
 import hashlib
 import os
+import shutil
 import signal
+import subprocess
 import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 TOOLS = Path(__file__).resolve().parents[1]
 ROOT = TOOLS.parent
@@ -26,6 +30,8 @@ from common import (  # noqa: E402
 from finalize_release import (  # noqa: E402
     EMPTY_SHA256,
     EXPECTED_ADVISORY_WARNINGS,
+    EXPECTED_DEVELOPER_GIT_IDENTITIES,
+    EXPECTED_DEVELOPER_TOOL_IDENTITIES,
     EXPECTED_GIT_PACKAGE_SOURCES,
     EXPECTED_RELEASE_CRATES,
     EXPECTED_TOOL_FILE_IDENTITIES,
@@ -34,6 +40,8 @@ from finalize_release import (  # noqa: E402
     RUSTSEC_ADVISORY_DATABASE,
     TOOL_FILE_BASENAMES,
     _dynamic_qualification_specs,
+    candidate_evidence_outer_artifacts,
+    candidate_evidence_subject_identity,
     candidate_source_date_epoch,
     candidate_crate_files,
     cleanup_finalization_inputs,
@@ -43,6 +51,8 @@ from finalize_release import (  # noqa: E402
     validate_advisory_database,
     validate_cargo_metadata_bindings,
     validate_command_receipt_trailer,
+    validate_candidate_evidence_validation_record,
+    validate_finalizer_candidate_evidence,
     validate_package_patch_receipts,
     validate_qualification_environment,
     validate_qualification_record,
@@ -58,13 +68,32 @@ from finalize_release import (  # noqa: E402
 from qualify_candidate import (  # noqa: E402
     AuxiliaryRunner,
     BoundedProcessResult,
+    QUALIFICATION_ENVIRONMENT_KEYS,
     QUALIFICATION_PATH_TOOLS,
+    QUALIFICATION_SYSTEM_PATHS,
+    QUALIFICATION_SYSTEM_TOOL_PATHS,
+    SANDBOX_EXECUTABLE,
+    SANDBOX_SYSTEM_READ_PATHS,
     MacOSProcessContainment,
+    ProcessContainmentError,
+    _close_process_resources,
+    _emergency_stop,
+    _finalize_tracked_process,
+    _wait_for_launch_gate,
+    candidate_executed_argv,
+    create_standalone_candidate_clone,
+    executable_file_identity,
     execution_policy_contract,
+    install_qualification_tool_dispatch,
+    qualification_system_path_state,
+    qualification_tool_read_paths,
     qualification_environment_contract,
+    release_qualification_tool_dispatch,
     render_candidate_sandbox_profile,
+    resolve_candidate_git_executable,
     run_bounded_process,
     sandboxed_argv,
+    verify_qualification_tool_dispatch,
     write_candidate_sandbox_profile,
 )
 
@@ -144,24 +173,267 @@ def vulnerability_report() -> dict[str, object]:
 
 
 def tool_file_record(name: str) -> dict[str, object]:
-    path = (
-        Path("/usr/bin/sandbox-exec")
-        if name == "sandbox-exec"
-        else Path("/fixture/tools") / name / TOOL_FILE_BASENAMES[name]
-    )
+    if name == "sandbox-exec":
+        path = Path("/usr/bin/sandbox-exec")
+        resolved = path
+    elif name in QUALIFICATION_PATH_TOOLS:
+        path = Path("/fixture/galadriel-tool-dispatch-fixture") / name
+        selected_git = next(iter(EXPECTED_DEVELOPER_GIT_IDENTITIES))
+        if name == "git":
+            resolved = selected_git
+        elif name in EXPECTED_DEVELOPER_TOOL_IDENTITIES[selected_git]:
+            resolved = EXPECTED_DEVELOPER_TOOL_IDENTITIES[selected_git][name][0]
+        elif name in QUALIFICATION_SYSTEM_TOOL_PATHS:
+            resolved = QUALIFICATION_SYSTEM_TOOL_PATHS[name]
+        elif name in {"cargo", "rustc"}:
+            resolved = Path("/fixture/tools/rustup/rustup")
+        else:
+            resolved = Path("/fixture/tools") / name / TOOL_FILE_BASENAMES[name]
+    else:
+        path = Path("/fixture/tools") / name / TOOL_FILE_BASENAMES[name]
+        resolved = path
     sha256, size_bytes = EXPECTED_TOOL_FILE_IDENTITIES[name]
     return {
         "invoked_path": str(path),
-        "resolved_path": str(path),
+        "resolved_path": str(resolved),
         "sha256": sha256,
         "size_bytes": size_bytes,
-        "uid": 501,
-        "gid": 20,
+        "uid": (
+            0
+            if name == "git"
+            or name in QUALIFICATION_SYSTEM_TOOL_PATHS
+            or name
+            in EXPECTED_DEVELOPER_TOOL_IDENTITIES[
+                next(iter(EXPECTED_DEVELOPER_GIT_IDENTITIES))
+            ]
+            else 501
+        ),
+        "gid": (
+            0
+            if name == "git"
+            or name in QUALIFICATION_SYSTEM_TOOL_PATHS
+            or name
+            in EXPECTED_DEVELOPER_TOOL_IDENTITIES[
+                next(iter(EXPECTED_DEVELOPER_GIT_IDENTITIES))
+            ]
+            else 20
+        ),
         "mode": 0o755,
     }
 
 
 class FinalizeQualificationTest(unittest.TestCase):
+    def test_every_candidate_process_wrapper_receives_the_environment(self) -> None:
+        tree = ast.parse((TOOLS / "qualify_candidate.py").read_text(encoding="utf-8"))
+        wrapper_names = {
+            "create_standalone_candidate_clone",
+            "run_bounded_process",
+            "sandboxed_argv",
+        }
+        observed = {name: 0 for name in wrapper_names}
+        for node in ast.walk(tree):
+            if (
+                not isinstance(node, ast.Call)
+                or not isinstance(node.func, ast.Name)
+                or node.func.id not in wrapper_names
+            ):
+                continue
+            observed[node.func.id] += 1
+            keywords = {
+                keyword.arg for keyword in node.keywords if keyword.arg is not None
+            }
+            self.assertIn(
+                "environment",
+                keywords,
+                f"qualify_candidate.py:{node.lineno} omits the common environment",
+            )
+        self.assertTrue(all(count > 0 for count in observed.values()))
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS tool dispatch test")
+    def test_candidate_git_dispatch_and_receipt_bind_developer_git(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            developer_git = resolve_candidate_git_executable()
+            dispatch_directory = root / "galadriel-tool-dispatch-fixture"
+            dispatch_directory.mkdir(mode=0o700)
+            cargo_home = root / "cargo-home"
+            cargo_home.mkdir()
+            cwd = root / "worktree"
+            cwd.mkdir()
+            logs = root / "logs"
+            logs.mkdir()
+            sandbox_profile = root / "candidate.sb"
+            sandbox_profile.write_text("(version 1)\n", encoding="utf-8")
+            receipts: list[dict[str, object]] = []
+            captured: dict[str, list[str]] = {}
+
+            def successful_process(argv: list[str], **_kwargs: object):
+                captured["argv"] = argv
+                return BoundedProcessResult(0, False, b"version\n", b"", False, None)
+
+            try:
+                environment = {
+                    "CARGO_HOME": str(cargo_home),
+                    "PATH": os.environ["PATH"],
+                }
+                records = install_qualification_tool_dispatch(
+                    dispatch_directory,
+                    environment,
+                    git_executable=developer_git,
+                )
+                self.assertEqual(set(records), set(QUALIFICATION_PATH_TOOLS))
+                entries = tuple(dispatch_directory.iterdir())
+                self.assertEqual(len(entries), len(QUALIFICATION_PATH_TOOLS))
+                self.assertEqual(
+                    {entry.name for entry in entries},
+                    set(QUALIFICATION_PATH_TOOLS),
+                )
+                for name, record in records.items():
+                    invoked = dispatch_directory / name
+                    self.assertEqual(
+                        shutil.which(name, path=environment["PATH"]),
+                        str(invoked),
+                    )
+                    self.assertEqual(
+                        str(invoked.resolve(strict=True)),
+                        record["resolved_path"],
+                    )
+                self.assertEqual(
+                    candidate_executed_argv(["git", "--version"], environment),
+                    [str(developer_git), "--version"],
+                )
+                dispatch = dispatch_directory / "git"
+                identity = executable_file_identity(dispatch)
+                self.assertEqual(identity["invoked_path"], str(dispatch))
+                self.assertEqual(identity["resolved_path"], str(developer_git))
+
+                runner = AuxiliaryRunner(
+                    environment=environment,
+                    sandbox_profile=sandbox_profile,
+                    logs=logs,
+                    receipts=receipts,
+                )
+                with patch(
+                    "qualify_candidate.run_bounded_process",
+                    side_effect=successful_process,
+                ):
+                    runner.run("developer-git", ["git", "--version"], cwd=cwd)
+            finally:
+                release_qualification_tool_dispatch(dispatch_directory)
+
+            self.assertEqual(captured["argv"][3:], [str(developer_git), "--version"])
+            self.assertEqual(receipts[0]["argv"], [str(developer_git), "--version"])
+
+    def test_candidate_git_rejects_usr_bin_launcher(self) -> None:
+        with self.assertRaisesRegex(ReviewError, "forbidden /usr/bin/git"):
+            sandboxed_argv(
+                Path("/fixture/candidate.sb"),
+                ["git", "--version"],
+                environment={"PATH": "/usr/bin:/bin"},
+            )
+
+    def test_qualification_environment_requires_registered_dispatch(self) -> None:
+        environment = {key: "fixture" for key in QUALIFICATION_ENVIRONMENT_KEYS}
+        environment["PATH"] = "/usr/bin:/bin"
+        with self.assertRaisesRegex(ReviewError, "lacks the tool dispatch"):
+            verify_qualification_tool_dispatch(environment)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS tool dispatch test")
+    def test_standalone_clone_requires_the_common_tool_dispatch(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with self.assertRaisesRegex(ReviewError, "forbidden /usr/bin/git"):
+                create_standalone_candidate_clone(
+                    root / "source",
+                    root / "destination",
+                    commit="a" * 40,
+                    tree="b" * 40,
+                    environment={"PATH": "/usr/bin:/bin"},
+                    git_executable=resolve_candidate_git_executable(),
+                )
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS tool dispatch test")
+    def test_tool_dispatch_replacement_fails_before_process_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            worktree = root / "worktree"
+            worktree.mkdir()
+            dispatch_directory = root / "galadriel-tool-dispatch-fixture"
+            dispatch_directory.mkdir(mode=0o700)
+            environment = {"PATH": os.environ["PATH"]}
+            try:
+                records = install_qualification_tool_dispatch(
+                    dispatch_directory,
+                    environment,
+                    git_executable=resolve_candidate_git_executable(),
+                )
+                profile = root / "candidate.sb"
+                write_candidate_sandbox_profile(
+                    profile,
+                    worktree=worktree,
+                    source_repo=ROOT,
+                    tool_read_paths=qualification_tool_read_paths(
+                        environment,
+                        host_home=Path.home().resolve(),
+                    ),
+                )
+                os.chmod(dispatch_directory, 0o700)
+                cargo_dispatch = dispatch_directory / "cargo"
+                cargo_dispatch.unlink()
+                cargo_dispatch.symlink_to(records["python3"]["resolved_path"])
+                os.chmod(dispatch_directory, 0o500)
+                with (
+                    patch("qualify_candidate.subprocess.Popen") as popen,
+                    self.assertRaisesRegex(ReviewError, "dispatch changed"),
+                ):
+                    run_bounded_process(
+                        sandboxed_argv(
+                            profile,
+                            ["/usr/bin/true"],
+                            environment=environment,
+                        ),
+                        cwd=worktree,
+                        environment=environment,
+                        timeout_seconds=2,
+                        separate_stderr=True,
+                    )
+                popen.assert_not_called()
+            finally:
+                release_qualification_tool_dispatch(dispatch_directory)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS tool dispatch test")
+    def test_tool_dispatch_post_execution_failure_is_fatal(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            worktree = root / "worktree"
+            worktree.mkdir()
+            profile = root / "candidate.sb"
+            write_candidate_sandbox_profile(
+                profile,
+                worktree=worktree,
+                source_repo=ROOT,
+                tool_read_paths=(test_tool_read_root(),),
+            )
+            with (
+                patch(
+                    "qualify_candidate.verify_qualification_tool_dispatch",
+                    side_effect=(None, ReviewError("fixture dispatch changed")),
+                ) as verify_dispatch,
+                self.assertRaisesRegex(ReviewError, "fixture dispatch changed"),
+            ):
+                run_bounded_process(
+                    sandboxed_argv(
+                        profile,
+                        [sys.executable, "-I", "-c", "raise SystemExit(0)"],
+                        environment={"PATH": os.environ["PATH"]},
+                    ),
+                    cwd=worktree,
+                    environment={"PATH": os.environ["PATH"]},
+                    timeout_seconds=2,
+                    separate_stderr=True,
+                )
+            self.assertEqual(verify_dispatch.call_count, 2)
+
     def test_candidate_timestamp_disables_signature_display(self) -> None:
         with patch("finalize_release.git", return_value="1753225600\n") as git_run:
             self.assertEqual(
@@ -231,6 +503,510 @@ class FinalizeQualificationTest(unittest.TestCase):
             with self.assertRaisesRegex(ReviewError, "permission denied"):
                 MacOSProcessContainment._signal_group(12_345, signal.SIGTERM)
 
+    def test_launch_gate_observation_preserves_waitable_root(self) -> None:
+        process = SimpleNamespace(pid=12_345, returncode=None)
+        stopped = SimpleNamespace(si_code=os.CLD_STOPPED, si_status=signal.SIGSTOP)
+        with patch("qualify_candidate.os.waitid", return_value=stopped) as waitid:
+            _wait_for_launch_gate(process)
+        waitid.assert_called_once_with(
+            os.P_PID,
+            12_345,
+            os.WEXITED | os.WSTOPPED | os.WNOHANG | os.WNOWAIT,
+        )
+        self.assertIsNone(process.returncode)
+
+    def test_root_exit_observation_uses_wnowait(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        exited = SimpleNamespace(si_code=os.CLD_EXITED, si_status=0)
+        with patch("qualify_candidate.os.waitid", return_value=exited) as waitid:
+            self.assertTrue(tracker.root_exited_before_reap())
+        waitid.assert_called_once_with(
+            os.P_PID,
+            12_345,
+            os.WEXITED | os.WNOHANG | os.WNOWAIT,
+        )
+
+    def test_pre_reap_termination_ignores_waitable_root_zombie(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        with (
+            patch.object(
+                tracker,
+                "_containment_state",
+                return_value=(True, set(), {12_345}),
+            ),
+            patch.object(tracker, "_signal_group") as signal_group,
+            patch(
+                "qualify_candidate.PROCESS_EXTINCTION_QUIESCENCE_SECONDS",
+                0.0,
+            ),
+        ):
+            self.assertFalse(tracker.terminate_before_root_reap())
+        signal_group.assert_not_called()
+
+    def test_pre_reap_termination_reports_and_stops_group_descendant(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        with (
+            patch.object(
+                tracker,
+                "_containment_state",
+                side_effect=[
+                    (True, {12_346}, {12_345, 12_346}),
+                    (True, set(), {12_345}),
+                ],
+            ),
+            patch.object(tracker, "_signal_group") as signal_group,
+            patch(
+                "qualify_candidate.PROCESS_EXTINCTION_QUIESCENCE_SECONDS",
+                0.0,
+            ),
+        ):
+            self.assertTrue(tracker.terminate_before_root_reap())
+        signal_group.assert_called_once_with(12_345, signal.SIGTERM)
+
+    def test_pre_reap_quiescence_detects_a_delayed_escape(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        with (
+            patch.object(
+                tracker,
+                "_containment_state",
+                side_effect=[
+                    (True, set(), {12_345}),
+                    (True, set(), {12_345}),
+                    (True, {12_346}, {12_345}),
+                ],
+            ),
+            patch("qualify_candidate.time.sleep"),
+            self.assertRaisesRegex(ReviewError, "identity-safe cleanup"),
+        ):
+            tracker.terminate_before_root_reap()
+
+    def test_post_reap_verification_is_read_only(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        with (
+            patch(
+                "qualify_candidate.os.waitid",
+                side_effect=ChildProcessError("reaped"),
+            ),
+            patch.object(tracker, "_live_pids", return_value={12_346}),
+            patch.object(tracker, "_group_pids", return_value=set()),
+            patch.object(tracker, "_signal_group") as signal_group,
+            self.assertRaisesRegex(ReviewError, "process remains after root reap"),
+        ):
+            tracker.verify_extinct_after_root_reap()
+        signal_group.assert_not_called()
+
+    def test_tracked_finalization_orders_termination_reap_and_verification(
+        self,
+    ) -> None:
+        events: list[str] = []
+
+        class FixtureTracker:
+            def enforce_resource_bounds(self) -> None:
+                events.append("resource-check")
+
+            def terminate_before_root_reap(self) -> bool:
+                events.append("terminate")
+                return True
+
+            def verify_extinct_after_root_reap(self) -> None:
+                events.append("verify")
+
+        class FixtureProcess:
+            def wait(self, *, timeout: int) -> int:
+                self.assert_timeout(timeout)
+                events.append("reap")
+                return 7
+
+            @staticmethod
+            def assert_timeout(timeout: int) -> None:
+                if timeout != 2:
+                    raise AssertionError(timeout)
+
+        result = _finalize_tracked_process(
+            FixtureProcess(),
+            FixtureTracker(),
+            enforce_resources=True,
+        )
+        self.assertEqual(
+            events,
+            ["resource-check", "terminate", "reap", "verify"],
+        )
+        self.assertEqual(result.returncode, 7)
+        self.assertTrue(result.root_reaped)
+        self.assertTrue(result.had_live_after_root_exit)
+        self.assertIsNone(result.error)
+
+    def test_tracked_finalization_rechecks_proven_extinction_before_reap(
+        self,
+    ) -> None:
+        events: list[str] = []
+
+        class FixtureTracker:
+            @staticmethod
+            def _containment_state() -> tuple[bool, set[int], set[int]]:
+                events.append("state")
+                return True, set(), {12_345}
+
+            @staticmethod
+            def terminate_before_root_reap() -> bool:
+                events.append("unexpected-terminate")
+                return False
+
+            @staticmethod
+            def verify_extinct_after_root_reap() -> None:
+                events.append("verify")
+
+        class FixtureProcess:
+            @staticmethod
+            def wait(*, timeout: int) -> int:
+                events.append(f"reap-{timeout}")
+                return 0
+
+        result = _finalize_tracked_process(
+            FixtureProcess(),
+            FixtureTracker(),
+            enforce_resources=False,
+            termination_already_proven=True,
+            had_live_after_root_exit=True,
+        )
+        self.assertEqual(events, ["state", "reap-2", "verify"])
+        self.assertTrue(result.had_live_after_root_exit)
+
+    def test_tracked_finalization_does_not_verify_after_failed_root_reap(self) -> None:
+        events: list[str] = []
+
+        class FixtureTracker:
+            @staticmethod
+            def terminate_before_root_reap() -> bool:
+                events.append("terminate")
+                return False
+
+            @staticmethod
+            def verify_extinct_after_root_reap() -> None:
+                events.append("verify")
+
+        class FixtureProcess:
+            @staticmethod
+            def wait(*, timeout: int) -> int:
+                events.append("reap-attempt")
+                raise subprocess.TimeoutExpired("fixture", timeout)
+
+        with self.assertRaisesRegex(
+            ProcessContainmentError,
+            "root reap is not proven",
+        ):
+            _finalize_tracked_process(
+                FixtureProcess(),
+                FixtureTracker(),
+                enforce_resources=False,
+            )
+        self.assertEqual(events, ["terminate", "reap-attempt", "reap-attempt"])
+
+    def test_tracked_finalization_preserves_primary_and_completes_cleanup(
+        self,
+    ) -> None:
+        events: list[str] = []
+
+        class FixtureTracker:
+            @staticmethod
+            def enforce_resource_bounds() -> None:
+                events.append("resource-check")
+                raise KeyboardInterrupt
+
+            @staticmethod
+            def terminate_before_root_reap() -> bool:
+                events.append("terminate")
+                return False
+
+            @staticmethod
+            def verify_extinct_after_root_reap() -> None:
+                events.append("verify")
+
+        class FixtureProcess:
+            @staticmethod
+            def wait(*, timeout: int) -> int:
+                events.append(f"reap-{timeout}")
+                return 0
+
+        with self.assertRaises(KeyboardInterrupt):
+            _finalize_tracked_process(
+                FixtureProcess(),
+                FixtureTracker(),
+                enforce_resources=True,
+            )
+        self.assertEqual(
+            events,
+            ["resource-check", "terminate", "reap-2", "verify"],
+        )
+
+    def test_tracked_finalization_does_not_reap_after_termination_failure(
+        self,
+    ) -> None:
+        events: list[str] = []
+
+        class FixtureTracker:
+            @staticmethod
+            def terminate_before_root_reap() -> bool:
+                events.append("terminate")
+                raise ReviewError("fixture termination failure")
+
+            @staticmethod
+            def verify_extinct_after_root_reap() -> None:
+                events.append("verify")
+
+        class FixtureProcess:
+            @staticmethod
+            def wait(*, timeout: int) -> int:
+                events.append(f"reap-{timeout}")
+                return 0
+
+        with self.assertRaisesRegex(
+            ProcessContainmentError,
+            "termination is not proven",
+        ):
+            _finalize_tracked_process(
+                FixtureProcess(),
+                FixtureTracker(),
+                enforce_resources=False,
+            )
+        self.assertEqual(events, ["terminate"])
+
+    def test_process_group_signal_requires_root_identity(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        with (
+            patch.object(tracker, "_signal_group") as signal_group,
+            self.assertRaisesRegex(ReviewError, "not bound by its root"),
+        ):
+            tracker._signal_remaining(
+                root_exited=False,
+                remaining={12_345},
+                group=set(),
+                signal_number=signal.SIGTERM,
+            )
+        signal_group.assert_not_called()
+
+    def test_escaped_process_does_not_receive_numeric_signal(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        with (
+            patch("qualify_candidate.os.kill") as numeric_signal,
+            patch.object(tracker, "_signal_group") as group_signal,
+            self.assertRaisesRegex(ReviewError, "identity-safe cleanup"),
+        ):
+            tracker._signal_remaining(
+                root_exited=True,
+                remaining={12_346},
+                group={12_345},
+                signal_number=signal.SIGKILL,
+            )
+        numeric_signal.assert_not_called()
+        group_signal.assert_not_called()
+
+    def test_known_candidate_sandbox_mismatch_is_fail_closed(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker._sandbox_identity = SimpleNamespace(
+            deny_path=Path("/fixture/deny"),
+            allow_path=Path("/fixture/allow"),
+        )
+        tracker._sandbox_check = MagicMock(return_value=0)
+        with (
+            patch("qualify_candidate._pid_exists", return_value=True),
+            self.assertRaisesRegex(ReviewError, "does not have a sandbox identity"),
+        ):
+            tracker._sandbox_matches(12_345, known_candidate=True)
+
+    def test_indeterminate_live_sandbox_probe_is_fail_closed(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker._sandbox_identity = SimpleNamespace(
+            deny_path=Path("/fixture/deny"),
+            allow_path=Path("/fixture/allow"),
+        )
+        tracker._sandbox_check = MagicMock(return_value=-1)
+        with (
+            patch("qualify_candidate._pid_exists", return_value=True),
+            self.assertRaisesRegex(ReviewError, "cannot determine"),
+        ):
+            tracker._sandbox_matches(12_345)
+
+    def test_resident_measurement_retries_a_transient_exec_transition(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        tracker._exited = set()
+        calls = 0
+
+        def transient_pid_info(
+            _pid: int,
+            _flavor: int,
+            _argument: int,
+            _buffer: object,
+            size: int,
+        ) -> int:
+            nonlocal calls
+            calls += 1
+            return size if calls == 3 else 0
+
+        tracker._pid_info = transient_pid_info
+        tracker._drain_events = MagicMock()
+        with (
+            patch("qualify_candidate.os.waitid", return_value=None),
+            patch("qualify_candidate._pid_exists", return_value=True),
+            patch("qualify_candidate.time.sleep") as sleep,
+        ):
+            self.assertEqual(tracker._resident_size(12_345), 0)
+        self.assertEqual(calls, 3)
+        sleep.assert_called_once()
+
+    def test_resident_measurement_accepts_a_bound_exit_event(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        tracker._exited = set()
+        tracker._pid_info = MagicMock(return_value=0)
+
+        def record_exit() -> None:
+            tracker._exited.add(12_345)
+
+        tracker._drain_events = MagicMock(side_effect=record_exit)
+        self.assertEqual(tracker._resident_size(12_345), 0)
+        tracker._pid_info.assert_called_once()
+
+    def test_resident_measurement_persistent_failure_is_bounded_and_fatal(
+        self,
+    ) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker.root_pid = 12_345
+        tracker._exited = set()
+        tracker._pid_info = MagicMock(return_value=0)
+        tracker._drain_events = MagicMock()
+        with (
+            patch("qualify_candidate.os.waitid", return_value=None),
+            patch("qualify_candidate._pid_exists", return_value=True),
+            patch("qualify_candidate.time.sleep") as sleep,
+            self.assertRaisesRegex(ReviewError, "cannot measure candidate resident"),
+        ):
+            tracker._resident_size(12_345)
+        self.assertEqual(tracker._pid_info.call_count, 10)
+        self.assertEqual(sleep.call_count, 4)
+
+    def test_unrelated_process_can_have_no_sandbox(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker._sandbox_identity = SimpleNamespace(
+            deny_path=Path("/fixture/deny"),
+            allow_path=Path("/fixture/allow"),
+        )
+        tracker._sandbox_check = MagicMock(return_value=0)
+        self.assertFalse(tracker._sandbox_matches(12_345))
+
+    def test_process_tracker_constructor_preserves_primary_cleanup_failure(
+        self,
+    ) -> None:
+        events: list[str] = []
+
+        class FixtureQueue:
+            @staticmethod
+            def close() -> None:
+                events.append("queue-close")
+                raise OSError("fixture queue close failure")
+
+        libproc = SimpleNamespace(
+            proc_listchildpids=MagicMock(),
+            proc_listpgrppids=MagicMock(),
+            proc_listallpids=MagicMock(),
+            proc_pidinfo=MagicMock(),
+        )
+        libsandbox = SimpleNamespace(sandbox_check=MagicMock())
+        with (
+            patch("qualify_candidate.platform.system", return_value="Darwin"),
+            patch(
+                "qualify_candidate.select.kqueue",
+                return_value=FixtureQueue(),
+                create=True,
+            ),
+            patch(
+                "qualify_candidate.ctypes.CDLL",
+                side_effect=[libproc, libsandbox],
+            ),
+            patch.object(
+                MacOSProcessContainment,
+                "_register",
+                side_effect=ReviewError("fixture registration failure"),
+            ),
+            self.assertRaisesRegex(
+                ReviewError, "fixture registration failure"
+            ) as caught,
+        ):
+            MacOSProcessContainment(12_345)
+        self.assertEqual(events, ["queue-close"])
+        self.assertIn(
+            "constructor cleanup also failed",
+            "\n".join(getattr(caught.exception, "__notes__", ())),
+        )
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS kqueue test")
+    def test_kqueue_registration_esrch_is_an_authoritative_exit(self) -> None:
+        tracker = object.__new__(MacOSProcessContainment)
+        tracker._tracked = set()
+        tracker._exited = set()
+        tracker._queue = SimpleNamespace(
+            control=MagicMock(side_effect=ProcessLookupError(errno.ESRCH, "fixture"))
+        )
+        with patch("qualify_candidate._pid_exists", return_value=True):
+            tracker._register(12_345)
+        self.assertEqual(tracker._tracked, set())
+        self.assertEqual(tracker._exited, {12_345})
+
+    def test_process_resource_cleanup_attempts_every_resource(self) -> None:
+        events: list[str] = []
+
+        class FixtureResource:
+            def __init__(self, label: str) -> None:
+                self.label = label
+
+            def close(self) -> None:
+                events.append(self.label)
+                raise OSError(f"fixture {self.label} failure")
+
+        detail = _close_process_resources(
+            selector=FixtureResource("selector"),
+            process=SimpleNamespace(
+                stdout=FixtureResource("stdout"),
+                stderr=FixtureResource("stderr"),
+            ),
+            tracker=FixtureResource("tracker"),
+        )
+        self.assertEqual(events, ["selector", "stdout", "stderr", "tracker"])
+        self.assertIsNotNone(detail)
+        for label in (
+            "selector",
+            "standard output stream",
+            "standard error stream",
+            "process tracker",
+        ):
+            self.assertIn(f"{label} cleanup failed", detail or "")
+
+    def test_unsandboxed_escape_command_is_rejected_before_launch(self) -> None:
+        source = "import os; os.fork(); os.setsid()"
+        with (
+            patch("qualify_candidate.subprocess.Popen") as popen,
+            self.assertRaisesRegex(
+                ProcessContainmentError,
+                "require an exact sandbox identity",
+            ),
+        ):
+            run_bounded_process(
+                [sys.executable, "-I", "-c", source],
+                cwd=ROOT,
+                environment={"PATH": os.environ["PATH"]},
+                timeout_seconds=1,
+                separate_stderr=True,
+            )
+        popen.assert_not_called()
+
     def test_cleanup_invalidates_pass_record_before_tree_cleanup(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "inputs"
@@ -245,6 +1021,213 @@ class FinalizeQualificationTest(unittest.TestCase):
             with patch("finalize_release.warn_cleanup_failure"):
                 self.assertFalse(cleanup_finalization_inputs(temporary, None))
             self.assertFalse(record.exists())
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS sandbox test")
+    def test_nested_candidate_git_uses_read_only_dispatch(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            worktree = root / "worktree"
+            worktree.mkdir()
+            dispatch_directory = root / "galadriel-tool-dispatch-fixture"
+            dispatch_directory.mkdir(mode=0o700)
+            developer_git = resolve_candidate_git_executable()
+            environment = {"PATH": os.environ["PATH"]}
+            try:
+                records = install_qualification_tool_dispatch(
+                    dispatch_directory,
+                    environment,
+                    git_executable=developer_git,
+                )
+                profile = root / "candidate.sb"
+                write_candidate_sandbox_profile(
+                    profile,
+                    worktree=worktree,
+                    source_repo=ROOT,
+                    tool_read_paths=qualification_tool_read_paths(
+                        environment,
+                        host_home=Path.home().resolve(),
+                    ),
+                )
+                result = run_bounded_process(
+                    sandboxed_argv(
+                        profile,
+                        ["/usr/bin/env", "git", "--version"],
+                        environment=environment,
+                    ),
+                    cwd=worktree,
+                    environment=environment,
+                    timeout_seconds=2,
+                    separate_stderr=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue(result.stdout.startswith(b"git version "))
+                self.assertEqual(len(records), len(QUALIFICATION_PATH_TOOLS))
+                self.assertFalse(result.timed_out)
+                self.assertFalse(result.output_limit_exceeded)
+                self.assertIsNone(result.containment_error)
+            finally:
+                release_qualification_tool_dispatch(dispatch_directory)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS tool dispatch test")
+    def test_candidate_tool_dispatch_resolves_all_names_and_compiles(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            worktree = root / "worktree"
+            writable = root / "writable"
+            worktree.mkdir()
+            writable.mkdir()
+            source = worktree / "probe.c"
+            source.write_text("int probe(void) { return 0; }\n", encoding="utf-8")
+            object_file = writable / "probe.o"
+            dispatch_directory = root / "galadriel-tool-dispatch-fixture"
+            dispatch_directory.mkdir(mode=0o700)
+            environment = {"PATH": os.environ["PATH"]}
+            try:
+                records = install_qualification_tool_dispatch(
+                    dispatch_directory,
+                    environment,
+                    git_executable=resolve_candidate_git_executable(),
+                )
+                self.assertEqual(
+                    19,
+                    len(QUALIFICATION_PATH_TOOLS),
+                )
+                self.assertEqual(
+                    len(QUALIFICATION_PATH_TOOLS),
+                    len(set(QUALIFICATION_PATH_TOOLS)),
+                )
+                self.assertEqual(set(records), set(QUALIFICATION_PATH_TOOLS))
+                self.assertEqual(
+                    tuple(environment["PATH"].split(os.pathsep)[1:]),
+                    QUALIFICATION_SYSTEM_PATHS,
+                )
+                system_path_state = qualification_system_path_state(environment)
+                self.assertEqual(
+                    set(system_path_state["directories"]),
+                    set(QUALIFICATION_SYSTEM_PATHS),
+                )
+                self.assertTrue(
+                    {
+                        "/bin/sh",
+                        "/usr/bin/git",
+                        "/usr/bin/python3",
+                        "/usr/bin/cc",
+                    }.issubset(system_path_state["collisions"])
+                )
+                selected_git = Path(records["git"]["resolved_path"])
+                developer_identities = EXPECTED_DEVELOPER_TOOL_IDENTITIES[selected_git]
+                for name, record in records.items():
+                    if name == "git":
+                        expected_identity = EXPECTED_DEVELOPER_GIT_IDENTITIES[
+                            selected_git
+                        ]
+                    elif name in developer_identities:
+                        expected_identity = developer_identities[name][1:]
+                    else:
+                        expected_identity = EXPECTED_TOOL_FILE_IDENTITIES[name]
+                    self.assertEqual(
+                        (record["sha256"], record["size_bytes"]),
+                        expected_identity,
+                        name,
+                    )
+                profile = root / "candidate.sb"
+                write_candidate_sandbox_profile(
+                    profile,
+                    worktree=worktree,
+                    source_repo=ROOT,
+                    writable_paths=(writable,),
+                    tool_read_paths=qualification_tool_read_paths(
+                        environment,
+                        host_home=Path.home().resolve(),
+                    ),
+                )
+                script = """\
+set -eu
+dispatch=$1
+source=$2
+object_file=$3
+shift 3
+for tool
+do
+    [ "$(command -v "$tool")" = "$dispatch/$tool" ]
+done
+cc -c "$source" -o "$object_file"
+"""
+                result = run_bounded_process(
+                    sandboxed_argv(
+                        profile,
+                        [
+                            "sh",
+                            "-c",
+                            script,
+                            "qualification-tool-probe",
+                            str(dispatch_directory),
+                            str(source),
+                            str(object_file),
+                            *QUALIFICATION_PATH_TOOLS,
+                        ],
+                        environment=environment,
+                    ),
+                    cwd=worktree,
+                    environment=environment,
+                    timeout_seconds=10,
+                    separate_stderr=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertGreater(object_file.stat().st_size, 0)
+                self.assertFalse(result.timed_out)
+                self.assertFalse(result.output_limit_exceeded)
+                self.assertIsNone(result.containment_error)
+            finally:
+                release_qualification_tool_dispatch(dispatch_directory)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS sandbox test")
+    def test_candidate_sandbox_denies_absolute_usr_bin_tool_shims(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            worktree = root / "worktree"
+            worktree.mkdir()
+            dispatch_directory = root / "galadriel-tool-dispatch-fixture"
+            dispatch_directory.mkdir(mode=0o700)
+            environment = {"PATH": os.environ["PATH"]}
+            try:
+                install_qualification_tool_dispatch(
+                    dispatch_directory,
+                    environment,
+                    git_executable=resolve_candidate_git_executable(),
+                )
+                profile = root / "candidate.sb"
+                write_candidate_sandbox_profile(
+                    profile,
+                    worktree=worktree,
+                    source_repo=ROOT,
+                    tool_read_paths=qualification_tool_read_paths(
+                        environment,
+                        host_home=Path.home().resolve(),
+                    ),
+                )
+                for executable in ("/usr/bin/git", "/usr/bin/python3"):
+                    with self.subTest(executable=executable):
+                        result = run_bounded_process(
+                            [
+                                str(SANDBOX_EXECUTABLE),
+                                "-f",
+                                str(profile),
+                                executable,
+                                "--version",
+                            ],
+                            cwd=worktree,
+                            environment=environment,
+                            timeout_seconds=2,
+                            separate_stderr=True,
+                        )
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertNotIn(b"xcrun_db", result.stderr)
+                        self.assertFalse(result.timed_out)
+                        self.assertFalse(result.output_limit_exceeded)
+                        self.assertIsNone(result.containment_error)
+            finally:
+                release_qualification_tool_dispatch(dispatch_directory)
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS sandbox test")
     def test_candidate_sandbox_denies_unrelated_file_reads(self) -> None:
@@ -395,7 +1378,196 @@ raise SystemExit(42)
             self.assertFalse(result.output_limit_exceeded)
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
-    def test_double_fork_pipe_escape_is_bounded_and_observational(self) -> None:
+    def test_process_launch_failure_does_not_start_cleanup(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            profile = root / "candidate.sb"
+            write_candidate_sandbox_profile(
+                profile,
+                worktree=root,
+                source_repo=ROOT,
+                tool_read_paths=(test_tool_read_root(),),
+            )
+            with (
+                patch(
+                    "qualify_candidate.subprocess.Popen",
+                    side_effect=OSError("fixture launch failure"),
+                ),
+                patch("qualify_candidate._emergency_stop") as emergency_stop,
+                self.assertRaisesRegex(ReviewError, "cannot start bounded"),
+            ):
+                run_bounded_process(
+                    sandboxed_argv(
+                        profile,
+                        [sys.executable, "-I", "-c", "raise SystemExit(0)"],
+                    ),
+                    cwd=root,
+                    environment={"PATH": os.environ["PATH"]},
+                    timeout_seconds=1,
+                    separate_stderr=True,
+                )
+            emergency_stop.assert_not_called()
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
+    def test_tracker_constructor_failure_stops_and_reaps_launch_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            profile = root / "candidate.sb"
+            write_candidate_sandbox_profile(
+                profile,
+                worktree=root,
+                source_repo=ROOT,
+                tool_read_paths=(test_tool_read_root(),),
+            )
+            with (
+                patch(
+                    "qualify_candidate.MacOSProcessContainment",
+                    side_effect=ReviewError("fixture tracker constructor failure"),
+                ),
+                patch(
+                    "qualify_candidate._emergency_stop",
+                    wraps=_emergency_stop,
+                ) as emergency_stop,
+                self.assertRaisesRegex(ReviewError, "fixture tracker constructor"),
+            ):
+                run_bounded_process(
+                    sandboxed_argv(
+                        profile,
+                        [sys.executable, "-I", "-c", "raise SystemExit(0)"],
+                    ),
+                    cwd=root,
+                    environment={"PATH": os.environ["PATH"]},
+                    timeout_seconds=1,
+                    separate_stderr=True,
+                )
+            emergency_stop.assert_called_once()
+            process = emergency_stop.call_args.args[0]
+            self.assertIsNotNone(process.returncode)
+            self.assertTrue(process.stdout.closed)
+            self.assertTrue(process.stderr.closed)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
+    def test_timeout_and_output_cleanup_terminate_before_reap(self) -> None:
+        cases = (
+            (
+                "timeout",
+                "import time; time.sleep(5)",
+                1,
+                1_024,
+                True,
+                False,
+            ),
+            (
+                "output",
+                "import os, time; os.write(1, b'x' * 4096); time.sleep(5)",
+                2,
+                8,
+                False,
+                True,
+            ),
+        )
+        for (
+            name,
+            source,
+            timeout_seconds,
+            stdout_bound,
+            expected_timeout,
+            expected_output_limit,
+        ) in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                profile = root / "candidate.sb"
+                write_candidate_sandbox_profile(
+                    profile,
+                    worktree=root,
+                    source_repo=ROOT,
+                    tool_read_paths=(test_tool_read_root(),),
+                )
+                events: list[str] = []
+                original_terminate = MacOSProcessContainment.terminate_before_root_reap
+                original_wait = subprocess.Popen.wait
+
+                def record_terminate(
+                    tracker: MacOSProcessContainment,
+                    grace_seconds: float = 2.0,
+                ) -> bool:
+                    events.append("terminate")
+                    return original_terminate(tracker, grace_seconds)
+
+                def record_wait(
+                    process: subprocess.Popen[bytes],
+                    timeout: float | None = None,
+                ) -> int:
+                    events.append("reap")
+                    return original_wait(process, timeout)
+
+                with (
+                    patch.object(
+                        MacOSProcessContainment,
+                        "terminate_before_root_reap",
+                        new=record_terminate,
+                    ),
+                    patch.object(subprocess.Popen, "wait", new=record_wait),
+                ):
+                    result = run_bounded_process(
+                        sandboxed_argv(
+                            profile,
+                            [sys.executable, "-I", "-c", source],
+                        ),
+                        cwd=root,
+                        environment={"PATH": os.environ["PATH"]},
+                        timeout_seconds=timeout_seconds,
+                        separate_stderr=True,
+                        max_stdout_bytes=stdout_bound,
+                    )
+                self.assertEqual(result.timed_out, expected_timeout)
+                self.assertEqual(
+                    result.output_limit_exceeded,
+                    expected_output_limit,
+                )
+                self.assertLess(events.index("terminate"), events.index("reap"))
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
+    def test_cleanup_only_failure_is_fatal(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            profile = root / "candidate.sb"
+            write_candidate_sandbox_profile(
+                profile,
+                worktree=root,
+                source_repo=ROOT,
+                tool_read_paths=(test_tool_read_root(),),
+            )
+
+            def close_then_report(**kwargs: object) -> str:
+                detail = _close_process_resources(**kwargs)
+                if detail is not None:
+                    raise AssertionError(detail)
+                return "fixture cleanup failure"
+
+            with (
+                patch(
+                    "qualify_candidate._close_process_resources",
+                    side_effect=close_then_report,
+                ),
+                self.assertRaisesRegex(
+                    ProcessContainmentError,
+                    "fixture cleanup failure",
+                ),
+            ):
+                run_bounded_process(
+                    sandboxed_argv(
+                        profile,
+                        [sys.executable, "-I", "-c", "print('complete')"],
+                    ),
+                    cwd=root,
+                    environment={"PATH": os.environ["PATH"]},
+                    timeout_seconds=2,
+                    separate_stderr=True,
+                )
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
+    def test_sandboxed_double_fork_escape_aborts_without_root_reap(self) -> None:
         source = """
 import os
 import pathlib
@@ -409,14 +1581,29 @@ if child:
 os.setsid()
 grandchild = os.fork()
 if grandchild:
+    deadline = time.monotonic() + 2
+    while not pathlib.Path(sys.argv[1]).exists() and time.monotonic() < deadline:
+        time.sleep(0.01)
     os._exit(0)
 pathlib.Path(sys.argv[1]).write_text(str(os.getpid()), encoding="ascii")
 os.close(0)
 os.close(1)
 os.close(2)
-time.sleep(20)
+marker = pathlib.Path(sys.argv[2])
+deadline = time.monotonic() + 10
+while not marker.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
+pathlib.Path(sys.argv[3]).write_text("exited\\n", encoding="ascii")
 """
         escaped_pid: int | None = None
+        root_processes: list[subprocess.Popen[bytes]] = []
+        original_popen = subprocess.Popen
+
+        def capture_process(*args: object, **kwargs: object) -> subprocess.Popen[bytes]:
+            process = original_popen(*args, **kwargs)
+            root_processes.append(process)
+            return process
+
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             worktree = root / "worktree"
@@ -424,6 +1611,8 @@ time.sleep(20)
             worktree.mkdir()
             writable.mkdir()
             pid_file = writable / "escaped.pid"
+            exit_marker = writable / "allow-exit"
+            exited_file = writable / "exited"
             profile = root / "candidate.sb"
             write_candidate_sandbox_profile(
                 profile,
@@ -434,46 +1623,52 @@ time.sleep(20)
             )
             try:
                 started = time.monotonic()
-                result = run_bounded_process(
-                    sandboxed_argv(
-                        profile,
-                        [sys.executable, "-I", "-c", source, str(pid_file)],
+                with (
+                    patch(
+                        "qualify_candidate.subprocess.Popen",
+                        side_effect=capture_process,
                     ),
-                    cwd=writable,
-                    environment={"PATH": os.environ["PATH"]},
-                    timeout_seconds=2,
-                    separate_stderr=True,
-                )
+                    self.assertRaises(ProcessContainmentError),
+                ):
+                    run_bounded_process(
+                        sandboxed_argv(
+                            profile,
+                            [
+                                sys.executable,
+                                "-I",
+                                "-c",
+                                source,
+                                str(pid_file),
+                                str(exit_marker),
+                                str(exited_file),
+                            ],
+                        ),
+                        cwd=writable,
+                        environment={"PATH": os.environ["PATH"]},
+                        timeout_seconds=2,
+                        separate_stderr=True,
+                    )
                 elapsed = time.monotonic() - started
                 self.assertLess(elapsed, 10.0)
-                self.assertFalse(result.output_limit_exceeded)
+                self.assertEqual(len(root_processes), 1)
+                self.assertIsNone(root_processes[0].returncode)
+                deadline = time.monotonic() + 2
+                while not pid_file.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
                 if pid_file.exists():
                     escaped_pid = int(pid_file.read_text(encoding="ascii"))
-                escaped_is_live = False
-                if escaped_pid is not None:
-                    try:
-                        os.kill(escaped_pid, 0)
-                    except ProcessLookupError:
-                        pass
-                    else:
-                        escaped_is_live = True
-                self.assertFalse(escaped_is_live)
-                self.assertIsNotNone(
-                    result.containment_error,
-                    (
-                        result.returncode,
-                        result.stderr,
-                        pid_file.exists(),
-                    ),
-                )
+                self.assertIsNotNone(escaped_pid)
             finally:
                 if escaped_pid is None and pid_file.exists():
                     escaped_pid = int(pid_file.read_text(encoding="ascii"))
                 if escaped_pid is not None:
-                    try:
-                        os.kill(escaped_pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
+                    exit_marker.write_text("exit\n", encoding="ascii")
+                    deadline = time.monotonic() + 2
+                    while not exited_file.exists() and time.monotonic() < deadline:
+                        time.sleep(0.01)
+                    self.assertTrue(exited_file.exists())
+                for root_process in root_processes:
+                    root_process.wait(timeout=2)
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
     def test_interrupt_cleans_and_reaps_candidate_process(self) -> None:
@@ -484,7 +1679,10 @@ import sys
 import time
 
 pathlib.Path(sys.argv[1]).write_text(str(os.getpid()), encoding="ascii")
-time.sleep(20)
+marker = pathlib.Path(sys.argv[2])
+deadline = time.monotonic() + 10
+while not marker.exists() and time.monotonic() < deadline:
+    time.sleep(0.01)
 """
         candidate_pid: int | None = None
         with tempfile.TemporaryDirectory() as directory:
@@ -494,6 +1692,7 @@ time.sleep(20)
             worktree.mkdir()
             writable.mkdir()
             pid_file = writable / "candidate.pid"
+            exit_marker = writable / "allow-exit"
             profile = root / "candidate.sb"
             write_candidate_sandbox_profile(
                 profile,
@@ -507,37 +1706,52 @@ time.sleep(20)
                 time.sleep(0.1)
                 raise KeyboardInterrupt
 
+            def close_then_report(**kwargs: object) -> str:
+                detail = _close_process_resources(**kwargs)
+                if detail is not None:
+                    raise AssertionError(detail)
+                return "fixture cleanup after primary failure"
+
             try:
                 with (
                     patch(
                         "qualify_candidate.selectors.DefaultSelector.select",
                         side_effect=interrupt_after_start,
                     ),
-                    self.assertRaises(KeyboardInterrupt),
+                    patch(
+                        "qualify_candidate._close_process_resources",
+                        side_effect=close_then_report,
+                    ),
+                    self.assertRaises(KeyboardInterrupt) as caught,
                 ):
                     run_bounded_process(
                         sandboxed_argv(
                             profile,
-                            [sys.executable, "-I", "-c", source, str(pid_file)],
+                            [
+                                sys.executable,
+                                "-I",
+                                "-c",
+                                source,
+                                str(pid_file),
+                                str(exit_marker),
+                            ],
                         ),
                         cwd=writable,
                         environment={"PATH": os.environ["PATH"]},
                         timeout_seconds=2,
                         separate_stderr=True,
                     )
+                self.assertIn(
+                    "fixture cleanup after primary failure",
+                    "\n".join(getattr(caught.exception, "__notes__", ())),
+                )
                 if pid_file.exists():
                     candidate_pid = int(pid_file.read_text(encoding="ascii"))
                 if candidate_pid is not None:
                     with self.assertRaises(ProcessLookupError):
                         os.kill(candidate_pid, 0)
             finally:
-                if candidate_pid is None and pid_file.exists():
-                    candidate_pid = int(pid_file.read_text(encoding="ascii"))
-                if candidate_pid is not None:
-                    try:
-                        os.kill(candidate_pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
+                exit_marker.write_text("exit\n", encoding="ascii")
 
     def test_candidate_crate_files_bind_exact_git_blobs_and_modes(self) -> None:
         manifest_object = "1" * 40
@@ -911,6 +2125,237 @@ time.sleep(20)
                 recomputed,
             )
 
+    def test_outer_manifest_must_bind_the_exact_evidence_file_set(self) -> None:
+        names = (
+            "SHA256SUMS",
+            "config.json",
+            "manifest.json",
+            "report.md",
+            "summary.json",
+            "trials.jsonl",
+        )
+        artifacts = {
+            f"candidate-evidence/{name}": {
+                "path": f"candidate-evidence/{name}",
+                "sha256": hashlib.sha256(name.encode("utf-8")).hexdigest(),
+                "size_bytes": len(name),
+            }
+            for name in names
+        }
+        expected = {
+            name: {
+                "sha256": artifacts[f"candidate-evidence/{name}"]["sha256"],
+                "size_bytes": len(name),
+            }
+            for name in names
+        }
+        self.assertEqual(candidate_evidence_outer_artifacts(artifacts), expected)
+
+        missing = copy.deepcopy(artifacts)
+        del missing["candidate-evidence/trials.jsonl"]
+        with self.assertRaisesRegex(ReviewError, "another candidate-evidence file set"):
+            candidate_evidence_outer_artifacts(missing)
+
+        extra = copy.deepcopy(artifacts)
+        extra["candidate-evidence/forged.json"] = {
+            "path": "candidate-evidence/forged.json",
+            "sha256": "f" * 64,
+            "size_bytes": 1,
+        }
+        with self.assertRaisesRegex(ReviewError, "another candidate-evidence file set"):
+            candidate_evidence_outer_artifacts(extra)
+
+    def test_finalizer_recomputation_must_equal_the_qualifier_record(self) -> None:
+        tracked_config = b'{"study_id":"fixture"}\n'
+        expectations = SimpleNamespace(
+            commit=COMMIT,
+            tree=TREE,
+            tracked_config_path="evidence/galadriel-0.9-candidate.json",
+            tracked_config_bytes=tracked_config,
+            workspace_manifest_sha256="a" * 64,
+            cargo_lock_sha256="b" * 64,
+            runner_binary_sha256="c" * 64,
+            rustc_verbose="rustc fixture",
+            cargo_version="cargo fixture",
+            target_os="macos",
+            target_arch="aarch64",
+        )
+        artifacts = {"config.json": {"sha256": "d" * 64, "size_bytes": 10}}
+        validated = SimpleNamespace(
+            semantic_sha256="e" * 64,
+            artifacts=artifacts,
+        )
+        qualification = {
+            "candidate_evidence_validation": {
+                "status": "PASS",
+                "semantic_sha256": validated.semantic_sha256,
+                "artifacts": artifacts,
+                "expectations": {
+                    "commit": expectations.commit,
+                    "tree": expectations.tree,
+                    "tracked_config_path": expectations.tracked_config_path,
+                    "tracked_config_sha256": hashlib.sha256(tracked_config).hexdigest(),
+                    "workspace_manifest_sha256": (
+                        expectations.workspace_manifest_sha256
+                    ),
+                    "cargo_lock_sha256": expectations.cargo_lock_sha256,
+                    "runner_binary_sha256": expectations.runner_binary_sha256,
+                    "rustc_verbose": expectations.rustc_verbose,
+                    "cargo_version": expectations.cargo_version,
+                    "target_os": expectations.target_os,
+                    "target_arch": expectations.target_arch,
+                },
+            }
+        }
+        validate_candidate_evidence_validation_record(
+            qualification,
+            expectations,
+            validated,
+        )
+
+        forged = copy.deepcopy(qualification)
+        forged["candidate_evidence_validation"]["semantic_sha256"] = "f" * 64
+        with self.assertRaisesRegex(ReviewError, "finalizer recomputation"):
+            validate_candidate_evidence_validation_record(
+                forged,
+                expectations,
+                validated,
+            )
+
+    def test_candidate_evidence_receipt_binds_one_unchanged_direct_runner(self) -> None:
+        path = "/private/tmp/evidence-runner/galadriel-evidence"
+        identity = {
+            "invoked_path": path,
+            "resolved_path": path,
+            "sha256": "a" * 64,
+            "size_bytes": 1,
+            "uid": 501,
+            "gid": 20,
+            "mode": 0o500,
+        }
+        qualification = {
+            "commands": [
+                {
+                    "name": "candidate-evidence",
+                    "subject_executable": {
+                        "status": "UNCHANGED",
+                        "identity": identity,
+                    },
+                }
+            ]
+        }
+        self.assertEqual(
+            candidate_evidence_subject_identity(qualification),
+            identity,
+        )
+
+        writable = copy.deepcopy(qualification)
+        writable["commands"][0]["subject_executable"]["identity"]["mode"] = 0o700
+        with self.assertRaisesRegex(ReviewError, "runner identity is invalid"):
+            candidate_evidence_subject_identity(writable)
+
+        duplicate = copy.deepcopy(qualification)
+        duplicate["commands"].append(copy.deepcopy(duplicate["commands"][0]))
+        with self.assertRaisesRegex(ReviewError, "receipt is not unique"):
+            candidate_evidence_subject_identity(duplicate)
+
+    def test_finalizer_repeats_complete_candidate_evidence_validation(self) -> None:
+        names = (
+            "SHA256SUMS",
+            "config.json",
+            "manifest.json",
+            "report.md",
+            "summary.json",
+            "trials.jsonl",
+        )
+        inner_artifacts = {
+            name: {
+                "sha256": hashlib.sha256(name.encode("utf-8")).hexdigest(),
+                "size_bytes": len(name),
+            }
+            for name in names
+        }
+        outer_artifacts = {
+            f"candidate-evidence/{name}": {
+                "path": f"candidate-evidence/{name}",
+                **inner_artifacts[name],
+            }
+            for name in names
+        }
+        tracked_config = b"{}\n"
+        expected = SimpleNamespace(
+            commit=COMMIT,
+            tree=TREE,
+            tracked_config_path="evidence/galadriel-0.9-candidate.json",
+            tracked_config_bytes=tracked_config,
+            workspace_manifest_sha256="a" * 64,
+            cargo_lock_sha256="b" * 64,
+            runner_binary_sha256="c" * 64,
+            rustc_verbose="rustc fixture",
+            cargo_version="cargo fixture",
+            target_os="macos",
+            target_arch="aarch64",
+        )
+        validated = SimpleNamespace(
+            artifacts=inner_artifacts,
+            config_binding={"study_design_status": "PASS"},
+            acceptance={"status": "FAIL"},
+            semantic_sha256="d" * 64,
+        )
+        qualification = {
+            "candidate_evidence_validation": {
+                "status": "PASS",
+                "semantic_sha256": validated.semantic_sha256,
+                "artifacts": inner_artifacts,
+                "expectations": {
+                    "commit": COMMIT,
+                    "tree": TREE,
+                    "tracked_config_path": expected.tracked_config_path,
+                    "tracked_config_sha256": hashlib.sha256(tracked_config).hexdigest(),
+                    "workspace_manifest_sha256": (expected.workspace_manifest_sha256),
+                    "cargo_lock_sha256": expected.cargo_lock_sha256,
+                    "runner_binary_sha256": expected.runner_binary_sha256,
+                    "rustc_verbose": expected.rustc_verbose,
+                    "cargo_version": expected.cargo_version,
+                    "target_os": expected.target_os,
+                    "target_arch": expected.target_arch,
+                },
+            }
+        }
+        evidence_root = Path("/retained/candidate-evidence")
+        with patch(
+            "finalize_release.validate_candidate_evidence_bundle",
+            return_value=validated,
+        ) as shared_validator:
+            self.assertIs(
+                validate_finalizer_candidate_evidence(
+                    evidence_root,
+                    qualification=qualification,
+                    manifest_artifacts=outer_artifacts,
+                    expected=expected,
+                ),
+                validated,
+            )
+        shared_validator.assert_called_once_with(
+            evidence_root,
+            expected=expected,
+            expected_outer_artifacts=inner_artifacts,
+        )
+
+        with (
+            patch(
+                "finalize_release.validate_candidate_evidence_bundle",
+                side_effect=ReviewError("structural evidence failure"),
+            ),
+            self.assertRaisesRegex(ReviewError, "structural evidence failure"),
+        ):
+            validate_finalizer_candidate_evidence(
+                evidence_root,
+                qualification=qualification,
+                manifest_artifacts=outer_artifacts,
+                expected=expected,
+            )
+
     def test_package_patch_receipts_require_every_exact_git_pair(self) -> None:
         cargo_home = Path("/fixture/cargo-home")
         reproducibility_root = Path("/fixture/reproducibility")
@@ -1041,6 +2486,12 @@ time.sleep(20)
             "commands": [],
             "auxiliary_commands": [],
             "acceptance": {},
+            "candidate_evidence_validation": {
+                "status": "PASS",
+                "semantic_sha256": "e" * 64,
+                "artifacts": {},
+                "expectations": {},
+            },
             "evidence_config_binding": {
                 "tracked_path": "evidence/galadriel-0.9-candidate.json",
                 "study_design_status": "PASS",
@@ -1143,12 +2594,14 @@ time.sleep(20)
                 cargo_home / "advisory-dbs" / "advisory-db-3157b0e258782691",
             )
             allowed_signers_snapshot = private_root / "INDEPENDENT_ALLOWED_SIGNERS"
+            evidence_runner_root = private_root / "evidence-runner"
             rustup_home = host_home / ".rustup"
             home_tool_paths = (host_home / ".cargo" / "bin",)
             tool_read_paths = (Path("/opt/homebrew"),)
             read_only_paths = (
                 *advisory_databases,
                 allowed_signers_snapshot,
+                evidence_runner_root,
             )
             writable_paths = (
                 isolated_home,
@@ -1177,6 +2630,7 @@ time.sleep(20)
                 "advisory_source_denied_read": str(advisory_source),
                 "advisory_databases": [str(path) for path in advisory_databases],
                 "allowed_signers_snapshot": str(allowed_signers_snapshot),
+                "candidate_evidence_runner_root": str(evidence_runner_root),
                 "rustup_home": str(rustup_home),
                 "home_tool_paths": [str(path) for path in home_tool_paths],
                 "tool_read_paths": [str(path) for path in tool_read_paths],
@@ -1234,6 +2688,27 @@ time.sleep(20)
                     policy,
                 )
             qualification = {
+                "commands": [
+                    {
+                        "name": "candidate-evidence",
+                        "subject_executable": {
+                            "status": "UNCHANGED",
+                            "identity": {
+                                "invoked_path": str(
+                                    evidence_runner_root / "galadriel-evidence"
+                                ),
+                                "resolved_path": str(
+                                    evidence_runner_root / "galadriel-evidence"
+                                ),
+                                "sha256": "a" * 64,
+                                "size_bytes": 1,
+                                "uid": 501,
+                                "gid": 20,
+                                "mode": 0o500,
+                            },
+                        },
+                    }
+                ],
                 "sandbox": {
                     "executor": "/usr/bin/sandbox-exec",
                     "policy_path": "sandbox/candidate.sb",
@@ -1350,11 +2825,26 @@ time.sleep(20)
         executables = {
             name: tool_file_record(name) for name in EXPECTED_TOOL_FILE_NAMES
         }
-        path_tool_directories = tuple(
+        home_tool_directories = tuple(
             sorted(
                 {
                     Path(executables[name]["invoked_path"]).parent
                     for name in QUALIFICATION_PATH_TOOLS
+                },
+                key=lambda item: str(item),
+            )
+        )
+        tool_read_directories = tuple(
+            sorted(
+                {
+                    Path(executables[name][field]).parent
+                    for name in QUALIFICATION_PATH_TOOLS
+                    for field in ("invoked_path", "resolved_path")
+                    if not any(
+                        Path(root) == Path(executables[name][field]).parent
+                        or Path(root) in Path(executables[name][field]).parent.parents
+                        for root in SANDBOX_SYSTEM_READ_PATHS
+                    )
                 },
                 key=lambda item: str(item),
             )
@@ -1368,8 +2858,8 @@ time.sleep(20)
                 "bindings": {
                     "host_home": "/fixture",
                     "rustup_home": "/fixture/tools",
-                    "home_tool_paths": [str(path) for path in path_tool_directories],
-                    "tool_read_paths": [str(path) for path in path_tool_directories],
+                    "home_tool_paths": [str(path) for path in home_tool_directories],
+                    "tool_read_paths": [str(path) for path in tool_read_directories],
                 },
             },
         }
@@ -1385,6 +2875,35 @@ time.sleep(20)
         writable["tool_files"]["executables"]["cargo"]["mode"] = 0o775
         with self.assertRaisesRegex(ReviewError, "metadata is invalid"):
             validate_qualification_tool_files(writable)
+
+        another_proxy = copy.deepcopy(qualification)
+        another_proxy["tool_files"]["executables"]["rustc"]["resolved_path"] = (
+            "/fixture/tools/another-rustup/rustup"
+        )
+        with self.assertRaisesRegex(ReviewError, "proxies disagree"):
+            validate_qualification_tool_files(another_proxy)
+
+        another_shell = copy.deepcopy(qualification)
+        another_shell["tool_files"]["executables"]["sh"]["resolved_path"] = (
+            "/usr/bin/sh"
+        )
+        with self.assertRaisesRegex(ReviewError, "another system tool"):
+            validate_qualification_tool_files(another_shell)
+
+        usr_bin_git = copy.deepcopy(qualification)
+        git_record = usr_bin_git["tool_files"]["executables"]["git"]
+        git_record.update(
+            {
+                "invoked_path": "/usr/bin/git",
+                "resolved_path": "/usr/bin/git",
+                "sha256": (
+                    "179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818"
+                ),
+                "size_bytes": 118_928,
+            }
+        )
+        with self.assertRaisesRegex(ReviewError, "tool dispatch|direct developer Git"):
+            validate_qualification_tool_files(usr_bin_git)
 
         broadened = copy.deepcopy(qualification)
         broadened["sandbox"]["bindings"]["tool_read_paths"] = ["/fixture"]
@@ -1603,6 +3122,27 @@ time.sleep(20)
                     str(root / "source-inventory"),
                 ]
             },
+            "candidate-evidence-build": {
+                "argv": [
+                    "cargo",
+                    "build",
+                    "--release",
+                    "--locked",
+                    "-p",
+                    "galadriel-eval",
+                    "--bin",
+                    "galadriel-evidence",
+                ]
+            },
+            "candidate-evidence": {
+                "argv": [
+                    "/private/tmp/evidence-runner/galadriel-evidence",
+                    "--config",
+                    "evidence/galadriel-0.9-candidate.json",
+                    "--out",
+                    str(root / "candidate-evidence"),
+                ]
+            },
         }
         specifications = _dynamic_qualification_specs(
             by_name,
@@ -1612,6 +3152,11 @@ time.sleep(20)
         self.assertEqual(
             specifications[0].argv,
             tuple(by_name["verify-commit-signature-external-key"]["argv"]),
+        )
+        self.assertEqual(specifications[-2].name, "candidate-evidence-build")
+        self.assertEqual(
+            specifications[-1].subject_executable,
+            "/private/tmp/evidence-runner/galadriel-evidence",
         )
 
         unsafe = copy.deepcopy(by_name)

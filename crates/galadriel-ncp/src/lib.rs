@@ -1,32 +1,36 @@
 #![forbid(unsafe_code)]
 //! # galadriel-ncp
 //!
-//! Galadriel sidecar ingest using pinned NCP 0.8 addressing, reached through
-//! galadriel-cli's `ncp` feature.
+//! Galadriel sidecar ingestion uses pinned NCP 0.8 addressing. The
+//! `galadriel-cli` `ncp` feature activates this crate.
 //!
-//! galadriel is a **read-only** consumer of accepted innovation records. Native
+//! Galadriel is a **read-only** consumer of innovation records. Native
 //! innovations may be carried for diagnostics, but consistency uses only the
 //! optional producer-attested `consistency_projection` field.
-//! In the ecosystem those ride Galadriel's project-owned named NCP sensor sidecar,
-//! not the normative base observation plane. This crate is the seam that turns
-//! them into [`galadriel_core::PidObservation`]s.
+//! In the ecosystem, these records use Galadriel's named NCP sensor sidecar.
+//! They do not use the normative base observation plane. This crate converts
+//! them into [`galadriel_core::PidObservation`] values.
 //! Producer lifecycle, frame closure, and liveness use the separate strict
-//! [`monitor::MonitorEnvelope`] contract on `sensor/galadriel-monitor`; they are
+//! [`monitor::MonitorEnvelope`] contract on `sensor/galadriel-monitor`. They are
 //! never fabricated as observations on the frozen `galadriel-pid` route.
+//!
+//! Transport-free JSONL input has no complete lifecycle scope. It supports only
+//! unbound diagnostic replay. An accepted assessment requires
+//! [`lifecycle::LifecycleDetector`]. The detector derives one scope from the
+//! admitted producer and exact stream position.
 //!
 //! ## Transport, honestly scoped
 //!
-//! - **The MVP path is Galadriel-owned, transport-free JSONL** — no Zenoh, no tokio,
-//!   no network, and not an NCP wire flow. [`read_jsonl`] / [`parse_jsonl`] /
-//!   [`write_jsonl`] cover it with independent per-record, record-count, and
-//!   aggregate-byte limits.
+//! - **The minimal path is Galadriel-owned, transport-free JSONL**. It has no
+//!   Zenoh, Tokio, network, or NCP wire flow. [`read_jsonl`], [`parse_jsonl`], and
+//!   [`write_jsonl`] apply independent size and count limits.
 //! - `PidObservation` is **not** an NCP wire message. Live records ride the named
 //!   perception route `Keys::sensor_named(session_id, "galadriel-pid")` inside a
 //!   versioned [`SidecarEnvelope`]. The sidecar remains outside the normative proto
-//!   and `CONTRACT_HASH`, while its envelope declares both the sidecar schema and the
+//!   and `CONTRACT_HASH`. Its envelope declares the sidecar schema and the
 //!   NCP contract revision used for transport addressing.
 //! - The live Zenoh tap (`live::SidecarTap`, `ncp-zenoh`) is a separate, heavier
-//!   concern behind the `zenoh` feature (reached via galadriel's `ncp-live`) — it is not
+//!   concern behind the `zenoh` feature. The CLI `ncp-live` feature selects it. It is not
 //!   pulled by the default JSONL path.
 //! - The same feature exposes `operational_live::OperationalLiveReceiver`, which
 //!   joins the observation and monitor routes through one serialized, bounded,

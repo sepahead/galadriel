@@ -25,6 +25,8 @@ galadriel-sim = { workspace = true }
 galadriel-pid = { workspace = true, optional = true }
 galadriel-ncp = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true, features = ["rt-multi-thread", "signal", "time"] }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
 
@@ -37,5 +39,11 @@ pid = ["dep:galadriel-pid"]
 # This feature selects Neuro-Cybernetic Protocol (NCP) sidecar ingestion and ncp-core.
 # It adds `replay <jsonl>`.
 ncp = ["dep:galadriel-ncp"]
-# This feature selects the operational two-route Zenoh receiver and process runtime.
-ncp-live = ["ncp", "galadriel-ncp/zenoh", "dep:tokio"]
+# This feature selects the two-route receiver, runtime, and JSON output encoder.
+ncp-live = [
+    "ncp",
+    "galadriel-ncp/zenoh",
+    "dep:tokio",
+    "dep:serde",
+    "dep:serde_json",
+]

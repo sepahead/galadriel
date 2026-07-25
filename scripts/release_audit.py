@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Generate and verify deterministic Galadriel release-audit artifacts.
+"""Generate and verify deterministic Galadriel release audit artifacts.
 
-The release inputs are reviewed source data.  This program turns them and the
-checked-out repository into canonical JSON, validates the requirement ledger,
-and fails on drift.  It deliberately uses only the Python standard library so
-that qualification does not depend on an unpinned Python package graph.
+The program captures one stage-zero Git index.
+It authenticates each indexed blob.
+It requires each tracked worktree path to match the index.
+It uses the captured bytes for all semantic checks.
+It writes canonical JavaScript Object Notation output.
+It uses only the Python standard library.
 """
 
 from __future__ import annotations
@@ -16,8 +18,9 @@ import re
 import sys
 import tomllib
 from datetime import date
-from pathlib import Path
-from typing import Any
+from pathlib import Path, PurePosixPath
+from types import MappingProxyType
+from typing import Any, Mapping, NamedTuple
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -28,9 +31,19 @@ if str(REPO_WORK) not in sys.path:
 
 from repo_work import build_task_dispositions as closure_plan  # noqa: E402
 from repo_work.common import (  # noqa: E402
+    MAX_GIT_DIAGNOSTIC_BYTES,
+    SAFE_GIT_CONFIGURATION,
+    ReviewError,
+    RootedFileBatchCapture,
+    RootedFileCaptureRequest,
+    canonical_relative_parts,
     git as safe_git,
     loads_json,
+    read_rooted_regular_files,
+    run_bounded_host_command,
+    safe_git_environment,
     validate_json_number_bounds,
+    write_rooted_regular_file,
 )
 from finalize_release import (  # noqa: E402
     EXPECTED_QUALIFICATION_TOOLS,
@@ -57,9 +70,26 @@ ECOSYSTEM_CUT = RELEASE / "ecosystem-cut.json"
 AUDIT_OUTPUT = RELEASE / "audit-manifest.json"
 LEDGER_OUTPUT = RELEASE / "requirements-ledger.json"
 VERSION = "0.9.0"
+RELEASE_DATE = "2026-07-25"
 PUBLICATION_CHANNEL = "review-gated GitHub research source release"
 
 AUDIT_SELF_EXCLUSIONS = frozenset({AUDIT_OUTPUT.relative_to(ROOT).as_posix()})
+GENERATED_PATHS = frozenset(
+    {
+        AUDIT_OUTPUT.relative_to(ROOT).as_posix(),
+        LEDGER_OUTPUT.relative_to(ROOT).as_posix(),
+    }
+)
+
+MAX_TRACKED_FILES = 4_096
+MAX_TRACKED_FILE_BYTES = 8 * 1024 * 1024
+MAX_TRACKED_AGGREGATE_BYTES = 64 * 1024 * 1024
+MAX_INDEX_BYTES = 4 * 1024 * 1024
+MAX_BATCH_OUTPUT_BYTES = MAX_TRACKED_AGGREGATE_BYTES + 1024 * MAX_TRACKED_FILES
+MAX_PATH_BYTES = 4 * 1024
+MAX_COMPONENT_BYTES = 255
+MAX_PATH_DEPTH = 128
+MAX_DIRECTORY_ENTRIES = 32_768
 
 TASK_ID = re.compile(r"T(?P<number>\d{3})\Z")
 REVISION = re.compile(r"[0-9a-f]{40}\Z")
@@ -87,36 +117,43 @@ REQUIRED_REPOSITORY_INPUTS = {
     "pid-rs": (
         "https://github.com/sepahead/pid-rs",
         "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+        "optional PID research dependency selected by Cargo.lock",
         "PINNED_COMPONENT",
     ),
     "NCP": (
         "https://github.com/sepahead/NCP",
         "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+        "optional NCP 0.8 transport dependency selected by Cargo.lock",
         "PINNED_COMPONENT",
     ),
     "Crebain": (
         "https://github.com/sepahead/crebain",
         "4c311900ade5668200a48d56fb191be1916b884a",
+        "retained historical reference-producer fixture for contract review with no Cargo or runtime dependency",
         "RECIPROCAL_FIXTURE",
     ),
     "Haldir": (
         "https://github.com/sepahead/haldir",
         "5f7d183625a982741c51958e2d10bc12bb628ca0",
+        "retained T000 exact-commit snapshot for prospective downstream contract review with no Galadriel runtime edge",
         "NOT_CLAIMED",
     ),
     "Prisoma": (
         "https://github.com/sepahead/prisoma",
         "0968128062f30da5c04f3f31c23f6ce8e0d95d36",
+        "retained frozen-baseline inventory for prospective offline-consumer review with no Galadriel runtime edge",
         "NOT_CLAIMED",
     ),
     "Paper2Brain": (
         "https://github.com/sepahead/Paper2Brain",
         "9845c31bc5bae4746120858037b27f9c9ed2f445",
+        "retained application inventory snapshot with no Galadriel dependency, API, route, adapter, or runtime edge",
         "NOT_CLAIMED",
     ),
     "RustSec advisory database": (
         "https://github.com/RustSec/advisory-db",
         "f981d991604f3e7d4a0eb94e559cb3e5a94a6dc2",
+        "pinned offline advisory input for exact-candidate qualification",
         "PINNED_COMPONENT",
     ),
 }
@@ -169,6 +206,313 @@ class AuditError(RuntimeError):
     """A release input or generated artifact violates the frozen contract."""
 
 
+class IndexEntry(NamedTuple):
+    """One stage-zero regular-file row from the captured Git index."""
+
+    path: str
+    git_mode: str
+    git_blob_id: str
+
+
+class IndexedRegularFile(NamedTuple):
+    """One authenticated Git blob bound to an index path."""
+
+    path: str
+    git_mode: str
+    git_blob_id: str
+    data: bytes
+    sha256: str
+    size_bytes: int
+
+
+class RepositorySnapshot(NamedTuple):
+    """One bounded index, object, and worktree capture."""
+
+    index_bytes: bytes
+    files: Mapping[str, IndexedRegularFile]
+    worktree: Mapping[str, RootedFileBatchCapture]
+
+
+def _git_blob_id(data: bytes) -> str:
+    """Return the Git SHA-1 identity for exact blob bytes."""
+
+    header = f"blob {len(data)}\0".encode("ascii")
+    return hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
+
+
+def _read_index_bytes() -> bytes:
+    """Capture the exact stage-zero index inventory with a byte bound."""
+
+    try:
+        return bytes(
+            safe_git(
+                ROOT,
+                "--literal-pathspecs",
+                "ls-files",
+                "--stage",
+                "-z",
+                text=False,
+                max_bytes=MAX_INDEX_BYTES,
+            )
+        )
+    except RuntimeError as error:
+        raise AuditError(str(error)) from error
+
+
+def _parse_index(document: bytes) -> tuple[IndexEntry, ...]:
+    """Parse one exact, ordered, stage-zero regular-file index inventory."""
+
+    if not isinstance(document, bytes) or len(document) > MAX_INDEX_BYTES:
+        raise AuditError("Git index inventory exceeds its byte bound")
+    if not document or not document.endswith(b"\0"):
+        raise AuditError("Git index inventory is empty or unterminated")
+    rows: list[IndexEntry] = []
+    previous_path: bytes | None = None
+    for raw_entry in document[:-1].split(b"\0"):
+        if not raw_entry or b"\t" not in raw_entry:
+            raise AuditError("Git index inventory contains a malformed row")
+        metadata, encoded_path = raw_entry.split(b"\t", 1)
+        if (
+            len(metadata) != 49
+            or not encoded_path
+            or len(encoded_path) > MAX_PATH_BYTES
+        ):
+            raise AuditError("Git index inventory contains an oversized row")
+        try:
+            mode, object_id, stage = metadata.decode("ascii", "strict").split(" ")
+            path = encoded_path.decode("utf-8", "strict")
+        except (UnicodeDecodeError, ValueError) as error:
+            raise AuditError("Git index inventory contains invalid text") from error
+        if mode not in {"100644", "100755"}:
+            raise AuditError(f"tracked path is not a regular file: {path!r}")
+        if stage != "0":
+            raise AuditError(f"tracked path has an unmerged index stage: {path!r}")
+        if REVISION.fullmatch(object_id) is None:
+            raise AuditError(f"tracked path has an invalid blob identity: {path!r}")
+        try:
+            canonical_relative_parts(
+                path,
+                label="tracked path",
+                max_path_bytes=MAX_PATH_BYTES,
+                max_component_bytes=MAX_COMPONENT_BYTES,
+                max_depth=MAX_PATH_DEPTH,
+            )
+        except ReviewError as error:
+            raise AuditError(str(error)) from error
+        if previous_path is not None and encoded_path <= previous_path:
+            raise AuditError("Git index paths are duplicate or out of order")
+        previous_path = encoded_path
+        rows.append(IndexEntry(path, mode, object_id))
+        if len(rows) > MAX_TRACKED_FILES:
+            raise AuditError("Git index exceeds the tracked-file count limit")
+    if not rows:
+        raise AuditError("Git index inventory is empty")
+    by_path = {row.path: row for row in rows}
+    for generated_path in GENERATED_PATHS:
+        row = by_path.get(generated_path)
+        if row is None or row.git_mode != "100644":
+            raise AuditError(
+                f"generated audit path must be tracked as 100644: {generated_path}"
+            )
+    return tuple(rows)
+
+
+def _read_index_blobs(entries: tuple[IndexEntry, ...]) -> dict[str, bytes]:
+    """Read all unique index blobs in one bounded Git object transaction."""
+
+    object_ids = tuple(dict.fromkeys(entry.git_blob_id for entry in entries))
+    request = b"".join(object_id.encode("ascii") + b"\n" for object_id in object_ids)
+    result = run_bounded_host_command(
+        [
+            "git",
+            "--no-replace-objects",
+            *SAFE_GIT_CONFIGURATION,
+            "-C",
+            str(ROOT),
+            "cat-file",
+            "--batch",
+        ],
+        context="release-audit Git blob batch",
+        stdin_document=request,
+        environment=safe_git_environment(),
+        max_stdout_bytes=MAX_BATCH_OUTPUT_BYTES,
+        max_stderr_bytes=MAX_GIT_DIAGNOSTIC_BYTES,
+        timeout_seconds=120,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", "replace").strip()
+        raise AuditError(
+            f"release-audit Git blob batch failed with {result.returncode}: {detail}"
+        )
+    if result.stderr:
+        raise AuditError("release-audit Git blob batch produced diagnostic output")
+    return _parse_blob_batch(result.stdout, object_ids)
+
+
+def _parse_blob_batch(
+    document: bytes,
+    expected_object_ids: tuple[str, ...],
+) -> dict[str, bytes]:
+    """Parse one exact ordered response from `git cat-file --batch`."""
+
+    if not isinstance(document, bytes) or len(document) > MAX_BATCH_OUTPUT_BYTES:
+        raise AuditError("Git blob batch exceeds its byte bound")
+    if (
+        not isinstance(expected_object_ids, tuple)
+        or not expected_object_ids
+        or len(expected_object_ids) > MAX_TRACKED_FILES
+        or any(
+            not isinstance(value, str) or REVISION.fullmatch(value) is None
+            for value in expected_object_ids
+        )
+        or len(set(expected_object_ids)) != len(expected_object_ids)
+    ):
+        raise AuditError("Git blob batch request is invalid")
+    offset = 0
+    aggregate = 0
+    blobs: dict[str, bytes] = {}
+    for expected_object_id in expected_object_ids:
+        line_end = document.find(b"\n", offset)
+        if line_end < 0:
+            raise AuditError("Git blob batch has a missing response header")
+        if line_end - offset > 128:
+            raise AuditError("Git blob batch has an oversized response header")
+        header = document[offset:line_end]
+        offset = line_end + 1
+        try:
+            object_id, object_type, size_text = header.decode("ascii", "strict").split(
+                " "
+            )
+        except (UnicodeDecodeError, ValueError) as error:
+            raise AuditError(
+                "Git blob batch has a malformed response header"
+            ) from error
+        if object_id != expected_object_id:
+            raise AuditError("Git blob batch response is duplicate or out of order")
+        if (
+            object_type != "blob"
+            or len(size_text) > len(str(MAX_TRACKED_FILE_BYTES))
+            or re.fullmatch(r"0|[1-9][0-9]*", size_text) is None
+        ):
+            raise AuditError("Git blob batch response is not a canonical blob")
+        size = int(size_text)
+        if size > MAX_TRACKED_FILE_BYTES:
+            raise AuditError(f"Git blob {object_id} exceeds the per-file byte limit")
+        aggregate += size
+        if aggregate > MAX_TRACKED_AGGREGATE_BYTES:
+            raise AuditError("Git blob batch exceeds the aggregate byte limit")
+        end = offset + size
+        if end >= len(document) or document[end : end + 1] != b"\n":
+            raise AuditError("Git blob batch has a truncated or unterminated blob")
+        data = document[offset:end]
+        offset = end + 1
+        actual_object_id = _git_blob_id(data)
+        if actual_object_id != object_id:
+            raise AuditError(
+                f"Git blob identity mismatch: expected={object_id} actual={actual_object_id}"
+            )
+        blobs[object_id] = data
+    if offset != len(document):
+        raise AuditError("Git blob batch contains trailing data")
+    return blobs
+
+
+def capture_repository_snapshot(*, allow_generated_drift: bool) -> RepositorySnapshot:
+    """Capture and cross-check the exact index, objects, and regular files."""
+
+    if type(allow_generated_drift) is not bool:
+        raise AuditError("repository snapshot mode is invalid")
+    index_bytes = _read_index_bytes()
+    entries = _parse_index(index_bytes)
+    try:
+        blobs = _read_index_blobs(entries)
+    except ReviewError as error:
+        raise AuditError(str(error)) from error
+    files: dict[str, IndexedRegularFile] = {}
+    requests: list[RootedFileCaptureRequest] = []
+    for entry in entries:
+        data = blobs[entry.git_blob_id]
+        indexed = IndexedRegularFile(
+            path=entry.path,
+            git_mode=entry.git_mode,
+            git_blob_id=entry.git_blob_id,
+            data=data,
+            sha256=hashlib.sha256(data).hexdigest(),
+            size_bytes=len(data),
+        )
+        files[entry.path] = indexed
+        generated_drift = allow_generated_drift and entry.path in GENERATED_PATHS
+        requests.append(
+            RootedFileCaptureRequest(
+                relative=entry.path,
+                expected_size=None if generated_drift else indexed.size_bytes,
+                label=f"tracked file {entry.path}",
+                expected_sha256=None if generated_drift else indexed.sha256,
+                expected_git_mode=entry.git_mode,
+            )
+        )
+    try:
+        captures = read_rooted_regular_files(
+            ROOT,
+            requests,
+            label="release-audit tracked files",
+            max_files=MAX_TRACKED_FILES,
+            max_file_bytes=MAX_TRACKED_FILE_BYTES,
+            max_aggregate_bytes=MAX_TRACKED_AGGREGATE_BYTES,
+            max_path_bytes=MAX_PATH_BYTES,
+            max_component_bytes=MAX_COMPONENT_BYTES,
+            max_depth=MAX_PATH_DEPTH,
+            max_directory_entries=MAX_DIRECTORY_ENTRIES,
+        )
+    except ReviewError as error:
+        raise AuditError(str(error)) from error
+    worktree = {capture.relative: capture for capture in captures}
+    for path, capture in worktree.items():
+        if allow_generated_drift and path in GENERATED_PATHS:
+            continue
+        indexed = files[path]
+        actual_blob_id = _git_blob_id(capture.data)
+        if actual_blob_id != indexed.git_blob_id:
+            raise AuditError(f"tracked file blob differs from the Git index: {path}")
+    if _read_index_bytes() != index_bytes:
+        raise AuditError("Git index changed during the repository snapshot")
+    return RepositorySnapshot(
+        index_bytes,
+        MappingProxyType(files),
+        MappingProxyType(worktree),
+    )
+
+
+def _path_key(path: Path) -> str:
+    """Return one canonical repository-relative key."""
+
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError as error:
+        raise AuditError(f"path is outside the repository: {path}") from error
+
+
+def _snapshot_bytes(path: Path, snapshot: RepositorySnapshot) -> bytes:
+    """Return exact indexed bytes from one immutable repository snapshot."""
+
+    key = _path_key(path)
+    try:
+        return snapshot.files[key].data
+    except KeyError as error:
+        raise AuditError(f"tracked input is missing: {key}") from error
+
+
+def _snapshot_text(path: Path, snapshot: RepositorySnapshot) -> str:
+    """Decode one exact indexed document as UTF-8."""
+
+    try:
+        return _snapshot_bytes(path, snapshot).decode("utf-8", "strict")
+    except UnicodeDecodeError as error:
+        raise AuditError(
+            f"tracked input is not valid UTF-8: {_path_key(path)}"
+        ) from error
+
+
 def reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -178,10 +522,15 @@ def reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def load_json(path: Path) -> Any:
+def load_json(path: Path, snapshot: RepositorySnapshot | None = None) -> Any:
     try:
+        text = (
+            _snapshot_text(path, snapshot)
+            if snapshot is not None
+            else path.read_text(encoding="utf-8")
+        )
         return loads_json(
-            path.read_text(encoding="utf-8"),
+            text,
             object_pairs_hook=reject_duplicate_pairs,
         )
     except (OSError, UnicodeError, ValueError) as error:
@@ -207,7 +556,9 @@ def canonical_bytes(value: Any) -> bytes:
     return (encoded + "\n").encode("utf-8")
 
 
-def sha256(path: Path) -> str:
+def sha256(path: Path, snapshot: RepositorySnapshot | None = None) -> str:
+    if snapshot is not None:
+        return hashlib.sha256(_snapshot_bytes(path, snapshot)).hexdigest()
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -230,25 +581,51 @@ def require_keys(value: dict[str, Any], keys: set[str], context: str) -> None:
 
 
 def artifact(
-    path: Path, purpose: str, *, exact_bytes: bytes | None = None
+    path: Path,
+    purpose: str,
+    *,
+    exact_bytes: bytes | None = None,
+    snapshot: RepositorySnapshot | None = None,
+    exact_git_mode: str = "100644",
 ) -> dict[str, Any]:
-    if exact_bytes is None and not path.is_file():
-        raise AuditError(f"required artifact is missing: {path.relative_to(ROOT)}")
-    digest = (
-        hashlib.sha256(exact_bytes).hexdigest()
-        if exact_bytes is not None
-        else sha256(path)
-    )
-    size = len(exact_bytes) if exact_bytes is not None else path.stat().st_size
+    key = _path_key(path)
+    if exact_bytes is not None:
+        if exact_git_mode not in {"100644", "100755"}:
+            raise AuditError(f"generated artifact has an invalid Git mode: {key}")
+        data = exact_bytes
+        git_mode = exact_git_mode
+        git_blob_id = _git_blob_id(data)
+    elif snapshot is not None:
+        try:
+            indexed = snapshot.files[key]
+        except KeyError as error:
+            raise AuditError(f"required artifact is missing: {key}") from error
+        data = indexed.data
+        git_mode = indexed.git_mode
+        git_blob_id = indexed.git_blob_id
+    else:
+        if not path.is_file():
+            raise AuditError(f"required artifact is missing: {key}")
+        data = path.read_bytes()
+        rows = {entry.path: entry for entry in _parse_index(_read_index_bytes())}
+        try:
+            git_mode = rows[key].git_mode
+        except KeyError as error:
+            raise AuditError(f"required artifact is not tracked: {key}") from error
+        git_blob_id = _git_blob_id(data)
     return {
-        "path": path.relative_to(ROOT).as_posix(),
+        "path": key,
         "purpose": purpose,
-        "sha256": digest,
-        "size_bytes": size,
+        "git_mode": git_mode,
+        "git_blob_id": git_blob_id,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "size_bytes": len(data),
     }
 
 
-def workflow_action_refs() -> set[tuple[str, str]]:
+def workflow_action_refs(
+    snapshot: RepositorySnapshot | None = None,
+) -> set[tuple[str, str]]:
     """Return every external action and immutable revision used by workflows."""
 
     reference = re.compile(
@@ -256,10 +633,22 @@ def workflow_action_refs() -> set[tuple[str, str]]:
         r"([0-9a-f]{40})(?:\s+#.*)?\s*$"
     )
     result: set[tuple[str, str]] = set()
-    for path in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
-        for line_number, line in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), 1
-        ):
+    paths = (
+        [
+            ROOT / path
+            for path in snapshot.files
+            if PurePosixPath(path).full_match(".github/workflows/*.y*ml")
+        ]
+        if snapshot is not None
+        else sorted((ROOT / ".github" / "workflows").glob("*.y*ml"))
+    )
+    for path in sorted(paths):
+        document = (
+            _snapshot_text(path, snapshot)
+            if snapshot is not None
+            else path.read_text(encoding="utf-8")
+        )
+        for line_number, line in enumerate(document.splitlines(), 1):
             if not line.lstrip().startswith("uses:"):
                 continue
             match = reference.fullmatch(line)
@@ -274,26 +663,23 @@ def workflow_action_refs() -> set[tuple[str, str]]:
     return result
 
 
-def tracked_repository_paths() -> set[str]:
+def tracked_repository_paths(
+    snapshot: RepositorySnapshot | None = None,
+) -> set[str]:
     """Return the exact index path set without newline-delimited ambiguity."""
 
-    try:
-        entries = (
-            bytes(safe_git(ROOT, "ls-files", "-z", text=False))
-            .decode("utf-8")
-            .split("\0")
-        )
-    except UnicodeDecodeError as error:
-        raise AuditError("tracked paths are not valid UTF-8") from error
-    except RuntimeError as error:
-        raise AuditError(str(error)) from error
-    return {entry for entry in entries if entry}
+    if snapshot is not None:
+        return set(snapshot.files)
+    return {entry.path for entry in _parse_index(_read_index_bytes())}
 
 
-def validate_artifact_coverage(artifacts: list[dict[str, Any]]) -> None:
+def validate_artifact_coverage(
+    artifacts: list[dict[str, Any]],
+    snapshot: RepositorySnapshot | None = None,
+) -> None:
     """Require one audit artifact for every indexed path except the manifest itself."""
 
-    tracked = tracked_repository_paths()
+    tracked = tracked_repository_paths(snapshot)
     covered = {entry["path"] for entry in artifacts}
     expected = tracked - AUDIT_SELF_EXCLUSIONS
     missing = sorted(expected - covered)
@@ -308,6 +694,7 @@ def validate_artifact_coverage(artifacts: list[dict[str, Any]]) -> None:
 
 def validate_repository_input_contract(
     repositories: list[dict[str, Any]],
+    snapshot: RepositorySnapshot | None = None,
 ) -> None:
     """Cross-bind every repository input to its owning release contract."""
 
@@ -318,11 +705,12 @@ def validate_repository_input_contract(
             f"missing={sorted(set(REQUIRED_REPOSITORY_INPUTS) - set(by_name))}, "
             f"unexpected={sorted(set(by_name) - set(REQUIRED_REPOSITORY_INPUTS))}"
         )
-    for name, (url, commit, qualification) in REQUIRED_REPOSITORY_INPUTS.items():
+    for name, (url, commit, role, qualification) in REQUIRED_REPOSITORY_INPUTS.items():
         item = by_name[name]
         if (
             item["url"] != url
             or item["commit"] != commit
+            or item["role"] != role
             or item["qualification"] != qualification
         ):
             raise AuditError(f"{name}: repository input identity differs from contract")
@@ -355,7 +743,7 @@ def validate_repository_input_contract(
     }:
         raise AuditError("audit and qualification RustSec database identities differ")
 
-    locked_sources = lockfile_git_sources()
+    locked_sources = lockfile_git_sources(snapshot)
     expected_packages = set().union(*LOCKED_REPOSITORY_PACKAGES.values())
     actual_packages = {item["name"] for item in locked_sources}
     if actual_packages != expected_packages:
@@ -535,7 +923,10 @@ def validate_ci_qualification_contract(workflow: str | None = None) -> None:
         )
 
 
-def validate_inputs(inputs: dict[str, Any]) -> None:
+def validate_inputs(
+    inputs: dict[str, Any],
+    snapshot: RepositorySnapshot | None = None,
+) -> None:
     require_keys(
         inputs,
         {
@@ -594,7 +985,7 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
             "NOT_CLAIMED",
         }:
             raise AuditError(f"{repository['name']}: invalid qualification")
-    validate_repository_input_contract(inputs["repositories"])
+    validate_repository_input_contract(inputs["repositories"], snapshot)
     seen_tools: set[str] = set()
     for tool in inputs["toolchains"]:
         require_keys(tool, {"name", "version", "identity", "role"}, "toolchain")
@@ -643,14 +1034,16 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
                 f"duplicate GitHub Action revision: {action_id}@{revision}"
             )
         recorded_actions.add(key)
-    used_actions = workflow_action_refs()
+    used_actions = workflow_action_refs(snapshot)
     if recorded_actions != used_actions:
         raise AuditError(
             "GitHub Action inventory differs from workflows: "
             f"missing={sorted(used_actions - recorded_actions)}, "
             f"unexpected={sorted(recorded_actions - used_actions)}"
         )
-    validate_ci_qualification_contract()
+    validate_ci_qualification_contract(
+        _snapshot_text(CI_WORKFLOW, snapshot) if snapshot is not None else None
+    )
     if not inputs["adaptation_decision"].startswith("release/0.9.0/"):
         raise AuditError(
             "adaptation decision must be retained inside the release record"
@@ -658,10 +1051,13 @@ def validate_inputs(inputs: dict[str, Any]) -> None:
 
 
 def collect_artifacts(
-    inputs: dict[str, Any], *, exact_bytes: dict[Path, bytes] | None = None
+    inputs: dict[str, Any],
+    *,
+    exact_bytes: dict[Path, bytes] | None = None,
+    snapshot: RepositorySnapshot | None = None,
 ) -> list[dict[str, Any]]:
     exact_bytes = exact_bytes or {}
-    indexed_paths = tracked_repository_paths()
+    indexed_paths = tracked_repository_paths(snapshot)
     collected: dict[str, dict[str, Any]] = {}
     for artifact_set in inputs["artifact_sets"]:
         require_keys(artifact_set, {"purpose", "patterns"}, "artifact set")
@@ -681,17 +1077,25 @@ def collect_artifacts(
                 or ".." in Path(pattern).parts
             ):
                 raise AuditError(f"invalid artifact pattern: {pattern!r}")
-            matched.extend(
-                path
-                for path in ROOT.glob(pattern)
-                if path.is_file() and path.relative_to(ROOT).as_posix() in indexed_paths
-            )
-            matched.extend(
-                path
-                for path in exact_bytes
-                if path.relative_to(ROOT).match(pattern)
-                and path.relative_to(ROOT).as_posix() in indexed_paths
-            )
+            if snapshot is not None:
+                matched.extend(
+                    ROOT / path
+                    for path in indexed_paths
+                    if PurePosixPath(path).full_match(pattern)
+                )
+            else:
+                matched.extend(
+                    path
+                    for path in ROOT.glob(pattern)
+                    if path.is_file()
+                    and path.relative_to(ROOT).as_posix() in indexed_paths
+                )
+                matched.extend(
+                    path
+                    for path in exact_bytes
+                    if path.relative_to(ROOT).match(pattern)
+                    and path.relative_to(ROOT).as_posix() in indexed_paths
+                )
         if not matched:
             raise AuditError(f"artifact pattern set matched no files: {artifact_set}")
         for path in sorted(set(matched)):
@@ -700,28 +1104,48 @@ def collect_artifacts(
                 path,
                 artifact_set["purpose"],
                 exact_bytes=exact_bytes.get(path),
+                snapshot=snapshot,
             )
             if key in collected and collected[key] != entry:
                 raise AuditError(f"artifact has conflicting purposes: {key}")
             collected[key] = entry
     artifacts = [collected[key] for key in sorted(collected)]
-    validate_artifact_coverage(artifacts)
+    validate_artifact_coverage(artifacts, snapshot)
     return artifacts
 
 
-def collect_external_references(inputs: dict[str, Any]) -> list[dict[str, Any]]:
+def collect_external_references(
+    inputs: dict[str, Any],
+    snapshot: RepositorySnapshot | None = None,
+) -> list[dict[str, Any]]:
     references: dict[tuple[str, str], dict[str, Any]] = {}
-    source_paths = sorted(
-        path
-        for pattern in inputs["external_sources"]["scan_patterns"]
-        for path in ROOT.glob(pattern)
-        if path.is_file()
+    source_paths = (
+        sorted(
+            {
+                ROOT / path
+                for pattern in inputs["external_sources"]["scan_patterns"]
+                for path in snapshot.files
+                if PurePosixPath(path).full_match(pattern)
+            }
+        )
+        if snapshot is not None
+        else sorted(
+            {
+                path
+                for pattern in inputs["external_sources"]["scan_patterns"]
+                for path in ROOT.glob(pattern)
+                if path.is_file()
+            }
+        )
     )
     for path in source_paths:
         relative = path.relative_to(ROOT).as_posix()
-        for line_number, line in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), 1
-        ):
+        document = (
+            _snapshot_text(path, snapshot)
+            if snapshot is not None
+            else path.read_text(encoding="utf-8")
+        )
+        for line_number, line in enumerate(document.splitlines(), 1):
             for match in URL.finditer(line):
                 url = match.group(0).rstrip(".,;:")
                 key = (relative, f"{line_number}:{url}")
@@ -740,8 +1164,15 @@ def collect_external_references(inputs: dict[str, Any]) -> list[dict[str, Any]]:
     return [references[key] for key in sorted(references)]
 
 
-def lockfile_git_sources() -> list[dict[str, str]]:
-    lock = tomllib.loads((ROOT / "Cargo.lock").read_text(encoding="utf-8"))
+def lockfile_git_sources(
+    snapshot: RepositorySnapshot | None = None,
+) -> list[dict[str, str]]:
+    lock_path = ROOT / "Cargo.lock"
+    lock = tomllib.loads(
+        _snapshot_text(lock_path, snapshot)
+        if snapshot is not None
+        else lock_path.read_text(encoding="utf-8")
+    )
     sources: dict[tuple[str, str, str], dict[str, str]] = {}
     for package in lock.get("package", []):
         source = package.get("source", "")
@@ -762,14 +1193,24 @@ def lockfile_git_sources() -> list[dict[str, str]]:
     return [sources[key] for key in sorted(sources)]
 
 
-def validate_project_metadata(inputs: dict[str, Any]) -> dict[str, Any]:
-    cargo = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
+def validate_project_metadata(
+    inputs: dict[str, Any],
+    snapshot: RepositorySnapshot | None = None,
+) -> dict[str, Any]:
+    def text(path: Path) -> str:
+        return (
+            _snapshot_text(path, snapshot)
+            if snapshot is not None
+            else path.read_text(encoding="utf-8")
+        )
+
+    cargo = tomllib.loads(text(ROOT / "Cargo.toml"))
     package = cargo["workspace"]["package"]
     if package["version"] != VERSION:
         raise AuditError(f"Cargo workspace version must be {VERSION}")
     if package["authors"] != ["Sepehr Mahmoudian"]:
         raise AuditError("Cargo workspace author must be exactly Sepehr Mahmoudian")
-    citation = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    citation = text(ROOT / "CITATION.cff")
     if not re.search(r"(?m)^version: ['\"]?0\.9\.0['\"]?$", citation):
         raise AuditError("CITATION.cff does not identify version 0.9.0")
     if (
@@ -782,15 +1223,34 @@ def validate_project_metadata(inputs: dict[str, Any]) -> dict[str, Any]:
         or "given-names: Sepehr" not in citation
     ):
         raise AuditError("CITATION.cff author identity is incomplete")
+    release_date_records = {
+        "CITATION.cff": (
+            citation,
+            r"(?m)^date-released: (\d{4}-\d{2}-\d{2})$",
+        ),
+        "CHANGELOG.md": (
+            text(ROOT / "CHANGELOG.md"),
+            r"(?m)^## \[0\.9\.0\] - (\d{4}-\d{2}-\d{2})$",
+        ),
+        "release/0.9.0/RELEASE-NOTES.md": (
+            text(RELEASE / "RELEASE-NOTES.md"),
+            r"(?m)^Release date: (\d{4}-\d{2}-\d{2})$",
+        ),
+        "release/0.9.0/RELEASE-RUNBOOK.md": (
+            text(RELEASE / "RELEASE-RUNBOOK.md"),
+            r"Stop if the UTC date is later than `(\d{4}-\d{2}-\d{2})`\.",
+        ),
+    }
+    for path, (document, pattern) in release_date_records.items():
+        if re.findall(pattern, document) != [RELEASE_DATE]:
+            raise AuditError(f"{path} does not identify release date {RELEASE_DATE}")
     for member in cargo["workspace"]["members"]:
-        manifest = tomllib.loads(
-            (ROOT / member / "Cargo.toml").read_text(encoding="utf-8")
-        )
+        manifest = tomllib.loads(text(ROOT / member / "Cargo.toml"))
         if manifest["package"].get("publish") is not False:
             raise AuditError(
                 f"{member} must remain publish=false for the GitHub-only 0.9.0"
             )
-    fuzz = tomllib.loads((ROOT / "fuzz/Cargo.toml").read_text(encoding="utf-8"))
+    fuzz = tomllib.loads(text(ROOT / "fuzz/Cargo.toml"))
     for dependency in ("galadriel-core", "galadriel-ncp"):
         if fuzz["dependencies"][dependency].get("version") != VERSION:
             raise AuditError(
@@ -801,13 +1261,16 @@ def validate_project_metadata(inputs: dict[str, Any]) -> dict[str, Any]:
         "license": package["license"],
         "project_doi": inputs["release"]["doi"],
         "publication_channel": inputs["release"]["publication_channel"],
+        "release_date": RELEASE_DATE,
         "version": package["version"],
         "zenodo_record": inputs["release"]["zenodo"],
     }
 
 
-def validate_claims() -> list[dict[str, Any]]:
-    document = load_json(CLAIMS)
+def validate_claims(
+    snapshot: RepositorySnapshot | None = None,
+) -> list[dict[str, Any]]:
+    document = load_json(CLAIMS) if snapshot is None else load_json(CLAIMS, snapshot)
     require_keys(
         document, {"schema", "release", "tier_definitions", "claims"}, "claims"
     )
@@ -842,7 +1305,14 @@ def validate_claims() -> list[dict[str, Any]]:
                 f"{claim['id']}: NOT_CLAIMED must not cite affirmative evidence"
             )
         for path_string in claim["evidence"]:
-            if not (ROOT / path_string).exists():
+            if not isinstance(path_string, str):
+                raise AuditError(f"{claim['id']}: claim evidence path is not text")
+            exists = (
+                path_string in snapshot.files
+                if snapshot is not None
+                else (ROOT / path_string).exists()
+            )
+            if not exists:
                 raise AuditError(
                     f"{claim['id']}: claim evidence is missing: {path_string}"
                 )
@@ -851,7 +1321,9 @@ def validate_claims() -> list[dict[str, Any]]:
     return document["claims"]
 
 
-def validate_normative_documents() -> list[dict[str, Any]]:
+def validate_normative_documents(
+    snapshot: RepositorySnapshot | None = None,
+) -> list[dict[str, Any]]:
     requirements = {
         "release/0.9.0/README.md": ("GLD-090-AUD-001", "GLD-090-LED-001"),
         "release/0.9.0/VERSION-ADAPTATION.md": ("GLD-090-REL-001", "GLD-090-REL-005"),
@@ -868,17 +1340,34 @@ def validate_normative_documents() -> list[dict[str, Any]]:
     artifacts = []
     for path_string, identifiers in requirements.items():
         path = ROOT / path_string
-        if not path.is_file():
+        if snapshot is not None and path_string not in snapshot.files:
             raise AuditError(f"normative document is missing: {path_string}")
-        content = path.read_text(encoding="utf-8")
+        if snapshot is None and not path.is_file():
+            raise AuditError(f"normative document is missing: {path_string}")
+        content = (
+            _snapshot_text(path, snapshot)
+            if snapshot is not None
+            else path.read_text(encoding="utf-8")
+        )
         for identifier in identifiers:
             if identifier not in content:
                 raise AuditError(f"{path_string}: missing normative ID {identifier}")
         if "**SHALL**" not in content and "**SHALL NOT**" not in content:
             raise AuditError(f"{path_string}: lacks explicit normative SHALL language")
-        artifacts.append(artifact(path, "normative 0.9.0 release contract"))
+        artifacts.append(
+            artifact(
+                path,
+                "normative 0.9.0 release contract",
+                snapshot=snapshot,
+            )
+        )
 
-    statistical = (ROOT / "docs/STATISTICAL-CONTRACT.md").read_text(encoding="utf-8")
+    statistical_path = ROOT / "docs/STATISTICAL-CONTRACT.md"
+    statistical = (
+        _snapshot_text(statistical_path, snapshot)
+        if snapshot is not None
+        else statistical_path.read_text(encoding="utf-8")
+    )
     for field in (
         "sum_nis",
         "mean_nis",
@@ -895,7 +1384,12 @@ def validate_normative_documents() -> list[dict[str, Any]]:
     ):
         if field not in statistical:
             raise AuditError(f"statistical contract omits report field/verdict {field}")
-    threat_model = (ROOT / "docs/THREAT-MODEL.md").read_text(encoding="utf-8").lower()
+    threat_model_path = ROOT / "docs/THREAT-MODEL.md"
+    threat_model = (
+        _snapshot_text(threat_model_path, snapshot)
+        if snapshot is not None
+        else threat_model_path.read_text(encoding="utf-8")
+    ).lower()
     for threat in (
         "spoof",
         "correlated or coordinated compromise",
@@ -906,8 +1400,11 @@ def validate_normative_documents() -> list[dict[str, Any]]:
     ):
         if threat not in threat_model:
             raise AuditError(f"threat model omits required class: {threat}")
-    public_api = (RELEASE / "api" / "galadriel-core.0.9.0.txt").read_text(
-        encoding="utf-8"
+    public_api_path = RELEASE / "api" / "galadriel-core.0.9.0.txt"
+    public_api = (
+        _snapshot_text(public_api_path, snapshot)
+        if snapshot is not None
+        else public_api_path.read_text(encoding="utf-8")
     )
     if "pub mod galadriel_core::chi2" in public_api:
         raise AuditError(
@@ -927,10 +1424,14 @@ def parse_exact_date(value: Any, label: str) -> date:
         raise AuditError(f"{label} is not a valid calendar date") from error
 
 
-def validate_ecosystem_cut() -> None:
+def validate_ecosystem_cut(snapshot: RepositorySnapshot | None = None) -> None:
     """Require the cut date to contain every same-precision observation."""
 
-    document = load_json(ECOSYSTEM_CUT)
+    document = (
+        load_json(ECOSYSTEM_CUT)
+        if snapshot is None
+        else load_json(ECOSYSTEM_CUT, snapshot)
+    )
     require_keys(
         document,
         {
@@ -986,8 +1487,14 @@ def validate_ecosystem_cut() -> None:
             )
 
 
-def validate_threat_register() -> dict[str, Any]:
-    document = load_json(THREAT_REGISTER)
+def validate_threat_register(
+    snapshot: RepositorySnapshot | None = None,
+) -> dict[str, Any]:
+    document = (
+        load_json(THREAT_REGISTER)
+        if snapshot is None
+        else load_json(THREAT_REGISTER, snapshot)
+    )
     require_keys(
         document,
         {
@@ -1010,7 +1517,9 @@ def validate_threat_register() -> dict[str, Any]:
         raise AuditError("threat register has the wrong disposition vocabulary")
     source = document["source"]
     require_keys(source, {"handoff", "task_ledger_sha256"}, "threat-register source")
-    task_source = load_json(TASKS)["source"]
+    task_source = (
+        load_json(TASKS) if snapshot is None else load_json(TASKS, snapshot)
+    )["source"]
     if source["task_ledger_sha256"] != task_source["task_ledger_sha256"]:
         raise AuditError("threat register is bound to the wrong task ledger")
 
@@ -1061,18 +1570,26 @@ def validate_threat_register() -> dict[str, Any]:
             if not isinstance(values, list) or not values:
                 raise AuditError(f"{threat_id}: {field} must be a non-empty list")
             for path_string in values:
-                if (
-                    not isinstance(path_string, str)
-                    or not (ROOT / path_string).exists()
-                ):
+                exists = (
+                    path_string in snapshot.files
+                    if snapshot is not None and isinstance(path_string, str)
+                    else isinstance(path_string, str) and (ROOT / path_string).exists()
+                )
+                if not isinstance(path_string, str) or not exists:
                     raise AuditError(
                         f"{threat_id}: missing {field} path {path_string!r}"
                     )
-    return artifact(THREAT_REGISTER, "repository threat, misuse, and failure register")
+    return artifact(
+        THREAT_REGISTER,
+        "repository threat, misuse, and failure register",
+        snapshot=snapshot,
+    )
 
 
-def validate_tasks() -> list[dict[str, Any]]:
-    document = load_json(TASKS)
+def validate_tasks(
+    snapshot: RepositorySnapshot | None = None,
+) -> list[dict[str, Any]]:
+    document = load_json(TASKS) if snapshot is None else load_json(TASKS, snapshot)
     require_keys(document, {"schema", "source", "tasks"}, "tasks")
     if document["schema"] != "galadriel.current-handoff-tasks.v2":
         raise AuditError("task inventory has the wrong schema")
@@ -1091,7 +1608,11 @@ def validate_tasks() -> list[dict[str, Any]]:
         },
         "task source",
     )
-    handoff = load_json(HANDOFF_SOURCE)
+    handoff = (
+        load_json(HANDOFF_SOURCE)
+        if snapshot is None
+        else load_json(HANDOFF_SOURCE, snapshot)
+    )
     if source["child_package_sha256"] != handoff["child_archive_sha256"]:
         raise AuditError(
             "task inventory child-package digest differs from handoff source"
@@ -1142,12 +1663,24 @@ def validate_tasks() -> list[dict[str, Any]]:
 
 
 def validate_ledger(
-    tasks: list[dict[str, Any]], claims: list[dict[str, Any]]
+    tasks: list[dict[str, Any]],
+    claims: list[dict[str, Any]],
+    snapshot: RepositorySnapshot | None = None,
 ) -> dict[str, Any]:
     claims_by_id = {claim["id"]: claim for claim in claims}
     try:
-        plan = closure_plan.validate_plan(tasks, claims_by_id)
-        source_state = closure_plan.validate_source_dispositions()
+        if snapshot is None:
+            plan = closure_plan.validate_plan(tasks, claims_by_id)
+            source_state = closure_plan.validate_source_dispositions()
+        else:
+            plan = closure_plan.validate_plan(
+                tasks,
+                claims_by_id,
+                document=load_json(CLOSURE_PLAN, snapshot),
+            )
+            source_state = closure_plan.validate_source_dispositions(
+                document=load_json(DISPOSITIONS, snapshot)
+            )
     except closure_plan.DispositionError as error:
         raise AuditError(f"invalid source closure plan: {error}") from error
 
@@ -1201,7 +1734,7 @@ def validate_ledger(
         "schema": "galadriel.requirements-ledger.v2",
         "release": VERSION,
         "closure_boundary": plan["closure_boundary"],
-        "source_task_plan_sha256": sha256(CLOSURE_PLAN),
+        "source_task_plan_sha256": sha256(CLOSURE_PLAN, snapshot),
         "source_dispositions_state": source_state["state"],
         "source_task_count": len(tasks),
         "status_counts": counts,
@@ -1209,73 +1742,142 @@ def validate_ledger(
     }
 
 
-def build_outputs() -> tuple[dict[str, Any], dict[str, Any]]:
-    inputs = load_json(INPUTS)
-    validate_inputs(inputs)
-    validate_ecosystem_cut()
-    claims = validate_claims()
-    tasks = validate_tasks()
-    ledger = validate_ledger(tasks, claims)
+def build_outputs(
+    snapshot: RepositorySnapshot | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    snapshot = (
+        capture_repository_snapshot(allow_generated_drift=True)
+        if snapshot is None
+        else snapshot
+    )
+    inputs = load_json(INPUTS, snapshot)
+    validate_inputs(inputs, snapshot)
+    validate_ecosystem_cut(snapshot)
+    claims = validate_claims(snapshot)
+    tasks = validate_tasks(snapshot)
+    ledger = validate_ledger(tasks, claims, snapshot)
     ledger_bytes = canonical_bytes(ledger)
-    metadata = validate_project_metadata(inputs)
+    metadata = validate_project_metadata(inputs, snapshot)
     audit = {
-        "schema": "galadriel.release-audit-manifest.v1",
+        "schema": "galadriel.release-audit-manifest.v2",
         "audit_date": inputs["audit_date"],
         "release": metadata,
         "baseline_repository": inputs["baseline_repository"],
         "repositories": inputs["repositories"],
         "toolchains": inputs["toolchains"],
         "github_actions": inputs["github_actions"],
-        "git_dependencies": lockfile_git_sources(),
+        "git_dependencies": lockfile_git_sources(snapshot),
         "artifacts": collect_artifacts(
-            inputs, exact_bytes={LEDGER_OUTPUT: ledger_bytes}
+            inputs,
+            exact_bytes={LEDGER_OUTPUT: ledger_bytes},
+            snapshot=snapshot,
         ),
         "artifact_self_exclusions": sorted(AUDIT_SELF_EXCLUSIONS),
-        "normative_documents": validate_normative_documents(),
-        "threat_register": validate_threat_register(),
-        "external_sources": collect_external_references(inputs),
+        "normative_documents": validate_normative_documents(snapshot),
+        "threat_register": validate_threat_register(snapshot),
+        "external_sources": collect_external_references(inputs, snapshot),
         "claims": claims,
         "requirements": ledger["status_counts"],
         "source_closure_plan": artifact(
             CLOSURE_PLAN,
             "post-commit task requirements, evidence rules, exclusions, and review questions",
+            snapshot=snapshot,
         ),
         "source_task_dispositions": artifact(
             DISPOSITIONS,
             "explicitly empty source state awaiting exact-candidate review",
+            snapshot=snapshot,
         ),
         "adaptation_decision": inputs["adaptation_decision"],
     }
     return audit, ledger
 
 
-def write_if_changed(path: Path, data: bytes) -> None:
-    if path.exists() and path.read_bytes() == data:
-        return
-    path.write_bytes(data)
+def _require_snapshot_unchanged(
+    before: RepositorySnapshot,
+    after: RepositorySnapshot,
+    *,
+    allow_generated_changes: bool,
+) -> None:
+    """Require one repository capture to retain its declared transaction state."""
+
+    if before.index_bytes != after.index_bytes or before.files != after.files:
+        raise AuditError("Git index or blob inventory changed during release audit")
+    for path, initial in before.worktree.items():
+        if allow_generated_changes and path in GENERATED_PATHS:
+            continue
+        if after.worktree.get(path) != initial:
+            raise AuditError(f"tracked file changed during release audit: {path}")
+
+
+def _write_generated(
+    path: Path,
+    data: bytes,
+    snapshot: RepositorySnapshot,
+) -> None:
+    """Write one generated path through its captured regular-file identity."""
+
+    key = _path_key(path)
+    try:
+        expected = snapshot.worktree[key]
+    except KeyError as error:
+        raise AuditError(
+            f"generated path is absent from the worktree: {key}"
+        ) from error
+    try:
+        write_rooted_regular_file(
+            ROOT,
+            key,
+            data,
+            expected=expected,
+            expected_git_mode="100644",
+            label=f"generated artifact {key}",
+            max_bytes=MAX_TRACKED_FILE_BYTES,
+            max_path_bytes=MAX_PATH_BYTES,
+            max_component_bytes=MAX_COMPONENT_BYTES,
+            max_depth=MAX_PATH_DEPTH,
+            max_directory_entries=MAX_DIRECTORY_ENTRIES,
+        )
+    except ReviewError as error:
+        raise AuditError(str(error)) from error
 
 
 def generate() -> None:
-    audit, ledger = build_outputs()
-    write_if_changed(AUDIT_OUTPUT, canonical_bytes(audit))
-    write_if_changed(LEDGER_OUTPUT, canonical_bytes(ledger))
-    print(f"generated {AUDIT_OUTPUT.relative_to(ROOT)}")
+    before = capture_repository_snapshot(allow_generated_drift=True)
+    audit, ledger = build_outputs(before)
+    expected = {
+        LEDGER_OUTPUT: canonical_bytes(ledger),
+        AUDIT_OUTPUT: canonical_bytes(audit),
+    }
+    _write_generated(LEDGER_OUTPUT, expected[LEDGER_OUTPUT], before)
+    _write_generated(AUDIT_OUTPUT, expected[AUDIT_OUTPUT], before)
+    after = capture_repository_snapshot(allow_generated_drift=True)
+    _require_snapshot_unchanged(before, after, allow_generated_changes=True)
+    for path, data in expected.items():
+        capture = after.worktree[_path_key(path)]
+        if capture.data != data or _git_blob_id(capture.data) != _git_blob_id(data):
+            raise AuditError(
+                f"generated artifact verification failed: {_path_key(path)}"
+            )
     print(f"generated {LEDGER_OUTPUT.relative_to(ROOT)}")
+    print(f"generated {AUDIT_OUTPUT.relative_to(ROOT)}")
 
 
 def verify() -> None:
-    audit, ledger = build_outputs()
+    before = capture_repository_snapshot(allow_generated_drift=False)
+    audit, ledger = build_outputs(before)
     expected = {
         AUDIT_OUTPUT: canonical_bytes(audit),
         LEDGER_OUTPUT: canonical_bytes(ledger),
     }
     for path, data in expected.items():
-        if not path.exists():
-            raise AuditError(f"generated artifact is missing: {path.relative_to(ROOT)}")
-        if path.read_bytes() != data:
+        key = _path_key(path)
+        if before.worktree[key].data != data:
             raise AuditError(
-                f"generated artifact is stale: {path.relative_to(ROOT)}; run release-audit generate"
+                f"generated artifact is stale: {key}; run release-audit generate"
             )
+    after = capture_repository_snapshot(allow_generated_drift=False)
+    _require_snapshot_unchanged(before, after, allow_generated_changes=False)
     print("release audit verified")
 
 

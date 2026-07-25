@@ -22,7 +22,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
 
-from common import ReviewError, canonical_json, git, safe_git_environment
+from common import (
+    TRUSTED_SYSTEM_EXECUTABLE_PATHS,
+    ReviewError,
+    canonical_json,
+    git,
+    safe_git_environment,
+)
 from release_assurance import (
     run_bounded_host_command,
     sanitized_host_environment,
@@ -50,7 +56,16 @@ class CommandSpec:
 COMMANDS = (
     CommandSpec("git-status-before", ("git", "status", "--porcelain=v1")),
     CommandSpec(
-        "git-show-signature", ("git", "show", "--show-signature", "--no-patch", "HEAD")
+        "git-show-signature",
+        (
+            "git",
+            "-c",
+            f"gpg.ssh.program={TRUSTED_SYSTEM_EXECUTABLE_PATHS['ssh-keygen']}",
+            "show",
+            "--show-signature",
+            "--no-patch",
+            "HEAD",
+        ),
     ),
     CommandSpec("rustc-version", ("rustc", "-Vv")),
     CommandSpec("cargo-version", ("cargo", "-Vv")),
@@ -164,6 +179,9 @@ def run_command(
         max_stdout_bytes=MAX_BASELINE_COMMAND_OUTPUT_BYTES,
         max_stderr_bytes=0,
         timeout_seconds=BASELINE_COMMAND_TIMEOUT_SECONDS,
+        trusted_auxiliary_executables=("ssh-keygen",)
+        if spec.name == "git-show-signature"
+        else (),
     )
     ended = utc_now()
     log.write(process.stdout)

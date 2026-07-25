@@ -206,8 +206,10 @@ def validate_claims() -> dict[str, dict[str, Any]]:
     return claims
 
 
-def validate_source_dispositions() -> dict[str, Any]:
-    document = load_json(SOURCE_DISPOSITIONS_PATH)
+def validate_source_dispositions(
+    document: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    document = load_json(SOURCE_DISPOSITIONS_PATH) if document is None else document
     require_keys(
         document,
         {

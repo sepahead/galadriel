@@ -133,11 +133,13 @@ impl From<PidResearchSuiteError> for GaladrielError {
 /// A PID-free release suite cannot cross the PID entry point:
 ///
 /// ```compile_fail
-/// use galadriel_core::{Modality, ReleaseSuite};
+/// use galadriel_core::{AssessmentScope, Modality, ReleaseSuite};
 /// use galadriel_pid::assess_stream;
-/// let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
-/// let release = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
-/// let _ = assess_stream(&[], &release);
+/// fn misuse(scope: &AssessmentScope) {
+///     let modalities = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+///     let release = ReleaseSuite::standalone_advisory_v0_9(&modalities).unwrap();
+///     let _ = assess_stream(scope, &[], &release);
+/// }
 /// ```
 #[derive(Debug, Clone)]
 pub struct PidResearchSuite {

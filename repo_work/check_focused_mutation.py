@@ -12,7 +12,13 @@ import tempfile
 from pathlib import Path
 
 from check_public_api import bounded_diagnostic
-from common import ReviewError, assert_no_replace_refs, canonical_json, git
+from common import (
+    CANDIDATE_TREE_CONTAINMENT,
+    ReviewError,
+    assert_no_replace_refs,
+    canonical_json,
+    git,
+)
 from release_assurance import (
     CARGO_IDENTITY,
     CARGO_MUTANTS_IDENTITY,
@@ -102,6 +108,7 @@ def exact_output(
         max_stdout_bytes=MAX_IDENTITY_STDOUT_BYTES,
         max_stderr_bytes=MAX_IDENTITY_STDERR_BYTES,
         timeout_seconds=IDENTITY_TIMEOUT_SECONDS,
+        containment=CANDIDATE_TREE_CONTAINMENT,
     )
     try:
         output = process.stdout.decode("utf-8", "strict").strip()
@@ -239,6 +246,7 @@ def run_checks(root: Path, commit: str, tree: str) -> dict[str, dict[str, int]]:
             max_stdout_bytes=MAX_FETCH_STDOUT_BYTES,
             max_stderr_bytes=MAX_FETCH_STDERR_BYTES,
             timeout_seconds=FETCH_TIMEOUT_SECONDS,
+            containment=CANDIDATE_TREE_CONTAINMENT,
         )
         reject_cargo_configuration(root, cargo_home)
         if fetch.returncode != 0:
@@ -276,6 +284,7 @@ def run_checks(root: Path, commit: str, tree: str) -> dict[str, dict[str, int]]:
                 max_stdout_bytes=MAX_MUTATION_STDOUT_BYTES,
                 max_stderr_bytes=MAX_MUTATION_STDERR_BYTES,
                 timeout_seconds=FOCUSED_MUTATION_TIMEOUT_SECONDS,
+                containment=CANDIDATE_TREE_CONTAINMENT,
             )
             reject_cargo_configuration(root, cargo_home)
             if process.returncode != 0:

@@ -1,50 +1,69 @@
 #![forbid(unsafe_code)]
 //! # galadriel-pid
 //!
-//! The cross-sensor **Partial Information Decomposition** engine for Galadriel's
-//! Mirror — an opt-in escalation alongside the signed-correlation default.
+//! This crate provides optional cross-sensor partial information decomposition
+//! (PID) analysis. The signed-correlation analysis remains the default.
 //!
-//! ## What it adds over the baseline
+//! ## Relationship to the baseline
 //!
-//! The magnitude baseline in `galadriel-core` catches an attack that **inflates**
-//! a channel's innovation. It is blind to a **moment-matched stealthy spoof**: an
-//! injection that keeps each channel's NIS inside its own covariance (NIS still
-//! `~ χ²(dof)`) while **decoupling** that channel from what the other sensors agree
-//! on. This engine targets that pattern by measuring how much information each
-//! channel still shares with a strict-majority consensus of the others. It does
-//! not establish that every stealthy spoof is identifiable from these inputs.
+//! The magnitude baseline in `galadriel-core` evaluates marginal normalized
+//! innovation squared (NIS) evidence. A moment-matched dependence change can
+//! leave this evidence consistent with the declared chi-square reference. It can
+//! still change the relation between modalities.
 //!
-//! ## The estimand (honestly scoped)
+//! This optional engine evaluates that dependence pattern with pairwise mutual
+//! information (MI) and a strict-majority consensus clique. The result describes
+//! statistical structure only. It does not identify an attack or causal
+//! mechanism. It does not establish that all dependence changes are identifiable
+//! from these inputs.
 //!
-//! For each channel `c`, the report's corroboration score is its best pairwise KSG
-//! mutual information. The verdict additionally requires a **unique strict-majority
-//! clique**, and an attributed channel must have a successfully estimated low edge
-//! to every clique member. Equal dyads and estimator failures are therefore
-//! insufficient, never nominal or attributed. Positive attribution is
-//! circular delete-block-confirmed by the explicit
-//! [`PidResearchProfile::CircularDeleteBlockV0_9`] profile: the joint worst-consensus margin
-//! needs a positive lower bound, and the joint worst-candidate margin needs a
-//! negative upper bound. Edge maxima/minima are recomputed inside every resample,
-//! so all fitted edges enter two family-level extrema rather than an unresolvable
-//! per-edge Bonferroni split. The accepted
-//! [`CircularDeleteBlockConfirmation::family_alpha`] budget is divided across those two
-//! one-sided bounds (and across projection axes by [`assess_stream`]). Alongside it —
-//! advisory, **report-only**, never read by the verdict — the engine reports the
-//! channel's shared-exclusions **PID atoms** (`I^sx` redundancy and its Möbius
-//! synergy) for the triple (channel, stable designated peer, consensus of the
-//! rest). These atoms do not make the verdict a pure-synergy detector.
-//! The fused state is never used as a target: it is a function of `c` itself, so
-//! a successful attack would perversely *raise* `c`'s MI with it. Every pair
-//! passes a mandatory **geometry gate** first; a channel with no gated pair is
-//! reported as not-assessable (fail closed), never as corroborating.
+//! ## Estimand and scope
 //!
-//! Estimator work is explicitly bounded. Direct [`analyze`] handles one aligned
-//! scalar projection; [`assess_stream`] evaluates each producer-attested common
-//! projection axis separately. Geometry gates, delete-block bounds, and deterministic
-//! modality-keyed Gaussian observation-noise model are safeguards, not a calibration theorem: the clique and
-//! reference are selected on the same window, the empirical delete-block interval
-//! is not formal selective inference, thresholds are not fleet-calibrated, and
-//! this remains advisory (`calibrated_posterior = false`).
+//! [`assess_stream`] requires one [`galadriel_core::AssessmentScope`]. The scope
+//! contains a producer label and one exact lifecycle position. The nested core
+//! binding covers that scope, the release suite, and every ordered observation.
+//! These labels are declared provenance. They do not authenticate a producer or
+//! prove observation origin.
+//!
+//! For each channel `c`, corroboration is its best pairwise
+//! Kraskov–Stögbauer–Grassberger (KSG) MI estimate. The verdict also requires one
+//! unique strict-majority clique. An attributed channel must have an estimated low
+//! edge to each clique member.
+//!
+//! Equal dyads and estimator failures are insufficient. They never produce a
+//! nominal or attributed result. The
+//! [`PidResearchProfile::CircularDeleteBlockV0_9`] profile applies circular
+//! delete-block confirmation to a positive attribution. The joint worst-consensus
+//! margin requires a positive lower bound. The joint worst-candidate margin
+//! requires a negative upper bound.
+//!
+//! Each resample recalculates the edge maxima and minima. All fitted edges enter
+//! two family-level extrema. The method does not use a per-edge Bonferroni split.
+//! The [`CircularDeleteBlockConfirmation::family_alpha`] budget is divided
+//! between the two one-sided bounds. [`assess_stream`] also divides this budget
+//! across projection axes.
+//!
+//! The engine also reports shared-exclusions PID atoms. These atoms are `I^sx`
+//! redundancy and its Möbius synergy. Each calculation uses a channel, a stable
+//! designated peer, and the consensus of the remaining channels. These atoms are
+//! advisory report-only data. The verdict does not use them. They do not make the
+//! verdict a pure-synergy detector.
+//!
+//! The analysis does not use the fused state as a target because it depends on
+//! `c`. This self-dependence can increase the estimated MI. Each pairwise estimate
+//! must first pass the geometry gate. The report marks a channel with no gated
+//! pair as not assessable. It does not mark that channel as corroborating.
+//!
+//! Estimator work has explicit bounds. Direct [`analyze`] processes one aligned
+//! scalar projection. [`assess_stream`] processes each producer-attested common
+//! projection axis separately.
+//!
+//! The geometry gates, delete-block bounds, and deterministic modality-keyed
+//! Gaussian observation-noise model are safeguards. They do not supply a
+//! calibration theorem. The clique and reference use the same window. The
+//! empirical delete-block interval is not formal selective inference. The
+//! thresholds do not have fleet calibration. The result remains advisory and has
+//! `calibrated_posterior = false`.
 
 mod engine;
 mod fusion;
@@ -70,6 +89,6 @@ pub use suite::{
     MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK, MIN_PID_RESEARCH_MODALITIES,
 };
 
-// The signed-scalar channel extractor lives in galadriel-core (it is shared with the
-// pure correlation detector); re-exported here for convenience.
+// The signed-scalar channel extractor lives in galadriel-core.
+// The pure correlation detector also uses it. Re-export it here for convenience.
 pub use galadriel_core::{consistency_channels_with_temporal_limits, scalar_channels};

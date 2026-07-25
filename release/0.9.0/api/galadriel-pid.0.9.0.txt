@@ -553,6 +553,7 @@ pub type galadriel_pid::CircularDeleteBlockConfirmation::Output = T
 pub struct galadriel_pid::FusedReport
 impl galadriel_pid::FusedReport
 pub const fn galadriel_pid::FusedReport::assessment_binding(&self) -> &galadriel_pid::PidAssessmentBinding
+pub const fn galadriel_pid::FusedReport::assessment_scope(&self) -> &galadriel_core::identity::AssessmentScope
 pub const fn galadriel_pid::FusedReport::baseline(&self) -> &galadriel_core::decision::MirrorReport
 pub const fn galadriel_pid::FusedReport::classification(&self) -> galadriel_pid::PidResearchClassification
 pub fn galadriel_pid::FusedReport::correlations(&self) -> &[galadriel_core::fusion::AxisCorrelationReport]
@@ -1226,7 +1227,7 @@ pub const galadriel_pid::PID_PAIR_POINT_FIT_UNITS: usize
 pub const galadriel_pid::PID_RS_REVISION: &str
 pub const galadriel_pid::PID_RS_VERSION: &str
 pub fn galadriel_pid::analyze(&[(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)], &galadriel_pid::PidConfig) -> galadriel_core::error::Result<galadriel_pid::PidReport>
-pub fn galadriel_pid::assess_stream(&[galadriel_core::observation::PidObservation], &galadriel_pid::PidResearchSuite) -> galadriel_core::error::Result<galadriel_pid::FusedReport>
+pub fn galadriel_pid::assess_stream(&galadriel_core::identity::AssessmentScope, &[galadriel_core::observation::PidObservation], &galadriel_pid::PidResearchSuite) -> galadriel_core::error::Result<galadriel_pid::FusedReport>
 pub fn galadriel_pid::fuse(&galadriel_pid::PidResearchSuite, galadriel_core::decision::MirrorReport, galadriel_core::correlation::CorrReport, galadriel_pid::PidReport) -> galadriel_core::error::Result<(galadriel_core::fusion::FusedVerdict, alloc::string::String)>
 pub fn galadriel_pid::fuse_axes(&galadriel_pid::PidResearchSuite, galadriel_core::decision::MirrorReport, alloc::vec::Vec<galadriel_core::fusion::AxisCorrelationReport>, alloc::vec::Vec<galadriel_pid::AxisPidReport>) -> galadriel_core::error::Result<galadriel_pid::FusedReport>
 pub fn galadriel_pid::fuse_axes_diagnostics(&galadriel_pid::PidResearchSuite, &galadriel_core::decision::MirrorReport, &[galadriel_core::fusion::AxisCorrelationReport], &[galadriel_pid::AxisPidReport]) -> galadriel_core::error::Result<(galadriel_core::fusion::FusedVerdict, alloc::string::String)>

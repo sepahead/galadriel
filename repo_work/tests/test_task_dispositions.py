@@ -46,7 +46,9 @@ class TaskClosurePlanTests(unittest.TestCase):
                 ):
                     encoder({"value": 10**128})
 
-    def test_static_plan_covers_t000_through_t115_without_complete_results(self) -> None:
+    def test_static_plan_covers_t000_through_t115_without_complete_results(
+        self,
+    ) -> None:
         tasks = build_task_dispositions.validate_tasks()
         claims = build_task_dispositions.validate_claims()
         plan = build_task_dispositions.validate_plan(tasks, claims)
@@ -73,22 +75,31 @@ class TaskClosurePlanTests(unittest.TestCase):
         for entry in plan["tasks"]:
             with self.subTest(task=entry["task_id"]):
                 review = entry["source_projection"]["twenty_lens_review"]
-                self.assertEqual(
-                    tuple(review), build_task_dispositions.LENSES
-                )
+                self.assertEqual(tuple(review), build_task_dispositions.LENSES)
                 self.assertNotIn("review", entry)
-                self.assertTrue(all(value["status"] == "OPEN" for value in review.values()))
-                self.assertTrue(all(value["finding"] == "" for value in review.values()))
-                self.assertTrue(all(value["evidence"] == "" for value in review.values()))
+                self.assertTrue(
+                    all(value["status"] == "OPEN" for value in review.values())
+                )
+                self.assertTrue(
+                    all(value["finding"] == "" for value in review.values())
+                )
+                self.assertTrue(
+                    all(value["evidence"] == "" for value in review.values())
+                )
 
     def test_every_plan_entry_is_task_specific_and_has_rejection_cases(self) -> None:
         tasks = build_task_dispositions.validate_tasks()
         plan = build_task_dispositions.validate_plan(tasks)
         for task, entry in zip(tasks, plan["tasks"], strict=True):
             with self.subTest(task=task["id"]):
-                self.assertTrue(all(task["id"] in item for item in entry["accepted_cases"]))
                 self.assertTrue(
-                    all(task["id"] in item["rejection_rule"] for item in entry["rejected_cases"])
+                    all(task["id"] in item for item in entry["accepted_cases"])
+                )
+                self.assertTrue(
+                    all(
+                        task["id"] in item["rejection_rule"]
+                        for item in entry["rejected_cases"]
+                    )
                 )
                 self.assertTrue(
                     entry["evidence_types"]
@@ -117,14 +128,18 @@ class TaskClosurePlanTests(unittest.TestCase):
         )
 
     def test_source_lens_substitution_is_rejected(self) -> None:
-        plan = copy.deepcopy(build_task_dispositions.load_json(build_task_dispositions.PLAN_PATH))
-        plan["tasks"][0]["source_projection"]["twenty_lens_review"]["L01"]["question"] = (
-            "Can a generic replacement question stand in for the exact immutable source lens?"
+        plan = copy.deepcopy(
+            build_task_dispositions.load_json(build_task_dispositions.PLAN_PATH)
         )
+        plan["tasks"][0]["source_projection"]["twenty_lens_review"]["L01"][
+            "question"
+        ] = "Can a generic replacement question stand in for the exact immutable source lens?"
         projection = plan["tasks"][0]["source_projection"]
-        plan["tasks"][0]["source_projection_sha256"] = __import__("hashlib").sha256(
-            build_task_dispositions.compact_canonical_bytes(projection)
-        ).hexdigest()
+        plan["tasks"][0]["source_projection_sha256"] = (
+            __import__("hashlib")
+            .sha256(build_task_dispositions.compact_canonical_bytes(projection))
+            .hexdigest()
+        )
         with self.assertRaisesRegex(
             build_task_dispositions.DispositionError, "source lens question changed"
         ):

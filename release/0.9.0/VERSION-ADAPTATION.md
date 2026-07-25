@@ -19,7 +19,7 @@ Date: 2026-07-14
 ## Context
 
 The supplied standalone handoff uses version `1.0.0`.
-The requested first review-gated public research source release uses version `0.9.0`.
+The selected first review-gated public research source release uses version `0.9.0`.
 It has no DOI or Zenodo record.
 
 The external source package remains immutable.
@@ -128,7 +128,10 @@ Every pre-publication failure **SHALL** leave the requested path absent.
 It **SHALL** retain no partial result at that path.
 The rename is the publication commit point.
 
-If durability or the result report fails after the rename, the tool **SHALL** return status 3.
+If complete output identity is not confirmed after the rename, the tool **SHALL** return status 4.
+It **SHALL NOT** describe the requested path as a complete output.
+
+After complete output identity confirmation, a durability, result-report, or cleanup failure **SHALL** return status 3.
 It **SHALL** retain the complete output.
 An independent verifier must check that output before use.
 

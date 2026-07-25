@@ -1,4 +1,4 @@
-# Forced or justified? Mutual information versus correlation for cross-sensor spoof detection
+# Forced or justified? Mutual information versus correlation for cross-sensor consistency evidence
 
 ## Abbreviations
 
@@ -14,12 +14,12 @@
 
 ## Abstract
 
-Cross-sensor consistency can expose a compromised sensor that stops agreeing with an honest majority.
+Cross-sensor consistency can show when one sensor stops agreeing with a corroborated majority.
 The selected comparison statistic affects the result.
 For jointly Gaussian scalar variables, mutual information (MI) is a monotone function of correlation magnitude.
 Thus, a nonparametric mutual-information estimator adds cost and finite-sample uncertainty without new population information.
 Nonlinear and synergistic dependence can justify mutual information or Partial Information Decomposition (PID).
-The deployed data and target must define that estimand.
+The selected data population and target must define that estimand.
 
 Galadriel is a pre-1.0 research implementation of this selection discipline.
 Its default combines per-channel Normalized Innovation Squared (NIS) and cumulative sum (CUSUM) magnitude evidence.
@@ -28,14 +28,18 @@ An optional path adds sign-invariant Kraskov–Stögbauer–Grassberger mutual i
 Invalid input returns an error.
 Missing or geometrically insufficient evidence remains inconclusive.
 
-The implementation has synthetic tests and studies.
+The implementation has synthetic test and study evidence.
 It does not have field validation.
 A 2026-07 audit found that available historical Crebain captures do not support the cross-modal estimand.
 The captures omit a producer-attested common projection.
+Here, producer-attested means a producer provenance claim.
+It does not mean cryptographic authentication.
 They mix native coordinate frames, use sequential priors, and censor rejected measurements.
 
-The bundled fixture proves parsing and baseline smoke behavior.
-Its cross-channel and fused result is correctly `InsufficientEvidence`.
+The bundled fixture supports bounded parsing and basic NIS baseline checks.
+Its unbound correlation diagnostic returns `InsufficientEvidence`.
+Raw replay has no complete assessment scope.
+It cannot construct an accepted core or PID fused report.
 A retained historical opt-in Crebain revision implemented the required producer shape.
 That shape used frozen-prior Cartesian projections and complete lifecycle information.
 It does not qualify a current reciprocal integration.
@@ -119,11 +123,11 @@ These conditions are out of scope:
 - a colluding majority or ambiguous clique
 - truth, authenticity, cryptographic identity, or state recovery
 - a silent control-path veto
-- all-modal silence without an external heartbeat
+- all-modal silence without a separate producer heartbeat
 
-The frustum attack [Hallyburton2022] is a concrete consistency-preserving attack.
-Its existence is not a corner case that tuning can remove.
-It defines a fundamental boundary of this detector family.
+The frustum attack [Hallyburton2022] preserves camera and LiDAR semantic consistency.
+The cited result does not establish preservation of every Galadriel estimand.
+Separately, any perturbation that preserves all evaluated statistics is outside this detector family's observation boundary.
 
 ## 3. Required producer contract
 
@@ -135,6 +139,14 @@ Cross-channel residual comparison is meaningful only when all samples refer to:
 - compatible dimensions and covariance semantics
 - an explicit observation lifecycle, including misses and rejections
 - a stable session and schema version
+
+Accepted whole-stream assessment also requires `AssessmentScope`.
+The scope contains one producer and one exact `StreamPosition`.
+The position contains session, epoch, stream, state generation, terminal sequence,
+terminal timestamp, and clock domain.
+Core checks the terminal sequence and timestamp against the stream.
+The other coordinates are validated caller declarations.
+They do not authenticate a producer or prove observation origin.
 
 Historical and default `CREBAIN_PID_JSONL` output violates several requirements.
 Radar's extended Kalman filter (EKF) innovation is polar.
@@ -152,12 +164,14 @@ The available historical Crebain captures do not populate this field.
 Their native innovation fields remain baseline diagnostics only.
 They do not produce cross-channel columns.
 
-The bundled Crebain data supports bounded parsing and cautious NIS smoke checks.
-It does not show that production cross-modal correlation or PID works.
+The bundled Crebain data supports bounded parsing and basic NIS baseline checks.
+It does not show operational effectiveness for cross-modal correlation or PID.
+Raw JSONL replay of this data remains an unbound diagnostic.
+It cannot create an accepted whole-stream report.
 
 ## 4. Method
 
-### 4.1 Validated magnitude evidence
+### 4.1 Magnitude evidence
 
 The streaming `Mirror` owns bounded state for each track and modality.
 It rejects invalid or non-finite observations and non-increasing sequence numbers.
@@ -177,7 +191,9 @@ Magnitude evidence distinguishes these outcomes:
 
 Scalar channel series come only from the attested common projection.
 The system forms them by exact sequence intersection for one track.
-It rejects unequal, duplicate, non-finite, degenerate, or provenance-incompatible channels.
+It rejects unequal, duplicate, non-finite, or provenance-incompatible channels.
+A finite degenerate channel makes the related estimand insufficient.
+The related axis withholds all channel corroboration values.
 Legacy native innovations do not enter this path.
 
 The default uses **signed** Pearson correlation.
@@ -200,6 +216,17 @@ Different positive channel attributions across axes remain `UnclassifiedAnomaly`
 A positive axis beside an insufficient axis also remains `UnclassifiedAnomaly`.
 The system does not select an `AttributedInconsistency` result from these cases.
 
+Accepted default reports use `galadriel-assessment-binding-v2`.
+The binding covers the complete scope, release suite, and ordered observations.
+Optional PID reports nest that core binding and add the PID research-suite identity.
+This binding supports internal recomputation.
+It does not authenticate the producer.
+
+The NCP lifecycle adapter derives scope from the admitted producer and exact position.
+Each evaluated report uses the same producer and position as its receipt.
+The receipt verifier checks bounded detector-shape and cross-field coherence.
+It does not authenticate, sign, or durably retain a receipt.
+
 ### 4.3 Optional MI/PID evidence
 
 For jointly Gaussian scalar variables [CoverThomas2006],
@@ -209,7 +236,7 @@ I(X;Y)=-\tfrac{1}{2}\log(1-\rho^2).
 \]
 
 MI and correlation magnitude have the same population ranking in this model.
-KSG [Kraskov2004] applies only when validated data contains dependence that signed linear correlation cannot represent.
+KSG [Kraskov2004] applies only when accepted data contains dependence that signed linear correlation cannot represent.
 The system must validate its geometry, sample size, observation-noise model, and bootstrap configuration.
 The configuration declares an additive observation-noise model.
 
@@ -247,7 +274,7 @@ A synthetic separation shows that an estimator can observe the constructed model
 It does not show the same source and target relation in a deployed fusion system.
 
 Pointwise local information can also support sequential change detection [Page1954, Moustakides1986].
-That direction requires a validated clean reference and stream-level false-alarm calibration.
+That direction requires a registered clean reference and stream-level false-alarm calibration.
 It is not the current runtime streaming mode.
 
 ## 6. Evaluation discipline
@@ -316,7 +343,8 @@ See [`EVALUATION.md`](EVALUATION.md).
 - **Synthetic evidence.**
   Current studies do not represent field prevalence, base rates, maneuvers, or operator outcomes.
 - **Liveness.**
-  The operational receiver expects an independent producer heartbeat.
+  The operational receiver expects a producer heartbeat task that is independent
+  of sensor input and the fusion loop.
   It fails closed on silence.
   Historical replay files have no live-liveness claim.
   No current reciprocal producer pin demonstrates heartbeat behavior across the actual router and certificate boundary.
@@ -349,7 +377,7 @@ See [`EVALUATION.md`](EVALUATION.md).
 
 1. **Implemented locally:** Galadriel has versioned strict schemas and pinned-registry capability.
    It has a bounded two-route assembler and receiver.
-   It has typed lifecycle transitions and an exact-epoch secure configuration procedure.
+   It has typed lifecycle transitions and an exact-epoch security-profile configuration procedure.
 2. **Historical fixture only:** Crebain `4c311900ade5668200a48d56fb191be1916b884a` and Galadriel `81437d807ca83b66b45c8353968948e540072d97` recorded an earlier compatibility pair.
    The pair covers epoch, registry, and common projection.
    It does not pin or qualify this candidate.
@@ -364,7 +392,7 @@ See [`EVALUATION.md`](EVALUATION.md).
 ## 9. Conclusion
 
 The central selection rule survives the audit.
-Do not pay for an information-theoretic estimator when a validated simpler statistic observes the same estimand.
+Do not pay for an information-theoretic estimator when a simpler statistic observes the registered estimand.
 Use signed correlation for a valid positive linear consensus.
 Add MI/PID only when recorded evidence shows a nonlinear or synergistic question.
 Remain inconclusive when geometry or evidence is absent.
@@ -376,7 +404,7 @@ A current reciprocal producer qualification and an accepted recorded field study
 ## Reproducibility
 
 ```bash
-cargo run --locked -p galadriel-eval --release -- 200
+cargo run --locked -p galadriel-eval --bin galadriel-eval --release -- 200
 cargo run --locked -p galadriel-justify --release
 cargo bench --locked -p galadriel-eval --bench detectors
 cargo test --workspace --all-features --locked

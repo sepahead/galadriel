@@ -55,8 +55,8 @@ pub const PID_RS_VERSION: &str = "1.0.0";
 pub const PID_RS_REVISION: &str = "1cd2424f7967e1752dcc8e53859e8fdad3566f51";
 
 /// Maximum PID analysis window. The mandatory geometry and kNN estimators are
-/// quadratic in the number of samples, so the much larger scalar-window bound
-/// is not a safe computational bound for this engine.
+/// quadratic in the number of samples. The larger scalar-window bound does not
+/// bound this engine's computational work.
 pub const MAX_PID_WINDOW: usize = 512;
 
 const ROLE_PAIR_POINT: u64 = 0x5041_4952_504f_494e;
@@ -1097,11 +1097,11 @@ pub struct ChannelPid {
     modality: Modality,
     /// Aligned samples used.
     n: usize,
-    /// Whether at least one pair was safely assessable for this channel.
+    /// Whether at least one pair passed the geometry and estimator gates.
     gate_ok: bool,
     /// Human-readable geometry/estimator status.
     gate_note: String,
-    /// Best safely estimated pairwise MI (nats).
+    /// Best pairwise MI estimate in nats among pairs that passed all gates.
     corroboration: Option<f64>,
     /// Advisory shared-exclusions redundancy atom (nats).
     redundancy: Option<f64>,
@@ -1155,7 +1155,7 @@ impl ChannelPid {
         self.n
     }
 
-    /// Whether at least one pair was safely assessable.
+    /// Whether at least one pair passed the geometry and estimator gates.
     pub const fn gate_ok(&self) -> bool {
         self.gate_ok
     }
@@ -1165,7 +1165,7 @@ impl ChannelPid {
         &self.gate_note
     }
 
-    /// Best safely estimated pairwise MI in nats.
+    /// Best pairwise MI estimate in nats among pairs that passed all gates.
     pub const fn corroboration(&self) -> Option<f64> {
         self.corroboration
     }
@@ -1191,8 +1191,9 @@ impl ChannelPid {
     }
 }
 
-/// The engine's advisory verdict. Uniform magnitude inflation is owned by the
-/// baseline; this engine detects cross-channel decoupling.
+/// Advisory verdict for cross-channel dependence evidence.
+///
+/// The magnitude baseline evaluates separate per-channel magnitude evidence.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PidVerdict {
     /// Every requested channel belongs to one assessable consensus clique.
@@ -1271,14 +1272,13 @@ impl PidReport {
 /// Analyse already sequence-aligned signed-scalar channel series.
 ///
 /// More channels than the closed modality vocabulary, duplicate modalities,
-/// unequal lengths, non-finite values, and numerically degenerate raw columns are
-/// malformed inputs and return an error. Too few
-/// channels/samples and estimator limitations return an explicit insufficient
-/// report instead. Circular delete-block positive attributions fit every selected
-/// consensus and candidate-to-consensus edge, then bound the joint worst-consensus and
-/// worst-candidate margins across common circular delete-block resamples. These
-/// bounds are a conservative screening guard, not a post-selection calibration
-/// guarantee for the clique search.
+/// unequal lengths, and non-finite values are malformed inputs and return an
+/// error. Degenerate columns, too few samples, and estimator limitations return
+/// an explicit insufficient report. Circular delete-block positive attributions
+/// fit every selected consensus and candidate-to-consensus edge. They then bound
+/// joint worst-consensus and worst-candidate margins across common circular
+/// delete-block resamples. These bounds are a conservative screening guard. They
+/// are not a post-selection calibration guarantee for the clique search.
 pub fn analyze(
     channels: &[(Modality, Vec<f64>)],
     cfg: &PidConfig,
@@ -1327,12 +1327,51 @@ pub fn analyze(
         ));
     }
     // KSG distances are not scale invariant when one fixed observation-noise
-    // amplitude is added. Validate and standardise every verdict-eligible column.
+    // amplitude is added. Validate and standardize every verdict-eligible column.
     let mut cols = Vec::with_capacity(c);
+    let mut degenerate = Vec::new();
     for (modality, values) in channels {
-        cols.push(standardize(&values[values.len() - w..], modality.label())?);
+        match standardize_column(&values[values.len() - w..])? {
+            StandardizedColumn::Ready(values) => cols.push(values),
+            StandardizedColumn::ExactlyDegenerate => {
+                degenerate.push((*modality, "exactly degenerate"));
+            }
+            StandardizedColumn::NumericallyDegenerate => {
+                degenerate.push((*modality, "numerically degenerate"));
+            }
+        }
     }
-
+    if !degenerate.is_empty() {
+        let reports = channels
+            .iter()
+            .map(|(modality, _)| {
+                let gate_note = degenerate
+                    .iter()
+                    .find(|(candidate, _)| candidate == modality)
+                    .map_or_else(
+                        || {
+                            "PID family unavailable because another requested column is degenerate"
+                                .to_string()
+                        },
+                        |(_, reason)| format!("{reason} column; PID estimand unavailable"),
+                    );
+                ChannelPid::new(
+                    *modality, w, false, gate_note, None, None, None, false, None,
+                )
+            })
+            .collect();
+        let unavailable = degenerate
+            .iter()
+            .map(|(modality, reason)| format!("{} ({reason})", modality.label()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Ok(PidReport::new(
+            estimator,
+            reports,
+            PidVerdict::InsufficientEvidence,
+            format!("requested channel column(s) cannot support PID estimation: {unavailable}"),
+        ));
+    }
     let mut mi = vec![vec![None::<f64>; c]; c];
     let mut pair_failures = vec![Vec::<String>::new(); c];
     for i in 0..c {
@@ -1542,15 +1581,22 @@ fn has_unique_strict_majority(
     largest_size > channel_count / 2 && clique_count == 1
 }
 
-fn standardize(values: &[f64], modality: &str) -> galadriel_core::Result<Vec<f64>> {
+enum StandardizedColumn {
+    Ready(Vec<f64>),
+    ExactlyDegenerate,
+    NumericallyDegenerate,
+}
+
+fn standardize_column(values: &[f64]) -> galadriel_core::Result<StandardizedColumn> {
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err(GaladrielError::NonFinite("PID standardisation"));
+    }
     let (minimum, maximum) = values.iter().copied().fold(
         (f64::INFINITY, f64::NEG_INFINITY),
         |(minimum, maximum), value| (minimum.min(value), maximum.max(value)),
     );
     if minimum == maximum {
-        return Err(GaladrielError::InvalidChannels(format!(
-            "PID {modality} column is degenerate"
-        )));
+        return Ok(StandardizedColumn::ExactlyDegenerate);
     }
     let center = minimum / 2.0 + maximum / 2.0;
     let scale = (minimum - center).abs().max((maximum - center).abs());
@@ -1566,16 +1612,27 @@ fn standardize(values: &[f64], modality: &str) -> galadriel_core::Result<Vec<f64
         .collect();
     let sum_squares = centered.iter().map(|value| value * value).sum::<f64>();
     if !sum_squares.is_finite() || sum_squares <= f64::EPSILON * n {
-        return Err(GaladrielError::InvalidChannels(format!(
-            "PID {modality} column is numerically degenerate"
-        )));
+        return Ok(StandardizedColumn::NumericallyDegenerate);
     }
     let rms = (sum_squares / n).sqrt();
     let standardized: Vec<f64> = centered.into_iter().map(|value| value / rms).collect();
     if standardized.iter().any(|value| !value.is_finite()) {
         return Err(GaladrielError::NonFinite("PID standardisation"));
     }
-    Ok(standardized)
+    Ok(StandardizedColumn::Ready(standardized))
+}
+
+#[cfg(test)]
+fn standardize(values: &[f64], modality: &str) -> galadriel_core::Result<Vec<f64>> {
+    match standardize_column(values)? {
+        StandardizedColumn::Ready(values) => Ok(values),
+        StandardizedColumn::ExactlyDegenerate => Err(GaladrielError::InvalidChannels(format!(
+            "PID {modality} column is degenerate"
+        ))),
+        StandardizedColumn::NumericallyDegenerate => Err(GaladrielError::InvalidChannels(format!(
+            "PID {modality} column is numerically degenerate"
+        ))),
+    }
 }
 
 fn largest_consensus_cliques(mi: &[Vec<Option<f64>>], threshold: f64) -> (usize, Vec<Vec<usize>>) {
@@ -2598,16 +2655,24 @@ mod tests {
     }
 
     #[test]
-    fn rejects_constant_columns_before_noise_can_create_false_information() {
+    fn constant_columns_abstain_before_noise_can_create_false_information() {
         let channels = vec![
             (Modality::Visual, vec![0.0; 128]),
             (Modality::Radar, vec![10.0; 128]),
             (Modality::Acoustic, vec![-7.0; 128]),
         ];
-        assert!(matches!(
-            analyze(&channels, &confirmed_config()),
-            Err(GaladrielError::InvalidChannels(_))
-        ));
+        let report = analyze(&channels, &confirmed_config()).unwrap();
+        assert_eq!(report.verdict(), &PidVerdict::InsufficientEvidence);
+        assert!(report
+            .note()
+            .starts_with("requested channel column(s) cannot support PID estimation:"));
+        assert_eq!(report.channels().len(), channels.len());
+        assert!(report.channels().iter().all(|channel| {
+            !channel.gate_ok()
+                && channel.corroboration().is_none()
+                && !channel.is_decoupled()
+                && channel.gate_note().contains("exactly degenerate")
+        }));
 
         let short = channels
             .iter()
@@ -2818,6 +2883,12 @@ mod tests {
             analyze(&non_finite, &confirmed_config()),
             Err(GaladrielError::NonFinite(_))
         ));
+        for non_finite_value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert!(matches!(
+                standardize_column(&[0.0, non_finite_value, 1.0]),
+                Err(GaladrielError::NonFinite(_))
+            ));
+        }
 
         let unequal = vec![
             (Modality::Visual, base.clone()),
@@ -2857,10 +2928,12 @@ mod tests {
             (Modality::Radar, constant.clone()),
             (Modality::Acoustic, constant),
         ];
-        assert!(matches!(
-            analyze(&exact_readiness_boundary, &point),
-            Err(GaladrielError::InvalidChannels(_))
-        ));
+        assert_eq!(
+            analyze(&exact_readiness_boundary, &point)
+                .unwrap()
+                .verdict(),
+            &PidVerdict::InsufficientEvidence
+        );
 
         let channels = vec![
             (Modality::Visual, Vec::new()),

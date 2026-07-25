@@ -15,8 +15,8 @@
 | NIS | normalized innovation squared |
 | PID | partial information decomposition |
 
-Status: **normative implemented contract** for Galadriel 0.9.0. The accepted
-boundaries cover these surfaces:
+Status: normative implemented contract for Galadriel 0.9.0.
+The accepted boundaries cover these surfaces:
 
 - core and PID
 - simulation
@@ -29,10 +29,11 @@ This document defines source semantics. Final-candidate qualification and retain
 release evidence are separate gates. The APIs do not imply that these gates are
 complete.
 
-An **accepted configuration** is a value that a component can retain or use. The
-component can be a detector, generator, evaluator, adapter, transport, or runtime.
+An accepted configuration is a value that a component can retain or use.
+The component can be a detector, generator, evaluator, adapter, transport, or
+runtime.
 
-A **parameter value** is untrusted and possibly incomplete input. It has not
+A parameter value is untrusted and possibly incomplete input. It has not
 crossed the accepted boundary.
 
 A source release profile is a reproducible set of shipped values. It is not field
@@ -94,7 +95,7 @@ multiple accepted values. Examples include:
 - queue relationships
 - deadline order
 
-The relevant preflight must finish before allocation, state change, subscription,
+The relevant preflight **MUST** finish before allocation, state change, subscription,
 input read, estimator use, or worker creation.
 
 **GLD-090-CFG-005 (fallible derivation):** Derived configurations **SHALL** use a
@@ -161,7 +162,7 @@ These accepted boundaries expose canonical identities:
 - evidence runner
 - assembler and registry policy
 - JSONL and live input
-- secure configuration
+- NCP security configuration
 
 A digest identifies accepted bytes and semantics. It does not authenticate them.
 
@@ -199,8 +200,8 @@ pub enum PidConfirmationParams {
 
 The accepted form **SHALL** have private payload fields or validated payload
 newtypes. The point-estimate variant **SHALL NOT** contain `resamples`,
-`block_size`, or confirmation `family_alpha`. Thus, ignored or contradictory
-combinations cannot be represented.
+`block_size`, or confirmation `family_alpha`.
+Ignored or contradictory combinations cannot be represented.
 
 The point-estimate variant **SHALL** remain explicitly research only. Its reports
 **SHALL** identify the attribution as unconfirmed.
@@ -234,13 +235,13 @@ parameters. Examples are `dirty`, `degraded`, `decoupled`, `ready`, and terminal
 color rendering.
 
 A fixed foreign-protocol assertion MAY also use a Boolean. For example, a foreign
-protocol can require mTLS to equal true. Such a Boolean **SHALL NOT** become an internal
-Galadriel mode type. This exception does not permit a Boolean to hide future
-semantic states.
+protocol can require mTLS to equal true.
+Such a Boolean **SHALL NOT** become an internal Galadriel mode type.
+This exception does not permit a Boolean to hide future semantic states.
 
 **GLD-090-CAP-006 (declared modality capability):** A release detector suite
 **SHALL** contain a validated and nonempty expected-modality set. Its cardinality
-must be compatible with `min_channels`.
+**SHALL** be compatible with `min_channels`.
 
 The removed `Mirror::new` interface used an empty-vector sentinel.
 This sentinel **SHALL NOT** select release behavior in migration code.
@@ -260,12 +261,13 @@ runtime boundary.
 | `CorrConfig` | release statistical component | Private accepted fields and typed construction. `try_for_axis_family(axis_count)` returns a new identity-bound configuration without mutation. |
 | `PidConfig` | optional research statistical component | Private accepted fields and explicit research profiles. It uses closed `PidConfirmation` and fallible family derivation. It has no mode Boolean or dormant confirmation payload. |
 | `Cusum` and `NisWindow` construction | validated detector subcomponents and state | Private fields and fallible construction. Release use derives values from accepted detector configuration. Direct public construction remains component-research use. CUSUM construction is `O(1)`. Window reservation is `O(capacity)`. Each window has a fixed 272-byte exact-sum cache. |
-| upstream PID estimator configs (`IntrinsicDimConfig`, `DistanceConcentrationConfig`, `KsgConfig`, `Pid2Config`, `Jitter`) | pinned foreign research subcomponents | Derive one exact documented set from accepted PID research configuration. An upstream `Default` must not silently change a named profile. Include upstream semantics and revision in profile identity. |
+| upstream PID estimator configs (`IntrinsicDimConfig`, `DistanceConcentrationConfig`, `KsgConfig`, `Pid2Config`, `Jitter`) | pinned foreign research subcomponents | Derive one exact documented set from accepted PID research configuration. An upstream `Default` **MUST NOT** silently change a named profile. Include upstream semantics and revision in profile identity. |
 | `ReleaseSuite` | release composition | Distinct PID-free accepted type. It contains detector, correlation, canonical nonempty modalities, and axis-family policy. Construction checks readiness, retained state, and work. |
 | `PidResearchSuite` | research composition | Distinct accepted type with a release suite and explicit PID research configuration. Construction checks maximum three-axis confirmation work before analysis. |
-| `ScenarioConfig` | research generator | Mutable `ScenarioParams` converts once to immutable `ScenarioConfig`. Accessors borrow accepted values. Construction validates modalities, identities, timestamps, variances, observation count, and canonical digest. |
+| `AssessmentScope` | accepted assessment provenance | Private immutable fields. Construction requires one validated `ProducerId` and one exact `StreamPosition`. Strict decoding rejects unknown fields and revalidates nested values. The value does not authenticate its labels. |
+| `ScenarioConfig` | research generator | Mutable `ScenarioParams` converts once to immutable `ScenarioConfig`. Accessors borrow accepted values. Construction validates modalities, identities, terminal coordinates, variances, observation count, and canonical digest. `assessment_scope(stream_id)` derives one deterministic synthetic scope for a nonempty scenario. It rejects an empty scenario because no terminal frame exists. |
 | `EvalConfig` or `EvalSuiteConfig` | research evaluation | Mutable parameters convert to immutable accepted values. Named profiles and aggregate suite construction check grids, latency prefixes, observations, bootstrap comparisons, and PID work. |
-| evidence runner DTOs and `ValidatedEvidenceConfig` | evidence and research input | Strict file DTOs convert once to an immutable accepted value. It contains a `ReleaseSuite`, bounded vectors, a hash-verified fixture, work estimates, and canonical digest. The runner does not retain the DTO. |
+| evidence runner DTOs and `ValidatedEvidenceConfig` | evidence and research input | Strict file DTOs convert once to an immutable accepted value. It contains a `ReleaseSuite`, bounded vectors, a hash-verified fixture, work estimates, and canonical digest. It binds trial, summary, and manifest schema v3. It also binds acceptance profile v3 and the SplitMix64 bootstrap profile. The runner does not retain the DTO. |
 | `AssemblerLimits` | operational runtime resource and deadline policy | Private fields, `AssemblerParams`, and `AssemblerProfile::BoundedV0_9`. It has read-only getters, hard and aggregate bounds, deadline order, clock checks, and canonical identity. |
 | `RegistryOpportunityPolicy` | deployment-pinned capability | Private accepted fields and typed construction with wire maxima. `RegistryVerifier` alone produces this validated policy. |
 | registry `OpportunityPolicy`, `DeploymentRegistry`, and `PinnedDeploymentRegistry` | strict decoded deployment input | Closed-schema decoding produces tooling data. Exact digest verification produces the opaque pin capability. Only `PinnedDeploymentRegistry` implements operational `RegistryVerifier`. |
@@ -277,6 +279,21 @@ runtime boundary.
 | secure foreign `ZenohConfig` admission | security configuration capability | Read a standalone strict-JSON file through an inclusive 256 KiB pre-parse limit. Reject nested `__config__` includes. Each credential file has an inclusive 1 MiB validation limit. Single-load validation returns opaque `SecureZenohCapability`. `CredentialMaterialKind` controls role-specific permission checks. The capability records canonical security identity. |
 
 Each detector aggregate includes every window's fixed 272-byte exact-sum cache.
+
+`ScenarioConfig::assessment_scope` uses these fixed synthetic semantics:
+
+- producer `galadriel-sim`
+- session `scenario-v0.9`
+- epoch equal to the scenario configuration digest
+- one caller-supplied validated stream label
+- state generation zero
+- the validated terminal sequence and timestamp
+- clock domain `simulation_time`
+
+The function rejects a zero-frame scenario because no terminal scope exists.
+The same accepted scenario and stream label produce the same scope.
+This deterministic value records synthetic provenance only.
+It does not authenticate a writer or represent a deployed producer.
 
 ### Named profiles
 
@@ -293,8 +310,13 @@ The required profile taxonomy is closed for 0.9.0:
 - `ScenarioResearchProfile::SyntheticV0_9` selects bounded simulator defaults.
 - `EvaluationResearchProfile::SyntheticV0_9` independently selects bounded
   evaluation defaults.
-- Evidence studies can use custom parameters. They must record the accepted
-  configuration. They must not label it as either named synthetic profile.
+- Evidence studies can use custom parameters. They **MUST** record the accepted
+  configuration. They **MUST NOT** label it as either named synthetic profile.
+- Candidate evidence uses trial schema `galadriel.evidence.trial.v3`.
+  It uses summary schema `galadriel.evidence.summary.v3`.
+  It uses manifest schema `galadriel.evidence.manifest.v3`.
+  It uses acceptance profile `galadriel-0.9-frozen-acceptance-metrics-v3`.
+  It uses bootstrap profile `splitmix64-rejection-group-metric-v1`.
 - `JsonlProfile`, `HandoffProfile`, `LiveLimitsProfile`, `AssemblerProfile`,
   `MonitorLiveProfile`, and `OperationalLiveProfile` select separate bounded 0.9
   runtime policies.
@@ -343,25 +365,26 @@ confirmation payload.
 
 ### Statistical components
 
-- `DetectorConfig` construction must preserve the existing scalar domains. It
-  must check
+- `DetectorConfig` construction **MUST** preserve the existing scalar domains. It
+  **MUST** check
   `max_tracks * Modality::ALL.len() * window_len <= 1_000_000` with checked
   arithmetic. Construction takes `O(1)` time and `O(1)` retained memory.
-- `CorrConfig` construction takes `O(1)` time and `O(1)` memory. Assessment preflight
-  must check
+- `CorrConfig` construction takes `O(1)` time and `O(1)` memory. Assessment
+  preflight **MUST** check
   `pairs(channel_count) * min(input_tail, window) <= 1_000_000`. Complete this
   check before matrix allocation or pair evaluation.
 - The active six-modality limit bounds exhaustive clique enumeration. A larger
   modality domain needs a new work review.
-- `PidConfig` construction takes `O(1)` time and `O(1)` memory. Its estimate includes all
-  required pair, atom, and confirmation-edge scans. It must not exceed
+- `PidConfig` construction takes `O(1)` time and `O(1)` memory.
+  Its estimate includes all required pair, atom, and confirmation-edge scans.
+  It **MUST NOT** exceed
   `200_000_000` quadratic scan-equivalent fit units.
 - The confirmation variant constructor checks confirmation diversity,
   delete-block remainder, tail-rank resolution, and `resamples <= window`.
 - Multi-axis derivation divides family budgets once and validates the result. It
   creates one immutable derived config for the axis loop. Axis count and the
   derived value form part of configuration identity.
-- Lifecycle composition must check
+- Lifecycle composition **MUST** check
   `max(window_len, corr.window) * max_tracks * Modality::ALL.len() <= 983_040`.
   Complete this check before retaining track history. Valid components do not
   automatically make the bundle valid.
@@ -379,8 +402,8 @@ confirmation payload.
   `300_000_000_000` PID quadratic fit units.
 - A maneuver-lag grid contains `1..=10,000` unique values.
 - Magnitude is finite and positive, with a finite square.
-- Evaluation duration is at least two frames. Thus, the sampled half-open
-  triangle has nonzero exposure.
+- Evaluation duration is at least two frames.
+  The sampled half-open triangle therefore has nonzero exposure.
 - The low-level simulator retains duration zero only as an explicit disabled or
   no-operation form.
 - For the visual, acoustic, and radar study, every half-open window satisfies
@@ -392,6 +415,30 @@ confirmation payload.
 - Evidence checks keep these ceilings: `25_000_000` generated observations,
   `500_000_000` correlation pair-samples, `2_000_000` trace assessments, and
   `50_000_000` bootstrap track draws.
+- Evidence bootstrap work samples complete tracks.
+  The named profile uses SplitMix64 with unbiased rejection sampling.
+  It derives one deterministic stream from the accepted base seed, result group, and metric.
+  A random-number implementation change requires a new profile identifier.
+
+### Candidate evidence identity
+
+The retained manifest binds the exact Git commit and tree.
+It also binds the clean source state and accepted configuration identity.
+It binds `Cargo.toml`, `Cargo.lock`, the recorded fixture, and the exact runner executable.
+It binds the Rust and Cargo identities, build profile, native target, study scope, and record counts.
+
+Qualification builds the release runner before evidence execution.
+The host creates a private directory with mode `0700`.
+It copies the runner into that directory through no-follow descriptors with mode `0500`.
+The host executes that exact copy directly.
+The runner binary digest in the manifest must equal the copied executable digest.
+
+The host validates the complete six-file evidence set after execution.
+It derives the accepted configuration from the frozen tracked input.
+It streams all trial records and rebuilds the summary and report.
+It evaluates acceptance only from this rebuilt summary.
+This host replay checks contract agreement.
+It does not authenticate sensor truth or establish field calibration.
 
 ### Runtime resources
 
@@ -427,7 +474,7 @@ confirmation payload.
 | correlation and PID family budget per axis | Implemented as a named fallible derivation that returns a new immutable identity. |
 | `color` presentation flag | Can remain Boolean. It is an inherently binary display predicate without scientific or security data. |
 | report and state facts | `ready`, `elevated`, `decoupled`, `degraded`, `dirty`, and ownership cleanup facts are not configuration. They can remain Boolean under result and state contracts. |
-| Zenoh fields that must equal literal true or false | Can remain foreign-protocol Booleans at decode. Galadriel exposes only the validated secure-profile capability internally. |
+| Zenoh fields that require literal true or false | Can remain foreign-protocol Booleans at decode. Galadriel exposes only the validated secure-profile capability internally. |
 | `TransportMode`, `HandoffOverflowPolicy`, `AdvisoryPolicy`, and `Authorization` | Preserved as named closed choices. |
 
 ## Rust API shape
@@ -461,15 +508,16 @@ impl DetectorConfig {
 }
 ```
 
-Small `Copy` accepted configs can return getters by value. Owned collections must
-return borrowed slices or strings. Builders can consume `self` or use `&mut self`.
-Their `build` operation must return a distinct accepted type.
+Small `Copy` accepted configurations can return getters by value.
+Owned collections **MUST** return borrowed slices or strings.
+Builders can consume `self` or use `&mut self`.
+Their `build` operation **MUST** return a distinct accepted type.
 
-An accepted type must not have a builder conversion that loses its profile
+An accepted type **MUST NOT** have a builder conversion that loses its profile
 source. A conversion can preserve it by recording a custom-profile identity.
 
-Each crate should use a closed `thiserror` enum for configuration errors. Variants
-should cover these conditions:
+Use a closed `thiserror` enum for configuration errors in each crate.
+The variants cover these conditions:
 
 - invalid field or domain
 - inconsistent fields
@@ -478,8 +526,9 @@ should cover these conditions:
 - unknown profile or schema
 - unsupported research and release composition
 
-Errors should contain bounded typed facts. They should not allocate an unbounded
-copy of attacker-controlled configuration text.
+Errors **MUST** contain bounded typed facts.
+They **MUST NOT** allocate an unbounded copy of attacker-controlled configuration
+text.
 
 ## Implemented migration disposition
 
@@ -516,7 +565,7 @@ Remaining compatibility interfaces do not weaken the accepted boundary:
 
 ## Mandatory verification
 
-The final candidate must retain this evidence. This document does not
+The final candidate **MUST** retain this evidence. This document does not
 replace these gates.
 
 ### Positive, negative, boundary, and adversarial tests
@@ -555,17 +604,17 @@ Use an external-crate harness, such as `trybuild`. Prove that callers cannot:
 - pass a PID research suite where a release suite is required
 - create a validated registry, security, or dirty-tree capability
 
-The positive external fixture must build every supported accepted configuration
+The positive external fixture **MUST** build every supported accepted configuration
 through its documented profile or builder path.
 
-`cargo public-api` and a retained API scan must show these properties:
+`cargo public-api` and a retained API scan **MUST** show these properties:
 
 - no public fields on accepted configurations
 - no public unchecked constructors
 - no `bootstrap: bool`
 - no accidental acceptance of raw parameters
 
-The retained scan must cover `galadriel-core` and `galadriel-pid`.
+The retained scan **MUST** cover `galadriel-core` and `galadriel-pid`.
 These crates are the two retained library API profiles for version 0.9.0.
 All-feature workspace checks cover the other experimental library surfaces.
 Separate fuzz-workspace checks cover its binary targets and dependency graph.
@@ -578,13 +627,13 @@ The fuzz workspace has no retained public library API surface.
 - Verify that builder setter order does not change the accepted value or identity
   when final parameters match.
 - Verify that each derivation returns a valid new value or typed error. The source
-  value must remain unchanged.
+  value **MUST** remain unchanged.
 - Verify that resource estimates are monotonic over admitted positive bounds.
   Checked overflow or a fixed ceiling can produce an error.
 - Verify deterministic and exact profile resolution across repeated runs and
   supported targets.
 - Fuzz strict parameters, constructor boundaries, axis derivation, and aggregate
-  preflight. Rejected inputs must not panic or cause unbounded work.
+  preflight. Rejected inputs **MUST NOT** panic or cause unbounded work.
 
 ### Gates and retained evidence
 
@@ -596,14 +645,14 @@ Retain complete results for at least these gates:
 - documentation tests
 - no-default core build
 - fuzz-manifest check
-- bounded fuzz smoke
+- bounded short fuzz run
 - `cargo public-api`
 - schema and configuration tests
 - release auditor
 
 Bind the exact candidate, toolchain, commands, vectors, API diff, review, and
-residual risks in release evidence. Green compilation alone is not sufficient.
-The evidence must include compile-fail, property, malformed-input, aggregate, and
+residual risks in release evidence. Successful compilation alone is not sufficient.
+The evidence **MUST** include compile-fail, property, malformed-input, aggregate, and
 API-scan coverage.
 
 No audited 0.9 interface has a known source-level blocker for public mutable
@@ -628,9 +677,10 @@ Private Rust fields prevent accidental API bypass. They do not stop a modified
 binary or privileged configuration replacement. Conservative work formulas bound
 modeled operations. They do not prove platform latency or allocator behavior.
 
-Strict schemas prevent silent semantic extension. They do not authenticate a
-file. Profile digests identify configuration, not trust. Trust needs signed artifacts
-and authenticated epochs.
+Strict schemas prevent silent semantic extension.
+They do not authenticate a file.
+Profile digests identify configuration, not trust.
+Trust requires signed artifacts and authenticated epochs.
 
 Research PID behavior depends on the exact pinned upstream implementation and its
 restricted domain. A change to these items needs a new aggregate analysis and

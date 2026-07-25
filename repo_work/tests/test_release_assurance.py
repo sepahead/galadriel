@@ -21,7 +21,7 @@ import tempfile
 import time
 import unittest
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from unittest import mock
 
@@ -29,6 +29,7 @@ TOOLS = Path(__file__).resolve().parents[1]
 ROOT = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
 
+import common as common_helpers  # noqa: E402
 from common import (  # noqa: E402
     SAFE_GIT_CONFIGURATION,
     ReviewError,
@@ -45,6 +46,7 @@ from finalize_release import (  # noqa: E402
     RELEASE_DECISION,
     RELEASE_DECISION_SIGNATURE,
     PublicationDurabilityError,
+    PublicationIntegrityError,
     atomic_rename_no_replace,
     cleanup_finalization_inputs,
     emit_closure_bundle,
@@ -109,6 +111,7 @@ from qualify_candidate import (  # noqa: E402
     write_candidate_sandbox_profile,
 )
 from prepare_mutation_evidence import mutation_command  # noqa: E402
+import release_assurance as assurance  # noqa: E402
 from release_assurance import (  # noqa: E402
     ACCEPTANCE_METRIC_DOMAINS,
     BoundedHostResult,
@@ -142,6 +145,7 @@ from release_assurance import (  # noqa: E402
     validate_broad_mutation_receipt,
     validate_decision_input,
     validate_evidence_config_binding,
+    validate_evidence_reference,
     validate_mutation_outcomes,
     validate_mutation_evidence,
     validate_focused_liveness_outcomes,
@@ -1401,6 +1405,7 @@ class FinalizationCandidateControlTests(GitFixture):
 class FileLedgerTests(GitFixture):
     fields = [
         "path",
+        "git_mode",
         "git_blob_id",
         "sha256",
         "bytes",
@@ -1428,6 +1433,7 @@ class FileLedgerTests(GitFixture):
         return [
             {
                 "path": path,
+                "git_mode": item["mode"],
                 "git_blob_id": item["git_blob_id"],
                 "sha256": item["sha256"],
                 "bytes": str(item["bytes"]),
@@ -1515,6 +1521,114 @@ class FileLedgerTests(GitFixture):
                         self.repo,
                         self.commit,
                     )
+
+    def test_completed_ledger_cannot_cross_a_mode_only_candidate_change(self) -> None:
+        completed = self.write(self.rows(), "mode-bound-complete.csv")
+        original = git_tree_inventory(self.repo, self.commit)["README.md"]
+        subprocess.run(
+            ["git", "update-index", "--chmod=+x", "--", "README.md"],
+            cwd=self.repo,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Change tracked mode"],
+            cwd=self.repo,
+            check=True,
+        )
+        mode_commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.repo,
+            text=True,
+        ).strip()
+        changed = git_tree_inventory(self.repo, mode_commit)["README.md"]
+        self.assertEqual(changed["git_blob_id"], original["git_blob_id"])
+        self.assertEqual(original["mode"], "100644")
+        self.assertEqual(changed["mode"], "100755")
+
+        with self.assertRaisesRegex(ReviewError, "mode mismatch"):
+            validate_completed_file_ledger(
+                completed,
+                self.repo,
+                mode_commit,
+            )
+
+    def test_ledger_parse_and_digest_use_the_same_stable_bytes(self) -> None:
+        completed = self.write(self.rows(), "stable-complete.csv")
+        original = completed.read_bytes()
+        real_reader = assurance.read_bounded_regular_file
+
+        def snapshot_then_replace(
+            path: Path, *arguments: object, **keywords: object
+        ) -> bytes:
+            document = real_reader(path, *arguments, **keywords)
+            path.write_bytes(document + b"\n")
+            return document
+
+        with mock.patch.object(
+            assurance,
+            "read_bounded_regular_file",
+            side_effect=snapshot_then_replace,
+        ):
+            result = validate_completed_file_ledger(
+                completed,
+                self.repo,
+                self.commit,
+            )
+        self.assertEqual(result["ledger_sha256"], hashlib.sha256(original).hexdigest())
+        self.assertNotEqual(
+            result["ledger_sha256"],
+            hashlib.sha256(completed.read_bytes()).hexdigest(),
+        )
+
+    def test_ledger_rejects_malformed_widths_and_resource_overflow(self) -> None:
+        completed = self.write(self.rows(), "bounded-complete.csv")
+        valid = completed.read_text(encoding="utf-8")
+        lines = valid.splitlines()
+        self.assertGreaterEqual(len(lines), 3)
+
+        malformed_documents = {
+            "extra": "\n".join([lines[0], lines[1] + ",unexpected", *lines[2:]]) + "\n",
+            "missing": "\n".join([lines[0], lines[1].rsplit(",", 1)[0], *lines[2:]])
+            + "\n",
+        }
+        for name, document in malformed_documents.items():
+            with self.subTest(width=name):
+                path = self.root / f"malformed-{name}.csv"
+                path.write_text(document, encoding="utf-8")
+                with self.assertRaisesRegex(ReviewError, "row 1 is malformed"):
+                    validate_completed_file_ledger(path, self.repo, self.commit)
+
+        completed.write_text(valid, encoding="utf-8")
+        with (
+            mock.patch.object(
+                assurance, "MAX_FILE_LEDGER_BYTES", len(valid.encode("utf-8")) - 1
+            ),
+            self.assertRaisesRegex(ReviewError, "exceeds"),
+        ):
+            validate_completed_file_ledger(completed, self.repo, self.commit)
+
+        with (
+            mock.patch.object(assurance, "MAX_FILE_LEDGER_ROWS", 1),
+            self.assertRaisesRegex(ReviewError, "row limit"),
+        ):
+            validate_completed_file_ledger(completed, self.repo, self.commit)
+
+        with (
+            mock.patch.object(assurance, "MAX_FILE_LEDGER_CELL_BYTES", 1),
+            self.assertRaisesRegex(ReviewError, "cell-size limit"),
+        ):
+            validate_completed_file_ledger(completed, self.repo, self.commit)
+
+        linked = self.root / "linked-complete.csv"
+        linked.symlink_to(completed)
+        with self.assertRaisesRegex(ReviewError, "cannot open|not regular"):
+            validate_completed_file_ledger(linked, self.repo, self.commit)
+
+        if hasattr(os, "mkfifo"):
+            fifo = self.root / "fifo-complete.csv"
+            os.mkfifo(fifo)
+            with self.assertRaisesRegex(ReviewError, "not a regular file"):
+                validate_completed_file_ledger(fifo, self.repo, self.commit)
 
 
 class BindingAndManifestTests(GitFixture):
@@ -1764,6 +1878,104 @@ class BindingAndManifestTests(GitFixture):
         with self.assertRaisesRegex(ReviewError, "empty directory: retained"):
             qualification_tier_inventory(root)
 
+    def test_mutation_file_writer_preserves_failures_and_removes_partial_file(
+        self,
+    ) -> None:
+        real_close = os.close
+        for operation in ("write", "fsync"):
+            with self.subTest(operation=operation):
+                target = self.root / f"failed-{operation}.json"
+                closed: list[int] = []
+
+                def close_then_fail(descriptor: int) -> None:
+                    closed.append(descriptor)
+                    real_close(descriptor)
+                    raise OSError("injected close failure")
+
+                operation_patch = (
+                    mock.patch.object(
+                        qualifier.os,
+                        "write",
+                        side_effect=OSError("injected write failure"),
+                    )
+                    if operation == "write"
+                    else mock.patch.object(
+                        qualifier.os,
+                        "fsync",
+                        side_effect=OSError("injected fsync failure"),
+                    )
+                )
+                with (
+                    operation_patch,
+                    mock.patch.object(
+                        qualifier.os,
+                        "close",
+                        side_effect=close_then_fail,
+                    ),
+                    self.assertRaisesRegex(
+                        ReviewError,
+                        f"injected {operation} failure",
+                    ),
+                ):
+                    qualifier._write_new_mutation_file(
+                        target,
+                        b"captured mutation bytes\n",
+                        label="retained mutation test",
+                    )
+
+                self.assertFalse(target.exists())
+                self.assertEqual(len(closed), 1)
+                with self.assertRaises(OSError):
+                    os.fstat(closed[0])
+
+        target = self.root / "failed-close.json"
+        closed = []
+
+        def close_only_failure(descriptor: int) -> None:
+            closed.append(descriptor)
+            real_close(descriptor)
+            raise OSError("injected close-only failure")
+
+        with (
+            mock.patch.object(
+                qualifier.os,
+                "close",
+                side_effect=close_only_failure,
+            ),
+            self.assertRaisesRegex(ReviewError, "injected close-only failure"),
+        ):
+            qualifier._write_new_mutation_file(
+                target,
+                b"captured mutation bytes\n",
+                label="retained mutation test",
+            )
+        self.assertFalse(target.exists())
+        self.assertEqual(len(closed), 1)
+        with self.assertRaises(OSError):
+            os.fstat(closed[0])
+
+        target = self.root / "successful-write.json"
+        closed = []
+
+        def record_close(descriptor: int) -> None:
+            closed.append(descriptor)
+            real_close(descriptor)
+
+        with mock.patch.object(
+            qualifier.os,
+            "close",
+            side_effect=record_close,
+        ):
+            qualifier._write_new_mutation_file(
+                target,
+                b"captured mutation bytes\n",
+                label="retained mutation test",
+            )
+        self.assertEqual(target.read_bytes(), b"captured mutation bytes\n")
+        self.assertEqual(len(closed), 1)
+        with self.assertRaises(OSError):
+            os.fstat(closed[0])
+
     def test_signed_mutation_manifest_binds_canonical_diff_and_outcomes(self) -> None:
         key = self.root / "mutation-key"
         subprocess.run(
@@ -1930,15 +2142,157 @@ class BindingAndManifestTests(GitFixture):
         }
         manifest.write_bytes(canonical_json(manifest_document))
         signature = sign_file(manifest, key, "galadriel-mutation-evidence")
-        _document, artifacts = validate_mutation_evidence(
-            manifest,
-            signature,
+        rooted_reads: list[str] = []
+        real_rooted_reader = assurance.read_rooted_regular_file
+
+        def record_rooted_read(
+            root: Path,
+            relative: str,
+            **keywords: object,
+        ) -> object:
+            rooted_reads.append(relative)
+            return real_rooted_reader(root, relative, **keywords)
+
+        with mock.patch.object(
+            assurance,
+            "read_rooted_regular_file",
+            side_effect=record_rooted_read,
+        ):
+            validated = validate_mutation_evidence(
+                manifest,
+                signature,
+                allowed_signers=allowed,
+                repo=candidate_repo,
+                commit=repository_commit,
+                tree=repository_tree,
+            )
+        self.assertEqual(len(validated.artifacts), 13)
+        expected_rooted_reads = {
+            manifest.name,
+            signature.name,
+            "git.diff",
+            FOCUSED_MUTATION_RECEIPT,
+            *(item["artifact"]["path"] for item in manifest_document["shards"]),
+            *(
+                item["artifact"]["path"]
+                for item in manifest_document["broad_run_receipts"]
+            ),
+            *(item["artifact"]["path"] for item in manifest_document["focused_checks"]),
+        }
+        self.assertEqual(Counter(rooted_reads), Counter(expected_rooted_reads))
+
+        first_outcomes = self.root / "broad-runs/0-of-4/mutants.out/outcomes.json"
+        first_relative = first_outcomes.relative_to(self.root).as_posix()
+        first_bytes = first_outcomes.read_bytes()
+        manifest_bytes = manifest.read_bytes()
+        signature_bytes = signature.read_bytes()
+        replaced_after_capture = False
+
+        def replace_after_rooted_capture(
+            root: Path,
+            relative: str,
+            **keywords: object,
+        ) -> object:
+            nonlocal replaced_after_capture
+            capture = real_rooted_reader(root, relative, **keywords)
+            if relative == first_relative and not replaced_after_capture:
+                first_outcomes.write_bytes(b"{}")
+                replaced_after_capture = True
+            return capture
+
+        with mock.patch.object(
+            assurance,
+            "read_rooted_regular_file",
+            side_effect=replace_after_rooted_capture,
+        ):
+            captured_before_replacement = validate_mutation_evidence(
+                manifest,
+                signature,
+                allowed_signers=allowed,
+                repo=candidate_repo,
+                commit=repository_commit,
+                tree=repository_tree,
+            )
+        self.assertTrue(replaced_after_capture)
+        self.assertEqual(first_outcomes.read_bytes(), b"{}")
+        captured_artifacts = {
+            artifact.relative: artifact.capture.data
+            for artifact in captured_before_replacement.artifacts
+        }
+        self.assertEqual(captured_artifacts[first_relative], first_bytes)
+
+        manifest.write_bytes(b"{}\n")
+        signature.write_bytes(b"replaced signature\n")
+        retained_output = self.root / "retained-mutation"
+        retained_output.mkdir()
+        retained_records = qualifier.retain_validated_mutation_evidence(
+            captured_before_replacement,
+            output=retained_output,
+        )
+        self.assertEqual(len(retained_records), 13)
+        self.assertEqual(
+            (retained_output / "mutation" / "manifest.json").read_bytes(),
+            manifest_bytes,
+        )
+        self.assertEqual(
+            (retained_output / "mutation" / "manifest.json.sig").read_bytes(),
+            signature_bytes,
+        )
+        self.assertEqual(
+            (retained_output / "mutation" / first_relative).read_bytes(),
+            first_bytes,
+        )
+        retained_validation = validate_mutation_evidence(
+            retained_output / "mutation" / "manifest.json",
+            retained_output / "mutation" / "manifest.json.sig",
             allowed_signers=allowed,
             repo=candidate_repo,
             commit=repository_commit,
             tree=repository_tree,
         )
-        self.assertEqual(len(artifacts), 13)
+        self.assertEqual(len(retained_validation.artifacts), 13)
+
+        tampered_output = self.root / "tampered-mutation"
+        tampered_output.mkdir()
+        tampered_manifest = captured_before_replacement.manifest._replace(
+            capture=captured_before_replacement.manifest.capture._replace(
+                sha256="0" * 64
+            )
+        )
+        with self.assertRaisesRegex(ReviewError, "capture drifted"):
+            qualifier.retain_validated_mutation_evidence(
+                captured_before_replacement._replace(manifest=tampered_manifest),
+                output=tampered_output,
+            )
+        self.assertFalse((tampered_output / "mutation").exists())
+
+        incomplete_output = self.root / "incomplete-mutation"
+        incomplete_output.mkdir()
+        with self.assertRaisesRegex(ReviewError, "incomplete artifact set"):
+            qualifier.retain_validated_mutation_evidence(
+                captured_before_replacement._replace(
+                    artifacts=captured_before_replacement.artifacts[:-1]
+                ),
+                output=incomplete_output,
+            )
+        self.assertFalse((incomplete_output / "mutation").exists())
+
+        manifest.write_bytes(manifest_bytes)
+        signature.write_bytes(signature_bytes)
+        first_outcomes.write_bytes(first_bytes)
+
+        with (
+            mock.patch.object(assurance, "MAX_MUTATION_EVIDENCE_BYTES", 1),
+            self.assertRaisesRegex(ReviewError, "aggregate byte limit"),
+        ):
+            validate_mutation_evidence(
+                manifest,
+                signature,
+                allowed_signers=allowed,
+                repo=candidate_repo,
+                commit=repository_commit,
+                tree=repository_tree,
+            )
 
         retained_diff.unlink()
         with self.assertRaisesRegex(ReviewError, "retained mutation Git diff"):
@@ -1982,7 +2336,6 @@ class BindingAndManifestTests(GitFixture):
             "sha256": hashlib.sha256(valid_receipt).hexdigest(),
             "size_bytes": len(valid_receipt),
         }
-        first_outcomes = self.root / "broad-runs/0-of-4/mutants.out/outcomes.json"
         second_outcomes = self.root / "broad-runs/1-of-4/mutants.out/outcomes.json"
         duplicate_outcomes = first_outcomes.read_bytes()
         second_outcomes.write_bytes(duplicate_outcomes)
@@ -2018,35 +2371,18 @@ class BindingAndManifestTests(GitFixture):
             )
 
     def test_tracked_evidence_config_is_bound_to_accepted_output(self) -> None:
-        source = json.loads(
-            (ROOT / "evidence/galadriel-0.9-candidate.json").read_text()
-        )
+        source_bytes = (ROOT / "evidence/galadriel-0.9-candidate.json").read_bytes()
+        source = json.loads(source_bytes)
         tracked = self.root / "tracked.json"
-        tracked.write_bytes(canonical_json(source))
-        accepted = copy.deepcopy(source)
-        accepted.update(
-            {
-                "classification": "custom_research_evidence",
-                "accepted_profile": "galadriel-evidence/custom-v0.9",
-                "canonical_digest": "1" * 64,
-                "runner_contract": {},
-                "release_suite": {},
-                "preflight_estimate": {},
-                "recorded_preflight_estimate": {},
-                "resource_ceilings": {},
-            }
-        )
-        accepted["detector"]["accepted_profile"] = "custom_evidence_input"
-        accepted["correlation"]["accepted_profile"] = "custom_evidence_input"
-        accepted["correlation"]["axis_family_count"] = 1
-        accepted["recorded_fixture"]["bytes"] = 1
+        tracked.write_bytes(source_bytes)
+        accepted = assurance._accepted_evidence_config_from_source(source)
         output = self.root / "evidence"
         output.mkdir()
         (output / "config.json").write_bytes(canonical_json(accepted))
         source_sha = hashlib.sha256(tracked.read_bytes()).hexdigest()
         accepted_sha = hashlib.sha256((output / "config.json").read_bytes()).hexdigest()
         manifest = {
-            "accepted_config_digest": "1" * 64,
+            "accepted_config_digest": accepted["canonical_digest"],
             "inputs": {
                 "config_source_path": "evidence/galadriel-0.9-candidate.json",
                 "config_source_sha256": source_sha,
@@ -2060,6 +2396,26 @@ class BindingAndManifestTests(GitFixture):
             tracked_relative_path="evidence/galadriel-0.9-candidate.json",
         )
         self.assertEqual(result["tracked_blob_sha256"], source_sha)
+        self.assertEqual(
+            result["accepted_semantic_digest"], accepted["canonical_digest"]
+        )
+
+        altered = copy.deepcopy(accepted)
+        altered["runner_contract"]["bootstrap_profile"] = "another-profile"
+        (output / "config.json").write_bytes(canonical_json(altered))
+        manifest["inputs"]["canonical_config_sha256"] = hashlib.sha256(
+            (output / "config.json").read_bytes()
+        ).hexdigest()
+        (output / "manifest.json").write_bytes(canonical_json(manifest))
+        with self.assertRaisesRegex(ReviewError, "exact derived object"):
+            validate_evidence_config_binding(
+                tracked,
+                output,
+                tracked_relative_path="evidence/galadriel-0.9-candidate.json",
+            )
+
+        (output / "config.json").write_bytes(canonical_json(accepted))
+        manifest["inputs"]["canonical_config_sha256"] = accepted_sha
 
         manifest["inputs"]["config_source_sha256"] = "0" * 64
         (output / "manifest.json").write_bytes(canonical_json(manifest))
@@ -2071,9 +2427,11 @@ class BindingAndManifestTests(GitFixture):
             )
 
     def test_manifest_rejects_digest_mismatch_and_self_reference(self) -> None:
-        artifact = self.root / "artifact.bin"
+        tier = self.root / "manifest-tier"
+        tier.mkdir()
+        artifact = tier / "artifact.bin"
         artifact.write_bytes(b"artifact")
-        manifest = self.root / "manifest.json"
+        manifest = tier / "manifest.json"
         base = {
             "schema": "fixture.v1",
             "tier": "fixture",
@@ -2085,7 +2443,7 @@ class BindingAndManifestTests(GitFixture):
         manifest.write_bytes(canonical_json(base))
         with self.assertRaisesRegex(ReviewError, "digest mismatch"):
             verify_artifact_manifest(
-                self.root,
+                tier,
                 manifest,
                 expected_schema="fixture.v1",
                 forbidden_paths={"manifest.json"},
@@ -2096,7 +2454,7 @@ class BindingAndManifestTests(GitFixture):
         manifest.write_bytes(canonical_json(base))
         with self.assertRaisesRegex(ReviewError, "self-reference"):
             verify_artifact_manifest(
-                self.root,
+                tier,
                 manifest,
                 expected_schema="fixture.v1",
                 forbidden_paths={"manifest.json"},
@@ -2108,15 +2466,317 @@ class BindingAndManifestTests(GitFixture):
                 "size_bytes": 8,
             }
         ]
-        (self.root / "unlisted.bin").write_bytes(b"unlisted")
+        (tier / "unlisted.bin").write_bytes(b"unlisted")
         manifest.write_bytes(canonical_json(base))
         with self.assertRaisesRegex(ReviewError, "omits retained files"):
             verify_artifact_manifest(
-                self.root,
+                tier,
                 manifest,
                 expected_schema="fixture.v1",
                 forbidden_paths={"manifest.json"},
             )
+
+    def test_manifest_enforces_canonical_resource_bounds(self) -> None:
+        def make_tier(
+            name: str, files: dict[str, bytes]
+        ) -> tuple[Path, Path, dict[str, object]]:
+            tier = self.root / name
+            tier.mkdir()
+            rows = []
+            for relative, data in sorted(files.items()):
+                target = tier.joinpath(*relative.split("/"))
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+                rows.append(
+                    {
+                        "path": relative,
+                        "sha256": hashlib.sha256(data).hexdigest(),
+                        "size_bytes": len(data),
+                    }
+                )
+            document: dict[str, object] = {
+                "schema": "fixture.v1",
+                "tier": "fixture",
+                "candidate": {"commit": self.commit, "tree": self.tree},
+                "artifacts": rows,
+            }
+            manifest = tier / "manifest.json"
+            manifest.write_bytes(canonical_json(document))
+            return tier, manifest, document
+
+        tier, manifest, document = make_tier(
+            "bounded-manifest-tier",
+            {"first.bin": b"12", "second.bin": b"34"},
+        )
+        self.assertEqual(
+            verify_artifact_manifest(
+                tier,
+                manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            ),
+            document,
+        )
+
+        manifest_size = manifest.stat().st_size
+        with (
+            mock.patch.object(assurance, "MAX_TIER_MANIFEST_BYTES", manifest_size - 1),
+            self.assertRaisesRegex(ReviewError, "exceeds"),
+        ):
+            verify_artifact_manifest(
+                tier,
+                manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+        for constant, limit, message in (
+            ("MAX_EVIDENCE_JSON_DEPTH", 1, "JSON depth"),
+            ("MAX_EVIDENCE_JSON_NODES", 2, "JSON nodes"),
+        ):
+            with self.subTest(constant=constant):
+                with (
+                    mock.patch.object(assurance, constant, limit),
+                    self.assertRaisesRegex(ReviewError, message),
+                ):
+                    verify_artifact_manifest(
+                        tier,
+                        manifest,
+                        expected_schema="fixture.v1",
+                        forbidden_paths={"manifest.json"},
+                    )
+
+        with (
+            mock.patch.object(assurance, "MAX_TIER_ARTIFACTS", 1),
+            self.assertRaisesRegex(ReviewError, "artifact limit"),
+        ):
+            verify_artifact_manifest(
+                tier,
+                manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+        alias_document = copy.deepcopy(document)
+        alias_rows = alias_document["artifacts"]
+        assert isinstance(alias_rows, list)
+        alias_rows[1]["path"] = "./second.bin"
+        manifest.write_bytes(canonical_json(alias_document))
+        with self.assertRaisesRegex(ReviewError, "not canonical"):
+            verify_artifact_manifest(
+                tier,
+                manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+        manifest.write_bytes(canonical_json(document))
+        with (
+            mock.patch.object(assurance, "MAX_TIER_ARTIFACT_BYTES", 1),
+            self.assertRaisesRegex(ReviewError, "per-file byte limit"),
+        ):
+            verify_artifact_manifest(
+                tier,
+                manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+        actual_bound = copy.deepcopy(document)
+        actual_rows = actual_bound["artifacts"]
+        assert isinstance(actual_rows, list)
+        for row in actual_rows:
+            row["size_bytes"] = 1
+        manifest.write_bytes(canonical_json(actual_bound))
+        with (
+            mock.patch.object(assurance, "MAX_TIER_ARTIFACT_BYTES", 1),
+            self.assertRaisesRegex(ReviewError, "file exceeds"),
+        ):
+            verify_artifact_manifest(
+                tier,
+                manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+        manifest.write_bytes(canonical_json(document))
+        with (
+            mock.patch.object(assurance, "MAX_TIER_AGGREGATE_BYTES", 3),
+            self.assertRaisesRegex(ReviewError, "aggregate byte limit"),
+        ):
+            verify_artifact_manifest(
+                tier,
+                manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+        with (
+            mock.patch.object(assurance, "MAX_TIER_TREE_ENTRIES", 2),
+            self.assertRaisesRegex(ReviewError, "entry limit"),
+        ):
+            verify_artifact_manifest(
+                tier,
+                manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+    def test_manifest_rejects_unsafe_and_incomplete_tree_inventory(self) -> None:
+        def manifest_for(tier: Path, relative: str, data: bytes) -> Path:
+            manifest = tier / "manifest.json"
+            manifest.write_bytes(
+                canonical_json(
+                    {
+                        "schema": "fixture.v1",
+                        "tier": "fixture",
+                        "candidate": {"commit": self.commit, "tree": self.tree},
+                        "artifacts": [
+                            {
+                                "path": relative,
+                                "sha256": hashlib.sha256(data).hexdigest(),
+                                "size_bytes": len(data),
+                            }
+                        ],
+                    }
+                )
+            )
+            return manifest
+
+        outside_file = self.root / "manifest-outside.bin"
+        outside_file.write_bytes(b"outside")
+        outside_directory = self.root / "manifest-outside-directory"
+        outside_directory.mkdir()
+        (outside_directory / "artifact.bin").write_bytes(b"outside")
+
+        cases: list[tuple[str, str, Callable[[Path], None], str]] = [
+            (
+                "final-symlink",
+                "artifact.bin",
+                lambda path: path.symlink_to(outside_file),
+                "symlink",
+            ),
+            (
+                "hardlink",
+                "artifact.bin",
+                lambda path: os.link(outside_file, path),
+                "multiply linked",
+            ),
+        ]
+        if hasattr(os, "mkfifo"):
+            cases.append(("fifo", "artifact.bin", os.mkfifo, "special file"))
+        for name, relative, install, message in cases:
+            with self.subTest(kind=name):
+                tier = self.root / f"manifest-{name}-tier"
+                tier.mkdir()
+                target = tier / relative
+                install(target)
+                manifest = manifest_for(tier, relative, b"outside")
+                with self.assertRaisesRegex(ReviewError, message):
+                    verify_artifact_manifest(
+                        tier,
+                        manifest,
+                        expected_schema="fixture.v1",
+                        forbidden_paths={"manifest.json"},
+                    )
+
+        intermediate = self.root / "manifest-intermediate-link-tier"
+        intermediate.mkdir()
+        (intermediate / "nested").symlink_to(
+            outside_directory, target_is_directory=True
+        )
+        intermediate_manifest = manifest_for(
+            intermediate, "nested/artifact.bin", b"outside"
+        )
+        with self.assertRaisesRegex(ReviewError, "symlink"):
+            verify_artifact_manifest(
+                intermediate,
+                intermediate_manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+        empty_tier = self.root / "manifest-empty-directory-tier"
+        empty_tier.mkdir()
+        (empty_tier / "artifact.bin").write_bytes(b"artifact")
+        (empty_tier / "empty").mkdir()
+        empty_manifest = manifest_for(empty_tier, "artifact.bin", b"artifact")
+        with self.assertRaisesRegex(ReviewError, "empty directory"):
+            verify_artifact_manifest(
+                empty_tier,
+                empty_manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+        unlisted_tier = self.root / "manifest-unlisted-tier"
+        unlisted_tier.mkdir()
+        (unlisted_tier / "artifact.bin").write_bytes(b"artifact")
+        (unlisted_tier / "unlisted.bin").write_bytes(b"unlisted")
+        unlisted_manifest = manifest_for(unlisted_tier, "artifact.bin", b"artifact")
+        with self.assertRaisesRegex(ReviewError, "omits retained files"):
+            verify_artifact_manifest(
+                unlisted_tier,
+                unlisted_manifest,
+                expected_schema="fixture.v1",
+                forbidden_paths={"manifest.json"},
+            )
+
+    def test_evidence_references_use_rooted_no_follow_reads(self) -> None:
+        qualification = self.root / "reference-qualification"
+        nested = qualification / "nested"
+        nested.mkdir(parents=True)
+        artifact = nested / "evidence.json"
+        artifact.write_bytes(b'{"status":"PASS"}\n')
+        digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        reference = {
+            "kind": "qualification_artifact",
+            "path": "nested/evidence.json",
+            "sha256": digest,
+        }
+        validated = validate_evidence_reference(
+            reference,
+            repo=self.repo,
+            commit=self.commit,
+            qualification_root=qualification,
+            review_inputs={},
+        )
+        self.assertEqual(
+            validated,
+            f"qualification_artifact:nested/evidence.json:{digest}",
+        )
+
+        artifact.unlink()
+        artifact.symlink_to(self.root / "missing-reference")
+        with self.assertRaisesRegex(
+            ReviewError, "missing or unsafe|singly linked regular file"
+        ):
+            validate_evidence_reference(
+                reference,
+                repo=self.repo,
+                commit=self.commit,
+                qualification_root=qualification,
+                review_inputs={},
+            )
+
+        review_input = self.root / "review-input.json"
+        review_input.write_bytes(b"review input\n")
+        review_digest = hashlib.sha256(review_input.read_bytes()).hexdigest()
+        review_reference = {
+            "kind": "review_input",
+            "path": "inputs/review-input.json",
+            "sha256": review_digest,
+        }
+        self.assertEqual(
+            validate_evidence_reference(
+                review_reference,
+                repo=self.repo,
+                commit=self.commit,
+                qualification_root=qualification,
+                review_inputs={"inputs/review-input.json": review_input},
+            ),
+            f"review_input:inputs/review-input.json:{review_digest}",
+        )
 
     def test_candidate_replaced_allowed_signer_is_rejected(self) -> None:
         key = self.root / "key"
@@ -2271,6 +2931,67 @@ class BindingAndManifestTests(GitFixture):
                 allowed,
                 "fixture",
             )
+
+    def test_invalid_signature_cannot_use_a_path_verifier_shim(self) -> None:
+        key = self.root / "shim-verification-key"
+        subprocess.run(
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)],
+            check=True,
+        )
+        document = self.root / "shim-document.json"
+        signature = self.root / "shim-document.json.sig"
+        allowed = self.root / "shim-allowed-signers"
+        document.write_text("{}\n", encoding="utf-8")
+        signature.write_text("not an SSH signature\n", encoding="utf-8")
+        derive_external_allowed_signers(key.with_suffix(".pub"), allowed)
+        shim_root = self.root / "signature-shim"
+        shim_root.mkdir()
+        marker = shim_root / "invoked"
+        shim = shim_root / "ssh-keygen"
+        shim.write_text(
+            f"#!/bin/sh\nprintf invoked > {marker}\nexit 0\n",
+            encoding="utf-8",
+        )
+        shim.chmod(0o700)
+
+        with (
+            mock.patch.dict(os.environ, {"PATH": str(shim_root)}),
+            self.assertRaisesRegex(ReviewError, "invalid fixture signature"),
+        ):
+            verify_signature(document, signature, allowed, "fixture")
+        self.assertFalse(marker.exists())
+
+    def test_agent_key_check_cannot_use_a_path_ssh_add_shim(self) -> None:
+        key = self.root / "shim-agent-key"
+        subprocess.run(
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)],
+            check=True,
+        )
+        handle = key.with_suffix(".pub")
+        shim_root = self.root / "agent-shim"
+        shim_root.mkdir()
+        marker = shim_root / "invoked"
+        shim = shim_root / "ssh-add"
+        shim.write_text(
+            "#!/bin/sh\n"
+            f"printf invoked > {marker}\n"
+            f"/bin/cat {handle}\n",
+            encoding="utf-8",
+        )
+        shim.chmod(0o700)
+
+        with (
+            mock.patch.dict(
+                os.environ,
+                {
+                    "PATH": str(shim_root),
+                    "SSH_AUTH_SOCK": str(self.root / "missing-agent.sock"),
+                },
+            ),
+            self.assertRaisesRegex(ReviewError, "cannot inspect ssh-agent"),
+        ):
+            require_agent_backed_public_signing_key(handle)
+        self.assertFalse(marker.exists())
 
 
 class DispositionTests(GitFixture):
@@ -2581,17 +3302,32 @@ class DecisionAndRunnerTests(unittest.TestCase):
             raise KeyboardInterrupt
 
         with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            environment = command_test_environment(root)
+            sandbox = candidate_sandbox_profile(root, worktree=root)
             with (
                 mock.patch(
                     "qualify_candidate._wait_for_launch_gate",
                     side_effect=interrupt,
                 ),
+                mock.patch(
+                    "qualify_candidate.verify_qualification_tool_dispatch",
+                ),
                 self.assertRaises(KeyboardInterrupt),
             ):
                 run_bounded_process(
-                    [sys.executable, "-I", "-c", "import time; time.sleep(20)"],
-                    cwd=Path(directory),
-                    environment=os.environ,
+                    qualifier.sandboxed_argv(
+                        sandbox,
+                        [
+                            sys.executable,
+                            "-I",
+                            "-c",
+                            "import time; time.sleep(20)",
+                        ],
+                        environment=environment,
+                    ),
+                    cwd=root,
+                    environment=environment,
                     timeout_seconds=2,
                     separate_stderr=True,
                 )
@@ -2599,6 +3335,68 @@ class DecisionAndRunnerTests(unittest.TestCase):
         assert candidate_pid is not None
         with self.assertRaises(ProcessLookupError):
             os.kill(candidate_pid, signal.SIGCONT)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS sandbox test")
+    def test_candidate_sandbox_denies_external_signals_and_allows_owned_signals(
+        self,
+    ) -> None:
+        source = """
+import os
+import signal
+import subprocess
+import sys
+
+external = int(sys.argv[1])
+try:
+    os.kill(external, 0)
+except PermissionError:
+    pass
+else:
+    raise SystemExit(10)
+
+os.kill(os.getpid(), 0)
+child = subprocess.Popen(
+    [sys.executable, "-I", "-c", "import time; time.sleep(20)"],
+)
+os.kill(child.pid, signal.SIGTERM)
+child.wait(timeout=3)
+if child.returncode != -signal.SIGTERM:
+    raise SystemExit(11)
+"""
+        helper = subprocess.Popen(
+            [sys.executable, "-I", "-c", "import time; time.sleep(20)"],
+            start_new_session=True,
+        )
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                environment = command_test_environment(root)
+                sandbox = candidate_sandbox_profile(root, worktree=root)
+                profile = sandbox.read_text(encoding="utf-8")
+                self.assertIn("(deny signal)\n", profile)
+                self.assertIn("(allow signal (target self))\n", profile)
+                self.assertIn("(allow signal (target children))\n", profile)
+                result = run_bounded_process(
+                    qualifier.sandboxed_argv(
+                        sandbox,
+                        [sys.executable, "-I", "-c", source, str(helper.pid)],
+                        environment=environment,
+                    ),
+                    cwd=root,
+                    environment=environment,
+                    timeout_seconds=10,
+                    separate_stderr=True,
+                )
+            self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8"))
+            self.assertIsNone(result.containment_error)
+            self.assertIsNone(helper.poll())
+        finally:
+            helper.terminate()
+            try:
+                helper.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                helper.kill()
+                helper.wait(timeout=3)
 
     def test_atomic_failure_record_replaces_a_prior_pass(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -2656,8 +3454,14 @@ class DecisionAndRunnerTests(unittest.TestCase):
         freeze_index = names.index("frozen-audit-inputs-verify")
         audit_index = names.index("release-audit-verify")
         self.assertEqual(freeze_index + 1, audit_index)
-        self.assertEqual(
+        self.assertIn(
+            qualifier.INDEPENDENT_ALLOWED_SIGNERS_PLACEHOLDER,
             BASE_COMMANDS[freeze_index].argv,
+        )
+        trust = Path("/private/review/INDEPENDENT_ALLOWED_SIGNERS")
+        materialized = qualifier.qualification_base_commands(trust)
+        self.assertEqual(
+            materialized[freeze_index].argv,
             (
                 "python3",
                 "repo_work/freeze_audit_inputs.py",
@@ -2667,9 +3471,13 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 "--out",
                 "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json",
                 "--allowed-signers",
-                "release/0.9.0/audit/ALLOWED_SIGNERS",
+                str(trust),
             ),
         )
+        with self.assertRaisesRegex(ReviewError, "independent allowed-signers"):
+            qualifier.qualification_base_commands(
+                Path("release/0.9.0/audit/ALLOWED_SIGNERS")
+            )
 
     def test_release_tool_qualification_matches_the_ci_module_set(self) -> None:
         command = next(
@@ -2678,10 +3486,15 @@ class DecisionAndRunnerTests(unittest.TestCase):
         modules = command.argv[4:]
         expected = (
             "scripts.tests.test_release_audit",
+            "repo_work.tests.test_release_audit_snapshot",
+            "repo_work.tests.test_evidence_batch_transaction",
+            "repo_work.tests.test_file_mode_identity",
             "repo_work.tests.test_package_release_assets",
             "repo_work.tests.test_review_tools",
             "repo_work.tests.test_task_dispositions",
             "repo_work.tests.test_release_assurance",
+            "repo_work.tests.test_candidate_evidence_bundle",
+            "repo_work.tests.test_qualify_candidate_evidence",
             "repo_work.tests.test_finalize_qualification",
             "repo_work.tests.test_qualification_artifacts",
             "repo_work.tests.test_host_process_bounds",
@@ -2754,40 +3567,41 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     ),
                 ),
                 CommandSpec(
-                    "candidate-evidence",
-                    (
-                        "cargo",
-                        "run",
-                        "--release",
-                        "--locked",
-                        "-p",
-                        "galadriel-eval",
-                        "--bin",
-                        "galadriel-evidence",
-                        "--",
-                        "--config",
-                        "evidence/galadriel-0.9-candidate.json",
-                        "--out",
-                        str(recorded_root / "candidate-evidence"),
-                    ),
-                    timeout_seconds=7_200,
+                    "placeholder",
+                    ("true",),
                 ),
             )
             dynamic_by_name = {spec.name: spec for spec in dynamic}
+            evidence_build, evidence_run = qualifier.candidate_evidence_command_specs(
+                target_directory=recorded_root / "target",
+                runner_executable=(
+                    recorded_root / "evidence-runner" / "galadriel-evidence"
+                ),
+                evidence_config="evidence/galadriel-0.9-candidate.json",
+                evidence_output=recorded_root / "candidate-evidence",
+            )
             specs = [
                 dynamic_by_name["verify-commit-signature-external-key"],
                 dynamic_by_name["tracked-source-inventory"],
                 dynamic_by_name["review-packets"],
                 dynamic_by_name["claim-language-inventory"],
-                *BASE_COMMANDS,
-                dynamic_by_name["candidate-evidence"],
+                *qualifier.qualification_base_commands(Path(trust)),
+                evidence_build,
+                evidence_run,
                 *DEEP_COMMANDS,
             ]
             commands = []
             manifest = {}
             candidate_policy_sha256 = "a" * 64
             dependency_fetch_policy_sha256 = "b" * 64
+            git_executable = Path(
+                "/Applications/Xcode.app/Contents/Developer/usr/bin/git"
+            )
             for index, spec in enumerate(specs, 1):
+                executed_argv = qualifier.qualification_executed_argv(
+                    spec.argv,
+                    git_executable=git_executable,
+                )
                 relative = f"logs/{index:02d}-{spec.name}.log"
                 sandbox = {
                     "executor": "/usr/bin/sandbox-exec",
@@ -2803,18 +3617,19 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     ),
                 }
                 header = {
-                    "argv": list(spec.argv),
+                    "argv": executed_argv,
                     "cwd": spec.cwd,
                     "environment_overrides": dict(spec.environment),
                     "sandbox": sandbox,
                     "started_at": "2026-07-14T00:00:00.000+00:00",
+                    "subject_executable": spec.subject_executable,
                     "timeout_seconds": spec.timeout_seconds,
                 }
                 log = root / relative
                 combined_output = b"PASS\n"
                 receipt = {
                     "name": spec.name,
-                    "argv": list(spec.argv),
+                    "argv": executed_argv,
                     "cwd": spec.cwd,
                     "environment_overrides": dict(spec.environment),
                     "sandbox": sandbox,
@@ -2831,6 +3646,22 @@ class DecisionAndRunnerTests(unittest.TestCase):
                         combined_output
                     ).hexdigest(),
                     "combined_output_size_bytes": len(combined_output),
+                    "subject_executable": (
+                        None
+                        if spec.subject_executable is None
+                        else {
+                            "status": "UNCHANGED",
+                            "identity": {
+                                "invoked_path": spec.subject_executable,
+                                "resolved_path": spec.subject_executable,
+                                "sha256": "c" * 64,
+                                "size_bytes": 1_024,
+                                "uid": 501,
+                                "gid": 20,
+                                "mode": 0o500,
+                            },
+                        }
+                    ),
                 }
                 receipt = write_receipt_log(
                     log,
@@ -2851,7 +3682,21 @@ class DecisionAndRunnerTests(unittest.TestCase):
                 qualification_root=root,
                 sandbox_policy_sha256=candidate_policy_sha256,
                 dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
+                git_executable=git_executable,
+                allowed_signers_snapshot=Path(trust),
             )
+            logical_git = copy.deepcopy(commands)
+            logical_git[0]["argv"][0] = "git"
+            with self.assertRaisesRegex(ReviewError, "commit-verification command"):
+                validate_qualification_commands(
+                    logical_git,
+                    manifest_artifacts=manifest,
+                    qualification_root=root,
+                    sandbox_policy_sha256=candidate_policy_sha256,
+                    dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
+                    git_executable=git_executable,
+                    allowed_signers_snapshot=Path(trust),
+                )
             wrong_output = copy.deepcopy(commands)
             wrong_output[1]["argv"][-1] = "/tmp/another-qualification/source-inventory"
             with self.assertRaisesRegex(ReviewError, "another output directory"):
@@ -2861,6 +3706,8 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     qualification_root=root,
                     sandbox_policy_sha256=candidate_policy_sha256,
                     dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
+                    git_executable=git_executable,
+                    allowed_signers_snapshot=Path(trust),
                 )
             commands[5]["argv"] = ["true"]
             with self.assertRaisesRegex(ReviewError, "command contract drifted"):
@@ -2870,6 +3717,8 @@ class DecisionAndRunnerTests(unittest.TestCase):
                     qualification_root=root,
                     sandbox_policy_sha256=candidate_policy_sha256,
                     dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
+                    git_executable=git_executable,
+                    allowed_signers_snapshot=Path(trust),
                 )
 
     def test_mutation_outcomes_are_nonvacuous_and_internally_consistent(self) -> None:
@@ -3060,8 +3909,113 @@ class DecisionAndRunnerTests(unittest.TestCase):
             linked = Path(directory) / "linked" / "outcomes.json"
             linked.parent.mkdir()
             linked.symlink_to(path)
-            with self.assertRaisesRegex(ReviewError, "must be outcomes.json"):
+            with self.assertRaisesRegex(ReviewError, "missing or unsafe"):
                 validate_mutation_outcomes(linked, "0/4")
+
+    def test_mutation_outcomes_reject_rooted_hazards_and_races(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            document = canonical_json(broad_outcomes_document())
+            outside = root / "outside.json"
+            outside.write_bytes(document)
+
+            final_link = root / "final-link" / "outcomes.json"
+            final_link.parent.mkdir()
+            final_link.symlink_to(outside)
+            with self.assertRaisesRegex(ReviewError, "missing or unsafe"):
+                validate_mutation_outcomes(final_link, "0/4")
+
+            outside_directory = root / "outside-directory"
+            outside_directory.mkdir()
+            (outside_directory / "outcomes.json").write_bytes(document)
+            intermediate = root / "intermediate-link"
+            intermediate.symlink_to(outside_directory, target_is_directory=True)
+            with self.assertRaisesRegex(ReviewError, "root is missing or unsafe"):
+                validate_mutation_outcomes(intermediate / "outcomes.json", "0/4")
+
+            hardlink = root / "hardlink" / "outcomes.json"
+            hardlink.parent.mkdir()
+            os.link(outside, hardlink)
+            with self.assertRaisesRegex(ReviewError, "singly linked regular file"):
+                validate_mutation_outcomes(hardlink, "0/4")
+
+            if hasattr(os, "mkfifo"):
+                fifo = root / "fifo" / "outcomes.json"
+                fifo.parent.mkdir()
+                os.mkfifo(fifo)
+                with self.assertRaisesRegex(ReviewError, "singly linked regular file"):
+                    validate_mutation_outcomes(fifo, "0/4")
+
+            case_root = root / "case-alias"
+            case_root.mkdir()
+            stored = case_root / "Outcomes.json"
+            stored.write_bytes(document)
+            alias = case_root / "outcomes.json"
+            try:
+                aliases_same_file = alias.exists() and os.path.samefile(stored, alias)
+            except OSError:
+                aliases_same_file = False
+            if aliases_same_file:
+                with self.assertRaisesRegex(ReviewError, "canonical spelling"):
+                    validate_mutation_outcomes(alias, "0/4")
+
+            race_root = root / "content-race"
+            race_root.mkdir()
+            race_target = race_root / "outcomes.json"
+            race_target.write_bytes(document)
+            race_inode = race_target.stat().st_ino
+            real_fstat = common_helpers.os.fstat
+            file_checks = 0
+
+            def mutate_same_size(descriptor: int) -> os.stat_result:
+                nonlocal file_checks
+                metadata = real_fstat(descriptor)
+                if metadata.st_ino == race_inode and stat.S_ISREG(metadata.st_mode):
+                    file_checks += 1
+                    if file_checks == 2:
+                        race_target.write_bytes(b" " * len(document))
+                        metadata = real_fstat(descriptor)
+                return metadata
+
+            with (
+                mock.patch.object(
+                    common_helpers.os,
+                    "fstat",
+                    side_effect=mutate_same_size,
+                ),
+                self.assertRaisesRegex(ReviewError, "changed while"),
+            ):
+                validate_mutation_outcomes(race_target, "0/4")
+
+            live_root = root / "live-root"
+            live_root.mkdir()
+            (live_root / "outcomes.json").write_bytes(document)
+            replacement = root / "replacement-root"
+            replacement.mkdir()
+            (replacement / "outcomes.json").write_bytes(document)
+            displaced = root / "displaced-root"
+            live_inode = live_root.stat().st_ino
+            root_checks = 0
+
+            def replace_root(descriptor: int) -> os.stat_result:
+                nonlocal root_checks
+                metadata = real_fstat(descriptor)
+                if metadata.st_ino == live_inode and stat.S_ISDIR(metadata.st_mode):
+                    root_checks += 1
+                    if root_checks == 3:
+                        live_root.rename(displaced)
+                        replacement.rename(live_root)
+                return metadata
+
+            with (
+                mock.patch.object(
+                    common_helpers.os,
+                    "fstat",
+                    side_effect=replace_root,
+                ),
+                self.assertRaisesRegex(ReviewError, "root was replaced|root changed"),
+            ):
+                validate_mutation_outcomes(live_root / "outcomes.json", "0/4")
 
     def test_focused_mutation_outcomes_bind_the_direct_test_and_exact_set(self) -> None:
         check = MUTATION_LIVENESS_CHECKS[0]
@@ -3312,6 +4266,31 @@ class DecisionAndRunnerTests(unittest.TestCase):
         acceptance = focused_liveness_mutation_command(MUTATION_LIVENESS_CHECKS[2])
         self.assertEqual(acceptance[-3:], ["--", "--bin", "galadriel-evidence"])
 
+    def test_mutation_environment_binds_linux_candidate_tree_containment(
+        self,
+    ) -> None:
+        self.assertEqual(
+            MUTATION_ENVIRONMENT_CONTRACT["schema"],
+            "galadriel.mutation-environment.v2",
+        )
+        self.assertEqual(
+            MUTATION_ENVIRONMENT_CONTRACT["process_containment"],
+            {
+                "mode": "LINUX_CANDIDATE_TREE",
+                "launch_gate": "STOP_BEFORE_EXEC",
+                "platform": "LINUX_PROCFS_PIDFD_CHILD_SUBREAPER",
+                "subreaper_ownership": "SERIALIZED_PROCESS_LOCAL",
+                "root_reap": "AFTER_CANDIDATE_TREE_EXTINCTION",
+                "unsupported_platform": "FAIL_BEFORE_SPAWN",
+                "uninterruptible_process": "FAIL_CLOSED",
+                "isolation_scope": "NOT_CGROUP_CONTAINER_OR_DEPLOYMENT_ISOLATION",
+            },
+        )
+        self.assertIs(
+            FOCUSED_MUTATION_ENVIRONMENT_CONTRACT,
+            MUTATION_ENVIRONMENT_CONTRACT,
+        )
+
     def test_broad_receipt_rejects_execution_contract_drift(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -3355,6 +4334,9 @@ class DecisionAndRunnerTests(unittest.TestCase):
             wrong_outcome = copy.deepcopy(valid)
             wrong_outcome["outcomes"]["sha256"] = "0" * 64
             variants.append(("outcome", wrong_outcome, "outcome digest mismatch"))
+            aliased_outcome = copy.deepcopy(valid)
+            aliased_outcome["outcomes"]["path"] = "./mutants.out/outcomes.json"
+            variants.append(("outcome alias", aliased_outcome, "another outcome path"))
             wrong_exit = copy.deepcopy(valid)
             wrong_exit["exit_code"] = 1
             variants.append(("exit", wrong_exit, "zero exit status"))
@@ -3655,7 +4637,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
             preflush_output = root / "preflush-output"
             with (
                 mock.patch(
-                    "finalize_release.fsync_tree",
+                    "finalize_release._walk_staged_tree",
                     side_effect=OSError("injected pre-publication failure"),
                 ),
                 self.assertRaisesRegex(OSError, "injected pre-publication"),
@@ -3716,24 +4698,29 @@ class DecisionAndRunnerTests(unittest.TestCase):
             (staging / "artifact").write_bytes(b"complete\n")
             output = root / "closure"
             events: list[str] = []
-            real_fsync_tree = sys.modules["finalize_release"].fsync_tree
-            real_rename = atomic_rename_no_replace
+            finalize_module = sys.modules["finalize_release"]
+            real_walk = finalize_module._walk_staged_tree
+            real_rename = finalize_module._atomic_rename_no_replace_at
 
-            def record_fsync(path: Path) -> None:
-                events.append("fsync")
-                real_fsync_tree(path)
+            def record_walk(descriptor: int, *, synchronize: bool) -> dict[str, object]:
+                if synchronize:
+                    events.append("fsync")
+                return real_walk(descriptor, synchronize=synchronize)
 
             def guard() -> None:
                 events.append("guard")
 
-            def record_rename(source: Path, destination: Path) -> None:
+            def record_rename(*arguments: object, **keywords: object) -> None:
                 events.append("rename")
-                real_rename(source, destination)
+                real_rename(*arguments, **keywords)
 
             with (
-                mock.patch("finalize_release.fsync_tree", side_effect=record_fsync),
                 mock.patch(
-                    "finalize_release.atomic_rename_no_replace",
+                    "finalize_release._walk_staged_tree",
+                    side_effect=record_walk,
+                ),
+                mock.patch(
+                    "finalize_release._atomic_rename_no_replace_at",
                     side_effect=record_rename,
                 ),
             ):
@@ -3759,6 +4746,157 @@ class DecisionAndRunnerTests(unittest.TestCase):
             self.assertTrue(blocked_staging.is_dir())
             self.assertFalse(os.path.lexists(blocked_output))
 
+    def test_fsync_tree_closes_parent_chain_after_identity_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            staging = root / ".closure.staging"
+            staging.mkdir()
+            (staging / "artifact").write_bytes(b"complete\n")
+            finalize_module = sys.modules["finalize_release"]
+            real_open_chain = finalize_module._open_directory_chain
+            real_identity = finalize_module.rooted_path_identity
+            opened_descriptors: list[int] = []
+
+            def record_chain(*arguments: object, **keywords: object) -> object:
+                chain = real_open_chain(*arguments, **keywords)
+                opened_descriptors.extend(entry[0] for entry in chain)
+                return chain
+
+            def fail_after_chain(metadata: os.stat_result) -> object:
+                if opened_descriptors:
+                    raise OSError(errno.EIO, "injected identity failure")
+                return real_identity(metadata)
+
+            with (
+                mock.patch(
+                    "finalize_release._open_directory_chain",
+                    side_effect=record_chain,
+                ),
+                mock.patch(
+                    "finalize_release.rooted_path_identity",
+                    side_effect=fail_after_chain,
+                ),
+                self.assertRaisesRegex(OSError, "injected identity failure"),
+            ):
+                finalize_module.fsync_tree(staging)
+
+            self.assertTrue(opened_descriptors)
+            for descriptor in opened_descriptors:
+                with self.assertRaises(OSError):
+                    os.fstat(descriptor)
+
+    def test_publication_rejects_tree_hazards_and_guard_replacement(self) -> None:
+        def reject_tree(
+            name: str,
+            install: Callable[[Path], None],
+            message: str,
+        ) -> None:
+            with self.subTest(hazard=name):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    staging = root / ".closure.staging"
+                    staging.mkdir()
+                    install(staging)
+                    output = root / "closure"
+                    with self.assertRaisesRegex(ReviewError, message):
+                        publish_staged_output(staging, output)
+                    self.assertTrue(staging.is_dir())
+                    self.assertFalse(os.path.lexists(output))
+
+        reject_tree(
+            "intermediate link",
+            lambda staging: (staging / "linked").symlink_to(
+                staging.parent,
+                target_is_directory=True,
+            ),
+            "symlink",
+        )
+
+        def install_hardlinks(staging: Path) -> None:
+            first = staging / "first"
+            first.write_bytes(b"same inode\n")
+            os.link(first, staging / "second")
+
+        reject_tree("hard links", install_hardlinks, "multiply linked")
+        reject_tree(
+            "unsafe name",
+            lambda staging: (staging / "unsafe\nname").write_bytes(b"unsafe\n"),
+            "control character",
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            staging = root / ".closure.staging"
+            staging.mkdir()
+            artifact = staging / "artifact"
+            artifact.write_bytes(b"before\n")
+            output = root / "closure"
+
+            def mutate_content() -> None:
+                artifact.write_bytes(b"after!\n")
+
+            with self.assertRaisesRegex(
+                ReviewError, "changed during publication guard"
+            ):
+                publish_staged_output(
+                    staging,
+                    output,
+                    pre_publish_guard=mutate_content,
+                )
+            self.assertTrue(staging.is_dir())
+            self.assertFalse(os.path.lexists(output))
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            staging = root / ".closure.staging"
+            staging.mkdir()
+            (staging / "artifact").write_bytes(b"complete\n")
+            displaced = root / ".displaced.staging"
+            output = root / "closure"
+
+            def replace_staging() -> None:
+                staging.rename(displaced)
+                staging.mkdir()
+                (staging / "artifact").write_bytes(b"complete\n")
+
+            with self.assertRaisesRegex(ReviewError, "staging.*changed|replaced"):
+                publish_staged_output(
+                    staging,
+                    output,
+                    pre_publish_guard=replace_staging,
+                )
+            self.assertTrue(staging.is_dir())
+            self.assertTrue(displaced.is_dir())
+            self.assertFalse(os.path.lexists(output))
+
+    def test_publication_rejects_parent_chain_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            parent = base / "publication-parent"
+            parent.mkdir()
+            staging = parent / ".closure.staging"
+            staging.mkdir()
+            (staging / "artifact").write_bytes(b"complete\n")
+            displaced_parent = base / "displaced-parent"
+            output = parent / "closure"
+
+            def replace_parent() -> None:
+                parent.rename(displaced_parent)
+                parent.mkdir()
+
+            with self.assertRaisesRegex(
+                ReviewError,
+                "parent changed|parent.*replaced|path was replaced",
+            ):
+                publish_staged_output(
+                    staging,
+                    output,
+                    pre_publish_guard=replace_parent,
+                )
+            self.assertTrue((displaced_parent / staging.name).is_dir())
+            self.assertFalse(os.path.lexists(output))
+            self.assertFalse(os.path.lexists(displaced_parent / output.name))
+
     def test_publication_durability_opens_files_and_directories_nonblocking(
         self,
     ) -> None:
@@ -3769,22 +4907,87 @@ class DecisionAndRunnerTests(unittest.TestCase):
             nested.mkdir(parents=True)
             (nested / "artifact.json").write_text("{}\n", encoding="utf-8")
             output = root / "closure"
-            real_open = os.open
-            with mock.patch("finalize_release.os.open", wraps=real_open) as opened:
+            finalize_module = sys.modules["finalize_release"]
+            real_flags = finalize_module._durability_descriptor_flags
+            observed_flags: list[tuple[bool, int]] = []
+
+            def record_flags(*, directory: bool) -> int:
+                flags = real_flags(directory=directory)
+                observed_flags.append((directory, flags))
+                return flags
+
+            with mock.patch(
+                "finalize_release._durability_descriptor_flags",
+                side_effect=record_flags,
+            ):
                 publish_staged_output(staging, output)
             self.assertTrue(output.is_dir())
-            self.assertGreaterEqual(opened.call_count, 4)
+            self.assertGreaterEqual(len(observed_flags), 4)
             self.assertTrue(
-                all(call.args[1] & os.O_NONBLOCK for call in opened.call_args_list)
+                all(flags & os.O_NONBLOCK for _directory, flags in observed_flags)
             )
             self.assertTrue(
-                all(call.args[1] & os.O_NOFOLLOW for call in opened.call_args_list)
+                all(flags & os.O_NOFOLLOW for _directory, flags in observed_flags)
             )
-            directory_calls = [
-                call for call in opened.call_args_list if call.args[1] & os.O_DIRECTORY
+            directory_flags = [
+                flags for directory, flags in observed_flags if directory
             ]
-            self.assertGreaterEqual(len(directory_calls), 3)
-            self.assertTrue(opened.call_args_list[-1].args[1] & os.O_DIRECTORY)
+            self.assertGreaterEqual(len(directory_flags), 3)
+            self.assertTrue(all(flags & os.O_DIRECTORY for flags in directory_flags))
+            self.assertTrue(
+                all(
+                    not flags & os.O_DIRECTORY
+                    for directory, flags in observed_flags
+                    if not directory
+                )
+            )
+
+    def test_post_rename_destination_replacement_is_not_durability_status(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            staging = root / ".closure.staging"
+            staging.mkdir()
+            (staging / "complete.json").write_text(
+                "complete\n",
+                encoding="utf-8",
+            )
+            output = root / "closure"
+            displaced = root / "displaced-complete-output"
+            finalize_module = sys.modules["finalize_release"]
+            real_rename = finalize_module._atomic_rename_no_replace_at
+
+            def replace_after_rename(
+                *arguments: object,
+                **keywords: object,
+            ) -> None:
+                real_rename(*arguments, **keywords)
+                output.rename(displaced)
+                output.mkdir()
+                (output / "replacement.json").write_text(
+                    "replacement\n",
+                    encoding="utf-8",
+                )
+
+            with (
+                mock.patch(
+                    "finalize_release._atomic_rename_no_replace_at",
+                    side_effect=replace_after_rename,
+                ),
+                self.assertRaises(PublicationIntegrityError),
+            ):
+                publish_staged_output(staging, output)
+
+            self.assertFalse(staging.exists())
+            self.assertEqual(
+                (displaced / "complete.json").read_text(encoding="utf-8"),
+                "complete\n",
+            )
+            self.assertEqual(
+                (output / "replacement.json").read_text(encoding="utf-8"),
+                "replacement\n",
+            )
 
     def test_post_rename_sync_failure_retains_only_complete_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -3793,11 +4996,29 @@ class DecisionAndRunnerTests(unittest.TestCase):
             staging.mkdir()
             (staging / "complete.json").write_text("complete\n", encoding="utf-8")
             output = root / "closure"
+            finalize_module = sys.modules["finalize_release"]
+            real_rename = finalize_module._atomic_rename_no_replace_at
+            real_fsync = os.fsync
+            renamed = False
+
+            def record_rename(*arguments: object, **keywords: object) -> None:
+                nonlocal renamed
+                real_rename(*arguments, **keywords)
+                renamed = True
+
+            def fail_parent_sync(descriptor: int) -> None:
+                if renamed:
+                    raise OSError("injected parent sync failure")
+                real_fsync(descriptor)
+
             with (
-                mock.patch("finalize_release.fsync_tree"),
+                mock.patch(
+                    "finalize_release._atomic_rename_no_replace_at",
+                    side_effect=record_rename,
+                ),
                 mock.patch(
                     "finalize_release.os.fsync",
-                    side_effect=OSError("injected parent sync failure"),
+                    side_effect=fail_parent_sync,
                 ),
                 self.assertRaises(PublicationDurabilityError),
             ):
@@ -3812,12 +5033,46 @@ class DecisionAndRunnerTests(unittest.TestCase):
             close_staging.mkdir()
             (close_staging / "complete.json").write_text("complete\n", encoding="utf-8")
             close_output = root / "close-failure-output"
+            real_close = os.close
+            real_open_bound = finalize_module._open_bound_directory
+            renamed = False
+            close_failed = False
+            staging_descriptor: int | None = None
+
+            def record_close_rename(*arguments: object, **keywords: object) -> None:
+                nonlocal renamed
+                real_rename(*arguments, **keywords)
+                renamed = True
+
+            def record_staging_descriptor(
+                *arguments: object,
+                **keywords: object,
+            ) -> tuple[int, object]:
+                nonlocal staging_descriptor
+                result = real_open_bound(*arguments, **keywords)
+                if keywords.get("label") == "finalization staging":
+                    staging_descriptor = result[0]
+                return result
+
+            def fail_postrename_close(descriptor: int) -> None:
+                nonlocal close_failed
+                real_close(descriptor)
+                if renamed and descriptor == staging_descriptor and not close_failed:
+                    close_failed = True
+                    raise OSError("injected parent close failure")
+
             with (
-                mock.patch("finalize_release.fsync_tree"),
-                mock.patch("finalize_release.os.fsync"),
+                mock.patch(
+                    "finalize_release._open_bound_directory",
+                    side_effect=record_staging_descriptor,
+                ),
+                mock.patch(
+                    "finalize_release._atomic_rename_no_replace_at",
+                    side_effect=record_close_rename,
+                ),
                 mock.patch(
                     "finalize_release.os.close",
-                    side_effect=OSError("injected parent close failure"),
+                    side_effect=fail_postrename_close,
                 ),
                 self.assertRaises(PublicationDurabilityError),
             ):
@@ -4620,6 +5875,7 @@ class DecisionAndRunnerTests(unittest.TestCase):
             "commands": [],
             "auxiliary_commands": [],
             "acceptance": {},
+            "candidate_evidence_validation": {},
             "evidence_config_binding": {},
             "source_archive": {},
             "cargo_metadata": {},
@@ -5381,40 +6637,55 @@ class DecisionAndRunnerTests(unittest.TestCase):
             ).strip()
             subprocess.run(["git", "config", "tar.umask", "0077"], cwd=root, check=True)
             environment = command_test_environment(root)
-            with portable_test_process_patch():
-                record = source_archive(
-                    root,
-                    commit,
-                    root / "canonical.tar.gz",
-                    environment,
-                )
-            self.assertEqual(record["tracked_entries"], 1)
+            sandbox = root / "trusted-source-archive-fixture.sb"
+            sandbox.write_text("test-only sandbox fixture\n", encoding="utf-8")
 
-            archive_runner = (
-                run_bounded_process
-                if sys.platform == "darwin"
-                else run_portable_test_process
-            )
-
-            def run_with_wrong_mode(
-                argv: list[str] | tuple[str, ...], **kwargs: object
-            ) -> object:
-                changed = list(argv)
-                if "tar.umask=0022" in changed:
-                    changed[changed.index("tar.umask=0022")] = "tar.umask=0077"
-                return archive_runner(changed, **kwargs)
+            def trusted_fixture_argv(
+                _profile: Path,
+                argv: list[str] | tuple[str, ...],
+                **_kwargs: object,
+            ) -> list[str]:
+                return list(argv)
 
             with mock.patch(
-                "qualify_candidate.run_bounded_process",
-                side_effect=run_with_wrong_mode,
+                "qualify_candidate.sandboxed_argv",
+                side_effect=trusted_fixture_argv,
             ):
-                with self.assertRaisesRegex(ReviewError, "another type or mode"):
-                    source_archive(
+                with mock.patch(
+                    "qualify_candidate.run_bounded_process",
+                    side_effect=run_portable_test_process,
+                ):
+                    record = source_archive(
                         root,
                         commit,
-                        root / "wrong-mode.tar.gz",
+                        root / "canonical.tar.gz",
                         environment,
+                        sandbox_profile=sandbox,
                     )
+                self.assertEqual(record["tracked_entries"], 1)
+
+                archive_runner = run_portable_test_process
+
+                def run_with_wrong_mode(
+                    argv: list[str] | tuple[str, ...], **kwargs: object
+                ) -> object:
+                    changed = list(argv)
+                    if "tar.umask=0022" in changed:
+                        changed[changed.index("tar.umask=0022")] = "tar.umask=0077"
+                    return archive_runner(changed, **kwargs)
+
+                with mock.patch(
+                    "qualify_candidate.run_bounded_process",
+                    side_effect=run_with_wrong_mode,
+                ):
+                    with self.assertRaisesRegex(ReviewError, "another type or mode"):
+                        source_archive(
+                            root,
+                            commit,
+                            root / "wrong-mode.tar.gz",
+                            environment,
+                            sandbox_profile=sandbox,
+                        )
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
     def test_timeout_kills_child_process_group(self) -> None:

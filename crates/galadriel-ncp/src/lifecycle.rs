@@ -17,9 +17,9 @@ use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::fmt;
 
 use galadriel_core::{
-    assess_default, ClockDomain, CorrConfig, DefaultReport, DetectorConfig, EpochId, Modality,
-    ProducerAxisFamilyPolicy, ProducerId, ReleaseSuite, ReleaseSuiteParams, SessionId, StreamId,
-    StreamPosition,
+    assess_default, AssessmentScope, ClockDomain, CorrConfig, DefaultReport, DetectorConfig,
+    EpochId, Modality, ProducerAxisFamilyPolicy, ProducerId, ReleaseSuite, ReleaseSuiteParams,
+    SessionId, StreamId, StreamPosition,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256};
@@ -367,9 +367,9 @@ impl LifecycleTransition {
 ///
 /// The frame digest binds the complete assembled frame. The optional assessment
 /// digest binds the accepted suite and every field in the serialized assessment
-/// vector, including exact numeric report details. A caller retaining the frame
-/// history and immutable suite can recompute those reports and compare the
-/// digest. Receipts are held in memory only.
+/// vector. This includes the assessment scope and exact numeric report details.
+/// A caller with the frame history and immutable suite can recompute the reports.
+/// The caller can then compare the digest. Receipts are held in memory only.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LifecycleReceipt {
@@ -491,16 +491,77 @@ impl LifecycleReceipt {
         .is_ok_and(|digest| digest == self.digest)
     }
 
-    /// Recompute and compare the exact serialized assessment evidence.
+    /// Verify bounded assessment evidence against this receipt and release suite.
     ///
-    /// The digest covers the release-suite identity and every serialized field
-    /// of every assessment, including numeric baseline/correlation report
-    /// fields. This remains an integrity/recomputation check, not authentication.
+    /// The method first verifies the receipt shape and digest. It checks the
+    /// assessment count, track order, wrapper fields, and abstention sets. Each
+    /// evaluated report must match the release suite, producer, position, track,
+    /// and sequence. The final digest covers every serialized field.
+    ///
+    /// This is an integrity and recomputation check. It does not authenticate the
+    /// writer. It does not provide durable retention.
     pub fn verifies_assessments(
         &self,
         release_suite: &ReleaseSuite,
         assessments: &[LifecycleAssessment],
     ) -> bool {
+        if !self.has_valid_detector_shape()
+            || !self.verifies()
+            || assessments.len() > release_suite.detector().max_tracks()
+        {
+            return false;
+        }
+
+        let mut previous_track = None;
+        for assessment in assessments {
+            let (track_id, fusion_seq) = match assessment {
+                LifecycleAssessment::Evaluated {
+                    track_id,
+                    fusion_seq,
+                    history_reset,
+                    report,
+                } => {
+                    if (self.transition.resets_history() && !*history_reset)
+                        || report.suite_identity() != release_suite.identity()
+                        || report.assessment_binding().suite_identity() != release_suite.identity()
+                        || report.assessment_scope().producer_id() != &self.producer_id
+                        || report.assessment_scope().position() != &self.position
+                        || report.assessment_binding().scope() != report.assessment_scope()
+                        || report.baseline().track_id().get() != *track_id
+                        || report.baseline().sequence().get() != *fusion_seq
+                    {
+                        return false;
+                    }
+                    (*track_id, *fusion_seq)
+                }
+                LifecycleAssessment::Abstained {
+                    track_id,
+                    fusion_seq,
+                    unavailable_modalities,
+                } => {
+                    if unavailable_modalities.is_empty()
+                        || unavailable_modalities.len() > Modality::ALL.len()
+                        || unavailable_modalities
+                            .iter()
+                            .any(|modality| !release_suite.expected_modalities().contains(modality))
+                        || !unavailable_modalities
+                            .windows(2)
+                            .all(|pair| modality_rank(pair[0]) < modality_rank(pair[1]))
+                    {
+                        return false;
+                    }
+                    (*track_id, *fusion_seq)
+                }
+            };
+            if track_id > galadriel_core::JSON_SAFE_INTEGER_MAX
+                || previous_track.is_some_and(|previous| previous >= track_id)
+                || fusion_seq != self.position.sequence().get()
+            {
+                return false;
+            }
+            previous_track = Some(track_id);
+        }
+
         self.assessment_digest.is_some_and(|expected| {
             assessment_digest(release_suite, assessments).is_ok_and(|actual| actual == expected)
         })
@@ -538,7 +599,7 @@ impl LifecycleReceipt {
     }
 }
 
-/// Accepted frame transition and the assessments produced inside it.
+/// Accepted frame transition with its receipt and ordered assessments.
 #[derive(Debug, Clone)]
 pub struct LifecycleTransitionOutcome {
     receipt: LifecycleReceipt,
@@ -546,12 +607,12 @@ pub struct LifecycleTransitionOutcome {
 }
 
 impl LifecycleTransitionOutcome {
-    /// Receipt committed after every assessment completed successfully.
+    /// Receipt committed after all assessments completed successfully.
     pub const fn receipt(&self) -> &LifecycleReceipt {
         &self.receipt
     }
 
-    /// Track assessments bound to the committed receipt.
+    /// Ordered track assessments bound to the committed receipt.
     pub fn assessments(&self) -> &[LifecycleAssessment] {
         &self.assessments
     }
@@ -901,6 +962,10 @@ impl LifecycleDetector {
     /// cleared. Track births are outside the frozen Cartesian ledger and begin
     /// participating on a later frame.
     ///
+    /// This compatibility method omits the committed receipt from its return
+    /// value. The detector still retains the receipt. Accepted integrations
+    /// should use [`Self::assess_frame_transition`] and retain both outputs.
+    ///
     /// # Errors
     ///
     /// Any structural, capacity, or detector error permanently faults this
@@ -914,15 +979,16 @@ impl LifecycleDetector {
             .map(|(_, assessments)| assessments)
     }
 
-    /// Assess one v1 sidecar frame through the typed lifecycle state machine and
-    /// return its committed receipt.
+    /// Assess one v1 sidecar frame through the typed lifecycle state machine.
+    ///
+    /// The method returns the committed receipt and its ordered assessments.
     ///
     /// The frozen v1 sidecar carries a producer ID and an epoch-scoped
     /// `session_id`, but it has no distinct core session, epoch, stream,
     /// generation, or clock-domain fields. This compatibility adapter therefore
-    /// constructs a **project-local** [`StreamPosition`]: producer ID is the core
-    /// session, sidecar session is the epoch, stream is
-    /// `"galadriel-fusion"`, and the producer fusion timestamp is treated as a
+    /// constructs a **project-local** [`StreamPosition`]. Producer ID is the core
+    /// session. Sidecar session is the epoch. Stream is `"galadriel-fusion"`.
+    /// The producer fusion timestamp is treated as a
     /// process-monotonic millisecond coordinate. This mapping does not add fields
     /// to Galadriel's sidecar schema v1 and is not a claim of NCP wire-1.0 reset or
     /// rollover support.
@@ -947,12 +1013,13 @@ impl LifecycleDetector {
 
     /// Assess a lifecycle-complete frame at an explicit typed stream position.
     ///
-    /// The position epoch must equal the frame's sidecar `session_id`; the frame
+    /// The position epoch must equal the frame's sidecar `session_id`. The frame
     /// itself does not carry the position's enclosing core session, stream ID,
-    /// state generation, or clock domain, so those remain caller-provided control
+    /// state generation, or clock domain. These remain caller-provided control
     /// provenance. Producer identity is parsed from and bound to the assembled
-    /// frame. Every successful report is produced only after state admission and
-    /// is committed with the returned hash-linked receipt.
+    /// frame. The detector derives one [`AssessmentScope`] from that producer and
+    /// the admitted position. Every evaluated report uses that exact scope. The
+    /// returned receipt uses the same producer and position.
     ///
     /// # Errors
     ///
@@ -1046,6 +1113,7 @@ impl LifecycleDetector {
             }
         };
         let transition = admission.transition();
+        let assessment_scope = AssessmentScope::new(producer_id.clone(), position.clone());
         self.apply_admission(&key, position.clone(), &admission);
         let assessments = {
             let lane = self.lanes.get_mut(&key).ok_or_else(|| {
@@ -1056,6 +1124,7 @@ impl LifecycleDetector {
             assess_lane(
                 &self.detector_config,
                 &release_suite,
+                &assessment_scope,
                 self.history_frames,
                 lane,
                 frame,
@@ -1649,6 +1718,7 @@ fn continuity_reset_reasons(
 fn assess_lane(
     detector_config: &DetectorConfig,
     release_suite: &ReleaseSuite,
+    assessment_scope: &AssessmentScope,
     history_frames: usize,
     lane: &mut LifecycleLane,
     frame: &AssembledFrame,
@@ -1712,7 +1782,7 @@ fn assess_lane(
         for observations in &history.frames {
             stream.extend(observations.iter().cloned());
         }
-        let report = assess_default(&stream, release_suite).map_err(|error| {
+        let report = assess_default(assessment_scope, &stream, release_suite).map_err(|error| {
             LifecycleDetectorError::Assessment {
                 track_id,
                 fusion_seq: frame.identity.fusion_seq,
@@ -2368,6 +2438,46 @@ mod tests {
         .expect("test position is valid")
     }
 
+    fn assert_evaluated_scopes_match_receipt(outcome: &LifecycleTransitionOutcome) {
+        let expected = AssessmentScope::new(
+            outcome.receipt().producer_id().clone(),
+            outcome.receipt().position().clone(),
+        );
+        let mut evaluated = 0_usize;
+        for assessment in outcome.assessments() {
+            if let LifecycleAssessment::Evaluated { report, .. } = assessment {
+                evaluated += 1;
+                assert_eq!(report.assessment_scope(), &expected);
+                assert_eq!(report.assessment_binding().scope(), &expected);
+            }
+        }
+        assert!(
+            evaluated > 0,
+            "scope fixture must produce an evaluated report"
+        );
+    }
+
+    fn rehash_receipt_for_assessments(
+        mut receipt: LifecycleReceipt,
+        release_suite: &ReleaseSuite,
+        assessments: &[LifecycleAssessment],
+    ) -> LifecycleReceipt {
+        receipt.assessment_digest = Some(
+            assessment_digest(release_suite, assessments).expect("test assessment evidence hashes"),
+        );
+        receipt.digest = receipt_digest(
+            receipt.index,
+            receipt.previous_digest,
+            &receipt.producer_id,
+            &receipt.position,
+            &receipt.transition,
+            receipt.frame_digest,
+            receipt.assessment_digest,
+        )
+        .expect("test receipt preimage hashes");
+        receipt
+    }
+
     fn assert_invalid_frame(frame: AssembledFrame, expected_reason: &str) {
         let mut detector = detector();
         let error = detector
@@ -2626,6 +2736,8 @@ mod tests {
         );
         assert!(left_first.receipt().verifies());
         assert!(left_second.receipt().follows(left_first.receipt()));
+        assert_evaluated_scopes_match_receipt(&left_first);
+        assert_evaluated_scopes_match_receipt(&left_second);
         assert_eq!(left_second.receipt().index(), 1);
         assert_eq!(
             left_second.receipt().previous_digest(),
@@ -2887,6 +2999,240 @@ mod tests {
     }
 
     #[test]
+    fn assessment_verification_rejects_a_rehashed_cross_position_report() {
+        let mut detector = detector();
+        let release_suite = detector
+            .release_suite_for(&[Modality::Visual, Modality::Radar])
+            .expect("fixture modalities form the detector's release suite");
+        let first = detector
+            .assess_frame_transition(&complete_frame(1, 11))
+            .expect("first complete frame commits");
+        let second = detector
+            .assess_frame_transition(&complete_frame(2, 12))
+            .expect("second complete frame commits");
+        let mismatched = second
+            .assessments()
+            .iter()
+            .find_map(|assessment| match assessment {
+                LifecycleAssessment::Evaluated {
+                    track_id,
+                    history_reset,
+                    report,
+                    ..
+                } => Some(LifecycleAssessment::Evaluated {
+                    track_id: *track_id,
+                    fusion_seq: first.receipt().position().sequence().get(),
+                    history_reset: *history_reset,
+                    report: report.clone(),
+                }),
+                LifecycleAssessment::Abstained { .. } => None,
+            })
+            .expect("second frame contains one evaluated report");
+        let mismatched = vec![mismatched];
+
+        let mut forged = first.receipt().clone();
+        forged.assessment_digest = Some(
+            assessment_digest(&release_suite, &mismatched)
+                .expect("mismatched assessment evidence hashes"),
+        );
+        forged.digest = receipt_digest(
+            forged.index,
+            forged.previous_digest,
+            &forged.producer_id,
+            &forged.position,
+            &forged.transition,
+            forged.frame_digest,
+            forged.assessment_digest,
+        )
+        .expect("forged receipt preimage hashes");
+
+        assert!(forged.verifies());
+        assert_eq!(
+            assessment_digest(&release_suite, &mismatched).unwrap(),
+            forged.assessment_digest().unwrap()
+        );
+        assert!(!forged.verifies_assessments(&release_suite, &mismatched));
+    }
+
+    #[test]
+    fn assessment_verification_rejects_each_detector_impossible_shape() {
+        let mut detector = detector();
+        let release_suite = detector
+            .release_suite_for(&[Modality::Visual, Modality::Radar])
+            .expect("fixture modalities form the detector's release suite");
+        let outcome = detector
+            .assess_frame_transition(&complete_frame(1, 11))
+            .expect("complete frame commits");
+        assert!(outcome
+            .receipt()
+            .verifies_assessments(&release_suite, outcome.assessments()));
+        let (track_id, fusion_seq, history_reset, report) = match &outcome.assessments()[0] {
+            LifecycleAssessment::Evaluated {
+                track_id,
+                fusion_seq,
+                history_reset,
+                report,
+            } => (*track_id, *fusion_seq, *history_reset, report.clone()),
+            LifecycleAssessment::Abstained { .. } => {
+                panic!("complete fixture must produce an evaluated report")
+            }
+        };
+
+        let mut alternate_detector = detector_with_nis_alpha(0.02);
+        let alternate = alternate_detector
+            .assess_frame_transition(&complete_frame(1, 11))
+            .expect("alternate-suite frame commits");
+        let alternate_report = match &alternate.assessments()[0] {
+            LifecycleAssessment::Evaluated { report, .. } => report.clone(),
+            LifecycleAssessment::Abstained { .. } => {
+                panic!("alternate fixture must produce an evaluated report")
+            }
+        };
+
+        let invalid_cases = [
+            (
+                "history reset is false on an initializing transition",
+                vec![LifecycleAssessment::Evaluated {
+                    track_id,
+                    fusion_seq,
+                    history_reset: false,
+                    report: report.clone(),
+                }],
+            ),
+            (
+                "wrapper track differs from the report",
+                vec![LifecycleAssessment::Evaluated {
+                    track_id: track_id + 1,
+                    fusion_seq,
+                    history_reset,
+                    report: report.clone(),
+                }],
+            ),
+            (
+                "wrapper sequence differs from the report and receipt",
+                vec![LifecycleAssessment::Evaluated {
+                    track_id,
+                    fusion_seq: fusion_seq + 1,
+                    history_reset,
+                    report: report.clone(),
+                }],
+            ),
+            (
+                "report belongs to another release suite",
+                vec![LifecycleAssessment::Evaluated {
+                    track_id,
+                    fusion_seq,
+                    history_reset,
+                    report: alternate_report,
+                }],
+            ),
+            (
+                "abstention modality set is empty",
+                vec![LifecycleAssessment::Abstained {
+                    track_id,
+                    fusion_seq,
+                    unavailable_modalities: Vec::new(),
+                }],
+            ),
+            (
+                "abstention modalities are duplicated",
+                vec![LifecycleAssessment::Abstained {
+                    track_id,
+                    fusion_seq,
+                    unavailable_modalities: vec![Modality::Visual, Modality::Visual],
+                }],
+            ),
+            (
+                "abstention modalities are not canonical",
+                vec![LifecycleAssessment::Abstained {
+                    track_id,
+                    fusion_seq,
+                    unavailable_modalities: vec![Modality::Radar, Modality::Visual],
+                }],
+            ),
+            (
+                "abstention contains a modality outside the release suite",
+                vec![LifecycleAssessment::Abstained {
+                    track_id,
+                    fusion_seq,
+                    unavailable_modalities: vec![Modality::Acoustic],
+                }],
+            ),
+            (
+                "assessment tracks are not strictly ordered",
+                vec![
+                    LifecycleAssessment::Abstained {
+                        track_id: track_id + 1,
+                        fusion_seq,
+                        unavailable_modalities: vec![Modality::Visual],
+                    },
+                    LifecycleAssessment::Abstained {
+                        track_id,
+                        fusion_seq,
+                        unavailable_modalities: vec![Modality::Visual],
+                    },
+                ],
+            ),
+            (
+                "assessment track is not JSON-safe",
+                vec![LifecycleAssessment::Abstained {
+                    track_id: galadriel_core::JSON_SAFE_INTEGER_MAX + 1,
+                    fusion_seq,
+                    unavailable_modalities: vec![Modality::Visual],
+                }],
+            ),
+            (
+                "abstention modality count exceeds the closed vocabulary",
+                vec![LifecycleAssessment::Abstained {
+                    track_id,
+                    fusion_seq,
+                    unavailable_modalities: vec![Modality::Visual; Modality::ALL.len() + 1],
+                }],
+            ),
+        ];
+        for (name, assessments) in invalid_cases {
+            let forged = rehash_receipt_for_assessments(
+                outcome.receipt().clone(),
+                &release_suite,
+                &assessments,
+            );
+            assert!(forged.verifies(), "{name}: receipt digest must be valid");
+            assert!(
+                !forged.verifies_assessments(&release_suite, &assessments),
+                "{name}"
+            );
+        }
+
+        let maximum = release_suite.detector().max_tracks();
+        let excessive_assessments = (0..=maximum)
+            .map(|track| LifecycleAssessment::Abstained {
+                track_id: u64::try_from(track).expect("track ceiling fits u64"),
+                fusion_seq,
+                unavailable_modalities: vec![Modality::Visual],
+            })
+            .collect::<Vec<_>>();
+        let excessive = rehash_receipt_for_assessments(
+            outcome.receipt().clone(),
+            &release_suite,
+            &excessive_assessments,
+        );
+        assert!(excessive.verifies());
+        assert!(!excessive.verifies_assessments(&release_suite, &excessive_assessments));
+
+        let mut impossible = outcome.receipt().clone();
+        impossible.transition = LifecycleTransition::Rejected {
+            reason: LifecycleIngressRejection::Duplicate {
+                sequence: fusion_seq,
+            },
+        };
+        let impossible =
+            rehash_receipt_for_assessments(impossible, &release_suite, outcome.assessments());
+        assert!(impossible.verifies());
+        assert!(!impossible.has_valid_detector_shape());
+        assert!(!impossible.verifies_assessments(&release_suite, outcome.assessments()));
+    }
+
+    #[test]
     fn fault_receipt_binds_the_exact_reason_and_rejects_one_field_mutation() {
         let mut detector = detector();
         let mut invalid = complete_frame(1, 11);
@@ -3127,6 +3473,7 @@ mod tests {
             }]
         ));
         assert!(next_outcome.receipt().follows(&reset));
+        assert_evaluated_scopes_match_receipt(&next_outcome);
     }
 
     #[test]
@@ -3301,6 +3648,7 @@ mod tests {
                 ..
             }]
         ));
+        assert_evaluated_scopes_match_receipt(&outcome);
     }
 
     #[test]

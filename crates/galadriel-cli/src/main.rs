@@ -1,11 +1,16 @@
 #![forbid(unsafe_code)]
-//! `galadriel` — demo, replay, and secure observer for Galadriel's Mirror.
+//! Command-line tools for Galadriel's Mirror.
 //!
-//! `galadriel demo` runs four synthetic scenarios — clean, a targeted acoustic spoof, a
-//! broadband jam, and a moment-matched stealthy spoof — through the pure default detector
-//! (NIS χ² magnitude ⊕ signed `ρ` cross-sensor consistency) and prints the per-channel traces
-//! and the fused verdict for each. With `--features pid` it adds the KSG-MI escalation view.
-//! `galadriel observe` (feature `ncp-live`) runs the bounded, fail-stop two-route receiver.
+//! `galadriel demo` runs four synthetic scenarios through the pure default
+//! detector. The `pid` feature adds the optional PID research view.
+//!
+//! `galadriel replay` reads transport-free JSONL. The input lacks a complete
+//! lifecycle scope. All replay results are unbound diagnostics. Replay cannot
+//! create an accepted [`galadriel_core::DefaultReport`] or PID fused report.
+//!
+//! `galadriel observe` requires the `ncp-live` feature. It runs the bounded
+//! two-route receiver. Each lifecycle frame produces one receipt-linked JSON line
+//! on standard output. Status and health messages use standard error.
 
 use std::collections::HashMap;
 use std::io::IsTerminal;
@@ -48,7 +53,7 @@ fn attack_start_frame(frames: usize, divisor: usize) -> anyhow::Result<u64> {
 #[command(
     name = "galadriel",
     version,
-    about = "Galadriel's Mirror — a cross-sensor statistical-consistency monitor (pure default: NIS χ² ⊕ signed-ρ consistency)."
+    about = "Galadriel's Mirror is a cross-sensor statistical-consistency monitor."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -57,7 +62,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Run the synthetic demo: clean vs targeted spoof vs jam vs moment-matched stealthy spoof.
+    /// Run four documented synthetic scenarios.
     Demo {
         /// Number of fusion frames to simulate.
         #[arg(long, default_value_t = 220)]
@@ -66,15 +71,15 @@ enum Cmd {
         #[arg(long, default_value_t = 7)]
         seed: u64,
     },
-    /// Replay a JSONL capture of PidObservations through the detector(s).
+    /// Replay a JSONL capture as unbound, diagnostic-only detector output.
     #[cfg(feature = "ncp")]
     Replay {
         /// Path to a `.jsonl` file (one PidObservation per line).
         path: String,
-        /// Maximum number of per-track reports to print; all tracks are still assessed.
+        /// Maximum number of per-track reports to print. All tracks are still analyzed.
         #[arg(long, default_value_t = 100)]
         max_report_tracks: usize,
-        /// Maximum tracks receiving the expensive terminal PID analysis (0 disables it).
+        /// Maximum tracks receiving diagnostic-only terminal PID analysis. Zero disables it.
         #[cfg(feature = "pid")]
         #[arg(long, default_value_t = 4)]
         max_pid_tracks: usize,
@@ -209,39 +214,34 @@ impl ObserveTelemetry {
 }
 
 #[cfg(feature = "ncp-live")]
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default)]
 struct ObserveOutput {
     stdout: Vec<String>,
     stderr: Vec<String>,
+    terminal_error: Option<anyhow::Error>,
 }
 
 #[cfg(feature = "ncp-live")]
-fn render_lifecycle_assessment(
-    assessment: galadriel_ncp::lifecycle::LifecycleAssessment,
-) -> anyhow::Result<String> {
-    use galadriel_ncp::lifecycle::LifecycleAssessment;
+#[derive(serde::Serialize)]
+struct ObserveLifecycleRecord<'a> {
+    schema: &'static str,
+    calibrated_posterior: bool,
+    receipt: &'a galadriel_ncp::lifecycle::LifecycleReceipt,
+    assessments: &'a [galadriel_ncp::lifecycle::LifecycleAssessment],
+}
 
-    match assessment {
-        LifecycleAssessment::Evaluated {
-            track_id,
-            fusion_seq,
-            history_reset,
-            report,
-        } => Ok(format!(
-            "frame={fusion_seq} track={track_id} history_reset={history_reset} evidence={:?} calibrated_posterior=false",
-            report.verdict()
-        )),
-        LifecycleAssessment::Abstained {
-            track_id,
-            fusion_seq,
-            unavailable_modalities,
-        } => Ok(format!(
-            "frame={fusion_seq} track={track_id} evidence=InsufficientEvidence lifecycle_complete=true assessable=false unavailable={unavailable_modalities:?} calibrated_posterior=false"
-        )),
-        other => Err(anyhow::anyhow!(
-            "unsupported lifecycle assessment variant: {other:?}"
-        )),
-    }
+#[cfg(feature = "ncp-live")]
+fn render_lifecycle_record(
+    receipt: &galadriel_ncp::lifecycle::LifecycleReceipt,
+    assessments: &[galadriel_ncp::lifecycle::LifecycleAssessment],
+) -> anyhow::Result<String> {
+    serde_json::to_string(&ObserveLifecycleRecord {
+        schema: "galadriel.observe.lifecycle.v1",
+        calibrated_posterior: false,
+        receipt,
+        assessments,
+    })
+    .context("cannot encode the receipt-linked lifecycle assessment record")
 }
 
 #[cfg(feature = "ncp-live")]
@@ -255,12 +255,26 @@ fn handle_observe_event(
     let mut output = ObserveOutput::default();
     match event {
         AssemblyEvent::FrameReady(frame) => {
-            let assessments = detector.assess_frame(&frame).map_err(|error| {
-                anyhow::Error::new(error)
-                    .context("lifecycle-complete frame violated detector invariants")
-            })?;
-            for assessment in assessments {
-                output.stdout.push(render_lifecycle_assessment(assessment)?);
+            let previous_receipt = detector
+                .last_receipt()
+                .map(|receipt| (receipt.index(), receipt.digest()));
+            match detector.assess_frame_transition(&frame) {
+                Ok(outcome) => output.stdout.push(render_lifecycle_record(
+                    outcome.receipt(),
+                    outcome.assessments(),
+                )?),
+                Err(error) => {
+                    let current_receipt = detector.last_receipt().filter(|receipt| {
+                        Some((receipt.index(), receipt.digest())) != previous_receipt
+                    });
+                    if let Some(receipt) = current_receipt {
+                        output.stdout.push(render_lifecycle_record(receipt, &[])?);
+                    }
+                    output.terminal_error = Some(
+                        anyhow::Error::new(error)
+                            .context("lifecycle-complete frame violated detector invariants"),
+                    );
+                }
             }
         }
         AssemblyEvent::HeartbeatAccepted { event_seq, .. } => {
@@ -296,6 +310,54 @@ fn handle_observe_event(
 }
 
 #[cfg(feature = "ncp-live")]
+fn emit_observe_output(
+    output: &ObserveOutput,
+    stdout: &mut impl std::io::Write,
+    stderr: &mut impl std::io::Write,
+) -> anyhow::Result<()> {
+    for line in &output.stdout {
+        writeln!(stdout, "{line}").context("cannot write a lifecycle record to standard output")?;
+    }
+    if !output.stdout.is_empty() {
+        stdout
+            .flush()
+            .context("cannot flush lifecycle records to standard output")?;
+    }
+    for line in &output.stderr {
+        writeln!(stderr, "{line}").context("cannot write observer status to standard error")?;
+    }
+    if !output.stderr.is_empty() {
+        stderr
+            .flush()
+            .context("cannot flush observer status to standard error")?;
+    }
+    Ok(())
+}
+
+#[cfg(feature = "ncp-live")]
+fn merge_observe_results(
+    primary: anyhow::Result<()>,
+    additional: anyhow::Result<()>,
+    additional_label: &str,
+) -> anyhow::Result<()> {
+    match (primary, additional) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
+        (Err(primary_error), Err(additional_error)) => Err(primary_error.context(format!(
+            "{additional_label} also failed: {additional_error:#}"
+        ))),
+    }
+}
+
+#[cfg(feature = "ncp-live")]
+fn emit_observer_status(message: &str, stderr: &mut impl std::io::Write) -> anyhow::Result<()> {
+    writeln!(stderr, "{message}").context("cannot write observer status to standard error")?;
+    stderr
+        .flush()
+        .context("cannot flush observer status to standard error")
+}
+
+#[cfg(feature = "ncp-live")]
 async fn observe_epoch(
     keys: galadriel_ncp::ncp_core::Keys,
     epoch: &str,
@@ -328,39 +390,53 @@ async fn observe_epoch(
     .context("cannot open the strict two-route receiver; verify NCP_ZENOH_CONFIG")?;
     let mut interrupt = std::pin::pin!(tokio::signal::ctrl_c());
 
-    eprintln!(
+    let startup_status = format!(
         "observing realm={} epoch={} producer={} · advisory evidence · calibrated_posterior=false",
         receiver.realm(),
         receiver.session_id(),
         receiver.producer_id()
     );
+    let startup_result = {
+        let stderr = std::io::stderr();
+        emit_observer_status(&startup_status, &mut stderr.lock())
+            .context("cannot emit observer startup status")
+    };
 
-    let loop_result = 'events: loop {
-        let event = tokio::select! {
-            biased;
-            signal = &mut interrupt => {
-                match signal {
-                    Ok(()) => break Ok(()),
-                    Err(error) => break Err(anyhow::Error::new(error).context("Ctrl-C listener failed")),
+    let loop_result = if let Err(error) = startup_result {
+        Err(error)
+    } else {
+        'events: loop {
+            let event = tokio::select! {
+                biased;
+                signal = &mut interrupt => {
+                    match signal {
+                        Ok(()) => break Ok(()),
+                        Err(error) => break Err(anyhow::Error::new(error).context("Ctrl-C listener failed")),
+                    }
                 }
-            }
-            result = receiver.recv() => result.map_err(anyhow::Error::new),
-        };
-        let event = match event {
-            Ok(event) => event,
-            Err(error) => break Err(error.context("operational receiver terminated")),
-        };
+                result = receiver.recv() => result.map_err(anyhow::Error::new),
+            };
+            let event = match event {
+                Ok(event) => event,
+                Err(error) => break Err(error.context("operational receiver terminated")),
+            };
 
-        let telemetry = ObserveTelemetry::from_assembler(receiver.assembler());
-        let output = match handle_observe_event(event, &mut detector, telemetry) {
-            Ok(output) => output,
-            Err(error) => break 'events Err(error),
-        };
-        for line in output.stdout {
-            println!("{line}");
-        }
-        for line in output.stderr {
-            eprintln!("{line}");
+            let telemetry = ObserveTelemetry::from_assembler(receiver.assembler());
+            let output = match handle_observe_event(event, &mut detector, telemetry) {
+                Ok(output) => output,
+                Err(error) => break 'events Err(error),
+            };
+            let emit_result = {
+                let stdout = std::io::stdout();
+                let stderr = std::io::stderr();
+                emit_observe_output(&output, &mut stdout.lock(), &mut stderr.lock())
+            };
+            let terminal_result = output.terminal_error.map_or(Ok(()), Err);
+            if let Err(error) =
+                merge_observe_results(terminal_result, emit_result, "lifecycle output delivery")
+            {
+                break 'events Err(error);
+            }
         }
     };
 
@@ -374,7 +450,7 @@ async fn observe_epoch(
     let health = receiver.health().snapshot();
     let assembler = receiver.assembler();
     let limits = assembler.limits();
-    eprintln!(
+    let health_status = format!(
         "receiver stopped: frames={} heartbeats={} processed={} rejected={} post_fault={} terminal_faults={} queued_discarded={} events_staged={} events_delivered={} events_discarded={} ingress_queue={}/{} open_frames={}/{} buffered_bytes={}/{} pending_monitor={}/{} prior_identities={}/{} observation_streams={}/{} next_event_seq={} last_heartbeat_receipt={:?}",
         health.frames_delivered,
         health.heartbeats_delivered,
@@ -401,19 +477,24 @@ async fn observe_epoch(
         assembler.next_expected_monitor_event_seq(),
         assembler.last_heartbeat_receipt(),
     );
+    let health_result = {
+        let stderr = std::io::stderr();
+        emit_observer_status(&health_status, &mut stderr.lock())
+            .context("cannot emit final receiver health")
+    };
     let loop_result = match (loop_result, health.first_fault) {
         (Ok(()), Some(fault)) => Err(anyhow::Error::new(fault)
             .context("operational receiver faulted concurrently with shutdown")),
         (result, _) => result,
     };
-    loop_result?;
-    close_result?;
-    Ok(())
+    let result = merge_observe_results(loop_result, health_result, "receiver health output");
+    merge_observe_results(result, close_result, "receiver cleanup")
 }
 
 #[cfg(all(test, feature = "ncp-live"))]
 mod observe_cli_tests {
     use super::*;
+    use std::io;
     use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
     use galadriel_core::ConsistencyProjection;
@@ -422,10 +503,10 @@ mod observe_cli_tests {
         EvidenceRoute, FrameIdentity, RegistryOpportunityParams, RegistryOpportunityPolicy,
         RegistryVerifier, RegistryViolation,
     };
-    use galadriel_ncp::lifecycle::{LifecycleAssessment, LifecycleDetector};
+    use galadriel_ncp::lifecycle::LifecycleDetector;
     use galadriel_ncp::monitor::{
-        FrameSummary, GateEvidence, GateMethod, ModalityOutcome, ModalityOutcomeKind,
-        MonitorEnvelope, ProducerEvent,
+        FrameSummary, GateEvidence, GateMethod, ModalityMiss, ModalityMissReason, ModalityOutcome,
+        ModalityOutcomeKind, MonitorEnvelope, ProducerEvent,
     };
     use galadriel_ncp::SidecarEnvelope;
 
@@ -537,6 +618,10 @@ mod observe_cli_tests {
     }
 
     fn assembled_frame_event() -> AssemblyEvent {
+        assembled_frame_event_with_radar_miss(false)
+    }
+
+    fn assembled_frame_event_with_radar_miss(radar_miss: bool) -> AssemblyEvent {
         let now = Instant::now();
         let mut assembler = CrossRouteAssembler::new(
             "epoch-1",
@@ -548,25 +633,41 @@ mod observe_cli_tests {
             now,
         )
         .expect("CLI handler fixture assembler is valid");
-        for modality in [Modality::Visual, Modality::Radar] {
+        for modality in [Modality::Visual, Modality::Radar]
+            .into_iter()
+            .filter(|modality| !radar_miss || *modality != Modality::Radar)
+        {
             let envelope = SidecarEnvelope::try_new("epoch-1", "crebain", observation(modality))
                 .expect("CLI handler fixture observation is valid");
             assert!(assembler
                 .ingest_observation_envelope(envelope, now)
                 .is_empty());
         }
-        for (event_seq, (modality, measurement_index)) in
-            [(1, (Modality::Visual, 0)), (2, (Modality::Radar, 1))]
-        {
-            let envelope = MonitorEnvelope::try_new(
-                "epoch-1",
-                "crebain",
-                event_seq,
-                ProducerEvent::ModalityOutcome(outcome(modality, measurement_index)),
-            )
-            .expect("CLI handler fixture outcome is valid");
-            assert!(assembler.ingest_monitor_envelope(envelope, now).is_empty());
-        }
+        let visual = MonitorEnvelope::try_new(
+            "epoch-1",
+            "crebain",
+            1,
+            ProducerEvent::ModalityOutcome(outcome(Modality::Visual, 0)),
+        )
+        .expect("CLI handler fixture visual outcome is valid");
+        assert!(assembler.ingest_monitor_envelope(visual, now).is_empty());
+        let radar_event = if radar_miss {
+            ProducerEvent::ModalityMiss(ModalityMiss {
+                fusion_seq: 1,
+                fusion_timestamp_ms: 1_001,
+                frame_id: 10,
+                context_id: 20,
+                prior_id: 101,
+                track_id: 7,
+                modality: Modality::Radar,
+                reason: ModalityMissReason::NoMeasurement,
+            })
+        } else {
+            ProducerEvent::ModalityOutcome(outcome(Modality::Radar, 1))
+        };
+        let radar = MonitorEnvelope::try_new("epoch-1", "crebain", 2, radar_event)
+            .expect("CLI handler fixture radar event is valid");
+        assert!(assembler.ingest_monitor_envelope(radar, now).is_empty());
         let closure = FrameSummary {
             fusion_seq: 1,
             fusion_timestamp_ms: 1_001,
@@ -576,9 +677,9 @@ mod observe_cli_tests {
             registry_digest: TEST_DIGEST.to_owned(),
             expected_modalities: vec![Modality::Visual, Modality::Radar],
             active_track_count: 1,
-            input_count: 2,
+            input_count: if radar_miss { 1 } else { 2 },
             outcome_count: 2,
-            v1_expected_count: 2,
+            v1_expected_count: if radar_miss { 1 } else { 2 },
             degraded: false,
             truncated: false,
         };
@@ -718,8 +819,184 @@ mod observe_cli_tests {
         ));
     }
 
+    #[derive(Default)]
+    struct RecordingWriter {
+        bytes: Vec<u8>,
+        flushes: usize,
+    }
+
+    impl io::Write for RecordingWriter {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.bytes.extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            self.flushes += 1;
+            Ok(())
+        }
+    }
+
+    struct BrokenPipeWriter;
+
+    impl io::Write for BrokenPipeWriter {
+        fn write(&mut self, _bytes: &[u8]) -> io::Result<usize> {
+            Err(io::Error::new(io::ErrorKind::BrokenPipe, "closed pipe"))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[derive(Default)]
+    struct FlushFailureWriter {
+        bytes: Vec<u8>,
+    }
+
+    impl io::Write for FlushFailureWriter {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.bytes.extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Err(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "cannot flush closed pipe",
+            ))
+        }
+    }
+
     #[test]
-    fn observe_event_handler_renders_frame_and_both_assessment_shapes() {
+    fn observe_output_flushes_the_complete_record_before_status() {
+        let output = ObserveOutput {
+            stdout: vec!["{\"schema\":\"test\"}".to_owned()],
+            stderr: vec!["status".to_owned()],
+            terminal_error: Some(anyhow::anyhow!("terminal")),
+        };
+        let mut stdout = RecordingWriter::default();
+        let mut stderr = RecordingWriter::default();
+
+        emit_observe_output(&output, &mut stdout, &mut stderr)
+            .expect("fallible observer output succeeds");
+
+        assert_eq!(stdout.bytes, b"{\"schema\":\"test\"}\n");
+        assert_eq!(stdout.flushes, 1);
+        assert_eq!(stderr.bytes, b"status\n");
+        assert_eq!(stderr.flushes, 1);
+    }
+
+    #[test]
+    fn observe_output_returns_a_broken_pipe_error_without_panicking() {
+        let output = ObserveOutput {
+            stdout: vec!["{\"schema\":\"test\"}".to_owned()],
+            stderr: Vec::new(),
+            terminal_error: None,
+        };
+        let mut stdout = BrokenPipeWriter;
+        let mut stderr = RecordingWriter::default();
+
+        let error = emit_observe_output(&output, &mut stdout, &mut stderr)
+            .expect_err("a closed standard-output pipe must return an error");
+
+        assert!(error
+            .to_string()
+            .contains("cannot write a lifecycle record to standard output"));
+    }
+
+    #[test]
+    fn observe_output_returns_a_flush_error_without_reporting_status() {
+        let output = ObserveOutput {
+            stdout: vec!["{\"schema\":\"test\"}".to_owned()],
+            stderr: vec!["status".to_owned()],
+            terminal_error: Some(anyhow::anyhow!("terminal")),
+        };
+        let mut stdout = FlushFailureWriter::default();
+        let mut stderr = RecordingWriter::default();
+
+        let error = emit_observe_output(&output, &mut stdout, &mut stderr)
+            .expect_err("a failed standard-output flush must return an error");
+
+        assert_eq!(stdout.bytes, b"{\"schema\":\"test\"}\n");
+        assert!(stderr.bytes.is_empty());
+        assert!(error
+            .to_string()
+            .contains("cannot flush lifecycle records to standard output"));
+    }
+
+    #[test]
+    fn observe_output_flushes_the_record_before_a_status_write_error() {
+        let output = ObserveOutput {
+            stdout: vec!["{\"schema\":\"test\"}".to_owned()],
+            stderr: vec!["status".to_owned()],
+            terminal_error: Some(anyhow::anyhow!("terminal")),
+        };
+        let mut stdout = RecordingWriter::default();
+        let mut stderr = BrokenPipeWriter;
+
+        let error = emit_observe_output(&output, &mut stdout, &mut stderr)
+            .expect_err("a failed standard-error write must return an error");
+
+        assert_eq!(stdout.bytes, b"{\"schema\":\"test\"}\n");
+        assert_eq!(stdout.flushes, 1);
+        assert!(error
+            .to_string()
+            .contains("cannot write observer status to standard error"));
+    }
+
+    #[test]
+    fn observer_result_preserves_terminal_and_output_failures() {
+        let error = merge_observe_results(
+            Err(anyhow::anyhow!("detector terminal fault")),
+            Err(anyhow::anyhow!("standard output flush failed")),
+            "lifecycle output delivery",
+        )
+        .expect_err("both failures must produce one composite error");
+        let chain = format!("{error:#}");
+
+        assert!(chain.contains("detector terminal fault"));
+        assert!(chain.contains("standard output flush failed"));
+        assert!(chain.contains("lifecycle output delivery also failed"));
+    }
+
+    #[test]
+    fn observer_status_writes_are_fallible_and_flushed() {
+        let mut recorded = RecordingWriter::default();
+        emit_observer_status("status", &mut recorded).expect("observer status output succeeds");
+        assert_eq!(recorded.bytes, b"status\n");
+        assert_eq!(recorded.flushes, 1);
+
+        let mut broken = BrokenPipeWriter;
+        let error = emit_observer_status("status", &mut broken)
+            .expect_err("a closed standard-error pipe returns an error");
+        assert!(error
+            .to_string()
+            .contains("cannot write observer status to standard error"));
+    }
+
+    #[test]
+    fn observer_shutdown_result_preserves_each_failure() {
+        let event_and_health = merge_observe_results(
+            Err(anyhow::anyhow!("event loop fault")),
+            Err(anyhow::anyhow!("health output fault")),
+            "receiver health output",
+        );
+        let error = merge_observe_results(
+            event_and_health,
+            Err(anyhow::anyhow!("cleanup fault")),
+            "receiver cleanup",
+        )
+        .expect_err("shutdown failures must remain visible");
+        let chain = format!("{error:#}");
+
+        assert!(chain.contains("event loop fault"));
+        assert!(chain.contains("health output fault"));
+        assert!(chain.contains("cleanup fault"));
+    }
+
+    #[test]
+    fn observe_event_handler_emits_one_receipt_linked_assessment_record() {
         let detector_config = DetectorConfig::standalone_advisory_v0_9()
             .expect("standalone-advisory detector config is valid");
         let mut detector = LifecycleDetector::new(
@@ -731,20 +1008,148 @@ mod observe_cli_tests {
         let output = handle_observe_event(assembled_frame_event(), &mut detector, telemetry())
             .expect("complete frame is assessed");
         assert_eq!(output.stderr, Vec::<String>::new());
+        assert!(output.terminal_error.is_none());
         assert_eq!(output.stdout.len(), 1);
-        assert!(output.stdout[0].contains("frame=1 track=7 history_reset=true evidence="));
-        assert!(output.stdout[0].ends_with("calibrated_posterior=false"));
-
-        let abstained = render_lifecycle_assessment(LifecycleAssessment::Abstained {
-            track_id: 9,
-            fusion_seq: 12,
-            unavailable_modalities: vec![Modality::Radar],
-        })
-        .expect("abstention has one CLI record");
+        let record = serde_json::from_str::<serde_json::Value>(&output.stdout[0])
+            .expect("observe output is one JSON record");
         assert_eq!(
-            abstained,
-            "frame=12 track=9 evidence=InsufficientEvidence lifecycle_complete=true assessable=false unavailable=[Radar] calibrated_posterior=false"
+            record["schema"],
+            serde_json::json!("galadriel.observe.lifecycle.v1")
         );
+        assert_eq!(record["calibrated_posterior"], serde_json::json!(false));
+        assert_eq!(
+            record["receipt"]["producer_id"],
+            serde_json::json!("crebain")
+        );
+        assert_eq!(
+            record["receipt"]["position"]["sequence"],
+            serde_json::json!(1)
+        );
+        assert_eq!(record["assessments"].as_array().map(Vec::len), Some(1));
+        assert_eq!(
+            record["assessments"][0]["kind"],
+            serde_json::json!("evaluated")
+        );
+        assert_eq!(
+            record["assessments"][0]["report"]["assessment_scope"]["producer_id"],
+            record["receipt"]["producer_id"]
+        );
+        assert_eq!(
+            record["assessments"][0]["report"]["assessment_scope"]["position"],
+            record["receipt"]["position"]
+        );
+    }
+
+    #[test]
+    fn observe_event_handler_emits_one_receipt_linked_abstention_record() {
+        let detector_config = DetectorConfig::standalone_advisory_v0_9()
+            .expect("standalone-advisory detector config is valid");
+        let mut detector = LifecycleDetector::new(
+            detector_config,
+            CorrConfig::standalone_advisory_v0_9()
+                .expect("standalone-advisory correlation config is valid"),
+        )
+        .expect("standalone-advisory lifecycle detector is valid");
+        let output = handle_observe_event(
+            assembled_frame_event_with_radar_miss(true),
+            &mut detector,
+            telemetry(),
+        )
+        .expect("lifecycle-complete frame abstains");
+
+        assert_eq!(output.stderr, Vec::<String>::new());
+        assert!(output.terminal_error.is_none());
+        assert_eq!(output.stdout.len(), 1);
+        let record = serde_json::from_str::<serde_json::Value>(&output.stdout[0])
+            .expect("abstention output is one JSON record");
+        assert_eq!(
+            record["schema"],
+            serde_json::json!("galadriel.observe.lifecycle.v1")
+        );
+        assert_eq!(record["calibrated_posterior"], serde_json::json!(false));
+        assert_eq!(
+            record["assessments"][0]["kind"],
+            serde_json::json!("abstained")
+        );
+        assert_eq!(
+            record["assessments"][0]["unavailable_modalities"],
+            serde_json::json!(["radar"])
+        );
+        assert_eq!(
+            record["assessments"][0]["fusion_seq"],
+            record["receipt"]["position"]["sequence"]
+        );
+    }
+
+    #[test]
+    fn observe_event_handler_emits_a_new_rejection_receipt_before_failure() {
+        let detector_config = DetectorConfig::standalone_advisory_v0_9()
+            .expect("standalone-advisory detector config is valid");
+        let mut detector = LifecycleDetector::new(
+            detector_config,
+            CorrConfig::standalone_advisory_v0_9()
+                .expect("standalone-advisory correlation config is valid"),
+        )
+        .expect("standalone-advisory lifecycle detector is valid");
+        let accepted = handle_observe_event(assembled_frame_event(), &mut detector, telemetry())
+            .expect("first frame is accepted");
+        assert!(accepted.terminal_error.is_none());
+
+        let rejected = handle_observe_event(assembled_frame_event(), &mut detector, telemetry())
+            .expect("receipted rejection returns its terminal output");
+
+        assert_eq!(rejected.stderr, Vec::<String>::new());
+        assert_eq!(rejected.stdout.len(), 1);
+        assert!(rejected
+            .terminal_error
+            .as_ref()
+            .is_some_and(|error| error.to_string().contains("violated detector invariants")));
+        let record = serde_json::from_str::<serde_json::Value>(&rejected.stdout[0])
+            .expect("rejection output is one JSON record");
+        assert_eq!(
+            record["schema"],
+            serde_json::json!("galadriel.observe.lifecycle.v1")
+        );
+        assert_eq!(record["receipt"]["index"], serde_json::json!(1));
+        assert_eq!(
+            record["receipt"]["transition"]["kind"],
+            serde_json::json!("rejected")
+        );
+        assert_eq!(
+            record["receipt"]["transition"]["reason"]["kind"],
+            serde_json::json!("duplicate")
+        );
+        assert_eq!(record["assessments"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn observe_event_handler_emits_one_new_fault_receipt_and_never_repeats_it() {
+        let fixed_suite =
+            ReleaseSuite::standalone_advisory_v0_9(&[Modality::Visual, Modality::Acoustic])
+                .expect("fixed test release suite is valid");
+        let mut detector = LifecycleDetector::from_release_suite(fixed_suite)
+            .expect("fixed lifecycle detector is valid");
+
+        let faulted = handle_observe_event(assembled_frame_event(), &mut detector, telemetry())
+            .expect("newly receipted fault returns terminal output");
+
+        assert_eq!(faulted.stderr, Vec::<String>::new());
+        assert_eq!(faulted.stdout.len(), 1);
+        assert!(faulted.terminal_error.is_some());
+        let record = serde_json::from_str::<serde_json::Value>(&faulted.stdout[0])
+            .expect("fault output is one JSON record");
+        assert_eq!(
+            record["receipt"]["transition"]["kind"],
+            serde_json::json!("faulted")
+        );
+        assert_eq!(record["assessments"], serde_json::json!([]));
+        assert_eq!(record["calibrated_posterior"], serde_json::json!(false));
+
+        let repeated = handle_observe_event(assembled_frame_event(), &mut detector, telemetry())
+            .expect("latched fault returns a terminal status without stale evidence");
+        assert_eq!(repeated.stdout, Vec::<String>::new());
+        assert_eq!(repeated.stderr, Vec::<String>::new());
+        assert!(repeated.terminal_error.is_some());
     }
 
     #[test]
@@ -767,6 +1172,7 @@ mod observe_cli_tests {
         )
         .expect("heartbeat is advisory");
         assert_eq!(heartbeat.stdout, Vec::<String>::new());
+        assert!(heartbeat.terminal_error.is_none());
         assert_eq!(
             heartbeat.stderr,
             ["heartbeat event_seq=11 prior_identities=2/3 observation_streams=4/5 open_frames=6/7 buffered_bytes=8/9"]
@@ -784,6 +1190,7 @@ mod observe_cli_tests {
             mismatch.stderr,
             ["advisory contract-hash mismatch on Monitor route"]
         );
+        assert!(mismatch.terminal_error.is_none());
     }
 
     #[test]
@@ -1149,9 +1556,10 @@ fn run_stealthy_default_demo(frames: usize, seed: u64, color: bool) -> anyhow::R
             start_frame: attack_start_frame(frames, 3)?,
         },
     )?;
+    let scope = cfg.assessment_scope("demo-default")?;
 
     let suite = ReleaseSuite::standalone_advisory_v0_9(&mods)?;
-    let report = assess_default(&stream, &suite)?;
+    let report = assess_default(&scope, &stream, &suite)?;
 
     println!();
     println!(
@@ -1537,8 +1945,62 @@ fn omitted_track_count(total: usize, included: usize) -> Option<NonZeroUsize> {
     NonZeroUsize::new(total.saturating_sub(included))
 }
 
-/// Replay a JSONL capture of `PidObservation`s through the baseline (and the PID
-/// engine when built with `--features pid,ncp`).
+/// Run an unbound PID replay diagnostic.
+///
+/// Raw JSONL has no producer, session, epoch, generation, or clock-domain
+/// labels. This helper does not mint an accepted whole-stream report.
+#[cfg(all(feature = "ncp", feature = "pid"))]
+fn replay_pid_diagnostic(
+    stream: &[PidObservation],
+    baseline: &galadriel_core::MirrorReport,
+    suite: &galadriel_pid::PidResearchSuite,
+) -> anyhow::Result<(FusedVerdict, String, Vec<galadriel_pid::AxisPidReport>)> {
+    use galadriel_pid::{analyze, fuse_axes_diagnostics, AxisPidReport};
+
+    let release_suite = suite.release_suite();
+    let detector = release_suite.detector();
+    let projection = galadriel_core::consistency_channels_with_temporal_limits(
+        stream,
+        release_suite.expected_modalities(),
+        detector.max_seq_gap(),
+        detector.max_timestamp_skew_ms(),
+        detector.max_inter_sample_gap_ms(),
+    )?;
+    let Some(projection) = projection else {
+        let (verdict, note) = fuse_axes_diagnostics(suite, baseline, &[], &[])?;
+        return Ok((verdict, note, Vec::new()));
+    };
+    let axis_count = projection.axes.len();
+    let correlation_config = release_suite
+        .correlation()
+        .try_for_axis_family(axis_count)?;
+    let pid_config = suite.pid_config().try_for_axis_family(axis_count)?;
+    let correlations = projection
+        .axes
+        .iter()
+        .enumerate()
+        .map(|(axis, channels)| {
+            galadriel_core::correlation::analyze(channels, &correlation_config)
+                .and_then(|report| galadriel_core::AxisCorrelationReport::try_new(axis, report))
+        })
+        .collect::<galadriel_core::Result<Vec<_>>>()?;
+    let pids = projection
+        .axes
+        .iter()
+        .enumerate()
+        .map(|(axis, channels)| {
+            analyze(channels, &pid_config).and_then(|report| AxisPidReport::try_new(axis, report))
+        })
+        .collect::<galadriel_core::Result<Vec<_>>>()?;
+    let (verdict, note) = fuse_axes_diagnostics(suite, baseline, &correlations, &pids)?;
+    Ok((verdict, note, pids))
+}
+
+/// Replay a JSONL capture as unbound diagnostic evidence.
+///
+/// The optional PID feature adds an unbound PID diagnostic. This path cannot
+/// create an accepted whole-stream report because the input has no complete
+/// [`galadriel_core::AssessmentScope`].
 #[cfg(feature = "ncp")]
 fn run_replay(
     path: &str,
@@ -1753,7 +2215,7 @@ fn run_replay(
             let verdict = verdict_str(baseline.verdict());
             let colored = color_for_tone(&verdict, verdict_tone(baseline.verdict()), color);
             println!(
-                "│  baseline · track {track_id}: terminal {}  {}",
+                "│  baseline · track {track_id}: diagnostic-only terminal {}  {}",
                 colored,
                 dim(&baseline_history.summary(), color)
             );
@@ -1762,7 +2224,7 @@ fn run_replay(
             let fused = fused_verdict_str(&default_verdict);
             let colored = color_for_tone(&fused, fused_verdict_tone(&default_verdict), color);
             println!(
-                "│  default  · track {track_id}: terminal {}  {}",
+                "│  default  · track {track_id}: diagnostic-only terminal {}  {}",
                 colored,
                 dim(&default_history.summary(), color)
             );
@@ -1773,13 +2235,13 @@ fn run_replay(
 
         #[cfg(feature = "pid")]
         if replay_track_uses_pid(track_index, max_pid_tracks) {
-            use galadriel_pid::{assess_stream, PidResearchSuite};
+            use galadriel_pid::PidResearchSuite;
 
             if !replay_has_required_pid_modalities(mods.len()) {
                 if verbose {
                     println!(
                         "│  PID      · track {track_id}: {}  {}",
-                        dim("terminal-only INSUFFICIENT-EVIDENCE", color),
+                        dim("diagnostic-only terminal INSUFFICIENT-EVIDENCE", color),
                         dim(
                             "fewer than the PID research minimum modalities; estimator not started",
                             color,
@@ -1795,16 +2257,16 @@ fn run_replay(
                                 "track {track_id} has no terminal generation for PID assessment"
                             )
                         })?;
-                let report = assess_stream(&track_obs[terminal_generation], &pid_suite);
+                let report =
+                    replay_pid_diagnostic(&track_obs[terminal_generation], &baseline, &pid_suite);
                 if verbose {
                     match report {
-                        Ok(report) => {
+                        Ok((verdict, note, pids)) => {
                             println!(
-                                "│  PID      · track {track_id}: terminal-only fused {:?}  {}",
-                                report.verdict(),
-                                dim(report.note(), color)
+                                "│  PID      · track {track_id}: diagnostic-only terminal fused {verdict:?}  {}",
+                                dim(&note, color)
                             );
-                            for axis in report.pids() {
+                            for axis in pids {
                                 println!(
                                     "│             axis {} {:?}  {}",
                                     axis.axis(),
@@ -1815,7 +2277,7 @@ fn run_replay(
                         }
                         Err(error) => println!(
                             "│  PID      · track {track_id}: {}  {}",
-                            dim("terminal-only INSUFFICIENT-EVIDENCE", color),
+                            dim("diagnostic-only terminal INSUFFICIENT-EVIDENCE", color),
                             dim(&format!("estimator input rejected: {error}"), color)
                         ),
                     }
@@ -1889,11 +2351,12 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
             start_frame: attack_start_frame(frames, 3)?,
         },
     )?;
+    let scope = cfg.assessment_scope("demo-pid")?;
 
     // Compare the KSG-MI escalation on every attested projection axis. Agreement
     // is an observed finite-sample result, not an equivalence guarantee.
     let pid_suite = PidResearchSuite::circular_delete_block_v0_9(&mods)?;
-    let report = assess_stream(&stream, &pid_suite)?;
+    let report = assess_stream(&scope, &stream, &pid_suite)?;
 
     println!();
     println!(

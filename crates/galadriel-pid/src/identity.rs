@@ -15,7 +15,7 @@ const _: () = assert!(
 pub enum PidResearchClassification {
     /// Closed, versioned PID research profile.
     NamedResearchProfile,
-    /// Accepted custom research values; never relabelled as a named profile.
+    /// Accepted custom research values that are never relabeled as a named profile.
     CustomAcceptedResearch,
 }
 
@@ -80,10 +80,10 @@ digest_type!(
 /// Opaque binding between an exact core release assessment and one complete PID
 /// research suite.
 ///
-/// The nested core binding covers every ordered observation and the complete
-/// [`galadriel_core::ReleaseSuite`]. This layer additionally binds the named or
-/// custom PID research-suite identity, preventing equal component values from
-/// being relabelled under a different suite.
+/// The nested core binding covers the assessment scope and every ordered
+/// observation. It also covers the complete [`galadriel_core::ReleaseSuite`].
+/// This layer also binds the PID research-suite identity. Equal component values
+/// cannot be relabeled under a different suite.
 ///
 /// ```compile_fail
 /// use galadriel_pid::PidAssessmentBinding;
@@ -116,7 +116,7 @@ impl PidAssessmentBinding {
         self.digest
     }
 
-    /// Exact suite-and-observation binding produced by the core preparation.
+    /// Exact scope, suite, and observation binding from core preparation.
     pub const fn release_binding(&self) -> &AssessmentBinding {
         &self.release_binding
     }

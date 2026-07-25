@@ -4,7 +4,7 @@
 
 | Short form | Meaning |
 |---|---|
-| ACLs | access control lists |
+| ACL | access control list |
 | ADR | architecture decision record |
 | API | application programming interface |
 | ASCII | American Standard Code for Information Interchange |
@@ -19,6 +19,7 @@
 | mTLS | mutual Transport Layer Security |
 | NCP | Neuro-Cybernetic Protocol |
 | NIS | normalized innovation squared |
+| PID | partial information decomposition |
 | SHA-256 | Secure Hash Algorithm 256 |
 | SPKI | Subject Public Key Info |
 | TLS | Transport Layer Security |
@@ -68,10 +69,10 @@ canonical SHA-256 is
 This inspection establishes byte and schema fixture compatibility only. The
 formal Crebain 0.9 boundary still freezes Galadriel
 `94e2f8cc01f352d2bf899b7f656997f143a2588f`. It does not pin the final Galadriel
-0.9.0 release object. It also does not supply the secured multi-process campaign.
+0.9.0 release object. It also does not supply a multi-process mTLS and ACL campaign.
 
-Current reciprocal pins and deployed secured interoperability are separate unmet
-evidence classes. See
+Current reciprocal pins and deployed mTLS and ACL interoperability are separate
+unmet evidence classes. See
 [`ECOSYSTEM-CONNECTIONS.md`](ECOSYSTEM-CONNECTIONS.md).
 
 ## Decision
@@ -81,7 +82,7 @@ routes. A conforming producer uses both routes for different responsibilities.
 
 | Route | Payload | Responsibility |
 |---|---|---|
-| `{realm}/session/{epoch}/sensor/galadriel-pid` | Frozen `SidecarEnvelope` schema v1 | At most one real accepted observation for each `(track, modality, frame)`. The observation must be suitable for existing detectors. |
+| `{realm}/session/{epoch}/sensor/galadriel-pid` | Frozen `SidecarEnvelope` schema v1 | At most one accepted observation for each `(track, modality, frame)`. The observation must be suitable for existing detectors. |
 | `{realm}/session/{epoch}/sensor/galadriel-monitor` | Strict monitor envelope schema v1 | Measurement lifecycle outcomes, fusion-frame closure, and producer liveness. |
 
 The observation route MUST remain byte-compatible and schema-compatible with
@@ -132,16 +133,17 @@ for that purpose.
 A `payloads_received` counter shows only that some traffic arrived. It does not
 show producer liveness.
 
-The command-line application provides `observe` behind `ncp-live`. It loads an
-externally digest-pinned registry and opens the strict secure Zenoh client. It
-joins both exact routes through one serialized bounded input. It advances all
-declared deadlines and sends only complete lifecycle frames to the detector
-adapter.
+The command-line application provides `observe` behind `ncp-live`.
+It loads an externally digest-pinned registry.
+It opens the strict Zenoh security-profile client.
+It joins both exact routes through one serialized bounded input.
+It advances all declared deadlines.
+It sends only complete lifecycle frames to the detector adapter.
 
 Explicit misses and rejections cause immediate abstention. They also clear the
 affected suffix.
 
-The producer design requires a runtime to complete these actions:
+A conforming producer MUST complete these actions:
 
 1. Snapshot the predicted track set before association and update.
 2. Calculate registered Cartesian projections from that one prior.
@@ -154,13 +156,23 @@ fixture for this design. It is not the current candidate. Historical JSONL
 captures contain only successful updates. New implementations do not change
 that evidence.
 
+The `replay` command accepts bounded `PidObservation` JSONL input.
+These observations carry sequence and timestamp values.
+They do not carry complete producer and lifecycle provenance.
+They omit core session, epoch, stream, generation, and clock-domain identity.
+
+The command does not invent an `AssessmentScope` for this input.
+It labels terminal baseline, default, and optional PID output as diagnostic-only.
+It does not produce a sealed accepted report or a lifecycle receipt.
+Users MUST NOT describe raw replay output as lifecycle-complete evidence.
+
 Existing evidence is synthetic, golden, unit, property, or in-process transport
 evidence. An external acceptance gate still needs a real multi-process campaign.
 The campaign must cover allow and deny behavior, certificates, restarts, loss, and
 all-silence conditions.
 
-This ADR defines the implemented Galadriel consumer contract. It excludes
-producer, cross-repository, and deployment evidence.
+This ADR defines the implemented Galadriel consumer contract.
+It does not provide evidence that a producer or deployment conforms to the contract.
 
 ## Route and publication rules
 
@@ -523,7 +535,7 @@ remain mandatory.
 
 ### Independent heartbeat
 
-A task independent of sensor input and the fusion loop MUST produce heartbeats.
+A task that is independent of sensor input and the fusion loop MUST produce heartbeats.
 Its cadence also remains independent of track count and association success. It
 MUST continue during zero-track and zero-observation periods.
 
@@ -576,6 +588,18 @@ hold:
 4. The frame has no unexpected or duplicate v1 record.
 5. All identity, registry, sequence, projection, count, and digest checks pass.
 
+After admission, `LifecycleDetector` creates one `AssessmentScope` for the frame.
+It uses the validated assembled-frame producer and the exact admitted
+`StreamPosition`.
+The sidecar v1 compatibility path derives this position from validated frame
+values and retained lifecycle state.
+[`STATE-MACHINE.md`](STATE-MACHINE.md) defines that exact mapping.
+
+Every evaluated report carries the same producer and position as its receipt.
+The receipt assessment digest binds the complete ordered assessment vector.
+This vector includes each serialized evaluated report and its scope.
+It also includes each explicit abstention.
+
 A consumer MAY archive or process a v1 observation without monitor closure. This
 operation requires an explicit baseline or replay profile. The observation MUST
 NOT be described as lifecycle-complete operational evidence. A monitor `updated`
@@ -605,12 +629,47 @@ Consumer eviction MUST NOT make an incomplete frame eligible. An epoch-retiremen
 policy can discard state only after the old subscription cannot contribute
 accepted evidence.
 
-Bounded prior and track-modality replay maps cannot safely evict while the epoch
-remains admissible. Deployments MUST expose their use. They MUST coordinate a new
-unused epoch before either map becomes full.
+Bounded prior and track-modality replay maps cannot evict while the epoch remains
+admissible without creating replay risk. Deployments MUST expose their use. They
+MUST coordinate a new unused epoch before either map becomes full.
 
 Capacity exhaustion is terminal. It is not an automatic rollover signal and
 cannot be repaired in place.
+
+### Command-line lifecycle record
+
+The `observe` command writes lifecycle records to standard output.
+Each record is one JSON object with these exact top-level fields:
+
+| Field | Required value |
+|---|---|
+| `schema` | `galadriel.observe.lifecycle.v1` |
+| `calibrated_posterior` | `false` |
+| `receipt` | complete serialized `LifecycleReceipt` |
+| `assessments` | complete deterministic track-ordered assessment vector |
+
+An accepted frame produces one record.
+Its vector contains all evaluated and abstained track results.
+A zero-track accepted frame has an empty vector and an accepted receipt.
+Accepted transition kinds are `initialized`, `advanced`, `reset`, and
+`epoch_rolled_over`.
+
+A detector rejection or fault can commit a terminal receipt before failure.
+When this occurs, the command first writes one record with that new receipt.
+Its transition kind is `rejected` or `faulted`.
+The record has an empty assessment vector.
+The command then returns the terminal error.
+It uses a fallible write and flushes standard output first.
+
+The command records the prior receipt index and digest before assessment.
+It never emits that prior receipt for the current failure.
+If no new receipt exists, the failure produces no lifecycle record.
+
+The command writes startup, heartbeat, health, advisory, and error text to
+standard error.
+Machine-readable lifecycle records remain on standard output.
+This local output is not a producer wire message.
+It is not a signed advisory envelope or a durable journal.
 
 ## Producer queues and backpressure
 
@@ -654,6 +713,11 @@ shows a fault. Eviction MUST NOT silently restore eligibility.
 acceptance requires transport authentication and authorization. These controls
 must bind the claims to the publisher.
 
+The assessment binding and receipt digest bind the accepted labels and evidence.
+Their verification establishes internal integrity for those supplied values.
+It does not authenticate the producer, transport, or physical source.
+It also does not make command output durable.
+
 The deployment MUST use mutually authenticated TLS and default-deny ACLs. It MUST
 map the producer certificate identity or CN to the configured `producer_id`. An
 equally strong authenticated principal can replace that identity.
@@ -672,7 +736,7 @@ identity-to-key mapping. Positive and negative authorization tests must prove th
 mapping.
 
 A consumer on a host-provided bus inherits the host security posture. Construction
-alone does not prove mTLS or ACL enforcement. Secure mode MUST be explicit and
+alone does not prove mTLS or ACL enforcement. `Secure` mode MUST be explicit and
 fail closed.
 
 Zenoh 1.9 authenticates the router against built-in public WebPKI roots and the
@@ -700,8 +764,8 @@ actions, leases, or vehicle control.
 
 ## Acceptance matrix
 
-An implementation is not conformant or deployable before all five lenses have
-durable and reviewable evidence.
+Do not claim complete conformance or deployment qualification before all five
+lenses have durable and reviewable evidence.
 
 | Lens | Required evidence | Acceptance condition | Failure behavior |
 |---|---|---|---|
@@ -714,9 +778,12 @@ durable and reviewable evidence.
 Evidence MUST record exact software revisions, registry and configuration digests,
 schema versions, router security configuration, test commands, and results.
 
-A synthetic JSONL or replay test is useful protocol and statistics evidence. It
-MUST NOT prove live routing, independent heartbeat behavior, backpressure, or
-mTLS and ACL enforcement.
+A synthetic JSONL or replay test is useful diagnostic protocol and statistics
+evidence.
+Raw replay remains unbound because its input has no complete lifecycle scope.
+Users **MUST NOT** describe it as accepted lifecycle evidence.
+Users **MUST NOT** describe it as proof of live routing, independent heartbeat
+behavior, backpressure, or mTLS and ACL enforcement.
 
 ## Rejected alternatives
 
@@ -761,16 +828,16 @@ The release disposition is:
 1. **Implemented locally:** monitor Rust and JSON types, limits, and typed reason
    taxonomy. Also included are registry parsing, pin capability, and opportunity
    policy. Live monitor tap, assembler, lifecycle adapter, two-route receiver,
-   CLI, exact-epoch secure configuration, counters, and in-process fault tests are
-   also implemented.
+   CLI, exact-epoch security-profile configuration, counters, and in-process
+   fault tests are also implemented.
 2. **Historical fixture:** the two old commit identities record an earlier
    byte-identical registry and compatibility exercise. They supply provenance,
    not current qualification evidence.
 3. **Not claimed:** a reciprocal current producer pin or final cross-repository
    qualification.
-4. **External gate:** run and retain all five acceptance lenses on a secured
-   multi-process deployment. Then complete a recorded pre-gate calibration study
-   that is independent of threshold fitting.
+4. **External gate:** run and retain all five acceptance lenses on a multi-process
+   deployment with mTLS and ACL controls. Then complete a recorded pre-gate
+   calibration study that is independent of threshold fitting.
 
 The operational components remain a research prototype until the external gate
 and acceptance matrix are complete. No deployment, remote ACL, field performance,

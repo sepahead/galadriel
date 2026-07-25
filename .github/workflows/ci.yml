@@ -70,10 +70,15 @@ jobs:
         run: >-
           python3 -m unittest -v
           scripts.tests.test_release_audit
+          repo_work.tests.test_release_audit_snapshot
+          repo_work.tests.test_evidence_batch_transaction
+          repo_work.tests.test_file_mode_identity
           repo_work.tests.test_package_release_assets
           repo_work.tests.test_review_tools
           repo_work.tests.test_task_dispositions
           repo_work.tests.test_release_assurance
+          repo_work.tests.test_candidate_evidence_bundle
+          repo_work.tests.test_qualify_candidate_evidence
           repo_work.tests.test_finalize_qualification
           repo_work.tests.test_qualification_artifacts
           repo_work.tests.test_host_process_bounds

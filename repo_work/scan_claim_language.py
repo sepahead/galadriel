@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import re
 import sys
@@ -17,6 +18,10 @@ CLAIM = re.compile(
     r"exact|identical|complete|correct|real[- ]time|certified|compatible|stable|"
     r"proven|guarantee(?:d|s)?)\b"
 )
+MAX_PROSE_FILES = 100_000
+MAX_PROSE_FILE_BYTES = 256 * 1024 * 1024
+MAX_PROSE_AGGREGATE_BYTES = 4 * 1024 * 1024 * 1024
+MAX_CLAIM_FINDINGS = 100_000
 
 
 def main() -> int:
@@ -47,25 +52,60 @@ def main() -> int:
             git(
                 repo,
                 "ls-files",
+                "--stage",
                 "-z",
                 "*.md",
+                "*.mdc",
                 "*.rst",
                 "*.txt",
                 text=False,
             )
         )
         findings: list[dict[str, object]] = []
-        for encoded in raw.split(b"\0"):
-            if not encoded:
+        file_count = 0
+        aggregate_bytes = 0
+        for entry in raw.split(b"\0"):
+            if not entry:
                 continue
-            relative = encoded.decode("utf-8", "surrogateescape")
+            file_count += 1
+            if file_count > MAX_PROSE_FILES:
+                raise ReviewError("tracked prose exceeds the file-count limit")
             try:
-                lines = (repo / relative).read_text(encoding="utf-8").splitlines()
+                metadata, encoded_path = entry.split(b"\t", 1)
+                mode, object_id, stage = metadata.decode("ascii").split()
+            except (UnicodeError, ValueError) as error:
+                raise ReviewError("tracked prose index is malformed") from error
+            if stage != "0":
+                raise ReviewError("tracked prose contains an unmerged index entry")
+            if mode == "160000":
+                continue
+            relative = encoded_path.decode("utf-8", "surrogateescape")
+            document = bytes(
+                git(
+                    repo,
+                    "cat-file",
+                    "blob",
+                    object_id,
+                    text=False,
+                    max_bytes=MAX_PROSE_FILE_BYTES,
+                )
+            )
+            aggregate_bytes += len(document)
+            if aggregate_bytes > MAX_PROSE_AGGREGATE_BYTES:
+                raise ReviewError("tracked prose exceeds the aggregate byte limit")
+            try:
+                text = document.decode("utf-8", "strict")
             except UnicodeError:
                 continue
-            for line_number, line in enumerate(lines, 1):
-                terms = sorted({match.group(0).lower() for match in CLAIM.finditer(line)})
+            for line_number, line in enumerate(io.StringIO(text), 1):
+                terms = sorted(
+                    {match.group(0).lower() for match in CLAIM.finditer(line)}
+                )
                 if terms:
+                    if len(findings) >= MAX_CLAIM_FINDINGS:
+                        raise ReviewError(
+                            "claim-language findings exceed the item limit"
+                        )
                     findings.append(
                         {
                             "path": relative,

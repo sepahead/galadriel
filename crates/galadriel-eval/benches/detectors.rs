@@ -10,9 +10,9 @@ use std::hint::black_box;
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use galadriel_core::{
-    assess_default, correlation, CorrConfig, CorrParams, DetectorConfig, DetectorParams, Mirror,
-    Modality, PidObservation, ProducerAxisFamilyPolicy, ReleaseSuite, ReleaseSuiteParams, Sequence,
-    TrackId,
+    assess_default, correlation, AssessmentScope, CorrConfig, CorrParams, DetectorConfig,
+    DetectorParams, Mirror, Modality, PidObservation, ProducerAxisFamilyPolicy, ReleaseSuite,
+    ReleaseSuiteParams, Sequence, TrackId,
 };
 use galadriel_pid::{
     analyze, assess_stream, scalar_channels, PidConfig, PidResearchProfile, PidResearchSuite,
@@ -21,7 +21,7 @@ use galadriel_sim::scenario::{generate_spoofed, ScenarioConfig, ScenarioParams, 
 
 const MODS: [Modality; 3] = [Modality::Visual, Modality::Radar, Modality::Acoustic];
 
-fn stream(frames: usize) -> Vec<PidObservation> {
+fn stream(frames: usize) -> (AssessmentScope, Vec<PidObservation>) {
     let cfg = ScenarioConfig::try_new(ScenarioParams {
         track_id: 1,
         frames,
@@ -32,18 +32,22 @@ fn stream(frames: usize) -> Vec<PidObservation> {
         seed: 42,
     })
     .expect("benchmark scenario configuration must be valid");
-    generate_spoofed(
+    let scope = cfg
+        .assessment_scope("benchmark-detectors")
+        .expect("benchmark assessment scope must be valid");
+    let stream = generate_spoofed(
         &cfg,
         StealthySpoof {
             target: Modality::Acoustic,
             start_frame: (frames as u64) / 3,
         },
     )
-    .expect("valid benchmark scenario")
+    .expect("valid benchmark scenario");
+    (scope, stream)
 }
 
 fn bench_detectors(c: &mut Criterion) {
-    let s = stream(300);
+    let (scope, s) = stream(300);
     let channels = scalar_channels(&s, &MODS, 0).expect("valid benchmark channels");
     let track_id = s.first().expect("benchmark stream is non-empty").track_id();
     let last_seq = s
@@ -76,7 +80,7 @@ fn bench_detectors(c: &mut Criterion) {
 
     // The pure default: NIS ⊕ signed pairwise-ρ consistency (no pid-core).
     g.bench_function("correlation_default_fused", |b| {
-        b.iter(|| black_box(assess_default(&s, &release_suite)))
+        b.iter(|| black_box(assess_default(&scope, &s, &release_suite)))
     });
 
     // The escalation: geometry-gated KSG mutual information.
@@ -86,7 +90,7 @@ fn bench_detectors(c: &mut Criterion) {
 
     // The full NIS ⊕ PID fusion.
     g.bench_function("fused_nis_pid", |b| {
-        b.iter(|| black_box(assess_stream(&s, &pid_suite)))
+        b.iter(|| black_box(assess_stream(&scope, &s, &pid_suite)))
     });
 
     g.finish();
@@ -95,7 +99,7 @@ fn bench_detectors(c: &mut Criterion) {
 /// How the two consistency scores scale with the same analysis window `W`.
 /// Benchmark output, rather than a hard-coded timing claim, is the source of truth.
 fn bench_cost_vs_window(c: &mut Criterion) {
-    let base = stream(600);
+    let (_, base) = stream(600);
     let full = scalar_channels(&base, &MODS, 0).expect("valid benchmark channels");
     let mut g = c.benchmark_group("cost_vs_window");
     for &w in &[32usize, 64, 128, 256, 512] {

@@ -12,14 +12,19 @@
 //!
 //! ## What it consumes
 //!
-//! A stream of [`PidObservation`] records — at most one validated, accepted
-//! innovation per `(track, modality, frame)` under the current producer contract.
+//! A stream contains [`PidObservation`] records. The producer contract permits at
+//! most one accepted innovation for each track, modality, and frame.
 //! Each scalar `NIS = yᵀ S⁻¹ y ~ χ²(dof)` is formed against the *a priori* state
-//! entering that particular update; co-located follow-up updates may therefore use
+//! entering that particular update. Co-located follow-up updates can therefore use
 //! sequentially conditioned priors. In the sepahead ecosystem these records are
 //! emitted by a contract-conforming producer and may be delivered over
-//! Galadriel's project-owned named NCP sidecar route; here they are
+//! Galadriel's project-owned named NCP sidecar route. Here they are
 //! transport-agnostic plain data.
+//! Accepted whole-stream entry points also require an [`AssessmentScope`]. The
+//! scope contains a producer label and one exact lifecycle position. Core checks
+//! its terminal sequence and timestamp against the stream. The other coordinates
+//! are validated caller declarations. The scope does not authenticate a producer
+//! or prove observation origin.
 //! Cross-sensor analysis additionally requires an optional
 //! [`ConsistencyProjection`]: a bounded signed vector plus producer-attested
 //! physical-frame, projection-context, and common frozen-pre-update-prior
@@ -34,11 +39,11 @@
 //! | **most/all** channels have high-direction NIS/CUSUM evidence | [`Verdict::BroadDegradation`] | broad magnitude degradation; cause unclassified |
 //! | too few samples / channels | [`Verdict::InsufficientEvidence`] | **fail closed** — never default to Nominal |
 //!
-//! This is an **advisory** detector. It assesses *statistical consistency*,
-//! not truth: a moment-matched spoof that keeps each channel's NIS within its own
-//! covariance passes the baseline — the signed-correlation default and optional PID
-//! escalation can observe some common-projection dependence changes, but cannot
-//! distinguish every attack from benign decorrelation. See the repository's
+//! This is an **advisory** detector. It assesses *statistical consistency*.
+//! It does not assess truth. A moment-matched spoof can keep each channel's NIS
+//! within its covariance. The signed-correlation default and optional PID path can
+//! observe some common-projection changes. They cannot distinguish every attack
+//! from benign decorrelation. See the repository's
 //! `docs/JUSTIFICATION.md` and `docs/EVALUATION.md`.
 
 pub mod authority;
@@ -84,7 +89,7 @@ pub use fusion::{
     AxisCorrelationReport, ConsistencyEvidence, DefaultReport, FusedVerdict, MagnitudeEvidence,
     NonEmptyModalities, PreparedReleaseAssessment,
 };
-pub use identity::{AssessmentBinding, AssessmentDigest, ConfigDigest};
+pub use identity::{AssessmentBinding, AssessmentDigest, AssessmentScope, ConfigDigest};
 pub use observation::{
     validate_and_symmetrize_covariance, ConsistencyProjection, Modality, PidObservation,
     COVARIANCE_SYMMETRY_RELATIVE_TOLERANCE, MAX_CONSISTENCY_PROJECTION_AXES,

@@ -2,10 +2,10 @@
 
 use std::fmt;
 
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 
-use crate::{PidObservation, ReleaseSuite};
+use crate::{PidObservation, ProducerId, ReleaseSuite, StreamPosition};
 
 const _: () = assert!(
     usize::BITS <= u64::BITS,
@@ -112,14 +112,78 @@ impl Serialize for AssessmentDigest {
     }
 }
 
-/// Opaque canonical binding between one accepted release suite and its exact
-/// ordered observation input.
+/// Validated lifecycle labels for one accepted whole-stream assessment.
+///
+/// The scope names one producer and one exact lifecycle position. The position
+/// contains session, epoch, stream, state generation, sequence, timestamp, and
+/// clock domain. Core compares the terminal sequence and timestamp with the
+/// assessed stream. The other values are validated caller declarations. The
+/// scope does not authenticate the producer. It does not prove observation
+/// origin.
+///
+/// ```
+/// use galadriel_core::{AssessmentScope, ClockDomain, ProducerId, StreamPosition};
+///
+/// let scope = AssessmentScope::new(
+///     ProducerId::new("producer-1")?,
+///     StreamPosition::try_new(
+///         "session-1",
+///         "epoch-1",
+///         "fusion",
+///         0,
+///         17,
+///         1_700,
+///         ClockDomain::MonotonicProcess,
+///     )?,
+/// );
+/// assert_eq!(scope.position().sequence().get(), 17);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// ```compile_fail
+/// use galadriel_core::AssessmentScope;
+/// let _ = AssessmentScope {};
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AssessmentScope {
+    producer_id: ProducerId,
+    position: StreamPosition,
+}
+
+impl AssessmentScope {
+    /// Constructs a scope from validated producer and lifecycle values.
+    pub const fn new(producer_id: ProducerId, position: StreamPosition) -> Self {
+        Self {
+            producer_id,
+            position,
+        }
+    }
+
+    /// Returns the validated producer label.
+    pub const fn producer_id(&self) -> &ProducerId {
+        &self.producer_id
+    }
+
+    /// Returns the exact lifecycle position for this assessment.
+    pub const fn position(&self) -> &StreamPosition {
+        &self.position
+    }
+}
+
+/// Opaque canonical binding for one scope, release suite, and ordered stream.
 ///
 /// Only whole-stream assessment preparation can mint this value. Callers may
 /// compare or verify it, but cannot construct one from arbitrary component
 /// reports. The binding covers every field currently carried by
 /// [`PidObservation`], including optional native research data and producer-
-/// attested consistency projections.
+/// attested consistency projections. It also covers the complete
+/// [`AssessmentScope`]. The digest domain is
+/// `galadriel-assessment-binding-v2`.
+///
+/// The binding identifies the submitted input. Different bindings can carry
+/// equal detector verdicts. The binding does not require each observation to
+/// change an estimator or verdict.
 ///
 /// ```compile_fail
 /// use galadriel_core::AssessmentBinding;
@@ -130,10 +194,11 @@ pub struct AssessmentBinding {
     digest: AssessmentDigest,
     suite_identity: ConfigDigest,
     observation_count: usize,
+    scope: AssessmentScope,
 }
 
 impl AssessmentBinding {
-    /// Canonical domain-separated digest of the suite and ordered observations.
+    /// Canonical digest of the scope, suite, and ordered observations.
     pub const fn digest(&self) -> AssessmentDigest {
         self.digest
     }
@@ -148,13 +213,39 @@ impl AssessmentBinding {
         self.observation_count
     }
 
-    /// Verify this binding against an exact ordered stream and release suite.
-    pub fn verifies(&self, stream: &[PidObservation], suite: &ReleaseSuite) -> bool {
-        self == &Self::for_release_stream(stream, suite)
+    /// Validated lifecycle labels included in this binding.
+    pub const fn scope(&self) -> &AssessmentScope {
+        &self.scope
     }
 
-    pub(crate) fn for_release_stream(stream: &[PidObservation], suite: &ReleaseSuite) -> Self {
-        let mut identity = IdentityBuilder::new(b"galadriel-assessment-binding-v1");
+    /// Verify this binding against one exact scope, ordered stream, and suite.
+    ///
+    /// The method rejects cheap identity and size mismatches before it hashes the
+    /// stream. A successful result proves internal digest agreement. It does not
+    /// authenticate the producer or the caller.
+    pub fn verifies(
+        &self,
+        scope: &AssessmentScope,
+        stream: &[PidObservation],
+        suite: &ReleaseSuite,
+    ) -> bool {
+        if scope != &self.scope
+            || stream.len() != self.observation_count
+            || suite.identity() != self.suite_identity
+            || crate::validate_consistency_input_len(stream.len()).is_err()
+        {
+            return false;
+        }
+        self.digest == Self::for_release_stream(scope, stream, suite).digest
+    }
+
+    pub(crate) fn for_release_stream(
+        scope: &AssessmentScope,
+        stream: &[PidObservation],
+        suite: &ReleaseSuite,
+    ) -> Self {
+        let mut identity = IdentityBuilder::new(b"galadriel-assessment-binding-v2");
+        append_assessment_scope(&mut identity, scope);
         identity.digest(b"release_suite", suite.identity());
         identity.usize(b"observation_count", stream.len());
         for observation in stream {
@@ -164,6 +255,7 @@ impl AssessmentBinding {
             digest: AssessmentDigest::from_config_digest(identity.finish()),
             suite_identity: suite.identity(),
             observation_count: stream.len(),
+            scope: scope.clone(),
         }
     }
 }
@@ -175,8 +267,23 @@ impl fmt::Debug for AssessmentBinding {
             .field("digest", &self.digest)
             .field("suite_identity", &self.suite_identity)
             .field("observation_count", &self.observation_count)
+            .field("scope", &self.scope)
             .finish()
     }
+}
+
+fn append_assessment_scope(identity: &mut IdentityBuilder, scope: &AssessmentScope) {
+    let position = scope.position();
+    let stream = position.identity();
+    let epoch = stream.epoch();
+    identity.bytes(b"producer_id", scope.producer_id().as_str().as_bytes());
+    identity.bytes(b"session_id", epoch.session_id().as_str().as_bytes());
+    identity.bytes(b"epoch_id", epoch.epoch_id().as_str().as_bytes());
+    identity.bytes(b"stream_id", stream.stream_id().as_str().as_bytes());
+    identity.u64(b"state_generation", position.state_generation().get());
+    identity.u64(b"terminal_sequence", position.sequence().get());
+    identity.u64(b"terminal_timestamp_ms", position.timestamp_ms().get());
+    identity.bytes(b"clock_domain", position.clock_domain().as_str().as_bytes());
 }
 
 impl Serialize for AssessmentBinding {
@@ -299,8 +406,51 @@ mod tests {
     use super::*;
 
     use crate::{
-        ConsistencyProjection, Modality, ProjectionIdentity, Sequence, TimestampMillis, TrackId,
+        ClockDomain, ConsistencyProjection, Modality, ProducerId, ProjectionIdentity, Sequence,
+        StreamPosition, TimestampMillis, TrackId, JSON_SAFE_INTEGER_MAX,
     };
+
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the scope fixture names every bound identity coordinate"
+    )]
+    fn scope_with(
+        producer_id: &str,
+        session_id: &str,
+        epoch_id: &str,
+        stream_id: &str,
+        state_generation: u64,
+        sequence: u64,
+        timestamp_ms: u64,
+        clock_domain: ClockDomain,
+    ) -> AssessmentScope {
+        AssessmentScope::new(
+            ProducerId::new(producer_id).expect("test producer"),
+            StreamPosition::try_new(
+                session_id,
+                epoch_id,
+                stream_id,
+                state_generation,
+                sequence,
+                timestamp_ms,
+                clock_domain,
+            )
+            .expect("test position"),
+        )
+    }
+
+    fn scope(sequence: u64, timestamp_ms: u64) -> AssessmentScope {
+        scope_with(
+            "test-producer",
+            "test-session",
+            "test-epoch",
+            "test-stream",
+            0,
+            sequence,
+            timestamp_ms,
+            ClockDomain::SimulationTime,
+        )
+    }
 
     #[test]
     fn negative_zero_has_the_same_canonical_identity_as_positive_zero() {
@@ -354,25 +504,59 @@ mod tests {
             format!("\"{expected}\"")
         );
 
+        let scope = scope(7, 100);
         let binding = AssessmentBinding {
             digest: assessment,
             suite_identity: config,
             observation_count: 7,
+            scope: scope.clone(),
         };
         assert_eq!(binding.digest(), assessment);
         assert_eq!(binding.suite_identity(), config);
         assert_eq!(binding.observation_count(), 7);
-        assert_eq!(
-            format!("{binding:?}"),
-            format!(
-                "AssessmentBinding {{ digest: AssessmentDigest(\"{expected}\"), \
-                 suite_identity: ConfigDigest(\"{expected}\"), observation_count: 7 }}"
-            )
-        );
+        assert_eq!(binding.scope(), &scope);
+        let debug = format!("{binding:?}");
+        assert!(debug.contains(&format!("AssessmentDigest(\"{expected}\")")));
+        assert!(debug.contains("producer_id: ProducerId(\"test-producer\")"));
         assert_eq!(
             serde_json::to_string(&binding).expect("serialize assessment binding"),
             format!("\"{expected}\"")
         );
+    }
+
+    #[test]
+    fn assessment_scope_json_roundtrip_preserves_every_validated_label() {
+        let scope = scope(7, 100);
+        let encoded = serde_json::to_vec(&scope).expect("scope serializes");
+
+        let decoded = serde_json::from_slice::<AssessmentScope>(&encoded)
+            .expect("scope deserializes through validated fields");
+
+        assert_eq!(decoded, scope);
+    }
+
+    #[test]
+    fn assessment_scope_json_rejects_an_unknown_field() {
+        let mut value = serde_json::to_value(scope(7, 100)).expect("scope serializes");
+        value["unexpected"] = serde_json::json!(true);
+
+        assert!(serde_json::from_value::<AssessmentScope>(value).is_err());
+    }
+
+    #[test]
+    fn assessment_scope_json_revalidates_the_producer_grammar() {
+        let mut value = serde_json::to_value(scope(7, 100)).expect("scope serializes");
+        value["producer_id"] = serde_json::json!("../invalid");
+
+        assert!(serde_json::from_value::<AssessmentScope>(value).is_err());
+    }
+
+    #[test]
+    fn assessment_scope_json_rejects_an_unsafe_terminal_integer() {
+        let mut value = serde_json::to_value(scope(7, 100)).expect("scope serializes");
+        value["position"]["sequence"] = serde_json::json!(JSON_SAFE_INTEGER_MAX + 1);
+
+        assert!(serde_json::from_value::<AssessmentScope>(value).is_err());
     }
 
     fn suite() -> ReleaseSuite {
@@ -422,11 +606,12 @@ mod tests {
     fn assessment_binding_covers_every_scalar_coordinate_and_input_order() {
         let suite = suite();
         let base = scalar(1, 100, 7, Modality::Visual, 3.0, 3);
+        let scope = scope(7, 100);
         let base_binding =
-            AssessmentBinding::for_release_stream(std::slice::from_ref(&base), &suite);
+            AssessmentBinding::for_release_stream(&scope, std::slice::from_ref(&base), &suite);
         assert_eq!(
             base_binding.digest().to_hex(),
-            "541c2a9a6f7f058e4c130894c71c4ce8a86cbe6a82fafceca8b46ef116eeda48"
+            "25b3a35232c6643536f83768653171428430980981b033e6d28be717637e4236"
         );
         let mutations = [
             scalar(2, 100, 7, Modality::Visual, 3.0, 3),
@@ -438,13 +623,13 @@ mod tests {
         ];
 
         assert!(mutations.iter().all(|mutation| {
-            AssessmentBinding::for_release_stream(std::slice::from_ref(mutation), &suite)
+            AssessmentBinding::for_release_stream(&scope, std::slice::from_ref(mutation), &suite)
                 != base_binding
         }));
         let radar = scalar(1, 100, 7, Modality::Radar, 3.0, 3);
         assert_ne!(
-            AssessmentBinding::for_release_stream(&[base.clone(), radar.clone()], &suite),
-            AssessmentBinding::for_release_stream(&[radar, base], &suite)
+            AssessmentBinding::for_release_stream(&scope, &[base.clone(), radar.clone()], &suite,),
+            AssessmentBinding::for_release_stream(&scope, &[radar, base], &suite)
         );
     }
 
@@ -458,8 +643,9 @@ mod tests {
             .try_with_research([0.1, 0.2, 0.3], covariance)
             .expect("test research input")
             .with_consistency_projection(projection([0.4, 0.5, 0.6], 3, 1, 2, 3));
+        let scope = scope(7, 100);
         let complete_binding =
-            AssessmentBinding::for_release_stream(std::slice::from_ref(&complete), &suite);
+            AssessmentBinding::for_release_stream(&scope, std::slice::from_ref(&complete), &suite);
         let covariance_changed = [[1.125, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
         let mutations = [
             scalar.clone(),
@@ -500,10 +686,10 @@ mod tests {
         ];
 
         assert!(mutations.iter().all(|mutation| {
-            AssessmentBinding::for_release_stream(std::slice::from_ref(mutation), &suite)
+            AssessmentBinding::for_release_stream(&scope, std::slice::from_ref(mutation), &suite)
                 != complete_binding
         }));
-        assert!(complete_binding.verifies(&[complete], &suite));
+        assert!(complete_binding.verifies(&scope, &[complete], &suite));
     }
 
     #[test]
@@ -524,12 +710,213 @@ mod tests {
                 .clone()
                 .with_consistency_projection(projection([0.4, 0.5, 0.6], 3, 1, 2, 3));
 
+        let scope = scope(7, 100);
         let bindings =
             [scalar, research, projected_scalar, projected_research].map(|observation| {
-                AssessmentBinding::for_release_stream(std::slice::from_ref(&observation), &suite)
+                AssessmentBinding::for_release_stream(
+                    &scope,
+                    std::slice::from_ref(&observation),
+                    &suite,
+                )
             });
         for (index, binding) in bindings.iter().enumerate() {
             assert!(bindings[index + 1..].iter().all(|other| binding != other));
+        }
+    }
+
+    #[test]
+    fn assessment_binding_covers_every_scope_coordinate() {
+        let suite = suite();
+        let observation = scalar(1, 100, 7, Modality::Visual, 3.0, 3);
+        let base_scope = scope(7, 100);
+        let base = AssessmentBinding::for_release_stream(
+            &base_scope,
+            std::slice::from_ref(&observation),
+            &suite,
+        );
+        let mutations = [
+            scope_with(
+                "other-producer",
+                "test-session",
+                "test-epoch",
+                "test-stream",
+                0,
+                7,
+                100,
+                ClockDomain::SimulationTime,
+            ),
+            scope_with(
+                "test-producer",
+                "other-session",
+                "test-epoch",
+                "test-stream",
+                0,
+                7,
+                100,
+                ClockDomain::SimulationTime,
+            ),
+            scope_with(
+                "test-producer",
+                "test-session",
+                "other-epoch",
+                "test-stream",
+                0,
+                7,
+                100,
+                ClockDomain::SimulationTime,
+            ),
+            scope_with(
+                "test-producer",
+                "test-session",
+                "test-epoch",
+                "other-stream",
+                0,
+                7,
+                100,
+                ClockDomain::SimulationTime,
+            ),
+            scope_with(
+                "test-producer",
+                "test-session",
+                "test-epoch",
+                "test-stream",
+                1,
+                7,
+                100,
+                ClockDomain::SimulationTime,
+            ),
+            scope_with(
+                "test-producer",
+                "test-session",
+                "test-epoch",
+                "test-stream",
+                0,
+                8,
+                100,
+                ClockDomain::SimulationTime,
+            ),
+            scope_with(
+                "test-producer",
+                "test-session",
+                "test-epoch",
+                "test-stream",
+                0,
+                7,
+                101,
+                ClockDomain::SimulationTime,
+            ),
+            scope_with(
+                "test-producer",
+                "test-session",
+                "test-epoch",
+                "test-stream",
+                0,
+                7,
+                100,
+                ClockDomain::MonotonicProcess,
+            ),
+        ];
+
+        for mutation in mutations {
+            assert_ne!(
+                AssessmentBinding::for_release_stream(
+                    &mutation,
+                    std::slice::from_ref(&observation),
+                    &suite,
+                ),
+                base
+            );
+            assert!(!base.verifies(&mutation, std::slice::from_ref(&observation), &suite,));
+        }
+        assert!(base.verifies(&base_scope, std::slice::from_ref(&observation), &suite,));
+    }
+
+    #[test]
+    fn assessment_scope_fields_have_unambiguous_variable_length_boundaries() {
+        let suite = suite();
+        let observation = scalar(1, 100, 7, Modality::Visual, 3.0, 3);
+        let pairs = [
+            (
+                scope_with(
+                    "ab",
+                    "c",
+                    "epoch",
+                    "stream",
+                    0,
+                    7,
+                    100,
+                    ClockDomain::SimulationTime,
+                ),
+                scope_with(
+                    "a",
+                    "bc",
+                    "epoch",
+                    "stream",
+                    0,
+                    7,
+                    100,
+                    ClockDomain::SimulationTime,
+                ),
+            ),
+            (
+                scope_with(
+                    "producer",
+                    "ab",
+                    "c",
+                    "stream",
+                    0,
+                    7,
+                    100,
+                    ClockDomain::SimulationTime,
+                ),
+                scope_with(
+                    "producer",
+                    "a",
+                    "bc",
+                    "stream",
+                    0,
+                    7,
+                    100,
+                    ClockDomain::SimulationTime,
+                ),
+            ),
+            (
+                scope_with(
+                    "producer",
+                    "session",
+                    "ab",
+                    "c",
+                    0,
+                    7,
+                    100,
+                    ClockDomain::SimulationTime,
+                ),
+                scope_with(
+                    "producer",
+                    "session",
+                    "a",
+                    "bc",
+                    0,
+                    7,
+                    100,
+                    ClockDomain::SimulationTime,
+                ),
+            ),
+        ];
+
+        for (left, right) in pairs {
+            assert_ne!(
+                AssessmentBinding::for_release_stream(
+                    &left,
+                    std::slice::from_ref(&observation),
+                    &suite,
+                ),
+                AssessmentBinding::for_release_stream(
+                    &right,
+                    std::slice::from_ref(&observation),
+                    &suite,
+                )
+            );
         }
     }
 }

@@ -33,28 +33,28 @@
       "name": "Crebain",
       "url": "https://github.com/sepahead/crebain",
       "commit": "4c311900ade5668200a48d56fb191be1916b884a",
-      "role": "optional reference-producer snapshot for contract review with no Cargo or runtime dependency",
+      "role": "retained historical reference-producer fixture for contract review with no Cargo or runtime dependency",
       "qualification": "RECIPROCAL_FIXTURE"
     },
     {
       "name": "Haldir",
       "url": "https://github.com/sepahead/haldir",
       "commit": "5f7d183625a982741c51958e2d10bc12bb628ca0",
-      "role": "prospective downstream advisory consumer",
+      "role": "retained T000 exact-commit snapshot for prospective downstream contract review with no Galadriel runtime edge",
       "qualification": "NOT_CLAIMED"
     },
     {
       "name": "Prisoma",
       "url": "https://github.com/sepahead/prisoma",
       "commit": "0968128062f30da5c04f3f31c23f6ce8e0d95d36",
-      "role": "ecosystem inventory; not a Galadriel consumer",
+      "role": "retained frozen-baseline inventory for prospective offline-consumer review with no Galadriel runtime edge",
       "qualification": "NOT_CLAIMED"
     },
     {
       "name": "Paper2Brain",
       "url": "https://github.com/sepahead/Paper2Brain",
       "commit": "9845c31bc5bae4746120858037b27f9c9ed2f445",
-      "role": "Paper2Brain inventory snapshot with no Galadriel dependency, API, route, adapter, or runtime edge",
+      "role": "retained application inventory snapshot with no Galadriel dependency, API, route, adapter, or runtime edge",
       "qualification": "NOT_CLAIMED"
     },
     {

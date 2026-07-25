@@ -23,8 +23,9 @@
 use std::collections::HashSet;
 
 use galadriel_core::{
-    ConsistencyProjection, FrozenPriorId, GaladrielError, Modality, PidObservation, Result,
-    Sequence, TimestampMillis, TrackId,
+    AssessmentScope, ClockDomain, ConsistencyProjection, DomainError, FrozenPriorId,
+    GaladrielError, Modality, PidObservation, ProducerId, Result, Sequence, StreamPosition,
+    TimestampMillis, TrackId,
 };
 use rand_distr::{Distribution, Normal};
 use sha2::{Digest as _, Sha256};
@@ -175,6 +176,18 @@ pub enum ScenarioConfigError {
     InvalidTerminalFrozenPrior { message: String },
 }
 
+/// Failure to derive accepted-assessment labels from a synthetic scenario.
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ScenarioAssessmentScopeError {
+    /// An empty scenario has no terminal frame to bind.
+    #[error("an empty scenario has no terminal assessment position")]
+    EmptyScenario,
+    /// A fixed or caller-supplied identity violates the core domain contract.
+    #[error("invalid synthetic assessment identity: {0}")]
+    InvalidIdentity(#[from] DomainError),
+}
+
 /// Immutable, fully accepted configuration for a synthetic research scenario.
 ///
 /// ```compile_fail
@@ -201,6 +214,8 @@ pub struct ScenarioConfig {
     noise_sd: f64,
     origin: ScenarioConfigOrigin,
     canonical_digest: String,
+    terminal_sequence: Sequence,
+    terminal_timestamp: TimestampMillis,
 }
 
 fn validate_common_variance(
@@ -313,22 +328,23 @@ impl ScenarioConfig {
             });
         }
 
-        if let Some(last_frame) = params.frames.checked_sub(1) {
-            let last_frame =
-                u64::try_from(last_frame).map_err(|_| ScenarioConfigError::FrameIndexOverflow)?;
-            let last_timestamp = last_frame
-                .checked_mul(params.dt_ms)
-                .ok_or(ScenarioConfigError::TimestampOverflow)?;
-            Sequence::new(last_frame).map_err(|error| {
-                ScenarioConfigError::InvalidTerminalSequence {
-                    message: error.to_string(),
-                }
-            })?;
-            TimestampMillis::new(last_timestamp).map_err(|error| {
-                ScenarioConfigError::InvalidTerminalTimestamp {
-                    message: error.to_string(),
-                }
-            })?;
+        let last_frame = params.frames.saturating_sub(1);
+        let last_frame =
+            u64::try_from(last_frame).map_err(|_| ScenarioConfigError::FrameIndexOverflow)?;
+        let last_timestamp = last_frame
+            .checked_mul(params.dt_ms)
+            .ok_or(ScenarioConfigError::TimestampOverflow)?;
+        let terminal_sequence = Sequence::new(last_frame).map_err(|error| {
+            ScenarioConfigError::InvalidTerminalSequence {
+                message: error.to_string(),
+            }
+        })?;
+        let terminal_timestamp = TimestampMillis::new(last_timestamp).map_err(|error| {
+            ScenarioConfigError::InvalidTerminalTimestamp {
+                message: error.to_string(),
+            }
+        })?;
+        if params.frames > 0 {
             let frozen_prior = last_frame
                 .checked_add(1)
                 .ok_or(ScenarioConfigError::FrozenPriorOverflow)?;
@@ -354,6 +370,8 @@ impl ScenarioConfig {
             noise_sd: noise_variance.sqrt(),
             origin,
             canonical_digest,
+            terminal_sequence,
+            terminal_timestamp,
         })
     }
 
@@ -406,6 +424,38 @@ impl ScenarioConfig {
     #[must_use]
     pub fn canonical_digest(&self) -> &str {
         &self.canonical_digest
+    }
+
+    /// Build validated labels for an accepted assessment of this scenario.
+    ///
+    /// The scope identifies synthetic data. It does not authenticate a writer or
+    /// claim operational provenance.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ScenarioAssessmentScopeError::EmptyScenario`] when the scenario
+    /// has no terminal frame. It returns
+    /// [`ScenarioAssessmentScopeError::InvalidIdentity`] when `stream_id` violates
+    /// the core identity grammar. Fixed labels and nonempty terminal coordinates
+    /// were validated when this configuration was constructed.
+    pub fn assessment_scope(
+        &self,
+        stream_id: impl Into<String>,
+    ) -> std::result::Result<AssessmentScope, ScenarioAssessmentScopeError> {
+        if self.frames == 0 {
+            return Err(ScenarioAssessmentScopeError::EmptyScenario);
+        }
+        let producer_id = ProducerId::new("galadriel-sim")?;
+        let position = StreamPosition::try_new(
+            "scenario-v0.9",
+            self.canonical_digest.clone(),
+            stream_id,
+            0,
+            self.terminal_sequence.get(),
+            self.terminal_timestamp.get(),
+            ClockDomain::SimulationTime,
+        )?;
+        Ok(AssessmentScope::new(producer_id, position))
     }
 }
 
@@ -1140,6 +1190,45 @@ mod tests {
     }
 
     #[test]
+    fn scenario_assessment_scope_preserves_synthetic_identity_and_terminal_position() {
+        let config = custom(|params| {
+            params.frames = 5;
+            params.dt_ms = 17;
+        });
+
+        let scope = config
+            .assessment_scope("evaluation")
+            .expect("synthetic scope is valid");
+
+        assert_eq!(scope.producer_id().as_str(), "galadriel-sim");
+        assert_eq!(
+            scope.position().identity().epoch().session_id().as_str(),
+            "scenario-v0.9"
+        );
+        assert_eq!(
+            scope.position().identity().epoch().epoch_id().as_str(),
+            config.canonical_digest()
+        );
+        assert_eq!(
+            scope.position().identity().stream_id().as_str(),
+            "evaluation"
+        );
+        assert_eq!(scope.position().state_generation().get(), 0);
+        assert_eq!(scope.position().sequence().get(), 4);
+        assert_eq!(scope.position().timestamp_ms().get(), 68);
+        assert_eq!(scope.position().clock_domain(), ClockDomain::SimulationTime);
+    }
+
+    #[test]
+    fn scenario_assessment_scope_rejects_an_invalid_stream_label() {
+        let config = ScenarioResearchProfile::SyntheticV0_9
+            .try_config()
+            .expect("named scenario is valid");
+
+        assert!(config.assessment_scope("../evaluation").is_err());
+    }
+
+    #[test]
     fn zero_interval_is_valid_for_at_most_one_frame() {
         let one_frame = custom(|params| {
             params.frames = 1;
@@ -1232,6 +1321,10 @@ mod tests {
         assert!(generate(&cfg)
             .expect("zero-frame scenario is valid")
             .is_empty());
+        assert_eq!(
+            cfg.assessment_scope("evaluation"),
+            Err(ScenarioAssessmentScopeError::EmptyScenario)
+        );
     }
 
     #[test]

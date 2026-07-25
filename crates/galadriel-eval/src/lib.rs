@@ -1,20 +1,21 @@
 #![forbid(unsafe_code)]
-//! Monte-Carlo evaluation of Galadriel's Mirror across four regimes, comparing four
-//! detectors: the cheap **NIS χ² baseline**, the signed-correlation consistency
-//! component, the cross-sensor **pairwise-MI/PID research engine**, and the full
-//! additive fusion.
+//! Monte Carlo evaluation of Galadriel's Mirror across four modeled regimes.
+//!
+//! The evaluation compares the NIS baseline, signed correlation, optional PID,
+//! and additive fusion. Accepted fused studies use the deterministic synthetic
+//! scope from [`ScenarioConfig::assessment_scope`]. That scope is not operational
+//! provenance. It does not authenticate a producer.
 //!
 //! All regimes run on the *same* corroborated sim (`rho > 0`) so every detector sees a
 //! genuine consensus. Per trial we record, for each detector, a binary alarm and a
-//! continuous score; across trials we report detection rate, false-alarm rate (on the
+//! continuous score. Across trials we report detection rate, false-alarm rate (on the
 //! clean/null regime), and alarm-ranked ROC-AUC (alarms rank above non-alarms, then the
-//! continuous score; attack vs clean uses the Mann–Whitney identity
+//! continuous score. Attack versus clean uses the Mann–Whitney identity
 //! `AUC = P(score_attack > score_clean) + 0.5 * P(score_attack = score_clean)`).
 //! AUCs carry percentile-bootstrap 95 % CIs
-//! ([`stealthy_ci_study`], with a *paired* corr-vs-PID difference CI via [`auc_diff_ci`]).
-//! A companion study ([`measure_latency`]) reports median **time-to-detect** — frames from
-//! attack onset to first alarm on growing prefixes — because how *fast* a detector fires
-//! matters as much as whether it does.
+//! ([`stealthy_ci_study`], with a paired correlation-to-PID difference CI through
+//! [`auc_diff_ci`]). A companion study ([`measure_latency`]) reports median
+//! **time-to-detect**. It counts frames from attack onset to the first alarm.
 //!
 //! Under this simulator and the stated parameter grid, the detectors show
 //! complementarity: the baseline responds to magnitude attacks while cross-sensor
@@ -31,8 +32,8 @@
 use std::collections::{HashMap, HashSet};
 
 use galadriel_core::{
-    correlation, CorrConfig, CorrVerdict, GaladrielError, Mirror, Modality, PidObservation,
-    ReleaseSuite, Result as CoreResult, Verdict,
+    correlation, AssessmentScope, CorrConfig, CorrVerdict, GaladrielError, Mirror, Modality,
+    PidObservation, ReleaseSuite, Result as CoreResult, Verdict,
 };
 use galadriel_pid::{
     analyze, assess_stream, scalar_channels, FusedVerdict, PidConfig, PidConfigError,
@@ -1010,13 +1011,16 @@ fn scenario(cfg: &EvalConfig, seed: u64) -> CoreResult<ScenarioConfig> {
     .map_err(|error| GaladrielError::InvalidConfig(error.to_string()))
 }
 
-fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> CoreResult<Vec<PidObservation>> {
-    let s = scenario(cfg, seed)?;
+fn build_from_scenario(
+    attack: Attack,
+    cfg: &EvalConfig,
+    scenario: &ScenarioConfig,
+) -> CoreResult<Vec<PidObservation>> {
     let start = (cfg.frames as u64) / 3;
     match attack {
-        Attack::Clean => generate(&s),
+        Attack::Clean => generate(scenario),
         Attack::LoudSpoof => {
-            let mut v = generate(&s)?;
+            let mut v = generate(scenario)?;
             inject(
                 &mut v,
                 &PhantomAcousticDoa {
@@ -1028,14 +1032,14 @@ fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> CoreResult<Vec<PidObser
             Ok(v)
         }
         Attack::Stealthy => generate_spoofed(
-            &s,
+            scenario,
             StealthySpoof {
                 target: Modality::Acoustic,
                 start_frame: start,
             },
         ),
         Attack::Jam => {
-            let mut v = generate(&s)?;
+            let mut v = generate(scenario)?;
             inject(
                 &mut v,
                 &BroadbandJam {
@@ -1046,6 +1050,24 @@ fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> CoreResult<Vec<PidObser
             Ok(v)
         }
     }
+}
+
+fn build(attack: Attack, cfg: &EvalConfig, seed: u64) -> CoreResult<Vec<PidObservation>> {
+    let scenario = scenario(cfg, seed)?;
+    build_from_scenario(attack, cfg, &scenario)
+}
+
+fn build_scoped(
+    attack: Attack,
+    cfg: &EvalConfig,
+    seed: u64,
+) -> CoreResult<(AssessmentScope, Vec<PidObservation>)> {
+    let scenario = scenario(cfg, seed)?;
+    let scope = scenario
+        .assessment_scope("evaluation-fused")
+        .map_err(|error| GaladrielError::InvalidConfig(error.to_string()))?;
+    let stream = build_from_scenario(attack, cfg, &scenario)?;
+    Ok((scope, stream))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1200,9 +1222,9 @@ fn component_evaluations(stream: &[PidObservation]) -> CoreResult<[DetectorEvide
 
 /// Fused detector: alarm on attributed-inconsistency, broad-degradation, or unclassified
 /// evidence (NIS ⊕ PID escalation).
-fn fused_eval(stream: &[PidObservation]) -> CoreResult<Option<bool>> {
+fn fused_eval(scope: &AssessmentScope, stream: &[PidObservation]) -> CoreResult<Option<bool>> {
     let suite = PidResearchSuite::circular_delete_block_v0_9(&MODALITIES)?;
-    let r = assess_stream(stream, &suite)?;
+    let r = assess_stream(scope, stream, &suite)?;
     Ok(match r.verdict() {
         FusedVerdict::InsufficientEvidence => None,
         FusedVerdict::AttributedInconsistency { .. }
@@ -2499,7 +2521,7 @@ pub fn run(cfg: &EvalConfig) -> CoreResult<EvalResults> {
         let (mut ba, mut ca, mut pa, mut fa) = (0usize, 0usize, 0usize, 0usize);
         let (mut bi, mut ci, mut pi, mut fi) = (0usize, 0usize, 0usize, 0usize);
         for t in 0..cfg.trials {
-            let stream = build(attack, cfg, attack_seed(cfg, t, attack))?;
+            let (scope, stream) = build_scoped(attack, cfg, attack_seed(cfg, t, attack))?;
             let [b, c, p] = component_evaluations(&stream)?;
             if let Some(score) = b.score {
                 bs.push(score);
@@ -2525,7 +2547,7 @@ pub fn run(cfg: &EvalConfig) -> CoreResult<EvalResults> {
             } else {
                 pi += 1;
             }
-            match fused_eval(&stream)? {
+            match fused_eval(&scope, &stream)? {
                 Some(alarm) => fa += usize::from(alarm),
                 None => fi += 1,
             }
@@ -3394,6 +3416,46 @@ mod tests {
         assert!((auc(&[1.0, 2.0, 3.0], &[0.0, 0.5]) - 1.0).abs() < 1e-9);
         assert!((auc(&[0.0], &[0.0]) - 0.5).abs() < 1e-9);
         assert!((auc(&[2.0, 1.0], &[1.0, 0.0]) - 0.875).abs() < 1e-9);
+    }
+
+    #[test]
+    fn degenerate_correlation_axis_withholds_the_evaluation_score() {
+        let cfg = config(|params| params.frames = 128);
+        let stream = build(Attack::Clean, &cfg, 17).expect("valid synthetic stream");
+        let stream = stream
+            .into_iter()
+            .map(|observation| {
+                let source = observation
+                    .consistency_projection()
+                    .expect("synthetic observation has a projection");
+                let values = if observation.modality() == Modality::Acoustic {
+                    [0.0; galadriel_core::MAX_CONSISTENCY_PROJECTION_AXES]
+                } else {
+                    source.padded_values()
+                };
+                let projection = galadriel_core::ConsistencyProjection::try_new(
+                    values,
+                    source.dimensions(),
+                    source.identity(),
+                )
+                .expect("replacement projection is valid");
+                PidObservation::try_scalar(
+                    observation.track_id(),
+                    observation.timestamp_ms(),
+                    observation.sequence(),
+                    observation.modality(),
+                    observation.nis(),
+                    observation.dof(),
+                )
+                .expect("replacement observation is valid")
+                .with_consistency_projection(projection)
+            })
+            .collect::<Vec<_>>();
+
+        let evidence = corr_evidence(&stream).expect("degenerate input must abstain");
+
+        assert_eq!(evidence.alarm, None);
+        assert_eq!(evidence.score, None);
     }
 
     #[test]

@@ -5,1270 +5,1724 @@
   ],
   "artifacts": [
     {
+      "git_blob_id": "ba5f74be0952dae3efd71b0bcfb49d8c767e1805",
+      "git_mode": "100644",
       "path": ".gitattributes",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "084702c1fd6f53278cfa0789eea5eaaf870563fff3ebb3612227a409fcb39d93",
       "size_bytes": 44
     },
     {
+      "git_blob_id": "79263901921267314f3bced068665af074e5ec73",
+      "git_mode": "100644",
       "path": ".github/CODEOWNERS",
       "purpose": "continuous-integration and dependency-update policy",
       "sha256": "5732872d0e93d593e303751b5b46140b8c6da010e270019e53b23bfd7c80cf36",
       "size_bytes": 79
     },
     {
+      "git_blob_id": "a4e39b959d7e08ea7bb7f1ce55d145707f587cff",
+      "git_mode": "100644",
       "path": ".github/ISSUE_TEMPLATE/bug.yml",
       "purpose": "continuous-integration and dependency-update policy",
       "sha256": "60f22f4789aae4590d09430e3a56242b8de2b2d9f695f1428913628be8301287",
       "size_bytes": 1670
     },
     {
+      "git_blob_id": "e185e24b933566f692fe16201fed9387cb8d71fc",
+      "git_mode": "100644",
       "path": ".github/ISSUE_TEMPLATE/config.yml",
       "purpose": "continuous-integration and dependency-update policy",
       "sha256": "7b6ca78e1cfa4ccd97dc1d0c6e94b3859ee50975ff8241230466b11190574bb9",
       "size_bytes": 221
     },
     {
+      "git_blob_id": "2b0513ce8c36003c84ad65e0c1180698d5a3ae25",
+      "git_mode": "100644",
       "path": ".github/dependabot.yml",
       "purpose": "continuous-integration and dependency-update policy",
       "sha256": "95e6219f69e66f750d18911dbe5082435adfaac46c6cd5d5f22736dd9ae564b9",
       "size_bytes": 1080
     },
     {
+      "git_blob_id": "45ccf286feb264959d32a3282f9083ffa7860ef8",
+      "git_mode": "100644",
       "path": ".github/pull_request_template.md",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "034c0400cba5425bd9073dff8d95000c9c5812ff0d1a636480129d93eb10e0b1",
-      "size_bytes": 868
+      "sha256": "7a2e4d56dacada60b34cf3d17f6344dbca93b476dc891e13260a7270fb3646a5",
+      "size_bytes": 933
     },
     {
+      "git_blob_id": "90bf74ed78dc7e43319591359e60e17eaaa507d6",
+      "git_mode": "100644",
       "path": ".github/workflows/ci.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "f8837f3f3eaaeb205707df7a7e1220c9328ffb41fd5fb83ba610a0b4cb33c972",
-      "size_bytes": 8521
+      "sha256": "3c1ceb8073d0338b2ba270d8870ac5fbbf7f399d7723fdbed2f6da57ef1912fc",
+      "size_bytes": 8798
     },
     {
+      "git_blob_id": "6b2f7140659f85bae8e16b7e7a8fbea5bf8a44ba",
+      "git_mode": "100644",
       "path": ".github/workflows/deep-quality.yml",
       "purpose": "continuous-integration and dependency-update policy",
       "sha256": "c84e8fa431146dda2acaa2bc84ae81841e9fb2e98941fdb24118b31bcb1810f2",
       "size_bytes": 8930
     },
     {
+      "git_blob_id": "11e2b007ffb644259e56266a236b2956b6c59aa7",
+      "git_mode": "100644",
       "path": ".gitignore",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "43d9211163dbbff15056ee719bb13d2c3879badeb82f2dee1e1140bceb18e91e",
       "size_bytes": 391
     },
     {
+      "git_blob_id": "ba2caac9c821583a1a7b0da1e00e6b55bae88aeb",
+      "git_mode": "100644",
       "path": ".ncp-consumer",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "8969971ad8c22ab39fa350958dec76988e41410fc2c7e200b91c9e55f8d9b946",
       "size_bytes": 1257
     },
     {
+      "git_blob_id": "b25fb25c6b312cf48591f3a6e70b7dfd0f7eca28",
+      "git_mode": "100644",
       "path": ".superstack/build-context.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "d71d34c90f068be813ec50db07c21aa87239b35c32307841a6c45ba1b7c0c005",
       "size_bytes": 5042
     },
     {
+      "git_blob_id": "01f0f4c232242d5d29081bfaa4367cdc9d77f1a0",
+      "git_mode": "100644",
       "path": ".superstack/galadriel-review-2026-07-10.html",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "378f726d6f8e681db0f2fdde99835640be33af324e2182def3da80e97c411ac8",
       "size_bytes": 17155
     },
     {
+      "git_blob_id": "01335b8411b3e2dc4d3b26543e4fbada22c5916a",
+      "git_mode": "100644",
       "path": ".superstack/security-reports/galadriel-2026-07-10.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "81322be635dd846599f4366da1bd473c807a79ba43ecdc3ffd2b139321405e83",
       "size_bytes": 18167
     },
     {
+      "git_blob_id": "0b623032bc968ea78e79f5f99221906bea19bafe",
+      "git_mode": "100644",
       "path": ".superstack/security-reports/history.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "966bfacfdacd2136e5deebfb847d434f2b207dfac77436f52d20e7973de14330",
       "size_bytes": 262
     },
     {
+      "git_blob_id": "766b4f3b0bdc73a0e962da6212ededb48a76d8a5",
+      "git_mode": "100644",
       "path": "AGENTS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "9563c8fd381d4e7ba01aef54564a02b5ef19b56c84c663b188f75c5d25687f7c",
-      "size_bytes": 18593
+      "sha256": "a92d91843586890d9c2674317b1959bccb2f6d80cd68a30894ee24d691c6555e",
+      "size_bytes": 25004
     },
     {
+      "git_blob_id": "80c057a56616dfa11c528530532a4eb00d7cabf2",
+      "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "b9cc1a6ee15effe3e40e0710ea443fba53e98cb21a35313191cddb31bac5ff2f",
-      "size_bytes": 45591
+      "sha256": "ad7c93219396b7c010ba36e21cd31c229cea0ca945b2bfb566f17062650f8ebe",
+      "size_bytes": 51503
     },
     {
+      "git_blob_id": "db59d92c3082077f9b708f83510267226ad8b42b",
+      "git_mode": "100644",
       "path": "CITATION.cff",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3f2857dfd8c02a5b6f01811aebce47e8830be20a3b34d15abb81a790b67c0d5d",
+      "sha256": "5588b837a57ca97430b91d4d434f6b302fafafc6eedf9c67f153ede0eeb71d4d",
       "size_bytes": 902
     },
     {
+      "git_blob_id": "058a8a86aa3a8dd8d4a188f7dd7d311b9ea2f3d5",
+      "git_mode": "100644",
       "path": "CLAUDE.mdc",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8ed3af25b075fef1035141e1ae4d1433843620c1342a5ef24df47883c8331e05",
-      "size_bytes": 15966
+      "sha256": "d0d3ead1d5e2f4b1e91ac5c86d9ada15e5bfff5fa484317ef3e3581b19a2b2d9",
+      "size_bytes": 22304
     },
     {
+      "git_blob_id": "ecb1f6e6fa20c20257071b51c22c75fcb3b6c56d",
+      "git_mode": "100644",
       "path": "CODE_OF_CONDUCT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "8abcd89a580ab2a91a9c29e51fed13cfe8b9d53a07109cbb1e4d34401b7a8de0",
       "size_bytes": 1274
     },
     {
+      "git_blob_id": "42a60863fbc3540b4525e459fc11410175d40fa9",
+      "git_mode": "100644",
       "path": "CONTRIBUTING.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "c76f7cfdaab9d8314d77cb124fbd72b14f4fb3aa2c08eac9e51d52fffc186c2e",
-      "size_bytes": 4384
+      "sha256": "45ca1a1ff0ab3b4416d9e784f78037833ae671c310b494fd5c49d1052376d7e0",
+      "size_bytes": 5073
     },
     {
+      "git_blob_id": "f05c2497acad41955322fec93ef40cc736546d6e",
+      "git_mode": "100644",
       "path": "Cargo.lock",
       "purpose": "locked software/toolchain input",
-      "sha256": "595e41ef39194e08aadac7edcee518507d34abc36a8c33bc87c52735338ca96e",
-      "size_bytes": 108004
+      "sha256": "8cbcda96332cca13a4a103d47aaefc014f6bc145abacc848a368fe54eb66ef5d",
+      "size_bytes": 108029
     },
     {
+      "git_blob_id": "6c15f67647943696034372f5a9b6d01262aecc1c",
+      "git_mode": "100644",
       "path": "Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "b1057c6d65fe87f27658ee1d0a950dccdfd259e1411518ae6e1da744d73ff106",
-      "size_bytes": 3232
+      "sha256": "330265666ead4a7d1fe1b838bfee0adf905e716e062ed36702e35b60de1e11f6",
+      "size_bytes": 3331
     },
     {
+      "git_blob_id": "8e3d744f4d0938d18bb581252066c5b5c0c76588",
+      "git_mode": "100644",
       "path": "LICENSE",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "284ad38c303c3aba93b69c67a0f9f8ac66e669d049d3a8ed60f85196cd261cfb",
       "size_bytes": 329
     },
     {
+      "git_blob_id": "9351e9f630a097acc5013063a67caca5183d74c9",
+      "git_mode": "100644",
       "path": "LICENSE-APACHE",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "bea3a5ebc1671071bb1bb157c18313a08821abd3d5e5e1915043b18cf78a0cfd",
       "size_bytes": 11347
     },
     {
+      "git_blob_id": "dae57fd749e6006c1121439b4f9ce966c4514493",
+      "git_mode": "100644",
       "path": "LICENSE-MIT",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "faa815fa3c5afee4349c48ea3740b75d82d9e2b6f10835daf224709f00348b33",
       "size_bytes": 1074
     },
     {
+      "git_blob_id": "59640f3329dd736ca8f8797606b603a27e75c111",
+      "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "76ddecd25668ec8a36de7da423314dbdd1286e877bef9e58dfcd86896253e032",
-      "size_bytes": 40939
+      "sha256": "71323d318b6cce3982138af86a11139a08ed58fce29434aa82638ea5012fe0ee",
+      "size_bytes": 47731
     },
     {
+      "git_blob_id": "427e6b3a1bd787f46c7cc70af0fa66d1595a39f1",
+      "git_mode": "100644",
       "path": "RELEASE-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2489549c1921b78bd9b01415bb92e6f5c9f2989a4e761741c3eefef9e7d5751b",
-      "size_bytes": 4532
+      "sha256": "98adfdd2d0f444ca8014a2973bcbad59a22e7eaff874805a23e35ed416a3f862",
+      "size_bytes": 6079
     },
     {
+      "git_blob_id": "fc0bb83c45e2e5c1ad7f0c57bd29b36fbd11718f",
+      "git_mode": "100644",
       "path": "SECURITY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "242a8f59c9f3327716556937be3c7b296300f041a9906b0b19b63177f733e179",
-      "size_bytes": 8738
+      "sha256": "c6ba6d1727a4263b5e5571c14cf0ea8dad617c79f5018cf634f7775562d501f1",
+      "size_bytes": 12484
     },
     {
+      "git_blob_id": "64384a1004e26190c637932d91d68a3189a1edd8",
+      "git_mode": "100644",
       "path": "SUPPORT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "b31bd3e5de9721f18b4eccd0cc1d17387bbcd56b2d71945c4e230d1f3efa6062",
-      "size_bytes": 1241
+      "sha256": "23b65fd7a9eb4c9acf956c1618b1c9373d8ae7d61f31543532f086ffa7489a00",
+      "size_bytes": 1248
     },
     {
+      "git_blob_id": "935eb9b4b11a8f70c79d17525e7a73cf7f058563",
+      "git_mode": "100644",
       "path": "assets/galadriel-logo.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "95a2916ead48458219335694c48f5a7904a515c91731f35e08496fcad4af2b98",
       "size_bytes": 7120
     },
     {
+      "git_blob_id": "26752cc470562213ae88f99761db91b2ae79bbb7",
+      "git_mode": "100644",
       "path": "crates/galadriel-cli/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "85176d342ec919ab733f7f01a3b846c1117982ed8b472c4b75cd5aea788f808a",
-      "size_bytes": 1305
+      "sha256": "ef3e55e98159775ac4b7b4fe4ac22b4c1d8b51c6665267379a71d9999bd7e1d3",
+      "size_bytes": 1452
     },
     {
+      "git_blob_id": "6c19f74f00519efaece0230de34f01c3e959df23",
+      "git_mode": "100644",
       "path": "crates/galadriel-cli/src/main.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "8aa8f936f239f99a5efc5de530cdcd8e9e907b7e6455017187651729e0e8d758",
-      "size_bytes": 91509
+      "sha256": "10d1647e77200f8913f61fcdf047756d08c2ce4728e8562d461999e9bebf6bb4",
+      "size_bytes": 109551
     },
     {
+      "git_blob_id": "35a1bc239c33466cdae440c0d2f60738b077b2d8",
+      "git_mode": "100644",
       "path": "crates/galadriel-cli/tests/demo_output.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "bcfd5191a5c0b912c8cdc548e0cdebf10e885d77f3527e7420adba8edf3be0e0",
       "size_bytes": 3104
     },
     {
+      "git_blob_id": "671cafde9f75f61ef789621dac9e0361551563e7",
+      "git_mode": "100644",
       "path": "crates/galadriel-cli/tests/fixtures/crebain_registry_v1.json",
       "purpose": "test and interoperability input fixtures",
       "sha256": "506ce1437acc20ee5d36fd1e3551dd020095cc4d30d22d959c5df3cca81715a6",
       "size_bytes": 3053
     },
     {
+      "git_blob_id": "b85d3960a1139f5009c9f971d239302fea1f26dc",
+      "git_mode": "100644",
       "path": "crates/galadriel-cli/tests/fixtures/replay_three_tracks.jsonl",
       "purpose": "test and interoperability input fixtures",
       "sha256": "fc28e93567928e27b5511a3c503caf2675e697fc61c806d56bf2491d1ce87866",
       "size_bytes": 806
     },
     {
+      "git_blob_id": "f27c10c27f333e6fc6759c6273c0255304bec630",
+      "git_mode": "100644",
       "path": "crates/galadriel-cli/tests/observe_exit.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "9c927102739b1d3f882548a9117181071294540cc948036882ee90de66231634",
       "size_bytes": 2547
     },
     {
+      "git_blob_id": "c05f0cb1a312ec0c6a8c051811688d0107c9a8ea",
+      "git_mode": "100644",
       "path": "crates/galadriel-cli/tests/replay_output.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "1de4a815c5fb5334803b8079a288396deb3c093e13a173004bdbd14f575e26f2",
       "size_bytes": 4766
     },
     {
+      "git_blob_id": "1b34c9f36956a4e69b34d3cca95816527990a616",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "16ccec0d6a5fb70881c2c4fec2f4cb20d9b8e571c7625e812a4e0d93255a3802",
       "size_bytes": 622
     },
     {
+      "git_blob_id": "fd4cd74226675758a9058ca61ba88c3ca94e327d",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/README.md",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "6269e986986d14d34b36e5fc022c41f350d316058e991cf6c6b78d14f4c3a83a",
-      "size_bytes": 2984
+      "sha256": "3fefc2bd13cfab6009927455d03869a4767de91d97b7d530939fbe0adcf5343f",
+      "size_bytes": 4525
     },
     {
+      "git_blob_id": "5061aa8c1200d722ade1d716c8dcb69c2e8ea450",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/authority.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "d3b8e49d00eb8c8b7e5a2fbd069026dd3386644e7f06449366a10e3537f0cd26",
       "size_bytes": 11011
     },
     {
+      "git_blob_id": "3014909434d67e2867e31a85d0e5365558bd1fbb",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/baseline.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "276a0bbcc643e9851648aac558479fbd69f0e25b611475b788c1f55bbe28cbec",
       "size_bytes": 6569
     },
     {
+      "git_blob_id": "146a7ed1329513b94948a563fa53757c82fd66a5",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/chi2.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "a31f479f746597046e668a83d974eb0de14bf53f17ed21383dd84f35a5de0a8b",
       "size_bytes": 4877
     },
     {
+      "git_blob_id": "5835b5f413e40216a49317ed06dcf768ded73b99",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/config.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "9c470580fdb94cc97a46aedbda44e2aae1f5dcd8f6c532199bc1bcdf178ef84b",
       "size_bytes": 43575
     },
     {
+      "git_blob_id": "b909f95c08f5105b2ccda92901f5dae4a13e1133",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/correlation.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "e770fcc3499e445069c29c99d9d899d4f5116606fc986ce8875646fd9478c7cf",
-      "size_bytes": 62940
+      "sha256": "d9b55fc79d089f83f14b34614f81974c386ef2b13f72796e695bfe2380f3fd19",
+      "size_bytes": 66228
     },
     {
+      "git_blob_id": "80ab5649074541fcb59cc92c44c21ac660d5beff",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/cusum.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "16e7f8077f7cdf9c6dc775979346df4713f8a80fab85ce6065b199f4c0951b49",
       "size_bytes": 12033
     },
     {
+      "git_blob_id": "162f30a933897df3640ece716ac723fe7efefe18",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/decision.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "16117e7e622fd11368355068362c58fb0facfca4b47dee047acbd7022178a2a2",
       "size_bytes": 64068
     },
     {
+      "git_blob_id": "341833d0ed114a6b348a5eb50a10b23578f018d6",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/domain.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "87edcbf34b33a41119dbca536fbfb6b973c12396423ed94c2233ba236eb5780e",
       "size_bytes": 44029
     },
     {
+      "git_blob_id": "ac005d252be5bf6909516d09a750e2d74205a661",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/error.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "b3a41b0836d4ba2e8359987ef5af506dfd975bbefc59c3f8e42d9f75c6bc5e11",
       "size_bytes": 2149
     },
     {
+      "git_blob_id": "17867719102daad39e106ce668049f92a52d836a",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/fusion.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "c9311d32a2bc21763244de9401423dbfb5dbfc69a78a834feb99cf2ccd7bbc90",
-      "size_bytes": 52166
+      "sha256": "72e1bcb9e5eecea60f9a99c881704e0d1208e064dcd058fc056c7028709b6108",
+      "size_bytes": 62208
     },
     {
+      "git_blob_id": "5b67041a410124654357ad51a003a21e1851b6b4",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/identity.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "38bb336771c7ee6af6c9b61f44573e8a50154b5147cb9b69a72ac0a9e377e664",
-      "size_bytes": 18555
+      "sha256": "f5d8fa296380964a22cd44f8afd56559a50c64a46dd40983557905b5d58b5aab",
+      "size_bytes": 30722
     },
     {
+      "git_blob_id": "22135137f40fb569fa1507f62d8a0114d91c5896",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "2f71039f3da1b52aa40ac57a9c87cbf924c61eb5a8fa4fc10b62480693188696",
-      "size_bytes": 33913
+      "sha256": "47f00af16a8748f4ae8a04fc514f1fc740a921fcb9be9d657e094d34542bcd91",
+      "size_bytes": 34250
     },
     {
+      "git_blob_id": "74cb8463f6e7c70299fc6a5097855a798f422a50",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/numeric.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "146d87dd13f2e46470fdc59116154fcb3c67ff362d0c9817b1eb4f292091e027",
       "size_bytes": 9004
     },
     {
+      "git_blob_id": "bf005835451ce60a56a9f7f5a6346cf01954b8bc",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/observation.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "5b1c7fd01d08ba8f0f4a81624658701485d0b7c2134ecb934ccd691e38fc8450",
       "size_bytes": 32819
     },
     {
+      "git_blob_id": "c8bd762549155aa91222b28c8aeeda94e5018686",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/outcome.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "53224cc57127c948f0e832e1e83c3f655c292c09554af7026643ac72b85d7dcf",
       "size_bytes": 41963
     },
     {
+      "git_blob_id": "050551b04fa97f3c9fa05c6d4f5b652b614bca9f",
+      "git_mode": "100644",
       "path": "crates/galadriel-core/src/window.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "67e8109095cf427b97a730c6f754373520b440d425e11f4e20c31be78f9decbc",
       "size_bytes": 10280
     },
     {
+      "git_blob_id": "398db09caa359b2179dfd8bd9a9aa4c9ed446e07",
+      "git_mode": "100644",
       "path": "crates/galadriel-eval/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "c5f5ce3d7126cb3c5ddf04f2493c56d7b0c6eee803bda825d0edae2beca6b16a",
       "size_bytes": 1209
     },
     {
+      "git_blob_id": "0743257e309fbb9ebccd8db1ad61db16d59aa906",
+      "git_mode": "100644",
       "path": "crates/galadriel-eval/benches/detectors.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "0051ae4cfca9b2e8d30dad1d964999ed7907ad33334dfed85e918de11fcc4f91",
-      "size_bytes": 8385
+      "sha256": "0573238e987f6ea78a2e7e5a4be27a6820d2d257390093ac88efb502c1a58f0d",
+      "size_bytes": 8615
     },
     {
+      "git_blob_id": "ea963df7f447bcd7cb99ee771bcf407da57c8d56",
+      "git_mode": "100644",
       "path": "crates/galadriel-eval/src/evidence_main.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "a6d2283740310b86ac06f1127566e226ed922f06c9951f90baf22f69b521543d",
-      "size_bytes": 195786
+      "sha256": "58049aa47a7533d9e970e711df83808e49a9cc76f888a50ad887d12de6649118",
+      "size_bytes": 201621
     },
     {
+      "git_blob_id": "71e99338ae88edaa4337b6c603d3bb9de141e2d6",
+      "git_mode": "100644",
       "path": "crates/galadriel-eval/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "8dd388e0bf6d8b28094e1bb12e316b298af655947e748c0956b4688e0b7bc4d7",
-      "size_bytes": 151823
+      "sha256": "59bca47e9223b60481a76ecec25b63912adea08d57a303c042825ac4e2a70f30",
+      "size_bytes": 154199
     },
     {
+      "git_blob_id": "c783edef1aef7d3cfb0c232b70c4696aec41d6c6",
+      "git_mode": "100644",
       "path": "crates/galadriel-eval/src/main.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "f7c957c0c59213846c5f577dcad3b12c507504ec46eac467a1d410638ea46ac3",
       "size_bytes": 4994
     },
     {
+      "git_blob_id": "4f4edfc984fa339a9184989b0c34fbadf9e0a6bf",
+      "git_mode": "100644",
       "path": "crates/galadriel-justify/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "d70e43f96dbaadfc85d513febc623f789a4db89844d5777a58bfbd2f1cfaa1d1",
       "size_bytes": 634
     },
     {
+      "git_blob_id": "169982062ad19870213185f53ce8af075f73a972",
+      "git_mode": "100644",
       "path": "crates/galadriel-justify/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "ca06eb756b74207ca000119141b66eed18db72ff257c21f9b1cfe63a2e318762",
       "size_bytes": 84311
     },
     {
+      "git_blob_id": "4ebde6e04f47dd9d2429adaa776118e824dca610",
+      "git_mode": "100644",
       "path": "crates/galadriel-justify/src/main.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "b40fde2da193fca5fc8e725f28e6dc055a721734349c5ef2a2237c392d42ae59",
       "size_bytes": 3116
     },
     {
+      "git_blob_id": "62133b08cf3b4d289c8739741fcb2d558488a097",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "51ba898911371088249b71e2397237ee033a5372d418374d9bcfd423414166f7",
       "size_bytes": 2542
     },
     {
+      "git_blob_id": "5214c28611c18594aebe1c0c873c79074476a245",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "3c210af7356f83ddf52c8b7a4567f53520ac38d8653e398d578cc98402b5fdbe",
       "size_bytes": 18972
     },
     {
+      "git_blob_id": "712a77987f87a9b25602117d1dd7a9ceca207b2d",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "7bcbbcc9444912b8cea98cd6f731d817429984024a986e2b4ebb21f63139bc87",
       "size_bytes": 4145
     },
     {
+      "git_blob_id": "8e8f8054a77f9e1098dddfdbfb8a8beb2f2919af",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/assembler.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "43818a1701ce9c46266c02be7c63ead1b2646a32c1dcc656527c4fb97b4d6aaa",
-      "size_bytes": 199281
+      "sha256": "bec4c82c352d4312298679d4b3ff93cd355d9570adc1e9103a1c8f523f7e7f8f",
+      "size_bytes": 199726
     },
     {
+      "git_blob_id": "f71744f1d409c60b0ffa22a22d6de39b0fdd94f2",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/config_identity.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "d637b508ab5bdc16c2f475c4c1729409a695cb026a3a5115bb89a2851f65e6b0",
       "size_bytes": 3381
     },
     {
+      "git_blob_id": "1197a6ea65e05d36c7750e97c7372f8824ca88e5",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "ab2fde5c182ce65bd64f0f53e642773f6ea8c742bab9e60fceee96c06a77e099",
-      "size_bytes": 63551
+      "sha256": "4c68b4344f31c68e1b8fc0a75284dea1800c837346247f8d5c7a6aa95a0a4200",
+      "size_bytes": 63766
     },
     {
+      "git_blob_id": "6c99b8b666bebc5b4c73ad52be0f763884926dad",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/lifecycle.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "5d2d96ba908a7a41a4d6bc652218b55e6557b0088c667fb5e36e1b5f50063f8b",
-      "size_bytes": 141977
+      "sha256": "45162b3b828f6f8fed5c53c336fdfede1926bb62b6302df75020d313f26b4bd9",
+      "size_bytes": 156243
     },
     {
+      "git_blob_id": "d2f2519a87c6c55a699ca0d2c1429d9337569a85",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "1b52373826e30561655775fb6bc820fe8b390f9ef573af4b267a421ad38a0a38",
       "size_bytes": 156700
     },
     {
+      "git_blob_id": "f1bb4b82d7ea0336ed4365e334c535f0e4407daa",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/monitor.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "79465ed8a4cc1f46c2be6e5d8a4f09035880eb66f84b2d037caf90586576724a",
       "size_bytes": 82714
     },
     {
+      "git_blob_id": "594b7fb25229154c871e41c899a2bb74697c459b",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/monitor_live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "ad496ab5655b18d62a260e10953ee9870a3e286cfcb3c2b2b8bbba75dd225769",
       "size_bytes": 122984
     },
     {
+      "git_blob_id": "fb021e9802e80f40c36a164c76a8872bf3e79f17",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/operational_live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "ebb33fd198cc27f020550748f63737df93bc7c7d993b349b8b6c3dcaec8593c0",
       "size_bytes": 80488
     },
     {
+      "git_blob_id": "71631d8cde2c399c45610c0947615f7062a913a3",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/registry.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "3313e6474ca0b9635882383ae813a9e03a435092be7091023abdd8078899bf96",
       "size_bytes": 96567
     },
     {
+      "git_blob_id": "b205b9fde841c0399f9953c46db391da3524be0a",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/secure_live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "6361ba3be08357f4025ac6be31dee97399d2e076dedd39d249cc0cc33a980f24",
       "size_bytes": 43262
     },
     {
+      "git_blob_id": "dfb7e26a149fbdf25f67e1d2b3ef934e8145eaae",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/tests/crebain_capture.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "e83480421ea8ee8ba30f2bba4c4d8aacdb4c047c7bea593dc5ebf638814f3004",
-      "size_bytes": 7852
+      "sha256": "4f5d416be230cc2c659f69108b42d70e05258b87f8a2bf1673aeaa5190386f60",
+      "size_bytes": 7956
     },
     {
+      "git_blob_id": "fc92351d6eb0da2f8286dfa2ff4d81fb4eaba88a",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/tests/fixtures/crebain_clean_capture.jsonl",
       "purpose": "test and interoperability input fixtures",
       "sha256": "154b2b6534659500bc8ef99b53f482692d01f4b3f65d6d52a1e890796eea643c",
       "size_bytes": 184195
     },
     {
+      "git_blob_id": "671cafde9f75f61ef789621dac9e0361551563e7",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/tests/fixtures/crebain_registry_v1.json",
       "purpose": "test and interoperability input fixtures",
       "sha256": "506ce1437acc20ee5d36fd1e3551dd020095cc4d30d22d959c5df3cca81715a6",
       "size_bytes": 3053
     },
     {
+      "git_blob_id": "1eb60443d3060682a8851ffb5a547cb299a8ce24",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/tests/fixtures/lifecycle-receipt-v0.9.json",
       "purpose": "test and interoperability input fixtures",
       "sha256": "79cac991f649bea5c852cf8f9282f609cb80d90240d270308a58aae19947a496",
       "size_bytes": 601
     },
     {
+      "git_blob_id": "d4e31f5d7c5ee1ea3fe7be9c16acfa8ede01c8b9",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/tests/live_zenoh_e2e.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "5dc7dcde1c9f37c4a8b6eb1dc69b683278f55064eb99bc292ed33cd1e2f76a35",
       "size_bytes": 18164
     },
     {
+      "git_blob_id": "53b5828515ebdf8699a29034e9cc4807656e483e",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/tests/monitor_live_zenoh_e2e.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "a37443e3d609306d7885608b44e3a7cb0012ae2af5e8fa8efb4c2b4b9b800ba1",
       "size_bytes": 13639
     },
     {
+      "git_blob_id": "629ecdc9998f086064dd042c5e25320fd9b1b451",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/tests/operational_live_zenoh_e2e.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "dbe24040644238b2e8b7d9b37281b9d16146ee44683c86ca118b278508268759",
       "size_bytes": 30204
     },
     {
+      "git_blob_id": "6bd34fcd984d2eec5d147915028cc8fb8b1b558d",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/tests/registry_golden.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "794cf101cea08692f2042954d5dcd56789dbec7af3ba62315821898fd9110708",
       "size_bytes": 3065
     },
     {
+      "git_blob_id": "639f75069ebbd0c64a0d18f0ff0cff9fc0855778",
+      "git_mode": "100644",
       "path": "crates/galadriel-ncp/tests/secure_deployment_configs.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "a1f74d48565d5e1d19c0f7b8376f7b6414d659c31b00714386170ab9d10f8ac0",
       "size_bytes": 18333
     },
     {
+      "git_blob_id": "1c0a45ed1a1967448a80835e81924ca01a7aa97a",
+      "git_mode": "100644",
       "path": "crates/galadriel-pid/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "0ff8466919af5c5c705b1c9823a297ee5965635fb12de5e6e082a88f7bb7e8a2",
       "size_bytes": 784
     },
     {
+      "git_blob_id": "48489acc67cd31004e7e74d68bac519f6bac2cc2",
+      "git_mode": "100644",
       "path": "crates/galadriel-pid/src/engine.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "0131cddc19a6e841cf3326a5e2ae5b81b3a77f483635a89e77a76228dd735007",
-      "size_bytes": 140219
+      "sha256": "11b17f498e4800003024c5b7d82ea6ca8dcb3232fb991a3472d6869b512ea77b",
+      "size_bytes": 143261
     },
     {
+      "git_blob_id": "906420525295eae33a486eb86ca95bfcbdd4c4ff",
+      "git_mode": "100644",
       "path": "crates/galadriel-pid/src/fusion.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "684f38358241b9604d50e64fc25af29206d2deec841a6712bc9b3dd7a0bfd69c",
-      "size_bytes": 46835
+      "sha256": "df1b4397b9194615977ad39a4e273374a78ae8559cf997306dadeea0504d828f",
+      "size_bytes": 54691
     },
     {
+      "git_blob_id": "f90b1713b8ef8c8cd1e5ffa08a63a5180049237e",
+      "git_mode": "100644",
       "path": "crates/galadriel-pid/src/identity.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "18bdc177f4671d7dcd146591216c5e5f5a37c1af778e49fd61cd9c91f6b6a3bb",
-      "size_bytes": 6398
+      "sha256": "dcf2c687c2a91325f04b9c7a9149a71609192888f1f5fbd095b01ea64cc53643",
+      "size_bytes": 6402
     },
     {
+      "git_blob_id": "2696f0a9177d48b5717f4c1e8d0526a5d182510a",
+      "git_mode": "100644",
       "path": "crates/galadriel-pid/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "6684882a98d3f1b3a380a4639a4a2483b58f53678a96c9d932f2ba0db74c59d7",
-      "size_bytes": 4227
+      "sha256": "fcaff901941028f481d0411a71ed266e5ed79dd68b80406e842cad6fd8fffe1d",
+      "size_bytes": 4717
     },
     {
+      "git_blob_id": "b2d9d2b607ab1933f424e1a7b9e1592a1af3ceaa",
+      "git_mode": "100644",
       "path": "crates/galadriel-pid/src/suite.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "ef3a11d4345c1cc347b126b1d3378c5d379b95a1f0e775ef6e4e9a3602fe9aea",
-      "size_bytes": 16396
+      "sha256": "1c352dc095f375b62395692d2b1c79a64fc4df39d13470e5eb8bda1f6862ea22",
+      "size_bytes": 16479
     },
     {
+      "git_blob_id": "217ce6f3de49d757fb05280ee92afa25a077b731",
+      "git_mode": "100644",
       "path": "crates/galadriel-sim/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "cd98ca133c19a99b30baeebe78a32fe237cbf9cc34eaa2cd21436c2419b4744c",
       "size_bytes": 587
     },
     {
+      "git_blob_id": "5f1d98ed51e34c4bcbb1605e2ebcdac2b746c264",
+      "git_mode": "100644",
       "path": "crates/galadriel-sim/src/injection.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "5d318001828fd06bc4d24e043d50166d33aa113b76dcff5de0ee8efdcfef0d41",
       "size_bytes": 38037
     },
     {
+      "git_blob_id": "72ecba852cacd45ee3bfdf6efe1e0908a53ebff6",
+      "git_mode": "100644",
       "path": "crates/galadriel-sim/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "0581559216fe89e288db538c6fc0a2973524e42c5d71c08a1bd4374cd67c5672",
-      "size_bytes": 950
+      "sha256": "d85812178bb16d8cdde8bcde352c6de6486231dbf169ed7d48e8039d17af63f5",
+      "size_bytes": 1204
     },
     {
+      "git_blob_id": "c0385c015e7322e5074de45b0afb5655288a1569",
+      "git_mode": "100644",
       "path": "crates/galadriel-sim/src/rng.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "095ea2771c1d4460bcaa63b6e916bbd44131402c8835b3a672720c2b426cdc44",
       "size_bytes": 236
     },
     {
+      "git_blob_id": "c7f5fa36384d5e45c2941598ca6d9325d1cd086e",
+      "git_mode": "100644",
       "path": "crates/galadriel-sim/src/scenario.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "6570390a688fe6b185fa890f60f3480fd11ec19e03ecda0b5993510287050425",
-      "size_bytes": 48313
+      "sha256": "114a1fe308c20da28804606606821dd2fbea831f2ca9f0dd3ba5127d2784c4a4",
+      "size_bytes": 51822
     },
     {
+      "git_blob_id": "980c274e402d85b76845a053b05517d74cb77752",
+      "git_mode": "100644",
       "path": "deny.toml",
       "purpose": "locked software/toolchain input",
       "sha256": "76027f6684296e01766e809270d5c8550749abee25bbe87de32d8fc8859f57ca",
       "size_bytes": 1377
     },
     {
+      "git_blob_id": "a372521b2b79a3c401a764ab985fdcfcb1f5b0f2",
+      "git_mode": "100644",
       "path": "deploy/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "60cd94409eb7d44186bd0dbd3846ce36aa2e94d0f6255423f5a7c351226c9f67",
-      "size_bytes": 7674
+      "sha256": "3685d03c3f3a4ffb1fd8342d3864a98e761a539ac2c9c4c8b9cf9f984bc12615",
+      "size_bytes": 8022
     },
     {
+      "git_blob_id": "e94dcc9b7b55c39c7408f4608f20319f435cb17b",
+      "git_mode": "100644",
       "path": "deploy/galadriel-security-profile.example.json",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "25ae824b1651a67cf68c85d29be348ed432968c1f6847f80027051cee6401212",
       "size_bytes": 964
     },
     {
+      "git_blob_id": "9ac9aa9771e74fdd22e92e9e92468b5dec773086",
+      "git_mode": "100644",
       "path": "deploy/reference/SHA256SUMS",
       "purpose": "test and interoperability input fixtures",
       "sha256": "9522b9dd92e58dc53ddf103d529a64287ce117dc82b59457bc5fc35159d5eef9",
       "size_bytes": 348
     },
     {
+      "git_blob_id": "19055992b06f4fd38eda32ab63a5ac2ee05a0b41",
+      "git_mode": "100644",
       "path": "deploy/reference/galadriel-handoff.json",
       "purpose": "test and interoperability input fixtures",
       "sha256": "c63ad7d1dc5daf00e7545d9169ad30bf8fe69622ca2d4fdd6730b92409de5f6c",
       "size_bytes": 391
     },
     {
+      "git_blob_id": "68df53233e4e69681b4bae445c5f6cf80d83e4fe",
+      "git_mode": "100644",
       "path": "deploy/reference/zenoh-observer.json5",
       "purpose": "test and interoperability input fixtures",
       "sha256": "042e7d7efdfce2fbc5c191858896cfa820455649768f7cf9f902ef0290df28a0",
       "size_bytes": 702
     },
     {
+      "git_blob_id": "014aec5e0fa1d8b52ce60431b7cb311992b1b3d4",
+      "git_mode": "100644",
       "path": "deploy/reference/zenoh-producer.json5",
       "purpose": "test and interoperability input fixtures",
       "sha256": "4216b40585daed513fda4743fb5b3d91de3518a4ba1a044cba5fd81c1858ba66",
       "size_bytes": 702
     },
     {
+      "git_blob_id": "e4dbb52638c462dd77ebd8e9e0cd98b84e3b010c",
+      "git_mode": "100644",
       "path": "deploy/reference/zenoh-router.json5",
       "purpose": "test and interoperability input fixtures",
       "sha256": "356c40698c18709a240eca7b07007e3cc09806fc6c8b02eeb6d69ce32096c7f4",
       "size_bytes": 2652
     },
     {
+      "git_blob_id": "334364a2bbc28a54d659c444bd6386a9f391146f",
+      "git_mode": "100644",
       "path": "deploy/secure-client-endpoint-corpus.json",
       "purpose": "test and interoperability input fixtures",
       "sha256": "f6d7a352fd266a0f340c5187254695e6556aee15a9ca70b082f8c135e53768e7",
       "size_bytes": 1335
     },
     {
+      "git_blob_id": "53d8137477a855dc691ed1e66063c1d6641a6eee",
+      "git_mode": "100644",
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "cb11fddd14a6d1c3717b6279b1851e3f04232ae1cb479d25081f8dda530d04b5",
-      "size_bytes": 16255
+      "sha256": "9cd89dc275ce7b3afb5752a5af7ffa5f954e71a13cfea7ca4a1d29f1c4ddf54a",
+      "size_bytes": 17942
     },
     {
+      "git_blob_id": "72779357ac63b0dac2487f202f5055f041d45389",
+      "git_mode": "100644",
       "path": "docs/API-SURFACE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ac109c62313bb7b1f3f51a239ea1f5027f2e146d52704ab2527e8cbf721325e1",
-      "size_bytes": 3220
+      "sha256": "83928007aa5b6d53ed8186e8185b429a4aadea097a92ca665de3a68ead1de062",
+      "size_bytes": 4890
     },
     {
+      "git_blob_id": "0d131f3aacfc556cf025fbeb574be43f2c342950",
+      "git_mode": "100644",
       "path": "docs/CLAIMS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f351c5473f951ca6d55b422ec139d21cfcbaba37619c0ed8ac3953d4dce21cc3",
-      "size_bytes": 2533
+      "sha256": "7fd827e8c4698fb040c89a4913439da923c7f3f4e866587e0fc98d5017508eea",
+      "size_bytes": 2793
     },
     {
+      "git_blob_id": "9faa2b624cb0ff1fe9497ea7bac9fa8aeebfe036",
+      "git_mode": "100644",
       "path": "docs/CONFIGURATION-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2f2ffd17cd0b8199b5e19d4ba5ec638a0760cc336fe0c60fe152025364129f79",
-      "size_bytes": 31694
+      "sha256": "05428d5a3f8ed13d01b54ce1cef37d703e84b10beb27c32692a05d75d7cac758",
+      "size_bytes": 34652
     },
     {
+      "git_blob_id": "ff0ec2eda1cc13ed86f3a040dbc2212574973b30",
+      "git_mode": "100644",
       "path": "docs/CORE-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ae89fdfc538ec54e955348b896eae49df461bb64f882e1977c2a52936d51f708",
-      "size_bytes": 6219
+      "sha256": "fb651d4506d59e52e46795ae22be092a07aa0782fdf58e8a6446202c841eb85d",
+      "size_bytes": 7578
     },
     {
+      "git_blob_id": "f70e5348d8f54a5eae35ad3d90665446d6921551",
+      "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "85e623d5143716d65dce9dad7ef1480c42da4ba5c99b116e2a6ccf2df9a24282",
-      "size_bytes": 12326
+      "sha256": "101b803bf4cc1ec1861b13a037e145dbd6222d79ff438313f76249f7fd1df162",
+      "size_bytes": 18006
     },
     {
+      "git_blob_id": "3a2f2174ebb29ea1869ae0917c202eac0f45d919",
+      "git_mode": "100644",
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e6cf977aed2c2ffdfe37f853c0d700015ef5497d381a373c044bb397afc30817",
-      "size_bytes": 18349
+      "sha256": "cce24dfc0b17d4eade45668585eddaccdc43711252daa7a8417b89cdb26d2cc9",
+      "size_bytes": 20992
     },
     {
+      "git_blob_id": "90b8d013a3899d2f654b5ac9ac201da9bf2e5766",
+      "git_mode": "100644",
       "path": "docs/EVALUATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a19572085845361ead697ee79420875ad6f05225531577aa3dfcce1e97057195",
-      "size_bytes": 14011
+      "sha256": "e48e734b1ef8031f841e4c0e51a929b3a9315c553f12270fac6115c048355128",
+      "size_bytes": 17993
     },
     {
+      "git_blob_id": "cb3a3b29480a73cf700e02ba2eae666ef8ec639f",
+      "git_mode": "100644",
       "path": "docs/JUSTIFICATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "20f00bb6eb8813843c01b50e781deeafd596c1e9283f5ec68848e415064d5871",
-      "size_bytes": 8729
+      "sha256": "4480b889a5da8ddf8f3431e8877ea73a9f44e22f3eaa3dda554e3dc9529e204b",
+      "size_bytes": 9242
     },
     {
+      "git_blob_id": "f807aa47fd9e3222ce353faa6a05eb9d4edb2e53",
+      "git_mode": "100644",
       "path": "docs/MIGRATION-0.9.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "754ebbdf8394a4bfbec0170a430b0ac79d6e89c9038494cdbb7da37805adb268",
-      "size_bytes": 7528
+      "sha256": "e8dd3635bc11615c48b6220806212e7741b77eddf380995ab1c882d45840eba0",
+      "size_bytes": 8969
     },
     {
+      "git_blob_id": "19280f1b363451d936d2fa897e2903e5a7455880",
+      "git_mode": "100644",
       "path": "docs/MOTIVATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "4002286f287c2524484c67e378765679287acc859de0309884a311528031f9d1",
-      "size_bytes": 14952
+      "sha256": "aa367df7c7a225b3511dda2a6c11f37688faf146b3bded5a8b03a55cec6bfcc8",
+      "size_bytes": 15806
     },
     {
+      "git_blob_id": "6514f7bcf65b2338eb22a2336cb052d3e2224497",
+      "git_mode": "100644",
       "path": "docs/PAPER.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3a9f705353fc2ca7df47bd7f49cc5fe1fa126afcfed854e32c5f4a443e4e7546",
-      "size_bytes": 20662
+      "sha256": "90aaca17649f940a2140c8416d9a31c80a91dc142623b6530f14809c7892d870",
+      "size_bytes": 22352
     },
     {
+      "git_blob_id": "0048e0499af234e07882f9f8073c295a6b200124",
+      "git_mode": "100644",
       "path": "docs/PID_RS_1_0_MIGRATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e94db7d409c69862716a43bbfbb3f4401cdd2a50892eba9a8166df2ea2da26ce",
-      "size_bytes": 8190
+      "sha256": "c2524aa65a55d34a48e065a7e09a6c18e56aa545be98124bffb1fb25b326a22a",
+      "size_bytes": 9140
     },
     {
+      "git_blob_id": "83f66ab95a9b5055625dc98da4e075b9e94247a4",
+      "git_mode": "100644",
       "path": "docs/POST-AUDIT-EVIDENCE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1eaed08816b624c3ea1d28b528b5a3e4af408ca6dd00d03cf7ee6076f534f981",
-      "size_bytes": 9660
+      "sha256": "61dce95f69841e53da077f728619ea048a1803fd6d174905d4a2d3112d83d7ba",
+      "size_bytes": 14994
     },
     {
+      "git_blob_id": "946caa64b11cdf5fb296d0dca6442ed58cf2cd60",
+      "git_mode": "100644",
       "path": "docs/PRODUCER-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3a1d34e8ffd1ea7feb15aa95e0366a19c10df57a4d919aa743c4cf2ea30508bb",
-      "size_bytes": 33720
+      "sha256": "ea14b7554486866b552da2c210c6f77ded4ac3c4933a00631b58deab87e1417a",
+      "size_bytes": 36983
     },
     {
+      "git_blob_id": "ee6ffd692f4cb28df257060f54a8e26c3a95145d",
+      "git_mode": "100644",
       "path": "docs/RELATED-WORK.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0555f0aeefd5f7d40e1851b66cf134df1001340efe3487b27a0745383ca02c69",
-      "size_bytes": 32859
+      "sha256": "770354d65be7965cda9257a8fa0e5a483f1113a3811e8e4e0dbfe815f406a46c",
+      "size_bytes": 33284
     },
     {
+      "git_blob_id": "f67414df787fac4c6d807b9f673a67d5cdb54ebb",
+      "git_mode": "100644",
       "path": "docs/SECURE-DEPLOYMENT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "64958a8c98055ab7502f61a693b9de99711f95d539f25a549f49a1cf0e4bd6b0",
-      "size_bytes": 16093
+      "sha256": "9d5683b10e107eb45f73d497ff65a3ab8f9f3d3a9b984ac03bcaa4e00dc32fe6",
+      "size_bytes": 18117
     },
     {
+      "git_blob_id": "f5c215bff841601a9273fe7e18a3cae2395e5df6",
+      "git_mode": "100644",
       "path": "docs/STATE-MACHINE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "67339d4a5f79ec0e5a669125eab7dcf782a9ff0e81e5be59b76382751852a62a",
-      "size_bytes": 13844
+      "sha256": "6f2c7c780118421ccb47dc26d33d45d8ac59f21caf9fa3768cbeccaa38a4a788",
+      "size_bytes": 16380
     },
     {
+      "git_blob_id": "8b1e5ddbbb63a4d69daa46351ca74665b1d0cdc7",
+      "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0d3009260e226c6c0bfeb6513d1372d34f7cb1cf56fb93acea5fbb39ca943e84",
-      "size_bytes": 13382
+      "sha256": "2fcd426063ac927b3030b2a9f07602f0e44e2721e8ff7d7aabb7122d1d672486",
+      "size_bytes": 15250
     },
     {
+      "git_blob_id": "4032d52027c7c1e20e67aa5ec7945050e2f9a28b",
+      "git_mode": "100644",
       "path": "docs/THREAT-MODEL.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "85a8af8b6a4b1b36a37127b6643fee322b18d49bcd46d14e008ed365ce0cdc88",
-      "size_bytes": 13355
+      "sha256": "5a2d9afb438ce2cb42c5de0812e731f71b71455238b34a5ad6526db20440c349",
+      "size_bytes": 16474
     },
     {
+      "git_blob_id": "3765749aad130fc611f5c5d35d3f532284898946",
+      "git_mode": "100644",
       "path": "evidence/galadriel-0.9-candidate.json",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "2eb3018c7aed325c5cefd03b8b1d3ab0db9ece3c8cbe798d80bc0746aec74092",
       "size_bytes": 1296
     },
     {
+      "git_blob_id": "64f526ebf86cb33ee09455e34d529c5fc4887eca",
+      "git_mode": "100644",
       "path": "evidence/pid-rs-0.4-deterministic-control.patch",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "070d7b61ae773c9fb5d73cab9ba23c642d17110adaf63556e285748cbb20f479",
       "size_bytes": 490
     },
     {
+      "git_blob_id": "0bcc9730a928663e80145b22d9de28cb958e6ca8",
+      "git_mode": "100644",
       "path": "evidence/pid-rs-1.0-migration.json",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "f4f81a0f1242ec98736afc1626b86a3d92d4476b6c9329f50cd5ffc2eec9aeb7",
       "size_bytes": 10598
     },
     {
+      "git_blob_id": "7a2ccd09b81d7fd82a6a12f9366753f247eb9547",
+      "git_mode": "100644",
       "path": "evidence/post-audit-v1.json",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "98f54cc1aa30c0f6deb0c5607fe33c8ff7a8b625bded970535081a147a1dc662",
       "size_bytes": 1293
     },
     {
+      "git_blob_id": "93375ddac10525f88ce0024d20009618438951e4",
+      "git_mode": "100644",
       "path": "evidence/results/post-audit-v1-8a0084f/SHA256SUMS",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "fffe25ac3e5135bafab734c41629dec9a8b26e78fb62998098204df3cc2481ad",
       "size_bytes": 392
     },
     {
+      "git_blob_id": "7a2ccd09b81d7fd82a6a12f9366753f247eb9547",
+      "git_mode": "100644",
       "path": "evidence/results/post-audit-v1-8a0084f/config.json",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "98f54cc1aa30c0f6deb0c5607fe33c8ff7a8b625bded970535081a147a1dc662",
       "size_bytes": 1293
     },
     {
+      "git_blob_id": "88467e7e50a095cbbb5690446fc42d0c3fcc5e17",
+      "git_mode": "100644",
       "path": "evidence/results/post-audit-v1-8a0084f/manifest.json",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "feaf0414024406c8e8f83c8c7aae7099661bcc10acca07b36a5ab35de550e1de",
       "size_bytes": 1941
     },
     {
+      "git_blob_id": "f8d88217935eb561969017de791615e1b4e9f197",
+      "git_mode": "100644",
       "path": "evidence/results/post-audit-v1-8a0084f/report.md",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "8e1863d46ad775985de349a8a2ca0dea7051ea63ef6cef0a1b10297068807131",
       "size_bytes": 8729
     },
     {
+      "git_blob_id": "61699a5ed80f1be6bea02fa68521bd1599ab4d91",
+      "git_mode": "100644",
       "path": "evidence/results/post-audit-v1-8a0084f/summary.json",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "abc9bba68851caeabddae1ca601cbc8cb0fa115139f4a64ca1fd8a1019707282",
       "size_bytes": 205049
     },
     {
+      "git_blob_id": "55617cd91a1a8f5c046b4e92685d3a24fa9eb5cb",
+      "git_mode": "100644",
       "path": "evidence/results/post-audit-v1-8a0084f/trials.jsonl",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "693a2d4d0eeedabb2b2e857d16a52be20cde0dce96a6c0c9e6aa5299193f34c0",
       "size_bytes": 3847421
     },
     {
+      "git_blob_id": "8abccd25fc9a21423d135afe2576ea04ce36fdc6",
+      "git_mode": "100644",
       "path": "fuzz/.gitignore",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "98d82ee4130b95c404bd9aa51fd5b75af36694f5a20fbc0d7694c8a19705f5b8",
       "size_bytes": 41
     },
     {
+      "git_blob_id": "ba25355f3dc1056f1dd5c0ce8bb684c0d07fa34f",
+      "git_mode": "100644",
       "path": "fuzz/Cargo.lock",
       "purpose": "locked software/toolchain input",
       "sha256": "8f745cfffe945b35fdb1e871ace4998321e26a1de664b60904f447076c46d9a7",
       "size_bytes": 8509
     },
     {
+      "git_blob_id": "24d366015f7afc9c08809bfa95cb7e0da44f5e92",
+      "git_mode": "100644",
       "path": "fuzz/Cargo.toml",
       "purpose": "locked software/toolchain input",
       "sha256": "fe92e7792e1a8d4dce566e16ca75f6950a18365c2a657a2f05c1d9306f1f6aea",
       "size_bytes": 735
     },
     {
+      "git_blob_id": "960ad18ef21e50194d192dd1d3a057b4e0a5b68d",
+      "git_mode": "100644",
       "path": "fuzz/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "6b33b91906fa22183c6b1759bb009f881772b615334515bdec0e21549832a23c",
-      "size_bytes": 916
+      "sha256": "b35e70127d332ae0d07d74e60d15d5b1cbc6690e545cbc81dab5401f8ee10c41",
+      "size_bytes": 976
     },
     {
+      "git_blob_id": "bda523aedac54e9a70bb07df43687342e55fa8f8",
+      "git_mode": "100644",
       "path": "fuzz/deny.toml",
       "purpose": "locked software/toolchain input",
       "sha256": "3fa71dc5e833e3da478f72afa405bed70112a2764e28e6dbb05f0ed40aeade22",
       "size_bytes": 484
     },
     {
+      "git_blob_id": "13effe4509bb2223a55b738a2da6f895ca4fa220",
+      "git_mode": "100644",
       "path": "fuzz/fuzz_targets/detector_boundaries.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "3b3633e1a31dfdf1a454fb8431727e8fb966904667d7018bb470d2d5aebbf918",
-      "size_bytes": 2345
+      "sha256": "b47f45451e830512f0f2aa083f31cce87a90c696bd4399c8b335ed362955cf3b",
+      "size_bytes": 3218
     },
     {
+      "git_blob_id": "4656199fdcffdcf874bb3a0982301fccc4245add",
+      "git_mode": "100644",
       "path": "fuzz/fuzz_targets/ncp_decode.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
       "sha256": "1a1030ce5861746e1f76650815861fe930cc0f1c687b8206f3d9d86344abea58",
       "size_bytes": 1808
     },
     {
+      "git_blob_id": "f6d7cfd10a2c6ba6dec277deae3887c3c58370aa",
+      "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "90862433ddf7946cc9c68ff7b2d5ab45547c19aa7db7bd11a24c18a0a536cb69",
-      "size_bytes": 13711
+      "sha256": "6b0be9063e1b3c9c553f2323b39c37d2d0ab5e40efd84fc66d049f58b1c73c19",
+      "size_bytes": 17958
     },
     {
+      "git_blob_id": "c7eacfb20091dafcdbaaa176107cfdc134c5c742",
+      "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "86b21e2e465e0499a7c59c63faa34b7ac35ec353019e6e2c72a8e64117fd83bb",
-      "size_bytes": 11141
+      "sha256": "1824a74cbc97b17f51092174b767ec89012e6003c20bcfb1ad634374b938658b",
+      "size_bytes": 17065
     },
     {
+      "git_blob_id": "9d5a74afaef94623e0411563c9e2a6aac1592dbe",
+      "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "3279058f7bcf191521f5c8376a68b734184132d613d18101462686362032e28b",
-      "size_bytes": 35456
+      "sha256": "447b324feec401b904ee9fb3994aee042522176d7594c02a689e43e0522ec8eb",
+      "size_bytes": 42916
     },
     {
+      "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
+      "git_mode": "100644",
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "425153cd717451df58155517fcb6e87400a8b5621446ad0ac5bb1eb65913fd63",
-      "size_bytes": 5306
+      "sha256": "871e4f6c90f8798c26cca9f051472bcfb595cd6e5d14c384593b28742c4b4cf3",
+      "size_bytes": 5497
     },
     {
+      "git_blob_id": "3ece86d326e278ef0a7d5d06cbe80edb097e6079",
+      "git_mode": "100644",
       "path": "release/0.9.0/WITHDRAWN-RELEASES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "79aa3a12c040e98de601dff879fa4302459b5ecc5b0a36f167013923295568ac",
       "size_bytes": 3657
     },
     {
+      "git_blob_id": "f23d46b0ca5c0da08fda9e1fad4b06048308473e",
+      "git_mode": "100644",
       "path": "release/0.9.0/api/galadriel-core.0.9.0.txt",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
-      "sha256": "4cf74dc55797c08ce80a4645bf67cff04e34c169f0f9aa0c2f0d420ae3691fa4",
-      "size_bytes": 711142
+      "sha256": "4704689a6a7bd9d4ddc7aa0243d447f2592640c0adb69de19e0308e3dfc4021a",
+      "size_bytes": 716171
     },
     {
+      "git_blob_id": "66ad9d86186d8984b42d536873894c0e7f1a8f75",
+      "git_mode": "100644",
       "path": "release/0.9.0/api/galadriel-core.baseline.txt",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "c36ee97ac474d13182f018dc90bb80e09714181743a1e89f11f1fe430327b033",
       "size_bytes": 83785
     },
     {
+      "git_blob_id": "14ecd937d13232fc450c59f4859c7c70e106abc6",
+      "git_mode": "100644",
       "path": "release/0.9.0/api/galadriel-pid.0.9.0.txt",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
-      "sha256": "667b51df10438e245b72886e026fa7c7f27dad4c3bff466373ac48ce46aed225",
-      "size_bytes": 99399
+      "sha256": "188fc5ede328370f1496f8b6fe747c8e6ed973beba0d4531cf2744eb7973727a",
+      "size_bytes": 99554
     },
     {
+      "git_blob_id": "fa97eb0b4696970ab038e85e6b754e4b8c6cfb78",
+      "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "2a7838ce514c47d10bfa864837f9db7ccd1bc36a45d49ea2bd1f0c8558304d10",
-      "size_bytes": 12104
+      "sha256": "a7a2e146092d1d015753d0494216ce1c7ac25340645c3fa7daff7b0b8ec6648e",
+      "size_bytes": 12252
     },
     {
+      "git_blob_id": "7e563049b65dc6761e76b7d0c96c1cc10bd5c0dc",
+      "git_mode": "100644",
       "path": "release/0.9.0/audit/ALLOWED_SIGNERS",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "88eddddf1b3a6d0176acf2ec88b1d3c120453e2658651c49b82d41057caa78ed",
       "size_bytes": 98
     },
     {
-      "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json",
-      "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "48b35f254b8a720ccf4b0acf44636ef513ac5350342b28ec81a8346941b8d06a",
-      "size_bytes": 58955
-    },
-    {
-      "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig",
-      "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "ba10347dce5ef4c3753d274597fbfa177d37e1877bef66454ef645e5f3298bcc",
-      "size_bytes": 322
-    },
-    {
+      "git_blob_id": "2150fc2dc71f6118a903dd254fd0cfee756908f9",
+      "git_mode": "100644",
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "88d34fcf3cb997d846603bdf43973055cb672ac7c89046e96299e636973b9d8c",
       "size_bytes": 57693
     },
     {
+      "git_blob_id": "cd261adbfaab148850a5be98ad5bfa85c0f69ad2",
+      "git_mode": "100644",
       "path": "release/0.9.0/audit/FROZEN-AUDIT-INPUTS.json.sig",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "a7994dfea7d654c50ba89541512f46ac08e27b25c7802489add0aaab1fa7a406",
       "size_bytes": 322
     },
     {
+      "git_blob_id": "3c2835709295e3f77ad891dfee88a5628873218d",
+      "git_mode": "100644",
       "path": "release/0.9.0/audit/threat-register.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "e26c60ca8b6e8ba78c98cb82da39acc3039b728a21c747106a512dbae2a90aa6",
-      "size_bytes": 30227
+      "sha256": "c6665945cfdd9b3f77c5ee6e9c610b4c6a1d1fc7643814b8b470dfd678c85673",
+      "size_bytes": 30237
     },
     {
+      "git_blob_id": "6047e79d22c0fb5658f6c8c14e70f7f1365d04ec",
+      "git_mode": "100644",
       "path": "release/0.9.0/claims.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "b3c6b151571549ebbc171c0e938e8cb33ea5287ae815ce9d0989c34c49dbbcea",
       "size_bytes": 9348
     },
     {
+      "git_blob_id": "473dbaa3be6453ec2c40231b618dfc7e7abc03e5",
+      "git_mode": "100644",
       "path": "release/0.9.0/ecosystem-cut.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "f9389355b5bad2ad58fd456ecf688de77e1cc1f9b92978c11cb1c61f65750661",
-      "size_bytes": 8384
+      "sha256": "4185557f1845420f69f48dfb72b7c8019f41fcdc0fb7ef45b7f8007b4e401c26",
+      "size_bytes": 8459
     },
     {
+      "git_blob_id": "68c93810199672d53ed4ac82fb71d2e0b5a6c7c8",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/ACCEPTANCE-CRITERIA.md",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "87419333614a8baec487653302980a646e33331e64be4561cf24ca0042fc5311",
       "size_bytes": 8408
     },
     {
+      "git_blob_id": "d876f0c8123bb5f8405a581a5e72b026571cba09",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/baseline-94e2f8cc/baseline.json",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "07afd99e4b3d4c6e80b82bd44c73dc68cfe16aedb1626fc58995198db4ec8aad",
       "size_bytes": 4317
     },
     {
+      "git_blob_id": "8c91d226efba20f5485addc8e7adb7fb2c5f3e1a",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/baseline-94e2f8cc/baseline.log",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "d7b8da1c96383dcfb732a994a54cf716e3feebf3ed4a53076068fef576313ac4",
       "size_bytes": 762531
     },
     {
+      "git_blob_id": "608f0472efc34d05dcb6e55fe9a852d31d85acef",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/baseline-94e2f8cc/cargo-metadata.json",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "d1b99a3e34af18e19419dba5dbdd8efde298282791abe83d898704997f1021d2",
       "size_bytes": 679450
     },
     {
+      "git_blob_id": "8fede412a79767cb21fbda7f37c5e2f950c16c99",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/baseline-workspace-all-features.log",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "8f4715c68cb38e851d069573f5b840c455237c343758d27c6f879bb5c23dc509",
       "size_bytes": 49908
     },
     {
+      "git_blob_id": "b1400c37e6b0a4dd66f1bd874e64190e3223ba9f",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/galadriel-core-api.diff",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
-      "sha256": "63e84001b4b538e75e5c57b3485679510b3ee3ab5ca551edb418c020507f6d5a",
-      "size_bytes": 708609
+      "sha256": "047d8c4dbc32ca56f87d368910d742ac965dad4038dcdb14dbac95c255ea4df0",
+      "size_bytes": 713694
     },
     {
+      "git_blob_id": "ba307cabc0c63a7a2bbb3e5fcafe9cb261da486a",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/phase-1-ci-remediation.log",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "72edc55414ed560bc43fb8ca2dd5ac8364a844c114447aad36717c625d6f4a91",
       "size_bytes": 19473
     },
     {
+      "git_blob_id": "64aa9272bc0728ff80f814335543401b84d905fa",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/phase-1-component-gates.log",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "1feb61d4981738f7b99b469f4b722d52fc6c18d99e6d8750e0823a22c8b6b4b2",
       "size_bytes": 10084
     },
     {
+      "git_blob_id": "002d0d2b78bc258228b848e8e4ffbbc94ee85afb",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/phase-1-full-gates.log",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "4965a72bca672104c1479393a381ea504141aec3ee88b593d35a8abcb03707e5",
       "size_bytes": 227154
     },
     {
+      "git_blob_id": "7d264cad02f132f9c6a099d4970d6d3384284b5a",
+      "git_mode": "100644",
       "path": "release/0.9.0/evidence/phase-1-mutation-remediation.log",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
       "sha256": "3606565e4950d167f2ed59ac591278ba2dd8ed1d67bdb10539a66984078754f3",
       "size_bytes": 430
     },
     {
+      "git_blob_id": "1a157a68b8f0e50703b7895d35bd42c5a07a06ba",
+      "git_mode": "100644",
       "path": "release/0.9.0/handoff-source.json",
       "purpose": "current handoff identity and derived task inventory",
       "sha256": "a5bf3fc637ee09ec0b444f2b30fe2476d146a4949b3ba5ae121051e792aeebff",
       "size_bytes": 958
     },
     {
+      "git_blob_id": "87c10ffd3ed73d3aa03ea1a4c988173a6ad35eed",
+      "git_mode": "100644",
       "path": "release/0.9.0/local-convergence-schema.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "5e50c73f8aee350636b1282f3e6385e398557c957533cecdaf82c661ac6780c8",
       "size_bytes": 24936
     },
     {
+      "git_blob_id": "b105979d2addf7765e1ba6863fcdacdbab976ec1",
+      "git_mode": "100644",
       "path": "release/0.9.0/requirements-ledger.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "f674186330db1274bf3c567c11941b36436519e3500cabb18ef70cea3da644b3",
       "size_bytes": 1713595
     },
     {
+      "git_blob_id": "5b1b83f083ad140737dd5799e7abb072eff09f08",
+      "git_mode": "100644",
       "path": "release/0.9.0/reviews/REVIEW-COMMENTS.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "1573638ef97388ebfce6cc4c97a3583e001128d502449689ad33c1b86cd382fd",
       "size_bytes": 2091
     },
     {
+      "git_blob_id": "efe0c1ebd805c6269bcd94f571814ced62820d51",
+      "git_mode": "100644",
       "path": "release/0.9.0/reviews/REVIEW-METHOD.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "673ed57d0d4ed339409bfcd5d7da4d2584e1c09c9cc9fd093f9705b7ba7c2309",
-      "size_bytes": 7733
+      "sha256": "2b93a6a15d1e834e6d212987951527ebd3bbf3c46170d3f7a11242929e4f847a",
+      "size_bytes": 7735
     },
     {
+      "git_blob_id": "3dbda237a4d021e251916495fcc0006eb6f8fc7e",
+      "git_mode": "100644",
       "path": "release/0.9.0/reviews/phase-1.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "35ab2424592ba9b0b0d9008d267b3fdc15d56a14b2e377377e694f4802bc9740",
       "size_bytes": 7629
     },
     {
+      "git_blob_id": "7ed92e10a035c45fa227bb929b06437f7cb88d03",
+      "git_mode": "100644",
       "path": "release/0.9.0/task-closure-plan.json",
       "purpose": "current handoff identity and derived task inventory",
       "sha256": "b8414fd84fa47f4ee8761848b0a2a10c33a8229071fe125d1df0fd46f0d72a0e",
       "size_bytes": 1996564
     },
     {
+      "git_blob_id": "6c9aa66a7a6ad2ce55cb4f5191388d1c293db0e3",
+      "git_mode": "100644",
       "path": "release/0.9.0/task-dispositions.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
       "sha256": "ea36cbbdbed8dfc4aae7a0034dfe91f223de24c7771f837530bff4ddee920639",
       "size_bytes": 301
     },
     {
+      "git_blob_id": "d5b5d29f03fcd52bf2fe5f403f10840e79d03d08",
+      "git_mode": "100644",
       "path": "release/0.9.0/tasks.json",
       "purpose": "current handoff identity and derived task inventory",
       "sha256": "8278951155e7477e59a113e566bb2056a1705ba9fbce7899b4786ada16cec5ca",
       "size_bytes": 67085
     },
     {
+      "git_blob_id": "0f392e6f2e1b7493a5a24600e0915faea9f11e93",
+      "git_mode": "100644",
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "58b17ac6dd704918027ccb03dc3886504b30972131f0d1d1cff02171d0a63648",
-      "size_bytes": 31381
+      "sha256": "74a46175623f9d7b5b4fc3a547e22bc445ff7f1562f2ad2347d163ca8759194e",
+      "size_bytes": 39963
     },
     {
+      "git_blob_id": "c6659c5a4bc0b26d3f8dc89b8b9e385a0e2eba88",
+      "git_mode": "100644",
       "path": "repo_work/audit_tracked_files.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0ccc63d3ecff1dcaec9e76c7e6ca0e8f814135dc9e63c642506f8fc0d50fad7d",
-      "size_bytes": 14263
+      "sha256": "6ab7df3cca40e2f82c4063a4cf056cb51b05433e103e205ad3d97cc582c9e2f6",
+      "size_bytes": 17431
     },
     {
+      "git_blob_id": "60607ad3ad139d60f628454fe4f21e025177a174",
+      "git_mode": "100644",
       "path": "repo_work/build_task_dispositions.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "460426586f81d3a4bdd4e307c666934fa4dd313da1590e61fcd9dd4bb61914d6",
-      "size_bytes": 21891
+      "sha256": "69e95d58afdfb86c0ed2f9f243c613449fcfb5895c24e27856d456b556c1da5e",
+      "size_bytes": 21970
     },
     {
+      "git_blob_id": "4df5348f04af19093e7ee1045beae05823e722e6",
+      "git_mode": "100644",
       "path": "repo_work/check_feature_graph.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "46ddfcd98a9040658b23f7db80da03cd198af1bda4fea7de042be4cd66319573",
-      "size_bytes": 21960
+      "sha256": "b6622148ef6b705bf4e9df3cadb4a1d75dd67999116609b37ebc18da380205f3",
+      "size_bytes": 22062
     },
     {
+      "git_blob_id": "bd7b5f92bb001b6e3a7f875d55411501c636ab9e",
+      "git_mode": "100644",
       "path": "repo_work/check_focused_mutation.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "b0431b5ddd0438cd1722ffc29690ac925015c9b84bc50fcd1afa1448220bd08a",
-      "size_bytes": 15715
+      "sha256": "301326530ca2b1cf967c35d06757c6fb2d0c4129707af2f5f87589cb3cf5bc4e",
+      "size_bytes": 15924
     },
     {
+      "git_blob_id": "c67a82ff1f19b8871b082e9754385d4035f7f81c",
+      "git_mode": "100644",
       "path": "repo_work/check_frozen_head.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "db4847fb69c7f09485d692511fae7465c2a17f0d2d82f3bfb799b9dc7211333b",
       "size_bytes": 1282
     },
     {
+      "git_blob_id": "45e6cbd46f996b67c816d1a02135b46069933f4a",
+      "git_mode": "100644",
       "path": "repo_work/check_public_api.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "6d7a22a9f7692ee0f8ea9c3a9d1b2d4f8c62625a0f41d71f14fa0496721ee190",
       "size_bytes": 8468
     },
     {
+      "git_blob_id": "70b97998215fc8291d58ad5311831fd04d7c5ab1",
+      "git_mode": "100644",
       "path": "repo_work/check_vulnerable_features.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "cfc2c3a0ac205188eac6012ed26aff102a3d6c99cb353dfd558c37c1f56bda88",
       "size_bytes": 5430
     },
     {
+      "git_blob_id": "7925290bf31890f7d87f7c2bce5e68bb6e310b41",
+      "git_mode": "100644",
       "path": "repo_work/common.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1ebba96047136c21b8d8a8c7eaaa78c792549bd97325936d3b2b1f595312fc1a",
-      "size_bytes": 22801
+      "sha256": "3b44f07f21a3d3fc7c787215bb9f10d95b806d08f57f5f9e123f5e4afabfe058",
+      "size_bytes": 98835
     },
     {
+      "git_blob_id": "91ea511ca49550d9faca0773f064417cae8b5938",
+      "git_mode": "100644",
       "path": "repo_work/finalize_release.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "64d95fc6d336da0e17ae080490cd1f939bf6b06a3f7053125ca606cb917a93cc",
-      "size_bytes": 186094
+      "sha256": "92d83a2e8ec40594bfdf9cb32c8f2e57416921576dfb6af0a578c23f78862899",
+      "size_bytes": 235029
     },
     {
+      "git_blob_id": "9b944c813dec578de1d0c9f0a4b4e773e5455efe",
+      "git_mode": "100644",
       "path": "repo_work/freeze_audit_inputs.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0913b79ad8a1ba2019e17df4d0c3738bf3736032cd6420e42b261680171bfc2d",
-      "size_bytes": 59895
+      "sha256": "acd20dbab2868f073dbeb0221cecc3da54cc4cfc5f87446b53ca2fe9f4d8ce50",
+      "size_bytes": 95794
     },
     {
+      "git_blob_id": "55680cbda743b72fc3cdf96bb9e9cee3e570da62",
+      "git_mode": "100644",
       "path": "repo_work/local_convergence.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "8215fb60d3e55dfc2a6b0890977906533ecc7f67a83fc23da455f5a45189b27a",
       "size_bytes": 28876
     },
     {
+      "git_blob_id": "3ce0578cb8b88ca78e655d336e0c1a6d1e39f2be",
+      "git_mode": "100644",
       "path": "repo_work/make_review_packets.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8d4e8c95e5e3c08a33542f4ff33a7e984b7418d8983866c0dc597cb2bbca6493",
-      "size_bytes": 5641
+      "sha256": "d5d05ce3df418c47e0ed4888ce7cb525f7aabc8b37159eafac78cfcf213d148e",
+      "size_bytes": 8320
     },
     {
+      "git_blob_id": "8b54ef41fd199e3e8d57abdc1cb4c4884465fded",
+      "git_mode": "100644",
       "path": "repo_work/package_release_assets.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "50b5bee20688120166d19e371ef7a47cf05dab78cb99aaabe61962afd78c47d5",
-      "size_bytes": 59086
+      "sha256": "08e620d0d66ae6abafd79d63fcf4f1e7f0c5536a86e6cf6474addb88dc2e8271",
+      "size_bytes": 59881
     },
     {
+      "git_blob_id": "ba7f464ec84350e466dadd54fbb13c806cec9dc3",
+      "git_mode": "100644",
       "path": "repo_work/prepare_mutation_evidence.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5edc7ad6b71a4fee07b7a65c32200122f4529d2ec16946a904b600bb4c163ee9",
-      "size_bytes": 28245
+      "sha256": "5874b6eba8698f0de9d448fd7d104ad7bbf1609853514be8e1cc239fcbe46aab",
+      "size_bytes": 28220
     },
     {
+      "git_blob_id": "1b0f2515fda5df845fd01b289ef298a281812c2c",
+      "git_mode": "100644",
+      "path": "repo_work/process_containment.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "aa5d18d178d638315a4d007028ccabe5d6d302c76e9325033c976cdfe488253a",
+      "size_bytes": 74863
+    },
+    {
+      "git_blob_id": "78658188577129024b94caba22ad3d1d4c01ff32",
+      "git_mode": "100644",
       "path": "repo_work/qualification_artifacts.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "e554060fa6ef03a1b91de72f9c6219b529f20fdb908e7a9b66a07a55db64bf39",
       "size_bytes": 84218
     },
     {
+      "git_blob_id": "fa1166994408a0dd23216361aadba3f7b9d19367",
+      "git_mode": "100644",
       "path": "repo_work/qualify_candidate.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1779ea3713ee6f8d820dd8b909668b1173517afbb078e9498e6dfb63add7a0f8",
-      "size_bytes": 197659
+      "sha256": "2150995c764f7a87334a91cbdfa98820577dfed55b4d82d6d16815e4308a11f7",
+      "size_bytes": 257220
     },
     {
+      "git_blob_id": "5de2948f66f3c5a988ab8950222526d8085a9c9e",
+      "git_mode": "100644",
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3b6e5b688dc26426aa9e4598d89f77098f1df294f9fd5f4bbf04215aeee332df",
-      "size_bytes": 154006
+      "sha256": "8cf9cefb723fd99743ddc61791c3f738b153dc8b1dae91bc930803b0160913d7",
+      "size_bytes": 270560
     },
     {
+      "git_blob_id": "3dc0129f528c1a7031dcdbba666d0c0b9b890a98",
+      "git_mode": "100644",
       "path": "repo_work/reproduce_baseline.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "bea876194f90c682585eca9875a2016e736867c25a38663868a10bfb3b275dac",
-      "size_bytes": 11859
+      "sha256": "7f7d180f31f38fa4e40c0d0858138598725494664f6fa4cd4bbc10e55b6b53ea",
+      "size_bytes": 12211
     },
     {
+      "git_blob_id": "3ba6ab66127d73ac0ab2ea6daa686a41a93467b9",
+      "git_mode": "100644",
       "path": "repo_work/run_broad_mutation.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "821b6a1f687b8285ed84d95e37d1e4c73c16959d419f0c1b37e9903ca92be390",
-      "size_bytes": 23002
+      "sha256": "d8a09f9d638b77a056f2f0f0f80d189a7b89053fd4877c74a9f1e1c6476831af",
+      "size_bytes": 23186
     },
     {
+      "git_blob_id": "1b1d9ebab2c892f718f06b03567195d8b345c12b",
+      "git_mode": "100644",
       "path": "repo_work/scan_claim_language.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "4dc0ba8b7fcec0afb56bd545a532a98b4797f22528436fca2daa529dc10bf4f0",
-      "size_bytes": 2925
+      "sha256": "eb544353a4a7a2e5e55c92421b730388d25dd88e8bf81fd091b3bdfcdadcd40f",
+      "size_bytes": 4504
     },
     {
+      "git_blob_id": "ec073705f55460bf7edd2036815ab69812b7d779",
+      "git_mode": "100644",
+      "path": "repo_work/tests/test_candidate_evidence_bundle.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "a1c93327af028a809e8fb8fd89f03e56e54c7dad66bcefb8aabb50232a659c90",
+      "size_bytes": 36423
+    },
+    {
+      "git_blob_id": "36232419447fcc7f82b23d9d0efe161cc7cacc60",
+      "git_mode": "100644",
+      "path": "repo_work/tests/test_evidence_batch_transaction.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "b944e6842def9ef1b0cd011b74de6541dc0ddd93849008b924b5804e76f27383",
+      "size_bytes": 14801
+    },
+    {
+      "git_blob_id": "9fdbcda2ea41ead41b0322f6c934db906738d51d",
+      "git_mode": "100644",
+      "path": "repo_work/tests/test_file_mode_identity.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "52310652bfc4756abbf23c139d6040bf03240bcbd8bfb10b4963473c7aa40823",
+      "size_bytes": 10211
+    },
+    {
+      "git_blob_id": "967c47f40b3e9d7e940b404256619ccfc7aad84c",
+      "git_mode": "100644",
       "path": "repo_work/tests/test_finalize_qualification.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5a3fb671b25d24265f0264a6794615e4517e34d569031ef745eeba2bd4a099d7",
-      "size_bytes": 63402
+      "sha256": "9e8c337e5bf80a28fab7edc3917a84472ee900040da3ac0e967228ef8b17af16",
+      "size_bytes": 125217
     },
     {
+      "git_blob_id": "6d119cbe9f96fd4913f2bddce189540faacf561b",
+      "git_mode": "100644",
       "path": "repo_work/tests/test_host_process_bounds.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "eb93a80bc70677dadc3c840e9686714693a86bf926206d5d3af37475f3e59804",
-      "size_bytes": 7487
+      "sha256": "10d0648385edb8586c25038634b81364a99169001abbd64939385e2d28956432",
+      "size_bytes": 88824
     },
     {
+      "git_blob_id": "8f4e2c5dfe87f14206625f09a894cdf3c2f0f773",
+      "git_mode": "100644",
       "path": "repo_work/tests/test_package_release_assets.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "57f6b05342bd412dbbe979054afb8c9e4a18345646143913748e2ce1d3e74308",
-      "size_bytes": 46630
+      "sha256": "10d47bc41ba18c394dafb24dd90b486a21e96469e7e54ad8db127f82140c0300",
+      "size_bytes": 53805
     },
     {
+      "git_blob_id": "dd6c8e588c1cc284dd14cb3f2ac29223695bbc5e",
+      "git_mode": "100644",
       "path": "repo_work/tests/test_qualification_artifacts.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "fa5d0cecb2d786a54e5460bf765a1a7a7337ac1f71df0b7d5bc40db68be93e0a",
       "size_bytes": 45976
     },
     {
+      "git_blob_id": "968018e49e3c9997c1fc144d852bc048d3d41e20",
+      "git_mode": "100644",
+      "path": "repo_work/tests/test_qualify_candidate_evidence.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "ff0a65f858b56f38cb9d9c70dd6eeddab66c94bb7c097d413515c288b90a9ba6",
+      "size_bytes": 12931
+    },
+    {
+      "git_blob_id": "6543cc20118625dbe087d99cdf08b7aab3baf277",
+      "git_mode": "100644",
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a11c0f99abb2b7be63eed062e30a88c7a906a62247b3a3741f622abdd6c03234",
-      "size_bytes": 231318
+      "sha256": "cd9d9e2e221e445699cfc86857d9cab3db58793b502a6ad596a9b05033e31795",
+      "size_bytes": 281615
     },
     {
+      "git_blob_id": "bf7c1a3caa4c775b4addca1e762a7bc627dfa251",
+      "git_mode": "100644",
+      "path": "repo_work/tests/test_release_audit_snapshot.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "0650da1fd1579574eeca55077e662b4abb8f1f4c322f9dfa73c0f35fef86378f",
+      "size_bytes": 12774
+    },
+    {
+      "git_blob_id": "21bca627eb2897f454139c3dabd5ffb2668c6230",
+      "git_mode": "100644",
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2216aa4902f920be5464ade6ce474b152fe1c23b16e896b507dabe8e0c877a87",
-      "size_bytes": 147539
+      "sha256": "b26b6e3a44b41d8ae1b831bff9668f4cd0f7b321e6344649529b1a4bed0a9cf2",
+      "size_bytes": 203817
     },
     {
+      "git_blob_id": "50b877a22e146c6f0abec32f3185e6ed6fc620a5",
+      "git_mode": "100644",
       "path": "repo_work/tests/test_task_dispositions.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "9d714d77aefb427b611b4be16a4234e59d05307f73f5a8b7b6a0ee9532b3aadd",
-      "size_bytes": 7207
+      "sha256": "efadc085506400a9cae8ee98a4429d52c7fc57ab89f6f0a26d993438e94f2e06",
+      "size_bytes": 7454
     },
     {
+      "git_blob_id": "c61d7c5962fbbbd563deb26caaa0445869b29096",
+      "git_mode": "100644",
       "path": "repo_work/verify_evidence_manifest.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f87d1b2ce8cdbdc49d5b62d9e1cb1bdb25745f841e5db28c09ed8041aec095a3",
-      "size_bytes": 3190
+      "sha256": "6b37a2077a1c803330c3244a0194cd4f7c2dcdbd60ce5e2c7fcb672fe34053b3",
+      "size_bytes": 4954
     },
     {
+      "git_blob_id": "c5d3e3e03fd87a481feb6cc50b864f93b3979d8f",
+      "git_mode": "100644",
       "path": "rust-toolchain.toml",
       "purpose": "locked software/toolchain input",
       "sha256": "102194270e5b9e364d761f5a990da88598a1d70441aa8b36aaa06f520dc55221",
       "size_bytes": 212
     },
     {
+      "git_blob_id": "8a5201c6819cb635b31f5dbbb5174acd8dc37d62",
+      "git_mode": "100755",
       "path": "scripts/release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "b51da9172be1e8b823095e7ecb073b686711e4f414377bdfc16a1a20589d9a5d",
-      "size_bytes": 50476
+      "sha256": "72ca55c11ffa2be7b31555b314bb3974d9a3459d20e9f21f2f1bbfb91f9d29b9",
+      "size_bytes": 72570
     },
     {
+      "git_blob_id": "6db71d2a9befc48d5f8e1b3887ce78631b03d5bb",
+      "git_mode": "100644",
       "path": "scripts/secure_deployment.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "d8cd0c301cf2cfb05775ddcfd44b993784ebcbe41ddb8435cb7e5c9a0c890ecd",
       "size_bytes": 45826
     },
     {
+      "git_blob_id": "7ad706e38905950666d84f7996fa882bd17aa2cb",
+      "git_mode": "100644",
       "path": "scripts/tests/test_release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3aa31d484da8a540a6a72d6ec3ddc2b509f4a241a76e982eb7c34c0a893cb18f",
-      "size_bytes": 12623
+      "sha256": "9932b89c68b44da98ce0ada0a42d4f7f10e91e52796129084533e440609c6ce7",
+      "size_bytes": 16186
     }
   ],
   "audit_date": "2026-07-23",
@@ -1441,7 +1895,7 @@
     },
     {
       "kind": "external_reference",
-      "line": 14,
+      "line": 18,
       "path": "CONTRIBUTING.md",
       "url": "https://github.com/sepahead"
     },
@@ -1489,301 +1943,301 @@
     },
     {
       "kind": "external_reference",
-      "line": 527,
+      "line": 608,
       "path": "README.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 663,
+      "line": 792,
       "path": "README.md",
       "url": "https://github.com/sepahead"
     },
     {
       "kind": "external_reference",
-      "line": 85,
+      "line": 86,
       "path": "README.md",
       "url": "https://github.com/sepahead/pid-rs"
     },
     {
       "kind": "external_reference",
-      "line": 86,
+      "line": 87,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP"
     },
     {
       "kind": "external_reference",
-      "line": 87,
+      "line": 88,
       "path": "README.md",
       "url": "https://github.com/sepahead/crebain"
     },
     {
       "kind": "external_reference",
-      "line": 88,
+      "line": 89,
       "path": "README.md",
       "url": "https://github.com/sepahead/haldir"
     },
     {
       "kind": "external_reference",
-      "line": 89,
+      "line": 90,
       "path": "README.md",
       "url": "https://github.com/sepahead/prisoma"
     },
     {
       "kind": "external_reference",
-      "line": 93,
+      "line": 102,
       "path": "SECURITY.md",
       "url": "https://github.com/RustSec/advisory-db"
     },
     {
       "kind": "external_reference",
-      "line": 74,
+      "line": 101,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/RustSec/advisory-db"
     },
     {
       "kind": "external_reference",
-      "line": 113,
+      "line": 118,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2106.09249"
+    },
+    {
+      "kind": "external_reference",
+      "line": 119,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://github.com/ASGuard-UCI/MSF-ADV"
+    },
+    {
+      "kind": "external_reference",
+      "line": 126,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
+    },
+    {
+      "kind": "external_reference",
+      "line": 127,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://arxiv.org/abs/2106.07098"
+    },
+    {
+      "kind": "external_reference",
+      "line": 149,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2205.04662"
     },
     {
       "kind": "external_reference",
-      "line": 120,
+      "line": 158,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.mdpi.com/1424-8220/18/5/1305"
     },
     {
       "kind": "external_reference",
-      "line": 188,
+      "line": 239,
       "path": "docs/MOTIVATION.md",
       "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138"
     },
     {
       "kind": "external_reference",
-      "line": 190,
+      "line": 243,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
     {
       "kind": "external_reference",
-      "line": 193,
+      "line": 248,
       "path": "docs/MOTIVATION.md",
       "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149"
     },
     {
       "kind": "external_reference",
-      "line": 196,
+      "line": 253,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2311.06373"
     },
     {
       "kind": "external_reference",
-      "line": 199,
+      "line": 257,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2008.09535"
     },
     {
       "kind": "external_reference",
-      "line": 211,
+      "line": 273,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1411.2832"
     },
     {
       "kind": "external_reference",
-      "line": 215,
+      "line": 277,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2105.00769"
     },
     {
       "kind": "external_reference",
-      "line": 224,
+      "line": 287,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1604.03006"
     },
     {
       "kind": "external_reference",
-      "line": 226,
+      "line": 291,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1411.2003"
     },
     {
       "kind": "external_reference",
-      "line": 227,
+      "line": 293,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1903.09280"
     },
     {
       "kind": "external_reference",
-      "line": 231,
+      "line": 298,
       "path": "docs/MOTIVATION.md",
       "url": "https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf"
     },
     {
       "kind": "external_reference",
-      "line": 231,
+      "line": 298,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.gpsworld.com/drone-hack/"
     },
     {
       "kind": "external_reference",
-      "line": 232,
+      "line": 299,
       "path": "docs/MOTIVATION.md",
       "url": "https://rntfnd.org/2024/02/03/ukraine-will-spoof-gps-across-the-country-to-stop-russian-drones-new-scientist/"
     },
     {
       "kind": "external_reference",
-      "line": 232,
+      "line": 299,
       "path": "docs/MOTIVATION.md",
       "url": "https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones"
     },
     {
       "kind": "external_reference",
-      "line": 232,
+      "line": 299,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/"
     },
     {
       "kind": "external_reference",
-      "line": 232,
+      "line": 299,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.jpost.com/defense-and-tech/article-894907"
     },
     {
       "kind": "external_reference",
-      "line": 233,
+      "line": 300,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2106.09249"
     },
     {
       "kind": "external_reference",
-      "line": 233,
+      "line": 300,
       "path": "docs/MOTIVATION.md",
       "url": "https://github.com/ASGuard-UCI/MSF-ADV"
     },
     {
       "kind": "external_reference",
-      "line": 234,
+      "line": 301,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2106.07098"
     },
     {
       "kind": "external_reference",
-      "line": 234,
+      "line": 301,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 235,
+      "line": 302,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/2205.04662"
     },
     {
       "kind": "external_reference",
-      "line": 236,
+      "line": 303,
       "path": "docs/MOTIVATION.md",
       "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.69.066138"
     },
     {
       "kind": "external_reference",
-      "line": 237,
+      "line": 304,
       "path": "docs/MOTIVATION.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
     {
       "kind": "external_reference",
-      "line": 238,
+      "line": 305,
       "path": "docs/MOTIVATION.md",
       "url": "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149"
     },
     {
       "kind": "external_reference",
-      "line": 59,
-      "path": "docs/MOTIVATION.md",
-      "url": "https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf"
-    },
-    {
-      "kind": "external_reference",
-      "line": 59,
+      "line": 70,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.gpsworld.com/drone-hack/"
     },
     {
       "kind": "external_reference",
-      "line": 66,
+      "line": 71,
       "path": "docs/MOTIVATION.md",
-      "url": "https://rntfnd.org/2024/02/03/ukraine-will-spoof-gps-across-the-country-to-stop-russian-drones-new-scientist/"
+      "url": "https://rnl.ae.utexas.edu/images/stories/files/papers/Testimony-Humphreys.pdf"
     },
     {
       "kind": "external_reference",
-      "line": 66,
-      "path": "docs/MOTIVATION.md",
-      "url": "https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones"
-    },
-    {
-      "kind": "external_reference",
-      "line": 66,
+      "line": 82,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.defenseone.com/technology/2024/09/group-ukraine-testing-newest-weapon-against-gps-jammers-cell-phones/399952/"
     },
     {
       "kind": "external_reference",
-      "line": 71,
+      "line": 83,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://therecord.media/ukraine-anti-drone-gps-spoofing-affects-civilian-mobile-phones"
+    },
+    {
+      "kind": "external_reference",
+      "line": 85,
+      "path": "docs/MOTIVATION.md",
+      "url": "https://rntfnd.org/2024/02/03/ukraine-will-spoof-gps-across-the-country-to-stop-russian-drones-new-scientist/"
+    },
+    {
+      "kind": "external_reference",
+      "line": 91,
       "path": "docs/MOTIVATION.md",
       "url": "https://www.jpost.com/defense-and-tech/article-894907"
     },
     {
       "kind": "external_reference",
-      "line": 92,
-      "path": "docs/MOTIVATION.md",
-      "url": "https://arxiv.org/abs/2106.09249"
-    },
-    {
-      "kind": "external_reference",
-      "line": 92,
-      "path": "docs/MOTIVATION.md",
-      "url": "https://github.com/ASGuard-UCI/MSF-ADV"
-    },
-    {
-      "kind": "external_reference",
-      "line": 96,
-      "path": "docs/MOTIVATION.md",
-      "url": "https://arxiv.org/abs/2106.07098"
-    },
-    {
-      "kind": "external_reference",
-      "line": 96,
-      "path": "docs/MOTIVATION.md",
-      "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
-    },
-    {
-      "kind": "external_reference",
-      "line": 394,
+      "line": 422,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2311.06373"
     },
     {
       "kind": "external_reference",
-      "line": 395,
+      "line": 423,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1604.03006"
     },
     {
       "kind": "external_reference",
-      "line": 396,
+      "line": 424,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2106.07098"
     },
     {
       "kind": "external_reference",
-      "line": 398,
+      "line": 426,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2002.03356"
     },
     {
       "kind": "external_reference",
-      "line": 401,
+      "line": 429,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
@@ -1891,55 +2345,55 @@
     },
     {
       "kind": "paper",
-      "line": 541,
+      "line": 544,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.ion.org/publications/abstract.cfm?articleID=100323"
     },
     {
       "kind": "paper",
-      "line": 542,
+      "line": 545,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.frontiersin.org/journals/physics/articles/10.3389/fphy.2025.1567301/full"
     },
     {
       "kind": "paper",
-      "line": 543,
+      "line": 546,
       "path": "docs/RELATED-WORK.md",
       "url": "https://www.mdpi.com/2072-4292/14/19/4826"
     },
     {
       "kind": "paper",
-      "line": 544,
+      "line": 547,
       "path": "docs/RELATED-WORK.md",
       "url": "https://navi.ion.org/content/68/2/243"
     },
     {
       "kind": "paper",
-      "line": 545,
+      "line": 548,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/1205.5073"
     },
     {
       "kind": "paper",
-      "line": 547,
+      "line": 550,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/1802.09651"
     },
     {
       "kind": "paper",
-      "line": 548,
+      "line": 551,
       "path": "docs/RELATED-WORK.md",
       "url": "https://arxiv.org/abs/2103.00883"
     },
     {
       "kind": "paper",
-      "line": 549,
+      "line": 552,
       "path": "docs/RELATED-WORK.md",
       "url": "https://dl.acm.org/doi/10.1145/2810103.2813679"
     },
     {
       "kind": "paper",
-      "line": 550,
+      "line": 553,
       "path": "docs/RELATED-WORK.md",
       "url": "https://anavs.com/wp-content/uploads/2025/10/Detection_and_Mitigation_of_Jamming_Meaconing_and_Spoofing_based_on_Machine_Learning_and_Multi_Sensor_Data.pdf"
     }
@@ -2028,70 +2482,92 @@
   ],
   "normative_documents": [
     {
+      "git_blob_id": "f6d7cfd10a2c6ba6dec277deae3887c3c58370aa",
+      "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "90862433ddf7946cc9c68ff7b2d5ab45547c19aa7db7bd11a24c18a0a536cb69",
-      "size_bytes": 13711
+      "sha256": "6b0be9063e1b3c9c553f2323b39c37d2d0ab5e40efd84fc66d049f58b1c73c19",
+      "size_bytes": 17958
     },
     {
+      "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
+      "git_mode": "100644",
       "path": "release/0.9.0/VERSION-ADAPTATION.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "425153cd717451df58155517fcb6e87400a8b5621446ad0ac5bb1eb65913fd63",
-      "size_bytes": 5306
+      "sha256": "871e4f6c90f8798c26cca9f051472bcfb595cd6e5d14c384593b28742c4b4cf3",
+      "size_bytes": 5497
     },
     {
+      "git_blob_id": "0d131f3aacfc556cf025fbeb574be43f2c342950",
+      "git_mode": "100644",
       "path": "docs/CLAIMS.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "f351c5473f951ca6d55b422ec139d21cfcbaba37619c0ed8ac3953d4dce21cc3",
-      "size_bytes": 2533
+      "sha256": "7fd827e8c4698fb040c89a4913439da923c7f3f4e866587e0fc98d5017508eea",
+      "size_bytes": 2793
     },
     {
+      "git_blob_id": "8b1e5ddbbb63a4d69daa46351ca74665b1d0cdc7",
+      "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "0d3009260e226c6c0bfeb6513d1372d34f7cb1cf56fb93acea5fbb39ca943e84",
-      "size_bytes": 13382
+      "sha256": "2fcd426063ac927b3030b2a9f07602f0e44e2721e8ff7d7aabb7122d1d672486",
+      "size_bytes": 15250
     },
     {
+      "git_blob_id": "4032d52027c7c1e20e67aa5ec7945050e2f9a28b",
+      "git_mode": "100644",
       "path": "docs/THREAT-MODEL.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "85a8af8b6a4b1b36a37127b6643fee322b18d49bcd46d14e008ed365ce0cdc88",
-      "size_bytes": 13355
+      "sha256": "5a2d9afb438ce2cb42c5de0812e731f71b71455238b34a5ad6526db20440c349",
+      "size_bytes": 16474
     },
     {
+      "git_blob_id": "53d8137477a855dc691ed1e66063c1d6641a6eee",
+      "git_mode": "100644",
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "cb11fddd14a6d1c3717b6279b1851e3f04232ae1cb479d25081f8dda530d04b5",
-      "size_bytes": 16255
+      "sha256": "9cd89dc275ce7b3afb5752a5af7ffa5f954e71a13cfea7ca4a1d29f1c4ddf54a",
+      "size_bytes": 17942
     },
     {
+      "git_blob_id": "72779357ac63b0dac2487f202f5055f041d45389",
+      "git_mode": "100644",
       "path": "docs/API-SURFACE.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "ac109c62313bb7b1f3f51a239ea1f5027f2e146d52704ab2527e8cbf721325e1",
-      "size_bytes": 3220
+      "sha256": "83928007aa5b6d53ed8186e8185b429a4aadea097a92ca665de3a68ead1de062",
+      "size_bytes": 4890
     },
     {
+      "git_blob_id": "64384a1004e26190c637932d91d68a3189a1edd8",
+      "git_mode": "100644",
       "path": "SUPPORT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "b31bd3e5de9721f18b4eccd0cc1d17387bbcd56b2d71945c4e230d1f3efa6062",
-      "size_bytes": 1241
+      "sha256": "23b65fd7a9eb4c9acf956c1618b1c9373d8ae7d61f31543532f086ffa7489a00",
+      "size_bytes": 1248
     },
     {
+      "git_blob_id": "f70e5348d8f54a5eae35ad3d90665446d6921551",
+      "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "85e623d5143716d65dce9dad7ef1480c42da4ba5c99b116e2a6ccf2df9a24282",
-      "size_bytes": 12326
+      "sha256": "101b803bf4cc1ec1861b13a037e145dbd6222d79ff438313f76249f7fd1df162",
+      "size_bytes": 18006
     },
     {
+      "git_blob_id": "427e6b3a1bd787f46c7cc70af0fa66d1595a39f1",
+      "git_mode": "100644",
       "path": "RELEASE-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "2489549c1921b78bd9b01415bb92e6f5c9f2989a4e761741c3eefef9e7d5751b",
-      "size_bytes": 4532
+      "sha256": "98adfdd2d0f444ca8014a2973bcbad59a22e7eaff874805a23e35ed416a3f862",
+      "size_bytes": 6079
     },
     {
+      "git_blob_id": "9d5a74afaef94623e0411563c9e2a6aac1592dbe",
+      "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "3279058f7bcf191521f5c8376a68b734184132d613d18101462686362032e28b",
-      "size_bytes": 35456
+      "sha256": "447b324feec401b904ee9fb3994aee042522176d7594c02a689e43e0522ec8eb",
+      "size_bytes": 42916
     }
   ],
   "release": {
@@ -2101,6 +2577,7 @@
     "license": "MIT OR Apache-2.0",
     "project_doi": null,
     "publication_channel": "review-gated GitHub research source release",
+    "release_date": "2026-07-25",
     "version": "0.9.0",
     "zenodo_record": null
   },
@@ -2123,28 +2600,28 @@
       "commit": "4c311900ade5668200a48d56fb191be1916b884a",
       "name": "Crebain",
       "qualification": "RECIPROCAL_FIXTURE",
-      "role": "optional reference-producer snapshot for contract review with no Cargo or runtime dependency",
+      "role": "retained historical reference-producer fixture for contract review with no Cargo or runtime dependency",
       "url": "https://github.com/sepahead/crebain"
     },
     {
       "commit": "5f7d183625a982741c51958e2d10bc12bb628ca0",
       "name": "Haldir",
       "qualification": "NOT_CLAIMED",
-      "role": "prospective downstream advisory consumer",
+      "role": "retained T000 exact-commit snapshot for prospective downstream contract review with no Galadriel runtime edge",
       "url": "https://github.com/sepahead/haldir"
     },
     {
       "commit": "0968128062f30da5c04f3f31c23f6ce8e0d95d36",
       "name": "Prisoma",
       "qualification": "NOT_CLAIMED",
-      "role": "ecosystem inventory; not a Galadriel consumer",
+      "role": "retained frozen-baseline inventory for prospective offline-consumer review with no Galadriel runtime edge",
       "url": "https://github.com/sepahead/prisoma"
     },
     {
       "commit": "9845c31bc5bae4746120858037b27f9c9ed2f445",
       "name": "Paper2Brain",
       "qualification": "NOT_CLAIMED",
-      "role": "Paper2Brain inventory snapshot with no Galadriel dependency, API, route, adapter, or runtime edge",
+      "role": "retained application inventory snapshot with no Galadriel dependency, API, route, adapter, or runtime edge",
       "url": "https://github.com/sepahead/Paper2Brain"
     },
     {
@@ -2160,24 +2637,30 @@
     "NOT_CLAIMED": 9,
     "OPEN": 107
   },
-  "schema": "galadriel.release-audit-manifest.v1",
+  "schema": "galadriel.release-audit-manifest.v2",
   "source_closure_plan": {
+    "git_blob_id": "7ed92e10a035c45fa227bb929b06437f7cb88d03",
+    "git_mode": "100644",
     "path": "release/0.9.0/task-closure-plan.json",
     "purpose": "post-commit task requirements, evidence rules, exclusions, and review questions",
     "sha256": "b8414fd84fa47f4ee8761848b0a2a10c33a8229071fe125d1df0fd46f0d72a0e",
     "size_bytes": 1996564
   },
   "source_task_dispositions": {
+    "git_blob_id": "6c9aa66a7a6ad2ce55cb4f5191388d1c293db0e3",
+    "git_mode": "100644",
     "path": "release/0.9.0/task-dispositions.json",
     "purpose": "explicitly empty source state awaiting exact-candidate review",
     "sha256": "ea36cbbdbed8dfc4aae7a0034dfe91f223de24c7771f837530bff4ddee920639",
     "size_bytes": 301
   },
   "threat_register": {
+    "git_blob_id": "3c2835709295e3f77ad891dfee88a5628873218d",
+    "git_mode": "100644",
     "path": "release/0.9.0/audit/threat-register.json",
     "purpose": "repository threat, misuse, and failure register",
-    "sha256": "e26c60ca8b6e8ba78c98cb82da39acc3039b728a21c747106a512dbae2a90aa6",
-    "size_bytes": 30227
+    "sha256": "c6665945cfdd9b3f77c5ee6e9c610b4c6a1d1fc7643814b8b470dfd678c85673",
+    "size_bytes": 30237
   },
   "toolchains": [
     {

@@ -42,6 +42,11 @@ It is not only a dependency update.
   They have the `experimental_restricted_domain` label.
 - The seeded Gaussian perturbation is an observation-noise model that changes the estimand.
   It is not a general tie repair.
+- The accepted `galadriel_pid::assess_stream` entry point now requires an
+  `AssessmentScope` before the stream and research suite.
+- The scope binds producer, session, epoch, stream, state generation, terminal
+  sequence, terminal timestamp, and clock domain.
+- The terminal coordinates **MUST** match the stream before PID work starts.
 - Each `PidReport` carries the exact pid-rs version and revision.
   It also carries estimators, scientific classifications, support declaration, noise model, scale, seed, and geometry `k`.
 - Each successful point-gate pair retains typed method and scientific status.
@@ -59,8 +64,9 @@ They used exact rustup toolchain `cargo 1.96.0` and `rustc 1.96.0 (ac68faa20)`.
 The test command used the Cargo test profile.
 The reproduction executable used the release profile.
 
-Rust 1.88 and 1.89 are the respective declared MSRVs.
-They are not the toolchains used for this reproduction.
+The from-side declares Rust 1.88 as its minimum supported Rust version.
+The to-side declares Rust 1.89.
+These versions are not the toolchains used for this reproduction.
 The final migration commit must pass the separate pinned-1.89 CI gate.
 
 Pull request (PR) #16 squash-landed the migrated implementation on `main`.
@@ -96,7 +102,7 @@ The table reports mutual information (MI) and area under the receiver operating 
 The comparison uses seed 7 and 20 paired trials.
 It uses `n=400` for the pairwise study and `n=600` for the synergy studies.
 It uses the fixed sequential and autocorrelation settings of the command-line interface (CLI).
-These small synthetic trials are compatibility smoke evidence.
+These small synthetic trials provide basic compatibility-test evidence.
 They are not an operational false-alert or detection-rate estimate.
 
 | Output | pid-rs 0.4 | pid-rs 1.0 | Disposition |
@@ -127,17 +133,26 @@ It does not treat them as estimator failure.
 
 Tests lock both sides of the point and confirmation boundary.
 Bootstrap cannot create an attribution that is absent from the point gate.
-Fixed-seed decouplings remain positively isolated.
-The default bootstrap configuration confirms at least one decoupling with a negative upper confidence endpoint.
+The fixed-seed synthetic decoupling cases retain their positive separation.
+The default bootstrap configuration confirms at least one separation with a negative upper confidence endpoint.
 
 A separate test covers positive PID evidence beside an insufficient PID axis.
 The result becomes `UnclassifiedAnomaly` when no complete signed result independently establishes the same attribution.
 Matching partial PID evidence cannot erase a complete signed default when all signed-correlation axes independently agree.
 
+The accepted PID report carries one `PidAssessmentBinding`.
+This binding nests the core `galadriel-assessment-binding-v2` identity.
+The nested identity covers the exact scope, release suite, and ordered stream.
+The PID binding also covers the complete PID research suite.
+`FusedReport::assessment_scope` returns the scope from the nested core binding.
+
+The scope is caller-declared provenance at the direct library boundary.
+It does not authenticate the caller or prove producer authorship.
+
 ## Remaining scientific boundary
 
 This migration establishes source and API compatibility.
-It also establishes synthetic continuity.
+It also establishes continuity for the stated synthetic comparison.
 It does not prove these properties of Crebain residuals:
 
 - regular full-dimensional support

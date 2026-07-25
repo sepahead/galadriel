@@ -1,4 +1,4 @@
-# Secure operational receiver runbook
+# Operational receiver security-profile runbook
 
 ## Abbreviations
 
@@ -16,7 +16,7 @@
 
 Status: runnable component implementation and external evidence procedure.
 
-The repository supplies checked configuration artifacts, a secure observer command, and bounded receiver components.
+The repository supplies checked configuration artifacts, a security-profile observer command, and bounded receiver components.
 The repository does not claim deployment of the example identities.
 Continuous integration (CI) loopback tests do not prove remote mutual Transport Layer Security (mTLS) authorization.
 A current reciprocal Crebain pin remains `NOT_CLAIMED`.
@@ -84,7 +84,7 @@ Follow [`deploy/README.md`](../deploy/README.md) to render the router, two clien
 Before use, verify `SHA256SUMS`.
 Review all four generated artifacts.
 
-The security invariants follow:
+The security profile requires these states:
 
 | Boundary | Required state |
 | --- | --- |
@@ -129,20 +129,20 @@ It rejects duplicate JSON keys at each JSON object depth.
 It canonicalizes each path.
 It rejects textual, symbolic-link, case-folded, and hard-link aliases.
 
-On `Portable Operating System Interface (POSIX)` systems, each private key must permit owner reads.
+On Portable Operating System Interface (POSIX) systems, each private key must permit owner reads.
 The key must not permit execution.
 The key must not permit group or other access.
 On Unix systems, the runtime observer repeats device-and-inode alias checks before it opens Zenoh.
 It also repeats the private-mode checks.
 On each platform, the renderer requires absolute canonical paths to regular files that exist.
 
-Keep the profile and configurations outside locations with broad read access.
+Store the profile and configurations in access-controlled directories.
 
 The committed references use strict JSON.
 Strict JSON is also valid JSON5.
 Thus, review and digest calculation do not depend on a permissive parser.
 
-The runtime secure opener accepts only a standalone regular-file configuration.
+The runtime security-profile opener accepts only a standalone regular-file configuration.
 Before parsing, it reads no more than 262,144 bytes, inclusive.
 It requires strict JSON content when the filename uses the Zenoh `.json5` convention.
 At each JSON object depth, it rejects a `__config__` external-include key.
@@ -164,7 +164,7 @@ The sole connect endpoint rejects a Zenoh `#` endpoint-local configuration.
 It also rejects a `?` metadata suffix.
 Fragment configuration merges after the validated global TLS settings and can weaken those settings.
 Query metadata can change transport behavior, such as reliability.
-Thus, the secure profile requires the exact bare endpoint.
+Thus, the security profile requires the exact bare endpoint.
 It does not maintain another allowlist for the Zenoh endpoint grammar.
 
 The capability identity binds the validated endpoint and allocation ceiling.
@@ -183,11 +183,11 @@ The deployment must protect the credential directory separately.
 3. Record the registry SHA-256, profile digest, handoff digest, and generated configuration digests.
 4. Record the endpoint hostname, name-resolution control, and leaf certificate serial and fingerprint metadata.
 5. If public CA issuance is possible for the hostname, record the external pin control.
-6. Start the secure Zenoh router.
+6. Start the Zenoh router with the security profile.
 7. Confirm that the router loaded mTLS and access control.
 8. Record the router certificate that each client received.
 9. Start the Galadriel observer for the exact realm, epoch, producer, and pinned registry.
-10. For acceptance evidence, use the explicit secure client path.
+10. For acceptance evidence, use the explicit security-profile client path.
 11. Within the 30 s first-heartbeat grace period, start the selected external producer.
 12. Supply the exact deployment epoch and producer identity to that producer.
 13. Require monitor heartbeat progression before you treat traffic as live.
@@ -208,7 +208,7 @@ A heartbeat after a fault cannot repair an expired deadline or sequence gap.
 Replay-protection maps never evict within an epoch.
 Ambiguous evidence remains ineligible for `Nominal`.
 
-The repository command-line interface uses the explicit secure path.
+The repository command-line interface uses the explicit security-profile path.
 It uses the receiver fixed v1 defaults.
 The first-heartbeat grace period is 30 s.
 Then, the producer heartbeat interval is 1 s, and its receipt deadline is 3 s.
@@ -224,20 +224,57 @@ cargo run --locked --features ncp-live --bin galadriel -- observe \
   --registry-sha256 "$GALADRIEL_REGISTRY_DIGEST"
 ```
 
+### Observer output contract
+
+Standard output contains only machine-readable lifecycle records.
+The command writes one JSON object on one line when a delivered frame creates a
+lifecycle receipt.
+Each object has these exact top-level fields:
+
+- `schema` with value `galadriel.observe.lifecycle.v1`
+- `calibrated_posterior` with value `false`
+- `receipt` with the complete serialized lifecycle receipt
+- `assessments` with the complete ordered assessment vector
+
+An accepted frame can contain evaluated and abstained track entries.
+The vector uses deterministic track order.
+Each evaluated report scope equals the receipt producer and position.
+Accepted receipt transition kinds are `initialized`, `advanced`, `reset`, and
+`epoch_rolled_over`.
+
+A detector rejection or fault can create a new terminal receipt.
+The command writes that receipt with an empty assessment vector before it fails.
+Its transition kind is `rejected` or `faulted`.
+The command compares the new receipt index and digest with the prior receipt.
+It never emits a stale receipt for the current failure.
+It emits no lifecycle record when the failure creates no new receipt.
+It uses a fallible write and flushes standard output before a following terminal error.
+
+Standard error contains startup, heartbeat, advisory, health, and error text.
+It also contains the final receiver health line.
+Do not parse standard error as lifecycle evidence.
+
+The record is advisory and is not a calibrated posterior.
+Receipt verification checks its canonical digest.
+Assessment verification checks the ordered vector and scope agreement.
+Neither check authenticates the writer or makes the record durable.
+Retain standard output in an authenticated external archive when policy needs
+durable evidence.
+
 The command requires the epoch as input.
 It does not create the epoch.
 Before either application starts, put the exact epoch in the router ACL and producer environment.
 
-Each Galadriel secure live path loads the configuration one time.
+Each Galadriel security-profile live path loads the configuration one time.
 It validates connector-side mTLS and the other strict client invariants.
 Then, it opens that same parsed value.
 This sequence prevents a configuration reparse mismatch.
 It does not freeze external credential files.
+
 Only the external drills can identify the credentials that the producer, observer, and router used.
+The drills can show that the remote router loaded and enforced its policy.
 
-They can show that the remote router loaded and enforced its policy.
-
-## Authorization and fault drill
+## Authorization and fault drills
 
 Run each drill from a separate process.
 Retain timestamps and router and client logs.
@@ -256,7 +293,7 @@ Never retain keys or credential bytes.
 | Exact-hostname router certificate chains only to a built-in public root | The pinned Zenoh client can accept it. Do not record this result as exclusive custom-CA authentication. |
 | Payload identity differs from configured producer or session | The receiver rejects it, even after transport delivery. |
 | Message exceeds 128 KiB transport cap | The transport drops or rejects it before application decode allocation. |
-| Connect endpoint carries a `#` configuration or `?` metadata suffix | Local secure-configuration validation rejects it before Zenoh opens. |
+| Connect endpoint carries a `#` configuration or `?` metadata suffix | Local security-profile validation rejects it before Zenoh opens. |
 | Envelope exceeds 64 KiB application cap | The tap rejects it and latches a visible fault. |
 | Duplicate, gap, excessive reorder, queue overflow, or frame deadline | The receiver invalidates the affected frame or suffix. The result is never `Nominal`. |
 | Heartbeats stop | A liveness fault occurs at the configured monotonic receipt-time deadline. |
@@ -280,6 +317,8 @@ It must also test the control.
 
 A complete frame can enter the statistical detector only after all route checks agree.
 The checks cover identity, sequence, projection context, prior context, registry, outcome counts, and deadline.
+The lifecycle adapter derives each report scope from the validated producer and exact admitted position.
+The receipt can verify that report scope and its serialized assessment digest.
 Transport authentication establishes who could publish.
 It does not establish physical truth.
 It does not make a verdict a calibrated posterior.

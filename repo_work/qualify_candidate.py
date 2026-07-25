@@ -33,13 +33,15 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, NoReturn
 
 from common import (
     SAFE_GIT_CONFIGURATION,
+    TRUSTED_DARWIN_GIT_PATHS,
     ReviewError,
     absolute_path_without_final_resolution,
     assert_no_replace_refs,
+    canonical_relative_parts,
     canonical_json,
     git,
     git_bounded_output,
@@ -63,16 +65,19 @@ from qualification_artifacts import (
     validate_cyclonedx_sbom,
 )
 from release_assurance import (
+    CandidateEvidenceExpectations,
     MAX_EVIDENCE_DOCUMENT_BYTES,
     MAX_MUTATION_EVIDENCE_BYTES,
+    MutationArtifactCapture,
+    ValidatedCandidateEvidence,
+    ValidatedMutationEvidence,
     assert_tracked_allowed_signer,
-    evaluate_acceptance,
     git_tree_inventory,
     refresh_canonical_origin_main,
     sign_file,
     snapshot_agent_backed_public_signing_key,
     snapshot_independent_allowed_signers,
-    validate_evidence_config_bytes,
+    validate_candidate_evidence_bundle,
     validate_mutation_evidence,
     verify_artifact_manifest,
     verify_candidate_commit,
@@ -83,6 +88,8 @@ from release_assurance import (
 SCHEMA = "galadriel.candidate-qualification.v3"
 VERSION = "0.9.0"
 ALLOWED_SIGNERS = "release/0.9.0/audit/ALLOWED_SIGNERS"
+INDEPENDENT_ALLOWED_SIGNERS_PLACEHOLDER = "{INDEPENDENT_ALLOWED_SIGNERS}"
+RETAINED_MUTATION_ARTIFACT_COUNT = 13
 QUALIFICATION_ENVIRONMENT_KEYS = (
     "CARGO_HOME",
     "CARGO_INCREMENTAL",
@@ -121,8 +128,40 @@ QUALIFICATION_PATH_TOOLS = (
     "make",
     "cmake",
     "pkg-config",
+    "sh",
 )
-QUALIFICATION_SYSTEM_PATHS = ("/bin", "/usr/sbin", "/sbin")
+DEVELOPER_GIT_PATHS = TRUSTED_DARWIN_GIT_PATHS
+DEVELOPER_TOOL_PATHS = {
+    DEVELOPER_GIT_PATHS[0]: {
+        "cc": Path(
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/"
+            "XcodeDefault.xctoolchain/usr/bin/clang"
+        ),
+        "clang": Path(
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/"
+            "XcodeDefault.xctoolchain/usr/bin/clang"
+        ),
+        "ar": Path(
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/"
+            "XcodeDefault.xctoolchain/usr/bin/ar"
+        ),
+        "ld": Path(
+            "/Applications/Xcode.app/Contents/Developer/Toolchains/"
+            "XcodeDefault.xctoolchain/usr/bin/ld"
+        ),
+        "make": Path("/Applications/Xcode.app/Contents/Developer/usr/bin/make"),
+    },
+    DEVELOPER_GIT_PATHS[1]: {
+        "cc": Path("/Library/Developer/CommandLineTools/usr/bin/clang"),
+        "clang": Path("/Library/Developer/CommandLineTools/usr/bin/clang"),
+        "ar": Path("/Library/Developer/CommandLineTools/usr/bin/ar"),
+        "ld": Path("/Library/Developer/CommandLineTools/usr/bin/ld"),
+        "make": Path("/Library/Developer/CommandLineTools/usr/bin/make"),
+    },
+}
+QUALIFICATION_TOOL_DISPATCH_PREFIX = "galadriel-tool-dispatch-"
+QUALIFICATION_SYSTEM_PATHS = ("/bin", "/usr/bin", "/usr/sbin", "/sbin")
+QUALIFICATION_SYSTEM_TOOL_PATHS = {"sh": Path("/bin/sh")}
 SANDBOX_SYSTEM_READ_PATHS = (
     "/Applications/Xcode.app",
     "/Library/Apple",
@@ -135,6 +174,7 @@ SANDBOX_SYSTEM_READ_PATHS = (
     "/private/var/run",
     "/sbin",
     "/usr",
+    "/private/var/select",
 )
 SANDBOX_EXECUTABLE = Path("/usr/bin/sandbox-exec")
 ADVISORY_DB_URL = "https://github.com/RustSec/advisory-db"
@@ -157,6 +197,7 @@ EXPECTED_CANDIDATE_EVIDENCE_FILES = frozenset(
         "trials.jsonl",
     }
 )
+CANDIDATE_EVIDENCE_RUNNER = "galadriel-evidence"
 PARSED_CANDIDATE_EVIDENCE_FILES = frozenset(
     {"config.json", "manifest.json", "summary.json"}
 )
@@ -173,9 +214,12 @@ COMMAND_CPU_GRACE_SECONDS = 60
 LAUNCH_GATE_TIMEOUT_SECONDS = 10.0
 PROCESS_POLL_INTERVAL_SECONDS = 0.05
 PROCESS_CLEANUP_TIMEOUT_SECONDS = 5.0
+PROCESS_EXTINCTION_QUIESCENCE_SECONDS = 1.0
+PROCESS_INFORMATION_ATTEMPTS = 5
+PROCESS_INFORMATION_RETRY_SECONDS = 0.01
 RECEIPT_TRAILER_MARKER = b"\n--- receipt trailer ---\n"
 RECEIPT_TRAILER_SCHEMA = "galadriel.command-receipt-trailer.v1"
-CONTAINMENT_POLICY = "MACOS_PROCESS_GROUP_KQUEUE_SANDBOX_SCAN_V2"
+CONTAINMENT_POLICY = "MACOS_PROCESS_GROUP_KQUEUE_SANDBOX_SCAN_V3"
 CONTAINMENT_RESIDUAL = (
     "macOS process discovery is not atomic. A short-lived reparented process "
     "can exit between scans. A sandboxed process can request work from an "
@@ -184,8 +228,13 @@ CONTAINMENT_RESIDUAL = (
 )
 PROCESS_PROBE_DENY_SUFFIX = ".containment-deny"
 PROCESS_PROBE_ALLOW_SUFFIX = ".containment-allow"
-PROCESS_PROBE_BYTES = b"galadriel-process-containment-v2\n"
+PROCESS_PROBE_BYTES = b"galadriel-process-containment-v3\n"
 _PROFILE_FILESYSTEM_BASELINES: dict[Path, tuple[tuple[int, str, int], ...]] = {}
+_QUALIFICATION_TOOL_DISPATCH_BASELINES: dict[
+    Path,
+    dict[str, dict[str, Any]],
+] = {}
+_QUALIFICATION_SYSTEM_PATH_BASELINES: dict[Path, dict[str, Any]] = {}
 LAUNCH_GATE_SOURCE = (
     "import os,signal,sys\n"
     "os.kill(os.getpid(), signal.SIGSTOP)\n"
@@ -202,6 +251,7 @@ class CommandSpec:
     cwd: str = "."
     environment: tuple[tuple[str, str], ...] = ()
     timeout_seconds: int = 3_600
+    subject_executable: str | None = None
 
 
 @dataclass(frozen=True)
@@ -214,6 +264,20 @@ class BoundedProcessResult:
     stderr: bytes
     output_limit_exceeded: bool
     containment_error: str | None
+
+
+class ProcessContainmentError(ReviewError):
+    """Identify a host containment failure that must abort qualification."""
+
+
+@dataclass(frozen=True)
+class _TrackedProcessFinalization:
+    """The ordered result of termination, root reap, and extinction checks."""
+
+    returncode: int
+    root_reaped: bool
+    had_live_after_root_exit: bool
+    error: str | None
 
 
 DEPENDENCY_FETCH_COMMAND_NAMES = frozenset(
@@ -245,6 +309,10 @@ def execution_policy_contract(timeout_seconds: int) -> dict[str, Any]:
             "aggregate_resident_bytes": MAX_AGGREGATE_RESIDENT_BYTES,
             "filesystem_growth_bytes": MAX_FILESYSTEM_GROWTH_BYTES,
             "minimum_filesystem_free_bytes": MIN_FILESYSTEM_FREE_BYTES,
+            "process_information_attempts": PROCESS_INFORMATION_ATTEMPTS,
+            "process_information_retry_milliseconds": int(
+                PROCESS_INFORMATION_RETRY_SECONDS * 1_000
+            ),
             "tracked_processes": MAX_TRACKED_PROCESSES,
         },
         "stream_limit_bytes": MAX_COMMAND_STREAM_BYTES,
@@ -568,6 +636,13 @@ class MacOSProcessContainment:
                 ctypes.c_int,
             ]
             self._list_children.restype = ctypes.c_int
+            self._list_group = self._libproc.proc_listpgrppids
+            self._list_group.argtypes = [
+                ctypes.c_int,
+                ctypes.c_void_p,
+                ctypes.c_int,
+            ]
+            self._list_group.restype = ctypes.c_int
             self._list_all = self._libproc.proc_listallpids
             self._list_all.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self._list_all.restype = ctypes.c_int
@@ -601,8 +676,19 @@ class MacOSProcessContainment:
         self._tracked: set[int] = set()
         self._exited: set[int] = set()
         self._closed = False
-        self._register(root_pid)
-        self.refresh()
+        try:
+            self._register(root_pid)
+            self.refresh()
+        except BaseException as error:
+            try:
+                self.close()
+            except BaseException as cleanup_error:
+                if hasattr(error, "add_note"):
+                    error.add_note(
+                        "process tracker constructor cleanup also failed: "
+                        f"{type(cleanup_error).__name__}: {cleanup_error}"
+                    )
+            raise
 
     def _process_info(self, pid: int) -> _ProcBsdShortInfo | None:
         info = _ProcBsdShortInfo()
@@ -619,12 +705,20 @@ class MacOSProcessContainment:
             return None
         return None
 
-    def _sandbox_matches(self, pid: int) -> bool:
+    def _sandbox_matches(self, pid: int, *, known_candidate: bool = False) -> bool:
+        """Test one process against the exact sandbox identity."""
+
         identity = self._sandbox_identity
         if identity is None or pid <= 1 or pid == os.getpid():
             return False
         sandboxed = self._sandbox_check(pid, None, 0)
-        if sandboxed != 1:
+        if sandboxed not in {0, 1}:
+            if _pid_exists(pid):
+                raise ReviewError("cannot determine a live process sandbox state")
+            return False
+        if sandboxed == 0:
+            if known_candidate and _pid_exists(pid):
+                raise ReviewError("candidate process does not have a sandbox identity")
             return False
         deny = self._sandbox_check(
             pid,
@@ -638,14 +732,26 @@ class MacOSProcessContainment:
             1,
             ctypes.c_char_p(os.fsencode(identity.allow_path)),
         )
+        if deny not in {0, 1} or allow not in {0, 1}:
+            if _pid_exists(pid):
+                raise ReviewError("cannot determine a live process sandbox identity")
+            return False
         if deny != 1 or allow != 0:
+            if known_candidate and _pid_exists(pid):
+                raise ReviewError(
+                    "candidate process has an incompatible sandbox identity"
+                )
             return False
         info = self._process_info(pid)
         if info is None:
             if _pid_exists(pid):
                 raise ReviewError("cannot inspect a matching sandbox process identity")
             return False
-        return info.uid == os.getuid() and info.status != 5
+        if info.uid != os.getuid():
+            if _pid_exists(pid):
+                raise ReviewError("matching sandbox process has an incompatible owner")
+            return False
+        return info.status != 5
 
     def _sandbox_pids(self) -> set[int]:
         identity = self._sandbox_identity
@@ -663,35 +769,41 @@ class MacOSProcessContainment:
         }
 
     def _resident_size(self, pid: int) -> int:
-        info = _ProcTaskInfo()
-        size = self._pid_info(
-            pid,
-            4,
-            0,
-            ctypes.byref(info),
-            ctypes.sizeof(info),
-        )
-        if size == ctypes.sizeof(info):
-            return int(info.resident_size)
-        process_info = self._process_info(pid)
-        if process_info is not None and process_info.status == 5:
-            return 0
-        if pid == self.root_pid:
-            try:
-                exit_status = os.waitid(
-                    os.P_PID,
-                    pid,
-                    os.WEXITED | os.WNOHANG | os.WNOWAIT,
-                )
-            except ChildProcessError:
-                exit_status = None
-            if exit_status is not None:
+        process_status = "unavailable"
+        for attempt in range(PROCESS_INFORMATION_ATTEMPTS):
+            info = _ProcTaskInfo()
+            size = self._pid_info(
+                pid,
+                4,
+                0,
+                ctypes.byref(info),
+                ctypes.sizeof(info),
+            )
+            if size == ctypes.sizeof(info):
+                return int(info.resident_size)
+            self._drain_events()
+            if pid in self._exited:
                 return 0
-        if not _pid_exists(pid):
-            return 0
-        process_status = (
-            "unavailable" if process_info is None else str(process_info.status)
-        )
+            process_info = self._process_info(pid)
+            if process_info is not None:
+                process_status = str(process_info.status)
+                if process_info.status == 5:
+                    return 0
+            if pid == self.root_pid:
+                try:
+                    exit_status = os.waitid(
+                        os.P_PID,
+                        pid,
+                        os.WEXITED | os.WNOHANG | os.WNOWAIT,
+                    )
+                except ChildProcessError:
+                    exit_status = None
+                if exit_status is not None:
+                    return 0
+            if not _pid_exists(pid):
+                return 0
+            if attempt + 1 < PROCESS_INFORMATION_ATTEMPTS:
+                time.sleep(PROCESS_INFORMATION_RETRY_SECONDS)
         raise ReviewError(
             f"cannot measure candidate resident memory for process {pid} "
             f"with status {process_status}"
@@ -716,7 +828,8 @@ class MacOSProcessContainment:
         """Return true when the stopped root has the exact applied sandbox."""
 
         return self._sandbox_identity is not None and self._sandbox_matches(
-            self.root_pid
+            self.root_pid,
+            known_candidate=True,
         )
 
     def _register(self, pid: int) -> None:
@@ -737,7 +850,10 @@ class MacOSProcessContainment:
         try:
             self._queue.control([event], 0, 0)
         except OSError as error:
-            if error.errno == errno.ESRCH and not _pid_exists(pid):
+            if error.errno == errno.ESRCH:
+                self._exited.add(pid)
+                return
+            if not _pid_exists(pid):
                 self._exited.add(pid)
                 return
             raise ReviewError(
@@ -804,6 +920,66 @@ class MacOSProcessContainment:
         }
         return tracked | self._sandbox_pids()
 
+    def root_exited_before_reap(self) -> bool:
+        """Observe root exit without releasing its process identifier."""
+
+        while True:
+            try:
+                result = os.waitid(
+                    os.P_PID,
+                    self.root_pid,
+                    os.WEXITED | os.WNOHANG | os.WNOWAIT,
+                )
+            except InterruptedError:
+                continue
+            except ChildProcessError as error:
+                raise ReviewError(
+                    "candidate root was reaped before containment completed"
+                ) from error
+            except OSError as error:
+                raise ReviewError(
+                    f"cannot observe candidate root exit: {error}"
+                ) from error
+            return result is not None
+
+    def _group_pids(self) -> set[int]:
+        """Return the exact members of the original process group."""
+
+        buffer = (ctypes.c_int * MAX_TRACKED_PROCESSES)()
+        ctypes.set_errno(0)
+        count = self._list_group(
+            self.root_pid,
+            buffer,
+            ctypes.sizeof(buffer),
+        )
+        if count < 0:
+            error_number = ctypes.get_errno()
+            if error_number == errno.ESRCH:
+                return set()
+            raise ReviewError(
+                "cannot inspect the candidate process group: "
+                f"{os.strerror(error_number)}"
+            )
+        if count >= MAX_TRACKED_PROCESSES:
+            raise ReviewError("candidate process group exceeds its containment bound")
+        members = {int(buffer[index]) for index in range(count)}
+        if any(pid <= 1 or pid == os.getpid() for pid in members):
+            raise ReviewError("candidate process group contains an invalid identifier")
+        return members
+
+    def _containment_state(self) -> tuple[bool, set[int], set[int]]:
+        """Return root state, remaining processes, and process-group members."""
+
+        root_exited = self.root_exited_before_reap()
+        live = self._live_pids()
+        group = self._group_pids()
+        remaining = live | group
+        if root_exited:
+            remaining.discard(self.root_pid)
+        else:
+            remaining.add(self.root_pid)
+        return root_exited, remaining, group
+
     @staticmethod
     def _signal_group(process_group: int, signal_number: int) -> None:
         try:
@@ -815,54 +991,140 @@ class MacOSProcessContainment:
                 "permission denied while stopping a candidate process group"
             ) from error
 
-    @staticmethod
-    def _group_exists(process_group: int) -> bool:
-        try:
-            os.killpg(process_group, 0)
-        except ProcessLookupError:
-            return False
-        except PermissionError:
-            return True
-        return True
+    def _validate_remaining_identity(
+        self,
+        *,
+        root_exited: bool,
+        remaining: set[int],
+        group: set[int],
+    ) -> bool:
+        """Validate remaining identities and report a safe group target."""
 
-    @staticmethod
-    def _signal_pids(pids: set[int], signal_number: int) -> None:
-        for pid in sorted(pids, reverse=True):
-            try:
-                os.kill(pid, signal_number)
-            except ProcessLookupError:
-                pass
-            except PermissionError as error:
-                raise ReviewError(
-                    f"permission denied while stopping candidate process {pid}"
-                ) from error
+        group_targets = group - ({self.root_pid} if root_exited else set())
+        if (not root_exited or group_targets) and self.root_pid not in group:
+            raise ReviewError(
+                "candidate process-group identity is not bound by its root"
+            )
+        escaped = remaining - group
+        if escaped:
+            raise ReviewError(
+                "candidate process escaped the original process group and cannot "
+                "receive identity-safe cleanup"
+            )
+        return not root_exited or bool(group_targets)
 
-    def terminate(self, grace_seconds: float = 2.0) -> bool:
-        """Stop the original process group and every observed escaped process."""
+    def _signal_remaining(
+        self,
+        *,
+        root_exited: bool,
+        remaining: set[int],
+        group: set[int],
+        signal_number: int,
+    ) -> None:
+        """Signal only identities that remain bound by the unreaped root."""
 
-        live = self._live_pids()
-        group_live = self._group_exists(self.root_pid)
-        had_live_process = bool(live) or group_live
-        if group_live:
-            self._signal_group(self.root_pid, signal.SIGTERM)
-        self._signal_pids(live, signal.SIGTERM)
+        if self._validate_remaining_identity(
+            root_exited=root_exited,
+            remaining=remaining,
+            group=group,
+        ):
+            self._signal_group(self.root_pid, signal_number)
+
+    def _wait_for_pre_reap_extinction(
+        self,
+        *,
+        deadline: float,
+        had_live_after_root_exit: bool,
+    ) -> tuple[bool, bool, tuple[bool, set[int], set[int]]]:
+        """Require a stable empty inventory while the root remains waitable."""
+
+        quiet_since: float | None = None
+        state = self._containment_state()
+        while True:
+            root_exited, remaining, group = state
+            now = time.monotonic()
+            if root_exited and remaining:
+                had_live_after_root_exit = True
+            if not root_exited or remaining:
+                self._validate_remaining_identity(
+                    root_exited=root_exited,
+                    remaining=remaining,
+                    group=group,
+                )
+                quiet_since = None
+            else:
+                if quiet_since is None:
+                    quiet_since = now
+                if now - quiet_since >= PROCESS_EXTINCTION_QUIESCENCE_SECONDS:
+                    return True, had_live_after_root_exit, state
+            if now >= deadline:
+                return False, had_live_after_root_exit, state
+            time.sleep(
+                min(
+                    PROCESS_POLL_INTERVAL_SECONDS,
+                    max(0.001, deadline - now),
+                )
+            )
+            state = self._containment_state()
+
+    def terminate_before_root_reap(self, grace_seconds: float = 2.0) -> bool:
+        """Stop candidate processes while the original root remains waitable."""
+
+        root_exited, remaining, group = self._containment_state()
+        had_live_after_root_exit = root_exited and bool(remaining)
+        if not root_exited or remaining:
+            self._signal_remaining(
+                root_exited=root_exited,
+                remaining=remaining,
+                group=group,
+                signal_number=signal.SIGTERM,
+            )
         deadline = time.monotonic() + grace_seconds
-        while time.monotonic() < deadline:
-            if not self._live_pids() and not self._group_exists(self.root_pid):
-                return had_live_process
-            time.sleep(PROCESS_POLL_INTERVAL_SECONDS)
-        live = self._live_pids()
-        if self._group_exists(self.root_pid):
-            self._signal_group(self.root_pid, signal.SIGKILL)
-        self._signal_pids(live, signal.SIGKILL)
+        extinct, had_live_after_root_exit, state = self._wait_for_pre_reap_extinction(
+            deadline=deadline,
+            had_live_after_root_exit=had_live_after_root_exit,
+        )
+        if extinct:
+            return had_live_after_root_exit
+        root_exited, remaining, group = state
+        if not root_exited or remaining:
+            self._signal_remaining(
+                root_exited=root_exited,
+                remaining=remaining,
+                group=group,
+                signal_number=signal.SIGKILL,
+            )
         deadline = time.monotonic() + grace_seconds
-        while time.monotonic() < deadline:
-            if not self._live_pids() and not self._group_exists(self.root_pid):
-                return had_live_process
-            time.sleep(PROCESS_POLL_INTERVAL_SECONDS)
-        if self._live_pids() or self._group_exists(self.root_pid):
+        extinct, had_live_after_root_exit, _state = self._wait_for_pre_reap_extinction(
+            deadline=deadline,
+            had_live_after_root_exit=had_live_after_root_exit,
+        )
+        if not extinct:
             raise ReviewError("candidate command left a persistent process")
-        return had_live_process
+        return had_live_after_root_exit
+
+    def verify_extinct_after_root_reap(self) -> None:
+        """Verify process extinction without sending a signal after root reap."""
+
+        try:
+            result = os.waitid(
+                os.P_PID,
+                self.root_pid,
+                os.WEXITED | os.WNOHANG | os.WNOWAIT,
+            )
+        except ChildProcessError:
+            pass
+        except OSError as error:
+            raise ReviewError(f"cannot verify candidate root reap: {error}") from error
+        else:
+            state = "live" if result is None else "waitable"
+            raise ReviewError(f"candidate root remains {state} after reap")
+
+        live = self._live_pids()
+        live.discard(self.root_pid)
+        group = self._group_pids()
+        if live or group:
+            raise ReviewError("candidate process remains after root reap")
 
     def close(self) -> None:
         if not self._closed:
@@ -939,16 +1201,25 @@ def _wait_for_launch_gate(process: subprocess.Popen[bytes]) -> None:
     deadline = time.monotonic() + LAUNCH_GATE_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         try:
-            waited_pid, status = os.waitpid(process.pid, os.WNOHANG | os.WUNTRACED)
+            result = os.waitid(
+                os.P_PID,
+                process.pid,
+                os.WEXITED | os.WSTOPPED | os.WNOHANG | os.WNOWAIT,
+            )
+        except InterruptedError:
+            continue
         except ChildProcessError as error:
             raise ReviewError("qualification launch gate disappeared") from error
-        if waited_pid == 0:
+        except OSError as error:
+            raise ReviewError(
+                f"cannot observe qualification launch gate: {error}"
+            ) from error
+        if result is None:
             time.sleep(0.01)
             continue
-        if os.WIFSTOPPED(status) and os.WSTOPSIG(status) == signal.SIGSTOP:
+        if result.si_code == os.CLD_STOPPED and result.si_status == signal.SIGSTOP:
             return
-        if os.WIFEXITED(status) or os.WIFSIGNALED(status):
-            process.returncode = os.waitstatus_to_exitcode(status)
+        if result.si_code in {os.CLD_EXITED, os.CLD_KILLED, os.CLD_DUMPED}:
             raise ReviewError("qualification launch gate exited before it armed")
         raise ReviewError("qualification launch gate entered an invalid state")
     raise ReviewError("qualification launch gate did not arm before its timeout")
@@ -963,13 +1234,172 @@ def _emergency_stop(process: subprocess.Popen[bytes]) -> None:
         pass
     except PermissionError:
         try:
-            process.kill()
+            os.kill(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
     try:
         process.wait(timeout=2)
     except subprocess.TimeoutExpired as error:
         raise ReviewError("qualification launch gate could not be reaped") from error
+
+
+def _merge_process_error(current: str | None, detail: str) -> str:
+    """Add one process failure without changing its order."""
+
+    return detail if current is None else f"{current}. {detail}"
+
+
+def _finalize_tracked_process(
+    process: subprocess.Popen[bytes],
+    tracker: MacOSProcessContainment,
+    *,
+    enforce_resources: bool,
+    termination_already_proven: bool = False,
+    had_live_after_root_exit: bool = False,
+) -> _TrackedProcessFinalization:
+    """Terminate, reap, and then verify one tracked process in that order."""
+
+    detail: str | None = None
+    primary_error: BaseException | None = None
+    require_termination = not termination_already_proven
+
+    def add_failure(error: BaseException, *, label: str) -> None:
+        nonlocal primary_error
+        if primary_error is None:
+            primary_error = error
+        elif hasattr(primary_error, "add_note"):
+            primary_error.add_note(f"{label}: {type(error).__name__}: {error}")
+
+    def raise_primary() -> NoReturn:
+        assert primary_error is not None
+        raise primary_error.with_traceback(primary_error.__traceback__)
+
+    if enforce_resources:
+        try:
+            tracker.enforce_resource_bounds()
+        except ReviewError as error:
+            detail = _merge_process_error(
+                detail,
+                f"final resource check failed: {error}",
+            )
+            require_termination = True
+        except BaseException as error:
+            add_failure(error, label="final resource check failed")
+            require_termination = True
+    if not require_termination:
+        try:
+            root_exited, remaining, _group = tracker._containment_state()
+        except BaseException as error:
+            failure = (
+                ProcessContainmentError(
+                    f"candidate pre-reap extinction is not proven: {error}"
+                )
+                if isinstance(error, ReviewError)
+                else error
+            )
+            if primary_error is not None:
+                add_failure(failure, label="pre-reap extinction check failed")
+                raise_primary()
+            if failure is error:
+                raise
+            raise failure from error
+        require_termination = not root_exited or bool(remaining)
+    if require_termination:
+        try:
+            had_live_after_root_exit = (
+                tracker.terminate_before_root_reap() or had_live_after_root_exit
+            )
+        except BaseException as error:
+            failure = error
+            if isinstance(error, ReviewError):
+                detail = _merge_process_error(detail, str(error))
+                failure = ProcessContainmentError(
+                    f"candidate termination is not proven: {detail}"
+                )
+            if primary_error is not None:
+                add_failure(failure, label="candidate termination failed")
+                raise_primary()
+            if failure is error:
+                raise
+            raise failure from error
+
+    returncode: int | None = None
+    for attempt in range(2):
+        try:
+            returncode = process.wait(timeout=2)
+            break
+        except BaseException as error:
+            if isinstance(error, subprocess.TimeoutExpired):
+                failure: BaseException = ProcessContainmentError(
+                    "candidate root reap is not proven after tracked extinction"
+                )
+            elif isinstance(error, OSError):
+                failure = ProcessContainmentError(
+                    f"cannot prove candidate root reap: {error}"
+                )
+            else:
+                failure = error
+            label = (
+                "initial candidate root reap failed"
+                if attempt == 0
+                else "candidate root reap cleanup failed"
+            )
+            add_failure(failure, label=label)
+    if returncode is None:
+        raise_primary()
+
+    try:
+        tracker.verify_extinct_after_root_reap()
+    except BaseException as error:
+        failure = (
+            ProcessContainmentError(
+                f"candidate post-reap extinction is not proven: {error}"
+            )
+            if isinstance(error, ReviewError)
+            else error
+        )
+        if primary_error is not None:
+            add_failure(failure, label="post-reap extinction check failed")
+            raise_primary()
+        if failure is error:
+            raise
+        raise failure from error
+    if primary_error is not None:
+        raise_primary()
+    return _TrackedProcessFinalization(
+        returncode=returncode,
+        root_reaped=True,
+        had_live_after_root_exit=had_live_after_root_exit,
+        error=detail,
+    )
+
+
+def _close_process_resources(
+    *,
+    selector: selectors.BaseSelector | None,
+    process: subprocess.Popen[bytes] | None,
+    tracker: MacOSProcessContainment | None,
+) -> str | None:
+    """Attempt every local process-resource cleanup and report all failures."""
+
+    cleanup_steps: list[tuple[str, Callable[[], None]]] = []
+    if selector is not None:
+        cleanup_steps.append(("selector", selector.close))
+    if process is not None:
+        if process.stdout is not None:
+            cleanup_steps.append(("standard output stream", process.stdout.close))
+        if process.stderr is not None:
+            cleanup_steps.append(("standard error stream", process.stderr.close))
+    if tracker is not None:
+        cleanup_steps.append(("process tracker", tracker.close))
+
+    failures: list[str] = []
+    for label, cleanup in cleanup_steps:
+        try:
+            cleanup()
+        except BaseException as error:
+            failures.append(f"{label} cleanup failed: {type(error).__name__}: {error}")
+    return ". ".join(failures) if failures else None
 
 
 def run_bounded_process(
@@ -994,92 +1424,17 @@ def run_bounded_process(
     policy = execution_policy_contract(timeout_seconds)
     require_resource_limit_capacity(policy)
     sandbox_identity = _sandbox_identity_from_argv(argv)
-    armed_argv = _sandbox_armed_argv(argv, environment, sandbox_identity)
-    process = subprocess.Popen(
-        _launch_gate_argv(armed_argv, environment),
-        cwd=cwd,
-        env=None if environment is None else dict(environment),
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE if separate_stderr else subprocess.STDOUT,
-        start_new_session=True,
-        preexec_fn=functools.partial(apply_candidate_resource_limits, policy),
-    )
-    tracker: MacOSProcessContainment | None = None
-    try:
-        _wait_for_launch_gate(process)
-        tracker = MacOSProcessContainment(process.pid, sandbox_identity)
-        os.kill(process.pid, signal.SIGCONT)
-        if sandbox_identity is not None:
-            _wait_for_launch_gate(process)
-            tracker.refresh()
-            if not tracker.sandbox_is_armed():
-                raise ReviewError(
-                    "candidate sandbox process identity did not arm before execution"
-                )
-            tracker.enforce_resource_bounds()
-            os.kill(process.pid, signal.SIGCONT)
-    except (OSError, ReviewError) as error:
-        detail = str(error)
-        if tracker is not None:
-            try:
-                tracker.terminate()
-            except ReviewError as cleanup_error:
-                detail = f"{detail}; cleanup failed: {cleanup_error}"
-            finally:
-                tracker.close()
-        _emergency_stop(process)
-        if process.stdout is not None:
-            process.stdout.close()
-        if process.stderr is not None:
-            process.stderr.close()
-        return BoundedProcessResult(
-            returncode=process.returncode if process.returncode is not None else 2,
-            timed_out=False,
-            stdout=b"",
-            stderr=b"",
-            output_limit_exceeded=False,
-            containment_error=detail,
+    if sandbox_identity is None:
+        raise ProcessContainmentError(
+            "bounded qualification commands require an exact sandbox identity"
         )
-    except BaseException as error:
-        if tracker is not None:
-            try:
-                tracker.terminate()
-            except BaseException as cleanup_error:
-                if hasattr(error, "add_note"):
-                    error.add_note(
-                        "candidate launch cleanup also failed: "
-                        f"{type(cleanup_error).__name__}: {cleanup_error}"
-                    )
-            finally:
-                tracker.close()
-        try:
-            _emergency_stop(process)
-        except BaseException as cleanup_error:
-            if hasattr(error, "add_note"):
-                error.add_note(
-                    "candidate launch reap also failed: "
-                    f"{type(cleanup_error).__name__}: {cleanup_error}"
-                )
-        if process.stdout is not None:
-            process.stdout.close()
-        if process.stderr is not None:
-            process.stderr.close()
-        raise
-
-    if process.stdout is None or (separate_stderr and process.stderr is None):
-        tracker.terminate()
-        tracker.close()
-        raise ReviewError("qualification process streams are unavailable")
-    streams: dict[int, tuple[str, Any]] = {
-        process.stdout.fileno(): ("stdout", process.stdout)
-    }
-    if separate_stderr and process.stderr is not None:
-        streams[process.stderr.fileno()] = ("stderr", process.stderr)
-    selector = selectors.DefaultSelector()
-    for descriptor, (_name, stream) in streams.items():
-        os.set_blocking(descriptor, False)
-        selector.register(stream, selectors.EVENT_READ)
+    sandbox_executor_identity = executable_file_identity(SANDBOX_EXECUTABLE)
+    verify_qualification_tool_dispatch(environment)
+    armed_argv = _sandbox_armed_argv(argv, environment, sandbox_identity)
+    process: subprocess.Popen[bytes] | None = None
+    tracker: MacOSProcessContainment | None = None
+    selector: selectors.BaseSelector | None = None
+    streams: dict[int, tuple[str, Any]] = {}
     buffers = {"stdout": bytearray(), "stderr": bytearray()}
     bounds = {"stdout": max_stdout_bytes, "stderr": max_stderr_bytes}
     deadline = time.monotonic() + timeout_seconds
@@ -1088,53 +1443,114 @@ def run_bounded_process(
     containment_error: str | None = None
     cleanup_started = False
     cleanup_deadline: float | None = None
+    root_exited = False
+    finalization: _TrackedProcessFinalization | None = None
+    finalization_attempted = False
+    termination_failed = False
+    termination_proven = False
+    observed_live_after_root_exit = False
+    result: BoundedProcessResult | None = None
+    primary_error: BaseException | None = None
+
+    def terminate_before_reap(*, report_descendant: bool) -> None:
+        nonlocal containment_error
+        nonlocal observed_live_after_root_exit
+        nonlocal termination_failed
+        nonlocal termination_proven
+        try:
+            assert tracker is not None
+            had_live = tracker.terminate_before_root_reap()
+            termination_proven = True
+            observed_live_after_root_exit = observed_live_after_root_exit or had_live
+            if report_descendant and had_live:
+                containment_error = _merge_process_error(
+                    containment_error,
+                    "candidate command left a process after its root exited",
+                )
+        except ReviewError as cleanup_error:
+            termination_failed = True
+            raise ProcessContainmentError(
+                f"candidate termination is not proven: {cleanup_error}"
+            ) from cleanup_error
+
     try:
-        while selector.get_map() or process.poll() is None:
+        try:
+            process = subprocess.Popen(
+                _launch_gate_argv(armed_argv, environment),
+                cwd=cwd,
+                env=None if environment is None else dict(environment),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE if separate_stderr else subprocess.STDOUT,
+                start_new_session=True,
+                preexec_fn=functools.partial(apply_candidate_resource_limits, policy),
+            )
+        except OSError as error:
+            raise ReviewError(
+                f"cannot start bounded qualification command: {error}"
+            ) from error
+        _wait_for_launch_gate(process)
+        tracker = MacOSProcessContainment(process.pid, sandbox_identity)
+        os.kill(process.pid, signal.SIGCONT)
+        _wait_for_launch_gate(process)
+        tracker.refresh()
+        if not tracker.sandbox_is_armed():
+            raise ProcessContainmentError(
+                "candidate sandbox process identity did not arm before execution"
+            )
+        tracker.enforce_resource_bounds()
+        os.kill(process.pid, signal.SIGCONT)
+
+        if process.stdout is None or (separate_stderr and process.stderr is None):
+            raise ReviewError("qualification process streams are unavailable")
+        streams[process.stdout.fileno()] = ("stdout", process.stdout)
+        if separate_stderr and process.stderr is not None:
+            streams[process.stderr.fileno()] = ("stderr", process.stderr)
+        selector = selectors.DefaultSelector()
+        for descriptor, (_name, stream) in streams.items():
+            os.set_blocking(descriptor, False)
+            selector.register(stream, selectors.EVENT_READ)
+
+        while selector.get_map() or not root_exited:
             now = time.monotonic()
-            if process.poll() is not None and not cleanup_started:
+            try:
+                root_exited = tracker.root_exited_before_reap()
+            except ReviewError as error:
+                termination_failed = True
+                raise ProcessContainmentError(
+                    f"candidate root identity is not proven: {error}"
+                ) from error
+            if root_exited and not cleanup_started:
                 cleanup_started = True
                 cleanup_deadline = now + PROCESS_CLEANUP_TIMEOUT_SECONDS
-                try:
-                    if tracker.terminate():
-                        containment_error = (
-                            "candidate command left a process after its root exited"
-                        )
-                except ReviewError as error:
-                    containment_error = str(error)
+                terminate_before_reap(report_descendant=True)
             if now >= deadline and not timed_out:
                 timed_out = True
                 cleanup_started = True
                 cleanup_deadline = now + PROCESS_CLEANUP_TIMEOUT_SECONDS
-                try:
-                    tracker.terminate()
-                except ReviewError as error:
-                    containment_error = str(error)
+                terminate_before_reap(report_descendant=False)
             if not cleanup_started:
                 try:
                     tracker.refresh()
                     tracker.enforce_resource_bounds()
                 except ReviewError as error:
-                    containment_error = str(error)
+                    containment_error = _merge_process_error(
+                        containment_error,
+                        str(error),
+                    )
                     cleanup_started = True
                     cleanup_deadline = (
                         time.monotonic() + PROCESS_CLEANUP_TIMEOUT_SECONDS
                     )
-                    try:
-                        tracker.terminate()
-                    except ReviewError as cleanup_error:
-                        containment_error = (
-                            f"{containment_error}; cleanup failed: {cleanup_error}"
-                        )
+                    terminate_before_reap(report_descendant=False)
             if (
                 cleanup_started
                 and cleanup_deadline is not None
                 and time.monotonic() >= cleanup_deadline
             ):
-                detail = "candidate process streams remained open after cleanup"
-                containment_error = (
-                    detail
-                    if containment_error is None
-                    else f"{containment_error}; {detail}"
+                containment_error = _merge_process_error(
+                    containment_error,
+                    "candidate process streams remained open after cleanup",
                 )
                 for key in tuple(selector.get_map().values()):
                     selector.unregister(key.fileobj)
@@ -1167,88 +1583,105 @@ def run_bounded_process(
                         cleanup_deadline = (
                             time.monotonic() + PROCESS_CLEANUP_TIMEOUT_SECONDS
                         )
-                        try:
-                            tracker.terminate()
-                        except ReviewError as error:
-                            containment_error = str(error)
+                        terminate_before_reap(report_descendant=False)
                 else:
                     buffers[name].extend(block)
-        try:
-            returncode = process.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            try:
-                tracker.terminate()
-            except ReviewError as error:
-                containment_error = str(error)
-            try:
-                process.kill()
-            except (PermissionError, ProcessLookupError) as error:
-                detail = f"cannot stop candidate root process: {error}"
-                containment_error = (
-                    detail
-                    if containment_error is None
-                    else f"{containment_error}; {detail}"
-                )
-            try:
-                returncode = process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                detail = "candidate root process remained live after cleanup"
-                containment_error = (
-                    detail
-                    if containment_error is None
-                    else f"{containment_error}; {detail}"
-                )
-                returncode = process.poll()
-                if returncode is None:
-                    returncode = 2
-        try:
-            tracker.enforce_resource_bounds()
-            if tracker.terminate():
-                detail = "candidate command left a process after its root exited"
-                containment_error = (
-                    detail
-                    if containment_error is None
-                    else f"{containment_error}; {detail}"
-                )
-        except ReviewError as error:
-            containment_error = (
-                str(error)
-                if containment_error is None
-                else f"{containment_error}; final cleanup failed: {error}"
+        finalization_attempted = True
+        finalization = _finalize_tracked_process(
+            process,
+            tracker,
+            enforce_resources=True,
+            termination_already_proven=termination_proven,
+            had_live_after_root_exit=observed_live_after_root_exit,
+        )
+        if finalization.had_live_after_root_exit:
+            containment_error = _merge_process_error(
+                containment_error,
+                "candidate command left a process after its root exited",
             )
+        if finalization.error is not None:
+            containment_error = _merge_process_error(
+                containment_error,
+                finalization.error,
+            )
+        result = BoundedProcessResult(
+            returncode=finalization.returncode,
+            timed_out=timed_out,
+            stdout=bytes(buffers["stdout"]),
+            stderr=bytes(buffers["stderr"]),
+            output_limit_exceeded=output_limit_exceeded,
+            containment_error=containment_error,
+        )
     except BaseException as error:
-        try:
-            tracker.terminate()
-        except BaseException as cleanup_error:
-            if hasattr(error, "add_note"):
-                error.add_note(
-                    f"candidate cleanup also failed: {type(cleanup_error).__name__}: "
-                    f"{cleanup_error}"
-                )
-        try:
-            process.kill()
-        except (PermissionError, ProcessLookupError):
-            pass
-        try:
-            process.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            if hasattr(error, "add_note"):
-                error.add_note("candidate root process could not be reaped")
+        primary_error = error
+        if process is not None and tracker is not None:
+            if not finalization_attempted and not termination_failed:
+                finalization_attempted = True
+                try:
+                    _finalize_tracked_process(
+                        process,
+                        tracker,
+                        enforce_resources=False,
+                        termination_already_proven=termination_proven,
+                        had_live_after_root_exit=observed_live_after_root_exit,
+                    )
+                except BaseException as cleanup_error:
+                    if cleanup_error is not error and hasattr(error, "add_note"):
+                        error.add_note(
+                            "candidate cleanup also failed: "
+                            f"{type(cleanup_error).__name__}: {cleanup_error}"
+                        )
+        elif process is not None:
+            try:
+                _emergency_stop(process)
+            except BaseException as cleanup_error:
+                if cleanup_error is not error and hasattr(error, "add_note"):
+                    error.add_note(
+                        "candidate launch-gate cleanup also failed: "
+                        f"{type(cleanup_error).__name__}: {cleanup_error}"
+                    )
         raise
     finally:
-        selector.close()
-        process.stdout.close()
-        if process.stderr is not None:
-            process.stderr.close()
-        tracker.close()
-    return BoundedProcessResult(
-        returncode=returncode,
-        timed_out=timed_out,
-        stdout=bytes(buffers["stdout"]),
-        stderr=bytes(buffers["stderr"]),
-        output_limit_exceeded=output_limit_exceeded,
-        containment_error=containment_error,
-    )
+        post_execution_errors: list[BaseException] = []
+        cleanup_error = _close_process_resources(
+            selector=selector,
+            process=process,
+            tracker=tracker,
+        )
+        if cleanup_error is not None:
+            post_execution_errors.append(ProcessContainmentError(cleanup_error))
+        try:
+            verify_qualification_tool_dispatch(environment)
+        except BaseException as dispatch_error:
+            post_execution_errors.append(dispatch_error)
+        try:
+            if executable_file_identity(SANDBOX_EXECUTABLE) != sandbox_executor_identity:
+                raise ReviewError(
+                    "sandbox executor changed during candidate execution"
+                )
+        except BaseException as executor_error:
+            post_execution_errors.append(executor_error)
+        if primary_error is not None and hasattr(primary_error, "add_note"):
+            for post_execution_error in post_execution_errors:
+                primary_error.add_note(
+                    "candidate post-execution verification also failed: "
+                    f"{type(post_execution_error).__name__}: "
+                    f"{post_execution_error}"
+                )
+        elif post_execution_errors:
+            post_execution_error = post_execution_errors[0]
+            if hasattr(post_execution_error, "add_note"):
+                for additional_error in post_execution_errors[1:]:
+                    post_execution_error.add_note(
+                        "additional post-execution failure: "
+                        f"{type(additional_error).__name__}: {additional_error}"
+                    )
+            raise post_execution_error
+    if result is None:
+        raise ProcessContainmentError(
+            "bounded qualification command returned without a verified result"
+        )
+    return result
 
 
 def write_receipt_log(
@@ -1288,6 +1721,7 @@ class AuxiliaryRunner:
     ) -> tuple[bytes, bytes]:
         """Run one command with bounded streams and retain its exact receipt."""
 
+        executed_argv = candidate_executed_argv(argv, self.environment)
         started_at = utc_now()
         started = time.monotonic()
         policy_sha256, policy_size = digest_file(self.sandbox_profile)
@@ -1305,7 +1739,11 @@ class AuxiliaryRunner:
         reject_cargo_configuration(cwd, cargo_home)
         try:
             process_result = run_bounded_process(
-                sandboxed_argv(self.sandbox_profile, argv),
+                sandboxed_argv(
+                    self.sandbox_profile,
+                    executed_argv,
+                    environment=self.environment,
+                ),
                 cwd=cwd,
                 environment=self.environment,
                 timeout_seconds=timeout_seconds,
@@ -1330,7 +1768,7 @@ class AuxiliaryRunner:
             )
         log = self.logs / f"{len(self.receipts) + 1:02d}-{name}.log"
         header = {
-            "argv": argv,
+            "argv": executed_argv,
             "cwd": str(cwd.resolve()),
             "sandbox": sandbox,
             "started_at": started_at,
@@ -1347,7 +1785,7 @@ class AuxiliaryRunner:
         )
         receipt = {
             "name": name,
-            "argv": argv,
+            "argv": executed_argv,
             "cwd": str(cwd.resolve()),
             "sandbox": sandbox,
             "execution_policy": execution_policy_contract(timeout_seconds),
@@ -1405,10 +1843,15 @@ BASE_COMMANDS = (
             "unittest",
             "-v",
             "scripts.tests.test_release_audit",
+            "repo_work.tests.test_release_audit_snapshot",
+            "repo_work.tests.test_evidence_batch_transaction",
+            "repo_work.tests.test_file_mode_identity",
             "repo_work.tests.test_package_release_assets",
             "repo_work.tests.test_review_tools",
             "repo_work.tests.test_task_dispositions",
             "repo_work.tests.test_release_assurance",
+            "repo_work.tests.test_candidate_evidence_bundle",
+            "repo_work.tests.test_qualify_candidate_evidence",
             "repo_work.tests.test_finalize_qualification",
             "repo_work.tests.test_qualification_artifacts",
             "repo_work.tests.test_host_process_bounds",
@@ -1437,7 +1880,7 @@ BASE_COMMANDS = (
             "--out",
             "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json",
             "--allowed-signers",
-            ALLOWED_SIGNERS,
+            INDEPENDENT_ALLOWED_SIGNERS_PLACEHOLDER,
         ),
     ),
     CommandSpec(
@@ -1663,6 +2106,43 @@ BASE_COMMANDS = (
     ),
 )
 
+
+def qualification_base_commands(allowed_signers: Path) -> tuple[CommandSpec, ...]:
+    """Bind the strict freeze gate to one private signer snapshot."""
+
+    if (
+        not allowed_signers.is_absolute()
+        or allowed_signers.name != "INDEPENDENT_ALLOWED_SIGNERS"
+    ):
+        raise ReviewError(
+            "qualification requires an absolute independent allowed-signers snapshot"
+        )
+    replacement = str(allowed_signers)
+    materialized: list[CommandSpec] = []
+    replaced = 0
+    for spec in BASE_COMMANDS:
+        argv = tuple(
+            replacement if argument == INDEPENDENT_ALLOWED_SIGNERS_PLACEHOLDER else argument
+            for argument in spec.argv
+        )
+        replaced += sum(
+            argument == INDEPENDENT_ALLOWED_SIGNERS_PLACEHOLDER
+            for argument in spec.argv
+        )
+        materialized.append(
+            CommandSpec(
+                spec.name,
+                argv,
+                cwd=spec.cwd,
+                environment=spec.environment,
+                timeout_seconds=spec.timeout_seconds,
+                subject_executable=spec.subject_executable,
+            )
+        )
+    if replaced != 1:
+        raise ReviewError("qualification signer placeholder count drifted")
+    return tuple(materialized)
+
 DEEP_COMMANDS = (
     CommandSpec(
         "fuzz-ncp-decode-5000",
@@ -1729,6 +2209,121 @@ def digest_file(path: Path) -> tuple[str, int]:
     return digest.hexdigest(), size
 
 
+def _write_new_mutation_file(path: Path, payload: bytes, *, label: str) -> None:
+    """Write one captured mutation file without replacing an existing entry."""
+
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as error:
+        raise ReviewError(f"cannot create {label}: {error}") from error
+    write_failure: BaseException | None = None
+    try:
+        view = memoryview(payload)
+        while view:
+            written = os.write(descriptor, view)
+            if written <= 0:
+                raise ReviewError(f"cannot completely write {label}")
+            view = view[written:]
+        os.fsync(descriptor)
+    except BaseException as error:
+        write_failure = error
+
+    close_failure: OSError | None = None
+    try:
+        os.close(descriptor)
+    except OSError as error:
+        close_failure = error
+
+    if write_failure is None and close_failure is None:
+        return
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as cleanup_error:
+        primary = write_failure if write_failure is not None else close_failure
+        raise ReviewError(
+            f"cannot remove incomplete {label}: {cleanup_error}"
+        ) from primary
+    if write_failure is not None:
+        if isinstance(write_failure, OSError):
+            raise ReviewError(
+                f"cannot write {label}: {write_failure}"
+            ) from write_failure
+        raise write_failure.with_traceback(write_failure.__traceback__)
+    raise ReviewError(f"cannot close {label}: {close_failure}") from close_failure
+
+
+def retain_validated_mutation_evidence(
+    evidence: ValidatedMutationEvidence,
+    *,
+    output: Path,
+) -> list[dict[str, Any]]:
+    """Retain only the mutation bytes that the validator captured."""
+
+    if len(evidence.artifacts) != RETAINED_MUTATION_ARTIFACT_COUNT:
+        raise ReviewError("validated mutation evidence has an incomplete artifact set")
+
+    controls = (
+        ("manifest.json", evidence.manifest),
+        ("manifest.json.sig", evidence.signature),
+    )
+    artifact_parts: list[tuple[tuple[str, ...], MutationArtifactCapture]] = []
+    seen = {name for name, _capture in controls}
+    for artifact in evidence.artifacts:
+        parts = canonical_relative_parts(
+            artifact.relative,
+            label="validated mutation artifact path",
+        )
+        if artifact.relative in seen:
+            raise ReviewError("validated mutation evidence has a duplicate path")
+        seen.add(artifact.relative)
+        artifact_parts.append((parts, artifact))
+
+    for label, artifact in (
+        *controls,
+        *((artifact.relative, artifact) for _parts, artifact in artifact_parts),
+    ):
+        capture = artifact.capture
+        if (
+            len(capture.data) != capture.size_bytes
+            or hashlib.sha256(capture.data).hexdigest() != capture.sha256
+        ):
+            raise ReviewError(f"validated mutation capture drifted: {label}")
+
+    mutation_output = output / "mutation"
+    mutation_output.mkdir(mode=0o700, parents=False, exist_ok=False)
+    for name, artifact in controls:
+        _write_new_mutation_file(
+            mutation_output / name,
+            artifact.capture.data,
+            label=f"retained mutation {name}",
+        )
+
+    retained: list[dict[str, Any]] = []
+    for parts, artifact in artifact_parts:
+        target = mutation_output.joinpath(*parts)
+        target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        _write_new_mutation_file(
+            target,
+            artifact.capture.data,
+            label=f"retained mutation artifact {artifact.relative}",
+        )
+        retained.append(
+            {
+                "path": target.relative_to(output).as_posix(),
+                "sha256": artifact.capture.sha256,
+                "size_bytes": artifact.capture.size_bytes,
+            }
+        )
+    return retained
+
+
 def write_atomic_canonical_json(path: Path, value: Any) -> None:
     """Replace one host-owned JSON record with complete canonical bytes."""
 
@@ -1773,7 +2368,7 @@ def qualification_environment_contract(source_date_epoch: str) -> dict[str, Any]
         "cargo_config_policy": "REJECT_FILE_DIRECTORY_OR_LINK",
         "host_tool_inputs": ["HOME", "PATH", "RUSTUP_HOME"],
         "git_configuration_policy": "NO_SYSTEM_OR_GLOBAL_CONFIGURATION",
-        "path_policy": "RESOLVED_REQUIRED_TOOL_DIRECTORIES",
+        "path_policy": "EXACT_TOOL_DISPATCH_THEN_COLLISION_CHECKED_SYSTEM_DIRECTORIES",
         "path_tools": list(QUALIFICATION_PATH_TOOLS),
         "rustup_home_policy": "RUSTUP_HOME_OR_HOME_DOT_RUSTUP",
         "isolated_paths": list(ISOLATED_ENVIRONMENT_PATHS),
@@ -1936,14 +2531,18 @@ def capture(
     cwd: Path,
     *,
     environment: Mapping[str, str] | None = None,
-    sandbox_profile: Path | None = None,
+    sandbox_profile: Path,
     timeout_seconds: int = 30,
     max_bytes: int = MAX_CAPTURE_BYTES,
 ) -> str:
     """Capture one required identity command without shell interpretation."""
 
     process = run_bounded_process(
-        argv if sandbox_profile is None else sandboxed_argv(sandbox_profile, argv),
+        sandboxed_argv(
+            sandbox_profile,
+            argv,
+            environment=environment,
+        ),
         cwd=cwd,
         environment=environment,
         timeout_seconds=timeout_seconds,
@@ -2353,6 +2952,8 @@ def create_standalone_candidate_clone(
     *,
     commit: str,
     tree: str,
+    environment: Mapping[str, str],
+    git_executable: Path | None = None,
 ) -> None:
     """Create an independent no-local clone and verify its exact candidate bytes."""
 
@@ -2369,13 +2970,52 @@ def create_standalone_candidate_clone(
         str(repo),
         str(destination),
     ]
-    process = run_bounded_process(
-        clone_argv,
-        cwd=repo.parent,
-        environment=safe_git_environment(),
-        timeout_seconds=600,
-        separate_stderr=False,
-    )
+    with tempfile.TemporaryDirectory(prefix="galadriel-clone-sandbox-") as directory:
+        profile_root = Path(directory).resolve()
+        scratch = profile_root / "scratch"
+        scratch.mkdir(mode=0o700)
+        clone_environment = safe_git_environment(environment)
+        dispatched_git = resolve_candidate_git_executable(clone_environment)
+        developer_git = Path(
+            qualification_executed_argv(
+                ["git"],
+                git_executable=(
+                    dispatched_git if git_executable is None else git_executable
+                ),
+            )[0]
+        )
+        if developer_git != dispatched_git:
+            raise ReviewError("standalone clone Git differs from the tool dispatch")
+        clone_argv[0] = str(developer_git)
+        clone_environment["TMPDIR"] = str(scratch)
+        profile = profile_root / "clone.sb"
+        clone_tool_read_paths = list(
+            qualification_tool_read_paths(
+                clone_environment,
+                host_home=Path.home().resolve(),
+                tool_names=("git", "python3"),
+            )
+        )
+        clone_tool_read_paths.append(developer_git.parent)
+        write_candidate_sandbox_profile(
+            profile,
+            worktree=repo,
+            source_repo=profile_root / "denied-source-sentinel",
+            read_only_paths=(Path("/private/var/select"),),
+            writable_paths=(destination, scratch),
+            tool_read_paths=tuple(clone_tool_read_paths),
+        )
+        process = run_bounded_process(
+            sandboxed_argv(
+                profile,
+                clone_argv,
+                environment=clone_environment,
+            ),
+            cwd=repo.parent,
+            environment=clone_environment,
+            timeout_seconds=600,
+            separate_stderr=False,
+        )
     if (
         process.returncode != 0
         or process.timed_out
@@ -2399,7 +3039,11 @@ def create_standalone_candidate_clone(
 
 
 def install_pinned_advisory_database(
-    source: Path, cargo_home: Path
+    source: Path,
+    cargo_home: Path,
+    *,
+    environment: Mapping[str, str],
+    git_executable: Path | None = None,
 ) -> tuple[dict[str, Any], tuple[Path, Path]]:
     """Install one exact RustSec database for cargo-audit and cargo-deny."""
 
@@ -2425,12 +3069,16 @@ def install_pinned_advisory_database(
         audit_database,
         commit=ADVISORY_DB_COMMIT,
         tree=ADVISORY_DB_TREE,
+        environment=environment,
+        git_executable=git_executable,
     )
     create_standalone_candidate_clone(
         source,
         deny_database,
         commit=ADVISORY_DB_COMMIT,
         tree=ADVISORY_DB_TREE,
+        environment=environment,
+        git_executable=git_executable,
     )
     inventory = git_tree_inventory(audit_database, ADVISORY_DB_COMMIT)
     inventory_rows = [
@@ -2462,12 +3110,13 @@ def qualification_tool_read_paths(
     environment: Mapping[str, str],
     *,
     host_home: Path,
+    tool_names: tuple[str, ...] = QUALIFICATION_PATH_TOOLS,
 ) -> tuple[Path, ...]:
     """Return minimal non-system roots for resolved qualification tools."""
 
     system_roots = tuple(Path(path) for path in SANDBOX_SYSTEM_READ_PATHS)
     paths: set[Path] = set()
-    for name in QUALIFICATION_PATH_TOOLS:
+    for name in tool_names:
         invoked_text = shutil.which(name, path=environment["PATH"])
         if invoked_text is None:
             raise ReviewError(f"qualification PATH does not resolve {name}")
@@ -2525,6 +3174,11 @@ def render_candidate_sandbox_profile(
     rules = [
         "(version 1)",
         "(allow default)",
+        "(deny signal)",
+        "(allow signal (target self))",
+        "(allow signal (target children))",
+        '(deny process-exec (literal "/usr/bin/git"))',
+        '(deny process-exec (literal "/usr/bin/python3"))',
         "(deny file-read*)",
         "(deny file-write*)",
         '(allow file-write* (literal "/dev/null"))',
@@ -2659,10 +3313,106 @@ def write_candidate_sandbox_profile(
     return hashlib.sha256(profile).hexdigest()
 
 
-def sandboxed_argv(profile: Path, argv: tuple[str, ...] | list[str]) -> list[str]:
-    """Wrap one candidate-controlled command in the frozen host sandbox."""
+def resolve_candidate_git_executable(
+    environment: Mapping[str, str] | None = None,
+) -> Path:
+    """Resolve one direct Apple developer Git executable."""
 
-    return [str(SANDBOX_EXECUTABLE), "-f", str(profile), *argv]
+    if environment is not None:
+        path_value = environment.get("PATH")
+        if not isinstance(path_value, str) or not path_value:
+            raise ReviewError("candidate Git resolution requires PATH")
+        invoked_text = shutil.which("git", path=path_value)
+        if invoked_text is None:
+            raise ReviewError("candidate PATH does not resolve Git")
+        invoked = Path(invoked_text)
+        if not invoked.is_absolute() or invoked == Path("/usr/bin/git"):
+            raise ReviewError("candidate PATH resolves the forbidden /usr/bin/git")
+        try:
+            resolved = invoked.resolve(strict=True)
+        except OSError as error:
+            raise ReviewError("cannot resolve candidate Git") from error
+        if (
+            invoked == resolved
+            or not invoked.parent.name.startswith(QUALIFICATION_TOOL_DISPATCH_PREFIX)
+            or resolved not in DEVELOPER_GIT_PATHS
+        ):
+            raise ReviewError(
+                "candidate PATH does not resolve an approved developer Git"
+            )
+        executable_file_identity(resolved)
+        return resolved
+
+    for candidate in DEVELOPER_GIT_PATHS:
+        try:
+            if candidate.resolve(strict=True) != candidate:
+                continue
+            executable_file_identity(candidate)
+        except (OSError, ReviewError):
+            continue
+        return candidate
+    raise ReviewError("qualification requires a direct Apple developer Git executable")
+
+
+def qualification_executed_argv(
+    argv: tuple[str, ...] | list[str],
+    *,
+    git_executable: Path,
+) -> list[str]:
+    """Return the exact candidate argv with direct Git resolution."""
+
+    executed = list(argv)
+    if not executed or not isinstance(executed[0], str) or not executed[0]:
+        raise ReviewError("candidate command argv is empty or invalid")
+    requested = executed[0]
+    if requested != "git" and Path(requested).name != "git":
+        return executed
+
+    if requested == "/usr/bin/git":
+        raise ReviewError("candidate command uses the forbidden /usr/bin/git")
+    try:
+        git_executable = git_executable.resolve(strict=True)
+    except OSError as error:
+        raise ReviewError("cannot resolve the selected candidate Git") from error
+    if git_executable not in DEVELOPER_GIT_PATHS:
+        raise ReviewError("candidate command selected another Git executable")
+    if requested != "git":
+        requested_path = Path(requested)
+        if not requested_path.is_absolute() or requested_path != git_executable:
+            raise ReviewError("candidate command names another Git executable")
+    executed[0] = str(git_executable)
+    return executed
+
+
+def candidate_executed_argv(
+    argv: tuple[str, ...] | list[str],
+    environment: Mapping[str, str] | None,
+) -> list[str]:
+    """Resolve Git in one sandboxed candidate argv."""
+
+    if not argv:
+        raise ReviewError("candidate command argv is empty")
+    requested = argv[0]
+    if requested != "git" and Path(requested).name != "git":
+        return list(argv)
+    git_executable = (
+        resolve_candidate_git_executable(environment)
+        if requested == "git"
+        else Path(requested)
+    )
+    return qualification_executed_argv(argv, git_executable=git_executable)
+
+
+def sandboxed_argv(
+    profile: Path,
+    argv: tuple[str, ...] | list[str],
+    *,
+    environment: Mapping[str, str] | None = None,
+) -> list[str]:
+    """Wrap one exactly resolved candidate command in the host sandbox."""
+
+    executed = candidate_executed_argv(argv, environment)
+    return [str(SANDBOX_EXECUTABLE), "-f", str(profile), *executed]
 
 
 def executable_file_identity(path: Path) -> dict[str, Any]:
@@ -2715,18 +3465,425 @@ def executable_file_identity(path: Path) -> dict[str, Any]:
     }
 
 
+def direct_executable_file_identity(path: Path) -> dict[str, Any]:
+    """Bind one direct executable with a no-follow held descriptor."""
+
+    if not path.is_absolute():
+        raise ReviewError("direct qualification executable path is not absolute")
+    try:
+        if path.parent.resolve(strict=True) != path.parent:
+            raise ReviewError(
+                "direct qualification executable has a linked parent path"
+            )
+        path_before = path.lstat()
+    except OSError as error:
+        raise ReviewError(
+            f"cannot inspect direct qualification executable {path}: {error}"
+        ) from error
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_NONBLOCK", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise ReviewError(
+            f"cannot open direct qualification executable {path}: {error}"
+        ) from error
+    try:
+        opened = os.fstat(descriptor)
+        identity_before = (
+            path_before.st_dev,
+            path_before.st_ino,
+            path_before.st_mode,
+            path_before.st_uid,
+            path_before.st_gid,
+            path_before.st_nlink,
+            path_before.st_size,
+            path_before.st_mtime_ns,
+            path_before.st_ctime_ns,
+        )
+        opened_identity = (
+            opened.st_dev,
+            opened.st_ino,
+            opened.st_mode,
+            opened.st_uid,
+            opened.st_gid,
+            opened.st_nlink,
+            opened.st_size,
+            opened.st_mtime_ns,
+            opened.st_ctime_ns,
+        )
+        if identity_before != opened_identity or not stat.S_ISREG(opened.st_mode):
+            raise ReviewError(
+                "direct qualification executable changed before it was opened"
+            )
+        if (
+            not opened.st_mode & stat.S_IXUSR
+            or stat.S_IMODE(opened.st_mode) & 0o022
+            or opened.st_size <= 0
+            or opened.st_size > MAX_QUALIFICATION_EXECUTABLE_BYTES
+        ):
+            raise ReviewError("direct qualification executable identity is invalid")
+        digest, size = digest_regular_descriptor(
+            descriptor,
+            expected_size=opened.st_size,
+            label="direct qualification executable",
+        )
+        descriptor_after = os.fstat(descriptor)
+        try:
+            path_after = path.lstat()
+        except OSError as error:
+            raise ReviewError(
+                "direct qualification executable disappeared while hashed"
+            ) from error
+        after_identity = (
+            path_after.st_dev,
+            path_after.st_ino,
+            path_after.st_mode,
+            path_after.st_uid,
+            path_after.st_gid,
+            path_after.st_nlink,
+            path_after.st_size,
+            path_after.st_mtime_ns,
+            path_after.st_ctime_ns,
+        )
+        descriptor_after_identity = (
+            descriptor_after.st_dev,
+            descriptor_after.st_ino,
+            descriptor_after.st_mode,
+            descriptor_after.st_uid,
+            descriptor_after.st_gid,
+            descriptor_after.st_nlink,
+            descriptor_after.st_size,
+            descriptor_after.st_mtime_ns,
+            descriptor_after.st_ctime_ns,
+        )
+        if (
+            after_identity != identity_before
+            or descriptor_after_identity != identity_before
+        ):
+            raise ReviewError(
+                "direct qualification executable changed while hashed"
+            )
+    finally:
+        os.close(descriptor)
+    return {
+        "invoked_path": str(path),
+        "resolved_path": str(path),
+        "sha256": digest,
+        "size_bytes": size,
+        "uid": opened.st_uid,
+        "gid": opened.st_gid,
+        "mode": stat.S_IMODE(opened.st_mode),
+    }
+
+
+def qualification_dispatch_tool_files(
+    environment: Mapping[str, str],
+    *,
+    tool_names: tuple[str, ...] = QUALIFICATION_PATH_TOOLS,
+) -> dict[str, dict[str, Any]]:
+    """Bind each exact tool dispatch entry and its resolved executable."""
+
+    path_value = environment.get("PATH")
+    if not isinstance(path_value, str) or not path_value:
+        raise ReviewError("qualification tool dispatch requires PATH")
+    path_parts = path_value.split(os.pathsep)
+    if not path_parts:
+        raise ReviewError("qualification tool dispatch PATH is empty")
+    directory = Path(path_parts[0])
+    try:
+        metadata = directory.lstat()
+    except OSError as error:
+        raise ReviewError("qualification tool dispatch is unavailable") from error
+    if (
+        not directory.is_absolute()
+        or not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or not directory.name.startswith(QUALIFICATION_TOOL_DISPATCH_PREFIX)
+        or stat.S_IMODE(metadata.st_mode) != 0o500
+    ):
+        raise ReviewError("qualification tool dispatch directory is invalid")
+    try:
+        entries = {entry.name: entry for entry in os.scandir(directory)}
+    except OSError as error:
+        raise ReviewError("cannot inspect qualification tool dispatch") from error
+    if set(entries) != set(tool_names):
+        raise ReviewError("qualification tool dispatch entry set is incomplete")
+
+    records: dict[str, dict[str, Any]] = {}
+    for name in tool_names:
+        entry = entries[name]
+        try:
+            entry_metadata = entry.stat(follow_symlinks=False)
+            target_text = os.readlink(entry.path)
+        except OSError as error:
+            raise ReviewError(
+                f"cannot inspect qualification tool dispatch entry {name}"
+            ) from error
+        target = Path(target_text)
+        invoked = directory / name
+        if (
+            not stat.S_ISLNK(entry_metadata.st_mode)
+            or not target.is_absolute()
+            or shutil.which(name, path=path_value) != str(invoked)
+        ):
+            raise ReviewError(f"qualification tool dispatch entry is invalid: {name}")
+        record = executable_file_identity(invoked)
+        if record["resolved_path"] != str(target.resolve(strict=True)):
+            raise ReviewError(f"qualification tool dispatch target changed: {name}")
+        records[name] = record
+
+    selected_git = resolve_candidate_git_executable(environment)
+    if records["git"]["resolved_path"] != str(selected_git):
+        raise ReviewError("qualification Git dispatch selected another executable")
+    developer_tools = DEVELOPER_TOOL_PATHS[selected_git]
+    if any(
+        records[name]["resolved_path"] != str(target)
+        for name, target in developer_tools.items()
+    ):
+        raise ReviewError("qualification developer tool dispatch is inconsistent")
+    if any(
+        records[name]["resolved_path"] != str(target)
+        for name, target in QUALIFICATION_SYSTEM_TOOL_PATHS.items()
+    ):
+        raise ReviewError("qualification system tool dispatch is inconsistent")
+    if (
+        len({records[name]["resolved_path"] for name in ("cargo", "rustc", "rustup")})
+        != 1
+    ):
+        raise ReviewError("qualification Cargo and Rust compiler proxies disagree")
+    python = records["python3"]
+    if (
+        platform.python_implementation() != "CPython"
+        or sys.version_info[:3] != (3, 14, 6)
+        or python["resolved_path"] != str(Path(sys.executable).resolve(strict=True))
+    ):
+        raise ReviewError("qualification dispatch requires CPython 3.14.6")
+    return records
+
+
+def qualification_system_path_state(
+    environment: Mapping[str, str],
+) -> dict[str, Any]:
+    """Bind each system PATH directory and each dispatched-name collision."""
+
+    path_value = environment.get("PATH")
+    if not isinstance(path_value, str) or not path_value:
+        raise ReviewError("qualification system PATH state requires PATH")
+    path_parts = tuple(path_value.split(os.pathsep))
+    if (
+        len(path_parts) != len(QUALIFICATION_SYSTEM_PATHS) + 1
+        or path_parts[1:] != QUALIFICATION_SYSTEM_PATHS
+    ):
+        raise ReviewError("qualification system PATH directory set is not exact")
+
+    dispatch_directory = Path(path_parts[0])
+    directories: dict[str, tuple[int, int, int, int, int, int, int]] = {}
+    collisions: dict[str, dict[str, Any]] = {}
+    for text in QUALIFICATION_SYSTEM_PATHS:
+        directory = Path(text)
+        try:
+            metadata = directory.lstat()
+        except OSError as error:
+            raise ReviewError(
+                f"qualification system PATH directory is unavailable: {directory}"
+            ) from error
+        if (
+            not stat.S_ISDIR(metadata.st_mode)
+            or stat.S_ISLNK(metadata.st_mode)
+            or directory.resolve(strict=True) != directory
+            or metadata.st_uid != 0
+            or stat.S_IMODE(metadata.st_mode) & 0o022
+        ):
+            raise ReviewError(
+                f"qualification system PATH directory is unsafe: {directory}"
+            )
+        directories[text] = (
+            metadata.st_dev,
+            metadata.st_ino,
+            metadata.st_mode,
+            metadata.st_uid,
+            metadata.st_gid,
+            metadata.st_mtime_ns,
+            metadata.st_ctime_ns,
+        )
+        for name in QUALIFICATION_PATH_TOOLS:
+            candidate = directory / name
+            try:
+                candidate.lstat()
+            except FileNotFoundError:
+                continue
+            except OSError as error:
+                raise ReviewError(
+                    f"cannot inspect qualification system PATH collision: {candidate}"
+                ) from error
+            collisions[str(candidate)] = executable_file_identity(candidate)
+
+    for name in QUALIFICATION_PATH_TOOLS:
+        if shutil.which(name, path=path_value) != str(dispatch_directory / name):
+            raise ReviewError(
+                f"qualification system PATH shadows the tool dispatch: {name}"
+            )
+    return {"directories": directories, "collisions": collisions}
+
+
+def install_qualification_tool_dispatch(
+    directory: Path,
+    environment: dict[str, str],
+    *,
+    git_executable: Path,
+) -> dict[str, dict[str, Any]]:
+    """Install and bind one complete read-only qualification tool dispatch."""
+
+    try:
+        directory = directory.resolve(strict=True)
+        metadata = directory.lstat()
+    except OSError as error:
+        raise ReviewError(
+            "qualification tool dispatch directory is unavailable"
+        ) from error
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or not directory.name.startswith(QUALIFICATION_TOOL_DISPATCH_PREFIX)
+        or stat.S_IMODE(metadata.st_mode) != 0o700
+    ):
+        raise ReviewError("qualification tool dispatch directory is not private")
+    try:
+        if any(directory.iterdir()):
+            raise ReviewError("qualification tool dispatch directory is not empty")
+    except OSError as error:
+        raise ReviewError(
+            "cannot inspect qualification tool dispatch directory"
+        ) from error
+
+    base_path = environment.get("PATH")
+    if not isinstance(base_path, str) or not base_path:
+        raise ReviewError("qualification tool dispatch requires a base PATH")
+    selected_git = Path(
+        qualification_executed_argv(
+            ["git"],
+            git_executable=git_executable,
+        )[0]
+    )
+    if platform.python_implementation() != "CPython" or sys.version_info[:3] != (
+        3,
+        14,
+        6,
+    ):
+        raise ReviewError("qualification requires CPython 3.14.6")
+    python_executable = Path(sys.executable).resolve(strict=True)
+    developer_tools = DEVELOPER_TOOL_PATHS[selected_git]
+
+    for name in QUALIFICATION_PATH_TOOLS:
+        if name == "git":
+            target = selected_git
+        elif name == "python3":
+            target = python_executable
+        elif name in developer_tools:
+            target = developer_tools[name]
+        elif name in QUALIFICATION_SYSTEM_TOOL_PATHS:
+            target = QUALIFICATION_SYSTEM_TOOL_PATHS[name]
+        else:
+            target_text = shutil.which(name, path=base_path)
+            if target_text is None:
+                raise ReviewError(
+                    f"qualification base PATH does not resolve required tool {name}"
+                )
+            target = Path(target_text).resolve(strict=True)
+        executable_file_identity(target)
+        try:
+            (directory / name).symlink_to(target)
+        except OSError as error:
+            raise ReviewError(
+                f"cannot install qualification tool dispatch entry {name}"
+            ) from error
+
+    os.chmod(directory, 0o500)
+    environment["PATH"] = os.pathsep.join((str(directory), *QUALIFICATION_SYSTEM_PATHS))
+    records = qualification_dispatch_tool_files(environment)
+    system_path_state = qualification_system_path_state(environment)
+    previous = _QUALIFICATION_TOOL_DISPATCH_BASELINES.setdefault(directory, records)
+    if previous != records:
+        raise ReviewError("qualification tool dispatch baseline is ambiguous")
+    previous_system_state = _QUALIFICATION_SYSTEM_PATH_BASELINES.setdefault(
+        directory,
+        system_path_state,
+    )
+    if previous_system_state != system_path_state:
+        raise ReviewError("qualification system PATH baseline is ambiguous")
+    return records
+
+
+def verify_qualification_tool_dispatch(
+    environment: Mapping[str, str] | None,
+) -> None:
+    """Require one registered tool dispatch to retain every exact identity."""
+
+    qualification_environment = environment is not None and set(
+        QUALIFICATION_ENVIRONMENT_KEYS
+    ).issubset(environment)
+    if environment is None:
+        return
+    path_value = environment.get("PATH")
+    if not isinstance(path_value, str) or not path_value:
+        if qualification_environment:
+            raise ReviewError("qualification environment lost the tool dispatch")
+        return
+    directory = Path(path_value.split(os.pathsep)[0])
+    baseline = _QUALIFICATION_TOOL_DISPATCH_BASELINES.get(directory)
+    if baseline is None:
+        if qualification_environment:
+            raise ReviewError("qualification environment lacks the tool dispatch")
+        return
+    system_path_baseline = _QUALIFICATION_SYSTEM_PATH_BASELINES.get(directory)
+    try:
+        dispatch_state = qualification_dispatch_tool_files(environment)
+        system_path_state = qualification_system_path_state(environment)
+    except ReviewError as error:
+        raise ReviewError(
+            "qualification tool dispatch changed during execution"
+        ) from error
+    if (
+        dispatch_state != baseline
+        or system_path_baseline is None
+        or system_path_state != system_path_baseline
+    ):
+        raise ReviewError("qualification tool dispatch changed during execution")
+
+
+def release_qualification_tool_dispatch(directory: Path) -> None:
+    """Release one host-owned dispatch for temporary-directory cleanup."""
+
+    _QUALIFICATION_TOOL_DISPATCH_BASELINES.pop(directory, None)
+    _QUALIFICATION_SYSTEM_PATH_BASELINES.pop(directory, None)
+    try:
+        metadata = directory.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as error:
+        raise ReviewError(
+            "cannot inspect qualification tool dispatch cleanup"
+        ) from error
+    if stat.S_ISDIR(metadata.st_mode) and not stat.S_ISLNK(metadata.st_mode):
+        try:
+            os.chmod(directory, 0o700)
+        except OSError as error:
+            raise ReviewError("cannot release qualification tool dispatch") from error
+
+
 def qualification_tool_files(
     environment: Mapping[str, str],
+    *,
+    sandbox_profile: Path,
 ) -> dict[str, dict[str, Any]]:
     """Resolve and hash every executable used by qualification."""
 
-    path = environment["PATH"]
-    result: dict[str, dict[str, Any]] = {}
-    for name in QUALIFICATION_PATH_TOOLS:
-        resolved = shutil.which(name, path=path)
-        if resolved is None:
-            raise ReviewError(f"qualification PATH does not resolve {name}")
-        result[name] = executable_file_identity(Path(resolved))
+    result = qualification_dispatch_tool_files(environment)
     result["sandbox-exec"] = executable_file_identity(SANDBOX_EXECUTABLE)
     rustup_commands = {
         "rustc-1.89.0": ["rustup", "which", "rustc", "--toolchain", "1.89.0"],
@@ -2791,7 +3948,12 @@ def qualification_tool_files(
         ],
     }
     for name, argv in rustup_commands.items():
-        output = capture(argv, Path.cwd(), environment=environment)
+        output = capture(
+            argv,
+            Path.cwd(),
+            environment=environment,
+            sandbox_profile=sandbox_profile,
+        )
         if "\n" in output or not Path(output).is_absolute():
             raise ReviewError(f"rustup returned an invalid path for {name}")
         result[name] = executable_file_identity(Path(output))
@@ -2816,6 +3978,16 @@ def run_command(
     worktree = worktree.resolve()
     command_environment = dict(environment)
     command_environment.update(spec.environment)
+    executed_argv = candidate_executed_argv(spec.argv, command_environment)
+    subject_path: Path | None = None
+    subject_identity_before: dict[str, Any] | None = None
+    subject_identity_after: dict[str, Any] | None = None
+    if spec.subject_executable is not None:
+        subject_path = Path(spec.subject_executable)
+        if not subject_path.is_absolute() or executed_argv[0] != str(subject_path):
+            raise ReviewError(
+                "bound command subject must be the direct absolute executable"
+            )
     cwd = (worktree / spec.cwd).resolve()
     if cwd != worktree and worktree not in cwd.parents:
         raise ReviewError(f"command working directory escapes worktree: {spec.cwd}")
@@ -2846,11 +4018,12 @@ def run_command(
     }
     print(f"START {index:02d} {spec.name}", flush=True)
     header = {
-        "argv": list(spec.argv),
+        "argv": executed_argv,
         "cwd": spec.cwd,
         "environment_overrides": dict(spec.environment),
         "sandbox": sandbox_execution,
         "started_at": started_at,
+        "subject_executable": spec.subject_executable,
         "timeout_seconds": spec.timeout_seconds,
     }
     combined_output = b""
@@ -2859,17 +4032,41 @@ def run_command(
         verify_materialized_candidate(worktree, commit, tree)
         if repository_control_snapshot(worktree) != clone_control:
             raise ReviewError("candidate clone Git control state changed")
+        if subject_path is not None:
+            subject_identity_before = direct_executable_file_identity(subject_path)
     except ReviewError as error:
         policy_error = error
         combined_output = f"QUALIFICATION_POLICY_FAILURE: {error}\n".encode()
     if policy_error is None:
-        process_result = run_bounded_process(
-            sandboxed_argv(selected_sandbox_profile, spec.argv),
-            cwd=cwd,
-            environment=command_environment,
-            timeout_seconds=spec.timeout_seconds,
-            separate_stderr=False,
-        )
+        try:
+            process_result = run_bounded_process(
+                sandboxed_argv(
+                    selected_sandbox_profile,
+                    executed_argv,
+                    environment=command_environment,
+                ),
+                cwd=cwd,
+                environment=command_environment,
+                timeout_seconds=spec.timeout_seconds,
+                separate_stderr=False,
+            )
+        except BaseException as process_error:
+            if subject_path is not None and subject_identity_before is not None:
+                try:
+                    subject_identity_after = direct_executable_file_identity(
+                        subject_path
+                    )
+                    if subject_identity_after != subject_identity_before:
+                        raise ReviewError(
+                            "bound command subject changed during candidate execution"
+                        )
+                except BaseException as subject_error:
+                    if hasattr(process_error, "add_note"):
+                        process_error.add_note(
+                            "subject-executable verification also failed: "
+                            f"{type(subject_error).__name__}: {subject_error}"
+                        )
+            raise
         returncode = process_result.returncode
         timed_out = process_result.timed_out
         output_limit_exceeded = process_result.output_limit_exceeded
@@ -2877,6 +4074,12 @@ def run_command(
         if process_result.containment_error is not None:
             policy_error = ReviewError(process_result.containment_error)
         try:
+            if subject_path is not None and subject_identity_before is not None:
+                subject_identity_after = direct_executable_file_identity(subject_path)
+                if subject_identity_after != subject_identity_before:
+                    raise ReviewError(
+                        "bound command subject changed during candidate execution"
+                    )
             reject_cargo_configuration(cwd, Path(command_environment["CARGO_HOME"]))
             verify_materialized_candidate(worktree, commit, tree)
             if repository_control_snapshot(worktree) != clone_control:
@@ -2903,7 +4106,7 @@ def run_command(
     )
     receipt = {
         "name": spec.name,
-        "argv": list(spec.argv),
+        "argv": executed_argv,
         "cwd": spec.cwd,
         "environment_overrides": dict(spec.environment),
         "sandbox": sandbox_execution,
@@ -2918,6 +4121,16 @@ def run_command(
         "log": log.relative_to(logs.parent).as_posix(),
         "combined_output_sha256": hashlib.sha256(combined_output).hexdigest(),
         "combined_output_size_bytes": len(combined_output),
+        "subject_executable": None
+        if subject_identity_before is None
+        else {
+            "status": (
+                "UNCHANGED"
+                if subject_identity_after == subject_identity_before
+                else "UNVERIFIED"
+            ),
+            "identity": subject_identity_before,
+        },
     }
     receipt = write_receipt_log(
         log,
@@ -3158,6 +4371,7 @@ def source_archive(
     output: Path,
     environment: dict[str, str],
     *,
+    sandbox_profile: Path,
     auxiliary_runner: AuxiliaryRunner | None = None,
     receipt_name: str = "source-archive",
 ) -> dict[str, Any]:
@@ -3176,10 +4390,15 @@ def source_archive(
         commit,
     ]
     if auxiliary_runner is None:
+        archive_environment = safe_git_environment(environment)
         process = run_bounded_process(
-            archive_argv,
+            sandboxed_argv(
+                sandbox_profile,
+                archive_argv,
+                environment=archive_environment,
+            ),
             cwd=repo,
-            environment=safe_git_environment(environment),
+            environment=archive_environment,
             timeout_seconds=3_600,
             separate_stderr=True,
         )
@@ -3225,6 +4444,7 @@ def collect_sboms(
     comparison_root: Path,
     sandbox_profile: Path,
     auxiliary_runner: AuxiliaryRunner | None = None,
+    git_executable: Path | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Build normalized CycloneDX documents twice and require byte identity."""
 
@@ -3374,12 +4594,18 @@ def collect_sboms(
             sbom_worktree,
             commit=commit,
             tree=tree,
+            environment=environment,
+            git_executable=git_executable,
         )
         reject_cargo_configuration(sbom_worktree, Path(environment["CARGO_HOME"]))
         receipt_name = f"cyclonedx-sboms-run-{run_index}"
         if auxiliary_runner is None:
             result = run_bounded_process(
-                sandboxed_argv(sandbox_profile, sbom_argv),
+                sandboxed_argv(
+                    sandbox_profile,
+                    sbom_argv,
+                    environment=environment,
+                ),
                 cwd=sbom_worktree,
                 environment=environment,
                 timeout_seconds=3_600,
@@ -3484,7 +4710,7 @@ def capture_report(
     output: Path,
     json_lines: bool,
     report_stream: str,
-    sandbox_profile: Path | None = None,
+    sandbox_profile: Path,
     auxiliary_runner: AuxiliaryRunner | None = None,
     receipt_name: str = "report",
 ) -> dict[str, Any]:
@@ -3502,11 +4728,12 @@ def capture_report(
         )
         process_returncode = 0
     else:
-        process_argv = (
-            argv if sandbox_profile is None else sandboxed_argv(sandbox_profile, argv)
-        )
         process = run_bounded_process(
-            process_argv,
+            sandboxed_argv(
+                sandbox_profile,
+                argv,
+                environment=environment,
+            ),
             cwd=worktree,
             environment=environment,
             timeout_seconds=3_600,
@@ -3580,6 +4807,7 @@ def reproducible_source_archive(
     comparison_root: Path,
     environment: dict[str, str],
     *,
+    sandbox_profile: Path,
     auxiliary_runner: AuxiliaryRunner | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build the source archive twice and reject byte drift."""
@@ -3589,6 +4817,7 @@ def reproducible_source_archive(
         commit,
         output,
         environment,
+        sandbox_profile=sandbox_profile,
         auxiliary_runner=auxiliary_runner,
         receipt_name="source-archive-run-1",
     )
@@ -3598,6 +4827,7 @@ def reproducible_source_archive(
         commit,
         repeated_path,
         environment,
+        sandbox_profile=sandbox_profile,
         auxiliary_runner=auxiliary_runner,
         receipt_name="source-archive-run-2",
     )
@@ -3676,6 +4906,7 @@ def reproducible_packages(
     tree: str,
     sandbox_profile: Path,
     auxiliary_runner: AuxiliaryRunner | None = None,
+    git_executable: Path | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Create every workspace package twice and require byte identity."""
 
@@ -3726,7 +4957,12 @@ def reproducible_packages(
         zip(targets, packaging_worktrees, strict=True), 1
     ):
         create_standalone_candidate_clone(
-            worktree, package_worktree, commit=commit, tree=tree
+            worktree,
+            package_worktree,
+            commit=commit,
+            tree=tree,
+            environment=environment,
+            git_executable=git_executable,
         )
         package_paths = {
             name: (package_worktree / "crates" / name).resolve()
@@ -3786,7 +5022,11 @@ def reproducible_packages(
             ]
             if auxiliary_runner is None:
                 process = run_bounded_process(
-                    sandboxed_argv(sandbox_profile, package_argv),
+                    sandboxed_argv(
+                        sandbox_profile,
+                        package_argv,
+                        environment=environment,
+                    ),
                     cwd=package_worktree,
                     environment=environment,
                     timeout_seconds=3_600,
@@ -4026,6 +5266,275 @@ def snapshot_external_tree(
         on_directory=create_directory,
         reject_empty_directories=True,
     )
+
+
+def candidate_evidence_command_specs(
+    *,
+    target_directory: Path,
+    runner_executable: Path,
+    evidence_config: str,
+    evidence_output: Path,
+) -> tuple[CommandSpec, CommandSpec]:
+    """Build the runner, then execute one host-controlled runner snapshot."""
+
+    canonical_relative_parts(
+        evidence_config,
+        label="candidate evidence configuration path",
+    )
+    if (
+        not target_directory.is_absolute()
+        or not runner_executable.is_absolute()
+        or not evidence_output.is_absolute()
+    ):
+        raise ReviewError("candidate evidence paths must be absolute")
+    return (
+        CommandSpec(
+            "candidate-evidence-build",
+            (
+                "cargo",
+                "build",
+                "--release",
+                "--locked",
+                "-p",
+                "galadriel-eval",
+                "--bin",
+                CANDIDATE_EVIDENCE_RUNNER,
+            ),
+            timeout_seconds=7_200,
+        ),
+        CommandSpec(
+            "candidate-evidence",
+            (
+                str(runner_executable),
+                "--config",
+                evidence_config,
+                "--out",
+                str(evidence_output),
+            ),
+            timeout_seconds=7_200,
+            subject_executable=str(runner_executable),
+        ),
+    )
+
+
+def snapshot_candidate_executable(
+    source: Path,
+    destination: Path,
+) -> dict[str, Any]:
+    """Copy one candidate-built executable into a host-controlled directory."""
+
+    if not source.is_absolute() or not destination.is_absolute():
+        raise ReviewError("candidate executable paths must be absolute")
+    parent = destination.parent
+    try:
+        if source.parent.resolve(strict=True) != source.parent:
+            raise ReviewError(
+                "candidate evidence executable has a linked parent path"
+            )
+        if parent.resolve(strict=True) != parent:
+            raise ReviewError(
+                "candidate executable snapshot has a linked parent path"
+            )
+        parent_metadata = parent.lstat()
+        parent_entries = tuple(parent.iterdir())
+    except OSError as error:
+        raise ReviewError(
+            "candidate executable snapshot directory is unavailable"
+        ) from error
+    if (
+        not stat.S_ISDIR(parent_metadata.st_mode)
+        or stat.S_ISLNK(parent_metadata.st_mode)
+        or stat.S_IMODE(parent_metadata.st_mode) != 0o700
+        or parent_metadata.st_uid != os.getuid()
+        or parent_entries
+    ):
+        raise ReviewError("candidate executable snapshot directory is not private")
+
+    source_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_NONBLOCK", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    destination_flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    try:
+        source_descriptor = os.open(source, source_flags)
+    except OSError as error:
+        raise ReviewError("candidate evidence executable is unavailable") from error
+    source_metadata: os.stat_result | None = None
+    copied = 0
+    digest = hashlib.sha256()
+    try:
+        source_metadata = os.fstat(source_descriptor)
+        if (
+            not stat.S_ISREG(source_metadata.st_mode)
+            or source_metadata.st_nlink != 1
+            or source_metadata.st_uid != os.getuid()
+            or not source_metadata.st_mode & stat.S_IXUSR
+            or stat.S_IMODE(source_metadata.st_mode) & 0o022
+            or source_metadata.st_size <= 0
+            or source_metadata.st_size > MAX_QUALIFICATION_EXECUTABLE_BYTES
+        ):
+            raise ReviewError("candidate evidence executable identity is invalid")
+        try:
+            destination_descriptor = os.open(
+                destination,
+                destination_flags,
+                0o500,
+            )
+        except OSError as error:
+            raise ReviewError(
+                "cannot create the candidate executable snapshot"
+            ) from error
+        try:
+            while copied <= source_metadata.st_size:
+                block = os.read(
+                    source_descriptor,
+                    min(1024 * 1024, source_metadata.st_size + 1 - copied),
+                )
+                if not block:
+                    break
+                copied += len(block)
+                if copied > source_metadata.st_size:
+                    raise ReviewError(
+                        "candidate evidence executable changed size while copied"
+                    )
+                digest.update(block)
+                offset = 0
+                while offset < len(block):
+                    written = os.write(destination_descriptor, block[offset:])
+                    if written <= 0:
+                        raise ReviewError(
+                            "cannot completely write the candidate executable snapshot"
+                        )
+                    offset += written
+            os.fsync(destination_descriptor)
+        finally:
+            os.close(destination_descriptor)
+        source_after = os.fstat(source_descriptor)
+        source_identity = (
+            source_metadata.st_dev,
+            source_metadata.st_ino,
+            source_metadata.st_mode,
+            source_metadata.st_uid,
+            source_metadata.st_gid,
+            source_metadata.st_nlink,
+            source_metadata.st_size,
+            source_metadata.st_mtime_ns,
+            source_metadata.st_ctime_ns,
+        )
+        source_identity_after = (
+            source_after.st_dev,
+            source_after.st_ino,
+            source_after.st_mode,
+            source_after.st_uid,
+            source_after.st_gid,
+            source_after.st_nlink,
+            source_after.st_size,
+            source_after.st_mtime_ns,
+            source_after.st_ctime_ns,
+        )
+        if (
+            copied != source_metadata.st_size
+            or source_identity_after != source_identity
+        ):
+            raise ReviewError("candidate evidence executable changed while retained")
+    finally:
+        os.close(source_descriptor)
+
+    identity = direct_executable_file_identity(destination)
+    if (
+        identity["resolved_path"] != str(destination)
+        or identity["sha256"] != digest.hexdigest()
+        or identity["size_bytes"] != copied
+        or identity["mode"] != 0o500
+    ):
+        raise ReviewError("candidate executable snapshot identity is inconsistent")
+    return identity
+
+
+def rust_host_target(rustc_verbose: str) -> tuple[str, str]:
+    """Derive the native Rust target from exact verbose compiler output."""
+
+    if not isinstance(rustc_verbose, str) or not rustc_verbose:
+        raise ReviewError("candidate evidence Rust compiler identity is missing")
+    host_lines = [
+        line.removeprefix("host: ")
+        for line in rustc_verbose.splitlines()
+        if line.startswith("host: ")
+    ]
+    if len(host_lines) != 1:
+        raise ReviewError("candidate evidence Rust host target is ambiguous")
+    host = host_lines[0]
+    if host == "aarch64-apple-darwin":
+        return "macos", "aarch64"
+    raise ReviewError("candidate evidence Rust host target is unsupported")
+
+
+def validate_retained_candidate_evidence(
+    root: Path,
+    *,
+    commit: str,
+    tree: str,
+    tracked_config_path: str,
+    tracked_config_bytes: bytes,
+    workspace_manifest_sha256: str,
+    cargo_lock_sha256: str,
+    runner_identity: Mapping[str, Any],
+    rustc_verbose: str,
+    cargo_version: str,
+) -> tuple[ValidatedCandidateEvidence, dict[str, Any]]:
+    """Validate one retained bundle with independent candidate identities."""
+
+    target_os, target_arch = rust_host_target(rustc_verbose)
+    runner_sha256 = runner_identity.get("sha256")
+    if (
+        not isinstance(runner_sha256, str)
+        or len(runner_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in runner_sha256)
+    ):
+        raise ReviewError("candidate evidence runner digest is invalid")
+    expectations = CandidateEvidenceExpectations(
+        commit=commit,
+        tree=tree,
+        tracked_config_path=tracked_config_path,
+        tracked_config_bytes=tracked_config_bytes,
+        workspace_manifest_sha256=workspace_manifest_sha256,
+        cargo_lock_sha256=cargo_lock_sha256,
+        runner_binary_sha256=runner_sha256,
+        rustc_verbose=rustc_verbose,
+        cargo_version=cargo_version,
+        target_os=target_os,
+        target_arch=target_arch,
+    )
+    validated = validate_candidate_evidence_bundle(root, expected=expectations)
+    record = {
+        "status": "PASS",
+        "semantic_sha256": validated.semantic_sha256,
+        "artifacts": validated.artifacts,
+        "expectations": {
+            "commit": commit,
+            "tree": tree,
+            "tracked_config_path": tracked_config_path,
+            "tracked_config_sha256": hashlib.sha256(
+                tracked_config_bytes
+            ).hexdigest(),
+            "workspace_manifest_sha256": workspace_manifest_sha256,
+            "cargo_lock_sha256": cargo_lock_sha256,
+            "runner_binary_sha256": runner_sha256,
+            "rustc_verbose": rustc_verbose,
+            "cargo_version": cargo_version,
+            "target_os": target_os,
+            "target_arch": target_arch,
+        },
+    }
+    return validated, record
 
 
 def candidate_evidence_inventory(
@@ -4281,15 +5790,21 @@ def main() -> int:
     )
     parser.add_argument("--mutation-evidence-signature")
     parser.add_argument(
-        "--deep", action="store_true", help="run bounded fuzz campaigns"
+        "--deep",
+        action="store_true",
+        help="run bounded fuzz campaigns and permit PASS when all gates pass",
     )
     parser.add_argument("--keep-going", action="store_true")
     parser.add_argument(
         "--evidence-config",
         default="evidence/galadriel-0.9-candidate.json",
-        help="tracked evidence configuration, relative to the candidate root",
+        help="exact tracked evidence input, relative to the candidate root",
     )
-    parser.add_argument("--skip-evidence", action="store_true")
+    parser.add_argument(
+        "--skip-evidence",
+        action="store_true",
+        help="omit candidate evidence and prevent successful qualification",
+    )
     arguments = parser.parse_args()
 
     repo = Path(arguments.repo).resolve()
@@ -4301,6 +5816,8 @@ def main() -> int:
     mutation_signature_path: Path | None = None
     worktree: Path | None = None
     temporary: tempfile.TemporaryDirectory[str] | None = None
+    tool_dispatch_temporary: tempfile.TemporaryDirectory[str] | None = None
+    tool_dispatch_directory: Path | None = None
     results: list[dict[str, Any]] = []
     auxiliary_receipts: list[dict[str, Any]] = []
     failure: str | None = None
@@ -4342,6 +5859,7 @@ def main() -> int:
                 "successful qualification requires signed exact-candidate mutation evidence"
             )
         assert_no_replace_refs(repo)
+        candidate_git = resolve_candidate_git_executable()
         if str(git(repo, "status", "--porcelain=v1", "--untracked-files=all")).strip():
             raise ReviewError("candidate checkout is dirty")
         commit = str(git(repo, "rev-parse", "HEAD^{commit}")).strip()
@@ -4378,6 +5896,24 @@ def main() -> int:
         temporary_root = Path(temporary.name).resolve()
         worktree = temporary_root / "worktree"
         target = temporary_root / "target"
+        evidence_runner_root = temporary_root / "evidence-runner"
+        evidence_runner_root.mkdir(mode=0o700, parents=False, exist_ok=False)
+        evidence_runner = evidence_runner_root / CANDIDATE_EVIDENCE_RUNNER
+        environment = build_qualification_environment(
+            os.environ,
+            private_root=temporary_root,
+            target=target,
+            source_date_epoch=source_date_epoch,
+        )
+        tool_dispatch_temporary = tempfile.TemporaryDirectory(
+            prefix=QUALIFICATION_TOOL_DISPATCH_PREFIX
+        )
+        tool_dispatch_directory = Path(tool_dispatch_temporary.name).resolve()
+        install_qualification_tool_dispatch(
+            tool_dispatch_directory,
+            environment,
+            git_executable=candidate_git,
+        )
         signing_key, signing_key_signer = snapshot_agent_backed_public_signing_key(
             signing_key,
             temporary_root / "SIGNING_KEY.pub",
@@ -4391,7 +5927,14 @@ def main() -> int:
                 "signing-key public handle differs from the independent trust root"
             )
         verify_candidate_commit(repo, commit, external_allowed_signers)
-        create_standalone_candidate_clone(repo, worktree, commit=commit, tree=tree)
+        create_standalone_candidate_clone(
+            repo,
+            worktree,
+            commit=commit,
+            tree=tree,
+            environment=environment,
+            git_executable=candidate_git,
+        )
         assert_tracked_allowed_signer(
             worktree / ALLOWED_SIGNERS, expected_signer_metadata
         )
@@ -4410,7 +5953,7 @@ def main() -> int:
         snapshotted_mutation_signature = (
             mutation_snapshot / mutation_signature_path.name
         )
-        mutation_document, mutation_artifacts = validate_mutation_evidence(
+        validated_mutation = validate_mutation_evidence(
             snapshotted_mutation_manifest,
             snapshotted_mutation_signature,
             allowed_signers=external_allowed_signers,
@@ -4418,32 +5961,14 @@ def main() -> int:
             commit=commit,
             tree=tree,
         )
-        mutation_output = output / "mutation"
-        mutation_output.mkdir()
-        shutil.copyfile(
-            snapshotted_mutation_manifest, mutation_output / "manifest.json"
+        mutation_document = validated_mutation.document
+        retained_mutation_artifacts = retain_validated_mutation_evidence(
+            validated_mutation,
+            output=output,
         )
-        shutil.copyfile(
-            snapshotted_mutation_signature,
-            mutation_output / "manifest.json.sig",
-        )
-        retained_mutation_artifacts = []
-        for source in mutation_artifacts:
-            source_relative = source.relative_to(mutation_snapshot)
-            target_artifact = mutation_output / source_relative
-            target_artifact.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, target_artifact)
-            artifact_digest, artifact_size = digest_file(target_artifact)
-            retained_mutation_artifacts.append(
-                {
-                    "path": target_artifact.relative_to(output).as_posix(),
-                    "sha256": artifact_digest,
-                    "size_bytes": artifact_size,
-                }
-            )
         mutation_record = {
             "manifest": "mutation/manifest.json",
-            "manifest_sha256": digest_file(mutation_output / "manifest.json")[0],
+            "manifest_sha256": validated_mutation.manifest.capture.sha256,
             "signature": "mutation/manifest.json.sig",
             "candidate": mutation_document["candidate"],
             "baseline_commit": mutation_document["baseline_commit"],
@@ -4453,17 +5978,13 @@ def main() -> int:
             "status": "PASS",
             "artifacts": retained_mutation_artifacts,
         }
-
-        environment = build_qualification_environment(
-            os.environ,
-            private_root=temporary_root,
-            target=target,
-            source_date_epoch=source_date_epoch,
-        )
         advisory_source_path = advisory_db_source.resolve()
         advisory_source_snapshot = repository_control_snapshot(advisory_source_path)
         advisory_database, advisory_database_paths = install_pinned_advisory_database(
-            advisory_source_path, Path(environment["CARGO_HOME"])
+            advisory_source_path,
+            Path(environment["CARGO_HOME"]),
+            environment=environment,
+            git_executable=candidate_git,
         )
         comparison_root = temporary_root / "reproducibility"
         sandbox_writable_paths = tuple(
@@ -4480,6 +6001,7 @@ def main() -> int:
             for path in (
                 *advisory_database_paths,
                 external_allowed_signers,
+                evidence_runner_root,
             )
         )
         host_home = Path.home().resolve()
@@ -4560,6 +6082,7 @@ def main() -> int:
             "temporary_directory": environment["TMPDIR"],
             "source_inventory": str(inventory.resolve()),
             "candidate_evidence": str(evidence_output.resolve()),
+            "candidate_evidence_runner_root": str(evidence_runner_root.resolve()),
             "reproducibility_root": str(comparison_root.resolve()),
             "advisory_source_denied_read": str(advisory_source_path),
             "advisory_databases": [str(path) for path in advisory_database_paths],
@@ -4586,7 +6109,10 @@ def main() -> int:
                 dependency_fetch_probe_paths[1].resolve(strict=True)
             ),
         }
-        tool_files_before = qualification_tool_files(environment)
+        tool_files_before = qualification_tool_files(
+            environment,
+            sandbox_profile=sandbox_profile,
+        )
         reject_cargo_configuration(worktree, Path(environment["CARGO_HOME"]))
         command_specs = [
             CommandSpec(
@@ -4637,40 +6163,43 @@ def main() -> int:
                     str(inventory / "CLAIM_LANGUAGE.json"),
                 ),
             ),
-            *BASE_COMMANDS,
+            *qualification_base_commands(external_allowed_signers),
         ]
         evidence_config: Path | None = None
         if not arguments.skip_evidence:
             evidence_config = Path(arguments.evidence_config)
-            if evidence_config.is_absolute() or ".." in evidence_config.parts:
-                raise ReviewError("--evidence-config must be a contained relative path")
-            command_specs.append(
-                CommandSpec(
-                    "candidate-evidence",
-                    (
-                        "cargo",
-                        "run",
-                        "--release",
-                        "--locked",
-                        "-p",
-                        "galadriel-eval",
-                        "--bin",
-                        "galadriel-evidence",
-                        "--",
-                        "--config",
-                        evidence_config.as_posix(),
-                        "--out",
-                        str(evidence_output),
-                    ),
-                    timeout_seconds=7_200,
+            canonical_relative_parts(
+                evidence_config.as_posix(),
+                label="candidate evidence configuration path",
+            )
+            command_specs.extend(
+                candidate_evidence_command_specs(
+                    target_directory=Path(environment["CARGO_TARGET_DIR"]),
+                    runner_executable=evidence_runner,
+                    evidence_config=evidence_config.as_posix(),
+                    evidence_output=evidence_output.resolve(),
                 )
             )
         if arguments.deep:
             command_specs.extend(DEEP_COMMANDS)
 
+        evidence_runner_identity: dict[str, Any] | None = None
         for index, spec in enumerate(command_specs, 1):
             if not network_command_preconditions_met(spec, results):
                 break
+            if spec.name == "candidate-evidence":
+                if (
+                    not results
+                    or results[-1].get("name") != "candidate-evidence-build"
+                    or results[-1].get("status") != "PASS"
+                ):
+                    break
+                evidence_runner_identity = snapshot_candidate_executable(
+                    Path(environment["CARGO_TARGET_DIR"])
+                    / "release"
+                    / CANDIDATE_EVIDENCE_RUNNER,
+                    evidence_runner,
+                )
             result = run_command(
                 spec,
                 worktree=worktree,
@@ -4684,6 +6213,15 @@ def main() -> int:
                 index=index,
             )
             results.append(result)
+            if spec.name == "candidate-evidence":
+                subject = result.get("subject_executable")
+                if subject != {
+                    "status": "UNCHANGED",
+                    "identity": evidence_runner_identity,
+                }:
+                    raise ReviewError(
+                        "candidate evidence receipt lacks the exact runner identity"
+                    )
             if result["status"] != "PASS" and not arguments.keep_going:
                 break
 
@@ -4695,40 +6233,47 @@ def main() -> int:
         )
         acceptance: dict[str, Any] | None = None
         config_binding: dict[str, Any] | None = None
+        evidence_validation: dict[str, Any] | None = None
         if command_status == "PASS" and not arguments.skip_evidence:
             assert evidence_config is not None
-            retained_evidence = retain_candidate_evidence(evidence_output, output)
+            if evidence_runner_identity is None:
+                raise ReviewError("candidate evidence runner identity is missing")
+            retain_candidate_evidence(evidence_output, output)
             tracked_config_bytes = read_bounded_regular_file(
                 worktree / evidence_config,
                 max_bytes=MAX_EVIDENCE_DOCUMENT_BYTES,
                 label="tracked candidate evidence config",
             )
-            config_binding = validate_evidence_config_bytes(
-                tracked_config_bytes,
-                retained_evidence["config.json"],
-                retained_evidence["manifest.json"],
-                tracked_relative_path=evidence_config.as_posix(),
+            rustc_verbose = capture(
+                ["rustc", "-Vv"],
+                worktree,
+                environment=environment,
+                sandbox_profile=sandbox_profile,
             )
-            try:
-                summary = decode_candidate_evidence_json(
-                    retained_evidence["summary.json"],
-                    "candidate evidence summary",
+            cargo_version = capture(
+                ["cargo", "--version"],
+                worktree,
+                environment=environment,
+                sandbox_profile=sandbox_profile,
+            )
+            validated_evidence, evidence_validation = (
+                validate_retained_candidate_evidence(
+                    evidence_output,
+                    commit=commit,
+                    tree=tree,
+                    tracked_config_path=evidence_config.as_posix(),
+                    tracked_config_bytes=tracked_config_bytes,
+                    workspace_manifest_sha256=digest_file(
+                        worktree / "Cargo.toml"
+                    )[0],
+                    cargo_lock_sha256=digest_file(worktree / "Cargo.lock")[0],
+                    runner_identity=evidence_runner_identity,
+                    rustc_verbose=rustc_verbose,
+                    cargo_version=cargo_version,
                 )
-                accepted_config = decode_candidate_evidence_json(
-                    retained_evidence["config.json"],
-                    "accepted candidate evidence config",
-                )
-                acceptance = evaluate_acceptance(summary, accepted_config)
-            except ReviewError as error:
-                acceptance = {
-                    "schema": "galadriel.candidate-acceptance.v1",
-                    "release": VERSION,
-                    "partition": "holdout_results",
-                    "status": "FAIL",
-                    "failed_criterion_ids": [],
-                    "evaluation_error": str(error),
-                    "criteria": [],
-                }
+            )
+            config_binding = validated_evidence.config_binding
+            acceptance = validated_evidence.acceptance
             (output / "candidate-acceptance.json").write_bytes(
                 canonical_json(acceptance)
             )
@@ -4814,6 +6359,7 @@ def main() -> int:
                 output / f"galadriel-{VERSION}.tar.gz",
                 comparison_root,
                 environment,
+                sandbox_profile=sandbox_profile,
                 auxiliary_runner=auxiliary_runner,
             )
             packages, package_comparisons = reproducible_packages(
@@ -4825,6 +6371,7 @@ def main() -> int:
                 tree=tree,
                 sandbox_profile=sandbox_profile,
                 auxiliary_runner=auxiliary_runner,
+                git_executable=candidate_git,
             )
             reject_cargo_configuration(worktree, cargo_home)
             sboms, sbom_comparisons = collect_sboms(
@@ -4836,6 +6383,7 @@ def main() -> int:
                 comparison_root=comparison_root,
                 sandbox_profile=sandbox_profile,
                 auxiliary_runner=auxiliary_runner,
+                git_executable=candidate_git,
             )
             for sbom in sboms:
                 sbom_bytes = read_bounded_regular_file(
@@ -5017,6 +6565,18 @@ def main() -> int:
                 ["cargo", "+nightly-2026-06-16", "fuzz", "--version"]
             ),
         }
+        if evidence_validation is not None:
+            evidence_expectations = evidence_validation["expectations"]
+            cargo_identity_lines = tools["cargo"].splitlines()
+            if (
+                tools["rustc"] != evidence_expectations["rustc_verbose"]
+                or not cargo_identity_lines
+                or cargo_identity_lines[0]
+                != evidence_expectations["cargo_version"]
+            ):
+                raise ReviewError(
+                    "candidate evidence toolchain changed after validation"
+                )
         reject_cargo_configuration(worktree, Path(environment["CARGO_HOME"]))
         acceptance_status = None if acceptance is None else acceptance["status"]
         status, release_gate = qualification_outcome(
@@ -5046,7 +6606,10 @@ def main() -> int:
             verify_materialized_candidate(
                 database_path, ADVISORY_DB_COMMIT, ADVISORY_DB_TREE
             )
-        tool_files_after = qualification_tool_files(environment)
+        tool_files_after = qualification_tool_files(
+            environment,
+            sandbox_profile=sandbox_profile,
+        )
         if tool_files_after != tool_files_before:
             raise ReviewError("a qualification executable changed during the run")
         clone_control_after = repository_control_snapshot(worktree)
@@ -5123,6 +6686,7 @@ def main() -> int:
                 else acceptance["failed_criterion_ids"],
             },
             "evidence_config_binding": config_binding,
+            "candidate_evidence_validation": evidence_validation,
             "source_archive": archive,
             "cargo_metadata": cargo_metadata_record,
             "packages": packages,
@@ -5143,9 +6707,9 @@ def main() -> int:
                 "DOI/Zenodo archive, crates.io publication, or deployment-performance claim."
             ),
         }
-        if config_binding is None:
+        if config_binding is None or evidence_validation is None:
             raise ReviewError(
-                "successful qualification lacks an evidence-config binding"
+                "successful qualification lacks validated candidate evidence"
             )
         write_atomic_canonical_json(output / "qualification.json", qualification)
         provenance_products = artifact_rows(
@@ -5199,9 +6763,9 @@ def main() -> int:
                     "sha256": config_binding["tracked_blob_sha256"],
                 },
                 "mutation_manifest_sha256": mutation_record["manifest_sha256"],
-                "mutation_signature_sha256": digest_file(
-                    mutation_output / "manifest.json.sig"
-                )[0],
+                "mutation_signature_sha256": (
+                    validated_mutation.signature.capture.sha256
+                ),
                 "independent_allowed_signers_sha256": hashlib.sha256(
                     expected_signer_metadata
                 ).hexdigest(),
@@ -5277,6 +6841,10 @@ def main() -> int:
             )
         return 2
     finally:
+        if tool_dispatch_directory is not None:
+            release_qualification_tool_dispatch(tool_dispatch_directory)
+        if tool_dispatch_temporary is not None:
+            tool_dispatch_temporary.cleanup()
         if temporary is not None:
             temporary.cleanup()
 

@@ -19,6 +19,7 @@ from common import (
     canonical_json,
     contained_path,
     git,
+    read_rooted_regular_file,
 )
 from release_assurance import (
     AUTHOR,
@@ -80,16 +81,20 @@ class ArtifactBudget:
     ) -> Path:
         """Read one contained artifact once and write an exclusive snapshot."""
 
-        source = contained_path(source_root, relative)
-        document = read_artifact(source, max_bytes=max_bytes, label=label)
-        self.total += len(document)
+        capture = read_rooted_regular_file(
+            source_root,
+            relative,
+            max_bytes=max_bytes,
+            label=label,
+        )
+        self.total += capture.size_bytes
         if self.total > self.maximum:
             raise ReviewError(
                 f"mutation inputs exceed the {self.maximum}-byte aggregate bound"
             )
         destination = contained_path(destination_root, relative)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        write_new_file(destination, document, label=f"{label} snapshot")
+        write_new_file(destination, capture.data, label=f"{label} snapshot")
         return destination
 
 
@@ -693,7 +698,7 @@ def main() -> int:
                 allowed_signers,
                 "galadriel-mutation-evidence",
             )
-            _validated_manifest, validated_artifacts = validate_mutation_evidence(
+            validated_evidence = validate_mutation_evidence(
                 manifest_path,
                 signature_path,
                 allowed_signers=allowed_signers,
@@ -704,10 +709,7 @@ def main() -> int:
             expected_output_files = {
                 manifest_path.relative_to(output).as_posix(),
                 signature_path.relative_to(output).as_posix(),
-                *(
-                    artifact.relative_to(output).as_posix()
-                    for artifact in validated_artifacts
-                ),
+                *(artifact.relative for artifact in validated_evidence.artifacts),
             }
             observed_output_files: set[str] = set()
             for path in output.rglob("*"):

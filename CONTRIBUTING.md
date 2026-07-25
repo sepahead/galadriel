@@ -5,49 +5,64 @@
 | Short form | Meaning |
 |---|---|
 | AI | artificial intelligence |
+| CLI | command-line interface |
+| JSONL | JavaScript Object Notation Lines |
 | MSRV | minimum supported Rust version |
+| NCP | Neuro-Cybernetic Protocol |
 | NIS | normalized innovation squared |
 | PID | partial information decomposition |
 
 Thank you for your interest. Galadriel is **Galadriel's Mirror**.
-It is an information-theoretic monitor for cross-sensor statistical consistency in multi-sensor fusion.
+It is a statistical consistency monitor for multi-sensor fusion.
+It also provides optional information-theoretic research methods.
 It is part of the [`sepahead`](https://github.com/sepahead) ecosystem.
 It consumes accepted `(track, modality, frame)` innovation records (`PidObservation`).
+
 Version 0.9.0 is a review-gated GitHub research source release.
 
-The bundled historical Crebain fixture supports contract and baseline smoke tests.
+The bundled historical Crebain fixture supports bounded parsing and basic NIS baseline checks.
 It is not a valid source of cross-modal correlation or PID evidence.
 The repository implements and tests its local consumer and receiver boundaries.
-An external producer must conform to the producer contract.
+An external producer MUST conform to the producer contract.
 No accepted recorded study establishes field performance, calibration, deployed validity, or cross-repository qualification.
 
 ## Ground rules
 
-- **Keep the baseline honest.** Use the low-cost NIS χ² detector in `galadriel-core` as the baseline.
+- **Preserve the baseline.** Use the low-cost NIS χ² detector in `galadriel-core` as the baseline.
   A more complex optional method needs a registered estimand.
-  Evidence must show that the method adds information unavailable to a less complex statistic.
+  Evidence MUST show that the method adds information unavailable to a less complex statistic.
   A synthetic point estimate is not sufficient.
 - **Fail closed.** Invalid input or configuration returns `Err(...)`.
   Missing, stale, incomparable, or statistically insufficient evidence produces `InsufficientEvidence`.
   Such evidence never silently produces `Nominal`.
-- **Preserve the estimand.** Cross-channel samples must share one track and an exact sequence.
-  They must also share a coordinate frame and a frozen pre-update prior.
-  Do not align unequal streams by ordinal position. Do not mix tracks.
+- **Preserve the estimand.** Cross-channel samples MUST share one track and an exact sequence.
+  They MUST also share a coordinate frame and a frozen pre-update prior.
+  Do not align unequal streams by ordinal position.
+  Do not mix tracks.
+- **Preserve assessment scope.** Every accepted whole-stream assessment MUST bind
+  its producer, session, epoch, stream, state generation, terminal sequence,
+  terminal timestamp, and clock domain.
+  The NCP lifecycle adapter MUST derive this scope from the validated producer
+  and exact admitted position.
+  Raw JSONL input lacks this complete scope.
+  Keep raw replay diagnostic-only.
+  Do not invent provenance labels.
+  Treat assessment and receipt digests as integrity checks, not authentication.
 - **Treat missingness as evidence.** Association misses, gate misses, and rejected updates are censored observations.
   They are not random gaps.
-  All-modal silence requires an external heartbeat because a detector cannot infer time from absent calls.
+  All-modal silence requires a separate producer heartbeat because a detector cannot infer time from absent calls.
 - **Keep the output advisory.** Galadriel reports evidence only.
   It does not down-weight, recommend, authorize, or veto a control path.
-  A downstream restrict-only policy is a separately reviewed consumer concern.
+  A downstream restrict-only policy requires separate admission.
   Preserve the `calibrated_posterior = false` semantics.
-- **Keep the default build small.** The default workspace build has no heavy dependencies.
+- **Keep the default build small.** The default CLI build excludes optional integration dependencies.
   The off-by-default `pid` feature adds `pid-core`.
   The off-by-default `ncp` feature adds `ncp-core`.
   The `ncp-live` feature also adds `ncp-zenoh`, Zenoh, and Tokio.
 
   Do not enable these features by default.
   Do not add Zenoh or Tokio to the default graph.
-- **Safe Rust.** Workspace lint policy forbids unsafe code in every target.
+- **Forbid unsafe code.** The workspace lint policy forbids unsafe code in every Rust target.
 
 ## Focused local checks
 
@@ -76,7 +91,8 @@ A change to `publish = false` is a release decision, not a routine metadata edit
 
 ## Commit and pull request hygiene
 
-- Make small, focused commits. Use imperative subjects.
+- Make small, focused commits.
+- Use imperative commit subjects.
 - Do **not** add AI assistants or agents as commit or pull request co-authors.
 - Do not add "Generated with …" trailers.
 

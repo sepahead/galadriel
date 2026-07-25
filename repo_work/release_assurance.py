@@ -9,31 +9,43 @@ from __future__ import annotations
 import base64
 import csv
 import hashlib
+import io
 import json
 import math
 import os
 import re
 import shlex
+import stat
+import struct
 import tempfile
 from collections import Counter
+from decimal import Decimal, localcontext
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
 from common import (
     BoundedHostResult as BoundedHostResult,
+    RootedFileCapture,
+    RootedFileCaptureRequest,
+    RootedFileDigestRequest,
     SAFE_GIT_CONFIGURATION,
     ReviewError,
     assert_no_replace_refs,
-    contained_path,
+    canonical_relative_parts,
+    digest_rooted_regular_file,
+    digest_rooted_regular_files,
+    digest_rooted_tree,
     git,
     git_bounded_output,
-    load_json,
     loads_json,
     read_bounded_regular_file,
+    read_rooted_regular_file,
+    read_rooted_regular_files,
     run_bounded_host_command,
     safe_git_environment,
     sanitized_host_environment as sanitized_host_environment,
+    trusted_host_executable_path,
     validate_json_structure,
 )
 
@@ -48,6 +60,70 @@ SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 MAX_EVIDENCE_DOCUMENT_BYTES = 64 * 1024 * 1024
 MAX_EVIDENCE_JSON_DEPTH = 256
 MAX_EVIDENCE_JSON_NODES = 2_000_000
+MAX_EVIDENCE_TRIAL_LINE_BYTES = 4 * 1024 * 1024
+MAX_EVIDENCE_TRIAL_RECORDS = 10_000
+MAX_CANDIDATE_EVIDENCE_FILE_BYTES = 1024 * 1024 * 1024
+MAX_CANDIDATE_EVIDENCE_BYTES = 4 * 1024 * 1024 * 1024
+EVIDENCE_FILES = (
+    "SHA256SUMS",
+    "config.json",
+    "manifest.json",
+    "report.md",
+    "summary.json",
+    "trials.jsonl",
+)
+EVIDENCE_CHECKSUM_FILES = EVIDENCE_FILES[1:]
+EVIDENCE_TRIAL_SCHEMA = "galadriel.evidence.trial.v3"
+EVIDENCE_SUMMARY_SCHEMA = "galadriel.evidence.summary.v3"
+EVIDENCE_MANIFEST_SCHEMA = "galadriel.evidence.manifest.v3"
+EVIDENCE_GENERATOR_PROFILE = "galadriel-evidence-synthetic-generator-v3"
+EVIDENCE_REPLAY_PROFILE = "verified-recorded-fixture-replay-v1"
+EVIDENCE_MISSINGNESS_PROFILE = "deterministic-independent-bernoulli-acoustic-v1"
+EVIDENCE_ACCEPTANCE_PROFILE = "galadriel-0.9-frozen-acceptance-metrics-v3"
+EVIDENCE_BOOTSTRAP_PROFILE = "splitmix64-rejection-group-metric-v1"
+EVIDENCE_ACCEPTED_PROFILE = "galadriel-evidence/custom-v0.9"
+EVIDENCE_CONFIG_DOMAIN = b"galadriel-evidence-config-v0.9\0"
+EVIDENCE_SOURCE_CONFIG_SHA256 = (
+    "2eb3018c7aed325c5cefd03b8b1d3ab0db9ece3c8cbe798d80bc0746aec74092"
+)
+EVIDENCE_FIXTURE_PATH = "crates/galadriel-ncp/tests/fixtures/crebain_clean_capture.jsonl"
+EVIDENCE_FIXTURE_SHA256 = (
+    "154b2b6534659500bc8ef99b53f482692d01f4b3f65d6d52a1e890796eea643c"
+)
+EVIDENCE_FIXTURE_BYTES = 184_195
+EVIDENCE_RELEASE_SUITE_IDENTITY = (
+    "c8c0beec29b6f513921c20c5c215f4dd1877992a6a5dab3b97b540ce832fc881"
+)
+EVIDENCE_SCOPE = (
+    "streaming normalized innovation squared (NIS) baseline",
+    "streaming default signed-correlation fusion over producer-attested projections",
+    (
+        "partial information decomposition (PID) excluded because this revision has only a "
+        "terminal replay assessment"
+    ),
+)
+EVIDENCE_DIRECT_CONFIG_FIELDS = {
+    "schema_version",
+    "study_id",
+    "base_seed",
+    "calibration_tracks",
+    "holdout_tracks",
+    "frames",
+    "dt_ms",
+    "assessment_step",
+    "alert_episode_reset_policy",
+    "attack_onset_frame",
+    "mission_frames",
+    "rho",
+    "sigma",
+    "loud_bias_sigma",
+    "ordinary_missing_probability",
+    "autocorrelation_phis",
+    "covariance_scales",
+    "bootstrap_resamples",
+    "min_metric_eligible_tracks",
+    "min_recorded_duration_ms",
+}
 MAX_CANDIDATE_TREE_LISTING_BYTES = 64 * 1024 * 1024
 MAX_CANDIDATE_TREE_ENTRIES = 100_000
 MAX_CANDIDATE_PATH_BYTES = 4 * 1024
@@ -100,7 +176,7 @@ MUTATION_PATH_TOOLS = (
     "pkg-config",
 )
 MUTATION_ENVIRONMENT_CONTRACT = {
-    "schema": "galadriel.mutation-environment.v1",
+    "schema": "galadriel.mutation-environment.v2",
     "base_keys": [
         "CARGO_HOME",
         "CARGO_INCREMENTAL",
@@ -138,6 +214,16 @@ MUTATION_ENVIRONMENT_CONTRACT = {
         "TZ": "UTC",
     },
     "source_date_epoch": "CANDIDATE_COMMIT_TIME",
+    "process_containment": {
+        "mode": "LINUX_CANDIDATE_TREE",
+        "launch_gate": "STOP_BEFORE_EXEC",
+        "platform": "LINUX_PROCFS_PIDFD_CHILD_SUBREAPER",
+        "subreaper_ownership": "SERIALIZED_PROCESS_LOCAL",
+        "root_reap": "AFTER_CANDIDATE_TREE_EXTINCTION",
+        "unsupported_platform": "FAIL_BEFORE_SPAWN",
+        "uninterruptible_process": "FAIL_CLOSED",
+        "isolation_scope": "NOT_CGROUP_CONTAINER_OR_DEPLOYMENT_ISOLATION",
+    },
 }
 # Keep the focused name as a compatibility alias for callers that use the
 # narrower receipt vocabulary.
@@ -154,6 +240,18 @@ MAX_MUTATION_RECEIPT_BYTES = 1 * 1024 * 1024
 MAX_MUTATION_OUTCOMES_BYTES = 32 * 1024 * 1024
 MAX_MUTATION_DIFF_BYTES = 128 * 1024 * 1024
 MAX_MUTATION_EVIDENCE_BYTES = 512 * 1024 * 1024
+MAX_FILE_LEDGER_BYTES = 64 * 1024 * 1024
+MAX_FILE_LEDGER_ROWS = 100_000
+MAX_FILE_LEDGER_CELL_BYTES = 1024 * 1024
+MAX_TIER_MANIFEST_BYTES = 64 * 1024 * 1024
+MAX_TIER_ARTIFACTS = 32_768
+MAX_TIER_ARTIFACT_BYTES = 1024 * 1024 * 1024
+MAX_TIER_AGGREGATE_BYTES = 8 * 1024 * 1024 * 1024
+MAX_TIER_CONTROL_BYTES = 256 * 1024 * 1024
+MAX_TIER_TREE_ENTRIES = MAX_TIER_ARTIFACTS + 256
+MAX_TIER_PATH_DEPTH = 128
+MAX_TIER_PATH_BYTES = 4 * 1024
+MAX_TIER_PATH_COMPONENT_BYTES = 255
 BROAD_MUTATION_SHARDS = ("0/4", "1/4", "2/4", "3/4")
 # The exact-candidate runner supplies one absolute CARGO_TARGET_DIR.
 # One worker prevents concurrent mutant copies from sharing build artifacts.
@@ -775,6 +873,82 @@ def bounded_digest_file(path: Path, *, max_bytes: int, context: str) -> tuple[st
     return sha256_bytes(document), len(document)
 
 
+class MutationArtifactCapture(NamedTuple):
+    """One canonical mutation artifact and its descriptor-rooted byte capture."""
+
+    path: Path
+    relative: str
+    capture: RootedFileCapture
+
+
+class ValidatedMutationEvidence(NamedTuple):
+    """One validated mutation manifest, signature, and retained artifact set."""
+
+    document: dict[str, Any]
+    manifest: MutationArtifactCapture
+    signature: MutationArtifactCapture
+    artifacts: tuple[MutationArtifactCapture, ...]
+
+
+def _mutation_artifact_path(root: Path, relative: str, *, context: str) -> Path:
+    """Return one canonical lexical artifact path without following it."""
+
+    parts = canonical_relative_parts(relative, label=f"{context} path")
+    absolute_root = Path(os.path.abspath(os.fspath(root.expanduser())))
+    return absolute_root.joinpath(*parts)
+
+
+def _capture_mutation_artifact(
+    root: Path,
+    relative: str,
+    *,
+    max_bytes: int,
+    context: str,
+    expected_size: int | None = None,
+) -> MutationArtifactCapture:
+    """Capture one canonical mutation artifact from its declared root."""
+
+    path = _mutation_artifact_path(root, relative, context=context)
+    if expected_size is not None and expected_size > max_bytes:
+        raise ReviewError(f"{context} exceeds its byte limit")
+    capture = read_rooted_regular_file(
+        root,
+        relative,
+        max_bytes=max_bytes,
+        expected_size=expected_size,
+        label=context,
+    )
+    return MutationArtifactCapture(
+        path,
+        relative,
+        capture,
+    )
+
+
+def _load_mutation_json(
+    document: bytes,
+    *,
+    max_depth: int,
+    max_nodes: int,
+    label: str,
+) -> Any:
+    """Decode and bound one JSON document from an authenticated byte capture."""
+
+    try:
+        value = loads_json(document)
+        validate_json_structure(
+            value,
+            max_depth=max_depth,
+            max_nodes=max_nodes,
+            label=label,
+        )
+        return value
+    except ReviewError:
+        raise
+    except (OSError, UnicodeError, ValueError, RecursionError, MemoryError) as error:
+        raise ReviewError(f"cannot load {label}: {error}") from error
+
+
 def require_keys(value: Any, expected: set[str], context: str) -> None:
     if not isinstance(value, dict):
         raise ReviewError(f"{context} must be an object")
@@ -1069,6 +1243,7 @@ def verify_candidate_commit(repo: Path, commit: str, allowed_signers: Path) -> s
     with tempfile.TemporaryDirectory(prefix="galadriel-commit-verification-") as name:
         allowed_signers_snapshot = Path(name) / "allowed-signers"
         snapshot_independent_allowed_signers(allowed_signers, allowed_signers_snapshot)
+        ssh_keygen = trusted_host_executable_path("ssh-keygen")
         process = run_bounded_host_command(
             [
                 "git",
@@ -1081,11 +1256,14 @@ def verify_candidate_commit(repo: Path, commit: str, allowed_signers: Path) -> s
                 "gpg.format=ssh",
                 "-c",
                 f"gpg.ssh.allowedSignersFile={allowed_signers_snapshot}",
+                "-c",
+                f"gpg.ssh.program={ssh_keygen}",
                 "verify-commit",
                 commit,
             ],
             context="candidate commit signature verification",
             environment=safe_git_environment(),
+            trusted_auxiliary_executables=("ssh-keygen",),
         )
     if process.returncode != 0:
         raise ReviewError(
@@ -1663,6 +1841,115 @@ def _bounded_evidence_object(payload: bytes, label: str) -> dict[str, Any]:
     return value
 
 
+def _require_exact_json_value(supplied: Any, expected: Any, label: str) -> None:
+    """Require recursive JSON equality without Boolean or numeric coercion."""
+
+    if isinstance(expected, dict):
+        if not isinstance(supplied, dict) or set(supplied) != set(expected):
+            raise ReviewError(f"{label} has another object field set")
+        for key, value in expected.items():
+            _require_exact_json_value(supplied[key], value, f"{label}.{key}")
+        return
+    if isinstance(expected, list):
+        if not isinstance(supplied, list) or len(supplied) != len(expected):
+            raise ReviewError(f"{label} has another list shape")
+        for index, value in enumerate(expected):
+            _require_exact_json_value(supplied[index], value, f"{label}[{index}]")
+        return
+    if isinstance(expected, float):
+        if type(supplied) is not float or _float_bits(supplied) != _float_bits(expected):
+            raise ReviewError(f"{label} has another binary64 value")
+        return
+    if type(supplied) is not type(expected) or supplied != expected:
+        raise ReviewError(f"{label} has another JSON value")
+
+
+def _accepted_evidence_config_from_source(source: dict[str, Any]) -> dict[str, Any]:
+    """Derive the exact accepted v0.9 evidence configuration object."""
+
+    seed_text = source["base_seed"]
+    seed = int(seed_text)
+    expected = {
+        **{field: source[field] for field in EVIDENCE_DIRECT_CONFIG_FIELDS},
+        "accepted_profile": EVIDENCE_ACCEPTED_PROFILE,
+        "base_seed": seed_text,
+        "base_seed_decimal": seed_text,
+        "base_seed_hex": f"0x{seed:016x}",
+        "canonical_digest": None,
+        "classification": "custom_research_evidence",
+        "detector": {
+            "accepted_profile": "custom_evidence_input",
+            **source["detector"],
+        },
+        "correlation": {
+            "accepted_profile": "custom_evidence_input",
+            "axis_family_count": 1,
+            **source["correlation"],
+        },
+        "recorded_fixture": {
+            **source["recorded_fixture"],
+            "bytes": EVIDENCE_FIXTURE_BYTES,
+        },
+        "runner_contract": {
+            "trial_schema": EVIDENCE_TRIAL_SCHEMA,
+            "summary_schema": EVIDENCE_SUMMARY_SCHEMA,
+            "manifest_schema": EVIDENCE_MANIFEST_SCHEMA,
+            "generator_profile": EVIDENCE_GENERATOR_PROFILE,
+            "recorded_replay_profile": EVIDENCE_REPLAY_PROFILE,
+            "missingness_profile": EVIDENCE_MISSINGNESS_PROFILE,
+            "acceptance_metric_profile": EVIDENCE_ACCEPTANCE_PROFILE,
+            "bootstrap_profile": EVIDENCE_BOOTSTRAP_PROFILE,
+            "delay_p95_definition": "nearest_rank_empirical_p95_milliseconds",
+            "attribution_error_definition": (
+                "wrong_first_emitted_attribution_after_onset_over_emitted_attributions"
+            ),
+        },
+        "release_suite": {
+            "accepted_profile": "custom_evidence_input",
+            "identity": EVIDENCE_RELEASE_SUITE_IDENTITY,
+            "expected_modalities": ["visual", "acoustic", "radar"],
+            "axis_policy": "attested_common_projection_bonferroni_v1",
+            "lifecycle_sample_units": 393_216,
+            "state_bytes": 9_538_560,
+        },
+        "preflight_estimate": {
+            "synthetic_tracks": 980,
+            "synthetic_trial_records": 1_960,
+            "generated_observations": 10_584_000,
+            "trace_assessments": 705_600,
+            "correlation_sample_products": 406_425_600,
+            "bootstrap_track_draws": 15_680_000,
+            "maximum_synthetic_generation_resets": 216_000,
+        },
+        "recorded_preflight_estimate": {
+            "tracks": 1,
+            "trial_records": 2,
+            "observations": 476,
+            "trace_assessments": 32,
+            "correlation_sample_products": 18_432,
+            "maximum_generation_resets": 158,
+        },
+        "resource_ceilings": {
+            "generated_observations": 25_000_000,
+            "correlation_sample_products": 500_000_000,
+            "trace_assessments": 2_000_000,
+            "bootstrap_track_draws": 50_000_000,
+            "synthetic_generation_resets": 1_000_000,
+        },
+    }
+    digest_bytes = json.dumps(
+        expected,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    expected["canonical_digest"] = hashlib.sha256(
+        EVIDENCE_CONFIG_DOMAIN + digest_bytes
+    ).hexdigest()
+    return expected
+
+
 def validate_evidence_config_bytes(
     tracked_config_bytes: bytes,
     accepted_config_bytes: bytes,
@@ -1670,7 +1957,7 @@ def validate_evidence_config_bytes(
     *,
     tracked_relative_path: str,
 ) -> dict[str, Any]:
-    """Bind retained evidence bytes to the preregistered candidate config."""
+    """Bind the complete accepted configuration to the preregistered input."""
 
     source = _bounded_evidence_object(
         tracked_config_bytes,
@@ -1687,6 +1974,8 @@ def validate_evidence_config_bytes(
     source_sha = hashlib.sha256(tracked_config_bytes).hexdigest()
     source_size = len(tracked_config_bytes)
     accepted_sha = hashlib.sha256(accepted_config_bytes).hexdigest()
+    if source_sha != EVIDENCE_SOURCE_CONFIG_SHA256:
+        raise ReviewError("tracked candidate evidence config is not the frozen input")
     inputs = manifest.get("inputs")
     if not isinstance(inputs, dict):
         raise ReviewError("candidate evidence manifest lacks input provenance")
@@ -1696,55 +1985,47 @@ def validate_evidence_config_bytes(
         raise ReviewError("candidate evidence source-config blob digest mismatch")
     if inputs.get("canonical_config_sha256") != accepted_sha:
         raise ReviewError("candidate evidence accepted-config byte digest mismatch")
-    canonical_digest = accepted.get("canonical_digest")
-    if (
-        not isinstance(canonical_digest, str)
-        or not SHA256.fullmatch(canonical_digest)
-        or manifest.get("accepted_config_digest") != canonical_digest
-    ):
-        raise ReviewError("candidate evidence semantic config digest mismatch")
-
-    direct_fields = {
-        "schema_version",
-        "study_id",
-        "base_seed",
-        "calibration_tracks",
-        "holdout_tracks",
-        "frames",
-        "dt_ms",
-        "assessment_step",
-        "alert_episode_reset_policy",
-        "attack_onset_frame",
-        "mission_frames",
-        "rho",
-        "sigma",
-        "loud_bias_sigma",
-        "ordinary_missing_probability",
-        "autocorrelation_phis",
-        "covariance_scales",
-        "bootstrap_resamples",
-        "min_metric_eligible_tracks",
-        "min_recorded_duration_ms",
-    }
-    if set(source) != direct_fields | {"detector", "correlation", "recorded_fixture"}:
+    if set(source) != EVIDENCE_DIRECT_CONFIG_FIELDS | {
+        "detector",
+        "correlation",
+        "recorded_fixture",
+    }:
         raise ReviewError(
             "tracked candidate evidence config has an unexpected field set"
         )
-    for field in sorted(direct_fields):
-        if accepted.get(field) != source[field]:
-            raise ReviewError(f"accepted candidate evidence config drifted in {field}")
-    for section in ("detector", "correlation", "recorded_fixture"):
-        accepted_section = accepted.get(section)
-        source_section = source[section]
-        if not isinstance(accepted_section, dict) or not isinstance(
-            source_section, dict
-        ):
-            raise ReviewError(f"candidate evidence {section} config is malformed")
-        for field, expected in source_section.items():
-            if accepted_section.get(field) != expected:
-                raise ReviewError(
-                    f"accepted candidate evidence config drifted in {section}.{field}"
-                )
+    require_keys(
+        source.get("detector"),
+        {
+            "window_len",
+            "min_samples",
+            "min_channels",
+            "max_seq_gap",
+            "max_timestamp_skew_ms",
+            "max_inter_sample_gap_ms",
+            "max_tracks",
+            "nis_alpha",
+            "cusum_slack",
+            "cusum_threshold",
+            "jam_fraction",
+        },
+        "tracked candidate detector config",
+    )
+    require_keys(
+        source.get("correlation"),
+        {
+            "window",
+            "min_samples",
+            "decouple_ratio",
+            "corr_floor",
+            "family_alpha",
+        },
+        "tracked candidate correlation config",
+    )
+    require_keys(
+        source.get("recorded_fixture"),
+        {"path", "sha256"},
+        "tracked candidate fixture config",
+    )
 
     minimums = {
         "calibration_tracks": 20,
@@ -1770,6 +2051,27 @@ def validate_evidence_config_bytes(
     for field, expected in exact_design.items():
         if source[field] != expected:
             raise ReviewError(f"candidate evidence design drifted in {field}")
+
+    seed_text = source.get("base_seed")
+    if not isinstance(seed_text, str) or not seed_text.isascii() or not seed_text.isdigit():
+        raise ReviewError("tracked candidate base seed is not exact decimal text")
+    seed = int(seed_text)
+    if seed > 2**64 - 1:
+        raise ReviewError("tracked candidate base seed exceeds u64")
+    expected_accepted = _accepted_evidence_config_from_source(source)
+    canonical_digest = expected_accepted["canonical_digest"]
+    try:
+        _require_exact_json_value(
+            accepted,
+            expected_accepted,
+            "accepted candidate evidence config",
+        )
+    except ReviewError as error:
+        raise ReviewError(
+            "accepted candidate evidence config is not the exact derived object"
+        ) from error
+    if manifest.get("accepted_config_digest") != canonical_digest:
+        raise ReviewError("candidate evidence semantic config digest mismatch")
     return {
         "tracked_path": tracked_relative_path,
         "tracked_blob_sha256": source_sha,
@@ -1808,6 +2110,2351 @@ def validate_evidence_config_binding(
         accepted_config_bytes,
         evidence_manifest_bytes,
         tracked_relative_path=tracked_relative_path,
+    )
+
+
+class CandidateEvidenceExpectations(NamedTuple):
+    """Independent identities for one candidate-evidence bundle."""
+
+    commit: str
+    tree: str
+    tracked_config_path: str
+    tracked_config_bytes: bytes
+    workspace_manifest_sha256: str
+    cargo_lock_sha256: str
+    runner_binary_sha256: str
+    rustc_verbose: str
+    cargo_version: str
+    target_os: str
+    target_arch: str
+
+
+class ValidatedCandidateEvidence(NamedTuple):
+    """Trusted semantic result from one complete evidence bundle."""
+
+    artifacts: dict[str, dict[str, Any]]
+    config_binding: dict[str, Any]
+    manifest: dict[str, Any]
+    summary: dict[str, Any]
+    acceptance: dict[str, Any]
+    semantic_sha256: str
+
+
+EVIDENCE_TRIAL_FIELDS = {
+    "schema",
+    "study_id",
+    "condition",
+    "experiment_kind",
+    "role",
+    "source",
+    "source_profile",
+    "trial_index",
+    "seed",
+    "seed_hex",
+    "track_id",
+    "track_id_hex",
+    "detector",
+    "modalities",
+    "truth",
+    "phi",
+    "covariance_scale",
+    "ordinary_missing_probability",
+    "frame_count",
+    "duration_ms",
+    "assessment_step_frames",
+    "alert_episode_reset_policy",
+    "assessments",
+    "alert_episode_count",
+    "mission_alert",
+    "first_alert_assessment",
+    "pre_onset_alert",
+    "first_post_onset_delay_frames",
+    "first_post_onset_delay_ms",
+    "attribution_emitted",
+    "attribution_correct",
+    "insufficient_assessments",
+    "rejected_input_assessments",
+    "abstention_assessments",
+    "abstention_fraction",
+    "startup_assessments",
+    "startup_abstention_assessments",
+    "startup_abstention_fraction",
+    "monitoring_assessments",
+    "monitoring_abstention_assessments",
+    "monitoring_abstention_fraction",
+    "realized_modality_counts",
+    "detector_generation_resets",
+    "consistency",
+    "evidence_status",
+    "status_reasons",
+    "alert_episodes",
+    "trace",
+}
+EVIDENCE_METRIC_NAMES = (
+    "false_alerts_per_hour",
+    "mission_probability_any_alert",
+    "arl0_assessments",
+    "arl0_censoring_fraction",
+    "abstention_fraction",
+    "any_alert_probability",
+    "pre_onset_alert_probability",
+    "conditional_detection_probability",
+    "conditional_delay_frames",
+    "conditional_delay_p95_ms",
+    "conditional_attribution_coverage",
+    "conditional_attribution_accuracy",
+    "conditional_attribution_error",
+)
+EVIDENCE_MODALITY_ORDER = {
+    "visual": 0,
+    "thermal": 1,
+    "acoustic": 2,
+    "radar": 3,
+    "lidar": 4,
+    "radio_frequency": 5,
+}
+
+
+def _evidence_integer(
+    value: Any,
+    label: str,
+    *,
+    minimum: int = 0,
+    maximum: int = 2**64 - 1,
+) -> int:
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < minimum
+        or value > maximum
+    ):
+        raise ReviewError(f"{label} is outside its integer domain")
+    return value
+
+
+def _evidence_float(value: Any, label: str) -> float:
+    if not _is_finite_f64_number(value):
+        raise ReviewError(f"{label} is not a finite binary64 value")
+    result = float(value)
+    if result == 0.0 and math.copysign(1.0, result) < 0.0:
+        raise ReviewError(f"{label} uses negative zero")
+    return result
+
+
+def _optional_integer(value: Any, label: str) -> int | None:
+    return None if value is None else _evidence_integer(value, label)
+
+
+def _optional_boolean(value: Any, label: str) -> bool | None:
+    if value is not None and not isinstance(value, bool):
+        raise ReviewError(f"{label} is not Boolean or null")
+    return value
+
+
+def _optional_float(value: Any, label: str) -> float | None:
+    return None if value is None else _evidence_float(value, label)
+
+
+def _float_bits(value: float) -> int:
+    return struct.unpack(">Q", struct.pack(">d", value))[0]
+
+
+def _same_float(left: Any, right: float) -> bool:
+    return _is_finite_f64_number(left) and _float_bits(float(left)) == _float_bits(right)
+
+
+def _fnv1a64(value: str) -> int:
+    result = 0xCBF2_9CE4_8422_2325
+    for byte in value.encode("utf-8"):
+        result = ((result ^ byte) * 0x0000_0100_0000_01B3) & 0xFFFF_FFFF_FFFF_FFFF
+    return result
+
+
+def _mix64(value: int) -> int:
+    value &= 0xFFFF_FFFF_FFFF_FFFF
+    value = ((value ^ (value >> 30)) * 0xBF58_476D_1CE4_E5B9) & 0xFFFF_FFFF_FFFF_FFFF
+    value = ((value ^ (value >> 27)) * 0x94D0_49BB_1331_11EB) & 0xFFFF_FFFF_FFFF_FFFF
+    return value ^ (value >> 31)
+
+
+def _evidence_float_id(value: float) -> str:
+    normalized = 0.0 if value == 0.0 else value
+    human = f"{normalized:.6f}".replace("-", "m").replace(".", "p")
+    return f"{human}_{_float_bits(value):016x}"
+
+
+def _synthetic_conditions(config: dict[str, Any]) -> list[dict[str, Any]]:
+    conditions: list[dict[str, Any]] = []
+    for phi in config["autocorrelation_phis"]:
+        conditions.append(
+            {
+                "condition": f"clean_autocorrelation_phi_{_evidence_float_id(phi)}",
+                "experiment_kind": "clean_autocorrelation",
+                "phi": phi,
+                "covariance_scale": 1.0,
+                "ordinary_missing_probability": 0.0,
+                "truth_class": "clean",
+                "truth_channels": [],
+                "onset_frame": None,
+                "expected_abstention": False,
+                "calibration": True,
+            }
+        )
+    for scale in config["covariance_scales"]:
+        if scale == 1.0:
+            continue
+        conditions.append(
+            {
+                "condition": f"clean_covariance_scale_{_evidence_float_id(scale)}",
+                "experiment_kind": "clean_covariance_sensitivity",
+                "phi": 0.0,
+                "covariance_scale": scale,
+                "ordinary_missing_probability": 0.0,
+                "truth_class": "clean",
+                "truth_channels": [],
+                "onset_frame": None,
+                "expected_abstention": False,
+                "calibration": True,
+            }
+        )
+    conditions.append(
+        {
+            "condition": "clean_ordinary_missingness",
+            "experiment_kind": "ordinary_missingness",
+            "phi": 0.0,
+            "covariance_scale": 1.0,
+            "ordinary_missing_probability": config["ordinary_missing_probability"],
+            "truth_class": "clean",
+            "truth_channels": [],
+            "onset_frame": None,
+            "expected_abstention": False,
+            "calibration": True,
+        }
+    )
+    conditions.extend(
+        [
+            {
+                "condition": "attack_loud_acoustic",
+                "experiment_kind": "targeted_attack",
+                "truth_class": "attributed_inconsistency",
+                "truth_channels": ["acoustic"],
+            },
+            {
+                "condition": "attack_stealthy_acoustic",
+                "experiment_kind": "targeted_attack",
+                "truth_class": "attributed_inconsistency",
+                "truth_channels": ["acoustic"],
+            },
+            {
+                "condition": "attack_broad_degradation",
+                "experiment_kind": "broad_degradation_attack",
+                "truth_class": "broad_degradation",
+                "truth_channels": [],
+            },
+            {
+                "condition": "provenance_missing_projection",
+                "experiment_kind": "provenance_abstention",
+                "truth_class": "clean_invalid_or_missing_provenance",
+                "truth_channels": [],
+                "expected_abstention": True,
+                "onset_frame": None,
+            },
+            {
+                "condition": "provenance_invalid_prior",
+                "experiment_kind": "provenance_abstention",
+                "truth_class": "clean_invalid_or_missing_provenance",
+                "truth_channels": [],
+                "expected_abstention": True,
+                "onset_frame": None,
+            },
+        ]
+    )
+    for condition in conditions:
+        condition.setdefault("phi", 0.0)
+        condition.setdefault("covariance_scale", 1.0)
+        condition.setdefault("ordinary_missing_probability", 0.0)
+        condition.setdefault("onset_frame", config["attack_onset_frame"])
+        condition.setdefault("expected_abstention", False)
+        condition.setdefault("calibration", False)
+    return conditions
+
+
+def _expected_trial_layout(config: dict[str, Any]) -> list[dict[str, Any]]:
+    layout: list[dict[str, Any]] = []
+    base_seed = int(config["base_seed"])
+    role_domains = {
+        "calibration": 0xCA11_BA7E_0000_0001,
+        "holdout": 0xC1EA_110D_0000_0002,
+    }
+    for condition in _synthetic_conditions(config):
+        roles = (
+            (("calibration", config["calibration_tracks"]), ("holdout", config["holdout_tracks"]))
+            if condition["calibration"]
+            else (("holdout", config["holdout_tracks"]),)
+        )
+        for role, count in roles:
+            for trial_index in range(count):
+                seed = _mix64(
+                    base_seed
+                    ^ _fnv1a64(condition["condition"])
+                    ^ role_domains[role]
+                    ^ ((trial_index * 0x9E37_79B9_7F4A_7C15) & 0xFFFF_FFFF_FFFF_FFFF)
+                )
+                track_id = _mix64(seed ^ 0x7A6B_1D3E_51C9_4F02) % 9_007_199_254_740_991 + 1
+                for detector in ("nis_baseline", "default_correlation_fusion"):
+                    layout.append(
+                        {
+                            **condition,
+                            "role": role,
+                            "trial_index": trial_index,
+                            "seed": seed,
+                            "track_id": track_id,
+                            "detector": detector,
+                            "source": "synthetic",
+                        }
+                    )
+    for detector in ("nis_baseline", "default_correlation_fusion"):
+        layout.append(
+            {
+                "condition": "recorded_crebain_clean",
+                "experiment_kind": "recorded_smoke",
+                "role": "recorded_holdout",
+                "trial_index": 0,
+                "seed": None,
+                "track_id": 1,
+                "detector": detector,
+                "source": "recorded",
+                "truth_class": "clean_invalid_or_missing_provenance",
+                "truth_channels": [],
+                "onset_frame": None,
+                "expected_abstention": detector == "default_correlation_fusion",
+                "phi": None,
+                "covariance_scale": None,
+                "ordinary_missing_probability": None,
+            }
+        )
+    return layout
+
+
+def _require_evidence_keys(value: Any, fields: set[str], label: str) -> dict[str, Any]:
+    """Require one exact evidence object field set."""
+
+    require_keys(value, fields, label)
+    return value
+
+
+def _evidence_string_list(
+    value: Any,
+    label: str,
+    *,
+    unique: bool = False,
+) -> list[str]:
+    """Validate one bounded list of evidence strings."""
+
+    if not isinstance(value, list) or len(value) > 10_000:
+        raise ReviewError(f"{label} is not a bounded list")
+    result: list[str] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, str) or not item or len(item.encode("utf-8")) > 4_096:
+            raise ReviewError(f"{label} item {index} is invalid")
+        result.append(item)
+    if unique and len(set(result)) != len(result):
+        raise ReviewError(f"{label} contains a duplicate value")
+    return result
+
+
+def _validate_modality_channels(value: Any, label: str) -> list[str]:
+    """Require unique modalities in stable canonical order."""
+
+    channels = _evidence_string_list(value, label, unique=True)
+    try:
+        orders = [EVIDENCE_MODALITY_ORDER[channel] for channel in channels]
+    except KeyError as error:
+        raise ReviewError(f"{label} contains an unknown modality") from error
+    if orders != sorted(orders):
+        raise ReviewError(f"{label} is not in stable modality order")
+    return channels
+
+
+def _deterministic_acoustic_missing(seed: int, frame: int, probability: float) -> bool:
+    """Replay the declared deterministic acoustic-missingness predicate."""
+
+    if probability <= 0.0:
+        return False
+    bits = _mix64(
+        seed
+        ^ ((frame * 0xD1B5_4A32_D192_ED03) & 0xFFFF_FFFF_FFFF_FFFF)
+        ^ EVIDENCE_MODALITY_ORDER["acoustic"]
+    )
+    return (bits >> 11) / float(1 << 53) < probability
+
+
+def _expected_synthetic_observation_shape(
+    expected: dict[str, Any],
+    config: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Derive modality counts and reset records without detector output."""
+
+    frames = config["frames"]
+    missing_probability = expected["ordinary_missing_probability"]
+    acoustic_present = [
+        not _deterministic_acoustic_missing(
+            expected["seed"],
+            frame,
+            missing_probability,
+        )
+        for frame in range(frames)
+    ]
+    acoustic_observations = sum(acoustic_present)
+    realized = [
+        {"modality": "visual", "observations": frames, "missing_frames": 0},
+        {"modality": "radar", "observations": frames, "missing_frames": 0},
+        {
+            "modality": "acoustic",
+            "observations": acoustic_observations,
+            "missing_frames": frames - acoustic_observations,
+        },
+    ]
+    resets: list[dict[str, Any]] = []
+    last_acoustic: int | None = None
+    for frame, present in enumerate(acoustic_present):
+        if not present:
+            continue
+        if (
+            last_acoustic is not None
+            and frame - last_acoustic > config["detector"]["max_seq_gap"]
+        ):
+            resets.append(
+                {
+                    "frame_index": frame,
+                    "seq": frame,
+                    "timestamp_ms": frame * config["dt_ms"],
+                    "reason": "sequence_or_timestamp_discontinuity",
+                }
+            )
+        last_acoustic = frame
+    return realized, resets
+
+
+def _validate_trace_label(value: Any, label: str) -> dict[str, Any]:
+    """Validate one trace label and its state semantics."""
+
+    item = _require_evidence_keys(
+        value,
+        {"state", "classification", "channels"},
+        label,
+    )
+    state = item["state"]
+    classification = item["classification"]
+    if not isinstance(state, str) or not isinstance(classification, str):
+        raise ReviewError(f"{label} state fields are invalid")
+    channels = _validate_modality_channels(item["channels"], f"{label} channels")
+    fixed = {
+        "nominal": ("nominal", []),
+        "insufficient_evidence": ("insufficient_evidence", []),
+        "rejected_input": ("invalid_consistency_input", []),
+    }
+    if state in fixed:
+        if (classification, channels) != fixed[state]:
+            raise ReviewError(f"{label} contradicts its non-alert state")
+    elif state == "alert":
+        if classification not in {
+            "attributed_inconsistency",
+            "broad_degradation",
+            "unclassified_anomaly",
+        }:
+            raise ReviewError(f"{label} has an unknown alert classification")
+        if classification == "broad_degradation" and channels:
+            raise ReviewError(f"{label} broad-degradation channels are not empty")
+        if classification == "attributed_inconsistency" and not channels:
+            raise ReviewError(f"{label} attributed alert has no channel")
+    else:
+        raise ReviewError(f"{label} has an unknown state")
+    return {"state": state, "classification": classification, "channels": channels}
+
+
+def _expected_assessment_frame(
+    assessment: int,
+    *,
+    step: int,
+    frame_count: int,
+) -> int:
+    return min(assessment * step - 1, frame_count - 1)
+
+
+def _validate_trial_record(
+    value: Any,
+    expected: dict[str, Any],
+    config: dict[str, Any],
+    *,
+    record_index: int,
+) -> dict[str, Any]:
+    """Validate one trial and return its trusted compact projection."""
+
+    label = f"candidate evidence trial {record_index}"
+    record = _require_evidence_keys(value, EVIDENCE_TRIAL_FIELDS, label)
+    exact = {
+        "schema": EVIDENCE_TRIAL_SCHEMA,
+        "study_id": config["study_id"],
+        "condition": expected["condition"],
+        "experiment_kind": expected["experiment_kind"],
+        "role": expected["role"],
+        "source": expected["source"],
+        "source_profile": (
+            EVIDENCE_GENERATOR_PROFILE
+            if expected["source"] == "synthetic"
+            else EVIDENCE_REPLAY_PROFILE
+        ),
+        "trial_index": expected["trial_index"],
+        "detector": expected["detector"],
+        "alert_episode_reset_policy": config["alert_episode_reset_policy"],
+        "assessment_step_frames": config["assessment_step"],
+    }
+    for field, required in exact.items():
+        if record[field] != required:
+            raise ReviewError(f"{label} has another {field}")
+    if (
+        _evidence_integer(record["trial_index"], f"{label} trial index")
+        != expected["trial_index"]
+        or _evidence_integer(
+            record["assessment_step_frames"], f"{label} assessment step", minimum=1
+        )
+        != config["assessment_step"]
+    ):
+        raise ReviewError(f"{label} has a noncanonical integer identity")
+
+    if expected["source"] == "synthetic":
+        seed = expected["seed"]
+        if record["seed"] != str(seed) or record["seed_hex"] != f"0x{seed:016x}":
+            raise ReviewError(f"{label} has another deterministic seed")
+    elif record["seed"] is not None or record["seed_hex"] is not None:
+        raise ReviewError(f"{label} assigns a seed to recorded evidence")
+    track_id = _evidence_integer(
+        record["track_id"],
+        f"{label} track ID",
+        minimum=1,
+        maximum=9_007_199_254_740_991,
+    )
+    if track_id != expected["track_id"] or record["track_id_hex"] != f"0x{track_id:016x}":
+        raise ReviewError(f"{label} has another deterministic track identity")
+
+    modalities = _evidence_string_list(record["modalities"], f"{label} modalities", unique=True)
+    expected_modalities = (
+        ["visual", "radar", "acoustic"]
+        if expected["source"] == "synthetic"
+        else ["visual", "acoustic", "radar"]
+    )
+    if modalities != expected_modalities:
+        raise ReviewError(f"{label} has another modality order")
+    truth = _require_evidence_keys(
+        record["truth"],
+        {"class", "channels", "onset_frame", "expected_abstention"},
+        f"{label} truth",
+    )
+    truth_channels = _validate_modality_channels(
+        truth["channels"],
+        f"{label} truth channels",
+    )
+    if not isinstance(truth["expected_abstention"], bool):
+        raise ReviewError(f"{label} truth abstention flag is not Boolean")
+    expected_abstention = expected["expected_abstention"]
+    if expected["detector"] == "nis_baseline":
+        expected_abstention = False
+    if truth != {
+        "class": expected["truth_class"],
+        "channels": truth_channels,
+        "onset_frame": expected["onset_frame"],
+        "expected_abstention": expected_abstention,
+    } or truth_channels != expected["truth_channels"]:
+        raise ReviewError(f"{label} has another truth contract")
+
+    for field in ("phi", "covariance_scale", "ordinary_missing_probability"):
+        required = expected[field]
+        supplied = record[field]
+        if required is None:
+            if supplied is not None:
+                raise ReviewError(f"{label} has a non-null {field}")
+        elif not _same_float(supplied, required):
+            raise ReviewError(f"{label} has another {field}")
+
+    if expected["source"] == "synthetic":
+        frame_count = config["frames"]
+        duration_ms = (frame_count - 1) * config["dt_ms"]
+        expected_realized, expected_resets = _expected_synthetic_observation_shape(
+            expected,
+            config,
+        )
+        sequence_offset = 0
+        timestamp_offset_ms = 0
+    else:
+        frame_count = 159
+        duration_ms = 15_800
+        expected_realized = [
+            {"modality": "visual", "observations": 159, "missing_frames": 0},
+            {"modality": "acoustic", "observations": 158, "missing_frames": 1},
+            {"modality": "radar", "observations": 159, "missing_frames": 0},
+        ]
+        expected_resets = [
+            {
+                "frame_index": 97,
+                "seq": 99,
+                "timestamp_ms": 10_800,
+                "reason": "sequence_or_timestamp_discontinuity",
+            }
+        ]
+        sequence_offset = 2
+        timestamp_offset_ms = 900
+    if (
+        _evidence_integer(record["frame_count"], f"{label} frame count") != frame_count
+        or _evidence_integer(record["duration_ms"], f"{label} duration") != duration_ms
+    ):
+        raise ReviewError(f"{label} has another exposure")
+    assessments = (frame_count + config["assessment_step"] - 1) // config["assessment_step"]
+    if _evidence_integer(record["assessments"], f"{label} assessments") != assessments:
+        raise ReviewError(f"{label} has another assessment count")
+
+    realized = record["realized_modality_counts"]
+    if not isinstance(realized, list) or len(realized) != len(expected_realized):
+        raise ReviewError(f"{label} has another realized-modality count")
+    normalized_realized: list[dict[str, Any]] = []
+    for index, item in enumerate(realized):
+        item = _require_evidence_keys(
+            item,
+            {"modality", "observations", "missing_frames"},
+            f"{label} realized modality {index}",
+        )
+        normalized = {
+            "modality": item["modality"],
+            "observations": _evidence_integer(
+                item["observations"], f"{label} realized observations"
+            ),
+            "missing_frames": _evidence_integer(
+                item["missing_frames"], f"{label} missing frames"
+            ),
+        }
+        if normalized["observations"] + normalized["missing_frames"] != frame_count:
+            raise ReviewError(f"{label} realized modality does not cover every frame")
+        normalized_realized.append(normalized)
+    if normalized_realized != expected_realized:
+        raise ReviewError(f"{label} realized modality counts are not deterministic")
+
+    resets = record["detector_generation_resets"]
+    if not isinstance(resets, list) or len(resets) > frame_count:
+        raise ReviewError(f"{label} reset list is invalid")
+    normalized_resets: list[dict[str, Any]] = []
+    for index, item in enumerate(resets):
+        item = _require_evidence_keys(
+            item,
+            {"frame_index", "seq", "timestamp_ms", "reason"},
+            f"{label} reset {index}",
+        )
+        normalized_resets.append(
+            {
+                "frame_index": _evidence_integer(item["frame_index"], f"{label} reset frame"),
+                "seq": _evidence_integer(item["seq"], f"{label} reset sequence"),
+                "timestamp_ms": _evidence_integer(
+                    item["timestamp_ms"], f"{label} reset timestamp"
+                ),
+                "reason": item["reason"],
+            }
+        )
+    if normalized_resets != expected_resets:
+        raise ReviewError(f"{label} detector-generation resets are not deterministic")
+
+    trace = record["trace"]
+    if not isinstance(trace, list) or not trace or len(trace) > assessments:
+        raise ReviewError(f"{label} trace is not bounded and nonempty")
+    trace_labels: list[dict[str, Any]] = []
+    prior_end = 0
+    prior_label: dict[str, Any] | None = None
+    insufficient = 0
+    rejected = 0
+    nominal = 0
+    required_samples = config["detector"]["min_samples"]
+    if expected["detector"] == "default_correlation_fusion":
+        required_samples = max(required_samples, config["correlation"]["min_samples"])
+    startup_count = (required_samples + config["assessment_step"] - 1) // config["assessment_step"] - 1
+    startup_abstention = 0
+    monitoring_abstention = 0
+    expected_episodes: list[dict[str, Any]] = []
+    previous_alert = False
+    first_attribution: dict[str, Any] | None = None
+    for span_index, raw_span in enumerate(trace):
+        span = _require_evidence_keys(
+            raw_span,
+            {
+                "assessment_start",
+                "assessment_end",
+                "frame_start",
+                "frame_end",
+                "seq_start",
+                "seq_end",
+                "label",
+            },
+            f"{label} trace span {span_index}",
+        )
+        start = _evidence_integer(
+            span["assessment_start"], f"{label} trace assessment start", minimum=1
+        )
+        end = _evidence_integer(
+            span["assessment_end"], f"{label} trace assessment end", minimum=1
+        )
+        if start != prior_end + 1 or end < start or end > assessments:
+            raise ReviewError(f"{label} trace has a gap, overlap, or invalid bound")
+        span_label = _validate_trace_label(span["label"], f"{label} trace span {span_index}")
+        if prior_label == span_label:
+            raise ReviewError(f"{label} trace has adjacent equal labels")
+        expected_frame_start = _expected_assessment_frame(
+            start,
+            step=config["assessment_step"],
+            frame_count=frame_count,
+        )
+        expected_frame_end = _expected_assessment_frame(
+            end,
+            step=config["assessment_step"],
+            frame_count=frame_count,
+        )
+        if (
+            span["frame_start"] != expected_frame_start
+            or span["frame_end"] != expected_frame_end
+            or span["seq_start"] != expected_frame_start + sequence_offset
+            or span["seq_end"] != expected_frame_end + sequence_offset
+        ):
+            raise ReviewError(f"{label} trace endpoints do not match the assessment schedule")
+        count = end - start + 1
+        if span_label["state"] == "insufficient_evidence":
+            insufficient += count
+        elif span_label["state"] == "rejected_input":
+            rejected += count
+        elif span_label["state"] == "nominal":
+            nominal += count
+        abstention = span_label["state"] in {"insufficient_evidence", "rejected_input"}
+        if abstention:
+            startup_abstention += max(0, min(end, startup_count) - start + 1)
+            monitoring_abstention += max(0, end - max(start, startup_count + 1) + 1)
+        if span_label["state"] == "alert" and not previous_alert:
+            seq = expected_frame_start + sequence_offset
+            expected_episodes.append(
+                {
+                    "assessment_index": start,
+                    "frame_index": expected_frame_start,
+                    "seq": seq,
+                    "timestamp_ms": seq * config["dt_ms"] + timestamp_offset_ms,
+                    "classification": span_label["classification"],
+                    "channels": span_label["channels"],
+                }
+            )
+        if span_label["state"] == "alert":
+            previous_alert = True
+        elif span_label["state"] == "nominal":
+            previous_alert = False
+        onset = expected["onset_frame"]
+        if (
+            onset is not None
+            and first_attribution is None
+            and expected_frame_end >= onset
+            and span_label["classification"] == "attributed_inconsistency"
+        ):
+            first_attribution = span_label
+        trace_labels.append(span_label)
+        prior_end = end
+        prior_label = span_label
+    if prior_end != assessments:
+        raise ReviewError(f"{label} trace does not cover all assessments")
+
+    supplied_episodes = record["alert_episodes"]
+    if not isinstance(supplied_episodes, list) or len(supplied_episodes) > assessments:
+        raise ReviewError(f"{label} alert episode list is invalid")
+    normalized_episodes: list[dict[str, Any]] = []
+    for index, item in enumerate(supplied_episodes):
+        item = _require_evidence_keys(
+            item,
+            {
+                "assessment_index",
+                "frame_index",
+                "seq",
+                "timestamp_ms",
+                "classification",
+                "channels",
+            },
+            f"{label} alert episode {index}",
+        )
+        normalized_episodes.append(
+            {
+                "assessment_index": _evidence_integer(
+                    item["assessment_index"], f"{label} episode assessment", minimum=1
+                ),
+                "frame_index": _evidence_integer(item["frame_index"], f"{label} episode frame"),
+                "seq": _evidence_integer(item["seq"], f"{label} episode sequence"),
+                "timestamp_ms": _evidence_integer(
+                    item["timestamp_ms"], f"{label} episode timestamp"
+                ),
+                "classification": item["classification"],
+                "channels": _validate_modality_channels(
+                    item["channels"], f"{label} episode channels"
+                ),
+            }
+        )
+    if normalized_episodes != expected_episodes:
+        raise ReviewError(f"{label} alert episodes do not match its trace")
+
+    first_alert = expected_episodes[0]["assessment_index"] if expected_episodes else None
+    mission_alert = any(
+        episode["frame_index"] < config["mission_frames"] for episode in expected_episodes
+    )
+    onset = expected["onset_frame"]
+    if onset is None:
+        pre_onset = None
+        delay_frames = None
+        attribution_emitted = None
+        attribution_correct = None
+    else:
+        pre_onset = any(episode["frame_index"] < onset for episode in expected_episodes)
+        post = next(
+            (episode for episode in expected_episodes if episode["frame_index"] >= onset),
+            None,
+        )
+        delay_frames = None if pre_onset or post is None else post["frame_index"] - onset
+        unique_attribution = (
+            expected["truth_class"] == "attributed_inconsistency"
+            and len(expected["truth_channels"]) == 1
+        )
+        attribution_emitted = (
+            None if pre_onset or not unique_attribution else first_attribution is not None
+        )
+        attribution_correct = (
+            None
+            if attribution_emitted is not True
+            else first_attribution["channels"] == expected["truth_channels"]
+        )
+    derived_scalars = {
+        "alert_episode_count": len(expected_episodes),
+        "mission_alert": mission_alert,
+        "first_alert_assessment": first_alert,
+        "pre_onset_alert": pre_onset,
+        "first_post_onset_delay_frames": delay_frames,
+        "first_post_onset_delay_ms": (
+            None if delay_frames is None else delay_frames * config["dt_ms"]
+        ),
+        "attribution_emitted": attribution_emitted,
+        "attribution_correct": attribution_correct,
+        "insufficient_assessments": insufficient,
+        "rejected_input_assessments": rejected,
+        "abstention_assessments": insufficient + rejected,
+        "startup_assessments": startup_count,
+        "startup_abstention_assessments": startup_abstention,
+        "monitoring_assessments": assessments - startup_count,
+        "monitoring_abstention_assessments": monitoring_abstention,
+    }
+    for field, required in derived_scalars.items():
+        supplied = record[field]
+        if isinstance(required, bool):
+            valid = isinstance(supplied, bool) and supplied is required
+        elif required is None:
+            valid = supplied is None
+        else:
+            valid = (
+                _evidence_integer(supplied, f"{label} {field}") == required
+            )
+        if not valid:
+            raise ReviewError(f"{label} {field} does not match its trace")
+    fractions = {
+        "abstention_fraction": (insufficient + rejected) / assessments,
+        "startup_abstention_fraction": (
+            startup_abstention / startup_count if startup_count else 0.0
+        ),
+        "monitoring_abstention_fraction": (
+            monitoring_abstention / (assessments - startup_count)
+            if assessments > startup_count
+            else 0.0
+        ),
+    }
+    for field, required in fractions.items():
+        if not _same_float(record[field], required):
+            raise ReviewError(f"{label} {field} is not the derived binary64 ratio")
+
+    consistency = _require_evidence_keys(
+        record["consistency"],
+        {
+            "assessed",
+            "insufficient_axis",
+            "missing_projection",
+            "extraction_error",
+            "analysis_error",
+            "too_few_modalities",
+        },
+        f"{label} consistency counts",
+    )
+    normalized_consistency = {
+        field: _evidence_integer(value, f"{label} consistency {field}")
+        for field, value in consistency.items()
+    }
+    if expected["detector"] == "nis_baseline":
+        if any(normalized_consistency.values()):
+            raise ReviewError(f"{label} baseline reports correlation counts")
+    else:
+        if sum(normalized_consistency.values()) != assessments:
+            raise ReviewError(f"{label} consistency categories do not cover assessments")
+        if (
+            normalized_consistency["extraction_error"]
+            + normalized_consistency["analysis_error"]
+            != rejected
+        ):
+            raise ReviewError(f"{label} consistency counts contradict its trace")
+        if expected_abstention and nominal != 0:
+            raise ReviewError(
+                f"{label} recodes required provenance abstention as nominal"
+            )
+
+    expected_reasons: list[str] = []
+    if expected["source"] == "recorded":
+        expected_reasons.append(
+            "insufficient_duration: 15800 ms is below configured minimum 3600000 ms"
+        )
+        if expected["detector"] == "default_correlation_fusion":
+            expected_reasons.append("missing_consistency_projection")
+    if expected_resets:
+        expected_reasons.append(f"detector_generation_resets:{len(expected_resets)}")
+    status_reasons = _evidence_string_list(
+        record["status_reasons"], f"{label} status reasons", unique=True
+    )
+    if status_reasons != expected_reasons:
+        raise ReviewError(f"{label} has another evidence-status reason set")
+    expected_status = "not_estimable" if expected["source"] == "recorded" else "estimable"
+    if record["evidence_status"] != expected_status:
+        raise ReviewError(f"{label} has another evidence status")
+
+    return {
+        "condition": expected["condition"],
+        "experiment_kind": expected["experiment_kind"],
+        "role": expected["role"],
+        "source": expected["source"],
+        "trial_index": expected["trial_index"],
+        "track_id": track_id,
+        "detector": expected["detector"],
+        "truth_class": expected["truth_class"],
+        "phi": expected["phi"],
+        "covariance_scale": expected["covariance_scale"],
+        "ordinary_missing_probability": expected["ordinary_missing_probability"],
+        "duration_ms": duration_ms,
+        "assessments": assessments,
+        "alert_episode_count": len(expected_episodes),
+        "mission_alert": mission_alert,
+        "first_alert_assessment": first_alert,
+        "pre_onset_alert": pre_onset,
+        "first_post_onset_delay_frames": delay_frames,
+        "first_post_onset_delay_ms": (
+            None if delay_frames is None else delay_frames * config["dt_ms"]
+        ),
+        "attribution_emitted": attribution_emitted,
+        "attribution_correct": attribution_correct,
+        "monitoring_assessments": assessments - startup_count,
+        "monitoring_abstention_assessments": monitoring_abstention,
+        "detector_generation_resets": len(expected_resets),
+        "detector_generation_reset_signature": expected_resets,
+        "realized_modality_signature": expected_realized,
+    }
+
+
+def _candidate_evidence_tree(root: Path, label: str) -> dict[str, Any]:
+    """Capture the exact flat evidence inventory through no-follow reads."""
+
+    inventory = digest_rooted_tree(
+        root,
+        label=label,
+        max_entries=len(EVIDENCE_FILES),
+        max_depth=1,
+        max_path_bytes=255,
+        max_component_bytes=255,
+        max_file_bytes=MAX_CANDIDATE_EVIDENCE_FILE_BYTES,
+        max_aggregate_bytes=MAX_CANDIDATE_EVIDENCE_BYTES,
+        reject_empty_directories=True,
+    )
+    if set(inventory) != set(EVIDENCE_FILES):
+        raise ReviewError("candidate evidence file set is not exact")
+    return inventory
+
+
+def _capture_candidate_evidence_documents(
+    root: Path,
+    inventory: dict[str, Any],
+) -> dict[str, RootedFileBatchCapture]:
+    """Capture the five bounded non-trial evidence documents."""
+
+    names = tuple(name for name in EVIDENCE_FILES if name != "trials.jsonl")
+    captures = read_rooted_regular_files(
+        root,
+        tuple(
+            RootedFileCaptureRequest(
+                name,
+                inventory[name].size_bytes,
+                f"candidate evidence {name}",
+                inventory[name].sha256,
+                None,
+            )
+            for name in names
+        ),
+        label="candidate evidence documents",
+        max_files=len(names),
+        max_file_bytes=MAX_EVIDENCE_DOCUMENT_BYTES,
+        max_aggregate_bytes=MAX_EVIDENCE_DOCUMENT_BYTES * len(names),
+        max_path_bytes=255,
+        max_component_bytes=255,
+        max_depth=1,
+        max_directory_entries=len(EVIDENCE_FILES),
+    )
+    return {capture.relative: capture for capture in captures}
+
+
+def _stream_validate_evidence_trials(
+    root: Path,
+    *,
+    expected_digest: str,
+    expected_size: int,
+    config: dict[str, Any],
+) -> tuple[list[dict[str, Any]], str, int]:
+    """Stream and validate the ordered JSON Lines trial population."""
+
+    path = root / "trials.jsonl"
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0)
+    no_follow = getattr(os, "O_NOFOLLOW", None)
+    if no_follow is None:
+        raise ReviewError("candidate evidence no-follow trial reads are unavailable")
+    flags |= no_follow
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise ReviewError("candidate evidence trials are missing or unsafe") from error
+    expected_layout = _expected_trial_layout(config)
+    if len(expected_layout) > MAX_EVIDENCE_TRIAL_RECORDS:
+        os.close(descriptor)
+        raise ReviewError("candidate evidence expected trial count exceeds its bound")
+    records: list[dict[str, Any]] = []
+    digest = hashlib.sha256()
+    total = 0
+    pending = bytearray()
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_nlink != 1
+            or before.st_size != expected_size
+            or before.st_size > MAX_CANDIDATE_EVIDENCE_FILE_BYTES
+        ):
+            raise ReviewError("candidate evidence trials have another file identity")
+        while total <= before.st_size:
+            block = os.read(descriptor, min(1024 * 1024, before.st_size + 1 - total))
+            if not block:
+                break
+            total += len(block)
+            if total > before.st_size:
+                raise ReviewError("candidate evidence trials grew during validation")
+            digest.update(block)
+            pending.extend(block)
+            while True:
+                newline = pending.find(b"\n")
+                if newline < 0:
+                    if len(pending) > MAX_EVIDENCE_TRIAL_LINE_BYTES:
+                        raise ReviewError("candidate evidence trial line exceeds its bound")
+                    break
+                if newline == 0:
+                    raise ReviewError("candidate evidence trials contain a blank line")
+                if newline > MAX_EVIDENCE_TRIAL_LINE_BYTES:
+                    raise ReviewError("candidate evidence trial line exceeds its bound")
+                line = bytes(pending[:newline])
+                del pending[: newline + 1]
+                record_index = len(records) + 1
+                if record_index > len(expected_layout):
+                    raise ReviewError("candidate evidence has an extra trial record")
+                try:
+                    value = loads_json(line)
+                    validate_json_structure(
+                        value,
+                        max_depth=64,
+                        max_nodes=200_000,
+                        label=f"candidate evidence trial {record_index}",
+                    )
+                except (
+                    MemoryError,
+                    RecursionError,
+                    ReviewError,
+                    UnicodeError,
+                    ValueError,
+                ) as error:
+                    raise ReviewError(
+                        f"candidate evidence trial {record_index} is invalid: {error}"
+                    ) from error
+                records.append(
+                    _validate_trial_record(
+                        value,
+                        expected_layout[record_index - 1],
+                        config,
+                        record_index=record_index,
+                    )
+                )
+        after = os.fstat(descriptor)
+        if total != before.st_size or after != before:
+            raise ReviewError("candidate evidence trials changed during validation")
+    except OSError as error:
+        raise ReviewError("candidate evidence trials could not be read safely") from error
+    finally:
+        os.close(descriptor)
+    if pending:
+        raise ReviewError("candidate evidence trials lack one final newline")
+    if len(records) != len(expected_layout):
+        raise ReviewError("candidate evidence trial population is incomplete")
+    observed_digest = digest.hexdigest()
+    if observed_digest != expected_digest:
+        raise ReviewError("candidate evidence trial digest changed during validation")
+    for index in range(0, len(records), 2):
+        baseline = records[index]
+        fused = records[index + 1]
+        paired_fields = {
+            "condition",
+            "experiment_kind",
+            "role",
+            "source",
+            "trial_index",
+            "track_id",
+            "truth_class",
+            "phi",
+            "covariance_scale",
+            "ordinary_missing_probability",
+            "duration_ms",
+            "assessments",
+            "detector_generation_reset_signature",
+            "realized_modality_signature",
+        }
+        if any(baseline[field] != fused[field] for field in paired_fields):
+            raise ReviewError("candidate evidence detector pair targets another physical track")
+        if (
+            baseline["detector"] != "nis_baseline"
+            or fused["detector"] != "default_correlation_fusion"
+        ):
+            raise ReviewError("candidate evidence detector pair has another order")
+    return records, observed_digest, total
+
+
+EVIDENCE_METRIC_UNITS = {
+    "false_alerts_per_hour": "alert_episodes/hour",
+    "arl0_assessments": "assessments",
+    "conditional_delay_frames": "frames",
+    "conditional_delay_p95_ms": "ms",
+}
+EVIDENCE_METRIC_METHODS = {
+    "false_alerts_per_hour": "pooled alert episodes / pooled track exposure",
+    "mission_probability_any_alert": "track-level proportion",
+    "arl0_assessments": (
+        "restricted mean time to first alert. Each track end creates right censoring"
+    ),
+    "arl0_censoring_fraction": "track-level proportion",
+    "abstention_fraction": (
+        "post-warm-up pooled insufficient-or-rejected assessments / pooled monitoring assessments"
+    ),
+    "any_alert_probability": "track-level proportion",
+    "pre_onset_alert_probability": "track-level proportion",
+    "conditional_detection_probability": (
+        "detected tracks / tracks without a pre-onset alert"
+    ),
+    "conditional_delay_frames": (
+        "median first post-onset alert delay among detected tracks without pre-onset alert"
+    ),
+    "conditional_delay_p95_ms": (
+        "nearest-rank empirical 95th percentile of first post-onset alert delay in milliseconds among detected tracks without pre-onset alert"
+    ),
+    "conditional_attribution_coverage": (
+        "tracks emitting an attribution / uniquely altered tracks without a pre-onset alert"
+    ),
+    "conditional_attribution_accuracy": (
+        "correct first attribution / tracks emitting an attribution"
+    ),
+    "conditional_attribution_error": (
+        "wrong first attribution / tracks emitting an attribution"
+    ),
+}
+EVIDENCE_BINOMIAL_METRICS = {
+    "mission_probability_any_alert",
+    "arl0_censoring_fraction",
+    "any_alert_probability",
+    "pre_onset_alert_probability",
+    "conditional_detection_probability",
+    "conditional_attribution_coverage",
+    "conditional_attribution_accuracy",
+    "conditional_attribution_error",
+}
+EVIDENCE_SPARSE_METRICS = {
+    "conditional_detection_probability",
+    "conditional_delay_frames",
+    "conditional_delay_p95_ms",
+    "conditional_attribution_accuracy",
+    "conditional_attribution_error",
+}
+
+
+class _EvidenceBootstrapRng:
+    """Exact SplitMix64 rejection sampler for acceptance bootstrap draws."""
+
+    def __init__(self, state: int) -> None:
+        self.state = state & 0xFFFF_FFFF_FFFF_FFFF
+
+    def next_u64(self) -> int:
+        self.state = (self.state + 0x9E37_79B9_7F4A_7C15) & 0xFFFF_FFFF_FFFF_FFFF
+        return _mix64(self.state)
+
+    def below(self, bound: int) -> int:
+        if not 0 < bound <= 0xFFFF_FFFF_FFFF_FFFF:
+            raise ReviewError("evidence bootstrap bound is invalid")
+        threshold = ((-bound) & 0xFFFF_FFFF_FFFF_FFFF) % bound
+        while True:
+            draw = self.next_u64()
+            if draw >= threshold:
+                return draw % bound
+
+
+def _f64_left_sum(values: Any) -> float:
+    """Match Rust iterator binary64 addition order without compensated summation."""
+
+    result = 0.0
+    for value in values:
+        result += float(value)
+    return result
+
+
+def _proportion_enclosure(k: int, n: int) -> tuple[float, float]:
+    if k == 0:
+        return 0.0, 0.0
+    if k == n:
+        return 1.0, 1.0
+    kf = float(k)
+    nf = float(n)
+    lower = max(
+        0.0,
+        math.nextafter(
+            math.nextafter(kf, -math.inf) / math.nextafter(nf, math.inf),
+            -math.inf,
+        ),
+    )
+    upper = min(
+        1.0,
+        math.nextafter(
+            math.nextafter(kf, math.inf) / math.nextafter(nf, -math.inf),
+            math.inf,
+        ),
+    )
+    return lower, upper
+
+
+def _wilson_lower_half(k: int, n: int) -> tuple[float, float]:
+    z = 1.959_964
+    nf = float(n)
+    point = float(k) / nf
+    z2 = z * z
+    denominator = 1.0 + z2 / nf
+    center = point + z2 / (2.0 * nf)
+    margin = z * math.sqrt(
+        point * (1.0 - point) / nf + z2 / (4.0 * nf * nf)
+    )
+    point_lower, point_upper = _proportion_enclosure(k, n)
+    lower = min(max((center - margin) / denominator, 0.0), 1.0, point_lower)
+    upper = max(min((center + margin) / denominator, 1.0), 0.0, point_upper)
+    return lower, upper
+
+
+def _one_minus_with_roundoff(value: float) -> tuple[float, float]:
+    negative = -value
+    difference = 1.0 + negative
+    virtual_negative = difference - 1.0
+    residual = (1.0 - (difference - virtual_negative)) + (negative - virtual_negative)
+    return difference, residual
+
+
+def _wilson_ci(successes: int, trials: int) -> tuple[float, float]:
+    if trials <= 0 or not 0 <= successes <= trials:
+        raise ReviewError("evidence Wilson counts are invalid")
+    if successes <= trials // 2:
+        return _wilson_lower_half(successes, trials)
+    failure_lower, failure_upper = _wilson_lower_half(trials - successes, trials)
+    point_lower, point_upper = _proportion_enclosure(successes, trials)
+    lower_value, lower_residual = _one_minus_with_roundoff(failure_upper)
+    if lower_residual < 0.0:
+        lower_value = math.nextafter(lower_value, -math.inf)
+    upper_value, upper_residual = _one_minus_with_roundoff(failure_lower)
+    if upper_residual > 0.0:
+        upper_value = math.nextafter(upper_value, math.inf)
+    return (
+        min(max(lower_value, 0.0), point_lower),
+        max(min(upper_value, 1.0), point_upper),
+    )
+
+
+def _metric_statistic(
+    records: list[dict[str, Any]],
+    metric: str,
+) -> tuple[float | None, int]:
+    if metric == "false_alerts_per_hour":
+        exposure = _f64_left_sum(
+            float(record["duration_ms"]) / 3_600_000.0 for record in records
+        )
+        episodes = sum(record["alert_episode_count"] for record in records)
+        return (episodes / exposure if exposure > 0.0 else None), len(records)
+    if metric == "mission_probability_any_alert":
+        return (
+            sum(record["mission_alert"] for record in records) / len(records)
+            if records
+            else None,
+            len(records),
+        )
+    if metric == "arl0_assessments":
+        return (
+            _f64_left_sum(
+                float(record["first_alert_assessment"] or record["assessments"])
+                for record in records
+            )
+            / len(records)
+            if records
+            else None,
+            len(records),
+        )
+    if metric == "arl0_censoring_fraction":
+        return (
+            sum(record["first_alert_assessment"] is None for record in records)
+            / len(records)
+            if records
+            else None,
+            len(records),
+        )
+    if metric == "abstention_fraction":
+        assessments = sum(record["monitoring_assessments"] for record in records)
+        abstentions = sum(
+            record["monitoring_abstention_assessments"] for record in records
+        )
+        return (abstentions / assessments if assessments else None), len(records)
+    if metric == "any_alert_probability":
+        return (
+            sum(record["alert_episode_count"] > 0 for record in records) / len(records)
+            if records
+            else None,
+            len(records),
+        )
+    if metric == "pre_onset_alert_probability":
+        values = [
+            record["pre_onset_alert"]
+            for record in records
+            if record["pre_onset_alert"] is not None
+        ]
+        return (sum(values) / len(values) if values else None), len(values)
+    if metric == "conditional_detection_probability":
+        eligible = [
+            record for record in records if record["pre_onset_alert"] is False
+        ]
+        return (
+            sum(record["first_post_onset_delay_frames"] is not None for record in eligible)
+            / len(eligible)
+            if eligible
+            else None,
+            len(eligible),
+        )
+    if metric in {"conditional_delay_frames", "conditional_delay_p95_ms"}:
+        field = (
+            "first_post_onset_delay_frames"
+            if metric == "conditional_delay_frames"
+            else "first_post_onset_delay_ms"
+        )
+        values = sorted(
+            float(record[field])
+            for record in records
+            if record["pre_onset_alert"] is False and record[field] is not None
+        )
+        if not values:
+            return None, 0
+        if metric == "conditional_delay_frames":
+            middle = len(values) // 2
+            point = (
+                values[middle - 1] / 2.0 + values[middle] / 2.0
+                if len(values) % 2 == 0
+                else values[middle]
+            )
+        else:
+            rank = (len(values) * 95 + 99) // 100
+            point = values[rank - 1]
+        return point, len(values)
+    if metric == "conditional_attribution_coverage":
+        values = [
+            record["attribution_emitted"]
+            for record in records
+            if record["attribution_emitted"] is not None
+        ]
+        return (sum(values) / len(values) if values else None), len(values)
+    if metric == "conditional_attribution_accuracy":
+        values = [
+            record["attribution_correct"]
+            for record in records
+            if record["pre_onset_alert"] is False
+            and record["attribution_correct"] is not None
+        ]
+        return (sum(values) / len(values) if values else None), len(values)
+    if metric == "conditional_attribution_error":
+        values = [
+            record["attribution_correct"]
+            for record in records
+            if record["attribution_correct"] is not None
+        ]
+        return (
+            sum(not value for value in values) / len(values) if values else None,
+            len(values),
+        )
+    raise ReviewError(f"unknown evidence metric: {metric}")
+
+
+def _binomial_counts(records: list[dict[str, Any]], metric: str) -> tuple[int, int]:
+    if metric == "mission_probability_any_alert":
+        return sum(record["mission_alert"] for record in records), len(records)
+    if metric == "arl0_censoring_fraction":
+        return sum(record["first_alert_assessment"] is None for record in records), len(records)
+    if metric == "any_alert_probability":
+        return sum(record["alert_episode_count"] > 0 for record in records), len(records)
+    if metric == "pre_onset_alert_probability":
+        values = [record["pre_onset_alert"] for record in records if record["pre_onset_alert"] is not None]
+        return sum(values), len(values)
+    if metric == "conditional_detection_probability":
+        eligible = [record for record in records if record["pre_onset_alert"] is False]
+        return sum(record["first_post_onset_delay_frames"] is not None for record in eligible), len(eligible)
+    if metric == "conditional_attribution_coverage":
+        values = [record["attribution_emitted"] for record in records if record["attribution_emitted"] is not None]
+        return sum(values), len(values)
+    if metric == "conditional_attribution_accuracy":
+        values = [record["attribution_correct"] for record in records if record["pre_onset_alert"] is False and record["attribution_correct"] is not None]
+        return sum(values), len(values)
+    if metric == "conditional_attribution_error":
+        values = [record["attribution_correct"] for record in records if record["attribution_correct"] is not None]
+        return sum(not value for value in values), len(values)
+    raise ReviewError(f"evidence metric is not binomial: {metric}")
+
+
+def _gamma_integer_quantile(shape: int, probability: Decimal) -> Decimal:
+    """Invert an integer-shape unit-scale gamma distribution at high precision."""
+
+    if shape < 1 or not Decimal(0) < probability < Decimal(1):
+        raise ReviewError("evidence gamma quantile arguments are invalid")
+    target_upper = Decimal(1) - probability
+    with localcontext() as context:
+        context.prec = 90
+
+        def upper_tail(point: Decimal) -> Decimal:
+            term = Decimal(1)
+            total = term
+            for index in range(1, shape):
+                term = term * point / Decimal(index)
+                total += term
+            return (-point).exp() * total
+
+        lower = Decimal(0)
+        upper = Decimal(max(1, shape))
+        while upper_tail(upper) > target_upper:
+            upper *= 2
+            if upper > Decimal(1 << 32):
+                raise ReviewError("evidence gamma quantile bracket did not converge")
+        for _ in range(400):
+            middle = (lower + upper) / 2
+            if upper_tail(middle) > target_upper:
+                lower = middle
+            else:
+                upper = middle
+        return +(lower + upper) / 2
+
+
+def _garwood_rate_ci(events: int, exposure_hours: float) -> list[float]:
+    if events < 0 or not math.isfinite(exposure_hours) or exposure_hours <= 0.0:
+        raise ReviewError("evidence Garwood inputs are invalid")
+    exposure = Decimal.from_float(exposure_hours)
+    lower = (
+        0.0
+        if events == 0
+        else float(_gamma_integer_quantile(events, Decimal("0.025")) / exposure)
+    )
+    upper = float(
+        _gamma_integer_quantile(events + 1, Decimal("0.975")) / exposure
+    )
+    if not (math.isfinite(lower) and math.isfinite(upper) and lower <= upper):
+        raise ReviewError("evidence Garwood interval is invalid")
+    return [lower, upper]
+
+
+def _hoeffding_ci(
+    mean: float,
+    lower: float,
+    upper: float,
+    sum_squared_weights: float,
+) -> list[float]:
+    radius = (upper - lower) * math.sqrt(
+        sum_squared_weights * math.log(2.0 / 0.05) / 2.0
+    )
+    return [max(mean - radius, lower), min(mean + radius, upper)]
+
+
+def _percentile(values: list[float], probability: float) -> float:
+    index = math.floor(probability * (len(values) - 1))
+    return values[index]
+
+
+def _not_applicable_metric(metric: str, tracks: int) -> dict[str, Any]:
+    return {
+        "status": "not_applicable",
+        "value": None,
+        "ci95": None,
+        "ci_status": "not_applicable",
+        "unit": EVIDENCE_METRIC_UNITS.get(metric, "probability"),
+        "estimator": EVIDENCE_METRIC_METHODS[metric],
+        "interval": "none",
+        "tracks": tracks,
+        "eligible_tracks": 0,
+        "bootstrap_requested": 0,
+        "bootstrap_usable": 0,
+    }
+
+
+def _estimate_evidence_metric(
+    records: list[dict[str, Any]],
+    metric: str,
+    config: dict[str, Any],
+    group_id: str,
+) -> dict[str, Any]:
+    point, eligible = _metric_statistic(records, metric)
+    requested = config["bootstrap_resamples"]
+    unit = EVIDENCE_METRIC_UNITS.get(metric, "probability")
+    method = EVIDENCE_METRIC_METHODS[metric]
+    if point is None:
+        return {
+            "status": "not_estimable",
+            "value": None,
+            "ci95": None,
+            "ci_status": "not_estimable",
+            "unit": unit,
+            "estimator": method,
+            "interval": "none: no eligible tracks",
+            "tracks": len(records),
+            "eligible_tracks": eligible,
+            "bootstrap_requested": requested,
+            "bootstrap_usable": 0,
+        }
+    if metric in EVIDENCE_SPARSE_METRICS and eligible < config["min_metric_eligible_tracks"]:
+        return {
+            "status": "descriptive_sparse",
+            "value": point,
+            "ci95": None,
+            "ci_status": "not_estimable_sparse",
+            "unit": unit,
+            "estimator": method,
+            "interval": (
+                f"not estimable: {eligible} eligible tracks is below configured minimum "
+                f"{config['min_metric_eligible_tracks']}"
+            ),
+            "tracks": len(records),
+            "eligible_tracks": eligible,
+            "bootstrap_requested": requested,
+            "bootstrap_usable": 0,
+        }
+    rng = _EvidenceBootstrapRng(
+        _mix64(int(config["base_seed"]) ^ _fnv1a64(group_id) ^ _fnv1a64(metric))
+    )
+    bootstrap: list[float] = []
+    for _ in range(requested):
+        sample = [records[rng.below(len(records))] for _ in records]
+        value, _eligible = _metric_statistic(sample, metric)
+        if value is not None:
+            bootstrap.append(value)
+    bootstrap.sort()
+    usable = len(bootstrap)
+    bootstrap_ci = (
+        [_percentile(bootstrap, 0.025), _percentile(bootstrap, 0.975)]
+        if bootstrap
+        else None
+    )
+    usable_ci = bootstrap_ci if usable * 5 >= requested * 4 else None
+    if metric in EVIDENCE_BINOMIAL_METRICS:
+        successes, trials = _binomial_counts(records, metric)
+        ci95 = list(_wilson_ci(successes, trials))
+        ci_status = "estimated"
+        interval = (
+            "95% Wilson score interval for a track-level binomial proportion. The whole-track "
+            "bootstrap is diagnostic. It does not replace or envelope the preregistered Wilson "
+            f"bound. Usable replicates: {usable} of {requested} requested."
+        )
+    elif metric == "false_alerts_per_hour":
+        exposure = _f64_left_sum(
+            float(record["duration_ms"]) / 3_600_000.0 for record in records
+        )
+        events = sum(record["alert_episode_count"] for record in records)
+        ci95 = _garwood_rate_ci(events, exposure)
+        if usable_ci is not None:
+            ci95 = [min(ci95[0], usable_ci[0]), max(ci95[1], usable_ci[1])]
+        ci_status = "estimated"
+        interval = (
+            "95% Garwood exact Poisson count-rate interval under a homogeneous episode-rate "
+            "model. A whole-track bootstrap envelope applies only when at least 80% of "
+            f"replicates are usable. Usable replicates: {usable} of {requested} requested."
+        )
+    elif metric == "abstention_fraction":
+        total = sum(record["monitoring_assessments"] for record in records)
+        if total:
+            squared = _f64_left_sum(
+                (record["monitoring_assessments"] / total) ** 2 for record in records
+            )
+            ci95 = _hoeffding_ci(point, 0.0, 1.0, squared)
+            if usable_ci is not None:
+                ci95 = [min(ci95[0], usable_ci[0]), max(ci95[1], usable_ci[1])]
+            ci_status = "estimated"
+            interval = (
+                "95% distribution-free weighted-track Hoeffding interval for bounded "
+                "post-warm-up abstention fractions. A whole-track bootstrap envelope applies "
+                "only when at least 80% of replicates are usable. Usable replicates: "
+                f"{usable} of {requested} requested."
+            )
+        else:
+            ci95 = None
+            ci_status = "not_estimable"
+            interval = "not estimable: no post-warm-up monitoring exposure"
+    elif metric == "arl0_assessments":
+        horizon = float(max(record["assessments"] for record in records))
+        ci95 = _hoeffding_ci(point, 0.0, horizon, 1.0 / len(records))
+        if usable_ci is not None:
+            ci95 = [min(ci95[0], usable_ci[0]), max(ci95[1], usable_ci[1])]
+        ci_status = "estimated"
+        interval = (
+            "95% distribution-free Hoeffding interval for track-level time to first alert. The "
+            "configured assessment horizon bounds each track. A whole-track bootstrap envelope "
+            "applies only when at least 80% of replicates are usable. Usable replicates: "
+            f"{usable} of {requested} requested."
+        )
+    elif usable_ci is not None:
+        ci95 = usable_ci
+        ci_status = "estimated"
+        interval = (
+            f"95% whole-track percentile bootstrap interval. Usable replicates: {usable} of "
+            f"{requested} requested. The minimum usable fraction is 80%."
+        )
+    else:
+        ci95 = None
+        ci_status = "not_estimable"
+        interval = (
+            f"not estimable: {usable} usable of {requested} requested whole-track resamples "
+            "is below the 80% minimum"
+        )
+    return {
+        "status": "estimated",
+        "value": point,
+        "ci95": ci95,
+        "ci_status": ci_status,
+        "unit": unit,
+        "estimator": method,
+        "interval": interval,
+        "tracks": len(records),
+        "eligible_tracks": eligible,
+        "bootstrap_requested": requested,
+        "bootstrap_usable": usable,
+    }
+
+
+def _evidence_raw_counts(records: list[dict[str, Any]]) -> dict[str, int]:
+    """Rebuild one condition's disclosed integer counts."""
+
+    return {
+        "tracks": len(records),
+        "assessments": sum(record["assessments"] for record in records),
+        "monitoring_assessments": sum(
+            record["monitoring_assessments"] for record in records
+        ),
+        "monitoring_abstention_assessments": sum(
+            record["monitoring_abstention_assessments"] for record in records
+        ),
+        "alert_episodes": sum(record["alert_episode_count"] for record in records),
+        "mission_alert_tracks": sum(record["mission_alert"] for record in records),
+        "onset_labeled_tracks": sum(
+            record["pre_onset_alert"] is not None for record in records
+        ),
+        "pre_onset_alert_tracks": sum(
+            record["pre_onset_alert"] is True for record in records
+        ),
+        "post_onset_detection_eligible_tracks": sum(
+            record["pre_onset_alert"] is False for record in records
+        ),
+        "detected_post_onset_tracks": sum(
+            record["pre_onset_alert"] is False
+            and record["first_post_onset_delay_ms"] is not None
+            for record in records
+        ),
+        "undetected_post_onset_tracks": sum(
+            record["pre_onset_alert"] is False
+            and record["first_post_onset_delay_ms"] is None
+            for record in records
+        ),
+        "attribution_coverage_eligible_tracks": sum(
+            record["attribution_emitted"] is not None for record in records
+        ),
+        "emitted_attribution_tracks": sum(
+            record["attribution_emitted"] is True for record in records
+        ),
+        "correct_attribution_tracks": sum(
+            record["attribution_correct"] is True for record in records
+        ),
+        "wrong_attribution_tracks": sum(
+            record["attribution_correct"] is False for record in records
+        ),
+        "detector_generation_resets": sum(
+            record["detector_generation_resets"] for record in records
+        ),
+        "tracks_with_detector_generation_resets": sum(
+            record["detector_generation_resets"] > 0 for record in records
+        ),
+    }
+
+
+def _summarize_evidence_group(
+    records: list[dict[str, Any]],
+    config: dict[str, Any],
+) -> dict[str, Any]:
+    """Independently rebuild one ordered condition summary."""
+
+    if not records:
+        raise ReviewError("candidate evidence summary group is empty")
+    first = records[0]
+    for record in records:
+        for field in (
+            "condition",
+            "experiment_kind",
+            "role",
+            "detector",
+            "truth_class",
+            "phi",
+            "covariance_scale",
+            "ordinary_missing_probability",
+        ):
+            if record[field] != first[field]:
+                raise ReviewError("candidate evidence summary group mixes identities")
+    role_debug = {"calibration": "Calibration", "holdout": "Holdout"}[first["role"]]
+    detector_debug = {
+        "nis_baseline": "NisBaseline",
+        "default_correlation_fusion": "DefaultCorrelationFusion",
+    }[first["detector"]]
+    group_id = f"{first['condition']}:{role_debug}:{detector_debug}"
+    clean = first["truth_class"] == "clean"
+    attack = any(record["pre_onset_alert"] is not None for record in records)
+    attributed_attack = first["truth_class"] == "attributed_inconsistency"
+    provenance = (
+        first["truth_class"] == "clean_invalid_or_missing_provenance"
+        and first["detector"] == "default_correlation_fusion"
+    )
+    applicable = {
+        "false_alerts_per_hour": clean,
+        "mission_probability_any_alert": clean,
+        "arl0_assessments": clean,
+        "arl0_censoring_fraction": clean,
+        "abstention_fraction": True,
+        "any_alert_probability": provenance,
+        "pre_onset_alert_probability": attack,
+        "conditional_detection_probability": attack,
+        "conditional_delay_frames": attack,
+        "conditional_delay_p95_ms": attack,
+        "conditional_attribution_coverage": attributed_attack,
+        "conditional_attribution_accuracy": attributed_attack,
+        "conditional_attribution_error": attributed_attack,
+    }
+    metrics = {
+        metric: (
+            _estimate_evidence_metric(records, metric, config, group_id)
+            if applicable[metric]
+            else _not_applicable_metric(metric, len(records))
+        )
+        for metric in EVIDENCE_METRIC_NAMES
+    }
+    return {
+        "condition": first["condition"],
+        "experiment_kind": first["experiment_kind"],
+        "role": first["role"],
+        "detector": first["detector"],
+        "truth_class": first["truth_class"],
+        "tracks": len(records),
+        "exposure_hours": _f64_left_sum(
+            float(record["duration_ms"]) / 3_600_000.0 for record in records
+        ),
+        "detector_generation_resets": sum(
+            record["detector_generation_resets"] for record in records
+        ),
+        "tracks_with_detector_generation_resets": sum(
+            record["detector_generation_resets"] > 0 for record in records
+        ),
+        "phi": first["phi"],
+        "covariance_scale": first["covariance_scale"],
+        "ordinary_missing_probability": first["ordinary_missing_probability"],
+        "raw_counts": _evidence_raw_counts(records),
+        "metrics": metrics,
+    }
+
+
+def _summarize_evidence_partition(
+    records: list[dict[str, Any]],
+    role: str,
+    config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for record in records:
+        if record["source"] == "synthetic" and record["role"] == role:
+            groups.setdefault((record["condition"], record["detector"]), []).append(record)
+    detector_order = {"nis_baseline": 0, "default_correlation_fusion": 1}
+    keys = sorted(groups, key=lambda key: (key[0], detector_order[key[1]]))
+    return [_summarize_evidence_group(groups[key], config) for key in keys]
+
+
+def _recompute_evidence_summary(
+    records: list[dict[str, Any]],
+    config: dict[str, Any],
+) -> dict[str, Any]:
+    """Rebuild the complete evidence summary from validated trial projections."""
+
+    requested = config["bootstrap_resamples"]
+    return {
+        "schema": EVIDENCE_SUMMARY_SCHEMA,
+        "generator_profile": EVIDENCE_GENERATOR_PROFILE,
+        "recorded_replay_profile": EVIDENCE_REPLAY_PROFILE,
+        "missingness_profile": EVIDENCE_MISSINGNESS_PROFILE,
+        "acceptance_metric_profile": EVIDENCE_ACCEPTANCE_PROFILE,
+        "bootstrap_profile": EVIDENCE_BOOTSTRAP_PROFILE,
+        "study_id": config["study_id"],
+        "base_seed_hex": config["base_seed_hex"],
+        "claim_partition": (
+            "Only the holdout_results field supports reported results. The "
+            "calibration_diagnostics field is descriptive. The runner does not pool it with "
+            "holdout_results."
+        ),
+        "interval_method": (
+            "Track proportions use preregistered 95% Wilson intervals. Alert-episode rates use "
+            "95% Garwood Poisson intervals. Average run length under no-alert conditions "
+            "(ARL0) and post-warm-up abstention use bounded-track 95% Hoeffding intervals. "
+            "Garwood and Hoeffding intervals use a conservative whole-track bootstrap envelope "
+            f"when at least 80% of {requested} requested replicates are usable. The bootstrap "
+            "envelope does not replace the analytic interval. Delay summaries use whole-track "
+            "percentile bootstrap intervals, and the delay 95th percentile uses the "
+            "nearest-rank empirical percentile in milliseconds."
+        ),
+        "sensitivity_axes": [
+            (
+                "The clean_autocorrelation arm varies the first-order autoregressive phi. It "
+                "keeps covariance_scale at 1."
+            ),
+            (
+                "The clean_covariance_sensitivity arm varies the declared covariance scale at "
+                "phi 0. The clean_autocorrelation phi 0 arm is the scale 1 reference."
+            ),
+            (
+                "The ordinary_missingness arm applies deterministic, independent Bernoulli "
+                "acoustic misses. A continuity hole creates an explicit whole-detector "
+                "generation reset. The record includes each reset."
+            ),
+        ],
+        "calibration_diagnostics": _summarize_evidence_partition(
+            records, "calibration", config
+        ),
+        "holdout_results": _summarize_evidence_partition(records, "holdout", config),
+        "recorded_fixture": {
+            "configured_path": config["recorded_fixture"]["path"],
+            "resolved_path": EVIDENCE_FIXTURE_PATH,
+            "sha256": EVIDENCE_FIXTURE_SHA256,
+            "bytes": EVIDENCE_FIXTURE_BYTES,
+            "observations": 476,
+            "tracks": 1,
+            "projection_observations": 0,
+            "total_duration_ms": 15_800,
+            "detector_generation_resets": 1,
+            "tracks_with_detector_generation_resets": 1,
+            "evidence_status": "not_estimable",
+            "status_reasons": [
+                "insufficient_duration: 15800 ms is below configured minimum 3600000 ms",
+                "missing_consistency_projection",
+            ],
+        },
+        "limitations": [
+            (
+                "Synthetic observations are controlled stress tests, not a deployed residual "
+                "population or operational accuracy claim."
+            ),
+            (
+                "The configured family_alpha value is a per-assessment family-wise bound under "
+                "the detector model. It is not a stream false-alert-rate guarantee."
+            ),
+            (
+                "Garwood episode-rate intervals assume a homogeneous Poisson count process. A "
+                "whole-track bootstrap can expand these intervals when at least 80% of "
+                "replicates are usable. Neither method creates an operational false-alert-rate "
+                "claim for the controlled stream."
+            ),
+            "ARL0 is a finite-horizon restricted mean. Read it with its censoring fraction.",
+            (
+                "Attack delay and attribution are conditional on no pre-onset alert. Delay is "
+                "also conditional on detection."
+            ),
+            (
+                "Alert episodes use the configured nominal_only reset policy. Abstention "
+                "preserves an active episode. Only a nominal assessment clears it."
+            ),
+            (
+                "The default runner evaluates streaming normalized innovation squared (NIS) "
+                "and signed correlation only. Partial information decomposition (PID) has no "
+                "product streaming cadence in this revision."
+            ),
+            (
+                "Independent missingness can cross an accepted continuity limit. Each such "
+                "event creates a recorded whole-detector generation boundary. Post-reset "
+                "warm-up remains abstention. The runner does not recode it as nominal."
+            ),
+        ],
+    }
+
+
+def _require_evidence_semantic_equality(
+    supplied: Any,
+    trusted: Any,
+    *,
+    path: str,
+) -> None:
+    """Require complete equality, with a bounded Garwood display allowance."""
+
+    if isinstance(trusted, dict):
+        if not isinstance(supplied, dict) or set(supplied) != set(trusted):
+            raise ReviewError(f"candidate evidence summary field set differs at {path}")
+        for key, value in trusted.items():
+            _require_evidence_semantic_equality(
+                supplied[key], value, path=f"{path}.{key}"
+            )
+        return
+    if isinstance(trusted, list):
+        if not isinstance(supplied, list) or len(supplied) != len(trusted):
+            raise ReviewError(f"candidate evidence summary list differs at {path}")
+        for index, value in enumerate(trusted):
+            _require_evidence_semantic_equality(
+                supplied[index], value, path=f"{path}[{index}]"
+            )
+        return
+    if isinstance(trusted, float):
+        if not _is_finite_f64_number(supplied):
+            raise ReviewError(f"candidate evidence summary number is invalid at {path}")
+        supplied_float = float(supplied)
+        if supplied_float == 0.0 and math.copysign(1.0, supplied_float) < 0.0:
+            raise ReviewError(f"candidate evidence summary uses negative zero at {path}")
+        if _same_float(supplied_float, trusted):
+            return
+        if "metrics.false_alerts_per_hour.ci95" in path:
+            left = _float_bits(supplied_float)
+            right = _float_bits(trusted)
+            if abs(left - right) <= 4_096:
+                return
+        raise ReviewError(f"candidate evidence summary number differs at {path}")
+    if type(supplied) is not type(trusted) or supplied != trusted:
+        raise ReviewError(f"candidate evidence summary value differs at {path}")
+
+
+def _validate_evidence_manifest(
+    value: Any,
+    *,
+    expected: CandidateEvidenceExpectations,
+    config: dict[str, Any],
+    config_binding: dict[str, Any],
+    canonical_config_sha256: str,
+    trial_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Validate all candidate-evidence manifest fields independently."""
+
+    manifest = _require_evidence_keys(
+        value,
+        {
+            "schema",
+            "trial_schema",
+            "summary_schema",
+            "generator_profile",
+            "recorded_replay_profile",
+            "missingness_profile",
+            "acceptance_metric_profile",
+            "bootstrap_profile",
+            "study_id",
+            "base_seed_hex",
+            "git",
+            "toolchain",
+            "inputs",
+            "scope",
+            "trial_records",
+            "synthetic_tracks",
+            "recorded_tracks",
+            "dirty_override_used",
+            "publication_source_policy",
+            "accepted_config_profile",
+            "accepted_config_digest",
+            "deterministic_time_policy",
+        },
+        "candidate evidence manifest",
+    )
+    exact = {
+        "schema": EVIDENCE_MANIFEST_SCHEMA,
+        "trial_schema": EVIDENCE_TRIAL_SCHEMA,
+        "summary_schema": EVIDENCE_SUMMARY_SCHEMA,
+        "generator_profile": EVIDENCE_GENERATOR_PROFILE,
+        "recorded_replay_profile": EVIDENCE_REPLAY_PROFILE,
+        "missingness_profile": EVIDENCE_MISSINGNESS_PROFILE,
+        "acceptance_metric_profile": EVIDENCE_ACCEPTANCE_PROFILE,
+        "bootstrap_profile": EVIDENCE_BOOTSTRAP_PROFILE,
+        "study_id": config["study_id"],
+        "base_seed_hex": config["base_seed_hex"],
+        "scope": list(EVIDENCE_SCOPE),
+        "dirty_override_used": False,
+        "publication_source_policy": "require_clean",
+        "accepted_config_profile": EVIDENCE_ACCEPTED_PROFILE,
+        "accepted_config_digest": config_binding["accepted_semantic_digest"],
+        "deterministic_time_policy": (
+            "The artifacts do not store a wall-clock timestamp. Deterministic artifacts depend "
+            "only on declared inputs and recorded tool and source provenance."
+        ),
+    }
+    if not isinstance(manifest["dirty_override_used"], bool):
+        raise ReviewError("candidate evidence dirty override flag is not Boolean")
+    for field, required in exact.items():
+        if manifest[field] != required:
+            raise ReviewError(f"candidate evidence manifest has another {field}")
+    git_record = _require_evidence_keys(
+        manifest["git"],
+        {"commit", "tree", "dirty", "status_porcelain_v1"},
+        "candidate evidence Git provenance",
+    )
+    if not isinstance(git_record["dirty"], bool):
+        raise ReviewError("candidate evidence Git dirty flag is not Boolean")
+    if git_record != {
+        "commit": expected.commit,
+        "tree": expected.tree,
+        "dirty": False,
+        "status_porcelain_v1": "",
+    }:
+        raise ReviewError("candidate evidence manifest targets another Git state")
+    toolchain = _require_evidence_keys(
+        manifest["toolchain"],
+        {
+            "rustc_verbose",
+            "cargo_version",
+            "package_version",
+            "build_profile",
+            "target_os",
+            "target_arch",
+            "available_parallelism",
+        },
+        "candidate evidence toolchain provenance",
+    )
+    parallelism = _evidence_integer(
+        toolchain["available_parallelism"],
+        "candidate evidence available parallelism",
+        minimum=1,
+        maximum=4_096,
+    )
+    if toolchain != {
+        "rustc_verbose": expected.rustc_verbose,
+        "cargo_version": expected.cargo_version,
+        "package_version": VERSION,
+        "build_profile": "release",
+        "target_os": expected.target_os,
+        "target_arch": expected.target_arch,
+        "available_parallelism": parallelism,
+    }:
+        raise ReviewError("candidate evidence manifest has another toolchain")
+    inputs = _require_evidence_keys(
+        manifest["inputs"],
+        {
+            "config_source_path",
+            "config_source_sha256",
+            "canonical_config_sha256",
+            "workspace_manifest_sha256",
+            "cargo_lock_sha256",
+            "recorded_fixture_path",
+            "recorded_fixture_sha256",
+            "runner_binary_sha256",
+        },
+        "candidate evidence input provenance",
+    )
+    if inputs != {
+        "config_source_path": expected.tracked_config_path,
+        "config_source_sha256": hashlib.sha256(expected.tracked_config_bytes).hexdigest(),
+        "canonical_config_sha256": canonical_config_sha256,
+        "workspace_manifest_sha256": expected.workspace_manifest_sha256,
+        "cargo_lock_sha256": expected.cargo_lock_sha256,
+        "recorded_fixture_path": EVIDENCE_FIXTURE_PATH,
+        "recorded_fixture_sha256": EVIDENCE_FIXTURE_SHA256,
+        "runner_binary_sha256": expected.runner_binary_sha256,
+    }:
+        raise ReviewError("candidate evidence manifest has another input identity")
+    synthetic_records = sum(record["source"] == "synthetic" for record in trial_records)
+    recorded_records = sum(record["source"] == "recorded" for record in trial_records)
+    expected_counts = {
+        "trial_records": len(trial_records),
+        "synthetic_tracks": synthetic_records // 2,
+        "recorded_tracks": recorded_records // 2,
+    }
+    for field, required in expected_counts.items():
+        if _evidence_integer(manifest[field], f"candidate evidence manifest {field}") != required:
+            raise ReviewError(f"candidate evidence manifest has another {field}")
+    return manifest
+
+
+def _evidence_metric_text(metric: dict[str, Any]) -> str:
+    value = metric["value"]
+    interval = metric["ci95"]
+    if value is not None and interval is not None:
+        return f"{value:.4f} [{interval[0]:.4f}, {interval[1]:.4f}]"
+    if value is not None:
+        return f"{value:.4f} ({metric['status']}/{metric['ci_status']})"
+    return metric["status"]
+
+
+def _render_evidence_report(
+    summary: dict[str, Any],
+    manifest: dict[str, Any],
+) -> bytes:
+    """Render the exact independent Markdown view of validated evidence."""
+
+    report = "# Galadriel post-audit evidence\n\n"
+    report += f"Study: `{summary['study_id']}`\n\n"
+    report += f"Git commit: `{manifest['git']['commit']}`\n\n"
+    report += (
+        "Dirty worktree at invocation: `"
+        + str(manifest["git"]["dirty"]).lower()
+        + "`\n\n"
+    )
+    report += (
+        "Only holdout rows below support reported results. `summary.json` retains calibration "
+        "tracks as separate diagnostics. The runner does not pool calibration and holdout "
+        "tracks.\n\n"
+    )
+    report += (
+        "Track proportions use preregistered Wilson intervals. Alert-episode rates use labeled "
+        "Garwood Poisson intervals. Average run length under no-alert conditions (ARL0) and "
+        "abstention use bounded-track Hoeffding intervals. Delay summaries use whole-track "
+        "bootstrap intervals. A declared bootstrap envelope does not replace its boundary-safe "
+        "analytic interval.\n\n"
+    )
+    report += (
+        "Alert episodes reset only on an explicit nominal assessment. Insufficient and "
+        "rejected-input outcomes preserve an active episode. Rejected inputs count toward "
+        "abstention.\n\n"
+    )
+    report += (
+        "| condition | detector | exposure hours | generation resets (affected tracks) | false "
+        "alerts per hour | mission probability of any alert | restricted ARL0 | ARL0 censored "
+        "fraction | abstention | provenance probability of any alert | pre-onset probability | "
+        "conditional detection | median delay in frames | delay 95th percentile in milliseconds "
+        "| attribution coverage | attribution error | attribution accuracy |\n"
+    )
+    report += (
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n"
+    )
+    for condition in summary["holdout_results"]:
+        metrics = condition["metrics"]
+        cells = [
+            condition["condition"],
+            condition["detector"],
+            f"{condition['exposure_hours']:.4f}",
+            (
+                f"{condition['detector_generation_resets']} "
+                f"({condition['tracks_with_detector_generation_resets']})"
+            ),
+            _evidence_metric_text(metrics["false_alerts_per_hour"]),
+            _evidence_metric_text(metrics["mission_probability_any_alert"]),
+            _evidence_metric_text(metrics["arl0_assessments"]),
+            _evidence_metric_text(metrics["arl0_censoring_fraction"]),
+            _evidence_metric_text(metrics["abstention_fraction"]),
+            _evidence_metric_text(metrics["any_alert_probability"]),
+            _evidence_metric_text(metrics["pre_onset_alert_probability"]),
+            _evidence_metric_text(metrics["conditional_detection_probability"]),
+            _evidence_metric_text(metrics["conditional_delay_frames"]),
+            _evidence_metric_text(metrics["conditional_delay_p95_ms"]),
+            _evidence_metric_text(metrics["conditional_attribution_coverage"]),
+            _evidence_metric_text(metrics["conditional_attribution_error"]),
+            _evidence_metric_text(metrics["conditional_attribution_accuracy"]),
+        ]
+        report += "| " + " | ".join(cells) + " |\n"
+    report += (
+        "\n`summary.json` retains exact event, eligibility, undetected, emitted-attribution, "
+        "correct-attribution, and wrong-attribution counts for each row. `trials.jsonl` retains "
+        "per-track delays and outcomes.\n"
+    )
+    fixture = summary["recorded_fixture"]
+    report += "\n## Recorded fixture\n\n"
+    report += (
+        f"Status: `{fixture['evidence_status']}`.\n\n"
+        f"The fixture contains {fixture['observations']} observations across {fixture['tracks']} "
+        f"tracks. Its total observed duration is {fixture['total_duration_ms']} milliseconds. It "
+        f"contains {fixture['projection_observations']} observations with a consistency "
+        f"projection. It records {fixture['detector_generation_resets']} explicit "
+        "detector-generation resets across "
+        f"{fixture['tracks_with_detector_generation_resets']} tracks.\n\n"
+    )
+    if fixture["status_reasons"]:
+        report += "Reasons:\n\n"
+        report += "".join(f"- {reason}\n" for reason in fixture["status_reasons"])
+        report += "\n"
+    report += (
+        "The checked-in capture is a parser, provenance, and abstention smoke test. The runner "
+        "does not extrapolate its short duration into an operational false-alert rate or "
+        "detection claim.\n\n"
+    )
+    report += "## Interpretation limits\n\n"
+    report += "".join(f"- {limitation}\n" for limitation in summary["limitations"])
+    return report.encode("utf-8")
+
+
+def _validate_evidence_sha256sums(
+    payload: bytes,
+    artifacts: dict[str, dict[str, Any]],
+) -> None:
+    """Require the exact five-row inner checksum document."""
+
+    expected = "".join(
+        f"{artifacts[name]['sha256']}  {name}\n" for name in EVIDENCE_CHECKSUM_FILES
+    ).encode("ascii")
+    if payload != expected:
+        raise ReviewError("candidate evidence SHA256SUMS is not exact")
+
+
+def validate_candidate_evidence_bundle(
+    root: Path,
+    *,
+    expected: CandidateEvidenceExpectations,
+    expected_outer_artifacts: dict[str, dict[str, Any]] | None = None,
+) -> ValidatedCandidateEvidence:
+    """Validate and independently reconstruct one complete evidence bundle."""
+
+    if not isinstance(expected, CandidateEvidenceExpectations):
+        raise ReviewError("candidate evidence expectations are invalid")
+    if GIT_OBJECT.fullmatch(expected.commit) is None or GIT_OBJECT.fullmatch(expected.tree) is None:
+        raise ReviewError("candidate evidence expected Git identity is invalid")
+    for label, digest in (
+        ("workspace manifest", expected.workspace_manifest_sha256),
+        ("Cargo lockfile", expected.cargo_lock_sha256),
+        ("runner binary", expected.runner_binary_sha256),
+    ):
+        if not isinstance(digest, str) or SHA256.fullmatch(digest) is None:
+            raise ReviewError(f"candidate evidence expected {label} digest is invalid")
+    canonical_relative_parts(expected.tracked_config_path, label="candidate evidence config path")
+
+    before = _candidate_evidence_tree(root, "candidate evidence before semantic validation")
+    documents = _capture_candidate_evidence_documents(root, before)
+    artifacts = {
+        name: {
+            "sha256": before[name].sha256,
+            "size_bytes": before[name].size_bytes,
+        }
+        for name in EVIDENCE_FILES
+    }
+    if expected_outer_artifacts is not None:
+        if (
+            not isinstance(expected_outer_artifacts, dict)
+            or set(expected_outer_artifacts) != set(EVIDENCE_FILES)
+        ):
+            raise ReviewError("signed candidate evidence artifact set is not exact")
+        for name, row in expected_outer_artifacts.items():
+            if (
+                not isinstance(row, dict)
+                or set(row) != {"sha256", "size_bytes"}
+                or SHA256.fullmatch(str(row.get("sha256"))) is None
+                or type(row.get("size_bytes")) is not int
+                or row["size_bytes"] < 0
+            ):
+                raise ReviewError(f"signed candidate evidence row is invalid: {name}")
+        if artifacts != expected_outer_artifacts:
+            raise ReviewError("candidate evidence differs from its signed outer inventory")
+
+    accepted_config = _bounded_evidence_object(
+        documents["config.json"].data,
+        "accepted candidate evidence config",
+    )
+    manifest_value = _bounded_evidence_object(
+        documents["manifest.json"].data,
+        "candidate evidence manifest",
+    )
+    config_binding = validate_evidence_config_bytes(
+        expected.tracked_config_bytes,
+        documents["config.json"].data,
+        documents["manifest.json"].data,
+        tracked_relative_path=expected.tracked_config_path,
+    )
+    trials, trials_sha256, trials_size = _stream_validate_evidence_trials(
+        root,
+        expected_digest=before["trials.jsonl"].sha256,
+        expected_size=before["trials.jsonl"].size_bytes,
+        config=accepted_config,
+    )
+    if (
+        trials_sha256 != artifacts["trials.jsonl"]["sha256"]
+        or trials_size != artifacts["trials.jsonl"]["size_bytes"]
+    ):
+        raise ReviewError("candidate evidence trial identity is inconsistent")
+    manifest = _validate_evidence_manifest(
+        manifest_value,
+        expected=expected,
+        config=accepted_config,
+        config_binding=config_binding,
+        canonical_config_sha256=artifacts["config.json"]["sha256"],
+        trial_records=trials,
+    )
+    supplied_summary = _bounded_evidence_object(
+        documents["summary.json"].data,
+        "candidate evidence summary",
+    )
+    trusted_summary = _recompute_evidence_summary(trials, accepted_config)
+    _require_evidence_semantic_equality(
+        supplied_summary,
+        trusted_summary,
+        path="summary",
+    )
+    supplied_report = documents["report.md"].data
+    if (
+        supplied_report != _render_evidence_report(supplied_summary, manifest)
+        or supplied_report != _render_evidence_report(trusted_summary, manifest)
+    ):
+        raise ReviewError("candidate evidence report differs from trusted reconstruction")
+    _validate_evidence_sha256sums(documents["SHA256SUMS"].data, artifacts)
+    after = _candidate_evidence_tree(root, "candidate evidence after semantic validation")
+    if before != after:
+        raise ReviewError("candidate evidence changed during semantic validation")
+
+    acceptance = evaluate_acceptance(trusted_summary, accepted_config)
+    semantic_record = {
+        "schema": "galadriel.candidate-evidence-validation.v1",
+        "candidate": {"commit": expected.commit, "tree": expected.tree},
+        "artifacts": artifacts,
+        "accepted_config_digest": config_binding["accepted_semantic_digest"],
+        "acceptance_metric_profile": EVIDENCE_ACCEPTANCE_PROFILE,
+        "bootstrap_profile": EVIDENCE_BOOTSTRAP_PROFILE,
+        "trusted_summary_sha256": hashlib.sha256(
+            json.dumps(
+                trusted_summary,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest(),
+        "acceptance": acceptance,
+    }
+    semantic_sha256 = hashlib.sha256(
+        b"galadriel-candidate-evidence-validation-v1\0"
+        + json.dumps(
+            semantic_record,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    return ValidatedCandidateEvidence(
+        artifacts=artifacts,
+        config_binding=config_binding,
+        manifest=manifest,
+        summary=trusted_summary,
+        acceptance=acceptance,
+        semantic_sha256=semantic_sha256,
     )
 
 
@@ -1874,30 +4521,18 @@ def validate_github_mutation_run(
     return result
 
 
-def validate_broad_mutation_receipt(
-    path: Path,
+def _validate_broad_mutation_receipt_document(
+    document: Any,
     *,
     root: Path,
     commit: str,
     tree: str,
     shard: str,
     diff: bytes,
+    outcome_artifact: MutationArtifactCapture | None = None,
 ) -> tuple[dict[str, Any], Path]:
-    """Bind one broad mutation outcome to its exact isolated execution."""
+    """Validate one captured broad receipt and its captured outcomes."""
 
-    root = root.resolve()
-    if not path.is_file() or path.is_symlink():
-        raise ReviewError("broad mutation run receipt is missing or unsafe")
-    path = path.resolve()
-    if path != root / BROAD_MUTATION_RECEIPT:
-        raise ReviewError("broad mutation run receipt is outside its artifact root")
-    document = load_json(
-        path,
-        max_bytes=MAX_MUTATION_RECEIPT_BYTES,
-        max_depth=16,
-        max_nodes=100_000,
-        label="broad mutation run receipt",
-    )
     require_keys(
         document,
         {
@@ -1981,18 +4616,34 @@ def validate_broad_mutation_receipt(
     require_digest_record(outcome_record, "broad mutation run outcomes")
     if outcome_record["path"] != "mutants.out/outcomes.json":
         raise ReviewError("broad mutation run receipt targets another outcome path")
-    target = contained_path(root, outcome_record["path"])
-    if not target.is_file() or target.is_symlink():
-        raise ReviewError("broad mutation run outcome is missing or unsafe")
-    digest, size = bounded_digest_file(
-        target,
-        max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+    expected_target = _mutation_artifact_path(
+        root,
+        outcome_record["path"],
         context="broad mutation outcomes",
     )
-    if outcome_record["sha256"] != digest or outcome_record["size_bytes"] != size:
+    if outcome_artifact is None:
+        outcome_artifact = _capture_mutation_artifact(
+            root,
+            outcome_record["path"],
+            max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+            expected_size=outcome_record["size_bytes"],
+            context="broad mutation outcomes",
+        )
+    elif outcome_artifact.path != expected_target:
+        raise ReviewError("broad mutation run outcome came from another path")
+    if (
+        outcome_record["sha256"] != outcome_artifact.capture.sha256
+        or outcome_record["size_bytes"] != outcome_artifact.capture.size_bytes
+    ):
         raise ReviewError("broad mutation run outcome digest mismatch")
-    counts = validate_mutation_outcomes(
-        target,
+    outcome_document = _load_mutation_json(
+        outcome_artifact.capture.data,
+        max_depth=16,
+        max_nodes=500_000,
+        label=f"mutation shard {shard} outcomes",
+    )
+    counts = _validate_mutation_outcomes_document(
+        outcome_document,
         shard,
         expected_cargo_executable=cargo_executable,
     )
@@ -2002,7 +4653,97 @@ def validate_broad_mutation_receipt(
         raise ReviewError("broad mutation run has noncanonical counts")
     if recorded_counts != counts:
         raise ReviewError("broad mutation run count record drifted")
-    return document, target
+    return document, outcome_artifact.path
+
+
+def validate_broad_mutation_receipt(
+    path: Path,
+    *,
+    root: Path,
+    commit: str,
+    tree: str,
+    shard: str,
+    diff: bytes,
+) -> tuple[dict[str, Any], Path]:
+    """Bind one broad mutation outcome to its exact isolated execution."""
+
+    expected_path = _mutation_artifact_path(
+        root,
+        BROAD_MUTATION_RECEIPT,
+        context="broad mutation run receipt",
+    )
+    actual_path = Path(os.path.abspath(os.fspath(path.expanduser())))
+    if actual_path != expected_path:
+        raise ReviewError("broad mutation run receipt is outside its artifact root")
+    receipt = _capture_mutation_artifact(
+        root,
+        BROAD_MUTATION_RECEIPT,
+        max_bytes=MAX_MUTATION_RECEIPT_BYTES,
+        context="broad mutation run receipt",
+    )
+    document = _load_mutation_json(
+        receipt.capture.data,
+        max_depth=16,
+        max_nodes=100_000,
+        label="broad mutation run receipt",
+    )
+    return _validate_broad_mutation_receipt_document(
+        document,
+        root=root,
+        commit=commit,
+        tree=tree,
+        shard=shard,
+        diff=diff,
+    )
+
+
+def _verify_mutation_signature(
+    document: bytes,
+    signature: bytes,
+    allowed_signers: Path,
+    *,
+    document_name: str,
+) -> None:
+    """Verify one mutation manifest against its captured detached signature."""
+
+    allowed_signers_bytes = read_bounded_regular_file(
+        allowed_signers,
+        max_bytes=MAX_ALLOWED_SIGNERS_BYTES,
+        label="allowed-signers trust root",
+    )
+    with tempfile.TemporaryDirectory(
+        prefix="galadriel-mutation-signature-verification-"
+    ) as name:
+        root = Path(name)
+        signature_snapshot = root / "signature"
+        allowed_signers_snapshot = root / "allowed-signers"
+        signature_snapshot.write_bytes(signature)
+        allowed_signers_snapshot.write_bytes(allowed_signers_bytes)
+        os.chmod(signature_snapshot, 0o600)
+        os.chmod(allowed_signers_snapshot, 0o600)
+        process = run_bounded_host_command(
+            [
+                "ssh-keygen",
+                "-Y",
+                "verify",
+                "-f",
+                str(allowed_signers_snapshot),
+                "-I",
+                SIGNING_PRINCIPAL,
+                "-n",
+                "galadriel-mutation-evidence",
+                "-s",
+                str(signature_snapshot),
+            ],
+            context="SSH mutation evidence signature verification",
+            stdin_document=document,
+            environment=_ssh_host_environment(use_agent=False),
+        )
+    if process.returncode != 0:
+        raise ReviewError(
+            f"invalid galadriel-mutation-evidence signature for {document_name}: "
+            f"command exited with {process.returncode}"
+        )
 
 
 def validate_mutation_evidence(
@@ -2013,28 +4754,44 @@ def validate_mutation_evidence(
     repo: Path,
     commit: str,
     tree: str,
-) -> tuple[dict[str, Any], list[Path]]:
+) -> ValidatedMutationEvidence:
     """Validate signed exact-diff shards and focused liveness checks."""
 
-    verify_signature(
-        manifest_path,
-        signature_path,
-        allowed_signers,
-        "galadriel-mutation-evidence",
-    )
-    _, manifest_size = bounded_digest_file(
-        manifest_path,
+    artifact_root = manifest_path.parent
+    manifest_relative = manifest_path.name
+    manifest = _capture_mutation_artifact(
+        artifact_root,
+        manifest_relative,
         max_bytes=MAX_MUTATION_MANIFEST_BYTES,
         context="mutation evidence manifest",
     )
-    _, signature_size = bounded_digest_file(
-        signature_path,
+    signature_relative = signature_path.name
+    expected_signature_path = _mutation_artifact_path(
+        artifact_root,
+        signature_relative,
+        context="mutation evidence signature",
+    )
+    actual_signature_path = Path(
+        os.path.abspath(os.fspath(signature_path.expanduser()))
+    )
+    if actual_signature_path != expected_signature_path:
+        raise ReviewError("mutation evidence signature is outside its artifact root")
+    if signature_relative == manifest_relative:
+        raise ReviewError("mutation evidence signature aliases its manifest")
+    signature = _capture_mutation_artifact(
+        artifact_root,
+        signature_relative,
         max_bytes=MAX_SIGNATURE_BYTES,
         context="mutation evidence signature",
     )
-    document = load_json(
-        manifest_path,
-        max_bytes=MAX_MUTATION_MANIFEST_BYTES,
+    _verify_mutation_signature(
+        manifest.capture.data,
+        signature.capture.data,
+        allowed_signers,
+        document_name=manifest_path.name,
+    )
+    document = _load_mutation_json(
+        manifest.capture.data,
         max_depth=32,
         max_nodes=250_000,
         label="mutation evidence manifest",
@@ -2099,13 +4856,20 @@ def validate_mutation_evidence(
         or diff_record["size_bytes"] != len(diff)
     ):
         raise ReviewError("mutation evidence retained Git diff record is not exact")
-    diff_target = contained_path(manifest_path.parent, "git.diff")
-    retained_diff = read_bounded_regular_file(
-        diff_target,
+    protected_paths = {manifest_relative, signature_relative}
+    if diff_record["path"] in protected_paths:
+        raise ReviewError("mutation evidence cannot reference its control files")
+    retained_diff = _capture_mutation_artifact(
+        artifact_root,
+        diff_record["path"],
         max_bytes=MAX_MUTATION_DIFF_BYTES,
-        label="retained mutation Git diff",
+        expected_size=diff_record["size_bytes"],
+        context="retained mutation Git diff",
     )
-    if retained_diff != diff:
+    if (
+        retained_diff.capture.data != diff
+        or retained_diff.capture.sha256 != diff_record["sha256"]
+    ):
         raise ReviewError("mutation evidence retained other Git diff bytes")
     if document["tool"] != {"name": "cargo-mutants", "version": "27.1.0"}:
         raise ReviewError("mutation evidence uses another tool or version")
@@ -2118,12 +4882,17 @@ def validate_mutation_evidence(
         raise ReviewError(
             "mutation evidence must contain ordered shards 0/4 through 3/4"
         )
-    artifacts = [diff_target]
-    artifact_paths: set[Path] = {diff_target}
-    aggregate_size = manifest_size + signature_size + len(diff)
+    artifacts = [retained_diff]
+    artifact_paths: set[str] = {retained_diff.relative}
+    aggregate_size = (
+        manifest.capture.size_bytes
+        + signature.capture.size_bytes
+        + retained_diff.capture.size_bytes
+    )
     if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
         raise ReviewError("mutation evidence exceeds its aggregate byte limit")
     shard_outcomes: dict[str, Path] = {}
+    shard_outcome_artifacts: dict[str, MutationArtifactCapture] = {}
     broad_signatures: set[BroadMutant] = set()
     for shard in shards:
         require_keys(shard, {"id", "status", "command", "artifact"}, "mutation shard")
@@ -2151,40 +4920,52 @@ def validate_mutation_evidence(
         )
         if relative != expected_relative:
             raise ReviewError(f"mutation shard {shard['id']} has another outcome path")
-        target = contained_path(manifest_path.parent, relative)
-        if target in {manifest_path, signature_path}:
+        if relative in protected_paths:
             raise ReviewError(
                 "mutation evidence cannot reference its own manifest or signature"
             )
-        if target in artifact_paths:
+        if relative in artifact_paths:
             raise ReviewError(
                 "mutation shards must reference distinct outcomes artifacts"
             )
-        if not target.is_file() or target.is_symlink():
-            raise ReviewError(
-                f"mutation shard artifact is missing or unsafe: {relative}"
-            )
-        digest, size = bounded_digest_file(
-            target,
+        captured = _capture_mutation_artifact(
+            artifact_root,
+            relative,
             max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+            expected_size=artifact["size_bytes"],
             context=f"mutation shard {shard['id']} outcomes",
         )
-        if artifact["sha256"] != digest or artifact["size_bytes"] != size:
+        if artifact["sha256"] != captured.capture.sha256:
             raise ReviewError(f"mutation shard artifact digest mismatch: {relative}")
-        validate_mutation_outcomes(target, shard["id"])
-        signatures = broad_mutation_signatures(target, shard["id"])
+        outcome_document = _load_mutation_json(
+            captured.capture.data,
+            max_depth=16,
+            max_nodes=500_000,
+            label=f"mutation shard {shard['id']} outcomes",
+        )
+        _validate_mutation_outcomes_document(
+            outcome_document,
+            shard["id"],
+            validate_broad_details=False,
+        )
+        signatures = _validate_broad_outcome_details(
+            outcome_document,
+            shard_id=shard["id"],
+            expected_cargo_executable=None,
+        )
         overlap = broad_signatures.intersection(signatures)
         if overlap:
             raise ReviewError(
                 f"mutation shard {shard['id']} duplicates another shard mutant"
             )
         broad_signatures.update(signatures)
-        aggregate_size += size
+        aggregate_size += captured.capture.size_bytes
         if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
             raise ReviewError("mutation evidence exceeds its aggregate byte limit")
-        artifact_paths.add(target)
-        artifacts.append(target)
-        shard_outcomes[shard["id"]] = target
+        artifact_paths.add(relative)
+        artifacts.append(captured)
+        shard_outcomes[shard["id"]] = captured.path
+        shard_outcome_artifacts[shard["id"]] = captured
 
     broad_receipts = document["broad_run_receipts"]
     if (
@@ -2203,30 +4984,33 @@ def validate_mutation_evidence(
         )
         if artifact["path"] != expected_path:
             raise ReviewError(f"broad mutation run receipt {shard_id} has another path")
-        target = contained_path(manifest_path.parent, expected_path)
-        if (
-            target in {manifest_path, signature_path}
-            or target in artifact_paths
-            or not target.is_file()
-            or target.is_symlink()
-        ):
+        if expected_path in protected_paths or expected_path in artifact_paths:
             raise ReviewError(
                 f"broad mutation run receipt {shard_id} is missing or unsafe"
             )
-        digest, size = bounded_digest_file(
-            target,
+        captured = _capture_mutation_artifact(
+            artifact_root,
+            expected_path,
             max_bytes=MAX_MUTATION_RECEIPT_BYTES,
+            expected_size=artifact["size_bytes"],
             context=f"broad mutation run receipt {shard_id}",
         )
-        if artifact["sha256"] != digest or artifact["size_bytes"] != size:
+        if artifact["sha256"] != captured.capture.sha256:
             raise ReviewError(f"broad mutation run receipt {shard_id} digest mismatch")
-        receipt_document, receipt_outcome = validate_broad_mutation_receipt(
-            target,
-            root=target.parent,
+        receipt_value = _load_mutation_json(
+            captured.capture.data,
+            max_depth=16,
+            max_nodes=100_000,
+            label=f"broad mutation run receipt {shard_id}",
+        )
+        receipt_document, receipt_outcome = _validate_broad_mutation_receipt_document(
+            receipt_value,
+            root=captured.path.parent,
             commit=commit,
             tree=tree,
             shard=shard_id,
             diff=diff,
+            outcome_artifact=shard_outcome_artifacts[shard_id],
         )
         if receipt_document["github_run"] != github_run:
             raise ReviewError(
@@ -2236,11 +5020,11 @@ def validate_mutation_evidence(
             raise ReviewError(
                 f"broad mutation shard {shard_id} differs from its run receipt"
             )
-        aggregate_size += size
+        aggregate_size += captured.capture.size_bytes
         if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
             raise ReviewError("mutation evidence exceeds its aggregate byte limit")
-        artifact_paths.add(target)
-        artifacts.append(target)
+        artifact_paths.add(expected_path)
+        artifacts.append(captured)
 
     receipt_record = document["focused_run_receipt"]
     require_keys(
@@ -2257,37 +5041,43 @@ def validate_mutation_evidence(
     )
     if receipt_artifact["path"] != FOCUSED_MUTATION_RECEIPT:
         raise ReviewError("focused mutation run receipt has another path")
-    receipt_target = contained_path(manifest_path.parent, FOCUSED_MUTATION_RECEIPT)
     if (
-        receipt_target in {manifest_path, signature_path}
-        or receipt_target in artifact_paths
-        or not receipt_target.is_file()
-        or receipt_target.is_symlink()
+        FOCUSED_MUTATION_RECEIPT in protected_paths
+        or FOCUSED_MUTATION_RECEIPT in artifact_paths
     ):
         raise ReviewError("focused mutation run receipt artifact is missing or unsafe")
-    receipt_digest, receipt_size = bounded_digest_file(
-        receipt_target,
+    focused_receipt = _capture_mutation_artifact(
+        artifact_root,
+        FOCUSED_MUTATION_RECEIPT,
         max_bytes=MAX_MUTATION_RECEIPT_BYTES,
+        expected_size=receipt_artifact["size_bytes"],
         context="focused mutation run receipt",
     )
-    if (
-        receipt_artifact["sha256"] != receipt_digest
-        or receipt_artifact["size_bytes"] != receipt_size
-    ):
+    if receipt_artifact["sha256"] != focused_receipt.capture.sha256:
         raise ReviewError("focused mutation run receipt artifact digest mismatch")
-    receipt_document, receipt_outcomes = validate_focused_mutation_receipt(
-        receipt_target,
-        root=manifest_path.parent,
+    focused_receipt_value = _load_mutation_json(
+        focused_receipt.capture.data,
+        max_depth=16,
+        max_nodes=100_000,
+        label="focused mutation run receipt",
+    )
+    (
+        receipt_document,
+        receipt_outcomes,
+        focused_outcome_artifacts,
+    ) = _validate_focused_mutation_receipt_document(
+        focused_receipt_value,
+        root=artifact_root,
         commit=commit,
         tree=tree,
     )
     if receipt_document["github_run"] != github_run:
         raise ReviewError("focused mutation run receipt targets another GitHub run")
-    aggregate_size += receipt_size
+    aggregate_size += focused_receipt.capture.size_bytes
     if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
         raise ReviewError("mutation evidence exceeds its aggregate byte limit")
-    artifact_paths.add(receipt_target)
-    artifacts.append(receipt_target)
+    artifact_paths.add(FOCUSED_MUTATION_RECEIPT)
+    artifacts.append(focused_receipt)
 
     focused_checks = document["focused_checks"]
     expected_check_ids = [str(check["id"]) for check in MUTATION_LIVENESS_CHECKS]
@@ -2331,52 +5121,42 @@ def validate_mutation_evidence(
         artifact = item["artifact"]
         require_digest_record(artifact, "focused mutation artifact")
         relative = require_text(artifact["path"], "focused mutation artifact path")
-        target = contained_path(manifest_path.parent, relative)
-        if target != receipt_outcomes[check_id]:
+        captured = focused_outcome_artifacts[check_id]
+        if relative != captured.relative or captured.path != receipt_outcomes[check_id]:
             raise ReviewError(
                 f"focused mutation check {check_id} differs from its run receipt"
             )
-        if target in {manifest_path, signature_path} or target in artifact_paths:
+        if relative in protected_paths or relative in artifact_paths:
             raise ReviewError(
                 f"focused mutation check {check_id} references a duplicate artifact"
             )
-        if not target.is_file() or target.is_symlink():
-            raise ReviewError(
-                f"focused mutation artifact is missing or unsafe: {relative}"
-            )
-        digest, size = bounded_digest_file(
-            target,
-            max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
-            context=f"focused mutation check {check_id} outcomes",
-        )
-        if artifact["sha256"] != digest or artifact["size_bytes"] != size:
+        if (
+            artifact["sha256"] != captured.capture.sha256
+            or artifact["size_bytes"] != captured.capture.size_bytes
+        ):
             raise ReviewError(f"focused mutation artifact digest mismatch: {relative}")
-        validate_focused_liveness_outcomes(target, check)
-        aggregate_size += size
+        aggregate_size += captured.capture.size_bytes
         if aggregate_size > MAX_MUTATION_EVIDENCE_BYTES:
             raise ReviewError("mutation evidence exceeds its aggregate byte limit")
-        artifact_paths.add(target)
-        artifacts.append(target)
-    return document, artifacts
+        artifact_paths.add(relative)
+        artifacts.append(captured)
+    return ValidatedMutationEvidence(
+        document=document,
+        manifest=manifest,
+        signature=signature,
+        artifacts=tuple(artifacts),
+    )
 
 
-def validate_mutation_outcomes(
-    path: Path,
+def _validate_mutation_outcomes_document(
+    document: Any,
     shard_id: str,
     *,
     expected_cargo_executable: str | None = None,
+    validate_broad_details: bool = True,
 ) -> dict[str, int]:
-    """Reject incomplete, missed, timed-out, or weak cargo-mutants outcomes."""
+    """Validate one already captured cargo-mutants outcomes document."""
 
-    if path.name != "outcomes.json" or not path.is_file() or path.is_symlink():
-        raise ReviewError(f"mutation shard {shard_id} artifact must be outcomes.json")
-    document = load_json(
-        path,
-        max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
-        max_depth=16,
-        max_nodes=500_000,
-        label=f"mutation shard {shard_id} outcomes",
-    )
     require_keys(
         document,
         {
@@ -2494,12 +5274,48 @@ def validate_mutation_outcomes(
                 f"mutation shard {shard_id} caught less than "
                 f"{BROAD_MUTATION_MINIMUM_CAUGHT_RATIO:.0%} of mutants"
             )
-        _validate_broad_outcome_details(
-            document,
-            shard_id=shard_id,
-            expected_cargo_executable=expected_cargo_executable,
-        )
+        if validate_broad_details:
+            _validate_broad_outcome_details(
+                document,
+                shard_id=shard_id,
+                expected_cargo_executable=expected_cargo_executable,
+            )
     return counts
+
+
+def _capture_mutation_outcomes(path: Path, shard_id: str) -> MutationArtifactCapture:
+    """Capture one standalone outcomes document through its parent root."""
+
+    if path.name != "outcomes.json":
+        raise ReviewError(f"mutation shard {shard_id} artifact must be outcomes.json")
+    return _capture_mutation_artifact(
+        path.parent,
+        path.name,
+        max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+        context=f"mutation shard {shard_id} outcomes",
+    )
+
+
+def validate_mutation_outcomes(
+    path: Path,
+    shard_id: str,
+    *,
+    expected_cargo_executable: str | None = None,
+) -> dict[str, int]:
+    """Reject incomplete, missed, timed-out, or weak cargo-mutants outcomes."""
+
+    artifact = _capture_mutation_outcomes(path, shard_id)
+    document = _load_mutation_json(
+        artifact.capture.data,
+        max_depth=16,
+        max_nodes=500_000,
+        label=f"mutation shard {shard_id} outcomes",
+    )
+    return _validate_mutation_outcomes_document(
+        document,
+        shard_id,
+        expected_cargo_executable=expected_cargo_executable,
+    )
 
 
 def _focused_span_signature(value: Any, context: str) -> tuple[int, int, int, int]:
@@ -2846,13 +5662,17 @@ def _validate_broad_outcome_details(
 def broad_mutation_signatures(path: Path, shard_id: str) -> tuple[BroadMutant, ...]:
     """Return the already validated, unique broad mutant identities."""
 
-    validate_mutation_outcomes(path, shard_id)
-    document = load_json(
-        path,
-        max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+    artifact = _capture_mutation_outcomes(path, shard_id)
+    document = _load_mutation_json(
+        artifact.capture.data,
         max_depth=16,
         max_nodes=500_000,
         label=f"mutation shard {shard_id} outcomes",
+    )
+    _validate_mutation_outcomes_document(
+        document,
+        shard_id,
+        validate_broad_details=False,
     )
     return _validate_broad_outcome_details(
         document,
@@ -2921,16 +5741,20 @@ def _validate_focused_artifact_path(
         raise ReviewError(f"{context} is not a contained {directory} path")
 
 
-def validate_focused_liveness_outcomes(
-    path: Path,
+def _validate_focused_liveness_document(
+    document: Any,
     check: dict[str, Any],
     *,
     expected_cargo_executable: str | None = None,
 ) -> dict[str, int]:
-    """Require the exact outcomes from one exact focused mutation command."""
+    """Validate one captured focused mutation outcomes document."""
 
     check_id = str(check["id"])
-    counts = validate_mutation_outcomes(path, f"focused/{check_id}")
+    counts = _validate_mutation_outcomes_document(
+        document,
+        f"focused/{check_id}",
+        expected_cargo_executable=expected_cargo_executable,
+    )
     required: Counter[FocusedMutant] = Counter(check["required_mutants"])
     unviable: Counter[FocusedMutant] = Counter(check.get("unviable_mutants", ()))
     if unviable - required:
@@ -2951,13 +5775,6 @@ def validate_focused_liveness_outcomes(
             f"focused mutation check {check_id} has another outcome summary"
         )
 
-    document = load_json(
-        path,
-        max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
-        max_depth=16,
-        max_nodes=500_000,
-        label=f"focused mutation check {check_id} outcomes",
-    )
     observed: Counter[FocusedMutant] = Counter()
     if check.get("kind") == "direct-test":
         expected_build_argv = (
@@ -3068,28 +5885,43 @@ def validate_focused_liveness_outcomes(
     return counts
 
 
-def validate_focused_mutation_receipt(
+def validate_focused_liveness_outcomes(
     path: Path,
+    check: dict[str, Any],
+    *,
+    expected_cargo_executable: str | None = None,
+) -> dict[str, int]:
+    """Require the exact outcomes from one exact focused mutation command."""
+
+    check_id = str(check["id"])
+    artifact = _capture_mutation_outcomes(path, f"focused/{check_id}")
+    document = _load_mutation_json(
+        artifact.capture.data,
+        max_depth=16,
+        max_nodes=500_000,
+        label=f"focused mutation check {check_id} outcomes",
+    )
+    return _validate_focused_liveness_document(
+        document,
+        check,
+        expected_cargo_executable=expected_cargo_executable,
+    )
+
+
+def _validate_focused_mutation_receipt_document(
+    document: Any,
     *,
     root: Path,
     commit: str,
     tree: str,
-) -> tuple[dict[str, Any], dict[str, Path]]:
-    """Bind focused outcomes to the exact runner invocation and Rust toolchain."""
+    outcome_artifacts: dict[str, MutationArtifactCapture] | None = None,
+) -> tuple[
+    dict[str, Any],
+    dict[str, Path],
+    dict[str, MutationArtifactCapture],
+]:
+    """Validate one captured focused receipt and its captured outcomes."""
 
-    root = root.resolve()
-    if not path.is_file() or path.is_symlink():
-        raise ReviewError("focused mutation run receipt is missing or unsafe")
-    path = path.resolve()
-    if path != root / FOCUSED_MUTATION_RECEIPT:
-        raise ReviewError("focused mutation run receipt is outside its artifact root")
-    document = load_json(
-        path,
-        max_bytes=MAX_MUTATION_RECEIPT_BYTES,
-        max_depth=16,
-        max_nodes=100_000,
-        label="focused mutation run receipt",
-    )
     require_keys(
         document,
         {
@@ -3145,7 +5977,10 @@ def validate_focused_mutation_receipt(
         or [item.get("id") for item in checks if isinstance(item, dict)] != expected_ids
     ):
         raise ReviewError("focused mutation run receipt lacks the ordered checks")
+    if outcome_artifacts is not None and set(outcome_artifacts) != set(expected_ids):
+        raise ReviewError("focused mutation outcomes capture set is incomplete")
     outcomes: dict[str, Path] = {}
+    captures: dict[str, MutationArtifactCapture] = {}
     for item, check in zip(checks, MUTATION_LIVENESS_CHECKS, strict=True):
         check_id = str(check["id"])
         require_keys(
@@ -3169,22 +6004,45 @@ def validate_focused_mutation_receipt(
             raise ReviewError(
                 f"focused mutation receipt check {check_id} targets another output"
             )
-        target = contained_path(root, expected_relative)
-        if target in outcomes.values() or not target.is_file() or target.is_symlink():
-            raise ReviewError(
-                f"focused mutation receipt check {check_id} output is missing or duplicate"
-            )
-        digest, size = bounded_digest_file(
-            target,
-            max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+        expected_target = _mutation_artifact_path(
+            root,
+            expected_relative,
             context=f"focused mutation check {check_id} outcomes",
         )
-        if artifact["sha256"] != digest or artifact["size_bytes"] != size:
+        captured = (
+            None if outcome_artifacts is None else outcome_artifacts.get(check_id)
+        )
+        if captured is None:
+            captured = _capture_mutation_artifact(
+                root,
+                expected_relative,
+                max_bytes=MAX_MUTATION_OUTCOMES_BYTES,
+                expected_size=artifact["size_bytes"],
+                context=f"focused mutation check {check_id} outcomes",
+            )
+        elif captured.path != expected_target:
+            raise ReviewError(
+                f"focused mutation receipt check {check_id} came from another path"
+            )
+        if captured.path in outcomes.values():
+            raise ReviewError(
+                f"focused mutation receipt check {check_id} output is duplicate"
+            )
+        if (
+            artifact["sha256"] != captured.capture.sha256
+            or artifact["size_bytes"] != captured.capture.size_bytes
+        ):
             raise ReviewError(
                 f"focused mutation receipt check {check_id} output digest mismatch"
             )
-        counts = validate_focused_liveness_outcomes(
-            target,
+        outcome_document = _load_mutation_json(
+            captured.capture.data,
+            max_depth=16,
+            max_nodes=500_000,
+            label=f"focused mutation check {check_id} outcomes",
+        )
+        counts = _validate_focused_liveness_document(
+            outcome_document,
             check,
             expected_cargo_executable=cargo_executable,
         )
@@ -3204,8 +6062,47 @@ def validate_focused_mutation_receipt(
             raise ReviewError(
                 f"focused mutation receipt check {check_id} count record drifted"
             )
-        outcomes[check_id] = target
-    return document, outcomes
+        outcomes[check_id] = captured.path
+        captures[check_id] = captured
+    return document, outcomes, captures
+
+
+def validate_focused_mutation_receipt(
+    path: Path,
+    *,
+    root: Path,
+    commit: str,
+    tree: str,
+) -> tuple[dict[str, Any], dict[str, Path]]:
+    """Bind focused outcomes to the exact runner invocation and Rust toolchain."""
+
+    expected_path = _mutation_artifact_path(
+        root,
+        FOCUSED_MUTATION_RECEIPT,
+        context="focused mutation run receipt",
+    )
+    actual_path = Path(os.path.abspath(os.fspath(path.expanduser())))
+    if actual_path != expected_path:
+        raise ReviewError("focused mutation run receipt is outside its artifact root")
+    receipt = _capture_mutation_artifact(
+        root,
+        FOCUSED_MUTATION_RECEIPT,
+        max_bytes=MAX_MUTATION_RECEIPT_BYTES,
+        context="focused mutation run receipt",
+    )
+    document = _load_mutation_json(
+        receipt.capture.data,
+        max_depth=16,
+        max_nodes=100_000,
+        label="focused mutation run receipt",
+    )
+    validated, outcomes, _captures = _validate_focused_mutation_receipt_document(
+        document,
+        root=root,
+        commit=commit,
+        tree=tree,
+    )
+    return validated, outcomes
 
 
 class _GitTreeEntry(NamedTuple):
@@ -3442,6 +6339,7 @@ def candidate_blob(repo: Path, commit: str, relative: str) -> bytes:
 
 FILE_LEDGER_COLUMNS = (
     "path",
+    "git_mode",
     "git_blob_id",
     "sha256",
     "bytes",
@@ -3465,6 +6363,44 @@ FILE_LEDGER_COLUMNS = (
 )
 
 
+def _load_file_review_ledger(
+    path: Path, *, label: str
+) -> tuple[bytes, list[dict[str, str]]]:
+    """Load one bounded CSV ledger from one stable no-follow read."""
+
+    document = read_bounded_regular_file(
+        path,
+        max_bytes=MAX_FILE_LEDGER_BYTES,
+        label=label,
+    )
+    try:
+        text = document.decode("utf-8", "strict")
+        reader = csv.DictReader(io.StringIO(text, newline=""))
+        if tuple(reader.fieldnames or ()) != FILE_LEDGER_COLUMNS:
+            raise ReviewError(f"{label} has the wrong or duplicate columns")
+        rows: list[dict[str, str]] = []
+        for row_number, row in enumerate(reader, 1):
+            if row_number > MAX_FILE_LEDGER_ROWS:
+                raise ReviewError(
+                    f"{label} exceeds the {MAX_FILE_LEDGER_ROWS}-row limit"
+                )
+            if None in row or any(value is None for value in row.values()):
+                raise ReviewError(f"{label} row {row_number} is malformed")
+            if any(
+                len(value.encode("utf-8")) > MAX_FILE_LEDGER_CELL_BYTES
+                for value in row.values()
+            ):
+                raise ReviewError(
+                    f"{label} row {row_number} exceeds the cell-size limit"
+                )
+            rows.append(row)
+    except ReviewError:
+        raise
+    except (UnicodeError, csv.Error) as error:
+        raise ReviewError(f"cannot read {label}: {error}") from error
+    return document, rows
+
+
 def validate_completed_file_ledger(
     path: Path,
     repo: Path,
@@ -3473,18 +6409,9 @@ def validate_completed_file_ledger(
     source_ledger: Path | None = None,
 ) -> dict[str, Any]:
     inventory = git_tree_inventory(repo, commit)
-    try:
-        with path.open(newline="", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
-            if tuple(reader.fieldnames or ()) != FILE_LEDGER_COLUMNS:
-                raise ReviewError(
-                    "completed review ledger has the wrong or duplicate columns"
-                )
-            rows = list(reader)
-    except (OSError, UnicodeError, csv.Error) as error:
-        raise ReviewError(
-            f"cannot read completed file-review ledger: {error}"
-        ) from error
+    completed_document, rows = _load_file_review_ledger(
+        path, label="completed file-review ledger"
+    )
     by_path: dict[str, dict[str, str]] = {}
     for row in rows:
         relative = row["path"]
@@ -3493,6 +6420,8 @@ def validate_completed_file_ledger(
         expected = inventory.get(relative)
         if expected is None:
             raise ReviewError(f"completed review ledger has an extra path: {relative}")
+        if row["git_mode"] != expected["mode"]:
+            raise ReviewError(f"completed review ledger mode mismatch: {relative}")
         if row["git_blob_id"] != expected["git_blob_id"]:
             raise ReviewError(f"completed review ledger blob mismatch: {relative}")
         if row["sha256"] != expected["sha256"] or row["bytes"] != str(
@@ -3528,18 +6457,9 @@ def validate_completed_file_ledger(
         )
     source_digest = None
     if source_ledger is not None:
-        try:
-            with source_ledger.open(newline="", encoding="utf-8") as handle:
-                source_reader = csv.DictReader(handle)
-                if tuple(source_reader.fieldnames or ()) != FILE_LEDGER_COLUMNS:
-                    raise ReviewError(
-                        "source review ledger has the wrong or duplicate columns"
-                    )
-                source_rows = list(source_reader)
-        except (OSError, UnicodeError, csv.Error) as error:
-            raise ReviewError(
-                f"cannot read source file-review ledger: {error}"
-            ) from error
+        source_document, source_rows = _load_file_review_ledger(
+            source_ledger, label="source file-review ledger"
+        )
         source_by_path = {row["path"]: row for row in source_rows}
         if len(source_by_path) != len(source_rows) or set(source_by_path) != set(
             by_path
@@ -3547,7 +6467,7 @@ def validate_completed_file_ledger(
             raise ReviewError(
                 "completed review ledger differs from the source path set"
             )
-        immutable_fields = FILE_LEDGER_COLUMNS[:12]
+        immutable_fields = FILE_LEDGER_COLUMNS[:13]
         for relative, row in by_path.items():
             source = source_by_path[relative]
             if source["review_status"] != "UNREVIEWED":
@@ -3558,11 +6478,11 @@ def validate_completed_file_ledger(
                 raise ReviewError(
                     f"completed review ledger changed source metadata: {relative}"
                 )
-        source_digest = digest_file(source_ledger)[0]
+        source_digest = sha256_bytes(source_document)
     return {
         "tracked_files": len(inventory),
         "reviewed_files": len(by_path),
-        "ledger_sha256": digest_file(path)[0],
+        "ledger_sha256": sha256_bytes(completed_document),
         "source_ledger_sha256": source_digest,
     }
 
@@ -3574,7 +6494,21 @@ def verify_artifact_manifest(
     expected_schema: str,
     forbidden_paths: set[str],
 ) -> dict[str, Any]:
-    document = load_json(manifest_path)
+    manifest_bytes = read_bounded_regular_file(
+        manifest_path,
+        max_bytes=MAX_TIER_MANIFEST_BYTES,
+        label="artifact manifest",
+    )
+    try:
+        document = loads_json(manifest_bytes)
+    except (TypeError, ValueError) as error:
+        raise ReviewError(f"cannot parse artifact manifest: {error}") from error
+    validate_json_structure(
+        document,
+        max_depth=MAX_EVIDENCE_JSON_DEPTH,
+        max_nodes=MAX_EVIDENCE_JSON_NODES,
+        label="artifact manifest",
+    )
     require_keys(
         document, {"schema", "tier", "candidate", "artifacts"}, "artifact manifest"
     )
@@ -3583,33 +6517,108 @@ def verify_artifact_manifest(
     artifacts = document["artifacts"]
     if not isinstance(artifacts, list) or not artifacts:
         raise ReviewError("artifact manifest must contain artifacts")
+    if len(artifacts) > MAX_TIER_ARTIFACTS:
+        raise ReviewError(
+            f"artifact manifest exceeds the {MAX_TIER_ARTIFACTS}-artifact limit"
+        )
+
+    canonical_forbidden: set[str] = set()
+    for relative in forbidden_paths:
+        canonical_relative_parts(
+            relative,
+            label="forbidden artifact path",
+            max_path_bytes=MAX_TIER_PATH_BYTES,
+            max_component_bytes=MAX_TIER_PATH_COMPONENT_BYTES,
+            max_depth=MAX_TIER_PATH_DEPTH,
+        )
+        canonical_forbidden.add(relative)
+
     seen: set[str] = set()
-    for item in artifacts:
+    declared_aggregate = 0
+    for index, item in enumerate(artifacts):
         require_digest_record(item, "manifest artifact")
         relative = item["path"]
-        if not isinstance(relative, str) or relative in seen:
-            raise ReviewError(f"duplicate or invalid manifest path: {relative!r}")
-        if relative in forbidden_paths:
+        if not isinstance(relative, str):
+            raise ReviewError(f"manifest artifact {index} has an invalid path")
+        canonical_relative_parts(
+            relative,
+            label=f"manifest artifact {index} path",
+            max_path_bytes=MAX_TIER_PATH_BYTES,
+            max_component_bytes=MAX_TIER_PATH_COMPONENT_BYTES,
+            max_depth=MAX_TIER_PATH_DEPTH,
+        )
+        if relative in seen:
+            raise ReviewError(f"duplicate manifest path: {relative!r}")
+        if relative in canonical_forbidden:
             raise ReviewError(
                 f"self-reference is prohibited in artifact manifest: {relative}"
             )
+        if item["size_bytes"] > MAX_TIER_ARTIFACT_BYTES:
+            raise ReviewError(
+                f"manifest artifact exceeds the per-file byte limit: {relative}"
+            )
+        declared_aggregate += item["size_bytes"]
+        if declared_aggregate > MAX_TIER_AGGREGATE_BYTES:
+            raise ReviewError("artifact manifest exceeds the aggregate byte limit")
         seen.add(relative)
-        target = contained_path(root, relative)
-        if not target.is_file():
-            raise ReviewError(f"manifest artifact is missing: {relative}")
-        digest, size = digest_file(target)
-        if digest != item["sha256"] or size != item["size_bytes"]:
-            raise ReviewError(f"manifest artifact digest mismatch: {relative}")
-    actual: set[str] = set()
-    for target in sorted(root.rglob("*")):
-        relative = target.relative_to(root).as_posix()
-        if target.is_symlink():
-            raise ReviewError(f"artifact tier contains a symlink: {relative}")
-        if target.is_file() and relative not in forbidden_paths:
-            actual.add(relative)
-    unlisted = sorted(actual - seen)
+
+    root_absolute = Path(os.path.abspath(os.fspath(root)))
+    manifest_absolute = Path(os.path.abspath(os.fspath(manifest_path)))
+    try:
+        manifest_relative = manifest_absolute.relative_to(root_absolute).as_posix()
+    except ValueError as error:
+        raise ReviewError(
+            "artifact manifest must be inside its artifact root"
+        ) from error
+    canonical_relative_parts(
+        manifest_relative,
+        label="artifact manifest path",
+        max_path_bytes=MAX_TIER_PATH_BYTES,
+        max_component_bytes=MAX_TIER_PATH_COMPONENT_BYTES,
+        max_depth=MAX_TIER_PATH_DEPTH,
+    )
+    if manifest_relative not in canonical_forbidden:
+        raise ReviewError("artifact manifest path must be a forbidden control path")
+
+    actual = digest_rooted_tree(
+        root,
+        label="artifact tier",
+        max_entries=MAX_TIER_TREE_ENTRIES,
+        max_depth=MAX_TIER_PATH_DEPTH,
+        max_path_bytes=MAX_TIER_PATH_BYTES,
+        max_component_bytes=MAX_TIER_PATH_COMPONENT_BYTES,
+        max_file_bytes=MAX_TIER_ARTIFACT_BYTES,
+        max_aggregate_bytes=MAX_TIER_AGGREGATE_BYTES + MAX_TIER_CONTROL_BYTES,
+        reject_empty_directories=True,
+    )
+    retained_manifest = actual.get(manifest_relative)
+    if (
+        retained_manifest is None
+        or retained_manifest.sha256 != sha256_bytes(manifest_bytes)
+        or retained_manifest.size_bytes != len(manifest_bytes)
+    ):
+        raise ReviewError("artifact manifest changed during rooted verification")
+
+    retained_paths = set(actual) - canonical_forbidden
+    control_size = sum(
+        actual[relative].size_bytes
+        for relative in canonical_forbidden
+        if relative in actual
+    )
+    if control_size > MAX_TIER_CONTROL_BYTES:
+        raise ReviewError("artifact tier controls exceed the aggregate byte limit")
+    missing = sorted(seen - retained_paths)
+    if missing:
+        raise ReviewError(f"manifest artifacts are missing: {missing[:10]}")
+    unlisted = sorted(retained_paths - seen)
     if unlisted:
         raise ReviewError(f"artifact manifest omits retained files: {unlisted[:10]}")
+
+    for item in artifacts:
+        relative = item["path"]
+        digest = actual[relative]
+        if digest.sha256 != item["sha256"] or digest.size_bytes != item["size_bytes"]:
+            raise ReviewError(f"manifest artifact digest mismatch: {relative}")
     return document
 
 
@@ -3624,21 +6633,43 @@ def validate_evidence_reference(
     require_keys(reference, {"kind", "path", "sha256"}, "evidence reference")
     kind = reference["kind"]
     relative = require_text(reference["path"], "evidence reference path")
+    canonical_relative_parts(
+        relative,
+        label="evidence reference path",
+        max_path_bytes=MAX_CANDIDATE_PATH_BYTES,
+        max_component_bytes=MAX_CANDIDATE_PATH_COMPONENT_BYTES,
+        max_depth=MAX_TIER_PATH_DEPTH,
+    )
     expected = reference["sha256"]
     if not isinstance(expected, str) or not SHA256.fullmatch(expected):
         raise ReviewError("evidence reference has an invalid SHA-256")
     if kind == "candidate_blob":
         actual = sha256_bytes(candidate_blob(repo, commit, relative))
     elif kind == "qualification_artifact":
-        target = contained_path(qualification_root, relative)
-        if not target.is_file():
-            raise ReviewError(f"qualification evidence is missing: {relative}")
-        actual = digest_file(target)[0]
+        actual = digest_rooted_regular_file(
+            qualification_root,
+            relative,
+            max_bytes=MAX_TIER_ARTIFACT_BYTES,
+            label=f"qualification evidence {relative!r}",
+            max_path_bytes=MAX_TIER_PATH_BYTES,
+            max_component_bytes=MAX_TIER_PATH_COMPONENT_BYTES,
+            max_depth=MAX_TIER_PATH_DEPTH,
+            max_directory_entries=MAX_TIER_TREE_ENTRIES,
+        ).sha256
     elif kind == "review_input":
         target = review_inputs.get(relative)
-        if target is None or not target.is_file() or target.is_symlink():
+        if target is None:
             raise ReviewError(f"review-input evidence is missing: {relative}")
-        actual = digest_file(target)[0]
+        actual = digest_rooted_regular_file(
+            target.parent,
+            target.name,
+            max_bytes=MAX_SIGNED_DOCUMENT_BYTES,
+            label=f"review-input evidence {relative!r}",
+            max_path_bytes=MAX_TIER_PATH_BYTES,
+            max_component_bytes=MAX_TIER_PATH_COMPONENT_BYTES,
+            max_depth=1,
+            max_directory_entries=MAX_TIER_TREE_ENTRIES,
+        ).sha256
     else:
         raise ReviewError(f"unsupported evidence reference kind: {kind!r}")
     if actual != expected:

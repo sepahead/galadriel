@@ -134,8 +134,8 @@ The final hostile-input and lifecycle campaigns must cover these cases:
 - authenticated input with a stale epoch, wrong route, or oversized payload
 - validly encoded input with a stale epoch, wrong route, or oversized payload
 - valid schema with contradictory semantics
-- green component tests with a divergent schema or generated artifact
-- green component tests with a divergent public API snapshot
+- passed component tests with a divergent schema or generated artifact
+- passed component tests with a divergent public API snapshot
 - nominal statistics with missing lifecycle evidence
 - nominal statistics with missing common-projection evidence
 - cancellation before and after a selected event or advisory publication

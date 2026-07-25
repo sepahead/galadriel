@@ -504,7 +504,13 @@ def validate_manifest(repo: Path) -> None:
         "default": [],
         "pid": ["dep:galadriel-pid"],
         "ncp": ["dep:galadriel-ncp"],
-        "ncp-live": ["ncp", "galadriel-ncp/zenoh", "dep:tokio"],
+        "ncp-live": [
+            "ncp",
+            "galadriel-ncp/zenoh",
+            "dep:tokio",
+            "dep:serde",
+            "dep:serde_json",
+        ],
     }
     if manifest.get("features") != expected:
         raise ReviewError(

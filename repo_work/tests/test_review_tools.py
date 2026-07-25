@@ -6,15 +6,19 @@ import copy
 import csv
 import contextlib
 import datetime as dt
+import errno
 import hashlib
 import io
 import json
 import os
 import re
+import signal
+import stat
 import subprocess
 import tempfile
 import time
 import unittest
+from collections import Counter
 from pathlib import Path
 from typing import Any, Callable
 from unittest import mock
@@ -65,6 +69,7 @@ from freeze_audit_inputs import assert_release_tool_coverage, strict_relative_fi
 from qualify_candidate import BoundedProcessResult, capture_report
 import release_assurance as assurance
 from scripts import release_audit
+import verify_evidence_manifest as evidence_manifest
 
 
 TOOLS = Path(__file__).resolve().parents[1]
@@ -368,7 +373,7 @@ class ReviewToolsTest(unittest.TestCase):
         )
         parent_program = (
             "import subprocess,sys,time;"
-            f"subprocess.Popen([sys.executable,'-c',{child_program!r}]);"
+            f"child=subprocess.Popen([sys.executable,'-c',{child_program!r}]);"
             "time.sleep(30)"
         )
         with self.assertRaisesRegex(
@@ -384,6 +389,109 @@ class ReviewToolsTest(unittest.TestCase):
             )
         time.sleep(2)
         self.assertFalse(marker.exists())
+
+    def test_host_command_cleanup_attempts_kill_after_signal_failures(self) -> None:
+        process = mock.Mock()
+        process.pid = 42_424
+        process.poll.return_value = None
+        process.wait.side_effect = subprocess.TimeoutExpired(
+            cmd="fixture",
+            timeout=common_helpers.HOST_COMMAND_STOP_TIMEOUT_SECONDS,
+        )
+        process.send_signal.side_effect = PermissionError(
+            errno.EPERM,
+            "injected leader signal failure",
+        )
+        with (
+            mock.patch.object(
+                common_helpers.os,
+                "killpg",
+                side_effect=PermissionError(
+                    errno.EPERM,
+                    "injected group signal failure",
+                ),
+            ) as kill_group,
+            self.assertRaisesRegex(
+                ReviewError,
+                "did not terminate within its stop bound",
+            ),
+        ):
+            common_helpers._stop_bounded_host_process(process, "host fixture")
+
+        self.assertEqual(
+            kill_group.call_args_list,
+            [
+                mock.call(process.pid, signal.SIGTERM),
+                mock.call(process.pid, signal.SIGKILL),
+            ],
+        )
+        self.assertEqual(
+            process.send_signal.call_args_list,
+            [mock.call(signal.SIGTERM), mock.call(signal.SIGKILL)],
+        )
+        self.assertEqual(process.wait.call_count, 2)
+
+    def test_descriptor_cleanup_preserves_primary_failure_and_closes_all(self) -> None:
+        first = os.open(os.devnull, os.O_RDONLY)
+        second = os.open(os.devnull, os.O_RDONLY)
+        real_close = os.close
+        injected = False
+
+        def close_with_one_failure(descriptor: int) -> None:
+            nonlocal injected
+            if descriptor == first and not injected:
+                injected = True
+                raise OSError(errno.EIO, "injected close failure")
+            real_close(descriptor)
+
+        try:
+            with (
+                mock.patch.object(
+                    common_helpers.os,
+                    "close",
+                    side_effect=close_with_one_failure,
+                ),
+                self.assertRaisesRegex(ReviewError, "primary validation failure"),
+            ):
+                try:
+                    raise ReviewError("primary validation failure")
+                finally:
+                    common_helpers._close_file_descriptors(
+                        [first, second],
+                        context="rooted fixture",
+                    )
+            with self.assertRaises(OSError):
+                os.fstat(second)
+            self.assertIsNotNone(os.fstat(first))
+        finally:
+            try:
+                real_close(first)
+            except OSError:
+                pass
+            try:
+                real_close(second)
+            except OSError:
+                pass
+
+        descriptor = os.open(os.devnull, os.O_RDONLY)
+        try:
+            with (
+                mock.patch.object(
+                    common_helpers.os,
+                    "close",
+                    side_effect=OSError(errno.EIO, "injected close failure"),
+                ),
+                self.assertRaisesRegex(
+                    ReviewError,
+                    "descriptor cleanup failed",
+                ),
+            ):
+                common_helpers._close_file_descriptors(
+                    [descriptor],
+                    context="rooted fixture",
+                )
+        finally:
+            real_close(descriptor)
 
     def test_signing_failure_diagnostic_omits_command_output(self) -> None:
         document = self.root / "signed-document"
@@ -739,6 +847,13 @@ class ReviewToolsTest(unittest.TestCase):
         database["commit"] = "0" * 40
         mutations.append(("repository input identity", changed_database))
 
+        changed_role = copy.deepcopy(inputs)
+        haldir = next(
+            item for item in changed_role["repositories"] if item["name"] == "Haldir"
+        )
+        haldir["role"] = "runtime authority consumer"
+        mutations.append(("repository input identity", changed_role))
+
         missing_tool = copy.deepcopy(inputs)
         missing_tool["toolchains"].pop()
         mutations.append(("toolchain input set", missing_tool))
@@ -893,8 +1008,7 @@ class ReviewToolsTest(unittest.TestCase):
             (freeze.THREAT_STATUS_LIVING, freeze.THREAT_STATUS_FROZEN),
         )
         active_manifest = (
-            repository
-            / "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json"
+            repository / "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json"
         )
         self.assertEqual(
             freeze.verify_freeze_lifecycle(
@@ -1272,13 +1386,9 @@ class ReviewToolsTest(unittest.TestCase):
                 output_limit_exceeded=False,
                 containment_error=None,
             )
-            runner = (
-                contextlib.nullcontext()
-                if sys.platform == "darwin"
-                else mock.patch(
-                    "qualify_candidate.run_bounded_process",
-                    return_value=process,
-                )
+            runner = mock.patch(
+                "qualify_candidate.run_bounded_process",
+                return_value=process,
             )
             with self.subTest(json_lines=json_lines), runner:
                 with self.assertRaisesRegex(ReviewError, "invalid JSON evidence"):
@@ -1289,6 +1399,7 @@ class ReviewToolsTest(unittest.TestCase):
                         output=self.root / "reports" / "report.json",
                         json_lines=json_lines,
                         report_stream="stdout",
+                        sandbox_profile=self.root / "test-candidate.sb",
                     )
 
     def test_frozen_head_accepts_exact_clean_checkout(self) -> None:
@@ -1330,6 +1441,17 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertIn("CLAUDE.mdc", freeze.RELEASE_INPUTS)
         self.assertIn("docs/DEPENDENCY-POLICY.md", freeze.RELEASE_INPUTS)
         self.assertIn("release/0.9.0/RELEASE-RUNBOOK.md", freeze.RELEASE_INPUTS)
+        self.assertIn("repo_work/process_containment.py", freeze.RELEASE_INPUTS)
+        self.assertIn("release/0.9.0/requirements-ledger.json", freeze.RELEASE_INPUTS)
+        self.assertNotIn(
+            "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json",
+            freeze.RELEASE_INPUTS,
+        )
+        self.assertNotIn(
+            "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig",
+            freeze.RELEASE_INPUTS,
+        )
+        self.assertNotIn("release/0.9.0/audit-manifest.json", freeze.RELEASE_INPUTS)
 
         instructions = (TOOLS / "README.md").read_text(encoding="utf-8")
         exact_name = "FROZEN-AUDIT-INPUTS-0.9.0.json"
@@ -1364,12 +1486,19 @@ class ReviewToolsTest(unittest.TestCase):
         staged_data = b"staged candidate input\n"
         (staged / "input.txt").write_bytes(staged_data)
         subprocess.run(["git", "add", "input.txt"], cwd=staged, check=True)
+        staged_blob = subprocess.check_output(
+            ["git", "rev-parse", ":input.txt"],
+            cwd=staged,
+            text=True,
+        ).strip()
         with mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)):
             self.assertEqual(
                 freeze.release_input_manifest(staged),
                 [
                     {
                         "path": "input.txt",
+                        "git_mode": "100644",
+                        "git_blob_id": staged_blob,
                         "sha256": hashlib.sha256(staged_data).hexdigest(),
                         "size_bytes": len(staged_data),
                     }
@@ -1438,6 +1567,450 @@ class ReviewToolsTest(unittest.TestCase):
             self.assertRaisesRegex(ReviewError, "replacement references are forbidden"),
         ):
             freeze.release_input_manifest(replaced)
+
+        executable = make_repository("release-input-executable")
+        (executable / "input.txt").chmod(0o755)
+        subprocess.run(["git", "add", "input.txt"], cwd=executable, check=True)
+        with mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)):
+            self.assertEqual(
+                freeze.release_input_manifest(executable)[0]["path"],
+                "input.txt",
+            )
+        (executable / "input.txt").chmod(0o644)
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)),
+            self.assertRaisesRegex(ReviewError, "executable mode differs"),
+        ):
+            freeze.release_input_manifest(executable)
+
+        nonexecutable = make_repository("release-input-nonexecutable")
+        (nonexecutable / "input.txt").chmod(0o755)
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)),
+            self.assertRaisesRegex(ReviewError, "executable mode differs"),
+        ):
+            freeze.release_input_manifest(nonexecutable)
+
+    def test_release_input_manifest_rejects_path_replacement_and_symlinks(
+        self,
+    ) -> None:
+        def make_repository(name: str, paths: tuple[str, ...]) -> Path:
+            repo = self.root / name
+            repo.mkdir(parents=True)
+            subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+            for relative in paths:
+                path = repo / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(f"{relative}\n".encode("utf-8"))
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-c",
+                    "user.name=Sepehr Mahmoudian",
+                    "-c",
+                    "user.email=sepmhn@gmail.com",
+                    "commit",
+                    "-q",
+                    "-m",
+                    "Create release inputs",
+                ],
+                cwd=repo,
+                check=True,
+            )
+            return repo
+
+        paths = ("outer/nested/first.txt", "outer/nested/second.txt")
+        ancestor_repo = make_repository("release-ancestor-replacement", paths)
+        ancestor_directory = ancestor_repo / "outer/nested"
+        displaced_ancestor = ancestor_repo / "outer/nested-original"
+        real_read = freeze._read_rooted_regular_file
+        replaced_ancestor = False
+
+        def replace_ancestor_after_first_read(
+            *arguments: object, **keywords: object
+        ) -> freeze.RootedRead:
+            nonlocal replaced_ancestor
+            result = real_read(*arguments, **keywords)
+            relative = arguments[1]
+            if relative == paths[0] and not replaced_ancestor:
+                replaced_ancestor = True
+                ancestor_directory.rename(displaced_ancestor)
+                ancestor_directory.mkdir()
+                for path in paths:
+                    (ancestor_repo / path).write_bytes(f"{path}\n".encode("utf-8"))
+            return result
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", paths),
+            mock.patch.object(
+                freeze,
+                "_read_rooted_regular_file",
+                side_effect=replace_ancestor_after_first_read,
+            ),
+            self.assertRaisesRegex(ReviewError, "directory changed"),
+        ):
+            freeze.release_input_manifest(ancestor_repo)
+
+        root_repo = make_repository("release-root-replacement", ("first.txt",))
+        displaced_root = self.root / "release-root-original"
+        replaced_root = False
+
+        def replace_root_after_first_read(
+            *arguments: object, **keywords: object
+        ) -> freeze.RootedRead:
+            nonlocal replaced_root
+            result = real_read(*arguments, **keywords)
+            if not replaced_root:
+                replaced_root = True
+                root_repo.rename(displaced_root)
+                root_repo.mkdir()
+            return result
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("first.txt",)),
+            mock.patch.object(
+                freeze,
+                "_read_rooted_regular_file",
+                side_effect=replace_root_after_first_read,
+            ),
+            self.assertRaisesRegex(ReviewError, "root changed|root was replaced"),
+        ):
+            freeze.release_input_manifest(root_repo)
+
+        parent_repo = make_repository(
+            "release-parent-container/repository",
+            ("first.txt",),
+        )
+        parent_container = parent_repo.parent
+        displaced_parent = self.root / "release-parent-original"
+        replaced_parent = False
+
+        def replace_parent_after_first_read(
+            *arguments: object, **keywords: object
+        ) -> freeze.RootedRead:
+            nonlocal replaced_parent
+            result = real_read(*arguments, **keywords)
+            if not replaced_parent:
+                replaced_parent = True
+                parent_container.rename(displaced_parent)
+                parent_repo.mkdir(parents=True)
+            return result
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("first.txt",)),
+            mock.patch.object(
+                freeze,
+                "_read_rooted_regular_file",
+                side_effect=replace_parent_after_first_read,
+            ),
+            self.assertRaisesRegex(ReviewError, "root path was replaced"),
+        ):
+            freeze.release_input_manifest(parent_repo)
+
+        symlink_repo = make_repository(
+            "release-intermediate-symlink", ("nested/input.txt",)
+        )
+        outside = self.root / "release-symlink-target"
+        (symlink_repo / "nested").rename(outside)
+        (symlink_repo / "nested").symlink_to(outside, target_is_directory=True)
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("nested/input.txt",)),
+            self.assertRaisesRegex(ReviewError, "missing or unsafe"),
+        ):
+            freeze.release_input_manifest(symlink_repo)
+
+    def test_release_input_manifest_enforces_file_and_aggregate_bounds(self) -> None:
+        repo = self.root / "release-input-bounds"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        (repo / "first.bin").write_bytes(b"123")
+        (repo / "second.bin").write_bytes(b"456")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("first.bin", "second.bin")),
+            mock.patch.object(freeze, "MAX_RELEASE_INPUT_AGGREGATE_BYTES", 5),
+            self.assertRaisesRegex(ReviewError, "aggregate byte limit"),
+        ):
+            freeze.release_input_manifest(repo)
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("first.bin",)),
+            mock.patch.object(freeze, "MAX_RELEASE_INPUT_FILE_BYTES", 2),
+            self.assertRaisesRegex(ReviewError, "standard output exceeds"),
+        ):
+            freeze.release_input_manifest(repo)
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("first.bin",)),
+            mock.patch.object(freeze, "MAX_RELEASE_INPUT_INDEX_BYTES", 8),
+            self.assertRaisesRegex(ReviewError, "standard output exceeds"),
+        ):
+            freeze.release_input_manifest(repo)
+
+    def test_release_input_manifest_binds_mode_and_blob_identity(self) -> None:
+        repo = self.root / "release-input-mode-identity"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        release_input = repo / "input.txt"
+        release_input.write_bytes(b"same bytes\n")
+        release_input.chmod(0o644)
+        subprocess.run(["git", "add", "input.txt"], cwd=repo, check=True)
+
+        with mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)):
+            nonexecutable = freeze.release_input_manifest(repo)[0]
+            release_input.chmod(0o755)
+            subprocess.run(
+                ["git", "update-index", "--chmod=+x", "input.txt"],
+                cwd=repo,
+                check=True,
+            )
+            executable = freeze.release_input_manifest(repo)[0]
+
+        self.assertEqual(nonexecutable["git_mode"], "100644")
+        self.assertEqual(executable["git_mode"], "100755")
+        self.assertEqual(
+            nonexecutable["git_blob_id"],
+            executable["git_blob_id"],
+        )
+        self.assertEqual(nonexecutable["sha256"], executable["sha256"])
+        self.assertNotEqual(nonexecutable, executable)
+
+    def test_release_input_manifest_rechecks_file_identity_at_end(self) -> None:
+        repo = self.root / "release-input-final-identity"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        release_input = repo / "input.txt"
+        release_input.write_bytes(b"indexed bytes\n")
+        subprocess.run(["git", "add", "input.txt"], cwd=repo, check=True)
+        real_read = freeze._read_rooted_regular_file
+        read_count = 0
+
+        def mutate_after_read(
+            *arguments: object,
+            **keywords: object,
+        ) -> freeze.RootedRead:
+            nonlocal read_count
+            captured = real_read(*arguments, **keywords)
+            read_count += 1
+            if read_count == 1:
+                release_input.write_bytes(b"changed bytes\n")
+            return captured
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)),
+            mock.patch.object(
+                freeze,
+                "_read_rooted_regular_file",
+                side_effect=mutate_after_read,
+            ),
+            self.assertRaisesRegex(
+                ReviewError,
+                "changed during the transaction",
+            ),
+        ):
+            freeze.release_input_manifest(repo)
+
+    def test_release_input_manifest_rechecks_files_after_final_index_capture(
+        self,
+    ) -> None:
+        repo = self.root / "release-input-final-index-race"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        release_input = repo / "input.txt"
+        release_input.write_bytes(b"indexed bytes\n")
+        subprocess.run(["git", "add", "input.txt"], cwd=repo, check=True)
+        real_read_index = freeze._read_relevant_release_index
+        capture_count = 0
+
+        def mutate_during_final_capture(repository: Path) -> bytes:
+            nonlocal capture_count
+            document = real_read_index(repository)
+            capture_count += 1
+            if capture_count == 2:
+                release_input.write_bytes(b"altered bytes\n")
+            return document
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)),
+            mock.patch.object(
+                freeze,
+                "_read_relevant_release_index",
+                side_effect=mutate_during_final_capture,
+            ),
+            self.assertRaisesRegex(ReviewError, "changed during the transaction"),
+        ):
+            freeze.release_input_manifest(repo)
+
+    def test_release_index_transaction_detects_new_release_tool(self) -> None:
+        repo = self.root / "release-index-tool-race"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        (repo / "input.txt").write_bytes(b"release input\n")
+        subprocess.run(["git", "add", "input.txt"], cwd=repo, check=True)
+        tool = repo / "repo_work/new_release_gate.py"
+        tool.parent.mkdir()
+        tool.write_text("raise SystemExit(0)\n", encoding="utf-8")
+        real_read_index = freeze._read_relevant_release_index
+        capture_count = 0
+
+        def add_tool_after_initial_capture(repository: Path) -> bytes:
+            nonlocal capture_count
+            document = real_read_index(repository)
+            capture_count += 1
+            if capture_count == 1:
+                subprocess.run(
+                    ["git", "add", "repo_work/new_release_gate.py"],
+                    cwd=repository,
+                    check=True,
+                )
+            return document
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", ("input.txt",)),
+            mock.patch.object(
+                freeze,
+                "_read_relevant_release_index",
+                side_effect=add_tool_after_initial_capture,
+            ),
+            self.assertRaisesRegex(
+                ReviewError,
+                "changed during the transaction|complete relevant release index changed",
+            ),
+        ):
+            freeze.release_input_manifest(repo)
+
+    def test_release_index_transaction_binds_source_semantics(self) -> None:
+        fixture = self.make_frozen_input_fixture("release-source-index-race")
+        repo = fixture["repo"]
+        release_inputs = fixture["release_inputs"]
+        baseline = fixture["baseline"]
+        baseline_tree = fixture["baseline_tree"]
+        assert isinstance(repo, Path)
+        assert isinstance(release_inputs, tuple)
+        assert isinstance(baseline, str)
+        assert isinstance(baseline_tree, str)
+        source_path = repo / "release/0.9.0/handoff-source.json"
+        real_validate = freeze.validate_source_documents
+        validation_count = 0
+
+        def stage_new_source_after_validation(
+            repository: Path,
+            *,
+            captured_documents: dict[str, bytes] | None = None,
+        ) -> tuple[dict[str, Any], dict[str, Any], str, str]:
+            nonlocal validation_count
+            self.assertIsNotNone(captured_documents)
+            result = real_validate(
+                repository,
+                captured_documents=captured_documents,
+            )
+            validation_count += 1
+            source_path.write_bytes(source_path.read_bytes() + b"\n")
+            subprocess.run(
+                ["git", "add", "release/0.9.0/handoff-source.json"],
+                cwd=repository,
+                check=True,
+            )
+            return result
+
+        with (
+            mock.patch.object(freeze, "RELEASE_INPUTS", release_inputs),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_COMMIT", baseline),
+            mock.patch.object(freeze, "EXPECTED_BASELINE_TREE", baseline_tree),
+            mock.patch.object(
+                freeze,
+                "validate_source_documents",
+                side_effect=stage_new_source_after_validation,
+            ),
+            self.assertRaisesRegex(
+                ReviewError,
+                "changed during the transaction|complete relevant release index changed",
+            ),
+        ):
+            freeze._capture_release_input_snapshot(
+                repo,
+                required_threat_status=freeze.THREAT_STATUS_FROZEN,
+                bind_source_documents=True,
+            )
+        self.assertEqual(validation_count, 1)
+
+    def test_source_documents_enforce_byte_depth_and_node_bounds(self) -> None:
+        repo = self.root / "bounded-source-documents"
+        source_directory = repo / "release/0.9.0"
+        source_directory.mkdir(parents=True)
+        handoff = source_directory / "handoff-source.json"
+        audit = source_directory / "audit-inputs.json"
+        audit.write_bytes(b"{}")
+
+        handoff.write_bytes(b"{}\n")
+        with (
+            mock.patch.object(freeze, "MAX_SOURCE_DOCUMENT_BYTES", 2),
+            mock.patch.object(
+                freeze,
+                "loads_json",
+                side_effect=AssertionError("oversized JSON must not be decoded"),
+            ),
+            self.assertRaisesRegex(ReviewError, "exceeds the byte limit"),
+        ):
+            freeze.validate_source_documents(repo)
+
+        handoff.write_bytes(b'{"outer":{"inner":0}}')
+        with (
+            mock.patch.object(freeze, "MAX_SOURCE_JSON_DEPTH", 1),
+            self.assertRaisesRegex(ReviewError, "JSON depth"),
+        ):
+            freeze.validate_source_documents(repo)
+
+        handoff.write_bytes(b'{"item":0}')
+        with (
+            mock.patch.object(freeze, "MAX_SOURCE_JSON_NODES", 1),
+            self.assertRaisesRegex(ReviewError, "JSON nodes"),
+        ):
+            freeze.validate_source_documents(repo)
+
+        handoff.write_bytes(b"{}")
+        with (
+            mock.patch.object(freeze, "loads_json", side_effect=MemoryError),
+            self.assertRaisesRegex(ReviewError, "not strict bounded JSON"),
+        ):
+            freeze.validate_source_documents(repo)
+        with (
+            mock.patch.object(freeze, "loads_json", side_effect=MemoryError),
+            self.assertRaisesRegex(ReviewError, "not strict JSON"),
+        ):
+            freeze.threat_register_status(b"{}")
+
+    def test_source_document_child_archive_enforces_path_bounds(self) -> None:
+        handoff_source = {
+            "schema": "galadriel.handoff-source.v2",
+            "prepared": "2026-07-14",
+            "repository": freeze.EXPECTED_BASELINE_REPOSITORY,
+            "frozen_commit": freeze.EXPECTED_BASELINE_COMMIT,
+            "original_target": "1.0.0",
+            "adapted_release_target": "0.9.0",
+            "master_package": "MASTER_HANDOFF",
+            "child_archive": "a" * 256 + ".zip",
+            "child_archive_sha256": "1" * 64,
+            "task_ledger_sha256": "2" * 64,
+            "task_count": 1,
+            "supersedes_embedded_handoff_sha256": "3" * 64,
+            "provenance_note": "Fixture provenance.",
+        }
+        captured = {
+            "release/0.9.0/handoff-source.json": canonical_json(handoff_source),
+            "release/0.9.0/audit-inputs.json": b"{}",
+        }
+
+        with self.assertRaisesRegex(
+            ReviewError,
+            "child_archive.*component exceeds",
+        ):
+            freeze.validate_source_documents(
+                self.root,
+                captured_documents=captured,
+            )
 
     def test_frozen_input_verifier_accepts_exact_inputs_and_optional_handoff(
         self,
@@ -2006,10 +2579,11 @@ class ReviewToolsTest(unittest.TestCase):
                     "ncp feature",
                     "ncp-live feature",
                     "galadriel-ncp",
+                    "galadriel-ncp zenoh feature",
                     "galadriel-eval",
                 ],
                 "supersedes": None,
-                "why": "Provides the wire-0.8 core types and, only for ncp-live, the Zenoh adapter.",
+                "why": "Provides wire-0.8 core types. The CLI ncp-live feature or direct galadriel-ncp zenoh feature selects its Zenoh adapter.",
             },
             {
                 "id": "ECO-003",
@@ -2227,7 +2801,13 @@ class ReviewToolsTest(unittest.TestCase):
         )
         self.assertEqual(
             observations[1]["required_for"],
-            ["ncp feature", "ncp-live feature", "galadriel-ncp", "galadriel-eval"],
+            [
+                "ncp feature",
+                "ncp-live feature",
+                "galadriel-ncp",
+                "galadriel-ncp zenoh feature",
+                "galadriel-eval",
+            ],
         )
         self.assertEqual(
             [
@@ -2264,6 +2844,18 @@ class ReviewToolsTest(unittest.TestCase):
             self.assertIn(observations[5]["object"], text)
         self.assertIn("ecosystem-cut.json", readme)
         self.assertIn("ecosystem-cut.json", connections)
+
+        audit_inputs = json.loads(
+            (repo / "release/0.9.0/audit-inputs.json").read_text(encoding="utf-8")
+        )
+        retained_inputs = {row["name"]: row for row in audit_inputs["repositories"]}
+        for project in ("Crebain", "Haldir", "Prisoma", "Paper2Brain"):
+            row = retained_inputs[project]
+            self.assertTrue(row["role"].startswith("retained "))
+            self.assertIn(row["commit"], connections)
+        release_readme = (repo / "release/0.9.0/README.md").read_text(encoding="utf-8")
+        self.assertIn("separate audit-input cut", release_readme)
+        self.assertIn("do not replace these retained inputs", connections)
 
     def test_feature_graph_cli_reports_non_utf8_descriptor_without_traceback(
         self,
@@ -3398,10 +3990,43 @@ raise SystemExit(3)
         self.assertTrue(
             all(row["reviewer"].startswith("Sepehr Mahmoudian") for row in rows)
         )
+        self.assertTrue(all(row["git_mode"] == "100644" for row in rows))
         self.assertTrue(all(row["generated"] == "NO" for row in rows))
         self.assertEqual(manifest["tracked_files"], 2)
         self.assertTrue(all(item["review_scope"] for item in manifest["files"]))
         self.assertEqual({item["path"] for item in findings}, {"README.md"})
+
+    def test_inventory_rejects_a_mode_mismatch_when_git_ignores_file_mode(
+        self,
+    ) -> None:
+        subprocess.run(
+            ["git", "config", "core.fileMode", "false"],
+            cwd=self.root,
+            check=True,
+        )
+        readme = self.root / "README.md"
+        readme.chmod(0o755)
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+            cwd=self.root,
+            text=True,
+        )
+        self.assertEqual(status, "")
+
+        process = run(
+            str(TOOLS / "audit_tracked_files.py"),
+            "--repo",
+            ".",
+            "--out",
+            "audit/mode-mismatch",
+            cwd=self.root,
+            expected=2,
+        )
+
+        self.assertIn(
+            "working tree differs from indexed blob: README.md",
+            process.stderr,
+        )
 
     def test_claim_scan_and_three_lane_packet_generation_are_deterministic(
         self,
@@ -3453,13 +4078,51 @@ raise SystemExit(3)
                 for file in packet["files"]
             )
         )
+        self.assertTrue(
+            all(
+                file["git_mode"] == "100644"
+                for packet in packets
+                for file in packet["files"]
+            )
+        )
         self.assertEqual({finding["path"] for finding in claims}, {"README.md"})
 
+    def test_claim_scan_includes_tracked_mdc_documents(self) -> None:
+        (self.root / "CLAUDE.mdc").write_text(
+            "# Fixture instructions\n\nVerified integration.\n",
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "add", "CLAUDE.mdc"], cwd=self.root, check=True)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "Add fixture instructions"],
+            cwd=self.root,
+            check=True,
+        )
+
+        run(
+            str(TOOLS / "scan_claim_language.py"),
+            "--repo",
+            ".",
+            "--out",
+            "audit/generated/CLAIM_LANGUAGE.json",
+            cwd=self.root,
+        )
+        claims = json.loads(
+            (self.root / "audit/generated/CLAIM_LANGUAGE.json").read_text()
+        )
+
+        self.assertEqual(
+            {finding["path"] for finding in claims},
+            {"CLAUDE.mdc", "README.md"},
+        )
+
     def test_evidence_manifest_rejects_duplicate_keys_and_path_escape(self) -> None:
-        artifact = self.root / "artifact.bin"
+        tier = self.root / "evidence-tier"
+        tier.mkdir()
+        artifact = tier / "artifact.bin"
         artifact.write_bytes(b"evidence")
         digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
-        manifest = self.root / "manifest.json"
+        manifest = tier / "manifest.json"
         manifest.write_text(
             json.dumps(
                 {
@@ -3479,7 +4142,7 @@ raise SystemExit(3)
             str(TOOLS / "verify_evidence_manifest.py"),
             str(manifest),
             "--root",
-            ".",
+            str(tier),
             cwd=self.root,
         )
 
@@ -3490,7 +4153,7 @@ raise SystemExit(3)
             str(TOOLS / "verify_evidence_manifest.py"),
             str(manifest),
             "--root",
-            ".",
+            str(tier),
             cwd=self.root,
             expected=2,
         )
@@ -3511,13 +4174,13 @@ raise SystemExit(3)
             str(TOOLS / "verify_evidence_manifest.py"),
             str(manifest),
             "--root",
-            ".",
+            str(tier),
             cwd=self.root,
             expected=2,
         )
-        self.assertIn("must be nonempty and relative", escape.stderr)
+        self.assertIn("not canonical", escape.stderr)
 
-        inside = self.root / "inside-link"
+        inside = tier / "inside-link"
         inside.symlink_to("artifact.bin")
         manifest.write_text(
             json.dumps(
@@ -3538,11 +4201,11 @@ raise SystemExit(3)
             str(TOOLS / "verify_evidence_manifest.py"),
             str(manifest),
             "--root",
-            ".",
+            str(tier),
             cwd=self.root,
             expected=2,
         )
-        self.assertIn("contains a symlink", symlink.stderr)
+        self.assertRegex(symlink.stderr, "missing or unsafe|singly linked regular file")
 
         manifest.write_text(
             json.dumps({"schema": "galadriel.evidence-manifest.v1", "artifacts": []}),
@@ -3552,11 +4215,442 @@ raise SystemExit(3)
             str(TOOLS / "verify_evidence_manifest.py"),
             str(manifest),
             "--root",
-            ".",
+            str(tier),
             cwd=self.root,
             expected=2,
         )
         self.assertIn("must not be empty", empty.stderr)
+
+    def test_evidence_manifest_enforces_all_resource_bounds(self) -> None:
+        tier = self.root / "bounded-evidence-tier"
+        tier.mkdir()
+        first = tier / "first.bin"
+        second = tier / "second.bin"
+        first.write_bytes(b"1234")
+        second.write_bytes(b"56")
+        manifest = tier / "manifest.json"
+
+        def row(path: Path, *, size: int | None = None) -> dict[str, object]:
+            data = path.read_bytes()
+            return {
+                "path": path.name,
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "size_bytes": len(data) if size is None else size,
+            }
+
+        def write(rows: list[dict[str, object]]) -> bytes:
+            document = json.dumps(
+                {
+                    "schema": "galadriel.evidence-manifest.v1",
+                    "artifacts": rows,
+                }
+            ).encode("utf-8")
+            manifest.write_bytes(document)
+            return document
+
+        valid = write([row(first)])
+        with (
+            mock.patch.object(evidence_manifest, "MAX_MANIFEST_BYTES", len(valid) - 1),
+            self.assertRaisesRegex(ReviewError, "exceeds"),
+        ):
+            evidence_manifest.verify_manifest(manifest, tier)
+
+        for constant, limit, message in (
+            ("MAX_MANIFEST_DEPTH", 1, "JSON depth"),
+            ("MAX_MANIFEST_NODES", 2, "JSON nodes"),
+        ):
+            with self.subTest(constant=constant):
+                write([row(first)])
+                with (
+                    mock.patch.object(evidence_manifest, constant, limit),
+                    self.assertRaisesRegex(ReviewError, message),
+                ):
+                    evidence_manifest.verify_manifest(manifest, tier)
+
+        write([row(first), row(second)])
+        with (
+            mock.patch.object(evidence_manifest, "MAX_ARTIFACTS", 1),
+            self.assertRaisesRegex(ReviewError, "item limit"),
+        ):
+            evidence_manifest.verify_manifest(manifest, tier)
+
+        write([row(first)])
+        with (
+            mock.patch.object(evidence_manifest, "MAX_ARTIFACT_BYTES", 3),
+            self.assertRaisesRegex(ReviewError, "invalid size"),
+        ):
+            evidence_manifest.verify_manifest(manifest, tier)
+
+        write([row(first, size=3)])
+        with (
+            mock.patch.object(evidence_manifest, "MAX_ARTIFACT_BYTES", 3),
+            self.assertRaisesRegex(ReviewError, "size is outside"),
+        ):
+            evidence_manifest.verify_manifest(manifest, tier)
+
+        first.write_bytes(b"12")
+        write([row(first), row(second)])
+        with (
+            mock.patch.object(evidence_manifest, "MAX_AGGREGATE_BYTES", 3),
+            self.assertRaisesRegex(ReviewError, "aggregate byte limit"),
+        ):
+            evidence_manifest.verify_manifest(manifest, tier)
+
+    def test_evidence_manifest_rejects_aliases_and_unsafe_file_types(self) -> None:
+        alias_tier = self.root / "alias-evidence-tier"
+        alias_tier.mkdir()
+        artifact = alias_tier / "artifact.bin"
+        artifact.write_bytes(b"artifact")
+        digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        alias_manifest = alias_tier / "manifest.json"
+        alias_manifest.write_text(
+            json.dumps(
+                {
+                    "schema": "galadriel.evidence-manifest.v1",
+                    "artifacts": [
+                        {
+                            "path": "artifact.bin",
+                            "sha256": digest,
+                            "size_bytes": 8,
+                        },
+                        {
+                            "path": "./artifact.bin",
+                            "sha256": digest,
+                            "size_bytes": 8,
+                        },
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ReviewError, "not canonical"):
+            evidence_manifest.verify_manifest(alias_manifest, alias_tier)
+
+        outside = self.root / "outside-evidence.bin"
+        outside.write_bytes(b"outside")
+
+        def verify_unsafe(
+            name: str,
+            relative: str,
+            install: Callable[[Path], None],
+            message: str,
+        ) -> None:
+            tier = self.root / f"unsafe-evidence-{name}"
+            tier.mkdir()
+            target = tier.joinpath(*relative.split("/"))
+            target.parent.mkdir(parents=True, exist_ok=True)
+            install(target)
+            manifest = tier / "manifest.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "schema": "galadriel.evidence-manifest.v1",
+                        "artifacts": [
+                            {
+                                "path": relative,
+                                "sha256": hashlib.sha256(b"outside").hexdigest(),
+                                "size_bytes": len(b"outside"),
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ReviewError, message):
+                evidence_manifest.verify_manifest(manifest, tier)
+
+        verify_unsafe(
+            "final-link",
+            "artifact.bin",
+            lambda target: target.symlink_to(outside),
+            "missing or unsafe|singly linked regular file",
+        )
+
+        intermediate_tier = self.root / "unsafe-evidence-intermediate-link"
+        intermediate_tier.mkdir()
+        outside_directory = self.root / "outside-evidence-directory"
+        outside_directory.mkdir()
+        (outside_directory / "artifact.bin").write_bytes(b"outside")
+        (intermediate_tier / "nested").symlink_to(
+            outside_directory, target_is_directory=True
+        )
+        intermediate_manifest = intermediate_tier / "manifest.json"
+        intermediate_manifest.write_text(
+            json.dumps(
+                {
+                    "schema": "galadriel.evidence-manifest.v1",
+                    "artifacts": [
+                        {
+                            "path": "nested/artifact.bin",
+                            "sha256": hashlib.sha256(b"outside").hexdigest(),
+                            "size_bytes": len(b"outside"),
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ReviewError, "missing or unsafe"):
+            evidence_manifest.verify_manifest(intermediate_manifest, intermediate_tier)
+
+        if hasattr(os, "mkfifo"):
+            verify_unsafe(
+                "fifo",
+                "artifact.bin",
+                os.mkfifo,
+                "singly linked regular file",
+            )
+
+        hardlink_tier = self.root / "unsafe-evidence-hardlink"
+        hardlink_tier.mkdir()
+        hardlink = hardlink_tier / "artifact.bin"
+        os.link(outside, hardlink)
+        hardlink_manifest = hardlink_tier / "manifest.json"
+        hardlink_manifest.write_text(
+            json.dumps(
+                {
+                    "schema": "galadriel.evidence-manifest.v1",
+                    "artifacts": [
+                        {
+                            "path": hardlink.name,
+                            "sha256": hashlib.sha256(outside.read_bytes()).hexdigest(),
+                            "size_bytes": outside.stat().st_size,
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ReviewError, "singly linked regular file"):
+            evidence_manifest.verify_manifest(hardlink_manifest, hardlink_tier)
+
+    def test_rooted_reader_rejects_supported_case_aliases(self) -> None:
+        tier = self.root / "case-alias-tier"
+        tier.mkdir()
+        stored = tier / "Artifact.bin"
+        stored.write_bytes(b"artifact")
+        alias = tier / "artifact.bin"
+        try:
+            aliases_same_file = alias.exists() and os.path.samefile(stored, alias)
+        except OSError:
+            aliases_same_file = False
+        if not aliases_same_file:
+            self.skipTest("the test file system is case-sensitive")
+        with self.assertRaisesRegex(ReviewError, "stored canonical spelling"):
+            common_helpers.digest_rooted_regular_file(
+                tier,
+                alias.name,
+                max_bytes=8,
+                expected_size=8,
+                label="case-alias fixture",
+            )
+
+    def test_rooted_reader_detects_content_and_path_replacement(self) -> None:
+        mutations: tuple[tuple[str, Callable[[Path], None]], ...] = (
+            ("append", lambda path: path.write_bytes(path.read_bytes() + b"5")),
+            ("truncate", lambda path: path.write_bytes(b"12")),
+            ("same-size", lambda path: path.write_bytes(b"5678")),
+        )
+        real_fstat = common_helpers.os.fstat
+        for name, mutate in mutations:
+            with self.subTest(mutation=name):
+                root = self.root / f"rooted-{name}"
+                root.mkdir()
+                target = root / "artifact.bin"
+                target.write_bytes(b"1234")
+                target_inode = target.stat().st_ino
+                file_fstat_calls = 0
+
+                def mutate_at_final_identity(
+                    descriptor: int,
+                    *,
+                    _mutate: Callable[[Path], None] = mutate,
+                    _target: Path = target,
+                    _target_inode: int = target_inode,
+                ) -> os.stat_result:
+                    nonlocal file_fstat_calls
+                    metadata = real_fstat(descriptor)
+                    if metadata.st_ino == _target_inode and stat.S_ISREG(
+                        metadata.st_mode
+                    ):
+                        file_fstat_calls += 1
+                        if file_fstat_calls == 2:
+                            _mutate(_target)
+                            metadata = real_fstat(descriptor)
+                    return metadata
+
+                with (
+                    mock.patch.object(
+                        common_helpers.os,
+                        "fstat",
+                        side_effect=mutate_at_final_identity,
+                    ),
+                    self.assertRaisesRegex(ReviewError, "changed while"),
+                ):
+                    common_helpers.digest_rooted_regular_file(
+                        root,
+                        target.name,
+                        max_bytes=8,
+                        expected_size=4,
+                        label=f"{name} fixture",
+                    )
+
+        live = self.root / "rooted-live"
+        live.mkdir()
+        (live / "artifact.bin").write_bytes(b"original")
+        replacement = self.root / "rooted-replacement"
+        replacement.mkdir()
+        (replacement / "artifact.bin").write_bytes(b"original")
+        displaced = self.root / "rooted-displaced"
+        live_inode = live.stat().st_ino
+        live_fstat_calls = 0
+
+        def replace_root_at_final_check(descriptor: int) -> os.stat_result:
+            nonlocal live_fstat_calls
+            metadata = real_fstat(descriptor)
+            if metadata.st_ino == live_inode and stat.S_ISDIR(metadata.st_mode):
+                live_fstat_calls += 1
+                if live_fstat_calls == 3:
+                    live.rename(displaced)
+                    replacement.rename(live)
+            return metadata
+
+        with (
+            mock.patch.object(
+                common_helpers.os,
+                "fstat",
+                side_effect=replace_root_at_final_check,
+            ),
+            self.assertRaisesRegex(ReviewError, "root was replaced|root changed"),
+        ):
+            common_helpers.digest_rooted_regular_file(
+                live,
+                "artifact.bin",
+                max_bytes=8,
+                expected_size=8,
+                label="root replacement fixture",
+            )
+
+    def test_rooted_tree_rejects_empty_directories_and_has_linear_scans(self) -> None:
+        root = self.root / "linear-tree"
+        root.mkdir()
+        file_count = 24
+        for index in range(file_count):
+            (root / f"{index:02d}.bin").write_bytes(b"x")
+
+        real_scandir = common_helpers.os.scandir
+        visited_entries = 0
+
+        class CountingScandir:
+            def __init__(self, path: object) -> None:
+                self.iterator = real_scandir(path)
+
+            def __enter__(self) -> "CountingScandir":
+                self.iterator.__enter__()
+                return self
+
+            def __exit__(self, *arguments: object) -> None:
+                self.iterator.__exit__(*arguments)
+
+            def __iter__(self) -> "CountingScandir":
+                return self
+
+            def __next__(self) -> os.DirEntry[str]:
+                nonlocal visited_entries
+                entry = next(self.iterator)
+                visited_entries += 1
+                return entry
+
+        with mock.patch.object(
+            common_helpers.os, "scandir", side_effect=CountingScandir
+        ):
+            digests = common_helpers.digest_rooted_tree(
+                root,
+                label="linear tree",
+                max_entries=file_count,
+                max_depth=2,
+                max_path_bytes=128,
+                max_component_bytes=64,
+                max_file_bytes=1,
+                max_aggregate_bytes=file_count,
+            )
+        self.assertEqual(len(digests), file_count)
+        self.assertEqual(visited_entries, 2 * file_count)
+
+        empty = root / "empty"
+        empty.mkdir()
+        with self.assertRaisesRegex(ReviewError, "empty directory"):
+            common_helpers.digest_rooted_tree(
+                root,
+                label="empty-directory tree",
+                max_entries=file_count + 1,
+                max_depth=2,
+                max_path_bytes=128,
+                max_component_bytes=64,
+                max_file_bytes=1,
+                max_aggregate_bytes=file_count,
+            )
+
+    def test_rooted_reader_closes_descriptors_after_acquisition_failures(self) -> None:
+        real_open = common_helpers.os.open
+        real_dup = common_helpers.os.dup
+        real_close = common_helpers.os.close
+        real_fstat = common_helpers.os.fstat
+
+        for failing_fstat in (1, 2, 3, 4):
+            with self.subTest(failing_fstat=failing_fstat):
+                root = self.root / f"descriptor-cleanup-{failing_fstat}"
+                nested = root / "nested"
+                nested.mkdir(parents=True)
+                (nested / "artifact.bin").write_bytes(b"x")
+                acquired: list[int] = []
+                closed: list[int] = []
+                fstat_calls = 0
+
+                def tracked_open(*arguments: object, **keywords: object) -> int:
+                    descriptor = real_open(*arguments, **keywords)
+                    acquired.append(descriptor)
+                    return descriptor
+
+                def tracked_dup(descriptor: int) -> int:
+                    duplicate = real_dup(descriptor)
+                    acquired.append(duplicate)
+                    return duplicate
+
+                def tracked_close(descriptor: int) -> None:
+                    closed.append(descriptor)
+                    real_close(descriptor)
+
+                def injected_fstat(descriptor: int) -> os.stat_result:
+                    nonlocal fstat_calls
+                    fstat_calls += 1
+                    if fstat_calls == failing_fstat:
+                        raise OSError("injected fstat failure")
+                    return real_fstat(descriptor)
+
+                with (
+                    mock.patch.object(
+                        common_helpers.os, "open", side_effect=tracked_open
+                    ),
+                    mock.patch.object(
+                        common_helpers.os, "dup", side_effect=tracked_dup
+                    ),
+                    mock.patch.object(
+                        common_helpers.os, "close", side_effect=tracked_close
+                    ),
+                    mock.patch.object(
+                        common_helpers.os, "fstat", side_effect=injected_fstat
+                    ),
+                    self.assertRaises((ReviewError, OSError)),
+                ):
+                    common_helpers.digest_rooted_regular_file(
+                        root,
+                        "nested/artifact.bin",
+                        max_bytes=1,
+                        expected_size=1,
+                        label="descriptor-cleanup fixture",
+                    )
+                self.assertEqual(Counter(acquired), Counter(closed))
 
     def test_public_api_snapshot_comparison_is_exact_and_bounded(self) -> None:
         compare_snapshot("fixture", b"pub struct Stable;\n", b"pub struct Stable;\n")
@@ -3616,25 +4710,46 @@ raise SystemExit(3)
         self.assertEqual(by_path["directory-link"]["kind"], "symlink")
         self.assertEqual(by_path["directory-link"]["target"], "directory")
 
-    def test_handoff_inventory_rejects_walk_errors_and_symlink_root(self) -> None:
-        root = self.root / "handoff-walk-errors"
-        root.mkdir()
+        symlink_only = self.root / "symlink-only-handoff"
+        symlink_only.mkdir()
+        (symlink_only / "dangling-link").symlink_to("absent")
+        self.assertEqual(
+            strict_relative_files(symlink_only),
+            [
+                {
+                    "path": "dangling-link",
+                    "kind": "symlink",
+                    "target": "absent",
+                    "sha256": hashlib.sha256(b"absent").hexdigest(),
+                    "size_bytes": len(b"absent"),
+                }
+            ],
+        )
 
-        def denied_walk(*_args: object, **kwargs: object) -> object:
-            onerror = kwargs["onerror"]
-            assert callable(onerror)
-            onerror(PermissionError(13, "Permission denied", str(root / "blocked")))
-            return ()
+    def test_handoff_inventory_rejects_scan_errors_and_symlink_root(self) -> None:
+        root = self.root / "handoff-scan-errors"
+        root.mkdir()
+        directory_flags = freeze._directory_flags()
+        real_scandir = freeze.os.scandir
+        scandir_calls = 0
+
+        def denied_scandir(descriptor: int) -> os.ScandirIterator[str]:
+            nonlocal scandir_calls
+            scandir_calls += 1
+            if scandir_calls == 2:
+                raise PermissionError(13, "Permission denied")
+            return real_scandir(descriptor)
 
         with (
-            mock.patch.object(freeze.os, "walk", side_effect=denied_walk),
+            mock.patch.object(freeze, "_directory_flags", return_value=directory_flags),
+            mock.patch.object(freeze.os, "scandir", side_effect=denied_scandir),
             self.assertRaisesRegex(ReviewError, "cannot completely inventory"),
         ):
             strict_relative_files(root)
 
         link = self.root / "handoff-root-link"
         link.symlink_to(root, target_is_directory=True)
-        with self.assertRaisesRegex(ReviewError, "not a regular directory"):
+        with self.assertRaisesRegex(ReviewError, "root is missing or unsafe"):
             strict_relative_files(link)
 
     def test_handoff_inventory_rejects_non_utf8_symlink_targets(self) -> None:
@@ -3656,7 +4771,7 @@ raise SystemExit(3)
             mock.patch.object(freeze, "MAX_HANDOFF_ENTRIES", 2),
             mock.patch.object(
                 freeze,
-                "digest_bounded_handoff_file",
+                "_digest_rooted_handoff_file",
                 side_effect=AssertionError("entries must be bounded before hashing"),
             ),
             self.assertRaisesRegex(ReviewError, "entry-count limit"),
@@ -3726,10 +4841,223 @@ raise SystemExit(3)
         ):
             freeze.digest_bounded_handoff_file(stable_size, stable_size.name, 0)
 
+    def test_handoff_inventory_rejects_root_ancestor_and_mixed_replacement(
+        self,
+    ) -> None:
+        real_digest = freeze._digest_rooted_handoff_file
+
+        ancestor_root = self.root / "handoff-ancestor-replacement"
+        ancestor_directory = ancestor_root / "outer/nested"
+        ancestor_directory.mkdir(parents=True)
+        for name in ("first.txt", "second.txt"):
+            (ancestor_directory / name).write_bytes(name.encode("ascii"))
+        displaced_ancestor = ancestor_root / "outer/nested-original"
+        replaced_ancestor = False
+
+        def replace_ancestor_after_first_digest(
+            *arguments: object, **keywords: object
+        ) -> tuple[str, int]:
+            nonlocal replaced_ancestor
+            result = real_digest(*arguments, **keywords)
+            relative = arguments[1]
+            if relative == "outer/nested/first.txt" and not replaced_ancestor:
+                replaced_ancestor = True
+                ancestor_directory.rename(displaced_ancestor)
+                ancestor_directory.mkdir()
+                for name in ("first.txt", "second.txt"):
+                    (ancestor_directory / name).write_bytes(name.encode("ascii"))
+            return result
+
+        with (
+            mock.patch.object(
+                freeze,
+                "_digest_rooted_handoff_file",
+                side_effect=replace_ancestor_after_first_digest,
+            ),
+            self.assertRaisesRegex(ReviewError, "directory changed"),
+        ):
+            strict_relative_files(ancestor_root)
+
+        root = self.root / "handoff-root-replacement"
+        root.mkdir()
+        (root / "first.txt").write_bytes(b"first")
+        displaced_root = self.root / "handoff-root-original"
+        replaced_root = False
+
+        def replace_root_after_digest(
+            *arguments: object, **keywords: object
+        ) -> tuple[str, int]:
+            nonlocal replaced_root
+            result = real_digest(*arguments, **keywords)
+            if not replaced_root:
+                replaced_root = True
+                root.rename(displaced_root)
+                root.mkdir()
+                (root / "first.txt").write_bytes(b"first")
+            return result
+
+        with (
+            mock.patch.object(
+                freeze,
+                "_digest_rooted_handoff_file",
+                side_effect=replace_root_after_digest,
+            ),
+            self.assertRaisesRegex(
+                ReviewError, "root was replaced|directory changed.*\\."
+            ),
+        ):
+            strict_relative_files(root)
+
+        mixed_root = self.root / "handoff-mixed-inventory"
+        mixed_root.mkdir()
+        (mixed_root / "first.txt").write_bytes(b"1111")
+        second = mixed_root / "second.txt"
+        second.write_bytes(b"2222")
+        second_metadata = second.stat()
+        changed_second = False
+
+        def change_second_after_first_digest(
+            *arguments: object, **keywords: object
+        ) -> tuple[str, int]:
+            nonlocal changed_second
+            result = real_digest(*arguments, **keywords)
+            if arguments[1] == "first.txt" and not changed_second:
+                changed_second = True
+                second.write_bytes(b"3333")
+                os.utime(
+                    second,
+                    ns=(
+                        second_metadata.st_atime_ns,
+                        second_metadata.st_mtime_ns + 1_000_000_000,
+                    ),
+                )
+            return result
+
+        with (
+            mock.patch.object(
+                freeze,
+                "_digest_rooted_handoff_file",
+                side_effect=change_second_after_first_digest,
+            ),
+            self.assertRaisesRegex(ReviewError, "changed before read"),
+        ):
+            strict_relative_files(mixed_root)
+
+    def test_handoff_inventory_rejects_symlink_replacement_and_path_bounds(
+        self,
+    ) -> None:
+        handoff = self.root / "handoff-symlink-replacement"
+        handoff.mkdir()
+        (handoff / "link").symlink_to("target")
+        directory_flags = freeze._directory_flags()
+        real_readlink = freeze.os.readlink
+        replaced = False
+
+        def replace_after_readlink(path: str, *, dir_fd: int | None = None) -> str:
+            nonlocal replaced
+            target = real_readlink(path, dir_fd=dir_fd)
+            if path == "link" and dir_fd is not None and not replaced:
+                replaced = True
+                os.unlink(path, dir_fd=dir_fd)
+                os.symlink("replacement-target", path, dir_fd=dir_fd)
+            return target
+
+        with (
+            mock.patch.object(freeze, "_directory_flags", return_value=directory_flags),
+            mock.patch.object(
+                freeze.os, "readlink", side_effect=replace_after_readlink
+            ),
+            self.assertRaisesRegex(ReviewError, "symlink changed"),
+        ):
+            strict_relative_files(handoff)
+
+        for relative, keywords, message in (
+            ("a/b", {"max_depth": 1}, "component limit"),
+            ("abc", {"max_path_bytes": 2}, "UTF-8 bytes"),
+            ("abc", {"max_component_bytes": 2}, "component exceeds"),
+        ):
+            with self.subTest(relative=relative, keywords=keywords):
+                with self.assertRaisesRegex(ReviewError, message):
+                    freeze._relative_parts(
+                        relative,
+                        label="bounded handoff path",
+                        **keywords,
+                    )
+
+    def test_handoff_inventory_rejects_unrepresented_and_unsafe_entries(
+        self,
+    ) -> None:
+        empty_root = self.root / "handoff-empty-directory"
+        (empty_root / "empty").mkdir(parents=True)
+        with self.assertRaisesRegex(ReviewError, "unrepresented empty directory"):
+            strict_relative_files(empty_root)
+
+        hardlink_root = self.root / "handoff-hardlink"
+        hardlink_root.mkdir()
+        original = hardlink_root / "original.bin"
+        original.write_bytes(b"linked")
+        os.link(original, hardlink_root / "alias.bin")
+        with self.assertRaisesRegex(ReviewError, "multiply linked"):
+            strict_relative_files(hardlink_root)
+
+        symlink_root = self.root / "handoff-hardlinked-symlink"
+        symlink_root.mkdir()
+        symlink = symlink_root / "source-link"
+        alias = symlink_root / "alias-link"
+        symlink.symlink_to("target")
+        try:
+            os.link(symlink, alias, follow_symlinks=False)
+        except (NotImplementedError, OSError):
+            pass
+        else:
+            if stat.S_ISLNK(os.lstat(alias).st_mode):
+                with self.assertRaisesRegex(ReviewError, "multiply linked"):
+                    strict_relative_files(symlink_root)
+
+        if hasattr(os, "mkfifo"):
+            fifo_root = self.root / "handoff-fifo"
+            fifo_root.mkdir()
+            os.mkfifo(fifo_root / "input.pipe")
+            with self.assertRaisesRegex(ReviewError, "special file"):
+                strict_relative_files(fifo_root)
+
+    def test_held_root_closes_descriptors_after_unexpected_failure(self) -> None:
+        root = self.root / "held-root-cleanup"
+        root.mkdir()
+        directory_flags = freeze._directory_flags()
+        real_open = freeze.os.open
+        real_close = freeze.os.close
+        acquired: list[int] = []
+        closed: list[int] = []
+
+        def tracked_open(*arguments: object, **keywords: object) -> int:
+            descriptor = real_open(*arguments, **keywords)
+            acquired.append(descriptor)
+            return descriptor
+
+        def tracked_close(descriptor: int) -> None:
+            closed.append(descriptor)
+            real_close(descriptor)
+
+        with (
+            mock.patch.object(freeze, "_directory_flags", return_value=directory_flags),
+            mock.patch.object(freeze.os, "open", side_effect=tracked_open),
+            mock.patch.object(freeze.os, "close", side_effect=tracked_close),
+            mock.patch.object(
+                freeze.os,
+                "fstat",
+                side_effect=RuntimeError("injected unexpected failure"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "injected unexpected failure"),
+        ):
+            freeze._open_held_root(root, label="cleanup fixture")
+        self.assertEqual(Counter(acquired), Counter(closed))
+
     def test_handoff_manifest_rows_reject_declared_resource_overflow(self) -> None:
         regular = {
             "path": "large.bin",
             "kind": "regular",
+            "mode": "0644",
             "sha256": "0" * 64,
             "size_bytes": 5,
         }
@@ -3744,6 +5072,138 @@ raise SystemExit(3)
             self.assertRaisesRegex(ReviewError, "entry-count limit"),
         ):
             freeze.validate_handoff_rows([regular, {**regular, "path": "another.bin"}])
+
+    def test_handoff_manifest_rows_bind_mode_order_and_path_bounds(self) -> None:
+        first = {
+            "path": "a.bin",
+            "kind": "regular",
+            "mode": "0644",
+            "sha256": "0" * 64,
+            "size_bytes": 1,
+        }
+        second = {
+            **first,
+            "path": "b.bin",
+            "mode": "0755",
+        }
+        self.assertEqual(
+            freeze.validate_handoff_rows([first, second]),
+            [first, second],
+        )
+
+        with self.assertRaisesRegex(ReviewError, "strictly ordered"):
+            freeze.validate_handoff_rows([second, first])
+        with self.assertRaisesRegex(ReviewError, "four octal digits"):
+            freeze.validate_handoff_rows([{**first, "mode": "644"}])
+        for unsafe_path in (
+            "a" * (freeze.MAX_HANDOFF_PATH_BYTES + 1),
+            "a\nb",
+            "a\x00b",
+        ):
+            with self.subTest(path=repr(unsafe_path)):
+                with self.assertRaisesRegex(
+                    ReviewError,
+                    "UTF-8 bytes|control character|unsafe",
+                ):
+                    freeze.validate_handoff_rows([{**first, "path": unsafe_path}])
+
+    def test_handoff_inventory_binds_regular_file_mode(self) -> None:
+        handoff = self.root / "handoff-mode"
+        handoff.mkdir()
+        regular = handoff / "input.bin"
+        regular.write_bytes(b"same bytes")
+        regular.chmod(0o644)
+        nonexecutable = strict_relative_files(handoff)[0]
+        regular.chmod(0o755)
+        executable = strict_relative_files(handoff)[0]
+
+        self.assertEqual(nonexecutable["mode"], "0644")
+        self.assertEqual(executable["mode"], "0755")
+        self.assertEqual(nonexecutable["sha256"], executable["sha256"])
+        self.assertNotEqual(nonexecutable, executable)
+
+    def test_handoff_root_name_enforces_component_bounds(self) -> None:
+        invalid_root = "a" * (freeze.MAX_HANDOFF_COMPONENT_BYTES + 1)
+        handoff = {
+            "root_name": invalid_root,
+            "file_count": 0,
+            "total_bytes": 0,
+            "files": [],
+            "galadriel_child_archive_sha256": "1" * 64,
+            "galadriel_task_ledger_sha256": "2" * 64,
+        }
+        source = {
+            "master_package": invalid_root,
+            "child_archive": "child.zip",
+            "child_archive_sha256": "1" * 64,
+            "task_ledger_sha256": "2" * 64,
+        }
+
+        with self.assertRaisesRegex(ReviewError, "component exceeds"):
+            freeze.validate_handoff_manifest(handoff, source, None)
+
+    def test_freeze_descriptor_cleanup_preserves_primary_failure(self) -> None:
+        attempted: list[int] = []
+
+        def fail_first_close(descriptor: int) -> None:
+            attempted.append(descriptor)
+            if descriptor == 10:
+                raise OSError("injected close failure")
+
+        with (
+            mock.patch.object(freeze.os, "close", side_effect=fail_first_close),
+            self.assertRaisesRegex(RuntimeError, "primary failure") as raised,
+        ):
+            try:
+                raise RuntimeError("primary failure")
+            finally:
+                freeze._close_descriptors(
+                    [10, 11],
+                    context="cleanup fixture",
+                )
+
+        self.assertEqual(attempted, [10, 11])
+        self.assertIn(
+            "descriptor cleanup also failed",
+            "\n".join(raised.exception.__notes__),
+        )
+
+    def test_freeze_output_cleanup_preserves_primary_failure_and_attempts_all(
+        self,
+    ) -> None:
+        first = self.root / "first-partial"
+        second = self.root / "second-partial"
+        attempted: list[Path] = []
+
+        def fail_first_unlink(
+            path: Path,
+            *,
+            missing_ok: bool = False,
+        ) -> None:
+            self.assertTrue(missing_ok)
+            attempted.append(path)
+            if path == first:
+                raise OSError("injected unlink failure")
+
+        with (
+            mock.patch.object(
+                Path, "unlink", autospec=True, side_effect=fail_first_unlink
+            ),
+            self.assertRaisesRegex(RuntimeError, "primary failure") as raised,
+        ):
+            try:
+                raise RuntimeError("primary failure")
+            finally:
+                freeze._remove_created_paths(
+                    [first, second],
+                    context="cleanup fixture",
+                )
+
+        self.assertEqual(attempted, [first, second])
+        self.assertIn(
+            "output cleanup also failed",
+            "\n".join(raised.exception.__notes__),
+        )
 
 
 if __name__ == "__main__":

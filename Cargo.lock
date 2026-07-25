@@ -989,6 +989,8 @@ dependencies = [
  "galadriel-ncp",
  "galadriel-pid",
  "galadriel-sim",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

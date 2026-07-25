@@ -30,9 +30,9 @@
       "observed_at": "2026-07-18",
       "timestamp_precision": "date",
       "required_by_default": false,
-      "required_for": ["ncp feature", "ncp-live feature", "galadriel-ncp", "galadriel-eval"],
+      "required_for": ["ncp feature", "ncp-live feature", "galadriel-ncp", "galadriel-ncp zenoh feature", "galadriel-eval"],
       "supersedes": null,
-      "why": "Provides the wire-0.8 core types and, only for ncp-live, the Zenoh adapter."
+      "why": "Provides wire-0.8 core types. The CLI ncp-live feature or direct galadriel-ncp zenoh feature selects its Zenoh adapter."
     },
     {
       "id": "ECO-003",

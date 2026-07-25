@@ -30,7 +30,7 @@
 | DOI | digital object identifier |
 | JSON | JavaScript Object Notation |
 | JSONL | JavaScript Object Notation Lines |
-| KSG | Kraskov-Stögbauer-Grassberger |
+| KSG | Kraskov–Stögbauer–Grassberger |
 | LiDAR | light detection and ranging |
 | MI | mutual information |
 | mTLS | mutual Transport Layer Security |
@@ -53,7 +53,8 @@ The correlation keeps its sign and uses a producer-attested projection.
 Optional PID diagnostics explore nonlinear dependence.
 
 Here, "signed" identifies the correlation sign.
-"Attested" identifies a producer provenance claim. Neither term identifies a cryptographic signature.
+"Attested" identifies a producer provenance claim.
+Neither term identifies a cryptographic signature.
 
 ```mermaid
 flowchart LR
@@ -83,17 +84,18 @@ A shared transport or historical fixture also does not prove such an integration
 | Project | Direction | Required or optional | Why connected | Explicit 0.9.0 boundary |
 | --- | --- | --- | --- | --- |
 | [pid-rs](https://github.com/sepahead/pid-rs) | Upstream algorithm library | The default CLI build does not use it. The PID, justification, and evaluation crates require its exact `pid-core` pin. The CLI `pid` feature also requires the pin. It is linked code, not a runtime service. | It supplies restricted-domain KSG mutual-information and PID primitives for additive research diagnostics. | Pin `1cd2424f7967e1752dcc8e53859e8fdad3566f51` declares 1.0.0. It transitively resolves `pid-runlog` 1.0.0 from the same revision. Galadriel claims no public v1 tag or published upstream 1.x artifact. |
-| [NCP](https://github.com/sepahead/NCP) | Upstream wire and transport libraries | The default CLI build does not use it. `galadriel-ncp`, evaluation, and CLI `ncp` require `ncp-core`. `ncp-live` also pulls `ncp-zenoh`, Zenoh, and Tokio. | It supplies wire-0.8 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded offline JSONL, and operational receiver. | Both NCP crates pin `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`. This pin does not prove remote authorization, ACL enforcement, or wire-1.0 compatibility. |
+| [NCP](https://github.com/sepahead/NCP) | Upstream wire and transport libraries | The default CLI build does not use it. `galadriel-ncp`, evaluation, and CLI `ncp` require `ncp-core`. CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` also pulls `ncp-zenoh`, Zenoh, and Tokio. | It supplies wire-0.8 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded offline JSONL, and operational receiver. | Both NCP crates pin `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`. This pin does not prove remote authorization, ACL enforcement, or wire-1.0 compatibility. |
 | [Crebain](https://github.com/sepahead/crebain) | External upstream producer relationship | There is no Cargo dependency. The demo, simulation, evaluation, and replay do not require Crebain. Live operation needs an authorized contract-conforming producer. The code identity does not have to be Crebain. | It supplies the inspected reference component for the observation and monitor sidecar contract. It also supplies the byte-identical retained registry fixture. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head. Galadriel claims no reciprocal final-candidate or deployment qualification. |
-| [Haldir](https://github.com/sepahead/haldir) | Prospective record-only consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It defines the intended future record-only boundary. It also defines the independently admitted restrict-only boundary. Tests ensure that Galadriel evidence cannot grant or widen authority. | The integration phase has not started. There is no runtime evidence. |
+| [Haldir](https://github.com/sepahead/haldir) | Prospective record-only consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It defines the intended future record-only boundary. It also defines a separately admitted restrict-only boundary. Local tests verify that the validator rejects transitions that grant or widen authority. | The integration phase has not started. There is no runtime evidence. |
 | [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator and covariate consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It documents a possible future immutable offline covariate import. It keeps Galadriel sidecars outside normative NCP `SensorFrame`s. | The inspected relationship records intention or adjacency only. Shared NCP and PID dependencies do not imply schema compatibility or independent-implementation replication. |
 | Engram and Paper2Brain | External application names and realm context | There is no dependency, API, process, route, adapter, or runtime edge. The literal `engram/ncp` is a configurable example realm. It is not an application integration. | It makes the example deployment namespace concrete. NCP remains the actual library, key, and transport interface. | A 2026-07-23 read-only Paper2Brain observation records provenance only. Galadriel claims no integration, compatibility, or deployment qualification. |
-| ROS / ROS 2 | External robotics middleware | Version 0.9.0 has no dependency, message binding, topic, service, action, bridge, node, or runtime edge. | It identifies an ecosystem boundary that a future adapter must define and qualify explicitly. | Galadriel claims no ROS compatibility, bag import, or live bridge. |
-| External authority or controller | Prospective downstream policy and control boundary | There is no command, control, lease, watchdog, credential, or authority path. | A future consumer can record advisory evidence. It can apply only an independently admitted restrict-only policy. | Galadriel cannot grant, widen, refresh, or restore authority. `Nominal` is never permission. |
+| ROS / ROS 2 | External robotics middleware | Version 0.9.0 has no dependency, message binding, topic, service, action, bridge, node, or runtime edge. | It identifies an ecosystem boundary that a future adapter MUST define and qualify explicitly. | Galadriel claims no ROS compatibility, bag import, or live bridge. |
+| External authority or controller | Prospective downstream policy and control boundary | There is no command, control, lease, watchdog, credential, or authority path. | A future consumer can record advisory evidence. It can apply only a separately admitted restrict-only policy. | Galadriel cannot grant, widen, refresh, or restore authority. `Nominal` is never permission. |
 
 Galadriel is the sole center of this relationship view and has no self-edge.
 The declared directed graph includes `pid-rs → Galadriel` and `NCP → Galadriel`.
-It also includes optional conforming producer `→ Galadriel`.
+Live mode requires an authorized contract-conforming producer.
+This producer points into Galadriel.
 The prospective edges are `Galadriel → Haldir/Prisoma`.
 
 The Engram/Paper2Brain, ROS, and external-authority entries are explicit non-edges.
@@ -131,11 +133,17 @@ A 2026-07-23 read-only observation found Paper2Brain remote `main` at
 The observation found no Galadriel dependency, API, process, route, adapter, or runtime edge.
 It is not a dependency pin or reciprocal acceptance.
 
+The release audit retains a separate peer input cut.
+It includes historical Crebain, Haldir, Prisoma, and Paper2Brain objects.
+Those objects are not claims about the later mutable heads.
+[`docs/ECOSYSTEM-CONNECTIONS.md`](docs/ECOSYSTEM-CONNECTIONS.md) gives the exact
+cross-reference.
+
 These mutable repository heads are inspection provenance, not reciprocal compatibility pins.
 NCP's wire-1.0 topology remains proposed.
 It is incompatible with the current named wire-0.8 sidecars.
 Crebain retains component-level schema-v1 alignment.
-But it freezes Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input.
+Crebain freezes Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input.
 
 None of the retained Haldir objects contains a Galadriel adapter or runtime edge.
 Prisoma has no direct sidecar path.
@@ -195,7 +203,7 @@ Commit `8a0084f` generated it with `dirty=false`.
   The software does not silently combine the two schemas.
 - Synthetic stream studies report false-alert episodes per track-hour and mission false-alert probability separately.
   They also report run length, conditional delay, abstention, attribution, autocorrelation, covariance-scale sensitivity, and provenance rejection separately.
-- The bundled Crebain fixture proves only bounded parsing and baseline replay.
+- The bundled Crebain fixture supports only bounded parsing and basic NIS baseline checks.
   It is approximately 15.8 seconds long and has no attested common projection.
   Thus, recorded full-detector stream metrics are explicitly `not_estimable`.
   Synthetic numbers never replace these metrics.
@@ -209,7 +217,7 @@ Commit `8a0084f` generated it with `dirty=false`.
   They are not a receiver-verified external mTLS/ACL deployment or field study.
 
 The artifact is a diagnostic result, not an acceptance result.
-In its independent clean arm, the current default reports 26.26 alert episodes per track-hour.
+In its clean synthetic arm, the current default reports 26.26 alert episodes per track-hour.
 It reports a 0.9167 mission probability of at least one alert.
 
 The `phi=0.5` autocorrelated arm reports 102.95 alert episodes per track-hour.
@@ -221,7 +229,7 @@ Complete this work before operational use.
 > **Honest scope.** Galadriel detects statistical inconsistency, not truth.
 > It cannot prove that an attributed channel is malicious.
 > It cannot detect an attacker that preserves cross-channel consistency.
-> It must not silently veto a control path.
+> It MUST NOT silently veto a control path.
 > Reports are advisory evidence, not calibrated posteriors.
 
 > **Current integration status.** Galadriel implements the strict two-route consumer.
@@ -233,16 +241,16 @@ Complete this work before operational use.
 > A real-router certificate and ACL campaign is also `NOT_CLAIMED`.
 > Recorded stream calibration is `NOT_CLAIMED`.
 > Historical captures remain `not_estimable`.
-> Deployments remain responsible for fresh, non-reused epochs.
+> A prospective deployment remains responsible for fresh, non-reused epochs.
 
 > **TLS trust limitation.** The pinned Zenoh 1.9 client trusts built-in public WebPKI roots.
 > It also trusts the configured deployment CA.
 > Exclusive router-certificate or CA pinning is `NOT_CLAIMED`.
 > Use a private router name that a public authority cannot issue.
 > Control name resolution or use an external exact-certificate or SPKI pinning layer.
-> See the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md#tls-server-authentication-limitation).
+> See the [deployment security runbook](docs/SECURE-DEPLOYMENT.md#tls-server-authentication-limitation).
 
-[`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) specifies how a downstream authorization gate can consume Galadriel evidence.
+[`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) specifies how a prospective downstream authorization gate can consume Galadriel evidence.
 The evidence is non-authoritative and record-only. It never widens `ALLOW`.
 
 [`docs/PAPER.md`](docs/PAPER.md) documents the research background.
@@ -254,6 +262,28 @@ Galadriel consumes `PidObservation` records that contain NIS and degrees of free
 Cross-sensor analysis also requires an optional `consistency_projection`.
 This projection contains a bounded signed vector.
 It also contains nonzero physical-frame, projection-context, and frozen-prior identifiers.
+
+Accepted whole-stream analysis also requires one `AssessmentScope`.
+The scope contains these validated coordinates:
+
+- producer identity
+- session identity
+- epoch identity
+- stream identity
+- state generation
+- terminal sequence
+- terminal timestamp in milliseconds
+- clock domain
+
+The terminal sequence MUST equal the largest sequence in the input stream.
+The terminal timestamp MUST equal the largest timestamp at that sequence.
+`assess_default` and the optional PID `assess_stream` reject a mismatch.
+
+A direct caller declares the scope.
+The core validates its representation and terminal coordinates.
+The scope does not authenticate the caller or prove producer authorship.
+The NCP lifecycle adapter supplies the admitted producer and position for its
+accepted path.
 
 Native `innovation` and `innovation_cov` fields remain diagnostic.
 The detector never uses them as a cross-modal fallback.
@@ -309,11 +339,25 @@ Different positive channel attributions across axes produce `UnclassifiedAnomaly
 A positive axis beside an insufficient axis also produces `UnclassifiedAnomaly`.
 These conditions do not produce `AttributedInconsistency`.
 
-`galadriel_core::assess_default` fuses magnitude and consistency evidence.
+A finite degenerate projection column makes its pairwise estimand unavailable.
+The related correlation axis returns `InsufficientEvidence`.
+It withholds all channel corroboration values for that axis.
+The optional PID family also returns `InsufficientEvidence` before it adds
+observation noise. These conditions do not discard independent magnitude evidence.
+
+`galadriel_core::assess_default(&scope, &stream, &suite)` fuses magnitude and
+consistency evidence.
 It does not turn an unavailable consistency assessment into `Nominal`.
 Its sealed `DefaultReport` carries an opaque `AssessmentBinding` over the complete accepted `ReleaseSuite`.
-The binding also covers every field of every ordered input observation.
-The magnitude and correlation components must carry that exact binding.
+The version 2 binding also covers the complete scope.
+It covers every field of every ordered input observation.
+The magnitude and correlation components MUST carry that exact binding.
+
+The report serializes the scope once as top-level field `assessment_scope`.
+Callers can verify the binding against the exact scope, stream, and suite.
+The binding identifies those inputs. It does not authenticate them.
+Different bindings can carry equal detector verdicts.
+The binding does not require each observation to change an estimator or verdict.
 
 Unbound component helpers produce diagnostic tuples only. They cannot create an accepted report.
 
@@ -338,6 +382,7 @@ Bounded circular-resample confirmation remains an explicitly experimental raw-sc
 
 Accepted PID reports add a `PidAssessmentBinding` over the core assessment binding.
 The binding also covers the complete PID research suite.
+It retains the nested core version 2 scope binding.
 See the [0.4→1.0 migration record](docs/PID_RS_1_0_MIGRATION.md).
 
 ## Project status
@@ -362,9 +407,9 @@ Author and maintainer: **Sepehr Mahmoudian**.
 
 | Crate | Role | Evidence scope |
 |---|---|---|
-| [`galadriel-core`](crates/galadriel-core) | NIS/CUSUM, signed correlation, fused assessment | Tested research core |
+| [`galadriel-core`](crates/galadriel-core) | NIS/CUSUM, signed correlation, fused assessment | Local implementation tests |
 | [`galadriel-sim`](crates/galadriel-sim) | synthetic scenarios and injections | Synthetic only |
-| [`galadriel-cli`](crates/galadriel-cli) | `demo`, `replay`, and secure `observe` driver | Operator prototype. The live path has component tests. |
+| [`galadriel-cli`](crates/galadriel-cli) | `demo`, `replay`, and strict `observe` driver | Operator prototype. The live path has component tests. |
 | [`galadriel-pid`](crates/galadriel-pid) | KSG-MI / PID evidence | Optional research path |
 | [`galadriel-ncp`](crates/galadriel-ncp) | strict codecs, pinned registry, monitor tap, assembler, lifecycle gate, operational Zenoh receiver | Unit, golden, and in-process Zenoh tests. No external deployment evidence. |
 | [`galadriel-eval`](crates/galadriel-eval) | Monte Carlo evaluation and cost bench | Synthetic only |
@@ -379,6 +424,7 @@ Mutable test totals and benchmark values are not project-status claims.
 The table describes activation from the default-member CLI.
 A direct build of `galadriel-pid`, `galadriel-justify`, or `galadriel-eval` still resolves `pid-core`.
 A direct build of `galadriel-ncp` or `galadriel-eval` resolves `ncp-core` without a CLI feature.
+A direct `galadriel-ncp` build with feature `zenoh` also resolves `ncp-zenoh`, Zenoh, and Tokio.
 Workspace-wide builds deliberately include those crates.
 
 | Feature | Pulls | Adds |
@@ -386,10 +432,20 @@ Workspace-wide builds deliberately include those crates.
 | default | no sibling integration crates | core, simulator, CLI |
 | `pid` | Exact `pid-core` Git revision whose manifest declares 1.0.0. Its upstream default set is empty. `parallel` remains off. `experimental-pipelines` selects its continuous and mixed-dimension PID3 research surfaces. | Experimental KSG-MI/PID research layer. No upstream 1.x release claim. |
 | `ncp` | `ncp-core` | Bounded JSONL ingest. NCP 0.8 key helpers. Strict observation and producer-monitor envelopes. The CLI `replay` subcommand. |
-| `ncp-live` | `ncp-zenoh`, exact `zenoh` 1.9 guard types, `tokio` | secure `observe` command plus bounded two-route receiver, deadlines, lifecycle gate, and health state |
+| `ncp-live` | `ncp-zenoh`, exact `zenoh` 1.9 guard types, `tokio` | strict `observe` command plus bounded two-route receiver, deadlines, lifecycle gate, and health state |
+
+Raw JSONL replay does not contain the required producer, lifecycle, and clock
+scope. The `replay` command therefore uses unbound component helpers.
+It labels each terminal result `diagnostic-only`.
+It does not call either accepted whole-stream assessment entry point.
+
+The synthetic demo uses `ScenarioConfig::assessment_scope`.
+That function derives deterministic synthetic labels and terminal coordinates.
+It rejects a zero-frame scenario because that scenario has no terminal scope.
+Those labels identify a simulation. They do not claim operational provenance.
 
 The pinned `ncp-core` manifest also declares opt-in `schema` and `ts` aliases.
-The audited offline, live, and evaluation dependency graphs select neither alias.
+The retained offline, live, and evaluation dependency graphs select neither alias.
 
 Exact Git revisions pin the public `pid-rs` repository and NCP's `ncp-core` and `ncp-zenoh` crates.
 The pid-rs revision declares 1.0.0.
@@ -397,7 +453,7 @@ The retained 2026-07-22 inspection found no public v1 tag.
 The NCP revision corresponds to public tag `v0.8.0`.
 A fresh clone needs no sibling checkout, private repository token, or global Git credential rewrite.
 
-Use only the rendered observer configuration for the operational observer.
+For prospective live use, use only the rendered observer configuration.
 Supply the same exact epoch and registry pin to the intended external producer deployment.
 Run this command:
 
@@ -414,10 +470,27 @@ cargo run --locked --features ncp-live --bin galadriel -- observe \
 The renderer's checksummed `galadriel-handoff.json` binds the realm, epoch, producer, and registry tuple.
 It binds that tuple to the two authorized certificate CNs.
 Verify the complete digest manifest before you start either process.
-Use the handoff as the deployment record.
+Use the handoff as the deployment configuration record.
 
 The command reports lifecycle abstentions as evidence insufficiency.
-It labels every evaluated result `calibrated_posterior=false`.
+It emits one complete JSON record when a delivered frame creates a new lifecycle receipt.
+The record has schema `galadriel.observe.lifecycle.v1`.
+It contains exactly these four top-level fields:
+
+- `schema`
+- `calibrated_posterior`, which is always `false`
+- `receipt`, which is the complete lifecycle receipt
+- `assessments`, which is the complete ordered assessment vector
+
+Each evaluated nested report contains one `assessment_scope`.
+Its producer and position match the receipt.
+The assessment vector is empty when a rejected or faulted receipt has no assessment.
+The record preserves the receipt-to-assessment connection.
+The command uses fallible writes and flushes standard output after each record batch.
+It completes that flush before it reports a following terminal error.
+The command does not sign or durably retain this output.
+The receipt digest does not authenticate a writer.
+
 It exposes terminal health on exit.
 It stops on the first ingress, assembly, or liveness fault.
 [`docs/SECURE-DEPLOYMENT.md`](docs/SECURE-DEPLOYMENT.md) defines configuration generation and external authorization drills.
@@ -435,15 +508,20 @@ After this fault, no subsequent `FrameReady` crosses the boundary.
 The fixed defaults give 30 seconds for the first heartbeat after transport activation.
 Then, they require the declared one-second cadence within a three-second receipt deadline.
 Replay high-water state never evicts within an epoch.
-Operators must monitor the CLI's prior-identity and observation-stream utilization.
-They must coordinate a new epoch before a cap.
-Live library callers must use a Tokio runtime with its time driver enabled.
+Operators MUST monitor the CLI's prior-identity and observation-stream utilization.
+They MUST coordinate a new epoch before a cap.
+Live library callers MUST use a Tokio runtime with its time driver enabled.
 
 After assembly, `LifecycleDetector` admits explicit typed `StreamPosition`s.
 Exact successors advance normally.
 Continuity changes require a generation-advancing reset.
 Rollover requires an unseen epoch at sequence and generation zero.
 `reset_at`, `timeout_at`, and `rollover_at` return bounded hash-linked `LifecycleReceipt`s.
+
+For an accepted frame, the lifecycle adapter creates one `AssessmentScope` from
+the admitted producer and exact current position. It passes that scope to each
+track assessment. It rejects an evaluated result if its scope differs from the
+receipt producer or position.
 
 Duplicate, replay, gap, and generation violations cause rejection and latch the state.
 The legacy frame convenience path derives a local position from frozen sidecar v1 fields.
@@ -462,7 +540,7 @@ The two identities use the canonical Galadriel core ASCII grammar.
 The runtime rejects a generic NCP-valid value that does not use this grammar.
 
 The envelope also carries the historical Crebain-compatible `observation` shape.
-[`galadriel-pid-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json) defines the exact independent-producer contract.
+[`galadriel-pid-envelope-v1.schema.json`](crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json) defines the exact contract for an external producer.
 This file is a frozen producer-conformance schema.
 The runtime `SidecarEnvelope` validation gate is the authoritative consumer-acceptance check.
 
@@ -471,17 +549,17 @@ They reject malformed metadata, cross-session or cross-producer payloads, and un
 They also reject invalid observations and replay or sequence violations.
 Contract-hash drift is advisory and counted.
 
-The standalone observation tap exposes explicit secure and development modes.
+The standalone observation tap exposes explicit `Secure` and `QuietDevelopment` modes.
 It also exposes bounded handoff APIs.
-The `observe` command always calls the strict secure constructor.
+The `observe` command always calls `OperationalLiveReceiver::open_secure`.
 It requires an externally pinned registry digest.
 
 `LiveLimits::max_payload_bytes` bounds decoding after NCP callback delivery.
-But the pinned `ncp-zenoh` callback first materializes an owned payload.
-Deployments still need a transport or broker message-size ceiling to bound receive-memory pressure.
+The pinned `ncp-zenoh` callback first materializes an owned payload.
+A prospective deployment still needs a transport or broker message-size ceiling to bound receive-memory pressure.
 Subscriber silence can mean no traffic, a realm or key mismatch, ACL denial, or producer failure.
 
-Producers must use a fresh deployment-supplied session identifier for every process epoch.
+Producers MUST use a fresh deployment-supplied session identifier for every process epoch.
 Monitor heartbeats make all-modal silence visible after the finite initial grace.
 They also make it visible after the configured steady monotonic deadline.
 
@@ -498,10 +576,11 @@ The current candidate has no accepted reciprocal producer pin or final cross-rep
 Local evidence does not attest the active ACL of a remote router.
 It also does not calibrate the detector.
 
-These sidecar payloads belong to this project. They are not normative NCP `SensorFrame`s.
-A conforming producer must build the two exact named-sensor keys.
-It must publish the serialized envelopes through `ZenohBus::put(..., Plane::Perception)`.
-It must not call `put_sensor_named`.
+These sidecar payloads belong to this project.
+They are not normative NCP `SensorFrame`s.
+A conforming producer MUST build the two exact named-sensor keys.
+It MUST publish the serialized envelopes through `ZenohBus::put(..., Plane::Perception)`.
+It MUST NOT call `put_sensor_named`.
 That publisher gate correctly accepts only a complete NCP `sensor_frame`.
 
 ## Building and testing
@@ -523,9 +602,11 @@ Crate targets forbid unsafe code.
 
 ## Honest limitations
 
-- **Consistency-preserving attacks remain invisible.**
-  The [frustum attack](https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton) preserves camera and LiDAR consistency.
-  It is a concrete example of this attack class.
+- **Statistics-preserving attacks remain invisible.**
+  A perturbation can preserve every statistic that Galadriel evaluates.
+  Galadriel cannot identify that perturbation from those statistics.
+  The [frustum attack](https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton) preserves camera and LiDAR semantic consistency.
+  The cited result does not establish preservation of every Galadriel estimand.
 - **Consistency is not truth.**
   A decoupled channel can represent a spoof or a true channel-specific event.
   It can also represent a coordinate mismatch or estimator artifact.
@@ -540,17 +621,17 @@ Crate targets forbid unsafe code.
 - **Lifecycle absence is not health.**
   Explicit misses and rejections immediately break the affected statistical suffix.
   All-modal silence becomes a heartbeat fault in the operational receiver.
-  But transport authentication still cannot prove physical truth.
+  Transport authentication still cannot prove physical truth.
 - **Advisory attribution has no enforcement authority.**
   Authentication, ACLs, mTLS, and a safety governor remain separate requirements.
-  An independently reviewed control policy is also a separate requirement.
+  A separately admitted control policy is also a separate requirement.
 
 ## Producer and integration boundary
 
 Galadriel 0.9.0 implements its local consumer contract.
 This contract includes bounded live taps, cross-route assembly, and pinned-registry admission.
-It also includes lifecycle abstention, secure observer configuration, and component and in-process test paths.
-The historical Crebain and Galadriel pair demonstrates an earlier compatibility fixture.
+It also includes lifecycle abstention, strict observer configuration, and component and in-process test paths.
+The historical Crebain and Galadriel pair forms an earlier component compatibility fixture.
 It does not close the current candidate across repositories.
 
 The current reciprocal producer pin remains an explicit exclusion.
@@ -559,8 +640,8 @@ A retained multi-process mTLS/ACL allow-and-deny campaign remains excluded.
 Recorded pre-gate calibration remains excluded.
 
 API or publication promotion beyond this review-gated research source release remains excluded.
-See the [secure deployment runbook](docs/SECURE-DEPLOYMENT.md) for the external procedure.
-None of these exclusions becomes an implementation success.
+See the [deployment security runbook](docs/SECURE-DEPLOYMENT.md) for the external procedure.
+Do not count these exclusions as implementation success.
 
 ## Release verification boundary
 
@@ -573,18 +654,65 @@ All four broad mutation shards and all three focused outcomes are exact-candidat
 The observational mutation-baseline job remains residual evidence.
 It is not a successful release gate.
 
-A passing signed qualification tier must retain exactly 22 auxiliary command receipts.
+A passing signed qualification tier MUST retain exactly 22 auxiliary command receipts.
 Each receipt binds its command, sandbox, exit status, log, and output streams.
 Each command also uses a stop-before-exec gate and fixed resource limits.
+Qualification requires macOS `kqueue` and `/usr/bin/sandbox-exec`.
+It uses one mode-0500 dispatch for 19 required command names.
+The dispatch binds direct Apple developer Git, its developer tools, and `CPython 3.14.6`.
+The sandbox denies direct execution of `/usr/bin/git` and `/usr/bin/python3`.
+Critical host Git and SSH operations pin direct Apple developer Git, `/usr/bin/ssh-add`, and `/usr/bin/ssh-keygen`.
+The host verifies each root-owned no-follow identity before and after execution.
+It pins `sandbox-exec` to `/usr/bin/sandbox-exec` and its expected byte identity.
+It records the resolved path, owner, group, and mode.
+It removes dynamic-loader and toolchain selectors from the host command environment.
+
+The candidate sandbox denies signal operations by default.
+It permits signals only to the candidate process itself or its children.
+
+The qualifier signals only the original process group while its root remains waitable.
+It does not send a signal to an escaped numeric process identifier.
+An observed escaped sandbox identity fails the run.
+After root reap, it performs only read-only extinction checks.
 macOS does not provide atomic recursive descendant tracking.
 A short-lived reparented process can exit between scans.
-The process scan detects a detached process that remains active.
+The sandbox-identity scan detects an active detached process while it retains
+that identity.
 
 The inherited sandbox and resource limits apply before candidate execution.
 A sandboxed process can request work from an existing external service.
 The process scan cannot attribute that external service work.
 
-A passing qualification tier must retain 15 two-run comparisons.
+Candidate evidence uses summary schema `galadriel.evidence.summary.v3`.
+It uses manifest schema `galadriel.evidence.manifest.v3`.
+It uses acceptance profile `galadriel-0.9-frozen-acceptance-metrics-v3`.
+It uses bootstrap profile `splitmix64-rejection-group-metric-v1`.
+
+Qualification builds the evidence runner separately.
+The host creates a private directory with mode `0700`.
+It copies the executable into that directory with mode `0500`.
+The host executes that exact snapshot directly.
+The manifest binds its digest and the exact candidate commit and tree.
+
+The host then replays all six evidence files semantically.
+It streams each trial and rebuilds the complete summary and report.
+It verifies the accepted configuration, manifest, and checksum document.
+It evaluates acceptance only from the rebuilt holdout summary.
+Finalization repeats the same replay against the signed outer inventory.
+
+The frozen 100-track design cannot pass `GLD-090-ACC-001` or `GLD-090-ACC-006`.
+Their necessary track counts are 369 and 738.
+The frozen work ceiling permits at most 248 holdout tracks with the current grid.
+[`docs/POST-AUDIT-EVIDENCE.md`](docs/POST-AUDIT-EVIDENCE.md#frozen-acceptance-feasibility) gives the exact interval values.
+
+Thus, an otherwise passing qualification records `NARROWED_REVIEW_REQUIRED`.
+A signed human decision must select `NARROWED_GO` or `NO_GO`.
+It cannot select `GO` while acceptance fails.
+
+These checks establish internal contract agreement for one exact candidate.
+They do not prove field calibration, deployment qualification, or independent replication.
+
+A passing qualification tier MUST retain 15 two-run comparisons.
 They cover one source archive, seven unpublished package archives, and seven SBOM documents.
 Semantic checks bind source and package members to the candidate tree.
 They also close SBOM fields against the validated `Cargo.lock` graph.
@@ -628,7 +756,7 @@ It includes authenticated and anonymous downloads.
 - [`docs/STATISTICAL-CONTRACT.md`](docs/STATISTICAL-CONTRACT.md) — exact report-field
   estimands, verdict functionals, and repeated-look boundary.
 - [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) — adversaries, trust boundaries,
-  required safe failures, and residual risks.
+  required fail-closed behavior, and residual risks.
 - [`docs/API-SURFACE.md`](docs/API-SURFACE.md) — stable core and experimental surfaces.
 - [`docs/MIGRATION-0.9.md`](docs/MIGRATION-0.9.md) — source migration to typed 0.9
   identity, lifecycle, result, and PID APIs.
@@ -659,5 +787,6 @@ It includes authenticated and anonymous downloads.
 
 ## License
 
-Licensed under either [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE) at your
-option. Part of the [`sepahead`](https://github.com/sepahead) ecosystem.
+Galadriel is licensed under either [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE).
+You can select either license.
+Galadriel is part of the [`sepahead`](https://github.com/sepahead) ecosystem.

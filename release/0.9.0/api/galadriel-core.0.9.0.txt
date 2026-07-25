@@ -2821,6 +2821,7 @@ pub type galadriel_core::fusion::AxisCorrelationReport::Output = T
 pub struct galadriel_core::fusion::DefaultReport
 impl galadriel_core::fusion::DefaultReport
 pub const fn galadriel_core::fusion::DefaultReport::assessment_binding(&self) -> &galadriel_core::AssessmentBinding
+pub const fn galadriel_core::fusion::DefaultReport::assessment_scope(&self) -> &galadriel_core::AssessmentScope
 pub const fn galadriel_core::fusion::DefaultReport::baseline(&self) -> &galadriel_core::decision::MirrorReport
 pub const fn galadriel_core::fusion::DefaultReport::classification(&self) -> galadriel_core::config::AssessmentClassification
 pub fn galadriel_core::fusion::DefaultReport::correlations(&self) -> &[galadriel_core::fusion::AxisCorrelationReport]
@@ -2911,6 +2912,7 @@ pub type galadriel_core::fusion::NonEmptyModalities::Output = T
 pub struct galadriel_core::fusion::PreparedReleaseAssessment
 impl galadriel_core::fusion::PreparedReleaseAssessment
 pub const fn galadriel_core::fusion::PreparedReleaseAssessment::assessment_binding(&self) -> &galadriel_core::AssessmentBinding
+pub const fn galadriel_core::fusion::PreparedReleaseAssessment::assessment_scope(&self) -> &galadriel_core::AssessmentScope
 pub const fn galadriel_core::fusion::PreparedReleaseAssessment::baseline(&self) -> &galadriel_core::decision::MirrorReport
 pub fn galadriel_core::fusion::PreparedReleaseAssessment::correlations(&self) -> &[galadriel_core::fusion::AxisCorrelationReport]
 pub const fn galadriel_core::fusion::PreparedReleaseAssessment::projection(&self) -> core::option::Option<&galadriel_core::ConsistencyChannels>
@@ -2949,10 +2951,10 @@ impl<T> core::convert::From<T> for galadriel_core::fusion::PreparedReleaseAssess
 pub fn galadriel_core::fusion::PreparedReleaseAssessment::from(T) -> T
 impl<T> typenum::type_operators::Same for galadriel_core::fusion::PreparedReleaseAssessment
 pub type galadriel_core::fusion::PreparedReleaseAssessment::Output = T
-pub fn galadriel_core::fusion::assess_default(&[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> galadriel_core::error::Result<galadriel_core::fusion::DefaultReport>
+pub fn galadriel_core::fusion::assess_default(&galadriel_core::AssessmentScope, &[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> galadriel_core::error::Result<galadriel_core::fusion::DefaultReport>
 pub fn galadriel_core::fusion::combine(&galadriel_core::decision::MirrorReport, galadriel_core::fusion::ConsistencyEvidence) -> (galadriel_core::fusion::FusedVerdict, alloc::string::String)
 pub fn galadriel_core::fusion::combine_correlation_axes(&galadriel_core::config::ReleaseSuite, &galadriel_core::decision::MirrorReport, &[galadriel_core::fusion::AxisCorrelationReport]) -> galadriel_core::error::Result<(galadriel_core::fusion::FusedVerdict, alloc::string::String)>
-pub fn galadriel_core::fusion::prepare_release_assessment(&[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> galadriel_core::error::Result<galadriel_core::fusion::PreparedReleaseAssessment>
+pub fn galadriel_core::fusion::prepare_release_assessment(&galadriel_core::AssessmentScope, &[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> galadriel_core::error::Result<galadriel_core::fusion::PreparedReleaseAssessment>
 pub fn galadriel_core::fusion::try_combine(&galadriel_core::decision::MirrorReport, galadriel_core::fusion::ConsistencyEvidence) -> core::result::Result<(galadriel_core::fusion::FusedVerdict, alloc::string::String), galadriel_core::outcome::AssessmentFailure>
 pub mod galadriel_core::observation
 pub enum galadriel_core::observation::Modality
@@ -5690,8 +5692,9 @@ pub struct galadriel_core::AssessmentBinding
 impl galadriel_core::AssessmentBinding
 pub const fn galadriel_core::AssessmentBinding::digest(&self) -> galadriel_core::AssessmentDigest
 pub const fn galadriel_core::AssessmentBinding::observation_count(&self) -> usize
+pub const fn galadriel_core::AssessmentBinding::scope(&self) -> &galadriel_core::AssessmentScope
 pub const fn galadriel_core::AssessmentBinding::suite_identity(&self) -> galadriel_core::ConfigDigest
-pub fn galadriel_core::AssessmentBinding::verifies(&self, &[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> bool
+pub fn galadriel_core::AssessmentBinding::verifies(&self, &galadriel_core::AssessmentScope, &[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> bool
 impl core::clone::Clone for galadriel_core::AssessmentBinding
 pub fn galadriel_core::AssessmentBinding::clone(&self) -> galadriel_core::AssessmentBinding
 impl core::cmp::Eq for galadriel_core::AssessmentBinding
@@ -5835,6 +5838,57 @@ impl<T> core::convert::From<T> for galadriel_core::outcome::AssessmentFailure
 pub fn galadriel_core::outcome::AssessmentFailure::from(T) -> T
 impl<T> typenum::type_operators::Same for galadriel_core::outcome::AssessmentFailure
 pub type galadriel_core::outcome::AssessmentFailure::Output = T
+pub struct galadriel_core::AssessmentScope
+impl galadriel_core::AssessmentScope
+pub const fn galadriel_core::AssessmentScope::new(galadriel_core::domain::ProducerId, galadriel_core::domain::StreamPosition) -> Self
+pub const fn galadriel_core::AssessmentScope::position(&self) -> &galadriel_core::domain::StreamPosition
+pub const fn galadriel_core::AssessmentScope::producer_id(&self) -> &galadriel_core::domain::ProducerId
+impl core::clone::Clone for galadriel_core::AssessmentScope
+pub fn galadriel_core::AssessmentScope::clone(&self) -> galadriel_core::AssessmentScope
+impl core::cmp::Eq for galadriel_core::AssessmentScope
+impl core::cmp::PartialEq for galadriel_core::AssessmentScope
+pub fn galadriel_core::AssessmentScope::eq(&self, &galadriel_core::AssessmentScope) -> bool
+impl core::fmt::Debug for galadriel_core::AssessmentScope
+pub fn galadriel_core::AssessmentScope::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_core::AssessmentScope
+pub fn galadriel_core::AssessmentScope::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for galadriel_core::AssessmentScope
+impl serde_core::ser::Serialize for galadriel_core::AssessmentScope
+pub fn galadriel_core::AssessmentScope::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for galadriel_core::AssessmentScope
+pub fn galadriel_core::AssessmentScope::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for galadriel_core::AssessmentScope
+impl core::marker::Send for galadriel_core::AssessmentScope
+impl core::marker::Sync for galadriel_core::AssessmentScope
+impl core::marker::Unpin for galadriel_core::AssessmentScope
+impl core::marker::UnsafeUnpin for galadriel_core::AssessmentScope
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::AssessmentScope
+impl core::panic::unwind_safe::UnwindSafe for galadriel_core::AssessmentScope
+impl<T, U> core::convert::Into<U> for galadriel_core::AssessmentScope where U: core::convert::From<T>
+pub fn galadriel_core::AssessmentScope::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_core::AssessmentScope where U: core::convert::Into<T>
+pub type galadriel_core::AssessmentScope::Error = core::convert::Infallible
+pub fn galadriel_core::AssessmentScope::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_core::AssessmentScope where U: core::convert::TryFrom<T>
+pub type galadriel_core::AssessmentScope::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_core::AssessmentScope::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_core::AssessmentScope where T: core::clone::Clone
+pub type galadriel_core::AssessmentScope::Owned = T
+pub fn galadriel_core::AssessmentScope::clone_into(&self, &mut T)
+pub fn galadriel_core::AssessmentScope::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_core::AssessmentScope where T: 'static + ?core::marker::Sized
+pub fn galadriel_core::AssessmentScope::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_core::AssessmentScope where T: ?core::marker::Sized
+pub fn galadriel_core::AssessmentScope::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_core::AssessmentScope where T: ?core::marker::Sized
+pub fn galadriel_core::AssessmentScope::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_core::AssessmentScope where T: core::clone::Clone
+pub unsafe fn galadriel_core::AssessmentScope::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_core::AssessmentScope
+pub fn galadriel_core::AssessmentScope::from(T) -> T
+impl<T> serde_core::de::DeserializeOwned for galadriel_core::AssessmentScope where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for galadriel_core::AssessmentScope
+pub type galadriel_core::AssessmentScope::Output = T
 pub struct galadriel_core::AuthoritySnapshot
 impl galadriel_core::authority::AuthoritySnapshot
 pub const fn galadriel_core::authority::AuthoritySnapshot::authorization(&self) -> galadriel_core::authority::Authorization
@@ -6379,6 +6433,7 @@ pub type galadriel_core::cusum::Cusum::Output = T
 pub struct galadriel_core::DefaultReport
 impl galadriel_core::fusion::DefaultReport
 pub const fn galadriel_core::fusion::DefaultReport::assessment_binding(&self) -> &galadriel_core::AssessmentBinding
+pub const fn galadriel_core::fusion::DefaultReport::assessment_scope(&self) -> &galadriel_core::AssessmentScope
 pub const fn galadriel_core::fusion::DefaultReport::baseline(&self) -> &galadriel_core::decision::MirrorReport
 pub const fn galadriel_core::fusion::DefaultReport::classification(&self) -> galadriel_core::config::AssessmentClassification
 pub fn galadriel_core::fusion::DefaultReport::correlations(&self) -> &[galadriel_core::fusion::AxisCorrelationReport]
@@ -7053,6 +7108,7 @@ pub type galadriel_core::observation::PidObservation::Output = T
 pub struct galadriel_core::PreparedReleaseAssessment
 impl galadriel_core::fusion::PreparedReleaseAssessment
 pub const fn galadriel_core::fusion::PreparedReleaseAssessment::assessment_binding(&self) -> &galadriel_core::AssessmentBinding
+pub const fn galadriel_core::fusion::PreparedReleaseAssessment::assessment_scope(&self) -> &galadriel_core::AssessmentScope
 pub const fn galadriel_core::fusion::PreparedReleaseAssessment::baseline(&self) -> &galadriel_core::decision::MirrorReport
 pub fn galadriel_core::fusion::PreparedReleaseAssessment::correlations(&self) -> &[galadriel_core::fusion::AxisCorrelationReport]
 pub const fn galadriel_core::fusion::PreparedReleaseAssessment::projection(&self) -> core::option::Option<&galadriel_core::ConsistencyChannels>
@@ -8049,11 +8105,11 @@ pub const galadriel_core::MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS: usize
 pub const galadriel_core::MAX_RELEASE_SUITE_STATE_BYTES: usize
 pub const galadriel_core::MIN_NIS_FAMILY_ALPHA: f64
 pub const galadriel_core::NIS_WINDOW_EXACT_CACHE_BYTES: usize
-pub fn galadriel_core::assess_default(&[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> galadriel_core::error::Result<galadriel_core::fusion::DefaultReport>
+pub fn galadriel_core::assess_default(&galadriel_core::AssessmentScope, &[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> galadriel_core::error::Result<galadriel_core::fusion::DefaultReport>
 pub fn galadriel_core::combine(&galadriel_core::decision::MirrorReport, galadriel_core::fusion::ConsistencyEvidence) -> (galadriel_core::fusion::FusedVerdict, alloc::string::String)
 pub fn galadriel_core::combine_correlation_axes(&galadriel_core::config::ReleaseSuite, &galadriel_core::decision::MirrorReport, &[galadriel_core::fusion::AxisCorrelationReport]) -> galadriel_core::error::Result<(galadriel_core::fusion::FusedVerdict, alloc::string::String)>
 pub fn galadriel_core::consistency_channels_with_temporal_limits(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], u64, u64, u64) -> galadriel_core::error::Result<core::option::Option<galadriel_core::ConsistencyChannels>>
-pub fn galadriel_core::prepare_release_assessment(&[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> galadriel_core::error::Result<galadriel_core::fusion::PreparedReleaseAssessment>
+pub fn galadriel_core::prepare_release_assessment(&galadriel_core::AssessmentScope, &[galadriel_core::observation::PidObservation], &galadriel_core::config::ReleaseSuite) -> galadriel_core::error::Result<galadriel_core::fusion::PreparedReleaseAssessment>
 pub fn galadriel_core::scalar_channels(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], usize) -> galadriel_core::error::Result<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
 pub fn galadriel_core::scalar_channels_with_limits(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], usize, u64, u64) -> galadriel_core::error::Result<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
 pub fn galadriel_core::scalar_channels_with_temporal_limits(&[galadriel_core::observation::PidObservation], &[galadriel_core::observation::Modality], usize, u64, u64, u64) -> galadriel_core::error::Result<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>

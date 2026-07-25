@@ -662,6 +662,25 @@ impl CorrReport {
 /// degenerate columns are undefined for Pearson correlation and return an error;
 /// they are never fabricated into a low edge that could accuse a channel.
 pub fn pearson(x: &[f64], y: &[f64]) -> crate::Result<f64> {
+    match pearson_estimate(x, y)? {
+        PearsonEstimate::Defined(correlation) => Ok(correlation),
+        PearsonEstimate::ExactlyDegenerate => Err(crate::GaladrielError::InvalidChannels(
+            "Pearson columns must be non-degenerate".into(),
+        )),
+        PearsonEstimate::NumericallyDegenerate => Err(crate::GaladrielError::InvalidChannels(
+            "Pearson columns are numerically degenerate".into(),
+        )),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum PearsonEstimate {
+    Defined(f64),
+    ExactlyDegenerate,
+    NumericallyDegenerate,
+}
+
+fn pearson_estimate(x: &[f64], y: &[f64]) -> crate::Result<PearsonEstimate> {
     if x.len() != y.len() {
         return Err(crate::GaladrielError::InvalidChannels(format!(
             "Pearson columns must have equal length ({} != {})",
@@ -692,9 +711,7 @@ pub fn pearson(x: &[f64], y: &[f64]) -> crate::Result<f64> {
     };
     let ((x_min, x_max), (y_min, y_max)) = (bounds(x), bounds(y));
     if x_min == x_max || y_min == y_max {
-        return Err(crate::GaladrielError::InvalidChannels(
-            "Pearson columns must be non-degenerate".into(),
-        ));
+        return Ok(PearsonEstimate::ExactlyDegenerate);
     }
     // Range-center before accumulating. Unlike scaling by max(|x|), this is
     // translation invariant: a large finite offset cannot erase small but
@@ -726,15 +743,13 @@ pub fn pearson(x: &[f64], y: &[f64]) -> crate::Result<f64> {
     }
     if !sxx.is_finite() || !syy.is_finite() || sxx <= f64::EPSILON * nf || syy <= f64::EPSILON * nf
     {
-        Err(crate::GaladrielError::InvalidChannels(
-            "Pearson columns are numerically degenerate".into(),
-        ))
+        Ok(PearsonEstimate::NumericallyDegenerate)
     } else {
         let correlation = sxy / (sxx.sqrt() * syy.sqrt());
         if !correlation.is_finite() {
             return Err(crate::GaladrielError::NonFinite("Pearson result"));
         }
-        Ok(correlation.clamp(-1.0, 1.0))
+        Ok(PearsonEstimate::Defined(correlation.clamp(-1.0, 1.0)))
     }
 }
 
@@ -790,12 +805,18 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
         .collect();
 
     // Pairwise signed ρ matrix (negative edges are never folded to magnitude).
-    let mut corr = vec![vec![0.0_f64; c]; c];
+    // A degenerate column makes its pairwise estimand unavailable. It does not
+    // make the finite producer projection invalid.
+    let mut corr = vec![vec![None; c]; c];
+    let mut undefined_pair = false;
     for i in 0..c {
         for j in (i + 1)..c {
-            let r = pearson(cols[i], cols[j])?;
-            corr[i][j] = r;
-            corr[j][i] = r;
+            if let PearsonEstimate::Defined(correlation) = pearson_estimate(cols[i], cols[j])? {
+                corr[i][j] = Some(correlation);
+                corr[j][i] = Some(correlation);
+            } else {
+                undefined_pair = true;
+            }
         }
     }
 
@@ -805,7 +826,7 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
         .map(|(i, (m, _))| {
             let corroboration = (0..c)
                 .filter(|&j| j != i)
-                .map(|j| corr[i][j])
+                .filter_map(|j| corr[i][j])
                 .reduce(f64::max);
             CorrChannel {
                 modality: *m,
@@ -815,6 +836,30 @@ pub fn analyze(channels: &[(Modality, Vec<f64>)], cfg: &CorrConfig) -> crate::Re
             }
         })
         .collect();
+
+    if undefined_pair {
+        for report in &mut reports {
+            report.corroboration = None;
+        }
+        return Ok(CorrReport::new(
+            reports,
+            CorrVerdict::InsufficientEvidence,
+            "one or more pairwise Pearson estimands are undefined because a projection column is degenerate"
+                .to_string(),
+            cfg,
+        ));
+    }
+
+    // Every off-diagonal value is present after the preceding abstention gate.
+    // Keep zero only on the diagonal, which consensus analysis never reads.
+    let corr = corr
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|correlation| correlation.unwrap_or(0.0))
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
 
     let reference = reports
         .iter()
@@ -1368,6 +1413,49 @@ mod tests {
     }
 
     #[test]
+    fn degenerate_pairwise_estimand_abstains_without_accusing_a_channel() {
+        let n = 128;
+        let shared = series(n, |index| (index as f64 / 7.0).sin());
+        let channels = vec![
+            (Modality::Visual, shared.clone()),
+            (Modality::Radar, shared),
+            (Modality::Acoustic, vec![0.0; n]),
+        ];
+
+        let report = analyze(&channels, &release_corr()).unwrap();
+
+        assert_eq!(report.verdict(), &CorrVerdict::InsufficientEvidence);
+        assert_eq!(report.channels().len(), channels.len());
+        assert!(report
+            .channels()
+            .iter()
+            .all(|channel| channel.corroboration().is_none()));
+        assert!(report.channels().iter().all(|channel| !channel.decoupled()));
+        assert_eq!(
+            report.note(),
+            "one or more pairwise Pearson estimands are undefined because a projection column is degenerate"
+        );
+    }
+
+    #[test]
+    fn nonfinite_pairwise_input_remains_an_error() {
+        let n = 128;
+        let shared = series(n, |index| (index as f64 / 7.0).sin());
+        let mut nonfinite = shared.clone();
+        nonfinite[17] = f64::NAN;
+        let channels = vec![
+            (Modality::Visual, shared.clone()),
+            (Modality::Radar, shared),
+            (Modality::Acoustic, nonfinite),
+        ];
+
+        assert!(matches!(
+            analyze(&channels, &release_corr()),
+            Err(crate::GaladrielError::NonFinite("Pearson input"))
+        ));
+    }
+
+    #[test]
     fn pearson_rejects_work_above_the_public_window_bound() {
         let oversized = vec![0.0; MAX_CORRELATION_WINDOW + 1];
 
@@ -1548,10 +1636,10 @@ mod tests {
             (Modality::Radar, x),
             (Modality::Acoustic, vec![1.0; n]),
         ];
-        assert!(matches!(
-            analyze(&channels, &release_corr()),
-            Err(crate::GaladrielError::InvalidChannels(_))
-        ));
+        let report = analyze(&channels, &release_corr()).unwrap();
+        assert_eq!(report.verdict(), &CorrVerdict::InsufficientEvidence);
+        assert!(report.channels().iter().all(|channel| !channel.decoupled()));
+        assert_eq!(report.channels()[2].corroboration(), None);
     }
 
     #[test]

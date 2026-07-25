@@ -7,6 +7,7 @@
 | ACL | access control list |
 | AR(1) | first-order autoregressive model |
 | API | application programming interface |
+| ASCII | American Standard Code for Information Interchange |
 | AUC | area under the receiver operating characteristic curve |
 | CA | certificate authority |
 | CI | continuous integration |
@@ -21,7 +22,7 @@
 | IEEE | Institute of Electrical and Electronics Engineers |
 | JSON | JavaScript Object Notation |
 | JSONL | JavaScript Object Notation Lines |
-| KSG | Kraskov-Stögbauer-Grassberger |
+| KSG | Kraskov–Stögbauer–Grassberger |
 | mTLS | mutual Transport Layer Security |
 | MSRV | minimum supported Rust version |
 | NaN | not a number |
@@ -48,7 +49,7 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-07-24
+## [0.9.0] - 2026-07-25
 
 ### Release contract
 
@@ -60,9 +61,20 @@ Before `1.0`, minor releases can contain breaking changes.
   Remove the superseded embedded handoff.
   Thus, readers cannot treat inherited prose as evidence.
 - Add a generated immutable audit manifest and a four-tier claims matrix.
+  Use schema `galadriel.release-audit-manifest.v2`.
+  Bind each artifact path, Git mode, blob identifier, SHA-256 value, size, and purpose.
+  Use one bounded index capture for all semantic checks.
+  Compare the worktree through one held-root regular-file transaction.
   Add an exact statistical contract, threat model, and stable-core API policy.
   Add a requirement and evidence ledger and a protected-main change-control policy.
 - Add semantic verification for the signed canonical frozen-input manifest.
+  Upgrade the active pair to schema `galadriel.frozen-audit-inputs.v2`.
+  Bind each path, Git mode, blob identifier, SHA-256 value, and size.
+  Derive source semantics and release-tool coverage from one bounded index capture.
+  Bind each external handoff regular-file mode.
+- Construct the candidate in one bounded staging transaction.
+  Stage the requirements ledger, active signed pair, and audit manifest in that order.
+  Abort the transaction if a release input changes.
   Add an acyclic exact-candidate closure protocol.
   The protocol uses bounded no-follow input snapshots and signed qualification, review, decision, and task records.
   It also uses schema-validated local convergence, a signed closure inventory, and checksums.
@@ -86,7 +98,7 @@ Before `1.0`, minor releases can contain breaking changes.
   It rejects input that changes during verification.
 
   Strict UTF-8 tar names do not depend on locale.
-  Safe reconstruction never gives path handling to the archive library.
+  The bounded reconstruction path never gives path handling to the archive library.
   Release publication pins canonical asset construction, verification, and reconstruction to CPython 3.14.6.
   It compares all four downloaded upload files at the byte level.
 - Bind retained supply-chain reports to the exact stream that each pinned tool uses.
@@ -102,7 +114,13 @@ Before `1.0`, minor releases can contain breaking changes.
   Retain exactly 22 auxiliary command receipts with command, sandbox, exit, log, and stream bindings.
 
   Add a stop-before-exec launch gate and fixed process resource limits.
-  Track the process group and scan for the inherited sandbox identity on macOS.
+  Require macOS `kqueue` and `/usr/bin/sandbox-exec`.
+  Bind 19 required command names through one mode-0500 dispatch.
+  Bind direct Apple developer Git, its developer tools, and `CPython 3.14.6`.
+  Deny direct execution of `/usr/bin/git` and `/usr/bin/python3`.
+  Track the original process group and scan for the inherited sandbox identity.
+  Signal only the group while the root identity remains waitable.
+  Fail on an observed escaped sandbox identity without signaling its numeric identifier.
   Record the non-atomic short-lived process race.
   Record that the scan cannot attribute existing external-service work.
 - Run exact-candidate qualification with a 16-key base environment.
@@ -118,8 +136,40 @@ Before `1.0`, minor releases can contain breaking changes.
   Apply a 1 GiB per-file limit and a 4 GiB aggregate limit before retention.
   Stream the files into a private host snapshot without following links.
   Compare the source, snapshot, quarantined source, and installed snapshot.
-  Parse only the bounded JSON bytes captured from the verified snapshot.
+  Use summary schema `galadriel.evidence.summary.v3`.
+  Use manifest schema `galadriel.evidence.manifest.v3`.
+  Use acceptance profile `galadriel-0.9-frozen-acceptance-metrics-v3`.
+  Use bootstrap profile `splitmix64-rejection-group-metric-v1`.
+  Sample complete tracks with SplitMix64 and unbiased rejection sampling.
+
+  Build the release evidence runner in a separate retained command.
+  Create a private directory with mode `0700`.
+  Copy the executable into it through no-follow descriptors with mode `0500`.
+  Execute that exact snapshot directly.
+  Bind its digest and the exact candidate commit and tree.
+
+  Stream and validate every ordered trial from the verified snapshot.
+  Independently rebuild the complete summary and report.
+  Verify the accepted configuration, manifest, and exact checksum document.
+  Evaluate acceptance only from the rebuilt holdout summary.
+  Repeat the complete semantic replay during finalization.
+
   Only a deep qualification run can have qualification status `PASS`.
+- Pin critical host Git and SSH operations to fixed root-owned executable identities.
+  Use direct Apple developer Git, `/usr/bin/ssh-add`, and `/usr/bin/ssh-keygen`.
+  Verify each no-follow identity before and after execution.
+  Pin `sandbox-exec` to `/usr/bin/sandbox-exec` and its expected byte identity.
+  Record its resolved path, owner, group, and mode.
+  Remove dynamic-loader and toolchain selectors from host command environments.
+- Deny candidate signal operations by default in the macOS sandbox.
+  Permit signals only to self and children.
+- Preserve the structural acceptance failure at the frozen 100-track design.
+  `GLD-090-ACC-001` needs at least 369 tracks.
+  `GLD-090-ACC-006` needs at least 738 tracks.
+  The frozen grid and work ceiling permit at most 248 holdout tracks.
+  Record an otherwise passing qualification as `NARROWED_REVIEW_REQUIRED`.
+  Require a signed human `NARROWED_GO` or `NO_GO` decision.
+  Prohibit `GO` while an acceptance criterion fails.
 - Pin current-stable qualification and continuous integration checks to Rust and Cargo 1.97.1.
   Preserve Rust 1.89.0 as the workspace minimum supported Rust version.
 - Add exact semantic validation for retained release artifacts.
@@ -141,8 +191,17 @@ Before `1.0`, minor releases can contain breaking changes.
   These artifacts contain seven outcome files, five run receipts, and one exact `git.diff`.
   Four receipts bind the broad shards.
   One receipt binds the three focused outcomes.
+- Add environment schema `galadriel.mutation-environment.v2` for exact mutation commands.
+  Require the Linux process file system (`procfs`), process file descriptors, and serialized child-subreaper ownership.
+  Fail before process creation when a required host control is unavailable.
+  Verify the default disposition of the child-status signal (`SIGCHLD`) at each containment checkpoint.
+  Also verify the active child-subreaper state.
+  Poison the process and prevent verified success after control drift.
+  Clean stable process file descriptor (`pidfd`) identities when extinction remains provable.
+  Record the unobservable gap between checkpoints and require exclusive trusted-runner ownership.
+  Reap the root only after tracked candidate-tree extinction.
 - Add a verdict-independent authority-effect validator.
-  It proves record-only and monotonically restrict-only consumer transitions.
+  The validator rejects transitions outside record-only or monotonically restrict-only behavior.
   `Nominal` cannot grant authority, relax a limit, or extend TTL or lease.
   It cannot refresh a watchdog or change capabilities.
 - Remove the accidental public chi-square implementation module.
@@ -164,8 +223,8 @@ Before `1.0`, minor releases can contain breaking changes.
 
   It requires owner-only private-key modes and a maintained security regression suite.
   The runbook keeps real-router wrong-certificate, no-certificate, allow, and deny results as an external evidence gate.
-- Add a secure-only operational observer constructor and CLI.
-  All Galadriel-owned secure live paths load the configuration once.
+- Add an mTLS-only operational observer constructor and CLI.
+  All Galadriel-owned mTLS live paths load the configuration once.
   They require connector-side client-certificate presentation and the complete local strict profile.
   They open the same parsed value.
   Caller-supplied buses have a separate inherited or unverified label.
@@ -181,7 +240,8 @@ Before `1.0`, minor releases can contain breaking changes.
   Without this refusal, a close from the tap can silently stop the **host's** complete transport.
   This stop affects all subscriptions, not only Galadriel subscriptions.
 
-  A shared tap now returns a typed error. The host closes its own session.
+  A shared tap now returns a typed error.
+  The host closes its own session.
   Taps that the `open*` constructors open still close normally.
 - Bound sidecar `session_id` and `producer_id` to 64 bytes.
   The length bound matches the generic NCP 0.8 transport-neutral rule of 1..=64 bytes.
@@ -196,7 +256,7 @@ Before `1.0`, minor releases can contain breaking changes.
 - Document that `LiveLimits::max_payload_bytes` bounds decode work only.
   The transport copies a received message before the gate.
   Zenoh's own `max_message_size` defaults to 1 GiB.
-  Thus, deployments must bound peak receive memory in the Zenoh configuration.
+  Thus, deployments MUST bound peak receive memory in the Zenoh configuration.
 - Document the scouting-off property of `TransportMode::QuietDevelopment`.
   It applies to the hardened default NCP configuration.
   A configuration that `NCP_ZENOH_CONFIG` names supersedes it.
@@ -243,7 +303,7 @@ Before `1.0`, minor releases can contain breaking changes.
   Partial startup rolls back, timer state stops, and a host-owned shared session remains open.
 - Retain a historical compatibility fixture for an opt-in Crebain normal-runtime producer baseline.
   It has one immutable pre-association prior and registered Cartesian residuals.
-  It has explicit lifecycle records, bounded ordered publisher lanes, frame summaries, and an independent heartbeat.
+  It has explicit lifecycle records, bounded ordered publisher lanes, frame summaries, and a separate heartbeat.
   It also has strict registry, configuration, and executable pins.
   Crebain `4c311900ade5668200a48d56fb191be1916b884a` recorded Galadriel `81437d807ca83b66b45c8353968948e540072d97`.
   Both identities predate this 0.9.0 candidate.
@@ -263,15 +323,16 @@ Before `1.0`, minor releases can contain breaking changes.
   It includes common-frame frozen-prior semantics and fresh process epochs.
   It defines fail-closed cross-route assembly and backpressure and loss behavior.
   It also defines mTLS/ACL identity binding and five-lens acceptance evidence.
-- Add an in-process Zenoh loopback end-to-end suite for the live leg.
+- Add an in-process Zenoh loopback component-integration suite for the live leg.
   The file is `crates/galadriel-ncp/tests/live_zenoh_e2e.rs` and the feature is `zenoh`.
   A real `ZenohBus` round trip uses `SidecarTap` on the multi-segment `engram/ncp` realm.
-  It proves decoded delivery with complete field fidelity and rejects wrong-session provenance.
-  It rejects duplicate JSON keys during the typed parse.
+  The tests verify decoded delivery with complete field fidelity.
+  They reject wrong-session provenance.
+  They reject duplicate JSON keys during the typed parse.
 
-  It proves size-gate-before-parse and `from_bus` realm derivation.
-  It also proves shared-bus close refusal and health-counter semantics.
-  This suite gives the first runtime evidence for the NCP live leg.
+  The tests verify the size gate before parsing and verify `from_bus` realm derivation.
+  They also verify shared-bus close refusal and health-counter semantics.
+  This suite provides in-process runtime component evidence for the NCP live leg.
   Previously, only synthetic payload-delivery unit tests covered it.
 - Re-export the exact pinned `ncp_core` from `galadriel-ncp`.
   Re-export `ncp_zenoh` when feature `zenoh` is active.
@@ -298,7 +359,7 @@ Before `1.0`, minor releases can contain breaking changes.
   Keep the strength of the NCP version gate.
 - Require callers to select strict mTLS `Secure` transport or explicitly unverified `QuietDevelopment` transport.
   The live tap no longer implies that a quiet default is secure.
-- Carry a time-bounded exception for `RUSTSEC-2026-0041` only while CI proves Zenoh's
+- Carry a time-bounded exception for `RUSTSEC-2026-0041` only while CI verifies that Zenoh's
   vulnerable transport-compression feature remains disabled.
 - Add a simple bounded live-observation handoff with a fixed `DropNewest` policy.
   It supplies reset generations, replay-safe overflow semantics, and queue, drop, and latency health metrics.
@@ -311,7 +372,7 @@ Before `1.0`, minor releases can contain breaking changes.
   The old commit pair is not a reciprocal pin of the current candidate.
   Current cross-repository qualification remains `NOT_CLAIMED`.
   A real multi-process mTLS/ACL campaign remains `NOT_CLAIMED`.
-  An independent recorded stream-calibration study also remains `NOT_CLAIMED`.
+  A separately obtained recorded stream-calibration study also remains `NOT_CLAIMED`.
 - Add a dated exact-cut ecosystem record.
   It covers pid-rs, NCP, Crebain, Haldir, Prisoma, Engram/Paper2Brain, ROS/ROS 2, and external authority.
   It includes explicit non-edges and the acyclic command and dataflow boundary.
@@ -345,10 +406,10 @@ Before `1.0`, minor releases can contain breaking changes.
   Add exact size and sequence boundaries and distinct malformed and oversized fault classes.
   Add state-accessor and heartbeat telemetry assertions.
   Add frame-ledger birth, attempt, and miss truth tables and deep registry projection snapshots.
-  Add a real process-exit test that proves observe errors reach `main`.
+  Add a real process-exit test that verifies observe errors reach `main`.
 - Migrate the exact `pid-core` pin from 0.4.0 (`ad489f5…`) to immutable pid-rs revision `1cd2424…`.
   Its manifest declares 1.0.0.
-  But it has no public v1 tag or released upstream 1.x artifact.
+  The inspected source has no public v1 tag or released upstream 1.x artifact.
   Select its explicitly experimental continuous surface.
   Adopt its report-first KSG point gate and caller-declared support contract.
   Attach exact dependency, scientific-status, noise, and seed evidence to PID reports.
@@ -415,10 +476,10 @@ Before `1.0`, minor releases can contain breaking changes.
 - Document Galadriel's downstream advisory boundary in [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md).
   The contract applies to each consumer.
   A Haldir-style authorization gate is one such consumer.
-  The evidence is non-authoritative and record-only until independent calibration.
+  The evidence is non-authoritative and record-only until separate calibration and admission.
   It never widens `ALLOW`.
 
-  After independent admission, it permits only monotonic restrictions.
+  After separate admission, it permits only monotonic restrictions.
   The contract prohibits a synchronous feedback loop.
   It prohibits self-asserted calibration and a `StateUnusable` verdict.
 - Clarify that "signed" (the sign of the correlation) and "producer-attested" (a provenance
@@ -459,13 +520,19 @@ Before `1.0`, minor releases can contain breaking changes.
   Expose a nondecreasing ordered time for direct assembler composition.
   Serialize fault and handoff state.
   Thus, queued or concurrent work cannot cross the first terminal boundary.
+- Include the initial heartbeat grace in the runtime deadline-overflow guard.
+  Construction already rejects an unrepresentable deadline anchor.
 - Do not let a lifecycle-complete frame with an explicit per-modality absence reuse the previous fresh detector window.
-  Such a frame must not appear nominal.
+  Such a frame MUST NOT appear nominal.
 - Reject non-finite or negative NIS and invalid degrees of freedom.
   Reject malformed innovation and covariance pairs.
   Reject covariance that is not positive-definite.
   Reject duplicate or out-of-order sequences.
-  Reject changed DoF, mixed tracks, invalid axes, and degenerate channel series.
+  Reject changed DoF, mixed tracks, and invalid axes.
+- Treat a finite degenerate projection column as an unavailable estimand.
+  Return `InsufficientEvidence` before correlation or PID can create an attribution.
+  Withhold all correlation corroboration values for that axis.
+  Preserve independent magnitude evidence in the whole-stream report.
 - Bound detector track state and add explicit track removal and clear operations.
 - Do not let floating-point overflow or NaN become perfect correlation.
 - Do not count negative or sign-flipped correlation as corroboration.
@@ -490,12 +557,12 @@ Before `1.0`, minor releases can contain breaking changes.
   Fisher significance floor degenerate.
   The inverse-normal quantile saturates to `+INF`.
   `tanh` already clamped the floor to exactly `1.0`, and it never produced `NaN`.
-  But byte-identical replayed channels also clamp to exactly `rho = 1.0`.
+  Byte-identical replayed channels also clamp to exactly `rho = 1.0`.
   Thus, the degenerate floor could admit a fabricated consensus instead of abstention.
   It could also admit an attribution against the one nonidentical channel.
 - Preserve finite signed-negative KSG estimates from the pinned pid-rs revision as
-  valid low-dependence evidence. The upstream default intentionally allows finite-sample
-  negative estimates.
+  valid low-dependence evidence.
+  The upstream default intentionally allows finite-sample negative estimates.
   Their rejection had converted decoupled edges into false estimator insufficiency.
 - Make the fixed-seed XOR study process-reproducible.
   Use deterministic key order instead of randomized `HashMap` entropy reduction.
@@ -520,7 +587,7 @@ Before `1.0`, minor releases can contain breaking changes.
   Retain the audited source-snapshot identities that produced the paired compatibility run.
 - Preserve a complete conflict-free signed-correlation attribution when partial positive
   PID evidence names the same channels.
-  Optional PID insufficiency cannot erase the independently assessable signed default.
+  Optional PID insufficiency cannot erase the separately assessable signed default.
   PID-only partial evidence still fails closed.
 - Reject duplicate JSON keys on the live sidecar path.
   Payloads now deserialize directly into the typed envelope.
@@ -533,11 +600,29 @@ Before `1.0`, minor releases can contain breaking changes.
   Document zero as exact timestamp equality.
   Thus, `u64::MAX` cannot silently disable temporal comparability in streaming or direct extraction APIs.
 - Bind each accepted whole-stream default assessment to the complete release-suite identity
-  and every exact ordered observation field. Sealed default reports and all component axes
-  share the opaque `AssessmentBinding`.
+  and every exact ordered observation field.
+  Require an `AssessmentScope` with producer, session, epoch, stream, state generation,
+  terminal sequence, terminal timestamp, and clock domain.
+  Validate the two terminal coordinates against the stream before assessment work.
+  Advance the core digest domain to `galadriel-assessment-binding-v2`.
+  Sealed default reports and all component axes share the opaque `AssessmentBinding`.
+  Scope labels provide internal identity integrity. They do not authenticate a producer.
   Compatibility component fusion remains explicitly unbound.
   It cannot create an accepted report.
   PID assessments add a nested binding to the complete research suite.
+- Keep transport-free JSONL replay unbound and diagnostic-only.
+  Raw replay lacks producer, session, epoch, stream, generation, and clock scope.
+  It cannot create a sealed `DefaultReport` or PID `FusedReport`.
+- Add `galadriel.observe.lifecycle.v1` as the review-gated live standard-output record.
+  Each line carries `calibrated_posterior=false`, one complete receipt, and ordered assessments.
+  Evaluated reports match the receipt producer and position.
+  The CLI emits a newly committed rejection or fault receipt before it exits with failure.
+  It never emits a stale receipt for an error that did not commit one.
+- Strengthen lifecycle assessment verification.
+  Reject impossible receipt shapes before assessment hashing.
+  Bound assessment counts and abstention modality sets before serialization.
+  Reject cross-suite, cross-position, wrapper, track-order, and abstention-shape mismatches.
+  Verification remains an unauthenticated recomputation check.
 - Replace implicit lifecycle clear operations on accepted paths with typed positioned admission.
   Add explicit reset, timeout, and rollover operations and bounded hash-linked receipts.
   Legacy convenience entry points are compatibility adapters and do not claim new NCP wire
@@ -546,7 +631,7 @@ Before `1.0`, minor releases can contain breaking changes.
   Assessment digests bind the accepted suite and complete serialized reports.
   `Faulted { reason }` binds the exact returned reason.
   Internal digest verification supplies neither writer authentication nor durable chain retention.
-- Bound secure startup inputs before foreign parsing.
+- Bound security-sensitive startup inputs before foreign parsing.
   Cap standalone strict-JSON configuration at 256 KiB inclusive.
   Reject Zenoh `__config__` external includes.
   Cap each credential file at 1 MiB inclusive during validation.
@@ -590,14 +675,15 @@ Before `1.0`, minor releases can contain breaking changes.
   residuals are Cartesian.
   Sequential filter updates do not share a common frozen prior.
   Association and gating censor misses and rejected measurements.
-- Reclassify the bundled Crebain fixture as bounded parsing and baseline smoke evidence.
+- Reclassify the bundled Crebain fixture as bounded parsing and basic baseline-test evidence.
   It is not a valid cross-modal correlation or PID validation capture.
-  Correlation and fused assessment correctly remain `InsufficientEvidence`.
+  Unbound correlation and PID diagnostics return `InsufficientEvidence`.
+  Raw replay cannot construct an accepted fused report without a complete scope.
 - Document that the Zenoh live tap now uses the NCP sensor-plane ACL and a versioned envelope.
   Producer and consumer component coverage remains non-operational.
-  A real multi-process mTLS/ACL campaign must verify delivery and heartbeat behavior from end to end.
+  A real multi-process mTLS/ACL campaign MUST verify delivery and heartbeat across the complete producer-router-receiver path.
 - Document that per-channel silence requires another channel to advance assessment time and
-  all-modal silence requires an external producer/transport heartbeat.
+  all-modal silence requires a separate producer heartbeat.
 - Add the producer roadmap: common frozen prior, common frame, explicit miss/rejection
   events, heartbeat, stable session identity, and a versioned schema.
 - Align documented supply-chain checks with the two locked fetches and two offline CI checks.
@@ -628,7 +714,7 @@ Before `1.0`, minor releases can contain breaking changes.
   The producer enforces it within each aligned frame and context window.
 - Reorder the README's opening around the problem, architecture, one source demo command,
   representative output, current evidence boundary, and then the full caveats.
-- Distinguish the published post-audit streaming evidence slice from the complete comparative report.
+- Distinguish the retained post-audit streaming evidence subset from the complete comparative report.
   The complete report is not yet available.
   That report covers AUC, adaptive, maneuver, collusion, latency, and cost results.
   Clarify that Galadriel reports advisory evidence and does not control downstream weights.
@@ -654,7 +740,7 @@ Before `1.0`, minor releases can contain breaking changes.
   The runtime floor intentionally remains uncorrected until there is a registered phi-estimation design.
   See `docs/JUSTIFICATION.md` §5 and `docs/PAPER.md` §7.
 - Add a regression test for duplicate JSON keys on the live sidecar path.
-  It proves that the path rejects them as a typed `Data` error.
+  The test verifies that the path rejects them as a typed `Data` error.
   A `serde_json::Value` round trip accepted the last value.
   This release closes the parser difference.
 - Add a strict machine-readable schema-`1.0` live envelope named `galadriel_pid_observation`.
@@ -671,11 +757,12 @@ Before `1.0`, minor releases can contain breaking changes.
 - Add cargo-fuzz targets for NCP and JSONL decoding and stateful detector and projection boundaries.
   Add a strict pull-request mutation difference and an observational scheduled mutation baseline.
   Add a current-stable CI lane beside the pinned MSRV.
-- `CITATION.cff` for commit-exact citation of the research prototype.
+- Add `CITATION.cff` for commit-exact citation of the research prototype.
 
 ### Known limitations
 
-- Current evidence is synthetic. There is no field-validated detection or false-alarm rate.
+- Current detector-performance evidence is synthetic.
+  There is no field-validated detection or false-alarm rate.
 - The bundled historical Crebain capture does not satisfy the common-frame/common-prior
   estimand required for cross-channel correlation or PID.
   The retained historical producer fixture has no accepted recorded calibration artifact.
@@ -687,7 +774,8 @@ Before `1.0`, minor releases can contain breaking changes.
   clique.
   It is not formal selective inference or fleet-level calibration.
 - The optional Zenoh live dependency retains an ignored compression advisory until the project can use an upstream upgrade.
-  CI verifies that no build enables the affected feature.
+  CI verifies that the checked workspace graph does not enable the affected feature.
   The exception expires on 2026-10-01.
-- All-modal silence is invisible without an external heartbeat.
-- Keep Galadriel advisory. Do not wire it as an automatic control veto.
+- All-modal silence is invisible without a separate producer heartbeat.
+- Keep Galadriel advisory.
+  A Galadriel result MUST NOT become an automatic control veto.

@@ -4,7 +4,9 @@
 
 | Short form | Meaning |
 |---|---|
+| ACL | access control list |
 | DOI | digital object identifier |
+| mTLS | mutual Transport Layer Security |
 | NCP | Neuro-Cybernetic Protocol |
 | ROS | Robot Operating System |
 
@@ -33,9 +35,10 @@ independent evidence from the target deployment. Galadriel 0.9.0 has no claim in
 this tier.
 
 **GLD-090-CLM-004:** `NOT_CLAIMED` **SHALL** mean that the release promises no
-affirmative behavior. The reason and missing evidence **SHALL** remain visible. This
-tier is not an implementation success. A public statement may not describe it as
-one.
+affirmative behavior.
+The reason and missing evidence **SHALL** remain visible.
+This tier is not an implementation success.
+A public statement **SHALL NOT** describe it as one.
 
 The release implements a bounded and fail-closed advisory component. It validates
 parts of the component under specified conditions. It makes none of these claims:
@@ -47,18 +50,24 @@ parts of the component under specified conditions. It makes none of these claims
 - NCP 1.0 qualification
 - a released upstream pid-rs 1.x artifact
 - a downstream policy integration
-- secured multi-process deployment
+- multi-process mTLS and ACL deployment
 - crates.io publication
 - production support
 - a DOI
 - a Zenodo record
 
-Dated read-only ecosystem inspections through 2026-07-23 do not change a claim tier.
-Galadriel remains pinned to NCP wire 0.8. The inspected Crebain component retains
-schema-v1 fixture alignment without a reciprocal final-candidate pin. Haldir has
-no runtime adapter. Prisoma has no direct sidecar route.
+Dated read-only ecosystem inspections through 2026-07-23 do not change a claim
+tier.
+Galadriel remains pinned to NCP wire 0.8.
 
-The local source inventory records three more boundaries.
+Crebain is an optional reference producer with no Galadriel Cargo dependency.
+The inspected Crebain component has schema-v1 fixture alignment.
+It has no reciprocal final-candidate pin.
+Haldir is a prospective record-only consumer with no version 0.9.0 runtime edge.
+Prisoma is a prospective immutable offline consumer with no version 0.9.0
+runtime edge.
+
+The local source inventory records four more boundaries.
 `engram/ncp` is an example realm.
 The 2026-07-23 Paper2Brain observation does not create an integration.
 ROS and ROS 2 have no binding or bridge.

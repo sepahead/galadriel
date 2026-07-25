@@ -5,7 +5,7 @@
 | Short form | Meaning |
 |---|---|
 | CUSUM | cumulative sum |
-| KSG | Kraskov-Stögbauer-Grassberger |
+| KSG | Kraskov–Stögbauer–Grassberger |
 | MI | mutual information |
 | NIS | normalized innovation squared |
 | PID | partial information decomposition |
@@ -141,13 +141,18 @@ unavailable until the signed-consistency prerequisite is complete.
 ## Signed-correlation report
 
 For each valid projection axis and aligned pair, `pearson` is the sample signed
-Pearson correlation. The columns must be finite and non-degenerate. Center and
-scale each range independently before calculation.
+Pearson correlation. Direct `pearson` calls require finite, non-degenerate
+columns. Center and scale each range independently before calculation.
+
+The correlation assessment accepts a finite degenerate projection column as an
+unavailable estimand. It does not create a low edge from that column. The axis
+returns `InsufficientEvidence`. It withholds all channel corroboration values for
+that axis. Other detector evidence remains available.
 
 `CorrChannel.n` is the common tail length. `corroboration` is the largest signed
-pair correlation for that channel. It is `None` when the pairwise estimand is not
-available. `decoupled` identifies membership outside the one admitted consensus
-clique.
+pair correlation for that channel. It is `None` when any required pairwise
+estimand is unavailable. `decoupled` identifies membership outside the one
+admitted consensus clique.
 
 The pair family threshold is the maximum of these values:
 
@@ -160,7 +165,7 @@ A verdict requires all these conditions:
 - at least three unique modalities
 - equal lengths
 - sufficient samples
-- finite and non-degenerate columns
+- finite columns with a defined pairwise estimand
 - a usable threshold
 - exactly one all-pairs positive clique that contains a strict majority
 
@@ -181,6 +186,11 @@ An axis report from `prepare_release_assessment` also contains the exact
 whole-stream `AssessmentBinding`. `single_axis` and `try_new` remain explicitly
 unbound compatibility diagnostics. They cannot replace an axis in an accepted
 report.
+
+Accepted whole-stream preparation requires one `AssessmentScope`.
+The scope terminal sequence **MUST** equal the largest input sequence.
+Its terminal timestamp **MUST** equal the largest timestamp at that sequence.
+A mismatch is invalid input and returns an error before report construction.
 
 ## Fused report
 
@@ -205,16 +215,29 @@ evidence. Apply these rules:
 
 `DefaultReport` retains the verdict and entire magnitude report. It also retains
 each axis report, a non-normative note, complete suite identity, classification,
-and one shared opaque `AssessmentBinding`.
+one `AssessmentScope`, and one shared opaque `AssessmentBinding`.
 
-The core binding is a domain-separated SHA-256 identity. It covers the canonical
-complete `ReleaseSuite` and every field of each ordered input observation. The
-fields include track, timestamp, sequence, modality, NIS, and degrees of freedom.
-They also include optional innovation, optional covariance, and all projection
-values and provenance fields.
+The serialized report contains the complete scope once.
+Its top-level field name is `assessment_scope`.
 
-Callers can compare the binding or verify it against an exact stream and suite.
-They cannot create one or attach it to replacement reports.
+The core binding uses domain `galadriel-assessment-binding-v2`.
+It hashes the complete scope before the suite and observations.
+The scope contains producer, session, epoch, stream, state generation, terminal
+sequence, terminal timestamp, and clock domain.
+
+The binding covers the canonical complete `ReleaseSuite`.
+It also covers every field of each ordered input observation.
+The fields include track, timestamp, sequence, modality, NIS, and degrees of
+freedom. They also include optional innovation and optional covariance.
+They include all projection values and provenance fields.
+
+Callers can compare the binding or verify it against an exact scope, stream, and
+suite. They cannot create one or attach it to replacement reports.
+Different bindings can carry equal detector verdicts. The binding does not
+require each observation to change an estimator or verdict.
+The scope contains caller-declared provenance labels.
+The binding does not authenticate those labels or prove physical provenance.
+
 `combine_correlation_axes` can return an unbound diagnostic tuple when all inputs
 are unbound. It rejects mixed bindings. It does not return a sealed
 `DefaultReport`.
@@ -237,7 +260,7 @@ It includes this information:
 - preprocessing, observation, and sampling descriptions
 - resource estimate
 
-For each channel, `corroboration` is its best safely estimated pairwise MI in
+For each channel, `corroboration` is its best admissible pairwise MI estimate in
 nats.
 
 `redundancy` and `synergy` are experimental shared-exclusions PID2 atoms in nats.
@@ -259,6 +282,10 @@ The configured clique and confirmation procedure alone can admit `decoupled`.
 
 PID atoms are diagnostics. They are not a posterior or a standalone causal
 verdict.
+
+A finite degenerate PID column makes the requested PID family unavailable. The
+PID report returns `InsufficientEvidence` before observation noise is added. A
+non-finite column remains invalid input and returns an error.
 
 PID work requires an explicit accepted `PidResearchSuite`. It contains a PID-free
 `ReleaseSuite` and one underived `PidConfig`. Construction checks the worst-case
@@ -287,10 +314,17 @@ The fused PID report contains suite identity and classification. It retains the
 magnitude, signed-correlation, and PID axes. It adds `PidAssessmentBinding`, which
 binds the core assessment to the complete PID research suite.
 
+The PID binding contains the exact core version 2 binding.
+`FusedReport::assessment_scope` returns the scope from that nested binding.
+The optional `assess_stream` entry point requires the same scope that enters core
+preparation.
+
 Sign-invariant PID cannot erase positive signed-correlation evidence. A PID
 nominal result cannot repair unavailable signed-correlation evidence. Complete
 and conflict-free signed attribution can remain advisory evidence when optional
 PID axes are insufficient. The report retains the incomplete PID evidence.
+Positive PID evidence beside unavailable signed-correlation evidence produces
+`UnclassifiedAnomaly`. It does not produce `AttributedInconsistency`.
 
 ## Repeated use and missingness
 

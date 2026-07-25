@@ -9,7 +9,8 @@
 
 Galadriel 0.9.0 deliberately breaks ambiguous pre-1.0 behavior.
 This change affects the application programming interface (API).
-Callers must make identity, lifecycle, configuration, and failure semantics explicit.
+Callers **MUST** make identity, lifecycle, configuration, and failure semantics
+explicit.
 Compatibility adapters can translate only a source with known meaning.
 
 Partial Information Decomposition (PID) remains an optional research path.
@@ -26,38 +27,44 @@ Convert them at the boundary with these types:
 - `Sequence`
 - `StateGeneration`
 - `TimestampMillis`
+- `AssessmentScope`
 
-The decoder rejects values above the exact JavaScript Object Notation (JSON) integer ceiling.
+The decoder rejects values above the exact JavaScript Object Notation (JSON)
+integer ceiling.
 It does not round these values.
 Zero remains valid for ordinals and timestamps.
 Zero also remains valid for `TrackId`.
 The frozen Galadriel and Crebain observation schema v1 admitted that value.
-Adapters must not silently reinterpret this established sidecar value.
+Adapters **MUST NOT** silently reinterpret this established sidecar value.
 
 Zero is invalid for `ProjectionFrameId`, `ProjectionContextId`, and `FrozenPriorId`.
 
 Session, epoch, stream, and producer labels now use separate validated types.
-The accepted grammar uses a bounded set of American Standard Code for Information Interchange (ASCII) characters.
+The accepted grammar uses a bounded set of American Standard Code for Information
+Interchange (ASCII) characters.
 Do not normalize a legacy Unicode NCP identifier.
 Normalization can merge identities.
 Start a fresh epoch with a conforming identifier.
 Alternatively, retain the capture as unqualified evidence.
 
 `ClockDomain` is a closed enum.
-Label an existing millisecond timestamp as `unix_utc`, `monotonic_process`, `simulation_time`, or `tai`.
+Label an existing millisecond timestamp as `unix_utc`, `monotonic_process`,
+`simulation_time`, or `tai`.
 Callers cannot create an open string or infer a clock from magnitude.
 
 ## Lifecycle
 
 Earlier versions implicitly cleared history after some continuity changes.
-These changes included large sequence or time gaps, frame changes, context changes, registry changes, and track removal.
+These changes included large sequence or time gaps.
+They also included frame, context, registry, and track changes.
 
 The accepted 0.9 lifecycle uses typed `StreamPosition` admission and hash-linked receipts.
 Exact successors advance normally.
 A continuity boundary requires a generation-advancing reset.
-A fresh epoch must start at sequence zero and generation zero.
+A fresh epoch **MUST** start at sequence zero and generation zero.
 
-`LifecycleDetector::{reset_at, timeout_at, rollover_at}` records these explicit transitions.
+`LifecycleDetector::{reset_at, timeout_at, rollover_at}` records these explicit
+transitions.
 Forward gaps, regressions, missing resets, reused epochs, and incorrect generations cause rejection.
 They do not clear state.
 Successful frame receipts bind the accepted release-suite identity.
@@ -98,18 +105,49 @@ Positive anomaly evidence is also a successful assessment.
 - backend failure
 - internal failure
 
-The unversioned `Verdict` and `MirrorReport` serialization representation is a pre-0.9 migration input.
-The causal aliases `spoof`, `jam`, and `anomaly` are also pre-0.9 migration inputs.
+The unversioned `Verdict` and `MirrorReport` serialization representation is a
+pre-0.9 migration input.
+The causal aliases `spoof`, `jam`, and `anomaly` are also pre-0.9 migration
+inputs.
 `MirrorReport` is now output-only and has no `Deserialize` implementation.
 Its fields are private.
 Consumers use read-only getters.
 Normal 0.9 decoding cannot manufacture an accepted report.
 
-Any historical conversion must be an explicit offline migration.
-The migration must retain the original bytes and digest.
+Any historical conversion **MUST** be an explicit offline migration.
+The migration **MUST** retain the original bytes and digest.
 
-Release code now constructs `ReleaseSuite::standalone_advisory_v0_9(modalities)`.
-It passes that accepted composition to `Mirror::from_release_suite` or `assess_default(stream, &suite)`.
+Release code now constructs
+`ReleaseSuite::standalone_advisory_v0_9(modalities)`.
+It also constructs an `AssessmentScope` from one validated producer and one
+exact `StreamPosition`.
+
+```rust,ignore
+let position = StreamPosition::try_new(
+    "session-a",
+    "epoch-a",
+    "fusion-stream",
+    0,
+    terminal_sequence,
+    terminal_timestamp_ms,
+    ClockDomain::MonotonicProcess,
+)?;
+let scope = AssessmentScope::new(ProducerId::new("producer-a")?, position);
+let report = assess_default(&scope, &stream, &suite)?;
+```
+
+The scope position contains session, epoch, stream, state generation, terminal
+sequence, terminal timestamp, and clock domain. The accepted call also binds the
+producer identity. The terminal sequence **MUST** equal the largest stream
+sequence. The terminal timestamp **MUST** equal the largest timestamp at that
+sequence.
+
+These labels are caller-declared provenance. They do not authenticate the caller
+or prove that the producer emitted the stream.
+
+Code can still pass the accepted composition to `Mirror::from_release_suite` for
+the magnitude component. That path does not create an accepted whole-stream
+report.
 Version 0.9 removes these interfaces:
 
 - `Mirror::new`
@@ -117,14 +155,24 @@ Version 0.9 removes these interfaces:
 - the raw detector and correlation argument list
 - the empty-vector mode sentinel
 
-Explicit subset-only research uses `ExploratoryResearchProfile::SubsetMagnitudeV0_9.capability()`.
+Explicit subset-only research uses
+`ExploratoryResearchProfile::SubsetMagnitudeV0_9.capability()`.
 It also uses `Mirror::for_exploratory_subset`.
 
 `assess_default` returns a sealed `DefaultReport`.
-This report has an opaque `AssessmentBinding` over the complete suite and each exact ordered observation field.
-Bound magnitude and correlation components must share that binding.
-Component constructors and `combine_correlation_axes` remain unbound diagnostic compatibility paths.
-They cannot create an accepted report.
+This report has an opaque `AssessmentBinding`.
+The binding uses domain `galadriel-assessment-binding-v2`.
+It covers the complete scope, suite, and each exact ordered observation field.
+Bound magnitude and correlation components **MUST** share that binding.
+Component constructors and `combine_correlation_axes` remain unbound diagnostic
+compatibility paths.
+
+These component paths cannot create an accepted report.
+
+Use `DefaultReport::assessment_scope` to read the report scope.
+Use `AssessmentBinding::scope` to read the binding scope.
+Call `AssessmentBinding::verifies(&scope, &stream, &suite)` for exact
+verification.
 
 ## Optional PID research
 
@@ -134,15 +182,18 @@ Whole-stream PID analysis requires a separate accepted capability:
 
 ```rust,ignore
 let suite = PidResearchSuite::circular_delete_block_v0_9(&modalities)?;
-let report = galadriel_pid::assess_stream(&stream, &suite)?;
+let report = galadriel_pid::assess_stream(&scope, &stream, &suite)?;
 ```
 
-Use `PidResearchSuite::point_estimate_only_v0_9` only for explicitly unconfirmed research.
-Custom accepted release and PID components use `PidResearchSuite::try_new(PidResearchSuiteParams { .. })`.
+Use `PidResearchSuite::point_estimate_only_v0_9` only for explicitly unconfirmed
+research.
+Custom accepted release and PID components use
+`PidResearchSuite::try_new(PidResearchSuiteParams { .. })`.
 The call rejects an already axis-derived `PidConfig`.
 This rule prevents a second division of a family budget.
 
-Version 0.9 removes the former `assess_stream(stream, modalities, detector, pid)` argument list.
+Version 0.9 removes the former
+`assess_stream(stream, modalities, detector, pid)` argument list.
 It also removes the `assess_stream_with_correlation` argument list.
 Custom correlation semantics now belong in the embedded `ReleaseSuite` before PID suite composition.
 
@@ -157,8 +208,10 @@ These accepted and report types have private fields:
 - `FusedReport`
 
 Consumers use getters.
-`FusedReport::{verdict, baseline, correlations, pids, note, suite_identity, classification, assessment_binding}` replaces direct field access.
-`fuse` and `fuse_axes_diagnostics` return explicitly unbound diagnostic tuples after configuration checks.
+`FusedReport::{verdict, baseline, correlations, pids, note, suite_identity, classification, assessment_scope, assessment_binding}`
+replaces direct field access.
+`fuse` and `fuse_axes_diagnostics` return explicitly unbound diagnostic tuples
+after configuration checks.
 Only whole-stream-bound components can enter `fuse_axes` and create a sealed report.
 Ordinary callers use `assess_stream`.
 
@@ -166,7 +219,11 @@ PID reports carry the canonical `PidConfigDigest` through estimator evidence.
 Fused reports carry `PidResearchSuiteDigest` and `PidAssessmentBinding`.
 These values are domain-separated SHA-256 identities over complete accepted values.
 
+`PidAssessmentBinding` contains the core version 2 binding.
+Thus, it contains the exact `AssessmentScope`.
+
 The identity material includes named or custom composition and the confirmation payload.
-It includes axis-family derivation, resource ceilings, and the exact `pid-core` revision and estimator semantics.
+It includes axis-family derivation and resource ceilings.
+It also includes the exact `pid-core` revision and estimator semantics.
 These digests identify configuration.
 They do not authenticate it or establish field calibration.

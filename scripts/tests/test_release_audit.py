@@ -128,6 +128,41 @@ class ReleaseAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(release_audit.AuditError, "DOI or Zenodo"):
             release_audit.validate_inputs(inputs)
 
+    def test_declared_release_dates_are_exact_and_consistent(self) -> None:
+        inputs = release_audit.load_json(release_audit.INPUTS)
+        metadata = release_audit.validate_project_metadata(inputs)
+        self.assertEqual(metadata["release_date"], "2026-07-25")
+
+        with (
+            patch.object(release_audit, "RELEASE_DATE", "2026-07-24"),
+            self.assertRaisesRegex(release_audit.AuditError, "release date"),
+        ):
+            release_audit.validate_project_metadata(inputs)
+
+        citation = release_audit.ROOT / "CITATION.cff"
+        original = citation.read_text(encoding="utf-8")
+        real_read_text = Path.read_text
+
+        def duplicate_citation_date(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            if path == citation:
+                return original + "date-released: 2026-07-24\n"
+            return real_read_text(path, *args, **kwargs)
+
+        with (
+            patch.object(
+                Path,
+                "read_text",
+                autospec=True,
+                side_effect=duplicate_citation_date,
+            ),
+            self.assertRaisesRegex(release_audit.AuditError, "release date"),
+        ):
+            release_audit.validate_project_metadata(inputs)
+
     def test_abbreviated_or_oversized_repository_revision_is_rejected(self) -> None:
         for revision in ("deadbeef", "0" * 41):
             with self.subTest(revision=revision):
@@ -266,6 +301,10 @@ class ReleaseAuditTests(unittest.TestCase):
         second_audit, second_ledger = release_audit.build_outputs()
         self.assertEqual(first_audit, second_audit)
         self.assertEqual(first_ledger, second_ledger)
+        self.assertEqual(
+            first_audit["schema"],
+            "galadriel.release-audit-manifest.v2",
+        )
         self.assertEqual(first_ledger["source_task_count"], 116)
         self.assertEqual(sum(first_ledger["status_counts"].values()), 116)
         self.assertEqual(first_ledger["status_counts"]["COMPLETE"], 0)
@@ -279,6 +318,20 @@ class ReleaseAuditTests(unittest.TestCase):
             release_audit.tracked_repository_paths()
             - release_audit.AUDIT_SELF_EXCLUSIONS,
         )
+        self.assertTrue(
+            all(
+                set(entry)
+                == {
+                    "path",
+                    "purpose",
+                    "git_mode",
+                    "git_blob_id",
+                    "sha256",
+                    "size_bytes",
+                }
+                for entry in first_audit["artifacts"]
+            )
+        )
         ledger_entry = next(
             entry
             for entry in first_audit["artifacts"]
@@ -289,6 +342,59 @@ class ReleaseAuditTests(unittest.TestCase):
             ledger_entry["sha256"], hashlib.sha256(ledger_bytes).hexdigest()
         )
         self.assertEqual(ledger_entry["size_bytes"], len(ledger_bytes))
+        self.assertEqual(ledger_entry["git_mode"], "100644")
+        self.assertEqual(
+            ledger_entry["git_blob_id"],
+            release_audit._git_blob_id(ledger_bytes),
+        )
+
+    def test_snapshot_build_does_not_reopen_repository_files(self) -> None:
+        snapshot = release_audit.capture_repository_snapshot(allow_generated_drift=True)
+
+        def unexpected_reopen(*args: object, **kwargs: object) -> object:
+            raise AssertionError("semantic consumer reopened a repository path")
+
+        with (
+            patch.object(
+                Path,
+                "read_text",
+                autospec=True,
+                side_effect=unexpected_reopen,
+            ),
+            patch.object(
+                Path,
+                "read_bytes",
+                autospec=True,
+                side_effect=unexpected_reopen,
+            ),
+            patch.object(
+                Path,
+                "open",
+                autospec=True,
+                side_effect=unexpected_reopen,
+            ),
+            patch.object(
+                Path,
+                "is_file",
+                autospec=True,
+                side_effect=unexpected_reopen,
+            ),
+            patch.object(
+                Path,
+                "exists",
+                autospec=True,
+                side_effect=unexpected_reopen,
+            ),
+            patch.object(
+                Path,
+                "glob",
+                autospec=True,
+                side_effect=unexpected_reopen,
+            ),
+        ):
+            audit, ledger = release_audit.build_outputs(snapshot)
+        self.assertEqual(audit["schema"], "galadriel.release-audit-manifest.v2")
+        self.assertEqual(ledger["schema"], "galadriel.requirements-ledger.v2")
 
     def test_workflow_actions_are_full_revisions_and_exactly_inventoried(self) -> None:
         inputs = release_audit.load_json(release_audit.INPUTS)
