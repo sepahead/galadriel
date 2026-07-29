@@ -1549,12 +1549,12 @@
       "size_bytes": 84218
     },
     {
-      "git_blob_id": "fa1166994408a0dd23216361aadba3f7b9d19367",
+      "git_blob_id": "fb3019956cbcbbd9d119fd1a4c72046a9bc2f385",
       "git_mode": "100644",
       "path": "repo_work/qualify_candidate.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2150995c764f7a87334a91cbdfa98820577dfed55b4d82d6d16815e4308a11f7",
-      "size_bytes": 257220
+      "sha256": "09025a2a9c577b4f4b71ae834ec68f7321c4bb8bdd446ea9c68b531bb7173851",
+      "size_bytes": 257226
     },
     {
       "git_blob_id": "34290b7d72d6777833100bf481ac315227354a37",

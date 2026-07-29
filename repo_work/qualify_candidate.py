@@ -1524,7 +1524,7 @@ def run_bounded_process(
                 cleanup_started = True
                 cleanup_deadline = now + PROCESS_CLEANUP_TIMEOUT_SECONDS
                 terminate_before_reap(report_descendant=True)
-            if now >= deadline and not timed_out:
+            if now >= deadline and not cleanup_started:
                 timed_out = True
                 cleanup_started = True
                 cleanup_deadline = now + PROCESS_CLEANUP_TIMEOUT_SECONDS
