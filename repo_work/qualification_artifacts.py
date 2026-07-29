@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import argparse
 import datetime as dt
 import hashlib
 import io
 import json
 import math
+import sys
 import tarfile
 import tomllib
 import urllib.parse
@@ -17,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
-from common import ReviewError
+from common import ReviewError, read_bounded_regular_file
 
 
 VERSION = "0.9.0"
@@ -62,10 +64,10 @@ CARGO_DENY_HOST_FILTERED_SCOPE = "CARGO_DENY_HOST_FILTERED_GRAPH"
 EXPECTED_HOST_FILTERED_LICENSE_PACKAGES = 382
 EXPECTED_HOST_FILTERED_LICENSE_ASSIGNMENTS = 707
 EXPECTED_HOST_FILTERED_LICENSE_PACKAGE_IDS_SHA256 = (
-    "4d514cd4ce1e8b636396debb309dfe6d3847997b83263def0cdf596a96193665"
+    "5d4cc699506276347efb798c206893da68caa9c9e45f650c08b4a48ffbbab1ce"
 )
 EXPECTED_HOST_FILTERED_LICENSE_SEMANTIC_SHA256 = (
-    "4c6619d9403977a60e7cca82ce1446386934b8adacc71444504d753c9fce0fe7"
+    "0d74d13996da359c9aaffe01978b1bd5e58b1188ff63026ce7d4347da734a0e3"
 )
 EXPECTED_LICENSE_ACCEPTED_HELP_COUNT = 375
 EXPECTED_LICENSE_SKIPPED_NOTE_COUNT = 7
@@ -2214,3 +2216,55 @@ def validate_cargo_deny_license_inventory(
         package_count=len(observed_package_ids),
         license_assignment_count=assignment_count,
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Validate one generated license inventory against locked Cargo metadata."""
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--metadata", required=True)
+    parser.add_argument("--lockfile", required=True)
+    parser.add_argument("--license-inventory", required=True)
+    arguments = parser.parse_args(argv)
+    try:
+        metadata_bytes = read_bounded_regular_file(
+            Path(arguments.metadata),
+            max_bytes=MAX_METADATA_BYTES,
+            label="Cargo metadata",
+        )
+        lockfile_bytes = read_bounded_regular_file(
+            Path(arguments.lockfile),
+            max_bytes=MAX_LOCKFILE_BYTES,
+            label="Cargo lockfile",
+        )
+        inventory_bytes = read_bounded_regular_file(
+            Path(arguments.license_inventory),
+            max_bytes=MAX_LICENSE_REPORT_BYTES,
+            label="Cargo deny license inventory",
+        )
+        graph = validate_cargo_metadata(metadata_bytes, lockfile_bytes)
+        summary = validate_cargo_deny_license_inventory(
+            inventory_bytes,
+            graph,
+            scope=CARGO_DENY_HOST_FILTERED_SCOPE,
+        )
+    except (OSError, ReviewError, UnicodeError, ValueError) as error:
+        print(f"qualification license inventory check failed: {error}", file=sys.stderr)
+        return 2
+    print(
+        json.dumps(
+            {
+                "schema": "galadriel.qualification-license-inventory-check.v1",
+                "scope": summary.scope,
+                "package_count": summary.package_count,
+                "license_assignment_count": summary.license_assignment_count,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

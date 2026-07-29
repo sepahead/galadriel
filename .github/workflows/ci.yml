@@ -230,5 +230,35 @@ jobs:
       - name: Check dependency policy
         run: cargo deny --offline --all-features --locked check
 
+      - name: Verify qualification license inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          inventory_root="$(mktemp -d)"
+          trap 'rm -rf "$inventory_root"' EXIT
+          cargo metadata \
+            --locked \
+            --offline \
+            --all-features \
+            --format-version=1 \
+            > "$inventory_root/cargo-metadata.json" \
+            2> "$inventory_root/cargo-metadata.stderr"
+          test ! -s "$inventory_root/cargo-metadata.stderr"
+          cargo deny \
+            --offline \
+            --all-features \
+            --locked \
+            list \
+            --metadata-path "$inventory_root/cargo-metadata.json" \
+            --format json \
+            --layout crate \
+            > "$inventory_root/license-inventory.json" \
+            2> "$inventory_root/license-inventory.stderr"
+          test ! -s "$inventory_root/license-inventory.stderr"
+          python3 repo_work/qualification_artifacts.py \
+            --metadata "$inventory_root/cargo-metadata.json" \
+            --lockfile Cargo.lock \
+            --license-inventory "$inventory_root/license-inventory.json"
+
       - name: Check fuzz-workspace dependency policy
         run: cargo deny --offline --manifest-path fuzz/Cargo.toml --all-features --locked check --config fuzz/deny.toml

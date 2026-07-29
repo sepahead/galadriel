@@ -57,6 +57,7 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Fixed
 
+- Bind the Tokio 1.53.1 graph to its exact qualification license inventory and verify that binding in CI.
 - Preserve the primary output-limit result when qualification cleanup crosses the command deadline.
 
 ## [0.9.0] - 2026-07-25

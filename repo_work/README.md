@@ -525,6 +525,8 @@ The qualifier validates the Cargo graph against `Cargo.lock`.
 It compares each package source member and mode with the exact candidate tree.
 It rejects hidden or conflicting software bill of materials identities.
 It binds the host-filtered license inventory to its exact semantic digest.
+The supply-chain CI job rebuilds that inventory from locked all-feature metadata.
+It rejects an obsolete qualification digest before candidate promotion.
 The 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope is not the complete 437-package graph.
 These checks do not qualify another target, registry, compiler, host, or deployment.
 

@@ -65,6 +65,7 @@ from finalize_release import (  # noqa: E402
     validate_supply_chain_report_records,
     validate_vulnerability_report,
 )
+import qualify_candidate as qualifier  # noqa: E402
 from qualify_candidate import (  # noqa: E402
     AuxiliaryRunner,
     BoundedProcessResult,
@@ -1456,13 +1457,24 @@ raise SystemExit(42)
                 1_024,
                 True,
                 False,
+                False,
             ),
             (
                 "output",
                 "import os, time; os.write(1, b'x' * 4096); time.sleep(5)",
-                2,
+                30,
                 8,
                 False,
+                True,
+                False,
+            ),
+            (
+                "output_cleanup_crosses_deadline",
+                "import os, time; os.write(1, b'x' * 4096); time.sleep(5)",
+                30,
+                8,
+                False,
+                True,
                 True,
             ),
         )
@@ -1473,6 +1485,7 @@ raise SystemExit(42)
             stdout_bound,
             expected_timeout,
             expected_output_limit,
+            cross_deadline_after_first_cleanup,
         ) in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory).resolve()
@@ -1486,13 +1499,33 @@ raise SystemExit(42)
                 events: list[str] = []
                 original_terminate = MacOSProcessContainment.terminate_before_root_reap
                 original_wait = subprocess.Popen.wait
+                real_monotonic = time.monotonic
+                monotonic_origin: float | None = None
+                monotonic_offset_seconds = 0.0
+
+                def controlled_monotonic() -> float:
+                    nonlocal monotonic_origin
+                    current = real_monotonic()
+                    if monotonic_origin is None:
+                        monotonic_origin = current
+                    return current + monotonic_offset_seconds
 
                 def record_terminate(
                     tracker: MacOSProcessContainment,
                     grace_seconds: float = 2.0,
                 ) -> bool:
+                    nonlocal monotonic_offset_seconds
                     events.append("terminate")
-                    return original_terminate(tracker, grace_seconds)
+                    had_live = original_terminate(tracker, grace_seconds)
+                    if (
+                        cross_deadline_after_first_cleanup
+                        and events.count("terminate") == 1
+                    ):
+                        assert monotonic_origin is not None
+                        monotonic_offset_seconds = (
+                            monotonic_origin + timeout_seconds + 0.5 - real_monotonic()
+                        )
+                    return had_live
 
                 def record_wait(
                     process: subprocess.Popen[bytes],
@@ -1508,6 +1541,16 @@ raise SystemExit(42)
                         new=record_terminate,
                     ),
                     patch.object(subprocess.Popen, "wait", new=record_wait),
+                    patch.object(
+                        qualifier.time,
+                        "monotonic",
+                        side_effect=controlled_monotonic,
+                    ),
+                    patch.object(
+                        qualifier,
+                        "PROCESS_CLEANUP_TIMEOUT_SECONDS",
+                        60.0,
+                    ),
                 ):
                     result = run_bounded_process(
                         sandboxed_argv(
@@ -1525,6 +1568,7 @@ raise SystemExit(42)
                     result.output_limit_exceeded,
                     expected_output_limit,
                 )
+                self.assertEqual(events.count("terminate"), 1)
                 self.assertLess(events.index("terminate"), events.index("reap"))
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")

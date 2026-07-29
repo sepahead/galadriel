@@ -276,9 +276,11 @@ It contains the exact 382-package host-filtered subset of the validated
 437-package graph.
 It contains exactly 707 license assignments.
 Its sorted package-identity set has this SHA-256 value:
-`4d514cd4ce1e8b636396debb309dfe6d3847997b83263def0cdf596a96193665`.
+`5d4cc699506276347efb798c206893da68caa9c9e45f650c08b4a48ffbbab1ce`.
 Its canonical package-and-license content has this SHA-256 value:
-`4c6619d9403977a60e7cca82ce1446386934b8adacc71444504d753c9fce0fe7`.
+`0d74d13996da359c9aaffe01978b1bd5e58b1188ff63026ce7d4347da734a0e3`.
+The supply-chain CI job rebuilds this inventory from locked metadata.
+It verifies both exact digests.
 
 The digest calculation normalizes each workspace package identity.
 The exact identity form is `workspace+crates/{name}#{name}@{version}`.

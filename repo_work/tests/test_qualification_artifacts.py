@@ -9,6 +9,7 @@ import io
 import json
 import sys
 import tarfile
+import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -712,6 +713,75 @@ def validate_synthetic_license_inventory(
             graph,
             scope=scope,
         )
+
+
+class QualificationArtifactCliTest(unittest.TestCase):
+    def test_cli_accepts_exact_inventory_and_rejects_unknown_package(self) -> None:
+        metadata, lockfile = metadata_fixture()
+        metadata_bytes = encode_json(metadata)
+        graph = validate_cargo_metadata(metadata_bytes, lockfile)
+        inventory = license_inventory(graph)
+        assignments, package_ids_digest, semantic_digest = (
+            license_inventory_expectations(graph, inventory)
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            metadata_path = root / "cargo-metadata.json"
+            lockfile_path = root / "Cargo.lock"
+            inventory_path = root / "license-inventory.json"
+            metadata_path.write_bytes(metadata_bytes)
+            lockfile_path.write_bytes(lockfile)
+            inventory_path.write_bytes(encode_json(inventory))
+            arguments = [
+                "--metadata",
+                str(metadata_path),
+                "--lockfile",
+                str(lockfile_path),
+                "--license-inventory",
+                str(inventory_path),
+            ]
+            with (
+                mock.patch.object(
+                    artifacts,
+                    "EXPECTED_HOST_FILTERED_LICENSE_PACKAGES",
+                    len(graph.packages),
+                ),
+                mock.patch.object(
+                    artifacts,
+                    "EXPECTED_HOST_FILTERED_LICENSE_ASSIGNMENTS",
+                    assignments,
+                ),
+                mock.patch.object(
+                    artifacts,
+                    "EXPECTED_HOST_FILTERED_LICENSE_PACKAGE_IDS_SHA256",
+                    package_ids_digest,
+                ),
+                mock.patch.object(
+                    artifacts,
+                    "EXPECTED_HOST_FILTERED_LICENSE_SEMANTIC_SHA256",
+                    semantic_digest,
+                ),
+                mock.patch.object(artifacts.sys, "stdout", io.StringIO()) as stdout,
+                mock.patch.object(artifacts.sys, "stderr", io.StringIO()) as stderr,
+            ):
+                self.assertEqual(artifacts.main(arguments), 0)
+                report = json.loads(stdout.getvalue())
+                self.assertEqual(
+                    report["schema"],
+                    "galadriel.qualification-license-inventory-check.v1",
+                )
+                self.assertEqual(report["package_count"], len(graph.packages))
+
+                first = next(iter(inventory))
+                record = inventory.pop(first)
+                inventory["unknown 1.0.0 registry+https://example.invalid/index"] = (
+                    record
+                )
+                inventory_path.write_bytes(encode_json(inventory))
+                stdout.seek(0)
+                stdout.truncate()
+                self.assertEqual(artifacts.main(arguments), 2)
+                self.assertIn("unknown package identity", stderr.getvalue())
 
 
 class JsonBoundsTest(unittest.TestCase):
