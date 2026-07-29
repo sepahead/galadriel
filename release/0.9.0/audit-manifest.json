@@ -37,12 +37,12 @@
       "size_bytes": 221
     },
     {
-      "git_blob_id": "2b0513ce8c36003c84ad65e0c1180698d5a3ae25",
+      "git_blob_id": "59aeb56a9fd12f4894825e7de6c9ab985a673ece",
       "git_mode": "100644",
       "path": ".github/dependabot.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "95e6219f69e66f750d18911dbe5082435adfaac46c6cd5d5f22736dd9ae564b9",
-      "size_bytes": 1080
+      "sha256": "6e3740ff66d39bef6b74268a0b53e41fd666b9a95b4d755f6c346a5399329bf9",
+      "size_bytes": 1450
     },
     {
       "git_blob_id": "45ccf286feb264959d32a3282f9083ffa7860ef8",
@@ -53,19 +53,19 @@
       "size_bytes": 933
     },
     {
-      "git_blob_id": "b04117094d2b8f783a746be4ed4d7ab0bc307bb1",
+      "git_blob_id": "7335cb15ff79b65a96254d949aaa9946def12d4c",
       "git_mode": "100644",
       "path": ".github/workflows/ci.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "08e0971f3757bc2c37cc3766dc2e1b35744007bf8c9ff92d159c3c30ab7f64ee",
+      "sha256": "eabd4c60fb96f2a72e2774445f58e194a0214962f5ff1db00443ac11137ba270",
       "size_bytes": 8977
     },
     {
-      "git_blob_id": "6b2f7140659f85bae8e16b7e7a8fbea5bf8a44ba",
+      "git_blob_id": "01d5e88ce54ff3c7a34cb77022fde62a89b55907",
       "git_mode": "100644",
       "path": ".github/workflows/deep-quality.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "c84e8fa431146dda2acaa2bc84ae81841e9fb2e98941fdb24118b31bcb1810f2",
+      "sha256": "3941f8444fdedacb3b19d22887d2c81385bfb029943aa1ad8692cd8cbf1f5da6",
       "size_bytes": 8930
     },
     {
@@ -125,12 +125,12 @@
       "size_bytes": 25004
     },
     {
-      "git_blob_id": "80c057a56616dfa11c528530532a4eb00d7cabf2",
+      "git_blob_id": "84f698d9e33fdd9657b41301e8f07ddf61e59806",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ad7c93219396b7c010ba36e21cd31c229cea0ca945b2bfb566f17062650f8ebe",
-      "size_bytes": 51503
+      "sha256": "6c53f2bd05c342c4d7161123d783733e1c13f14d88ee242babe071773cb7f0e6",
+      "size_bytes": 51829
     },
     {
       "git_blob_id": "db59d92c3082077f9b708f83510267226ad8b42b",
@@ -165,12 +165,12 @@
       "size_bytes": 5073
     },
     {
-      "git_blob_id": "f05c2497acad41955322fec93ef40cc736546d6e",
+      "git_blob_id": "4ba13ba83a93e9d8ead98a4d0245ef7e0073c4f1",
       "git_mode": "100644",
       "path": "Cargo.lock",
       "purpose": "locked software/toolchain input",
-      "sha256": "8cbcda96332cca13a4a103d47aaefc014f6bc145abacc848a368fe54eb66ef5d",
-      "size_bytes": 108029
+      "sha256": "099bf23336f9c7fe8e57ef8f7d03cf10ccf7ae5931aba2a3e726913cb498f0ba",
+      "size_bytes": 108031
     },
     {
       "git_blob_id": "6c15f67647943696034372f5a9b6d01262aecc1c",
@@ -1205,11 +1205,11 @@
       "size_bytes": 99554
     },
     {
-      "git_blob_id": "0380e7a4ecf5bc0fe6828e2ffbbcca84e4c6c159",
+      "git_blob_id": "e6e578249e91d96db249b9d93452a880f12c3d66",
       "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "ba53f789cfaeb3ad1b50e4c4ed979f1410e7745c897c6c0e8aeefdacc65c9e0a",
+      "sha256": "ed8de36edc8716f9cdded054fbd5a79684baffa1705a9904af0f80417d35867e",
       "size_bytes": 12612
     },
     {
@@ -2427,12 +2427,12 @@
   "github_actions": [
     {
       "action": "actions/checkout",
-      "commit": "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+      "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
       "repository": "https://github.com/actions/checkout",
       "role": "exact candidate checkout without persisted credentials",
-      "source_ref": "refs/tags/v7.0.0",
+      "source_ref": "refs/tags/v7.0.1",
       "source_ref_kind": "lightweight_tag",
-      "version": "v7.0.0"
+      "version": "v7.0.1"
     },
     {
       "action": "actions/setup-python",

@@ -21,6 +21,10 @@ updates:
         versions: [">=0.9.0"]
       - dependency-name: "rand_distr"
         versions: [">=0.5.0"]
+      # statrs 0.19 changes precision and inverse-CDF behavior.
+      # Version 0.9 retains statrs 0.18 until statistical requalification is complete.
+      - dependency-name: "statrs"
+        versions: [">=0.19.0"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -33,3 +37,7 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
+    ignore:
+      # Keep the fuzz graph aligned with the qualified workspace dependency.
+      - dependency-name: "statrs"
+        versions: [">=0.19.0"]

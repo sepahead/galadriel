@@ -49,6 +49,16 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- Update the pinned checkout action to version 7.0.1.
+- Update Tokio to version 1.53.1 for the optional live NCP path.
+- Keep statrs at version 0.18 until the statistical requalification is complete.
+
+### Fixed
+
+- Preserve the primary output-limit result when qualification cleanup crosses the command deadline.
+
 ## [0.9.0] - 2026-07-25
 
 ### Release contract

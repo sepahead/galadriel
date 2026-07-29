@@ -167,10 +167,10 @@
     {
       "action": "actions/checkout",
       "repository": "https://github.com/actions/checkout",
-      "commit": "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
-      "source_ref": "refs/tags/v7.0.0",
+      "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "source_ref": "refs/tags/v7.0.1",
       "source_ref_kind": "lightweight_tag",
-      "version": "v7.0.0",
+      "version": "v7.0.1",
       "role": "exact candidate checkout without persisted credentials"
     },
     {
