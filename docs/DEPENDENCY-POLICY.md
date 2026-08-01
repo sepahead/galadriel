@@ -318,7 +318,10 @@ Upstream pid-rs release qualification remains `NOT_CLAIMED`.
 NCP qualification applies only to the commit selected by the public annotated
 `v0.8.0` tag.
 The exact NCP revision is `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
-This qualification does not apply to NCP 1.0 or current NCP `main`.
+Current NCP `HEAD` is the unreleased and release-blocked `1.0.0-rc.1`
+candidate. It uses wire `1.0` and compact `CONTRACT_HASH`
+`163acc57d8a62b66`. This qualification does not apply to that candidate or to
+NCP 1.0. Galadriel has no native-1.0 migration or compatibility evidence.
 GitHub reports that the tag object and target commit are unsigned.
 The immutable 40-hex revision and Cargo lock entry give identity.
 They do not give upstream signature assurance.

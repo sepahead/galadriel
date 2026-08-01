@@ -77,12 +77,12 @@
       "size_bytes": 391
     },
     {
-      "git_blob_id": "ba2caac9c821583a1a7b0da1e00e6b55bae88aeb",
+      "git_blob_id": "26dcb74f6265560c9986d08d6cb76667326be7c9",
       "git_mode": "100644",
       "path": ".ncp-consumer",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8969971ad8c22ab39fa350958dec76988e41410fc2c7e200b91c9e55f8d9b946",
-      "size_bytes": 1257
+      "sha256": "32384349d44ebb27dda16e85054d135ddee5a0dcd437d658679058c9fb929ccb",
+      "size_bytes": 1478
     },
     {
       "git_blob_id": "b25fb25c6b312cf48591f3a6e70b7dfd0f7eca28",
@@ -125,12 +125,12 @@
       "size_bytes": 25004
     },
     {
-      "git_blob_id": "ae460bada603aa5e2723f45a67a8fb4edb51f9fd",
+      "git_blob_id": "6a4490e52bfb84f2ed8dba75f58480ae9ce3cd87",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "74cf0598ed827a1f8af71c16a72233b16cc1f59982c1f6a56dda4344e728f1b0",
-      "size_bytes": 51935
+      "sha256": "14460446ed721a2f318d59e7ff1fb9a6d45b68fb243b386f704d942e9515595a",
+      "size_bytes": 52035
     },
     {
       "git_blob_id": "db59d92c3082077f9b708f83510267226ad8b42b",
@@ -205,12 +205,12 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "59640f3329dd736ca8f8797606b603a27e75c111",
+      "git_blob_id": "d96892655856e4310b9db3b5067883fe72f6f767",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "71323d318b6cce3982138af86a11139a08ed58fce29434aa82638ea5012fe0ee",
-      "size_bytes": 47731
+      "sha256": "2a7d419f25fcd493bead65b1c26ac1891c171e9d5d12f639c7f9e4f1cb529053",
+      "size_bytes": 47994
     },
     {
       "git_blob_id": "427e6b3a1bd787f46c7cc70af0fa66d1595a39f1",
@@ -549,12 +549,12 @@
       "size_bytes": 3381
     },
     {
-      "git_blob_id": "1197a6ea65e05d36c7750e97c7372f8824ca88e5",
+      "git_blob_id": "f4e1814984fda86ac91aa78009bea18ef99e3a9f",
       "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "4c68b4344f31c68e1b8fc0a75284dea1800c837346247f8d5c7a6aa95a0a4200",
-      "size_bytes": 63766
+      "sha256": "f7be7470dc2daf58fd8c5373613c350bb181750db69af18cbecfee8934c8d1af",
+      "size_bytes": 64208
     },
     {
       "git_blob_id": "ef357543c32a3b238605f5ed54aa8950080201b2",
@@ -565,28 +565,28 @@
       "size_bytes": 164341
     },
     {
-      "git_blob_id": "d2f2519a87c6c55a699ca0d2c1429d9337569a85",
+      "git_blob_id": "6eab73c2be67b8ce216adfe7551bcf5e040fc7a3",
       "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "1b52373826e30561655775fb6bc820fe8b390f9ef573af4b267a421ad38a0a38",
-      "size_bytes": 156700
+      "sha256": "0c2200c8b0299466043d47ca6df59b1d6372a3bdc256c53b2a9df5a1b86b4e59",
+      "size_bytes": 157230
     },
     {
-      "git_blob_id": "f1bb4b82d7ea0336ed4365e334c535f0e4407daa",
+      "git_blob_id": "dba1c1d04763cb2e9feb0e2591916992c9df3eea",
       "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/monitor.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "79465ed8a4cc1f46c2be6e5d8a4f09035880eb66f84b2d037caf90586576724a",
-      "size_bytes": 82714
+      "sha256": "4ace1a08985acc91ee28f1568985ffcf1d5be76a765e89ddf90b3bac04e2f09c",
+      "size_bytes": 82821
     },
     {
-      "git_blob_id": "594b7fb25229154c871e41c899a2bb74697c459b",
+      "git_blob_id": "017569cbbb781b92b05e78e216d872bd7f4831a0",
       "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/monitor_live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "ad496ab5655b18d62a260e10953ee9870a3e286cfcb3c2b2b8bbba75dd225769",
-      "size_bytes": 122984
+      "sha256": "f21ed32ac6aacb59dabfe12a51010884872b09ebfd72700cc3de84dcbae367ba",
+      "size_bytes": 123266
     },
     {
       "git_blob_id": "fb021e9802e80f40c36a164c76a8872bf3e79f17",
@@ -845,12 +845,12 @@
       "size_bytes": 1335
     },
     {
-      "git_blob_id": "53d8137477a855dc691ed1e66063c1d6641a6eee",
+      "git_blob_id": "b280c000a7445cae5bda426f38f952e6723c7164",
       "git_mode": "100644",
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "9cd89dc275ce7b3afb5752a5af7ffa5f954e71a13cfea7ca4a1d29f1c4ddf54a",
-      "size_bytes": 17942
+      "sha256": "7c0a67b588ced17093454bddd7604ee0d909739121d334dd81c1386b5d2aca09",
+      "size_bytes": 18123
     },
     {
       "git_blob_id": "72779357ac63b0dac2487f202f5055f041d45389",
@@ -885,20 +885,20 @@
       "size_bytes": 7578
     },
     {
-      "git_blob_id": "c5335cc95fbf27066b8892231530ab1f57bee987",
+      "git_blob_id": "db1a9e81d220de5558361ee339d68e23fe626898",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7c07072144a362dab66aa7df19a57fcdf8de77719aee21076f6b9a32b5e39bd0",
-      "size_bytes": 18108
+      "sha256": "8a790db47aa05baea855ed1e57df4feca1f174a31ceb8f7e0f159a7f2a9b949c",
+      "size_bytes": 18320
     },
     {
-      "git_blob_id": "3a2f2174ebb29ea1869ae0917c202eac0f45d919",
+      "git_blob_id": "1fa79fa706e07b5c46464aa3350af45a9e6db7ca",
       "git_mode": "100644",
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "cce24dfc0b17d4eade45668585eddaccdc43711252daa7a8417b89cdb26d2cc9",
-      "size_bytes": 20992
+      "sha256": "67ed32b3e577f34ead7633db34c59f6abc9c25da3c9c445aeb346dac077469e9",
+      "size_bytes": 21156
     },
     {
       "git_blob_id": "90b8d013a3899d2f654b5ac9ac201da9bf2e5766",
@@ -1943,13 +1943,13 @@
     },
     {
       "kind": "external_reference",
-      "line": 608,
+      "line": 611,
       "path": "README.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 792,
+      "line": 795,
       "path": "README.md",
       "url": "https://github.com/sepahead"
     },
@@ -2531,12 +2531,12 @@
       "size_bytes": 16474
     },
     {
-      "git_blob_id": "53d8137477a855dc691ed1e66063c1d6641a6eee",
+      "git_blob_id": "b280c000a7445cae5bda426f38f952e6723c7164",
       "git_mode": "100644",
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "9cd89dc275ce7b3afb5752a5af7ffa5f954e71a13cfea7ca4a1d29f1c4ddf54a",
-      "size_bytes": 17942
+      "sha256": "7c0a67b588ced17093454bddd7604ee0d909739121d334dd81c1386b5d2aca09",
+      "size_bytes": 18123
     },
     {
       "git_blob_id": "72779357ac63b0dac2487f202f5055f041d45389",
@@ -2555,12 +2555,12 @@
       "size_bytes": 1248
     },
     {
-      "git_blob_id": "c5335cc95fbf27066b8892231530ab1f57bee987",
+      "git_blob_id": "db1a9e81d220de5558361ee339d68e23fe626898",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "7c07072144a362dab66aa7df19a57fcdf8de77719aee21076f6b9a32b5e39bd0",
-      "size_bytes": 18108
+      "sha256": "8a790db47aa05baea855ed1e57df4feca1f174a31ceb8f7e0f159a7f2a9b949c",
+      "size_bytes": 18320
     },
     {
       "git_blob_id": "427e6b3a1bd787f46c7cc70af0fa66d1595a39f1",

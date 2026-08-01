@@ -11,6 +11,9 @@
 # That checker can skip both rows.
 # The Galadriel feature graph gate rejects an invalid local descriptor.
 # Invalid descriptors are empty, unknown, legacy, partial, or drifted.
+# Current NCP HEAD is the unreleased and release-blocked 1.0.0-rc.1 candidate.
+# Its wire is 1.0 and its compact CONTRACT_HASH is 163acc57d8a62b66.
+# Galadriel remains on immutable v0.8.0 and has no native-1.0 migration.
 #
 # The default command-line interface (CLI) graph has no NCP dependency.
 # The galadriel-ncp workspace crate has a direct ncp-core dependency.

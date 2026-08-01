@@ -1445,16 +1445,19 @@ mod tests {
     }
 
     #[test]
-    fn ncp_version_spelling_must_match_the_frozen_schema() {
+    fn ncp_version_and_spelling_must_match_the_frozen_schema() {
         let envelope =
             MonitorEnvelope::try_new("uav3", "crebain", 1, ProducerEvent::Heartbeat(heartbeat()))
                 .unwrap();
-        let mut raw = serde_json::to_value(envelope).unwrap();
-        raw["ncp_version"] = serde_json::json!("00.08");
+        let valid = serde_json::to_value(envelope).unwrap();
+        for version in ["00.08", "1.0"] {
+            let mut raw = valid.clone();
+            raw["ncp_version"] = serde_json::json!(version);
 
-        let error = serde_json::from_value::<MonitorEnvelope>(raw).unwrap_err();
+            let error = serde_json::from_value::<MonitorEnvelope>(raw).unwrap_err();
 
-        assert!(error.to_string().contains("noncanonical ncp_version"));
+            assert!(error.to_string().contains("noncanonical ncp_version"));
+        }
     }
 
     #[test]

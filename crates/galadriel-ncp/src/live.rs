@@ -3110,9 +3110,6 @@ mod tests {
 
     #[test]
     fn process_payload_rejects_incompatible_version_and_surfaces_hash_advisory() {
-        let mut wrong_version = envelope(test_observation(1, 0, 1, Modality::Radar, 3.0, 3));
-        wrong_version.ncp_version = "0.6".to_string();
-        let wrong_version = serde_json::to_vec(&wrong_version).unwrap();
         let mut drifted = envelope(test_observation(1, 0, 2, Modality::Radar, 3.0, 3));
         drifted.contract_hash = "deadbeefdeadbeef".to_string();
         let drifted = serde_json::to_vec(&drifted).unwrap();
@@ -3121,9 +3118,12 @@ mod tests {
         let tap = IngestCounters::default();
         let subscription = IngestCounters::default();
 
-        for payload in [&wrong_version, &drifted] {
+        for (expected_count, version) in [(1, "0.6"), (2, "1.0")] {
+            let mut wrong_version = envelope(test_observation(1, 0, 1, Modality::Radar, 3.0, 3));
+            wrong_version.ncp_version = version.to_string();
+            let payload = serde_json::to_vec(&wrong_version).unwrap();
             process_payload(
-                payload,
+                &payload,
                 LiveLimits::default(),
                 &delivery_boundary,
                 &sequences,
@@ -3131,7 +3131,24 @@ mod tests {
                 &subscription,
                 &|_| {},
             );
+            assert_eq!(
+                subscription.rejection_count(RejectionReason::IncompatibleNcpVersion),
+                expected_count
+            );
+            assert_eq!(
+                subscription.observations_accepted.load(Ordering::Relaxed),
+                0
+            );
         }
+        process_payload(
+            &drifted,
+            LiveLimits::default(),
+            &delivery_boundary,
+            &sequences,
+            &tap,
+            &subscription,
+            &|_| {},
+        );
         process_payload(
             &drifted,
             LiveLimits::default(),
@@ -3144,7 +3161,7 @@ mod tests {
 
         assert_eq!(
             subscription.rejection_count(RejectionReason::IncompatibleNcpVersion),
-            1
+            2
         );
         assert_eq!(
             subscription

@@ -3042,17 +3042,25 @@ mod tests {
 
     #[test]
     fn incompatible_ncp_version_latches_typed_fault() {
-        let harness = Harness::new(MonitorLiveConfig::default());
-        let mut value: serde_json::Value =
-            serde_json::from_slice(&encoded(1)).expect("test envelope is JSON");
-        value["ncp_version"] = serde_json::json!("0.7");
+        for version in ["0.7", "1.0"] {
+            let harness = Harness::new(MonitorLiveConfig::default());
+            let mut value: serde_json::Value =
+                serde_json::from_slice(&encoded(1)).expect("test envelope is JSON");
+            value["ncp_version"] = serde_json::json!(version);
 
-        harness.process(&serde_json::to_vec(&value).expect("modified envelope encodes"));
+            harness.process(&serde_json::to_vec(&value).expect("modified envelope encodes"));
 
-        assert_eq!(
-            harness.first_fault(),
-            Some(MonitorIngressFault::IncompatibleNcpVersion)
-        );
+            assert_eq!(
+                harness.first_fault(),
+                Some(MonitorIngressFault::IncompatibleNcpVersion)
+            );
+            assert_eq!(
+                harness
+                    .counters
+                    .fault_count(MonitorIngressFaultKind::IncompatibleNcpVersion),
+                1
+            );
+        }
     }
 
     #[test]

@@ -140,8 +140,11 @@ Those objects are not claims about the later mutable heads.
 cross-reference.
 
 These mutable repository heads are inspection provenance, not reciprocal compatibility pins.
-NCP's wire-1.0 topology remains proposed.
-It is incompatible with the current named wire-0.8 sidecars.
+Current NCP `HEAD` is the unreleased and release-blocked `1.0.0-rc.1`
+candidate. It uses wire `1.0` and compact `CONTRACT_HASH`
+`163acc57d8a62b66`. The latest immutable NCP release is `v0.8.0`, which uses a
+different wire. Galadriel remains pinned to that release and has no native-1.0
+migration. Wire `1.0` is incompatible with the current named wire-0.8 sidecars.
 Crebain retains component-level schema-v1 alignment.
 Crebain freezes Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input.
 

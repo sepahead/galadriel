@@ -270,8 +270,11 @@ The gate emits this information in its machine-readable report:
 
 This report separates checker compatibility from runtime dependency identity.
 
-The inspected NCP head is an unreleased and incompatible wire-1.0 candidate.
-Its extension and ecosystem ADRs remain proposals without normative effect.
+Current NCP `HEAD` is the unreleased and release-blocked `1.0.0-rc.1`
+candidate. It uses wire `1.0` and compact `CONTRACT_HASH`
+`163acc57d8a62b66`. The latest immutable NCP release is `v0.8.0`, which uses a
+different wire. This current status does not replace the dated inspection object
+or the dependency pin above.
 Current Galadriel named-sensor routes are project-owned wire-0.8 surfaces.
 They are not native wire-1.0 extensions.
 Galadriel claims no NCP 1.0 compatibility.

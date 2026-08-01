@@ -91,7 +91,7 @@ pub fn valid_session_identity(value: &str) -> bool {
         && EpochId::new(value).is_ok()
 }
 
-/// Whether a sidecar producer is valid in both core roles used by wire v1.
+/// Whether a sidecar producer is valid in both Galadriel core identity roles.
 #[must_use]
 pub fn valid_producer_identity(value: &str) -> bool {
     !value.is_empty()
@@ -1526,6 +1526,16 @@ mod tests {
         let mut wrong_version = serde_json::to_value(&envelope).unwrap();
         wrong_version["ncp_version"] = serde_json::json!("0.6");
         assert!(serde_json::from_value::<SidecarEnvelope>(wrong_version).is_err());
+
+        let mut forward_version = serde_json::to_value(&envelope).unwrap();
+        forward_version["ncp_version"] = serde_json::json!("1.0");
+        let forward_version = serde_json::to_vec(&forward_version).unwrap();
+        assert!(matches!(
+            SidecarEnvelope::decode(&forward_version),
+            Err(SidecarDecodeError::Semantic(
+                SidecarEnvelopeError::IncompatibleNcpVersion(_)
+            ))
+        ));
 
         let mut noncanonical_version = serde_json::to_value(&envelope).unwrap();
         noncanonical_version["ncp_version"] = serde_json::json!("00.08");

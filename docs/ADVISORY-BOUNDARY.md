@@ -252,8 +252,11 @@ It cannot call an authorization path.
 Galadriel pins `ncp-core` and `ncp-zenoh` to the immutable revision selected by
 the public `v0.8.0` tag.
 The exact revision is `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
-The current NCP wire-1.0 extension topology is an unreleased candidate.
-Its ecosystem ADRs remain proposals with no normative effect.
+Current NCP `HEAD` is the unreleased and release-blocked `1.0.0-rc.1`
+candidate. It uses wire `1.0` and compact `CONTRACT_HASH`
+`163acc57d8a62b66`. The latest immutable NCP release remains `v0.8.0` and uses
+a different wire. The current candidate is not a Galadriel dependency or an
+installed compatibility result.
 
 Galadriel named sensor sidecars are wire-0.8 project surfaces.
 They are not native wire-1.0 extensions.
