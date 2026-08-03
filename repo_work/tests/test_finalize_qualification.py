@@ -1448,6 +1448,81 @@ raise SystemExit(42)
             self.assertTrue(process.stderr.closed)
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
+    def test_clean_exit_first_observed_after_deadline_is_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            profile = root / "candidate.sb"
+            write_candidate_sandbox_profile(
+                profile,
+                worktree=root,
+                source_repo=ROOT,
+                tool_read_paths=(test_tool_read_root(),),
+            )
+            timeout_seconds = 30
+            original_root_exited = MacOSProcessContainment.root_exited_before_reap
+            real_monotonic = time.monotonic
+            monotonic_origin: float | None = None
+            monotonic_offset_seconds = 0.0
+            crossed_deadline = False
+
+            def controlled_monotonic() -> float:
+                nonlocal monotonic_origin
+                current = real_monotonic()
+                if monotonic_origin is None:
+                    monotonic_origin = current
+                return current + monotonic_offset_seconds
+
+            def observe_exit_after_deadline(
+                tracker: MacOSProcessContainment,
+            ) -> bool:
+                nonlocal crossed_deadline
+                nonlocal monotonic_offset_seconds
+                root_exited = original_root_exited(tracker)
+                if root_exited and not crossed_deadline:
+                    assert monotonic_origin is not None
+                    monotonic_offset_seconds = (
+                        monotonic_origin
+                        + timeout_seconds
+                        + 0.5
+                        - real_monotonic()
+                    )
+                    crossed_deadline = True
+                return root_exited
+
+            with (
+                patch.object(
+                    MacOSProcessContainment,
+                    "root_exited_before_reap",
+                    new=observe_exit_after_deadline,
+                ),
+                patch.object(
+                    qualifier.time,
+                    "monotonic",
+                    side_effect=controlled_monotonic,
+                ),
+                patch.object(
+                    qualifier,
+                    "PROCESS_CLEANUP_TIMEOUT_SECONDS",
+                    60.0,
+                ),
+            ):
+                result = run_bounded_process(
+                    sandboxed_argv(
+                        profile,
+                        [sys.executable, "-I", "-c", "raise SystemExit(0)"],
+                    ),
+                    cwd=root,
+                    environment={"PATH": os.environ["PATH"]},
+                    timeout_seconds=timeout_seconds,
+                    separate_stderr=True,
+                )
+            self.assertTrue(crossed_deadline)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(result.timed_out)
+            self.assertFalse(result.output_limit_exceeded)
+            self.assertIsNone(result.containment_error)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS containment test")
     def test_timeout_and_output_cleanup_terminate_before_reap(self) -> None:
         cases = (
             (

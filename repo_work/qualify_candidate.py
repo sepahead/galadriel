@@ -1512,7 +1512,6 @@ def run_bounded_process(
             selector.register(stream, selectors.EVENT_READ)
 
         while selector.get_map() or not root_exited:
-            now = time.monotonic()
             try:
                 root_exited = tracker.root_exited_before_reap()
             except ReviewError as error:
@@ -1520,15 +1519,16 @@ def run_bounded_process(
                 raise ProcessContainmentError(
                     f"candidate root identity is not proven: {error}"
                 ) from error
-            if root_exited and not cleanup_started:
-                cleanup_started = True
-                cleanup_deadline = now + PROCESS_CLEANUP_TIMEOUT_SECONDS
-                terminate_before_reap(report_descendant=True)
+            now = time.monotonic()
             if now >= deadline and not cleanup_started:
                 timed_out = True
                 cleanup_started = True
                 cleanup_deadline = now + PROCESS_CLEANUP_TIMEOUT_SECONDS
                 terminate_before_reap(report_descendant=False)
+            elif root_exited and not cleanup_started:
+                cleanup_started = True
+                cleanup_deadline = now + PROCESS_CLEANUP_TIMEOUT_SECONDS
+                terminate_before_reap(report_descendant=True)
             if not cleanup_started:
                 try:
                     tracker.refresh()

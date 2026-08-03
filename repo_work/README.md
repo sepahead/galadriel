@@ -370,6 +370,10 @@ It must retain exactly 15 two-run reproducibility comparisons.
 These comparisons cover one source archive, seven package archives, and seven software bills of materials.
 
 Each command uses a stop-before-exec gate and fixed resource limits.
+The host classifies completion at the first root-exit observation.
+An exit first observed at or after the monotonic deadline is a timeout.
+This rule includes a process that exits with status zero.
+Cleanup that started for another failure keeps that primary classification.
 The host requires macOS `kqueue` and `/usr/bin/sandbox-exec`.
 The qualifier installs one mode-0500 dispatch for 19 required command names.
 It verifies every dispatch target before and after each bounded process.

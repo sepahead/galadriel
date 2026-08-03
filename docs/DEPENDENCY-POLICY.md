@@ -212,6 +212,11 @@ Only a later signed human decision can select `NARROWED_GO` or `NO_GO`.
 Each command starts behind a stop-before-exec launch gate.
 The command receives fixed CPU, core-file, output-file, open-file, and 64 MiB
 stream limits.
+Completion is on time only when the host first observes the root exit before the
+monotonic deadline.
+A root exit first observed at or after the deadline records `timed_out=true`.
+This rule also applies when the process has exit status zero.
+Cleanup that starts for another recorded failure keeps that primary classification.
 The host requires macOS `kqueue` and `/usr/bin/sandbox-exec`.
 It fails before candidate execution if either control is absent.
 
