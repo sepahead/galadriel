@@ -1,10 +1,12 @@
 version: 2
 updates:
+  # Disable routine version-update pull requests. Dependabot security updates
+  # remain eligible because GitHub applies this limit only to version updates.
   - package-ecosystem: cargo
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     groups:
       rand-family:
         patterns:
@@ -30,13 +32,13 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
 
   - package-ecosystem: cargo
     directory: /fuzz
     schedule:
       interval: weekly
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 0
     ignore:
       # Keep the fuzz graph aligned with the qualified workspace dependency.
       - dependency-name: "statrs"

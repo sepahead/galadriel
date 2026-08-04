@@ -37,12 +37,12 @@
       "size_bytes": 221
     },
     {
-      "git_blob_id": "59aeb56a9fd12f4894825e7de6c9ab985a673ece",
+      "git_blob_id": "b16540a1eb46078677bd4daddb5c57cd01ec593a",
       "git_mode": "100644",
       "path": ".github/dependabot.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "6e3740ff66d39bef6b74268a0b53e41fd666b9a95b4d755f6c346a5399329bf9",
-      "size_bytes": 1450
+      "sha256": "7618c39dabe462262503c016b28388a5d071a6b6050eacffef5df9500962fc0c",
+      "size_bytes": 1607
     },
     {
       "git_blob_id": "45ccf286feb264959d32a3282f9083ffa7860ef8",
