@@ -13,6 +13,7 @@ import stat
 import sys
 import tempfile
 import tomllib
+from datetime import date
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -31,6 +32,12 @@ from release_assurance import canonical_repository_identity, run_bounded_host_co
 
 SCHEMA = "galadriel.frozen-audit-inputs.v2"
 PUBLICATION_CHANNEL = "review-gated GitHub research source release"
+UNPUBLISHED_SOURCE_PREPARATION_STATE = "UNPUBLISHED_CANDIDATE"
+DATE_BOUND_SOURCE_PREPARATION_STATE = "DATE_BOUND_CANDIDATE"
+AUDIT_DATE_SEMANTICS = (
+    "Maintainer-local calendar date of the latest audit-input update. It cannot "
+    "precede any retained inspection or observation date at its declared precision."
+)
 THREAT_REGISTER_PATH = "release/0.9.0/audit/threat-register.json"
 THREAT_STATUS_LIVING = "LIVING_UNTIL_CANDIDATE_FREEZE"
 THREAT_STATUS_FROZEN = "FROZEN_AT_CANDIDATE"
@@ -1540,6 +1547,7 @@ def validate_source_documents(
             "schema",
             "release",
             "audit_date",
+            "audit_date_semantics",
             "baseline_repository",
             "repositories",
             "toolchains",
@@ -1556,7 +1564,16 @@ def validate_source_documents(
         )
     audit_release = exact_object(
         audit_inputs["release"],
-        {"name", "version", "author", "doi", "zenodo", "publication_channel"},
+        {
+            "name",
+            "version",
+            "author",
+            "doi",
+            "zenodo",
+            "publication_channel",
+            "source_preparation_state",
+            "candidate_release_date",
+        },
         "release audit identity",
     )
     expected_audit_release = {
@@ -1564,12 +1581,50 @@ def validate_source_documents(
         **RELEASE,
         "publication_channel": PUBLICATION_CHANNEL,
     }
-    if audit_release != expected_audit_release:
+    if any(
+        audit_release[key] != value
+        for key, value in expected_audit_release.items()
+    ):
         raise ReviewError(
             "release audit identity must name release 0.9.0 with the expected author "
             "and null DOI/Zenodo fields"
         )
-    exact_string(audit_inputs["audit_date"], "release audit date")
+    source_preparation_state = exact_string(
+        audit_release["source_preparation_state"],
+        "release audit source_preparation_state",
+    )
+    candidate_release_date = audit_release["candidate_release_date"]
+    if source_preparation_state == UNPUBLISHED_SOURCE_PREPARATION_STATE:
+        if candidate_release_date is not None:
+            raise ReviewError(
+                "UNPUBLISHED_CANDIDATE must have no candidate release date"
+            )
+    elif source_preparation_state == DATE_BOUND_SOURCE_PREPARATION_STATE:
+        candidate_release_date = exact_string(
+            candidate_release_date,
+            "release audit candidate_release_date",
+        )
+        try:
+            parsed_candidate_date = date.fromisoformat(candidate_release_date)
+        except ValueError as error:
+            raise ReviewError(
+                "release audit candidate_release_date is not an ISO calendar date"
+            ) from error
+        if parsed_candidate_date.isoformat() != candidate_release_date:
+            raise ReviewError(
+                "release audit candidate_release_date must use YYYY-MM-DD precision"
+            )
+    else:
+        raise ReviewError("release audit source_preparation_state is unsupported")
+    audit_date = exact_string(audit_inputs["audit_date"], "release audit date")
+    try:
+        parsed_audit_date = date.fromisoformat(audit_date)
+    except ValueError as error:
+        raise ReviewError("release audit date is not an ISO calendar date") from error
+    if parsed_audit_date.isoformat() != audit_date:
+        raise ReviewError("release audit date must use YYYY-MM-DD precision")
+    if audit_inputs["audit_date_semantics"] != AUDIT_DATE_SEMANTICS:
+        raise ReviewError("release audit date semantics differ from the contract")
     for key in ("repositories", "toolchains", "github_actions", "artifact_sets"):
         exact_list(audit_inputs[key], f"release audit inputs {key}")
     exact_object(
@@ -1666,6 +1721,28 @@ def threat_register_status(document: bytes) -> str:
         raise ReviewError("threat register has an unsupported lifecycle status")
     assert isinstance(status, str)
     return status
+
+
+def validate_source_preparation_lifecycle(
+    audit_inputs: dict[str, Any], threat_status: str
+) -> None:
+    """Reject a frozen undated source while allowing a date-bound pre-freeze state."""
+
+    source_preparation_state = audit_inputs["release"]["source_preparation_state"]
+    if (
+        source_preparation_state == UNPUBLISHED_SOURCE_PREPARATION_STATE
+        and threat_status != THREAT_STATUS_LIVING
+    ):
+        raise ReviewError(
+            "UNPUBLISHED_CANDIDATE requires LIVING_UNTIL_CANDIDATE_FREEZE"
+        )
+    if (
+        threat_status == THREAT_STATUS_FROZEN
+        and source_preparation_state != DATE_BOUND_SOURCE_PREPARATION_STATE
+    ):
+        raise ReviewError(
+            "FROZEN_AT_CANDIDATE requires a date-bound candidate source"
+        )
 
 
 def _capture_release_input_snapshot(
@@ -1789,6 +1866,12 @@ def _capture_release_input_snapshot(
                 repo,
                 captured_documents=captured_source_bytes,
             )
+            if observed_threat_status is None:
+                raise ReviewError("release input snapshot omits the threat register")
+            validate_source_preparation_lifecycle(
+                source_documents[1],
+                observed_threat_status,
+            )
         for relative in RELEASE_INPUTS:
             _verify_rooted_regular_file_identity(
                 held.descriptor,
@@ -1843,6 +1926,7 @@ def release_input_manifest(
     return _capture_release_input_snapshot(
         repo,
         required_threat_status=required_threat_status,
+        bind_source_documents=required_threat_status is not None,
     ).rows
 
 

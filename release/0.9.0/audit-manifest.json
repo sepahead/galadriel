@@ -117,36 +117,36 @@
       "size_bytes": 262
     },
     {
-      "git_blob_id": "766b4f3b0bdc73a0e962da6212ededb48a76d8a5",
+      "git_blob_id": "1e45c9431a3d63e6f77d260068daea40e5337f9f",
       "git_mode": "100644",
       "path": "AGENTS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a92d91843586890d9c2674317b1959bccb2f6d80cd68a30894ee24d691c6555e",
-      "size_bytes": 25004
+      "sha256": "39c374dae75ef3d80e9efcbb6e6a0e8067054ea7e6076c71bab7774ebce58314",
+      "size_bytes": 25421
     },
     {
-      "git_blob_id": "97c82538a98682ad3d512643c49c0f6053dfcde7",
+      "git_blob_id": "9fdb159a5a1738e75c6e3222fed41641716f2383",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d13208ca3320da3dff363d929d71299aa8c3cbe64a4ac44838e7da0013ff8d5f",
-      "size_bytes": 52154
+      "sha256": "119d2da10591b155971077fca7150114572eef5f862e4198670e58dcc4ddc3fd",
+      "size_bytes": 52299
     },
     {
-      "git_blob_id": "db59d92c3082077f9b708f83510267226ad8b42b",
+      "git_blob_id": "c3d694548de778604161b216002b6da2f2a7b5e3",
       "git_mode": "100644",
       "path": "CITATION.cff",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5588b837a57ca97430b91d4d434f6b302fafafc6eedf9c67f153ede0eeb71d4d",
-      "size_bytes": 902
+      "sha256": "a89ebe6e23cfd514163bd7a5134f938a973564151e798a9b2a1bb0af4551c6ae",
+      "size_bytes": 890
     },
     {
-      "git_blob_id": "058a8a86aa3a8dd8d4a188f7dd7d311b9ea2f3d5",
+      "git_blob_id": "ab0bbf5d258f63e8264563a43de44cd894e87b7e",
       "git_mode": "100644",
       "path": "CLAUDE.mdc",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d0d3ead1d5e2f4b1e91ac5c86d9ada15e5bfff5fa484317ef3e3581b19a2b2d9",
-      "size_bytes": 22304
+      "sha256": "d19f9277d7d9f81d53e12b793bf700f4bca77550029c16e6548293ecc00a40df",
+      "size_bytes": 22721
     },
     {
       "git_blob_id": "ecb1f6e6fa20c20257071b51c22c75fcb3b6c56d",
@@ -157,12 +157,12 @@
       "size_bytes": 1274
     },
     {
-      "git_blob_id": "42a60863fbc3540b4525e459fc11410175d40fa9",
+      "git_blob_id": "5363f1a1aa04abb87b6fa35cd90324f2b2998b6f",
       "git_mode": "100644",
       "path": "CONTRIBUTING.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "45ca1a1ff0ab3b4416d9e784f78037833ae671c310b494fd5c49d1052376d7e0",
-      "size_bytes": 5073
+      "sha256": "1328f69b04b9480ac2beb32567d740e480e1e8ef7d9d963b7d3d3033a97324eb",
+      "size_bytes": 5085
     },
     {
       "git_blob_id": "4ba13ba83a93e9d8ead98a4d0245ef7e0073c4f1",
@@ -205,36 +205,36 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "d96892655856e4310b9db3b5067883fe72f6f767",
+      "git_blob_id": "2de70b066a2c111080f9149163e1a728b2fb0f95",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2a7d419f25fcd493bead65b1c26ac1891c171e9d5d12f639c7f9e4f1cb529053",
-      "size_bytes": 47994
+      "sha256": "11cc12dd9e2f0d2b87108d07197d89dc804a6217630a8389634e08cb09788611",
+      "size_bytes": 49995
     },
     {
-      "git_blob_id": "427e6b3a1bd787f46c7cc70af0fa66d1595a39f1",
+      "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
       "git_mode": "100644",
       "path": "RELEASE-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "98adfdd2d0f444ca8014a2973bcbad59a22e7eaff874805a23e35ed416a3f862",
-      "size_bytes": 6079
+      "sha256": "87ad4a431366ebf20ece852754ad38ddabc6d8d39c51da1748a72ea69c716c58",
+      "size_bytes": 6391
     },
     {
-      "git_blob_id": "fc0bb83c45e2e5c1ad7f0c57bd29b36fbd11718f",
+      "git_blob_id": "58fb4d1aaea0c7039c03e0a7d200f2e7566c5012",
       "git_mode": "100644",
       "path": "SECURITY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "c6ba6d1727a4263b5e5571c14cf0ea8dad617c79f5018cf634f7775562d501f1",
-      "size_bytes": 12484
+      "sha256": "03755f5119d196fca960ad62d3ff0f19a998c37ba0073d179640a50c82a3d3ff",
+      "size_bytes": 12464
     },
     {
-      "git_blob_id": "64384a1004e26190c637932d91d68a3189a1edd8",
+      "git_blob_id": "67257f62dd8485af3886c2d2cf073a52c0acc226",
       "git_mode": "100644",
       "path": "SUPPORT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "23b65fd7a9eb4c9acf956c1618b1c9373d8ae7d61f31543532f086ffa7489a00",
-      "size_bytes": 1248
+      "sha256": "8ccc9a5cac53e99b1d0e7249bc71d5712470f5313e039109d434d9b42dd19e0a",
+      "size_bytes": 1260
     },
     {
       "git_blob_id": "935eb9b4b11a8f70c79d17525e7a73cf7f058563",
@@ -845,28 +845,28 @@
       "size_bytes": 1335
     },
     {
-      "git_blob_id": "b280c000a7445cae5bda426f38f952e6723c7164",
+      "git_blob_id": "808dc24c3bd24da919b580970788a89bf91fc1b7",
       "git_mode": "100644",
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7c0a67b588ced17093454bddd7604ee0d909739121d334dd81c1386b5d2aca09",
-      "size_bytes": 18123
+      "sha256": "d3ee1545250d759a27fbd34efa88c3b59ea179e5ade30e28c3229d081ec7263f",
+      "size_bytes": 19731
     },
     {
-      "git_blob_id": "72779357ac63b0dac2487f202f5055f041d45389",
+      "git_blob_id": "80e0fbd3941c036bfe5dc048dc0ae5548504068c",
       "git_mode": "100644",
       "path": "docs/API-SURFACE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "83928007aa5b6d53ed8186e8185b429a4aadea097a92ca665de3a68ead1de062",
-      "size_bytes": 4890
+      "sha256": "d2cc6a4765aa45a8e627ae3ce4c38863a6335629afe34d27c6982e0371baf285",
+      "size_bytes": 4902
     },
     {
-      "git_blob_id": "0d131f3aacfc556cf025fbeb574be43f2c342950",
+      "git_blob_id": "dd2c5c13bc794d62c6b578aada79164b269c1379",
       "git_mode": "100644",
       "path": "docs/CLAIMS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7fd827e8c4698fb040c89a4913439da923c7f3f4e866587e0fc98d5017508eea",
-      "size_bytes": 2793
+      "sha256": "363fc3d76412b023964245f15a3b5f6d4f9828fd12af67a5f30c8a68398195e6",
+      "size_bytes": 4414
     },
     {
       "git_blob_id": "9faa2b624cb0ff1fe9497ea7bac9fa8aeebfe036",
@@ -885,20 +885,20 @@
       "size_bytes": 7578
     },
     {
-      "git_blob_id": "5da55a48e3251ef0896b90225ab09dc45ff50981",
+      "git_blob_id": "ada56a375ae0fae3b93dd89c751b1897cae5824e",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0c43403b61f630c9805cf36ad332a99a9f6689660f0dbc1ef17a0ef431a865b2",
-      "size_bytes": 18645
+      "sha256": "e610da7606375b8a579623b94662bb56bacea1a3992e03c1e2f8044702d98aee",
+      "size_bytes": 20076
     },
     {
-      "git_blob_id": "1fa79fa706e07b5c46464aa3350af45a9e6db7ca",
+      "git_blob_id": "7c4735896477250de1752739a2da65abafa516f8",
       "git_mode": "100644",
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "67ed32b3e577f34ead7633db34c59f6abc9c25da3c9c445aeb346dac077469e9",
-      "size_bytes": 21156
+      "sha256": "e482d3bc964401e46090d755167003ab87c443f015ff077d99e5ff60582451b4",
+      "size_bytes": 22798
     },
     {
       "git_blob_id": "90b8d013a3899d2f654b5ac9ac201da9bf2e5766",
@@ -1141,28 +1141,28 @@
       "size_bytes": 1808
     },
     {
-      "git_blob_id": "f6d7cfd10a2c6ba6dec277deae3887c3c58370aa",
+      "git_blob_id": "8dde6e5760692bc0e7a3aec4edf3edcc3277c239",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "6b0be9063e1b3c9c553f2323b39c37d2d0ab5e40efd84fc66d049f58b1c73c19",
-      "size_bytes": 17958
+      "sha256": "0869b454d50c4218b3b2d0a42598d9e4f1a015db8725dc51d6a9605449885b73",
+      "size_bytes": 18384
     },
     {
-      "git_blob_id": "c7eacfb20091dafcdbaaa176107cfdc134c5c742",
+      "git_blob_id": "35d11ece8f84d29f49933385ce12aab9239bfaaf",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "1824a74cbc97b17f51092174b767ec89012e6003c20bcfb1ad634374b938658b",
-      "size_bytes": 17065
+      "sha256": "441f53987b524130b89f38a7dba2305ca226f661d7b0174119cde7363ff67085",
+      "size_bytes": 19655
     },
     {
-      "git_blob_id": "9d5a74afaef94623e0411563c9e2a6aac1592dbe",
+      "git_blob_id": "2058c354679843887da59a0d04f2544f86268576",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "447b324feec401b904ee9fb3994aee042522176d7594c02a689e43e0522ec8eb",
-      "size_bytes": 42916
+      "sha256": "e88f41661c27b06ebc2ed474ba2d062af5aa83483003a4b4d4aef9ef0adfada1",
+      "size_bytes": 48325
     },
     {
       "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
@@ -1205,12 +1205,12 @@
       "size_bytes": 99554
     },
     {
-      "git_blob_id": "e6e578249e91d96db249b9d93452a880f12c3d66",
+      "git_blob_id": "f60a08b46d4c61e72ba1189d086a3562301aa8d1",
       "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "ed8de36edc8716f9cdded054fbd5a79684baffa1705a9904af0f80417d35867e",
-      "size_bytes": 12612
+      "sha256": "d350b007b3f95b37ac7366feca24a82f549512ed130f22b0f84bc5074ff216aa",
+      "size_bytes": 12888
     },
     {
       "git_blob_id": "7e563049b65dc6761e76b7d0c96c1cc10bd5c0dc",
@@ -1245,20 +1245,20 @@
       "size_bytes": 30237
     },
     {
-      "git_blob_id": "6047e79d22c0fb5658f6c8c14e70f7f1365d04ec",
+      "git_blob_id": "d8350f98a43372b6b617fa02a28431be01680e5b",
       "git_mode": "100644",
       "path": "release/0.9.0/claims.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "b3c6b151571549ebbc171c0e938e8cb33ea5287ae815ce9d0989c34c49dbbcea",
-      "size_bytes": 9348
+      "sha256": "d9bca8feb847f80c4658c58ed901e32430c3442fa3cce54a7ccc2b3718a4ae97",
+      "size_bytes": 10742
     },
     {
-      "git_blob_id": "473dbaa3be6453ec2c40231b618dfc7e7abc03e5",
+      "git_blob_id": "a33595ee45c0ac4497ca68cd5a744fc17f443e88",
       "git_mode": "100644",
       "path": "release/0.9.0/ecosystem-cut.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "4185557f1845420f69f48dfb72b7c8019f41fcdc0fb7ef45b7f8007b4e401c26",
-      "size_bytes": 8459
+      "sha256": "7d5b6fd4255638d5e7890b5085b3fc9ec8ba6d7625a4b644a0c36db356eb9e40",
+      "size_bytes": 10243
     },
     {
       "git_blob_id": "68c93810199672d53ed4ac82fb71d2e0b5a6c7c8",
@@ -1357,12 +1357,12 @@
       "size_bytes": 24936
     },
     {
-      "git_blob_id": "b105979d2addf7765e1ba6863fcdacdbab976ec1",
+      "git_blob_id": "190eb4cd60382a2dbb7d459f6006bdcd98d7c898",
       "git_mode": "100644",
       "path": "release/0.9.0/requirements-ledger.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "f674186330db1274bf3c567c11941b36436519e3500cabb18ef70cea3da644b3",
-      "size_bytes": 1713595
+      "sha256": "5526437c1a7952a0895ce2c6f23193432563db08171ae79a34c202684fec148c",
+      "size_bytes": 1714872
     },
     {
       "git_blob_id": "5b1b83f083ad140737dd5799e7abb072eff09f08",
@@ -1389,12 +1389,12 @@
       "size_bytes": 7629
     },
     {
-      "git_blob_id": "7ed92e10a035c45fa227bb929b06437f7cb88d03",
+      "git_blob_id": "f428b13b7fe99cd0e200739a3c351d29a58e4d02",
       "git_mode": "100644",
       "path": "release/0.9.0/task-closure-plan.json",
       "purpose": "current handoff identity and derived task inventory",
-      "sha256": "b8414fd84fa47f4ee8761848b0a2a10c33a8229071fe125d1df0fd46f0d72a0e",
-      "size_bytes": 1996564
+      "sha256": "23ef2f6085521863b9c575ee0b898e4ec87962ec15f205a729d9ec651972a085",
+      "size_bytes": 1997841
     },
     {
       "git_blob_id": "6c9aa66a7a6ad2ce55cb4f5191388d1c293db0e3",
@@ -1413,12 +1413,12 @@
       "size_bytes": 67085
     },
     {
-      "git_blob_id": "462729c70806822da31534e8cc0c1a654a728319",
+      "git_blob_id": "211619c98ba66a4fa05427035f1d46b4500231cf",
       "git_mode": "100644",
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "01f035d3912bc555f65c8ac6b1c6603afebc2cdd9d3dfc3f95b07f3e7df6580f",
-      "size_bytes": 40390
+      "sha256": "d0f447e940d6b1f71e3c4965bb94c5f6c2621024d6958b979e64fba10c03bf59",
+      "size_bytes": 40702
     },
     {
       "git_blob_id": "c6659c5a4bc0b26d3f8dc89b8b9e385a0e2eba88",
@@ -1493,12 +1493,12 @@
       "size_bytes": 235029
     },
     {
-      "git_blob_id": "9b944c813dec578de1d0c9f0a4b4e773e5455efe",
+      "git_blob_id": "6c0eee9453e4d86f85a014a96382f959ce2326f8",
       "git_mode": "100644",
       "path": "repo_work/freeze_audit_inputs.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "acd20dbab2868f073dbeb0221cecc3da54cc4cfc5f87446b53ca2fe9f4d8ce50",
-      "size_bytes": 95794
+      "sha256": "85b8c19662d08fc83fa393ca6c5ee9e56b0db6b74f71e54559b1af4077e3653c",
+      "size_bytes": 99244
     },
     {
       "git_blob_id": "55680cbda743b72fc3cdf96bb9e9cee3e570da62",
@@ -1669,12 +1669,12 @@
       "size_bytes": 12774
     },
     {
-      "git_blob_id": "21bca627eb2897f454139c3dabd5ffb2668c6230",
+      "git_blob_id": "8ac7e8c15b7c963e60922657b234a19e45ddb7f4",
       "git_mode": "100644",
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "b26b6e3a44b41d8ae1b831bff9668f4cd0f7b321e6344649529b1a4bed0a9cf2",
-      "size_bytes": 203817
+      "sha256": "1fee3b029c1bbce823f2dc1ced4547336953f375d4b52b4d1338722c12d99f83",
+      "size_bytes": 207704
     },
     {
       "git_blob_id": "50b877a22e146c6f0abec32f3185e6ed6fc620a5",
@@ -1701,12 +1701,12 @@
       "size_bytes": 212
     },
     {
-      "git_blob_id": "8a5201c6819cb635b31f5dbbb5174acd8dc37d62",
+      "git_blob_id": "7c6d9b209ee7f469a17a704bdf1bd3973f8b9f32",
       "git_mode": "100755",
       "path": "scripts/release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "72ca55c11ffa2be7b31555b314bb3974d9a3459d20e9f21f2f1bbfb91f9d29b9",
-      "size_bytes": 72570
+      "sha256": "9ec8aebffed03c2eb63f83121936afc8d026d5f90e6d3e2c69a6ea43ab1a6e0c",
+      "size_bytes": 110921
     },
     {
       "git_blob_id": "6db71d2a9befc48d5f8e1b3887ce78631b03d5bb",
@@ -1717,15 +1717,16 @@
       "size_bytes": 45826
     },
     {
-      "git_blob_id": "7ad706e38905950666d84f7996fa882bd17aa2cb",
+      "git_blob_id": "00045b052d08c0c9ada0790ad418816511dfe057",
       "git_mode": "100644",
       "path": "scripts/tests/test_release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "9932b89c68b44da98ce0ada0a42d4f7f10e91e52796129084533e440609c6ce7",
-      "size_bytes": 16186
+      "sha256": "5e29d5d6f41f1f8b70fdf0b509e99f4788593bae3197516317816988d3ee2eb5",
+      "size_bytes": 66033
     }
   ],
-  "audit_date": "2026-07-23",
+  "audit_date": "2026-08-04",
+  "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",
     "tree": "9d9b3f9c2eaa26f50ffcc7ab16c0d38652a9f6c0",
@@ -1809,7 +1810,7 @@
       "claim": "Galadriel 0.9.0 is qualified on NCP 1.0 or on a released pid-rs 1.x artifact.",
       "evidence": [],
       "id": "CLM-008",
-      "limitations": "The selected NCP dependency is immutable v0.8.0; the pid-rs revision is immutable but lacks an upstream v1 release tag/artifact.",
+      "limitations": "The selected NCP dependency is immutable v0.8.0. The 2026-08-03 NCP status is bound to immutable commit https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd. Its exact task ledger is https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json. G03 is OPEN and depends on X02, which is OPEN, so G03 is not dependency-ready. The Galadriel NCP observer and Galadriel raw-advisory publisher external qualifications have no exact evidence and remain NOT RUN. The exact role blueprint is https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md. The observer requires a read-only principal and an exact bounded grant. It cannot publish, mutate lifecycle state, claim authority, or issue an ESTOP. The release-facing publisher is the Galadriel assessor surface. It requires a separate principal and a default-off push-only raw-evidence path. Its payload contains raw verdict and evidence provenance with an optional non-authoritative requested effect. It cannot reuse observer credentials, self-admit, derive StateUnusable, grant or widen authority, or encode an authoritative effect, ALLOW, or command. No native-1.0 publisher exists. Galadriel keeps NCP 1.0 qualification at NOT_CLAIMED. The pid-rs revision is immutable but lacks an upstream v1 release tag or artifact.",
       "scope": "optional ecosystem dependencies",
       "tier": "NOT_CLAIMED"
     },
@@ -1825,7 +1826,7 @@
       "claim": "Galadriel 0.9.0 crates are published on crates.io or carry a production-support promise.",
       "evidence": [],
       "id": "CLM-010",
-      "limitations": "All workspace packages remain publish=false. Version 0.9.0 is a review-gated GitHub research source release.",
+      "limitations": "All workspace packages remain publish=false. Source preparation state for this tree is UNPUBLISHED_CANDIDATE with no candidate release date. GitHub publication is external evidence and is not inferred from this tracked claim.",
       "scope": "package publication and operational support",
       "tier": "NOT_CLAIMED"
     },
@@ -1881,7 +1882,7 @@
       "claim": "Publication, rollback, revocation, withdrawal, and post-publication response were rehearsed against a disposable production-equivalent release environment.",
       "evidence": [],
       "id": "CLM-017",
-      "limitations": "The release includes checked procedures and performs the actual GitHub publication path, but destructive rollback, credential revocation, and production-equivalent incident drills are intentionally not fabricated.",
+      "limitations": "The checked procedures are not evidence that the release operator ran the GitHub publication path, destructive rollback, credential revocation, or production-equivalent incident drills.",
       "scope": "release-operations rehearsal and incident response",
       "tier": "NOT_CLAIMED"
     }
@@ -1927,7 +1928,13 @@
       "kind": "external_reference",
       "line": 13,
       "path": "README.md",
-      "url": "https://img.shields.io/badge/release-0.9.0-blue.svg"
+      "url": "https://img.shields.io/badge/source%20state-unpublished%20candidate-orange.svg"
+    },
+    {
+      "kind": "external_reference",
+      "line": 144,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
     },
     {
       "kind": "external_reference",
@@ -1937,19 +1944,31 @@
     },
     {
       "kind": "external_reference",
+      "line": 152,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
+    },
+    {
+      "kind": "external_reference",
+      "line": 157,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
+    },
+    {
+      "kind": "external_reference",
       "line": 15,
       "path": "README.md",
       "url": "https://img.shields.io/badge/unsafe-forbidden-success.svg"
     },
     {
       "kind": "external_reference",
-      "line": 611,
+      "line": 638,
       "path": "README.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 795,
+      "line": 822,
       "path": "README.md",
       "url": "https://github.com/sepahead"
     },
@@ -1991,9 +2010,81 @@
     },
     {
       "kind": "external_reference",
+      "line": 256,
+      "path": "docs/ADVISORY-BOUNDARY.md",
+      "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
+    },
+    {
+      "kind": "external_reference",
+      "line": 266,
+      "path": "docs/ADVISORY-BOUNDARY.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
+    },
+    {
+      "kind": "external_reference",
+      "line": 271,
+      "path": "docs/ADVISORY-BOUNDARY.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
+    },
+    {
+      "kind": "external_reference",
+      "line": 67,
+      "path": "docs/CLAIMS.md",
+      "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
+    },
+    {
+      "kind": "external_reference",
+      "line": 68,
+      "path": "docs/CLAIMS.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
+    },
+    {
+      "kind": "external_reference",
+      "line": 73,
+      "path": "docs/CLAIMS.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
+    },
+    {
+      "kind": "external_reference",
       "line": 101,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/RustSec/advisory-db"
+    },
+    {
+      "kind": "external_reference",
+      "line": 327,
+      "path": "docs/DEPENDENCY-POLICY.md",
+      "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
+    },
+    {
+      "kind": "external_reference",
+      "line": 333,
+      "path": "docs/DEPENDENCY-POLICY.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
+    },
+    {
+      "kind": "external_reference",
+      "line": 339,
+      "path": "docs/DEPENDENCY-POLICY.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
+    },
+    {
+      "kind": "external_reference",
+      "line": 274,
+      "path": "docs/ECOSYSTEM-CONNECTIONS.md",
+      "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
+    },
+    {
+      "kind": "external_reference",
+      "line": 283,
+      "path": "docs/ECOSYSTEM-CONNECTIONS.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
+    },
+    {
+      "kind": "external_reference",
+      "line": 291,
+      "path": "docs/ECOSYSTEM-CONNECTIONS.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
     {
       "kind": "external_reference",
@@ -2491,12 +2582,12 @@
   ],
   "normative_documents": [
     {
-      "git_blob_id": "f6d7cfd10a2c6ba6dec277deae3887c3c58370aa",
+      "git_blob_id": "8dde6e5760692bc0e7a3aec4edf3edcc3277c239",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "6b0be9063e1b3c9c553f2323b39c37d2d0ab5e40efd84fc66d049f58b1c73c19",
-      "size_bytes": 17958
+      "sha256": "0869b454d50c4218b3b2d0a42598d9e4f1a015db8725dc51d6a9605449885b73",
+      "size_bytes": 18384
     },
     {
       "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
@@ -2507,12 +2598,12 @@
       "size_bytes": 5497
     },
     {
-      "git_blob_id": "0d131f3aacfc556cf025fbeb574be43f2c342950",
+      "git_blob_id": "dd2c5c13bc794d62c6b578aada79164b269c1379",
       "git_mode": "100644",
       "path": "docs/CLAIMS.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "7fd827e8c4698fb040c89a4913439da923c7f3f4e866587e0fc98d5017508eea",
-      "size_bytes": 2793
+      "sha256": "363fc3d76412b023964245f15a3b5f6d4f9828fd12af67a5f30c8a68398195e6",
+      "size_bytes": 4414
     },
     {
       "git_blob_id": "8b1e5ddbbb63a4d69daa46351ca74665b1d0cdc7",
@@ -2531,62 +2622,63 @@
       "size_bytes": 16474
     },
     {
-      "git_blob_id": "b280c000a7445cae5bda426f38f952e6723c7164",
+      "git_blob_id": "808dc24c3bd24da919b580970788a89bf91fc1b7",
       "git_mode": "100644",
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "7c0a67b588ced17093454bddd7604ee0d909739121d334dd81c1386b5d2aca09",
-      "size_bytes": 18123
+      "sha256": "d3ee1545250d759a27fbd34efa88c3b59ea179e5ade30e28c3229d081ec7263f",
+      "size_bytes": 19731
     },
     {
-      "git_blob_id": "72779357ac63b0dac2487f202f5055f041d45389",
+      "git_blob_id": "80e0fbd3941c036bfe5dc048dc0ae5548504068c",
       "git_mode": "100644",
       "path": "docs/API-SURFACE.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "83928007aa5b6d53ed8186e8185b429a4aadea097a92ca665de3a68ead1de062",
-      "size_bytes": 4890
+      "sha256": "d2cc6a4765aa45a8e627ae3ce4c38863a6335629afe34d27c6982e0371baf285",
+      "size_bytes": 4902
     },
     {
-      "git_blob_id": "64384a1004e26190c637932d91d68a3189a1edd8",
+      "git_blob_id": "67257f62dd8485af3886c2d2cf073a52c0acc226",
       "git_mode": "100644",
       "path": "SUPPORT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "23b65fd7a9eb4c9acf956c1618b1c9373d8ae7d61f31543532f086ffa7489a00",
-      "size_bytes": 1248
+      "sha256": "8ccc9a5cac53e99b1d0e7249bc71d5712470f5313e039109d434d9b42dd19e0a",
+      "size_bytes": 1260
     },
     {
-      "git_blob_id": "5da55a48e3251ef0896b90225ab09dc45ff50981",
+      "git_blob_id": "ada56a375ae0fae3b93dd89c751b1897cae5824e",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "0c43403b61f630c9805cf36ad332a99a9f6689660f0dbc1ef17a0ef431a865b2",
-      "size_bytes": 18645
+      "sha256": "e610da7606375b8a579623b94662bb56bacea1a3992e03c1e2f8044702d98aee",
+      "size_bytes": 20076
     },
     {
-      "git_blob_id": "427e6b3a1bd787f46c7cc70af0fa66d1595a39f1",
+      "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
       "git_mode": "100644",
       "path": "RELEASE-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "98adfdd2d0f444ca8014a2973bcbad59a22e7eaff874805a23e35ed416a3f862",
-      "size_bytes": 6079
+      "sha256": "87ad4a431366ebf20ece852754ad38ddabc6d8d39c51da1748a72ea69c716c58",
+      "size_bytes": 6391
     },
     {
-      "git_blob_id": "9d5a74afaef94623e0411563c9e2a6aac1592dbe",
+      "git_blob_id": "2058c354679843887da59a0d04f2544f86268576",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "447b324feec401b904ee9fb3994aee042522176d7594c02a689e43e0522ec8eb",
-      "size_bytes": 42916
+      "sha256": "e88f41661c27b06ebc2ed474ba2d062af5aa83483003a4b4d4aef9ef0adfada1",
+      "size_bytes": 48325
     }
   ],
   "release": {
     "authors": [
       "Sepehr Mahmoudian"
     ],
+    "candidate_release_date": null,
     "license": "MIT OR Apache-2.0",
     "project_doi": null,
     "publication_channel": "review-gated GitHub research source release",
-    "release_date": "2026-07-25",
+    "source_preparation_state": "UNPUBLISHED_CANDIDATE",
     "version": "0.9.0",
     "zenodo_record": null
   },
@@ -2648,12 +2740,12 @@
   },
   "schema": "galadriel.release-audit-manifest.v2",
   "source_closure_plan": {
-    "git_blob_id": "7ed92e10a035c45fa227bb929b06437f7cb88d03",
+    "git_blob_id": "f428b13b7fe99cd0e200739a3c351d29a58e4d02",
     "git_mode": "100644",
     "path": "release/0.9.0/task-closure-plan.json",
     "purpose": "post-commit task requirements, evidence rules, exclusions, and review questions",
-    "sha256": "b8414fd84fa47f4ee8761848b0a2a10c33a8229071fe125d1df0fd46f0d72a0e",
-    "size_bytes": 1996564
+    "sha256": "23ef2f6085521863b9c575ee0b898e4ec87962ec15f205a729d9ec651972a085",
+    "size_bytes": 1997841
   },
   "source_task_dispositions": {
     "git_blob_id": "6c9aa66a7a6ad2ce55cb4f5191388d1c293db0e3",

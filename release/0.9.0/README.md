@@ -1,4 +1,4 @@
-# Galadriel 0.9.0 release record
+# Galadriel 0.9.0 source release record
 
 ## Abbreviations
 
@@ -16,10 +16,11 @@
 | URL | Uniform Resource Locator |
 | ZIP | ZIP archive format |
 
-This directory contains the auditable release record for Galadriel's Mirror 0.9.0.
+This directory contains the auditable source release record for Galadriel's Mirror 0.9.0.
 The release author is **Sepehr Mahmoudian**.
-The publication channel is a review-gated GitHub research source release.
-This release does not claim crates.io publication, a DOI, or a Zenodo record.
+The intended publication channel is a review-gated GitHub research source release.
+Source preparation state for this tree: `UNPUBLISHED_CANDIDATE` with no candidate release date.
+It does not claim crates.io publication, a DOI, or a Zenodo record.
 
 [`handoff-source.json`](handoff-source.json) identifies the current external handoff.
 It records the exact archive and task-ledger digests.
@@ -64,9 +65,11 @@ Prose alone **SHALL NOT** close a task.
 
 ## Release records
 
-- `RELEASE-NOTES.md` contains the review-gated GitHub release text.
+- `RELEASE-NOTES.md` contains the tracked body text for the review-gated GitHub release.
   It preserves each unavailable deployment, integration, archival, and policy-use claim.
 - `audit-inputs.json` contains the retained release-input inventory.
+  Its `audit_date` is the maintainer-local calendar date of the latest audit-input update.
+  It cannot precede any retained inspection or observation date at its declared precision.
   Its peer objects form a separate audit-input cut.
   They do not claim each mutable peer head on the audit date.
   `audit-manifest.json` is the generated repository inventory.
@@ -79,7 +82,7 @@ Prose alone **SHALL NOT** close a task.
 - The unversioned signed version 1 pair is a historical record.
   It is not the active pair.
 - `claims.json` separates implemented, validated, deployment-qualified, and unclaimed behavior.
-  This release has no deployment-qualified claim.
+  Version 0.9.0 has no deployment-qualified claim.
 - `handoff-source.json` identifies the immutable source package.
   `tasks.json` contains the current task-index projection.
 - `task-closure-plan.json` records the required task closure.
@@ -87,6 +90,8 @@ Prose alone **SHALL NOT** close a task.
   These records do not represent future review as complete.
 - `ecosystem-cut.json` records the dated peer observations and each relationship direction.
   It records build and runtime optionality, the graph rationale, and the acyclic boundary.
+  It records the immutable 2026-08-03 NCP release-status snapshot separately
+  from the wire-0.8 dependency pin.
   It also records the Haldir supersession and dated Paper2Brain observation.
   Paper2Brain remains an explicit integration non-edge.
   Mutable heads record provenance only.

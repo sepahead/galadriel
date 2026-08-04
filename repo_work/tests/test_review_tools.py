@@ -977,7 +977,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertRegex(
             runbook,
             re.compile(
-                r"5\. Create.*?literal title\s+`Galadriel 0\.9\.0`.*?"
+                r"7\. Create.*?literal title\s+`Galadriel 0\.9\.0`.*?"
                 r"exact tracked `RELEASE-NOTES\.md` body",
                 re.DOTALL,
             ),
@@ -994,7 +994,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertRegex(
             runbook,
             re.compile(
-                r"9\. Confirm.*?literal title is\s+`Galadriel 0\.9\.0`",
+                r"11\. Confirm.*?literal title is\s+`Galadriel 0\.9\.0`",
                 re.DOTALL,
             ),
         )
@@ -1124,8 +1124,11 @@ class ReviewToolsTest(unittest.TestCase):
                 "doi": None,
                 "zenodo": None,
                 "publication_channel": freeze.PUBLICATION_CHANNEL,
+                "source_preparation_state": freeze.DATE_BOUND_SOURCE_PREPARATION_STATE,
+                "candidate_release_date": "2026-07-23",
             },
             "audit_date": "2026-07-23",
+            "audit_date_semantics": freeze.AUDIT_DATE_SEMANTICS,
             "baseline_repository": {
                 "url": "https://github.com/sepahead/galadriel",
                 "commit": baseline,
@@ -2542,7 +2545,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(cut["author"], "Sepehr Mahmoudian")
         self.assertEqual(
             (cut["inspected_at"], cut["timestamp_precision"]),
-            ("2026-07-23", "date"),
+            ("2026-08-03", "date"),
         )
         observations = cut["observations"]
         expected_observations = [
@@ -2739,12 +2742,47 @@ class ReviewToolsTest(unittest.TestCase):
                 "supersedes": None,
                 "why": "Records the mutable Paper2Brain head observed on 2026-07-23 as read-only provenance. Galadriel has no Paper2Brain dependency, API, route, adapter, or runtime edge.",
             },
+            {
+                "id": "ECO-014",
+                "project": "NCP",
+                "relationship": "upstream_release_status_inspection",
+                "ref": "immutable commit",
+                "object": "1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd",
+                "identity_kind": "immutable_upstream_status_snapshot",
+                "observed_at": "2026-08-03",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": None,
+                "status": {
+                    "candidate_version": "1.0.0-rc.1",
+                    "release_state": "UNRELEASED_RELEASE_BLOCKED_CANDIDATE",
+                    "wire": "1.0",
+                    "compact_contract_hash": "163acc57d8a62b66",
+                    "complete_normative_digest": "9cae331742d01e9b164e029aa06c644e6b1886176d0816a6ef883af138355c90",
+                    "contract_identity_note": "The compact contract hash is not the complete normative SHA-256 digest.",
+                    "task": "G03",
+                    "task_status": "OPEN",
+                    "dependency": "X02",
+                    "dependency_status": "OPEN",
+                    "dependency_ready": False,
+                    "external_roles": [
+                        "Galadriel NCP observer",
+                        "Galadriel raw-advisory publisher",
+                    ],
+                    "external_role_qualification": "NOT_RUN",
+                    "task_ledger": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json",
+                    "role_blueprint": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md",
+                },
+                "why": "Records the 2026-08-03 NCP release-status cut. It is not Galadriel's wire-0.8 dependency pin, a native-1.0 migration, or an external role receipt.",
+            },
         ]
         self.assertEqual(observations, expected_observations)
         self.assertEqual(
             cut["limitations"],
             [
                 "Mutable head observations are inspection provenance, not dependency pins.",
+                "The immutable NCP release-status snapshot is inspection provenance. It does not replace the wire-0.8 dependency pin or qualify either external role.",
                 "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir, Prisoma, Engram/Paper2Brain, ROS, or external-authority runtime edge.",
                 "Later Haldir observations do not rewrite the discovery observation or frozen historical evidence.",
                 "The directed declared graph is acyclic: optional upstream inputs point into Galadriel, prospective evidence consumers point outward, and no command or feedback edge returns upstream.",
@@ -2752,7 +2790,7 @@ class ReviewToolsTest(unittest.TestCase):
         )
         self.assertEqual(
             [row["id"] for row in observations],
-            [f"ECO-{index:03d}" for index in range(1, 14)],
+            [f"ECO-{index:03d}" for index in range(1, 15)],
         )
         self.assertEqual(
             [row["project"] for row in observations],
@@ -2770,6 +2808,7 @@ class ReviewToolsTest(unittest.TestCase):
                 "Haldir",
                 "Haldir",
                 "Paper2Brain",
+                "NCP",
             ],
         )
         self.assertTrue(
@@ -2820,6 +2859,14 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertNotEqual(
             observations[12]["identity_kind"],
             "declared_absent_runtime_edge",
+        )
+        self.assertEqual(
+            observations[13]["identity_kind"],
+            "immutable_upstream_status_snapshot",
+        )
+        self.assertEqual(
+            max(row["observed_at"] for row in observations),
+            cut["inspected_at"],
         )
 
         public_api = (repo / "release/0.9.0/api/galadriel-core.0.9.0.txt").read_text(
@@ -3099,6 +3146,39 @@ class ReviewToolsTest(unittest.TestCase):
             freeze.generate_frozen_inputs(repo, handoff, output, allowed_signers)
         self.assertFalse(output.exists())
         self.assertFalse(allowed_signers.exists())
+
+    def test_source_preparation_state_cannot_freeze_without_a_date(self) -> None:
+        audit_inputs = {
+            "release": {
+                "source_preparation_state": freeze.UNPUBLISHED_SOURCE_PREPARATION_STATE,
+                "candidate_release_date": None,
+            }
+        }
+        freeze.validate_source_preparation_lifecycle(
+            audit_inputs,
+            freeze.THREAT_STATUS_LIVING,
+        )
+        with self.assertRaisesRegex(
+            ReviewError,
+            "UNPUBLISHED_CANDIDATE requires LIVING_UNTIL_CANDIDATE_FREEZE",
+        ):
+            freeze.validate_source_preparation_lifecycle(
+                audit_inputs,
+                freeze.THREAT_STATUS_FROZEN,
+            )
+
+        audit_inputs["release"]["source_preparation_state"] = (
+            freeze.DATE_BOUND_SOURCE_PREPARATION_STATE
+        )
+        audit_inputs["release"]["candidate_release_date"] = "2026-08-03"
+        freeze.validate_source_preparation_lifecycle(
+            audit_inputs,
+            freeze.THREAT_STATUS_LIVING,
+        )
+        freeze.validate_source_preparation_lifecycle(
+            audit_inputs,
+            freeze.THREAT_STATUS_FROZEN,
+        )
 
     def test_frozen_input_operations_require_frozen_threat_status(self) -> None:
         fixture = self.make_frozen_input_fixture("threat-status-freeze")

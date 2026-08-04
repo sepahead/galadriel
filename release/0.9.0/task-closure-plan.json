@@ -30969,7 +30969,7 @@
         }
       ],
       "residual_risks": [
-        "T105: CLM-008 remains NOT_CLAIMED — The selected NCP dependency is immutable v0.8.0; the pid-rs revision is immutable but lacks an upstream v1 release tag/artifact.",
+        "T105: CLM-008 remains NOT_CLAIMED — The selected NCP dependency is immutable v0.8.0. The 2026-08-03 NCP status is bound to immutable commit https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd. Its exact task ledger is https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json. G03 is OPEN and depends on X02, which is OPEN, so G03 is not dependency-ready. The Galadriel NCP observer and Galadriel raw-advisory publisher external qualifications have no exact evidence and remain NOT RUN. The exact role blueprint is https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md. The observer requires a read-only principal and an exact bounded grant. It cannot publish, mutate lifecycle state, claim authority, or issue an ESTOP. The release-facing publisher is the Galadriel assessor surface. It requires a separate principal and a default-off push-only raw-evidence path. Its payload contains raw verdict and evidence provenance with an optional non-authoritative requested effect. It cannot reuse observer credentials, self-admit, derive StateUnusable, grant or widen authority, or encode an authoritative effect, ALLOW, or command. No native-1.0 publisher exists. Galadriel keeps NCP 1.0 qualification at NOT_CLAIMED. The pid-rs revision is immutable but lacks an upstream v1 release tag or artifact.",
         "T105: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
         "T105: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
         "T105: future changes to Requalify against published pid-rs and NCP 1.0 artifacts rather than source-branch assumptions. can invalidate this exact-candidate closure and require a new review."
@@ -33035,7 +33035,7 @@
       "residual_risks": [
         "T112: CLM-012 remains NOT_CLAIMED — The retained review is author-operated and machine-assisted. Review packets and a blank external-comment interface are provided, but no independent person is represented as having reviewed or approved the candidate.",
         "T112: CLM-016 remains NOT_CLAIMED — The author-operated standalone-clone qualifier records exact inputs and deterministic artifacts. It is not organizationally or procedurally independent.",
-        "T112: CLM-017 remains NOT_CLAIMED — The release includes checked procedures and performs the actual GitHub publication path, but destructive rollback, credential revocation, and production-equivalent incident drills are intentionally not fabricated.",
+        "T112: CLM-017 remains NOT_CLAIMED — The checked procedures are not evidence that the release operator ran the GitHub publication path, destructive rollback, credential revocation, or production-equivalent incident drills.",
         "T112: future changes to release safety can invalidate this exact-candidate closure and require a new review."
       ],
       "source_projection": {

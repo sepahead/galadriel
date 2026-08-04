@@ -18,7 +18,7 @@ It also provides optional information-theoretic research methods.
 It is part of the [`sepahead`](https://github.com/sepahead) ecosystem.
 It consumes accepted `(track, modality, frame)` innovation records (`PidObservation`).
 
-Version 0.9.0 is a review-gated GitHub research source release.
+Version 0.9.0 uses the review-gated GitHub research source release channel.
 
 The bundled historical Crebain fixture supports bounded parsing and basic NIS baseline checks.
 It is not a valid source of cross-modal correlation or PID evidence.

@@ -22,11 +22,13 @@
 
 Release author: Sepehr Mahmoudian
 
-Release date: 2026-07-25
+Source preparation state at generation: UNPUBLISHED CANDIDATE
 
-Channel: review-gated GitHub research source release
+Candidate release date at generation: NOT SET
 
-Galadriel 0.9.0 is the first review-gated research source release of Galadriel's Mirror.
+Intended channel: review-gated GitHub research source release
+
+Version 0.9.0 provides the reviewed research source for Galadriel's Mirror through the stated channel.
 It provides a fail-closed implementation for cross-sensor statistical consistency monitoring in Rust.
 The default core contains pure domain logic.
 Partial information decomposition (PID) and Neuro-Cybernetic Protocol (NCP) integrations need explicit activation.
@@ -195,6 +197,36 @@ These paths require pid-rs:
 NCP is optional in the default CLI build.
 `galadriel-ncp`, `galadriel-eval`, and the CLI `ncp` feature require NCP.
 CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` adds the transport dependencies.
+Galadriel remains pinned to immutable NCP `v0.8.0` and wire `0.8`.
+Its implemented sidecars are historical NCP 1.0 migration input.
+They are not native-1.0 role evidence.
+
+The 2026-08-03 NCP status inspection is bound to
+[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
+That commit is the unreleased and release-blocked `1.0.0-rc.1` candidate.
+It uses wire `1.0` and compact `CONTRACT_HASH` `163acc57d8a62b66`.
+The latest immutable NCP release remains `v0.8.0` and uses a different wire.
+
+The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
+records `G03` as `OPEN`.
+`G03` depends on `X02`, which is also `OPEN`, so `G03` is not dependency-ready.
+The two external role qualifications have no exact evidence and remain **NOT RUN**.
+
+The pinned [NCP ecosystem blueprint](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md)
+defines the role boundary.
+The `Galadriel NCP observer` requires a read-only observer principal and an exact
+bounded grant.
+It cannot publish, mutate lifecycle state, claim authority, or issue an ESTOP.
+The release-facing `Galadriel raw-advisory publisher` is the blueprint's
+`Galadriel assessor` surface.
+It requires a separate principal and a default-off push-only raw-evidence path.
+Its payload contains raw verdict and evidence provenance with an optional
+non-authoritative requested effect.
+It cannot reuse observer credentials, self-admit, derive `StateUnusable`, grant
+or widen authority, or encode an authoritative effect, `ALLOW`, or command.
+No native-1.0 raw-advisory publisher exists.
+Galadriel 0.9 records native-1.0 integration as `NOT_CLAIMED`.
+That Galadriel claim tier is separate from NCP's external **NOT RUN** gate state.
 
 ### Crebain
 
@@ -247,14 +279,19 @@ Optional libraries and a producer that conforms point into Galadriel.
 Only prospective evidence-consumer relationships point outward.
 No command or feedback edge returns to an upstream component.
 
+Six absolute `v0.9.0` links in these notes are publication targets.
+They resolve only after the release operator pushes the immutable tag to the canonical repository.
+The publication procedure checks all six after that push and before release publication.
+
 [`ecosystem-cut.json`](https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/ecosystem-cut.json) records the exact objects.
+It separates the immutable 2026-08-03 NCP release-status snapshot from Galadriel's wire-0.8 dependency pin.
 It also records the four dated Haldir observations and the dated Paper2Brain observation.
 Mutable inspected heads record provenance only.
 They are not release pins or reciprocal acceptance.
 
 ## Deliberate limits
 
-- This is an author-operated, review-gated research source release.
+- Evidence is author-operated. The publication channel is review-gated.
 - It does not claim production support or deployment performance.
 - It does not claim controller authorization or independent replication.
 - It does not claim reciprocal final-candidate integration.
@@ -299,6 +336,8 @@ Use those links only as convenience snapshots.
 Do not use them as signed assurance assets.
 [`RELEASE-RUNBOOK.md`](https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/RELEASE-RUNBOOK.md) gives the complete draft-first procedure.
 
-Use [`CITATION.cff`](https://github.com/sepahead/galadriel/blob/v0.9.0/CITATION.cff) for citation metadata.
-Cite version 0.9.0 and the exact Git commit used for results.
-This release has no project DOI or Zenodo record.
+Use [`CITATION.cff`](https://github.com/sepahead/galadriel/blob/v0.9.0/CITATION.cff) for source citation metadata.
+Always cite source version 0.9.0 and the exact Git commit used for results.
+Do not infer GitHub publication, a DOI, or a Zenodo record from the citation file.
+After publication, the immutable signed tag is an additional stable locator.
+Version 0.9.0 has no project DOI or Zenodo record.

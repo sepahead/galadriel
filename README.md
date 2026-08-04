@@ -10,7 +10,7 @@
   <a href="https://github.com/sepahead/galadriel/actions/workflows/ci.yml"><img src="https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg" alt="continuous integration"></a>
   <img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License: MIT OR Apache-2.0">
   <img src="https://img.shields.io/badge/rust-1.89%2B-orange.svg" alt="Rust 1.89+">
-  <img src="https://img.shields.io/badge/release-0.9.0-blue.svg" alt="release: 0.9.0">
+  <img src="https://img.shields.io/badge/source%20state-unpublished%20candidate-orange.svg" alt="source preparation state: unpublished candidate">
   <img src="https://img.shields.io/badge/status-research%20review-orange.svg" alt="status: research review">
   <img src="https://img.shields.io/badge/unsafe-forbidden-success.svg" alt="unsafe forbidden">
 </p>
@@ -87,7 +87,7 @@ A shared transport or historical fixture also does not prove such an integration
 | [NCP](https://github.com/sepahead/NCP) | Upstream wire and transport libraries | The default CLI build does not use it. `galadriel-ncp`, evaluation, and CLI `ncp` require `ncp-core`. CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` also pulls `ncp-zenoh`, Zenoh, and Tokio. | It supplies wire-0.8 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded offline JSONL, and operational receiver. | Both NCP crates pin `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`. This pin does not prove remote authorization, ACL enforcement, or wire-1.0 compatibility. |
 | [Crebain](https://github.com/sepahead/crebain) | External upstream producer relationship | There is no Cargo dependency. The demo, simulation, evaluation, and replay do not require Crebain. Live operation needs an authorized contract-conforming producer. The code identity does not have to be Crebain. | It supplies the inspected reference component for the observation and monitor sidecar contract. It also supplies the byte-identical retained registry fixture. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head. Galadriel claims no reciprocal final-candidate or deployment qualification. |
 | [Haldir](https://github.com/sepahead/haldir) | Prospective record-only consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It defines the intended future record-only boundary. It also defines a separately admitted restrict-only boundary. Local tests verify that the validator rejects transitions that grant or widen authority. | The integration phase has not started. There is no runtime evidence. |
-| [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator and covariate consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It documents a possible future immutable offline covariate import. It keeps Galadriel sidecars outside normative NCP `SensorFrame`s. | The inspected relationship records intention or adjacency only. Shared NCP and PID dependencies do not imply schema compatibility or independent-implementation replication. |
+| [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator and covariate consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It documents a possible future immutable offline covariate import. The inspected historical wire-0.8 surface keeps Galadriel sidecars outside its base `SensorFrame` routes. | The inspected relationship records intention or adjacency only. Shared NCP and PID dependencies do not imply schema compatibility or independent-implementation replication. |
 | Engram and Paper2Brain | External application names and realm context | There is no dependency, API, process, route, adapter, or runtime edge. The literal `engram/ncp` is a configurable example realm. It is not an application integration. | It makes the example deployment namespace concrete. NCP remains the actual library, key, and transport interface. | A 2026-07-23 read-only Paper2Brain observation records provenance only. Galadriel claims no integration, compatibility, or deployment qualification. |
 | ROS / ROS 2 | External robotics middleware | Version 0.9.0 has no dependency, message binding, topic, service, action, bridge, node, or runtime edge. | It identifies an ecosystem boundary that a future adapter MUST define and qualify explicitly. | Galadriel claims no ROS compatibility, bag import, or live bridge. |
 | External authority or controller | Prospective downstream policy and control boundary | There is no command, control, lease, watchdog, credential, or authority path. | A future consumer can record advisory evidence. It can apply only a separately admitted restrict-only policy. | Galadriel cannot grant, widen, refresh, or restore authority. `Nominal` is never permission. |
@@ -140,11 +140,33 @@ Those objects are not claims about the later mutable heads.
 cross-reference.
 
 These mutable repository heads are inspection provenance, not reciprocal compatibility pins.
-Current NCP `HEAD` is the unreleased and release-blocked `1.0.0-rc.1`
-candidate. It uses wire `1.0` and compact `CONTRACT_HASH`
-`163acc57d8a62b66`. The latest immutable NCP release is `v0.8.0`, which uses a
-different wire. Galadriel remains pinned to that release and has no native-1.0
-migration. Wire `1.0` is incompatible with the current named wire-0.8 sidecars.
+The 2026-08-03 NCP status inspection is bound to
+[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
+That commit is the unreleased and release-blocked `1.0.0-rc.1` candidate.
+It uses wire `1.0` and compact `CONTRACT_HASH` `163acc57d8a62b66`.
+The latest immutable NCP release is `v0.8.0`, which uses a different wire.
+Galadriel remains pinned to that release and has no native-1.0 migration.
+Wire `1.0` is incompatible with the current named wire-0.8 sidecars.
+These sidecars are historical NCP 1.0 migration input, not native-1.0 role evidence.
+
+The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
+records `G03` as `OPEN`.
+`G03` depends on `X02`, which is also `OPEN`, so `G03` is not dependency-ready.
+The two external role qualifications have no exact evidence and remain **NOT RUN**.
+
+The pinned [NCP ecosystem blueprint](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md)
+defines the role boundary.
+The `Galadriel NCP observer` requires a read-only observer principal and an exact
+bounded grant.
+It cannot publish, mutate lifecycle state, claim authority, or issue an ESTOP.
+The release-facing `Galadriel raw-advisory publisher` is the blueprint's
+`Galadriel assessor` surface.
+It requires a separate principal and a default-off push-only raw-evidence path.
+Its payload contains raw verdict and evidence provenance with an optional
+non-authoritative requested effect.
+It cannot reuse observer credentials, self-admit, derive `StateUnusable`, grant
+or widen authority, or encode an authoritative effect, `ALLOW`, or command.
+No native-1.0 raw-advisory publisher exists.
 Crebain retains component-level schema-v1 alignment.
 Crebain freezes Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input.
 
@@ -152,11 +174,15 @@ None of the retained Haldir objects contains a Galadriel adapter or runtime edge
 Prisoma has no direct sidecar path.
 The `engram/ncp` realm string creates no Paper2Brain edge.
 The source tree contains no ROS or external-authority adapter.
+Galadriel 0.9 classifies native-1.0 integration as `NOT_CLAIMED`.
+That Galadriel claim tier is separate from NCP's external **NOT RUN** gate state.
 Current reciprocal integration and final cross-repository qualification remain `NOT_CLAIMED`.
 
 The canonical [machine-readable inspection cut](release/0.9.0/ecosystem-cut.json) binds the same objects.
 It also binds local absence declarations, relationship classes, optionality, rationale, and the acyclic boundary.
 It binds the ordered Haldir supersession and Paper2Brain observation.
+It classifies the immutable 2026-08-03 NCP release-status snapshot separately
+from Galadriel's unchanged wire-0.8 dependency pin.
 
 [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) defines the exact route and lifecycle rules.
 [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) defines the downstream-effect rules.
@@ -390,12 +416,13 @@ See the [0.4→1.0 migration record](docs/PID_RS_1_0_MIGRATION.md).
 
 ## Project status
 
-**Version `0.9.0`, pre-1.0 review-gated research source release.**
+**Source preparation state for this tree: unpublished pre-1.0 research candidate.**
 Version 0.9.x freezes the `galadriel-core` source surface.
 Other crates and wire adapters remain experimental.
 Every workspace package sets `publish = false`.
-Thus, this is a review-gated GitHub research source release.
-It is not a crates.io publication.
+The intended publication channel is a review-gated GitHub research source release.
+At this source-generation state, no `v0.9.0` tag or GitHub release was recorded.
+This source process does not publish a workspace package to crates.io.
 
 Unit, property, integration, and synthetic study tests exercise the implementation.
 Current evidence does not support a field-validated or production-ready claim.
@@ -575,7 +602,7 @@ The monitor tap, pinned registry, fail-closed assembler, lifecycle adapter, and 
 
 The retained Crebain and Galadriel commit pair is a historical component fixture only.
 Its accepted example identities remain valid under the stricter consumer grammar.
-The current candidate has no accepted reciprocal producer pin or final cross-repository qualification.
+Version 0.9.0 has no accepted reciprocal producer pin or final cross-repository qualification.
 Local evidence does not attest the active ACL of a remote router.
 It also does not calibrate the detector.
 

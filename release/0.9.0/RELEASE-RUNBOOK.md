@@ -42,6 +42,32 @@ Only the release operator can merge, tag, publish, delete references, or change 
 A delegated agent can prepare and verify a milestone.
 The release operator must accept that milestone before promotion.
 
+## Date-bound candidate entry
+
+The source preparation state is `UNPUBLISHED_CANDIDATE` with no candidate release date.
+The source declares one unpublished candidate with no release date.
+This state is suitable for implementation and review only.
+It cannot enter candidate freeze or qualification.
+
+Before candidate freeze, the release operator **SHALL** select one Coordinated
+Universal Time (UTC) candidate release date. The operator **SHALL** update
+`release/0.9.0/audit-inputs.json` to `DATE_BOUND_CANDIDATE` with that date.
+The operator **SHALL** update every declared date and every mode-dependent source
+preparation marker in the same change. The release audit **SHALL** pass in the
+date-bound mode before freeze starts.
+
+The operator **SHALL** then enter candidate freeze. The freeze transaction
+generates and stages the active signed pair before the next signed commit creates
+the exact candidate identity. Qualification follows that commit. Local tag
+creation, asset construction, remote push, upload, and publication **SHALL** use
+only that frozen and qualified date-bound candidate.
+
+If the selected date changes before local tag creation, update the source
+metadata and restart at this section. Repeat candidate freeze and every
+candidate-bound qualification and review gate. Once a local `v0.9.0` tag exists,
+never move, recreate, or reuse it, even if it was not pushed. Record its
+disposition and use the applicable new-version or withdrawal procedure.
+
 ## Candidate freeze
 
 Keep the threat register at `LIVING_UNTIL_CANDIDATE_FREEZE` during implementation.
@@ -155,10 +181,16 @@ Restart every candidate-bound check.
    frozen exclusion set.
    Do not infer acceptance by an external repository.
 
-If an entry condition changes, abort.
-Do not repair a frozen candidate in place.
-Create a new signed commit on `main`.
-Repeat qualification and create new artifacts.
+Before any local `v0.9.0` tag exists, an entry-condition change **SHALL** abort
+the flow. Update the source as needed, reopen candidate freeze, create a new
+signed `main` candidate, and repeat every qualification, review, and artifact
+gate.
+
+After any local `v0.9.0` tag exists, even if unpushed, do not repair the
+candidate or continue the same version.
+Never move, recreate, or reuse that tag.
+Record its disposition, stop, and follow the applicable new-version or withdrawal
+procedure.
 
 ## Rehearsal without publication
 
@@ -536,12 +568,20 @@ python3 repo_work/local_convergence.py verify \
    test "$(git rev-parse 'origin/main^{commit}')" = "$candidate"
    test -z "$(git status --porcelain=v1 --untracked-files=all)"
    ```
-2. Create signed annotated tag `v0.9.0` at that commit.
+2. Require the current UTC date to equal the declared candidate release date
+   before local tag creation.
+   If it does not match, stop before tag creation.
+   Return to date-bound candidate entry, update the source metadata, and qualify
+   a new candidate through the complete freeze and review sequence.
+   Create signed annotated tag `v0.9.0` at that exact qualified commit.
    Use a professional message that identifies the source-only research scope.
    Derive the complete candidate, tree, tag-object, and peeled tag-target identifiers.
    Require the tag target to equal the candidate.
    Verify the commit and tag with an independently obtained allowed-signers trust root.
-   Never move or reuse a failed or withdrawn tag name.
+   Once the local tag exists, never move, recreate, or reuse it, even if it is
+   never pushed. Record the disposition and use a new version or the withdrawal
+   procedure after any later failure.
+   Do not change source after tag creation.
 3. Build the upload set in a previously absent directory.
    Preserve the two completed evidence roots as separate deterministic tar roots.
    The signed map binds both tar byte identities.
@@ -614,11 +654,98 @@ python3 repo_work/local_convergence.py verify \
      --expected-tag-target "$tag_target"
    ```
 
-4. Push only the exact `main` and `v0.9.0` identities.
+4. Before the first remote tag mutation, inspect local push hooks, repository
+   rulesets, installed GitHub Apps, external hooks, installed automation, and
+   existing tags and releases.
+   Require the canonical repository to have no `v0.9.0` tag or release.
+   Require that no tag-triggered, branch-push-triggered, draft- or release-triggered,
+   or asset-triggered integration can publish or promote a release, replace an
+   asset, mutate source, create a DOI or Zenodo record, or publish a package.
+   Record the inspected identities and result. Stop on missing access or an
+   ambiguous or mutating integration.
+5. Push only the exact `main` and `v0.9.0` identities.
    Verify the remote commit, annotated tag object, peeled target, and both signatures again.
-   Check hooks, installed automation, and releases immediately before publication.
+   Repeat the hooks, Apps, installed-automation, tag, and release inspection
+   immediately after the push. Require exactly the intended tag and no release.
    No process may create a DOI, Zenodo record, package publication, replacement asset, or second release.
-5. Create a **draft** GitHub release from `v0.9.0`.
+6. Resolve and byte-compare all six tag-bound release-body links and all three
+   public JSON Schema identifiers after the canonical remote tag push and before
+   draft creation or release publication.
+   A local tag is insufficient. Each public resource **SHALL** resolve only from
+   the immutable tag in the canonical repository.
+
+   GitHub `blob` links return Hypertext Markup Language (HTML).
+   Resolve each exact body link, then compare its raw tag URL with the tagged Git
+   blob. For each schema, require its `$id` to equal the exact raw tag URL and
+   compare those bytes with the tagged Git blob. Also compare each tagged blob
+   with the unchanged local source.
+
+   ```bash
+   set -euo pipefail
+   tag=v0.9.0
+   verification_dir="$(mktemp -d)"
+   trap 'rm -rf "$verification_dir"' EXIT
+
+   body_paths=(
+     "release/0.9.0/ecosystem-cut.json"
+     "release/0.9.0/claims.json"
+     "docs/ADVISORY-BOUNDARY.md"
+     "docs/ECOSYSTEM-CONNECTIONS.md"
+     "release/0.9.0/RELEASE-RUNBOOK.md"
+     "CITATION.cff"
+   )
+   body_links=(
+     "https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/ecosystem-cut.json"
+     "https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/claims.json"
+     "https://github.com/sepahead/galadriel/blob/v0.9.0/docs/ADVISORY-BOUNDARY.md"
+     "https://github.com/sepahead/galadriel/blob/v0.9.0/docs/ECOSYSTEM-CONNECTIONS.md"
+     "https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/RELEASE-RUNBOOK.md"
+     "https://github.com/sepahead/galadriel/blob/v0.9.0/CITATION.cff"
+   )
+   test "${#body_paths[@]}" -eq 6
+   test "${#body_links[@]}" -eq "${#body_paths[@]}"
+
+   for index in "${!body_paths[@]}"; do
+     path="${body_paths[$index]}"
+     link="${body_links[$index]}"
+     test "$link" = "https://github.com/sepahead/galadriel/blob/$tag/$path"
+     curl --fail --silent --show-error --location \
+       --output /dev/null "$link"
+     git show "$tag:$path" > "$verification_dir/expected"
+     cmp -s "$path" "$verification_dir/expected"
+     curl --fail --silent --show-error --location \
+       --output "$verification_dir/downloaded" \
+       "https://raw.githubusercontent.com/sepahead/galadriel/$tag/$path"
+     cmp -s "$verification_dir/expected" "$verification_dir/downloaded"
+   done
+
+   schema_paths=(
+     "release/0.9.0/local-convergence-schema.json"
+     "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json"
+     "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json"
+   )
+   test "${#schema_paths[@]}" -eq 3
+
+   for path in "${schema_paths[@]}"; do
+     schema_id="$(python3 -c \
+       'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["$id"])' \
+       "$path")"
+     test "$schema_id" = \
+       "https://raw.githubusercontent.com/sepahead/galadriel/$tag/$path"
+     git show "$tag:$path" > "$verification_dir/expected"
+     cmp -s "$path" "$verification_dir/expected"
+     curl --fail --silent --show-error --location \
+       --output "$verification_dir/downloaded" "$schema_id"
+     cmp -s "$verification_dir/expected" "$verification_dir/downloaded"
+   done
+
+   rm -rf "$verification_dir"
+   trap - EXIT
+   ```
+
+   These are tagged source checks, not release-asset checks. Keep anonymous
+   release-asset download checks after publication.
+7. Create a **draft** GitHub release from `v0.9.0`.
    Use the literal title `Galadriel 0.9.0`.
    Use the exact tracked `RELEASE-NOTES.md` body.
    Upload the four named files without replacement.
@@ -640,7 +767,7 @@ python3 repo_work/local_convergence.py verify \
    Do not treat them as attached assurance assets.
    The signed map does not cover them.
    They cannot replace either evidence tar file.
-6. Download all four draft assets through the authenticated GitHub path.
+8. Download all four draft assets through the authenticated GitHub path.
    Use a new empty directory.
    Require each downloaded file to equal its local upload source byte-for-byte.
    Run `verify` and reconstruct both path-preserving tiers atomically.
@@ -721,70 +848,33 @@ python3 repo_work/local_convergence.py verify \
    Repeat the `local_convergence.py verify` command against the reconstructed closure.
    Extract the qualification `galadriel-0.9.0.tar.gz` file into a second fresh directory.
    Run the locked build, test, and documentation gates from that downloaded source.
-7. Publish the draft only after each authenticated-download check passes.
-   Also wait until Coordinated Universal Time (UTC) reaches the declared release date.
-   Stop if the UTC date is later than `2026-07-25`.
-   Update every declared release date.
-   Create and qualify a new candidate.
+9. Before publication, require every authenticated-download check above to pass.
+   Immediately before manual publication, query the authenticated GitHub API again.
+   Require the API to still report the intended release as `draft=true`.
+   Require exactly the four intended asset names and sizes.
+   Require every API asset identity to equal its recorded post-upload identity;
+   no replacement is permitted.
+   Re-download all four assets through the authenticated GitHub path into a new
+   empty directory.
+   Require each authenticated download to equal its local upload source byte-for-byte.
+   Require no unexpected second release, package publication, DOI, or Zenodo side effect.
+   Immediately before publication, require the current UTC date to equal the
+   declared candidate release date.
+   Require `HEAD`, remote `main`, and the peeled `v0.9.0` target to remain the same
+   exact qualified commit.
+   Require no source change after tag creation.
+   If any condition fails after tag creation, do not move or reuse the tag.
+   Stop publication, record the candidate disposition, and restart under the
+   applicable new-version or withdrawal procedure.
 
+   Publish the draft only after all preceding gates pass.
+10. Verify the published release and anonymous downloads first.
    Download the four public assets anonymously into another empty directory.
    Compare the four files with the local upload sources.
 
    Repeat exact-set verification and reconstruction.
    Repeat the internal signature and checksum checks.
    Repeat the fresh-source build.
-
-   Require all six tag-bound release-body links to resolve.
-
-   GitHub `blob` links return Hypertext Markup Language (HTML).
-   Compare each raw file with the applicable tagged Git blob.
-   Do not compare the HTML page as source content.
-
-   Compare all three public JSON Schema `$id` URLs with their tagged Git blobs:
-
-   ```bash
-   set -euo pipefail
-   tag=v0.9.0
-   verification_dir="$(mktemp -d)"
-   trap 'rm -rf "$verification_dir"' EXIT
-
-   release_paths=(
-     "release/0.9.0/ecosystem-cut.json"
-     "release/0.9.0/claims.json"
-     "docs/ADVISORY-BOUNDARY.md"
-     "docs/ECOSYSTEM-CONNECTIONS.md"
-     "release/0.9.0/RELEASE-RUNBOOK.md"
-     "CITATION.cff"
-   )
-   schema_paths=(
-     "release/0.9.0/local-convergence-schema.json"
-     "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json"
-     "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json"
-   )
-
-   for path in "${release_paths[@]}"; do
-     curl --fail --silent --show-error --location \
-       --output /dev/null \
-       "https://github.com/sepahead/galadriel/blob/$tag/$path"
-     git show "$tag:$path" > "$verification_dir/expected"
-     curl --fail --silent --show-error --location \
-       --output "$verification_dir/downloaded" \
-       "https://raw.githubusercontent.com/sepahead/galadriel/$tag/$path"
-     cmp -s "$verification_dir/expected" "$verification_dir/downloaded"
-   done
-
-   for path in "${schema_paths[@]}"; do
-     git show "$tag:$path" > "$verification_dir/expected"
-     curl --fail --silent --show-error --location \
-       --output "$verification_dir/downloaded" \
-       "https://raw.githubusercontent.com/sepahead/galadriel/$tag/$path"
-     cmp -s "$verification_dir/expected" "$verification_dir/downloaded"
-   done
-
-   rm -rf "$verification_dir"
-   trap - EXIT
-   ```
-8. Verify the published release and anonymous downloads first.
    Confirm that `WITHDRAWN-RELEASES.md` preserves the legacy identities.
    The recorded cleanup set has one obsolete tag and two obsolete release-work branches.
    The recorded cleanup set has zero GitHub releases.
@@ -871,7 +961,7 @@ python3 repo_work/local_convergence.py verify \
    Do not delete the external preservation directory.
    Confirm that none of those references exists.
    Confirm that no applicable legacy GitHub release exists.
-9. Confirm that the release author is Sepehr Mahmoudian.
+11. Confirm that the release author is Sepehr Mahmoudian.
    Confirm that the literal title is `Galadriel 0.9.0`.
    Confirm that the version, date, and tracked body are exact.
    Require exactly four attached assets.

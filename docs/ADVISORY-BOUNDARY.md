@@ -252,15 +252,37 @@ It cannot call an authorization path.
 Galadriel pins `ncp-core` and `ncp-zenoh` to the immutable revision selected by
 the public `v0.8.0` tag.
 The exact revision is `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
-Current NCP `HEAD` is the unreleased and release-blocked `1.0.0-rc.1`
-candidate. It uses wire `1.0` and compact `CONTRACT_HASH`
-`163acc57d8a62b66`. The latest immutable NCP release remains `v0.8.0` and uses
-a different wire. The current candidate is not a Galadriel dependency or an
-installed compatibility result.
+The 2026-08-03 NCP status inspection is bound to
+[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
+That commit is the unreleased and release-blocked `1.0.0-rc.1` candidate.
+It uses wire `1.0` and compact `CONTRACT_HASH` `163acc57d8a62b66`.
+The latest immutable NCP release remains `v0.8.0` and uses a different wire.
+The candidate is not a Galadriel dependency or an installed compatibility result.
 
 Galadriel named sensor sidecars are wire-0.8 project surfaces.
 They are not native wire-1.0 extensions.
-Galadriel claims no NCP 1.0 compatibility.
+They are historical NCP 1.0 migration input, not native-1.0 role evidence.
+
+The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
+records `G03` as `OPEN`.
+`G03` depends on `X02`, which is also `OPEN`, so `G03` is not dependency-ready.
+The two external role qualifications have no exact evidence and remain **NOT RUN**.
+
+The pinned [NCP ecosystem blueprint](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md)
+defines the role boundary.
+The `Galadriel NCP observer` requires a read-only observer principal and an exact
+bounded grant.
+It cannot publish, mutate lifecycle state, claim authority, or issue an ESTOP.
+The release-facing `Galadriel raw-advisory publisher` is the blueprint's
+`Galadriel assessor` surface.
+It requires a separate principal and a default-off push-only raw-evidence path.
+Its payload contains raw verdict and evidence provenance with an optional
+non-authoritative requested effect.
+It cannot reuse observer credentials, self-admit, derive `StateUnusable`, grant
+or widen authority, or encode an authoritative effect, `ALLOW`, or command.
+No native-1.0 raw-advisory publisher exists.
+Galadriel 0.9 therefore keeps NCP 1.0 integration `NOT_CLAIMED`.
+That claim tier is separate from NCP's external **NOT RUN** gate state.
 
 Crebain `4c311900ade5668200a48d56fb191be1916b884a` and Galadriel
 `81437d807ca83b66b45c8353968948e540072d97` form a retained historical
@@ -270,9 +292,10 @@ Crebain is an optional reference producer with no Galadriel Cargo dependency.
 Current reciprocal integration and final cross-repository qualification are
 `NOT_CLAIMED`.
 
-Prisoma observes normative NCP sensor frames. It is not a Galadriel sidecar
-consumer. Galadriel project-owned sidecars are prohibited from the normative
-`SensorFrame` publication path.
+The inspected historical Prisoma wire-0.8 surface observes base sensor-frame
+routes. It is not a Galadriel sidecar consumer or native-1.0 role receipt.
+Galadriel project-owned sidecars are prohibited from that `SensorFrame`
+publication path.
 
 The live taps and operational join have in-process Zenoh loopback coverage.
 No retained external multi-process mTLS and ACL run exists between current

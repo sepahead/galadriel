@@ -70,8 +70,121 @@ ECOSYSTEM_CUT = RELEASE / "ecosystem-cut.json"
 AUDIT_OUTPUT = RELEASE / "audit-manifest.json"
 LEDGER_OUTPUT = RELEASE / "requirements-ledger.json"
 VERSION = "0.9.0"
-RELEASE_DATE = "2026-07-25"
+UNPUBLISHED_SOURCE_PREPARATION_STATE = "UNPUBLISHED_CANDIDATE"
+DATE_BOUND_SOURCE_PREPARATION_STATE = "DATE_BOUND_CANDIDATE"
 PUBLICATION_CHANNEL = "review-gated GitHub research source release"
+AUDIT_DATE_SEMANTICS = (
+    "Maintainer-local calendar date of the latest audit-input update. It cannot "
+    "precede any retained inspection or observation date at its declared precision."
+)
+NCP_STATUS_COMMIT = "1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
+NCP_COMPACT_CONTRACT_HASH = "163acc57d8a62b66"
+NCP_COMPLETE_NORMATIVE_DIGEST = (
+    "9cae331742d01e9b164e029aa06c644e6b1886176d0816a6ef883af138355c90"
+)
+NCP_STATUS_URL = f"https://github.com/sepahead/NCP/commit/{NCP_STATUS_COMMIT}"
+NCP_TASK_LEDGER_URL = (
+    f"https://github.com/sepahead/NCP/blob/{NCP_STATUS_COMMIT}/"
+    "evidence/implementation/task-ledger.v1.json"
+)
+NCP_ROLE_BLUEPRINT_URL = (
+    f"https://github.com/sepahead/NCP/blob/{NCP_STATUS_COMMIT}/"
+    "docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
+)
+NCP_ROLE_SUBJECTS = (
+    "Galadriel NCP observer",
+    "Galadriel raw-advisory publisher",
+)
+RELEASE_NOTE_PUBLICATION_TARGETS = (
+    "https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/ecosystem-cut.json",
+    "https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/claims.json",
+    "https://github.com/sepahead/galadriel/blob/v0.9.0/docs/ADVISORY-BOUNDARY.md",
+    "https://github.com/sepahead/galadriel/blob/v0.9.0/docs/ECOSYSTEM-CONNECTIONS.md",
+    "https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/RELEASE-RUNBOOK.md",
+    "https://github.com/sepahead/galadriel/blob/v0.9.0/CITATION.cff",
+)
+PUBLIC_JSON_SCHEMA_IDS = (
+    (
+        "release/0.9.0/local-convergence-schema.json",
+        "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
+        "release/0.9.0/local-convergence-schema.json",
+    ),
+    (
+        "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
+        "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
+        "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
+    ),
+    (
+        "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
+        "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
+        "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
+    ),
+)
+PUBLICATION_SEQUENCE_MARKERS = (
+    "## Date-bound candidate entry",
+    "Before candidate freeze, the release operator **SHALL** select one Coordinated",
+    "## Candidate freeze",
+    "The next signed commit creates the exact candidate identity.",
+    "Before any local `v0.9.0` tag exists, an entry-condition change **SHALL** abort",
+    "After any local `v0.9.0` tag exists, even if unpushed, do not repair the",
+    "Never move, recreate, or reuse that tag.",
+    "## Qualify the candidate",
+    "## Publication",
+    "1. Fetch `origin` again.",
+    "2. Require the current UTC date to equal the declared candidate release date",
+    "Create signed annotated tag `v0.9.0` at that exact qualified commit.",
+    "Once the local tag exists, never move, recreate, or reuse it, even if it is",
+    "Do not change source after tag creation.",
+    "3. Build the upload set in a previously absent directory.",
+    "4. Before the first remote tag mutation, inspect local push hooks, repository",
+    "rulesets, installed GitHub Apps, external hooks, installed automation, and",
+    "existing tags and releases.",
+    "Require the canonical repository to have no `v0.9.0` tag or release.",
+    "Require that no tag-triggered, branch-push-triggered, draft- or release-triggered,",
+    "or asset-triggered integration can publish or promote a release, replace an",
+    "asset, mutate source, create a DOI or Zenodo record, or publish a package.",
+    "Record the inspected identities and result. Stop on missing access or an",
+    "ambiguous or mutating integration.",
+    "5. Push only the exact `main` and `v0.9.0` identities.",
+    "Verify the remote commit, annotated tag object, peeled target, and both signatures again.",
+    "Repeat the hooks, Apps, installed-automation, tag, and release inspection",
+    "immediately after the push. Require exactly the intended tag and no release.",
+    "No process may create a DOI, Zenodo record, package publication, replacement asset, or second release.",
+    "6. Resolve and byte-compare all six tag-bound release-body links and all three",
+    "7. Create a **draft** GitHub release from `v0.9.0`.",
+    "Upload the four named files without replacement.",
+    "8. Download all four draft assets through the authenticated GitHub path.",
+    "9. Before publication, require every authenticated-download check above to pass.",
+    "Immediately before manual publication, query the authenticated GitHub API again.",
+    "Require the API to still report the intended release as `draft=true`.",
+    "Require exactly the four intended asset names and sizes.",
+    "Require every API asset identity to equal its recorded post-upload identity;",
+    "no replacement is permitted.",
+    "Re-download all four assets through the authenticated GitHub path into a new",
+    "empty directory.",
+    "Require each authenticated download to equal its local upload source byte-for-byte.",
+    "Require no unexpected second release, package publication, DOI, or Zenodo side effect.",
+    "Immediately before publication, require the current UTC date to equal the",
+    "declared candidate release date.",
+    "Require `HEAD`, remote `main`, and the peeled `v0.9.0` target to remain the same",
+    "exact qualified commit.",
+    "Require no source change after tag creation.",
+    "If any condition fails after tag creation, do not move or reuse the tag.",
+    "Stop publication, record the candidate disposition, and restart under the",
+    "applicable new-version or withdrawal procedure.",
+    "Publish the draft only after all preceding gates pass.",
+    "10. Verify the published release and anonymous downloads first.",
+    "Download the four public assets anonymously into another empty directory.",
+    "Compare the four files with the local upload sources.",
+    "Repeat exact-set verification and reconstruction.",
+    "Repeat the internal signature and checksum checks.",
+    "Repeat the fresh-source build.",
+    "11. Confirm that the release author is Sepehr Mahmoudian.",
+    "## Rollback and withdrawal",
+)
+RELEASE_RUNBOOK_CONTRACT_SHA256 = (
+    "273ad525aee929caa1c8add5606f713fe494304096693fe4004bf278604ac7c5"
+)
 
 AUDIT_SELF_EXCLUSIONS = frozenset({AUDIT_OUTPUT.relative_to(ROOT).as_posix()})
 GENERATED_PATHS = frozenset(
@@ -573,11 +686,88 @@ def git(*arguments: str) -> str:
         raise AuditError(str(error)) from error
 
 
-def require_keys(value: dict[str, Any], keys: set[str], context: str) -> None:
+def require_keys(value: Any, keys: set[str], context: str) -> None:
+    if not isinstance(value, dict):
+        raise AuditError(f"{context} must be an object")
     missing = sorted(keys - value.keys())
     extra = sorted(value.keys() - keys)
     if missing or extra:
         raise AuditError(f"{context}: missing={missing}, unexpected={extra}")
+
+
+def visible_markdown_lines(
+    document: str,
+    *,
+    include_code_blocks: bool,
+) -> list[str]:
+    """Return non-comment Markdown lines, optionally including code content."""
+
+    visible: list[str] = []
+    in_html_comment = False
+    fence_character: str | None = None
+    fence_length = 0
+    for source_line in document.splitlines():
+        if fence_character is not None:
+            closing = re.fullmatch(r" {0,3}(`{3,}|~{3,})[ \t]*", source_line)
+            if (
+                closing is not None
+                and closing.group(1)[0] == fence_character
+                and len(closing.group(1)) >= fence_length
+            ):
+                fence_character = None
+                fence_length = 0
+            elif include_code_blocks:
+                stripped = source_line.strip()
+                if stripped:
+                    visible.append(stripped)
+            continue
+
+        visible_parts: list[str] = []
+        cursor = 0
+        while cursor < len(source_line):
+            if in_html_comment:
+                comment_end = source_line.find("-->", cursor)
+                if comment_end < 0:
+                    cursor = len(source_line)
+                    break
+                in_html_comment = False
+                cursor = comment_end + 3
+                continue
+            comment_start = source_line.find("<!--", cursor)
+            if comment_start < 0:
+                visible_parts.append(source_line[cursor:])
+                cursor = len(source_line)
+                break
+            visible_parts.append(source_line[cursor:comment_start])
+            in_html_comment = True
+            cursor = comment_start + 4
+
+        visible_line = "".join(visible_parts)
+        opening = re.match(r"^ {0,3}(`{3,}|~{3,})", visible_line)
+        if opening is not None:
+            token = opening.group(1)
+            fence_character = token[0]
+            fence_length = len(token)
+            continue
+        if (
+            not include_code_blocks
+            and (visible_line.startswith("    ") or visible_line.startswith("\t"))
+        ):
+            continue
+        stripped = visible_line.strip()
+        if stripped:
+            visible.append(stripped)
+    if in_html_comment:
+        raise AuditError("Markdown contains an unterminated HTML comment")
+    if fence_character is not None:
+        raise AuditError("Markdown contains an unterminated fenced code block")
+    return visible
+
+
+def rendered_markdown_prose_lines(document: str) -> list[str]:
+    """Return visible prose lines outside comments and Markdown code blocks."""
+
+    return visible_markdown_lines(document, include_code_blocks=False)
 
 
 def artifact(
@@ -933,6 +1123,7 @@ def validate_inputs(
             "schema",
             "release",
             "audit_date",
+            "audit_date_semantics",
             "baseline_repository",
             "repositories",
             "toolchains",
@@ -948,7 +1139,16 @@ def validate_inputs(
     release = inputs["release"]
     require_keys(
         release,
-        {"name", "version", "author", "doi", "zenodo", "publication_channel"},
+        {
+            "name",
+            "version",
+            "author",
+            "doi",
+            "zenodo",
+            "publication_channel",
+            "source_preparation_state",
+            "candidate_release_date",
+        },
         "release identity",
     )
     if release["version"] != VERSION or release["author"] != "Sepehr Mahmoudian":
@@ -957,6 +1157,23 @@ def validate_inputs(
         raise AuditError("release publication channel differs from the 0.9.0 contract")
     if release["doi"] is not None or release["zenodo"] is not None:
         raise AuditError("0.9.0 must not claim a project DOI or Zenodo record")
+    source_preparation_state = release["source_preparation_state"]
+    candidate_release_date = release["candidate_release_date"]
+    if source_preparation_state == UNPUBLISHED_SOURCE_PREPARATION_STATE:
+        if candidate_release_date is not None:
+            raise AuditError(
+                "UNPUBLISHED_CANDIDATE must have no candidate release date"
+            )
+    elif source_preparation_state == DATE_BOUND_SOURCE_PREPARATION_STATE:
+        parse_exact_date(
+            candidate_release_date,
+            "release candidate_release_date",
+        )
+    else:
+        raise AuditError("release source_preparation_state is unsupported")
+    parse_exact_date(inputs["audit_date"], "release audit_date")
+    if inputs["audit_date_semantics"] != AUDIT_DATE_SEMANTICS:
+        raise AuditError("release audit_date semantics differ from the contract")
     baseline = inputs["baseline_repository"]
     require_keys(baseline, {"url", "commit", "tree"}, "baseline repository")
     if not REVISION.fullmatch(baseline["commit"]):
@@ -1223,6 +1440,41 @@ def validate_project_metadata(
         or "given-names: Sepehr" not in citation
     ):
         raise AuditError("CITATION.cff author identity is incomplete")
+    release_notes = text(RELEASE / "RELEASE-NOTES.md")
+    release_runbook = text(RELEASE / "RELEASE-RUNBOOK.md")
+    source_preparation_state = inputs["release"]["source_preparation_state"]
+    candidate_release_date = inputs["release"]["candidate_release_date"]
+    unpublished_mode = (
+        source_preparation_state == UNPUBLISHED_SOURCE_PREPARATION_STATE
+        and candidate_release_date is None
+    )
+    dated_mode = (
+        source_preparation_state == DATE_BOUND_SOURCE_PREPARATION_STATE
+        and isinstance(candidate_release_date, str)
+    )
+    if not unpublished_mode and not dated_mode:
+        raise AuditError(
+            "source preparation mode must pair UNPUBLISHED_CANDIDATE with no date "
+            "or DATE_BOUND_CANDIDATE with one date"
+        )
+    if dated_mode:
+        parse_exact_date(candidate_release_date, "candidate release date")
+    threat_document = (
+        load_json(THREAT_REGISTER)
+        if snapshot is None
+        else load_json(THREAT_REGISTER, snapshot)
+    )
+    if not isinstance(threat_document, dict):
+        raise AuditError("threat register must be an object")
+    threat_status = threat_document.get("status")
+    if threat_status not in VALID_THREAT_REGISTER_STATUSES:
+        raise AuditError("threat register has an unsupported lifecycle status")
+    if unpublished_mode and threat_status != "LIVING_UNTIL_CANDIDATE_FREEZE":
+        raise AuditError(
+            "UNPUBLISHED_CANDIDATE requires LIVING_UNTIL_CANDIDATE_FREEZE"
+        )
+    if threat_status == "FROZEN_AT_CANDIDATE" and not dated_mode:
+        raise AuditError("FROZEN_AT_CANDIDATE requires a date-bound candidate source")
     release_date_records = {
         "CITATION.cff": (
             citation,
@@ -1233,17 +1485,435 @@ def validate_project_metadata(
             r"(?m)^## \[0\.9\.0\] - (\d{4}-\d{2}-\d{2})$",
         ),
         "release/0.9.0/RELEASE-NOTES.md": (
-            text(RELEASE / "RELEASE-NOTES.md"),
-            r"(?m)^Release date: (\d{4}-\d{2}-\d{2})$",
-        ),
-        "release/0.9.0/RELEASE-RUNBOOK.md": (
-            text(RELEASE / "RELEASE-RUNBOOK.md"),
-            r"Stop if the UTC date is later than `(\d{4}-\d{2}-\d{2})`\.",
+            release_notes,
+            r"(?m)^Candidate release date at generation: (\d{4}-\d{2}-\d{2})$",
         ),
     }
-    for path, (document, pattern) in release_date_records.items():
-        if re.findall(pattern, document) != [RELEASE_DATE]:
-            raise AuditError(f"{path} does not identify release date {RELEASE_DATE}")
+    if "<!--" in release_runbook or "-->" in release_runbook:
+        raise AuditError(
+            "RELEASE-RUNBOOK.md must not contain HTML comment delimiters"
+        )
+    if re.search(r"<\s*/?\s*[A-Za-z][^>]*>", release_runbook):
+        raise AuditError("RELEASE-RUNBOOK.md must not contain raw HTML tags")
+    publication_lines = rendered_markdown_prose_lines(release_runbook)
+    sequence_positions: list[int] = []
+    for marker in PUBLICATION_SEQUENCE_MARKERS:
+        if publication_lines.count(marker) != 1:
+            raise AuditError(
+                f"RELEASE-RUNBOOK.md publication sequence omits exact marker: {marker}"
+            )
+        sequence_positions.append(publication_lines.index(marker))
+    if sequence_positions != sorted(sequence_positions):
+        raise AuditError(
+            "RELEASE-RUNBOOK.md must date-bind, freeze, and qualify the candidate "
+            "before tag and asset work; inspect automation before remote push; and "
+            "byte-check tagged sources before draft creation; then enforce the "
+            "authenticated API, date, identity, and source gates before publication"
+        )
+    publication_start = publication_lines.index("## Publication")
+    publication_prose = publication_lines[publication_start + 1 :]
+    instruction_lines = visible_markdown_lines(
+        release_runbook,
+        include_code_blocks=True,
+    )
+    instruction_start = instruction_lines.index("## Publication")
+    publication_instructions = instruction_lines[instruction_start + 1 :]
+    final_promotion_action = "Publish the draft only after all preceding gates pass."
+    if publication_instructions.count(final_promotion_action) != 1:
+        raise AuditError(
+            "RELEASE-RUNBOOK.md must contain one active final promotion action"
+        )
+
+    def imperative_text(line: str) -> str:
+        without_list_marker = re.sub(r"^(?:\d+[.)]|[-+*])\s+", "", line)
+        return without_list_marker.lstrip("`*_ ")
+
+    for line in publication_prose:
+        if line == final_promotion_action:
+            continue
+        if re.match(
+            r"(?i)^(?:(?:publish|promote)\b|release\s+(?:the|this|version|candidate|draft)\b)",
+            imperative_text(line),
+        ):
+            raise AuditError(
+                "RELEASE-RUNBOOK.md contains an early release-promotion imperative"
+            )
+    publication_corpus = " ".join(publication_instructions)
+    if re.search(
+        r"(?i)\bgh\s+release\s+(?:create|edit|upload|delete)\b",
+        publication_corpus,
+    ) or (
+        re.search(r"(?i)\bgh\s+api\b", publication_corpus)
+        and "/releases" in publication_corpus
+    ) or (
+        re.search(r"(?i)\bcurl\b", publication_corpus)
+        and "/releases" in publication_corpus
+        and re.search(
+            r"(?i)(?:-X|--request|--method)(?:=|\s+)(?:POST|PUT|PATCH|DELETE)\b",
+            publication_corpus,
+        )
+    ):
+        raise AuditError(
+            "RELEASE-RUNBOOK.md contains an active alternate release command"
+        )
+
+    remote_push_marker = "5. Push only the exact `main` and `v0.9.0` identities."
+    if publication_instructions.count(remote_push_marker) != 1:
+        raise AuditError(
+            "RELEASE-RUNBOOK.md must contain one active remote-push boundary"
+        )
+    remote_push_position = publication_instructions.index(remote_push_marker)
+    pre_push_instructions = publication_instructions[:remote_push_position]
+    pre_push_prose = publication_prose[: publication_prose.index(remote_push_marker)]
+    for line in pre_push_prose:
+        if re.match(r"(?i)^(?:push|send|upload)\b", imperative_text(line)):
+            raise AuditError(
+                "RELEASE-RUNBOOK.md contains an early remote mutation imperative"
+            )
+    pre_push_corpus = " ".join(pre_push_instructions)
+    if (
+        re.search(r"(?i)\bgit\s+(?:push|send-pack)\b", pre_push_corpus)
+        or (
+            "/git/refs" in pre_push_corpus
+            and re.search(r"(?i)\b(?:gh\s+api|curl)\b", pre_push_corpus)
+        )
+    ):
+        raise AuditError(
+            "RELEASE-RUNBOOK.md contains an active remote-ref mutation command "
+            "before the automation preflight"
+        )
+    if unpublished_mode:
+        runbook_state_line = (
+            "The source preparation state is `UNPUBLISHED_CANDIDATE` with no "
+            "candidate release date."
+        )
+        runbook_date_line = (
+            "The source declares one unpublished candidate with no release date."
+        )
+    else:
+        runbook_state_line = (
+            "The source preparation state is `DATE_BOUND_CANDIDATE` with candidate "
+            f"release date {candidate_release_date}."
+        )
+        runbook_date_line = (
+            "The source declares one date-bound candidate release date."
+        )
+    normalized_runbook = release_runbook
+    for source_line, placeholder in (
+        (
+            runbook_state_line,
+            "{{SOURCE_PREPARATION_STATE_CONTRACT_LINE}}",
+        ),
+        (
+            runbook_date_line,
+            "{{CANDIDATE_DATE_CONTRACT_LINE}}",
+        ),
+    ):
+        if normalized_runbook.count(source_line) != 1:
+            raise AuditError(
+                "RELEASE-RUNBOOK.md has an incorrect mode-dependent contract line"
+            )
+        normalized_runbook = normalized_runbook.replace(source_line, placeholder, 1)
+    runbook_contract = normalized_runbook.encode("utf-8")
+    if hashlib.sha256(runbook_contract).hexdigest() != RELEASE_RUNBOOK_CONTRACT_SHA256:
+        raise AuditError(
+            "RELEASE-RUNBOOK.md differs from the exact reviewed runbook contract"
+        )
+    if "Stop if the UTC date is later than" in release_runbook:
+        raise AuditError(
+            "RELEASE-RUNBOOK.md must use UTC equality, not the obsolete later-than rule"
+        )
+
+    expected_status_line = (
+        "Source preparation state at generation: UNPUBLISHED CANDIDATE"
+        if unpublished_mode
+        else "Source preparation state at generation: DATE-BOUND CANDIDATE"
+    )
+    status_lines = [
+        line.strip()
+        for line in release_notes.splitlines()
+        if line.strip().startswith("Source preparation state at generation:")
+    ]
+    if status_lines != [expected_status_line]:
+        raise AuditError(
+            "RELEASE-NOTES.md must contain exactly one historical source preparation "
+            "state for the selected mode"
+        )
+    expected_date_line = (
+        "Candidate release date at generation: NOT SET"
+        if unpublished_mode
+        else f"Candidate release date at generation: {candidate_release_date}"
+    )
+    date_lines = [
+        line.strip()
+        for line in release_notes.splitlines()
+        if line.strip().startswith("Candidate release date at generation:")
+    ]
+    if date_lines != [expected_date_line]:
+        raise AuditError(
+            "RELEASE-NOTES.md must contain exactly one date for the selected "
+            "source preparation mode"
+        )
+
+    lifecycle_documents = {
+        "AGENTS.md": text(ROOT / "AGENTS.md"),
+        "CLAUDE.mdc": text(ROOT / "CLAUDE.mdc"),
+        "README.md": text(ROOT / "README.md"),
+        "CHANGELOG.md": text(ROOT / "CHANGELOG.md"),
+        "SECURITY.md": text(ROOT / "SECURITY.md"),
+        "CONTRIBUTING.md": text(ROOT / "CONTRIBUTING.md"),
+        "RELEASE-POLICY.md": text(ROOT / "RELEASE-POLICY.md"),
+        "SUPPORT.md": text(ROOT / "SUPPORT.md"),
+        "docs/API-SURFACE.md": text(ROOT / "docs" / "API-SURFACE.md"),
+        "docs/CLAIMS.md": text(ROOT / "docs" / "CLAIMS.md"),
+        "release/0.9.0/README.md": text(RELEASE / "README.md"),
+        "release/0.9.0/RELEASE-NOTES.md": release_notes,
+        "release/0.9.0/RELEASE-RUNBOOK.md": release_runbook,
+        "release/0.9.0/claims.json": text(CLAIMS),
+        "repo_work/README.md": text(ROOT / "repo_work" / "README.md"),
+    }
+    freeze_transition_markers = (
+        "Before the threat register enters `FROZEN_AT_CANDIDATE`, the source **SHALL** be",
+        "`DATE_BOUND_CANDIDATE` with one ISO `candidate_release_date`.",
+        "Every mode and date marker **SHALL** match that date-bound state.",
+        "`DATE_BOUND_CANDIDATE` with `LIVING_UNTIL_CANDIDATE_FREEZE` is the permitted",
+    )
+    neutral_markers = {
+        "AGENTS.md": freeze_transition_markers,
+        "CLAUDE.mdc": freeze_transition_markers,
+        "CITATION.cff": (
+            "If you use this research software, cite source version 0.9.0 and the exact Git",
+            "commit used to produce your results. This source version has no digital object",
+            "Galadriel is fail-closed Rust research software for cross-sensor statistical",
+        ),
+        "CHANGELOG.md": (
+            "These identifiers resolve only after the release operator pushes that immutable tag to the canonical repository.",
+        ),
+        "SECURITY.md": ("This research source version has no remediation-time SLA.",),
+        "CONTRIBUTING.md": (
+            "Version 0.9.0 uses the review-gated GitHub research source release channel.",
+        ),
+        "RELEASE-POLICY.md": freeze_transition_markers,
+        "SUPPORT.md": (
+            "Galadriel 0.9.0 uses the review-gated GitHub research source release channel.",
+        ),
+        "docs/API-SURFACE.md": (
+            "Galadriel 0.9.0 uses the review-gated GitHub research source release channel.",
+        ),
+        "docs/CLAIMS.md": (
+            "Version 0.9.0 implements a bounded and fail-closed advisory component.",
+            "Dated read-only ecosystem inspections through 2026-08-03 do not change a claim",
+        ),
+        "release/0.9.0/README.md": (
+            "# Galadriel 0.9.0 source release record",
+            "This directory contains the auditable source release record for Galadriel's Mirror 0.9.0.",
+            "- `RELEASE-NOTES.md` contains the tracked body text for the review-gated GitHub release.",
+            "Version 0.9.0 has no deployment-qualified claim.",
+        ),
+        "release/0.9.0/RELEASE-NOTES.md": (
+            "Version 0.9.0 provides the reviewed research source for Galadriel's Mirror through the stated channel.",
+            "Evidence is author-operated. The publication channel is review-gated.",
+            "They resolve only after the release operator pushes the immutable tag to the canonical repository.",
+            "The publication procedure checks all six after that push and before release publication.",
+            "Always cite source version 0.9.0 and the exact Git commit used for results.",
+            "Do not infer GitHub publication, a DOI, or a Zenodo record from the citation file.",
+            "After publication, the immutable signed tag is an additional stable locator.",
+        ),
+        "release/0.9.0/claims.json": (
+            "The checked procedures are not evidence that the release operator ran the GitHub publication path, destructive rollback, credential revocation, or production-equivalent incident drills.",
+        ),
+        "repo_work/README.md": freeze_transition_markers,
+    }
+    neutral_documents = {"CITATION.cff": citation, **lifecycle_documents}
+    for path, markers in neutral_markers.items():
+        document = neutral_documents[path]
+        for marker in markers:
+            if document.count(marker) != 1:
+                raise AuditError(f"{path} omits lifecycle-neutral marker: {marker}")
+    stale_neutral_claims = {
+        "CITATION.cff": (
+            "If you use this research release",
+            "This release has no digital object",
+            "is a fail-closed Rust research release",
+        ),
+        "docs/CLAIMS.md": ("The candidate implements a bounded",),
+        "release/0.9.0/README.md": (
+            "candidate release record",
+            "auditable prepublication record",
+            "candidate text for the review-gated",
+            "This candidate has no deployment-qualified claim",
+        ),
+        "release/0.9.0/RELEASE-NOTES.md": (
+            "is the candidate for the first",
+            "author-operated candidate",
+            "candidate citation metadata",
+            "The candidate has no project DOI",
+            "only after publication",
+        ),
+        "release/0.9.0/claims.json": (
+            "The candidate includes checked procedures.",
+            "No v0.9.0 tag or GitHub release exists.",
+        ),
+    }
+    for path, markers in stale_neutral_claims.items():
+        document = neutral_documents[path]
+        for marker in markers:
+            if marker in document:
+                raise AuditError(f"{path} retains stale lifecycle wording: {marker}")
+
+    claims = validate_claims(snapshot)
+    clm_010 = next(
+        (claim for claim in claims if claim["id"] == "CLM-010"),
+        None,
+    )
+    if clm_010 is None or not isinstance(clm_010.get("limitations"), str):
+        raise AuditError("claims.json must contain structured CLM-010 limitations")
+
+    if unpublished_mode:
+        unpublished_markers = {
+            "AGENTS.md": (
+                "Source preparation state for this tree: `UNPUBLISHED_CANDIDATE` with no candidate release date.",
+            ),
+            "CLAUDE.mdc": (
+                "Source preparation state for this tree: `UNPUBLISHED_CANDIDATE` with no candidate release date.",
+            ),
+            "README.md": (
+                '<img src="https://img.shields.io/badge/source%20state-unpublished%20candidate-orange.svg" alt="source preparation state: unpublished candidate">',
+                "**Source preparation state for this tree: unpublished pre-1.0 research candidate.**",
+                "At this source-generation state, no `v0.9.0` tag or GitHub release was recorded.",
+            ),
+            "CHANGELOG.md": ("## [0.9.0] - UNPUBLISHED CANDIDATE",),
+            "release/0.9.0/README.md": (
+                "Source preparation state for this tree: `UNPUBLISHED_CANDIDATE` with no candidate release date.",
+            ),
+            "release/0.9.0/RELEASE-NOTES.md": (
+                "Source preparation state at generation: UNPUBLISHED CANDIDATE",
+                "Candidate release date at generation: NOT SET",
+            ),
+            "release/0.9.0/RELEASE-RUNBOOK.md": (
+                "The source preparation state is `UNPUBLISHED_CANDIDATE` with no candidate release date.",
+                "The source declares one unpublished candidate with no release date.",
+            ),
+        }
+        if re.search(r"(?m)^date-released:", citation):
+            raise AuditError(
+                "CITATION.cff must omit date-released for the unpublished candidate"
+            )
+        for path, (document, pattern) in release_date_records.items():
+            if re.search(pattern, document):
+                raise AuditError(
+                    f"{path} identifies a date for the unpublished candidate"
+                )
+        for path, markers in unpublished_markers.items():
+            document = (
+                text(ROOT / path)
+                if path not in lifecycle_documents
+                else lifecycle_documents[path]
+            )
+            for marker in markers:
+                if sum(line.strip() == marker for line in document.splitlines()) != 1:
+                    raise AuditError(
+                        f"{path} does not identify the unpublished source preparation state"
+                    )
+        expected_claim_state = (
+            "Source preparation state for this tree is UNPUBLISHED_CANDIDATE "
+            "with no candidate release date."
+        )
+        if clm_010["limitations"].count(expected_claim_state) != 1:
+            raise AuditError(
+                "claims.json CLM-010 does not identify the unpublished source "
+                "preparation state"
+            )
+    else:
+        assert isinstance(candidate_release_date, str)
+        for path, (document, pattern) in release_date_records.items():
+            if re.findall(pattern, document) != [candidate_release_date]:
+                raise AuditError(
+                    f"{path} does not identify candidate release date {candidate_release_date}"
+                )
+        dated_markers = {
+            "AGENTS.md": (
+                "Source preparation state for this tree: `DATE_BOUND_CANDIDATE` with one candidate release date.",
+            ),
+            "CLAUDE.mdc": (
+                "Source preparation state for this tree: `DATE_BOUND_CANDIDATE` with one candidate release date.",
+            ),
+            "README.md": (
+                '<img src="https://img.shields.io/badge/source%20state-date--bound%20candidate-orange.svg" alt="source preparation state: date-bound candidate">',
+                "**Source preparation state for this tree: date-bound pre-1.0 research candidate.**",
+                "The immutable tag and GitHub release are external publication evidence for this source tree.",
+            ),
+            "CHANGELOG.md": (f"## [0.9.0] - {candidate_release_date}",),
+            "release/0.9.0/README.md": (
+                "Source preparation state for this tree: `DATE_BOUND_CANDIDATE` with one candidate release date.",
+            ),
+            "release/0.9.0/RELEASE-NOTES.md": (
+                "Source preparation state at generation: DATE-BOUND CANDIDATE",
+                f"Candidate release date at generation: {candidate_release_date}",
+            ),
+            "release/0.9.0/RELEASE-RUNBOOK.md": (
+                f"The source preparation state is `DATE_BOUND_CANDIDATE` with candidate release date {candidate_release_date}.",
+                "The source declares one date-bound candidate release date.",
+            ),
+        }
+        for path, markers in dated_markers.items():
+            document = (
+                text(ROOT / path)
+                if path not in lifecycle_documents
+                else lifecycle_documents[path]
+            )
+            for marker in markers:
+                if sum(line.strip() == marker for line in document.splitlines()) != 1:
+                    raise AuditError(f"{path} does not identify the date-bound mode")
+        expected_claim_state = (
+            "Source preparation state for this tree is DATE_BOUND_CANDIDATE with "
+            f"candidate release date {candidate_release_date}."
+        )
+        if clm_010["limitations"].count(expected_claim_state) != 1:
+            raise AuditError("claims.json CLM-010 does not identify the date-bound mode")
+        stale_unpublished_markers = (
+            "UNPUBLISHED_CANDIDATE",
+            "unpublished candidate",
+            "unpublished pre-1.0 research source candidate",
+            "unpublished pre-1.0 research candidate",
+            "At this source-generation state, no `v0.9.0` tag or GitHub release was recorded.",
+            "prepublication record",
+        )
+        dated_corpus = "\n".join(lifecycle_documents.values())
+        for marker in stale_unpublished_markers:
+            if marker in dated_corpus:
+                raise AuditError(
+                    f"date-bound source retains a stale unpublished-mode marker: {marker}"
+                )
+    for target in RELEASE_NOTE_PUBLICATION_TARGETS:
+        if release_notes.count(f"]({target})") != 1:
+            raise AuditError(
+                "RELEASE-NOTES.md must contain each absolute tag publication target "
+                "exactly once"
+            )
+        if release_runbook.count(f'"{target}"') != 1:
+            raise AuditError(
+                "RELEASE-RUNBOOK.md must byte-check every exact release-body target "
+                "once after remote tag push"
+            )
+    for relative_path, expected_schema_id in PUBLIC_JSON_SCHEMA_IDS:
+        schema = load_json(ROOT / relative_path, snapshot)
+        if not isinstance(schema, dict):
+            raise AuditError(f"{relative_path} must contain a JSON object")
+        schema_id = schema.get("$id")
+        if not isinstance(schema_id, str) or schema_id != expected_schema_id:
+            raise AuditError(f"{relative_path} has the wrong immutable public $id")
+    obsolete_tag_resolution_claims = (
+        "They are intentionally unavailable until the release operator creates the tag.",
+        "These identifiers resolve only after publication creates that tag.",
+    )
+    if any(
+        marker in release_notes or marker in text(ROOT / "CHANGELOG.md")
+        for marker in obsolete_tag_resolution_claims
+    ):
+        raise AuditError(
+            "tag-bound URLs resolve after canonical remote push, not local tag creation"
+        )
     for member in cargo["workspace"]["members"]:
         manifest = tomllib.loads(text(ROOT / member / "Cargo.toml"))
         if manifest["package"].get("publish") is not False:
@@ -1261,7 +1931,8 @@ def validate_project_metadata(
         "license": package["license"],
         "project_doi": inputs["release"]["doi"],
         "publication_channel": inputs["release"]["publication_channel"],
-        "release_date": RELEASE_DATE,
+        "source_preparation_state": source_preparation_state,
+        "candidate_release_date": candidate_release_date,
         "version": package["version"],
         "zenodo_record": inputs["release"]["zenodo"],
     }
@@ -1279,34 +1950,57 @@ def validate_claims(
         or document["release"] != VERSION
     ):
         raise AuditError("claims matrix has the wrong schema or release")
-    if set(document["tier_definitions"]) != VALID_TIERS:
+    tier_definitions = document["tier_definitions"]
+    if not isinstance(tier_definitions, dict):
+        raise AuditError("claims matrix tier_definitions must be an object")
+    if set(tier_definitions) != VALID_TIERS:
         raise AuditError("claims matrix must define exactly the four frozen tiers")
+    if any(
+        not isinstance(definition, str) or not definition.strip()
+        for definition in tier_definitions.values()
+    ):
+        raise AuditError("claims matrix tier definitions must be non-empty text")
+    claims = document["claims"]
+    if not isinstance(claims, list):
+        raise AuditError("claims matrix claims must be a list")
     seen: set[str] = set()
     deployment_claims = 0
-    for claim in document["claims"]:
+    for claim in claims:
         require_keys(
             claim,
             {"id", "claim", "tier", "scope", "evidence", "limitations"},
             "claim",
         )
-        if claim["id"] in seen or not re.fullmatch(r"CLM-\d{3}", claim["id"]):
-            raise AuditError(f"invalid or duplicate claim ID: {claim['id']}")
-        seen.add(claim["id"])
-        if claim["tier"] not in VALID_TIERS:
-            raise AuditError(f"{claim['id']}: invalid tier")
-        if not claim["claim"] or not claim["scope"] or not claim["limitations"]:
-            raise AuditError(f"{claim['id']}: claim fields must be non-empty")
-        if claim["tier"] == "DEPLOYMENT_QUALIFIED":
+        claim_id = claim["id"]
+        if (
+            not isinstance(claim_id, str)
+            or re.fullmatch(r"CLM-\d{3}", claim_id) is None
+            or claim_id in seen
+        ):
+            raise AuditError(f"invalid or duplicate claim ID: {claim_id!r}")
+        seen.add(claim_id)
+        tier = claim["tier"]
+        if not isinstance(tier, str):
+            raise AuditError(f"{claim_id}: tier must be text")
+        if tier not in VALID_TIERS:
+            raise AuditError(f"{claim_id}: invalid tier")
+        for field in ("claim", "scope", "limitations"):
+            if not isinstance(claim[field], str) or not claim[field].strip():
+                raise AuditError(f"{claim_id}: {field} must be non-empty text")
+        evidence = claim["evidence"]
+        if not isinstance(evidence, list):
+            raise AuditError(f"{claim_id}: evidence must be a list of paths")
+        if tier == "DEPLOYMENT_QUALIFIED":
             deployment_claims += 1
-            if not claim["evidence"]:
-                raise AuditError(f"{claim['id']}: deployment claim lacks evidence")
-        if claim["tier"] == "NOT_CLAIMED" and claim["evidence"]:
+            if not evidence:
+                raise AuditError(f"{claim_id}: deployment claim lacks evidence")
+        if tier == "NOT_CLAIMED" and evidence:
             raise AuditError(
-                f"{claim['id']}: NOT_CLAIMED must not cite affirmative evidence"
+                f"{claim_id}: NOT_CLAIMED must not cite affirmative evidence"
             )
-        for path_string in claim["evidence"]:
-            if not isinstance(path_string, str):
-                raise AuditError(f"{claim['id']}: claim evidence path is not text")
+        for path_string in evidence:
+            if not isinstance(path_string, str) or not path_string:
+                raise AuditError(f"{claim_id}: claim evidence path is not text")
             exists = (
                 path_string in snapshot.files
                 if snapshot is not None
@@ -1314,10 +2008,42 @@ def validate_claims(
             )
             if not exists:
                 raise AuditError(
-                    f"{claim['id']}: claim evidence is missing: {path_string}"
+                    f"{claim_id}: claim evidence is missing: {path_string}"
                 )
     if deployment_claims:
         raise AuditError("0.9.0 has no deployment-qualified behavior")
+    by_id = {claim["id"]: claim for claim in claims}
+    ncp_claim = by_id.get("CLM-008")
+    if ncp_claim is None or ncp_claim["tier"] != "NOT_CLAIMED":
+        raise AuditError("CLM-008 must retain the Galadriel NOT_CLAIMED tier")
+    ncp_limitations = ncp_claim["limitations"]
+    required_ncp_boundaries = (
+        NCP_STATUS_COMMIT,
+        NCP_STATUS_URL,
+        NCP_TASK_LEDGER_URL,
+        NCP_ROLE_BLUEPRINT_URL,
+        *NCP_ROLE_SUBJECTS,
+        "G03 is OPEN",
+        "depends on X02, which is OPEN",
+        "not dependency-ready",
+        "NOT RUN",
+        "read-only principal",
+        "exact bounded grant",
+        "cannot publish, mutate lifecycle state, claim authority, or issue an ESTOP",
+        "Galadriel assessor",
+        "separate principal",
+        "default-off",
+        "push-only raw-evidence path",
+        "raw verdict and evidence provenance",
+        "optional non-authoritative requested effect",
+        "cannot reuse observer credentials, self-admit, derive StateUnusable, grant or widen authority, or encode an authoritative effect, ALLOW, or command",
+        "No native-1.0 publisher exists",
+    )
+    for boundary in required_ncp_boundaries:
+        if boundary not in ncp_limitations:
+            raise AuditError(f"CLM-008 omits NCP boundary: {boundary}")
+    if re.search(r"https://github\.com/sepahead/NCP/(?:tree|blob)/main", ncp_limitations):
+        raise AuditError("CLM-008 must not bind NCP status to mutable main")
     return document["claims"]
 
 
@@ -1424,7 +2150,9 @@ def parse_exact_date(value: Any, label: str) -> date:
         raise AuditError(f"{label} is not a valid calendar date") from error
 
 
-def validate_ecosystem_cut(snapshot: RepositorySnapshot | None = None) -> None:
+def validate_ecosystem_cut(
+    snapshot: RepositorySnapshot | None = None,
+) -> tuple[date, dict[str, date]]:
     """Require the cut date to contain every same-precision observation."""
 
     document = (
@@ -1460,6 +2188,7 @@ def validate_ecosystem_cut(snapshot: RepositorySnapshot | None = None) -> None:
     if not isinstance(observations, list) or not observations:
         raise AuditError("ecosystem cut must contain observations")
     seen: set[str] = set()
+    observation_dates: dict[str, date] = {}
     for observation in observations:
         if not isinstance(observation, dict):
             raise AuditError("ecosystem observation must be an object")
@@ -1473,6 +2202,27 @@ def validate_ecosystem_cut(snapshot: RepositorySnapshot | None = None) -> None:
                 f"invalid or duplicate ecosystem observation ID: {observation_id!r}"
             )
         seen.add(observation_id)
+        expected_observation_keys = {
+            "id",
+            "project",
+            "relationship",
+            "ref",
+            "object",
+            "identity_kind",
+            "observed_at",
+            "timestamp_precision",
+            "required_by_default",
+            "required_for",
+            "supersedes",
+            "why",
+        }
+        if observation_id == "ECO-014":
+            expected_observation_keys.add("status")
+        require_keys(
+            observation,
+            expected_observation_keys,
+            f"ecosystem observation {observation_id}",
+        )
         if observation.get("timestamp_precision") != document["timestamp_precision"]:
             raise AuditError(
                 f"{observation_id}: timestamp precision differs from the ecosystem cut"
@@ -1484,6 +2234,80 @@ def validate_ecosystem_cut(snapshot: RepositorySnapshot | None = None) -> None:
         if observed_at > inspected_at:
             raise AuditError(
                 f"ecosystem cut inspected_at predates observation {observation_id}"
+            )
+        observation_dates[observation_id] = observed_at
+    expected_ids = {f"ECO-{index:03d}" for index in range(1, 15)}
+    if seen != expected_ids:
+        raise AuditError("ecosystem cut must contain exactly ECO-001 through ECO-014")
+    ncp_status = next(
+        observation
+        for observation in observations
+        if observation["id"] == "ECO-014"
+    )
+    expected_ncp_identity = {
+        "project": "NCP",
+        "relationship": "upstream_release_status_inspection",
+        "ref": "immutable commit",
+        "object": NCP_STATUS_COMMIT,
+        "identity_kind": "immutable_upstream_status_snapshot",
+        "observed_at": "2026-08-03",
+        "timestamp_precision": "date",
+        "required_by_default": False,
+        "required_for": [],
+        "supersedes": None,
+    }
+    for key, expected in expected_ncp_identity.items():
+        if ncp_status[key] != expected:
+            raise AuditError(f"ECO-014 has an incorrect NCP status field: {key}")
+    expected_ncp_status = {
+        "candidate_version": "1.0.0-rc.1",
+        "release_state": "UNRELEASED_RELEASE_BLOCKED_CANDIDATE",
+        "wire": "1.0",
+        "compact_contract_hash": NCP_COMPACT_CONTRACT_HASH,
+        "complete_normative_digest": NCP_COMPLETE_NORMATIVE_DIGEST,
+        "contract_identity_note": (
+            "The compact contract hash is not the complete normative SHA-256 digest."
+        ),
+        "task": "G03",
+        "task_status": "OPEN",
+        "dependency": "X02",
+        "dependency_status": "OPEN",
+        "dependency_ready": False,
+        "external_roles": list(NCP_ROLE_SUBJECTS),
+        "external_role_qualification": "NOT_RUN",
+        "task_ledger": NCP_TASK_LEDGER_URL,
+        "role_blueprint": NCP_ROLE_BLUEPRINT_URL,
+    }
+    if ncp_status["status"] != expected_ncp_status:
+        raise AuditError("ECO-014 has an incorrect NCP release-status snapshot")
+    expected_ncp_why = (
+        "Records the 2026-08-03 NCP release-status cut. It is not Galadriel's "
+        "wire-0.8 dependency pin, a native-1.0 migration, or an external role receipt."
+    )
+    if ncp_status["why"] != expected_ncp_why:
+        raise AuditError("ECO-014 has an incorrect NCP status rationale")
+    if (
+        "not the complete normative SHA-256 digest"
+        not in ncp_status["status"]["contract_identity_note"]
+    ):
+        raise AuditError("ECO-014 does not distinguish status from contract identity")
+    return inspected_at, observation_dates
+
+
+def validate_audit_date_boundary(
+    inputs: dict[str, Any],
+    inspected_at: date,
+    observation_dates: Mapping[str, date],
+) -> None:
+    """Require the maintainer-local update date to cover each declared date cut."""
+
+    audit_date = parse_exact_date(inputs["audit_date"], "release audit_date")
+    if audit_date < inspected_at:
+        raise AuditError("release audit_date predates ecosystem inspected_at")
+    for observation_id, observed_at in observation_dates.items():
+        if audit_date < observed_at:
+            raise AuditError(
+                f"release audit_date predates ecosystem observation {observation_id}"
             )
 
 
@@ -1752,7 +2576,8 @@ def build_outputs(
     )
     inputs = load_json(INPUTS, snapshot)
     validate_inputs(inputs, snapshot)
-    validate_ecosystem_cut(snapshot)
+    inspected_at, observation_dates = validate_ecosystem_cut(snapshot)
+    validate_audit_date_boundary(inputs, inspected_at, observation_dates)
     claims = validate_claims(snapshot)
     tasks = validate_tasks(snapshot)
     ledger = validate_ledger(tasks, claims, snapshot)
@@ -1761,6 +2586,7 @@ def build_outputs(
     audit = {
         "schema": "galadriel.release-audit-manifest.v2",
         "audit_date": inputs["audit_date"],
+        "audit_date_semantics": inputs["audit_date_semantics"],
         "release": metadata,
         "baseline_repository": inputs["baseline_repository"],
         "repositories": inputs["repositories"],

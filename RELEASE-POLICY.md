@@ -42,6 +42,11 @@ Do not force an unqualified integration into another repository.
 **GLD-090-CTL-006:** The threat register **SHALL** remain `LIVING_UNTIL_CANDIDATE_FREEZE` during implementation.
 The release operator has sole authority to change it to `FROZEN_AT_CANDIDATE`.
 The operator **SHALL** make that change with the final staged release inputs.
+Before the threat register enters `FROZEN_AT_CANDIDATE`, the source **SHALL** be
+`DATE_BOUND_CANDIDATE` with one ISO `candidate_release_date`.
+Every mode and date marker **SHALL** match that date-bound state.
+`DATE_BOUND_CANDIDATE` with `LIVING_UNTIL_CANDIDATE_FREEZE` is the permitted
+transition before freeze.
 Freeze generation and strict verification **SHALL** reject the living status.
 Implementation verification **SHALL** reject an active pair while the status is living.
 

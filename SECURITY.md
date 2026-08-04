@@ -70,7 +70,7 @@ Report suspected vulnerabilities privately through GitHub Security Advisories fo
 You can also email Sepehr Mahmoudian at `sepmhn@gmail.com`.
 Do not open a public issue for an undisclosed vulnerability.
 The maintainer aims to acknowledge receipt within three business days.
-This review-gated GitHub research source release has no remediation-time SLA.
+This research source version has no remediation-time SLA.
 
 ## Supply chain
 

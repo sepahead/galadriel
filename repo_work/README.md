@@ -83,6 +83,11 @@ After the release input records are final, freeze the complete supplied master h
 Keep the threat register at `LIVING_UNTIL_CANDIDATE_FREEZE` before this procedure.
 At the start, the release operator sets it to `FROZEN_AT_CANDIDATE`.
 Stage that change with every final release input.
+Before the threat register enters `FROZEN_AT_CANDIDATE`, the source **SHALL** be
+`DATE_BOUND_CANDIDATE` with one ISO `candidate_release_date`.
+Every mode and date marker **SHALL** match that date-bound state.
+`DATE_BOUND_CANDIDATE` with `LIVING_UNTIL_CANDIDATE_FREEZE` is the permitted
+transition before freeze.
 Require each staged blob to equal its worktree file.
 
 Generate the requirements ledger before you generate the signed pair.

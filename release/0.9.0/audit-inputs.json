@@ -6,9 +6,12 @@
     "author": "Sepehr Mahmoudian",
     "doi": null,
     "zenodo": null,
-    "publication_channel": "review-gated GitHub research source release"
+    "publication_channel": "review-gated GitHub research source release",
+    "source_preparation_state": "UNPUBLISHED_CANDIDATE",
+    "candidate_release_date": null
   },
-  "audit_date": "2026-07-23",
+  "audit_date": "2026-08-04",
+  "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "url": "https://github.com/sepahead/galadriel",
     "commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",

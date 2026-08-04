@@ -1,12 +1,11 @@
 cff-version: 1.2.0
 message: >-
-  If you use this research release, cite version 0.9.0 and the exact Git
-  commit used to produce your results. This release has no digital object
+  If you use this research software, cite source version 0.9.0 and the exact Git
+  commit used to produce your results. This source version has no digital object
   identifier (DOI) or Zenodo record.
 type: software
 title: "Galadriel's Mirror"
 version: 0.9.0
-date-released: 2026-07-25
 authors:
   - family-names: Mahmoudian
     given-names: Sepehr
@@ -15,7 +14,7 @@ license:
   - MIT
   - Apache-2.0
 abstract: >-
-  Galadriel is a fail-closed Rust research release for cross-sensor statistical
+  Galadriel is fail-closed Rust research software for cross-sensor statistical
   consistency monitoring. It uses normalized innovation squared (NIS), cumulative sum
   (CUSUM), and signed common-projection correlation. It also offers an optional
   partial information decomposition (PID) diagnostic.

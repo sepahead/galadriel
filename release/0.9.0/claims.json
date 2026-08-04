@@ -87,7 +87,7 @@
       "tier": "NOT_CLAIMED",
       "scope": "optional ecosystem dependencies",
       "evidence": [],
-      "limitations": "The selected NCP dependency is immutable v0.8.0; the pid-rs revision is immutable but lacks an upstream v1 release tag/artifact."
+      "limitations": "The selected NCP dependency is immutable v0.8.0. The 2026-08-03 NCP status is bound to immutable commit https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd. Its exact task ledger is https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json. G03 is OPEN and depends on X02, which is OPEN, so G03 is not dependency-ready. The Galadriel NCP observer and Galadriel raw-advisory publisher external qualifications have no exact evidence and remain NOT RUN. The exact role blueprint is https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md. The observer requires a read-only principal and an exact bounded grant. It cannot publish, mutate lifecycle state, claim authority, or issue an ESTOP. The release-facing publisher is the Galadriel assessor surface. It requires a separate principal and a default-off push-only raw-evidence path. Its payload contains raw verdict and evidence provenance with an optional non-authoritative requested effect. It cannot reuse observer credentials, self-admit, derive StateUnusable, grant or widen authority, or encode an authoritative effect, ALLOW, or command. No native-1.0 publisher exists. Galadriel keeps NCP 1.0 qualification at NOT_CLAIMED. The pid-rs revision is immutable but lacks an upstream v1 release tag or artifact."
     },
     {
       "id": "CLM-009",
@@ -103,7 +103,7 @@
       "tier": "NOT_CLAIMED",
       "scope": "package publication and operational support",
       "evidence": [],
-      "limitations": "All workspace packages remain publish=false. Version 0.9.0 is a review-gated GitHub research source release."
+      "limitations": "All workspace packages remain publish=false. Source preparation state for this tree is UNPUBLISHED_CANDIDATE with no candidate release date. GitHub publication is external evidence and is not inferred from this tracked claim."
     },
     {
       "id": "CLM-011",
@@ -159,7 +159,7 @@
       "tier": "NOT_CLAIMED",
       "scope": "release-operations rehearsal and incident response",
       "evidence": [],
-      "limitations": "The release includes checked procedures and performs the actual GitHub publication path, but destructive rollback, credential revocation, and production-equivalent incident drills are intentionally not fabricated."
+      "limitations": "The checked procedures are not evidence that the release operator ran the GitHub publication path, destructive rollback, credential revocation, or production-equivalent incident drills."
     }
   ]
 }

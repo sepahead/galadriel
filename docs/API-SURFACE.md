@@ -10,7 +10,7 @@
 | NIS | normalized innovation squared |
 | PID | partial information decomposition |
 
-Galadriel 0.9.0 is a review-gated GitHub research source release.
+Galadriel 0.9.0 uses the review-gated GitHub research source release channel.
 All crates have `publish = false`.
 This policy defines source compatibility in the 0.9 release line.
 It makes no crates.io or long-term support promise.

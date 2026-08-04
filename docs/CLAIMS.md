@@ -40,14 +40,15 @@ The reason and missing evidence **SHALL** remain visible.
 This tier is not an implementation success.
 A public statement **SHALL NOT** describe it as one.
 
-The release implements a bounded and fail-closed advisory component. It validates
+Version 0.9.0 implements a bounded and fail-closed advisory component. It validates
 parts of the component under specified conditions. It makes none of these claims:
 
 - sensor truth
 - attack intent
 - calibrated posterior probabilities
 - accepted operational rates
-- NCP 1.0 qualification
+- `Galadriel NCP observer` native-1.0 qualification
+- `Galadriel raw-advisory publisher` native-1.0 qualification
 - a released upstream pid-rs 1.x artifact
 - a downstream policy integration
 - multi-process mTLS and ACL deployment
@@ -56,9 +57,31 @@ parts of the component under specified conditions. It makes none of these claims
 - a DOI
 - a Zenodo record
 
-Dated read-only ecosystem inspections through 2026-07-23 do not change a claim
+Dated read-only ecosystem inspections through 2026-08-03 do not change a claim
 tier.
 Galadriel remains pinned to NCP wire 0.8.
+The implemented sidecars are historical NCP 1.0 migration input.
+They are not native-1.0 role evidence.
+
+The 2026-08-03 NCP status inspection is bound to
+[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
+The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
+records `G03` as `OPEN`.
+`G03` depends on `X02`, which is also `OPEN`, so `G03` is not dependency-ready.
+Both named external role qualifications have no exact evidence and remain **NOT RUN**.
+
+The pinned [NCP ecosystem blueprint](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md)
+defines the release-facing raw-advisory publisher as the `Galadriel assessor`.
+The observer requires a read-only principal and an exact bounded grant.
+The assessor requires a separate principal and a default-off push-only path.
+Its payload contains raw verdict and evidence provenance with an optional
+non-authoritative requested effect.
+It cannot reuse observer credentials, self-admit, derive `StateUnusable`, grant
+or widen authority, or encode an authoritative effect, `ALLOW`, or command.
+No native-1.0 raw-advisory publisher exists.
+Galadriel uses `NOT_CLAIMED` for its release claim tier.
+NCP uses **NOT RUN** for the unexecuted external qualification gates.
+Neither state is implementation or validation evidence.
 
 Crebain is an optional reference producer with no Galadriel Cargo dependency.
 The inspected Crebain component has schema-v1 fixture alignment.

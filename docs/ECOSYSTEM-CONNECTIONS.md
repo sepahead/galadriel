@@ -270,14 +270,38 @@ The gate emits this information in its machine-readable report:
 
 This report separates checker compatibility from runtime dependency identity.
 
-Current NCP `HEAD` is the unreleased and release-blocked `1.0.0-rc.1`
-candidate. It uses wire `1.0` and compact `CONTRACT_HASH`
-`163acc57d8a62b66`. The latest immutable NCP release is `v0.8.0`, which uses a
-different wire. This current status does not replace the dated inspection object
-or the dependency pin above.
+The 2026-08-03 NCP status inspection is bound to
+[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
+That commit is the unreleased and release-blocked `1.0.0-rc.1` candidate.
+It uses wire `1.0` and compact `CONTRACT_HASH` `163acc57d8a62b66`.
+The latest immutable NCP release is `v0.8.0`, which uses a different wire.
+This dated status does not replace the inspection object or dependency pin above.
 Current Galadriel named-sensor routes are project-owned wire-0.8 surfaces.
 They are not native wire-1.0 extensions.
-Galadriel claims no NCP 1.0 compatibility.
+They are historical NCP 1.0 migration input, not native-1.0 role evidence.
+
+The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
+records `G03` as `OPEN`.
+`G03` depends on `X02`, which is also `OPEN`, so `G03` is not dependency-ready.
+These exact external Galadriel qualifications have no evidence and remain **NOT RUN**:
+
+- `Galadriel NCP observer`
+- `Galadriel raw-advisory publisher`
+
+The pinned [NCP ecosystem blueprint](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md)
+defines the role boundary.
+The observer requires a read-only principal and an exact bounded grant.
+It cannot publish, mutate lifecycle state, claim authority, or issue an ESTOP.
+The release-facing raw-advisory publisher is the blueprint's `Galadriel assessor`
+surface.
+It requires a separate principal and a default-off push-only raw-evidence path.
+Its payload contains raw verdict and evidence provenance with an optional
+non-authoritative requested effect.
+It cannot reuse observer credentials, self-admit, derive `StateUnusable`, grant
+or widen authority, or encode an authoritative effect, `ALLOW`, or command.
+No native-1.0 raw-advisory publisher exists.
+Galadriel 0.9 records native-1.0 integration as `NOT_CLAIMED`.
+That claim tier is separate from NCP's external **NOT RUN** gate state.
 
 ## Crebain connection
 
@@ -321,8 +345,9 @@ heads. Its older ecosystem baseline records another historical Galadriel object.
 The evidence has no final-candidate reciprocal pin.
 It also lacks complete current consumer-configuration identity.
 It lacks a current-binary multi-process mTLS and ACL campaign.
-All cross-repository release claims therefore remain `NOT_CLAIMED` or pending in
-the release ledger.
+All Galadriel cross-repository release claims therefore remain `NOT_CLAIMED` or
+pending in the Galadriel release ledger.
+This state does not satisfy an NCP role gate.
 
 ## Haldir connection
 

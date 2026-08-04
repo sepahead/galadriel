@@ -62,7 +62,7 @@ Before `1.0`, minor releases can contain breaking changes.
 - Classify a root exit first observed at or after the qualification deadline as a timeout, including exit status zero.
 - State the release-blocked NCP 1.0 candidate boundary and test that wire-1.0 sidecars fail closed.
 
-## [0.9.0] - 2026-07-25
+## [0.9.0] - UNPUBLISHED CANDIDATE
 
 ### Release contract
 
@@ -95,8 +95,9 @@ Before `1.0`, minor releases can contain breaking changes.
   It requires flushed same-parent staging and atomic no-replace publication.
   Qualification artifacts cannot occupy the closure `inputs/` or convergence namespaces.
   The NCP feature report records checker-tooling and runtime-pin identities separately.
-- Bind every published JSON Schema identifier to the immutable `v0.9.0` raw-tag URL.
-  Release consumers never resolve a schema identity through the mutable default branch.
+- Bind every candidate JSON Schema identifier to the intended immutable `v0.9.0` raw-tag URL.
+  These identifiers resolve only after the release operator pushes that immutable tag to the canonical repository.
+  Release consumers never resolve a published schema identity through the mutable default branch.
 - Add deterministic public release packaging for the qualification and closure tiers.
   The package contains two path-preserving uncompressed tar files.
   It also contains a canonical exact-candidate, tree, and tag asset map with a detached SSH signature.

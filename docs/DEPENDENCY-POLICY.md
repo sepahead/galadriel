@@ -323,10 +323,30 @@ Upstream pid-rs release qualification remains `NOT_CLAIMED`.
 NCP qualification applies only to the commit selected by the public annotated
 `v0.8.0` tag.
 The exact NCP revision is `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
-Current NCP `HEAD` is the unreleased and release-blocked `1.0.0-rc.1`
-candidate. It uses wire `1.0` and compact `CONTRACT_HASH`
-`163acc57d8a62b66`. This qualification does not apply to that candidate or to
-NCP 1.0. Galadriel has no native-1.0 migration or compatibility evidence.
+The 2026-08-03 NCP status inspection is bound to
+[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
+That commit is the unreleased and release-blocked `1.0.0-rc.1` candidate.
+It uses wire `1.0` and compact `CONTRACT_HASH` `163acc57d8a62b66`.
+The local wire-0.8 qualification does not apply to that candidate or to NCP 1.0.
+Galadriel has no native-1.0 migration or compatibility evidence.
+
+The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
+records `G03` as `OPEN`.
+`G03` depends on `X02`, which is also `OPEN`, so `G03` is not dependency-ready.
+The `Galadriel NCP observer` and `Galadriel raw-advisory publisher` external
+qualifications have no exact evidence and remain **NOT RUN**.
+
+The pinned [NCP ecosystem blueprint](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md)
+defines the release-facing publisher as the `Galadriel assessor` surface.
+The observer requires a read-only principal and an exact bounded grant.
+The assessor requires a separate principal and a default-off push-only path.
+Its payload contains raw verdict and evidence provenance with an optional
+non-authoritative requested effect.
+It cannot reuse observer credentials, self-admit, derive `StateUnusable`, grant
+or widen authority, or encode an authoritative effect, `ALLOW`, or command.
+No native-1.0 raw-advisory publisher exists.
+Galadriel 0.9 records native-1.0 integration as `NOT_CLAIMED`.
+That claim tier is separate from NCP's external **NOT RUN** gate state.
 GitHub reports that the tag object and target commit are unsigned.
 The immutable 40-hex revision and Cargo lock entry give identity.
 They do not give upstream signature assurance.

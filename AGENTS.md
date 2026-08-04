@@ -60,7 +60,8 @@ Restart candidate-bound checks after each tracked change.
 ## Release identity
 
 The release version is `0.9.0`.
-The release channel is a review-gated GitHub research source release.
+The intended release channel is a review-gated GitHub research source release.
+Source preparation state for this tree: `UNPUBLISHED_CANDIDATE` with no candidate release date.
 Sepehr Mahmoudian is the release author and commit author.
 The canonical GitHub owner is `sepahead`.
 Every workspace package must keep `publish = false`.
@@ -83,6 +84,11 @@ It does not extend to a deployed system, another host, or another repository.
 Keep the threat register at `LIVING_UNTIL_CANDIDATE_FREEZE` during implementation.
 Only the release operator can change it to `FROZEN_AT_CANDIDATE`.
 Make that change only with the final staged release inputs.
+Before the threat register enters `FROZEN_AT_CANDIDATE`, the source **SHALL** be
+`DATE_BOUND_CANDIDATE` with one ISO `candidate_release_date`.
+Every mode and date marker **SHALL** match that date-bound state.
+`DATE_BOUND_CANDIDATE` with `LIVING_UNTIL_CANDIDATE_FREEZE` is the permitted
+transition before freeze.
 
 The signed audit-input manifest is the only permitted pre-commit evidence record.
 It uses schema `galadriel.frozen-audit-inputs.v2`.

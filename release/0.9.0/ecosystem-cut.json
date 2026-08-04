@@ -2,7 +2,7 @@
   "schema": "galadriel.ecosystem-inspection-cut.v1",
   "release": "0.9.0",
   "author": "Sepehr Mahmoudian",
-  "inspected_at": "2026-07-23",
+  "inspected_at": "2026-08-03",
   "timestamp_precision": "date",
   "scope": "Read-only external identity and local relationship-absence record; only Cargo revisions are release pins.",
   "observations": [
@@ -187,10 +187,42 @@
       "required_for": [],
       "supersedes": null,
       "why": "Records the mutable Paper2Brain head observed on 2026-07-23 as read-only provenance. Galadriel has no Paper2Brain dependency, API, route, adapter, or runtime edge."
+    },
+    {
+      "id": "ECO-014",
+      "project": "NCP",
+      "relationship": "upstream_release_status_inspection",
+      "ref": "immutable commit",
+      "object": "1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd",
+      "identity_kind": "immutable_upstream_status_snapshot",
+      "observed_at": "2026-08-03",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": null,
+      "status": {
+        "candidate_version": "1.0.0-rc.1",
+        "release_state": "UNRELEASED_RELEASE_BLOCKED_CANDIDATE",
+        "wire": "1.0",
+        "compact_contract_hash": "163acc57d8a62b66",
+        "complete_normative_digest": "9cae331742d01e9b164e029aa06c644e6b1886176d0816a6ef883af138355c90",
+        "contract_identity_note": "The compact contract hash is not the complete normative SHA-256 digest.",
+        "task": "G03",
+        "task_status": "OPEN",
+        "dependency": "X02",
+        "dependency_status": "OPEN",
+        "dependency_ready": false,
+        "external_roles": ["Galadriel NCP observer", "Galadriel raw-advisory publisher"],
+        "external_role_qualification": "NOT_RUN",
+        "task_ledger": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json",
+        "role_blueprint": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
+      },
+      "why": "Records the 2026-08-03 NCP release-status cut. It is not Galadriel's wire-0.8 dependency pin, a native-1.0 migration, or an external role receipt."
     }
   ],
   "limitations": [
     "Mutable head observations are inspection provenance, not dependency pins.",
+    "The immutable NCP release-status snapshot is inspection provenance. It does not replace the wire-0.8 dependency pin or qualify either external role.",
     "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir, Prisoma, Engram/Paper2Brain, ROS, or external-authority runtime edge.",
     "Later Haldir observations do not rewrite the discovery observation or frozen historical evidence.",
     "The directed declared graph is acyclic: optional upstream inputs point into Galadriel, prospective evidence consumers point outward, and no command or feedback edge returns upstream."
