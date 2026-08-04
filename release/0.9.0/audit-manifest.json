@@ -1149,20 +1149,20 @@
       "size_bytes": 18384
     },
     {
-      "git_blob_id": "35d11ece8f84d29f49933385ce12aab9239bfaaf",
+      "git_blob_id": "34e58c1830b8e4a951c555a13d32e74ec44a448c",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "441f53987b524130b89f38a7dba2305ca226f661d7b0174119cde7363ff67085",
-      "size_bytes": 19655
+      "sha256": "53b52701bd33a7687b03b8fd93face6b4516426b0615bbe4c6997d24f5e5f441",
+      "size_bytes": 19680
     },
     {
-      "git_blob_id": "2058c354679843887da59a0d04f2544f86268576",
+      "git_blob_id": "11f635bed63ab276088d123551aec3f960bc368f",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "e88f41661c27b06ebc2ed474ba2d062af5aa83483003a4b4d4aef9ef0adfada1",
-      "size_bytes": 48325
+      "sha256": "0263f0fcbdbdd6ebca16fe207f841e4e7e988c3d7130d2e34eddd10aad0aad08",
+      "size_bytes": 50631
     },
     {
       "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
@@ -1669,12 +1669,12 @@
       "size_bytes": 12774
     },
     {
-      "git_blob_id": "8ac7e8c15b7c963e60922657b234a19e45ddb7f4",
+      "git_blob_id": "ae0796b11d27074d44ce5bc735f32452edfa6ab6",
       "git_mode": "100644",
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1fee3b029c1bbce823f2dc1ced4547336953f375d4b52b4d1338722c12d99f83",
-      "size_bytes": 207704
+      "sha256": "3673ceb540797db385ef9b08dc4dcc39780fce65b8829550e6adbfbfe34a58e6",
+      "size_bytes": 208373
     },
     {
       "git_blob_id": "50b877a22e146c6f0abec32f3185e6ed6fc620a5",
@@ -1701,12 +1701,12 @@
       "size_bytes": 212
     },
     {
-      "git_blob_id": "7c6d9b209ee7f469a17a704bdf1bd3973f8b9f32",
+      "git_blob_id": "714ab4e4ac68e467bd480e5685f58aae37a19b75",
       "git_mode": "100755",
       "path": "scripts/release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "9ec8aebffed03c2eb63f83121936afc8d026d5f90e6d3e2c69a6ea43ab1a6e0c",
-      "size_bytes": 110921
+      "sha256": "d23c8642023be73a3b143878c71822a6c2c1fd97bccb68f54062ad5521989210",
+      "size_bytes": 114410
     },
     {
       "git_blob_id": "6db71d2a9befc48d5f8e1b3887ce78631b03d5bb",
@@ -1717,12 +1717,12 @@
       "size_bytes": 45826
     },
     {
-      "git_blob_id": "00045b052d08c0c9ada0790ad418816511dfe057",
+      "git_blob_id": "3f4fbd903de00cf1ebf60c6b8a51fa04fd46e4b5",
       "git_mode": "100644",
       "path": "scripts/tests/test_release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5e29d5d6f41f1f8b70fdf0b509e99f4788593bae3197516317816988d3ee2eb5",
-      "size_bytes": 66033
+      "sha256": "b59958c846d40ede512d016aa6368736fefb541da34032f352dd976bc15cae95",
+      "size_bytes": 68017
     }
   ],
   "audit_date": "2026-08-04",
@@ -2662,12 +2662,12 @@
       "size_bytes": 6391
     },
     {
-      "git_blob_id": "2058c354679843887da59a0d04f2544f86268576",
+      "git_blob_id": "11f635bed63ab276088d123551aec3f960bc368f",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "e88f41661c27b06ebc2ed474ba2d062af5aa83483003a4b4d4aef9ef0adfada1",
-      "size_bytes": 48325
+      "sha256": "0263f0fcbdbdd6ebca16fe207f841e4e7e988c3d7130d2e34eddd10aad0aad08",
+      "size_bytes": 50631
     }
   ],
   "release": {

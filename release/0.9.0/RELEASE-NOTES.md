@@ -28,7 +28,7 @@ Candidate release date at generation: NOT SET
 
 Intended channel: review-gated GitHub research source release
 
-Version 0.9.0 provides the reviewed research source for Galadriel's Mirror through the stated channel.
+Version 0.9.0 provides the author-reviewed, machine-assisted research source for Galadriel's Mirror through the stated channel.
 It provides a fail-closed implementation for cross-sensor statistical consistency monitoring in Rust.
 The default core contains pure domain logic.
 Partial information decomposition (PID) and Neuro-Cybernetic Protocol (NCP) integrations need explicit activation.

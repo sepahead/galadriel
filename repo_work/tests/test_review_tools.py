@@ -977,7 +977,11 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertRegex(
             runbook,
             re.compile(
-                r"7\. Create.*?literal title\s+`Galadriel 0\.9\.0`.*?"
+                r"7\. Before draft creation, query the authenticated GitHub "
+                r"viewer with `GET /user`\..*?viewer `login` to equal "
+                r"`sepahead`.*?integer `10104569`\..*?Create the "
+                r"\*\*draft\*\* GitHub release.*?literal title\s+"
+                r"`Galadriel 0\.9\.0`.*?"
                 r"exact tracked `RELEASE-NOTES\.md` body",
                 re.DOTALL,
             ),
@@ -994,7 +998,12 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertRegex(
             runbook,
             re.compile(
-                r"11\. Confirm.*?literal title is\s+`Galadriel 0\.9\.0`",
+                r"10\. Immediately after publication, query `GET /repos/sepahead/"
+                r"galadriel/releases/\{recorded_numeric_id\}`\..*?Repeat the exact "
+                r"author, tag, name, decoded-body byte, asset-set, asset-identity,"
+                r".*?published_at.*?equals the declared candidate release date\."
+                r".*?Only after these checks pass, verify anonymous downloads\."
+                r".*?Delete only those three obsolete Git references\.",
                 re.DOTALL,
             ),
         )

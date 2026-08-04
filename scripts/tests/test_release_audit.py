@@ -497,29 +497,46 @@ class ReleaseAuditTests(unittest.TestCase):
             (23, 24),  # fail-closed preflight disposition before remote push
             (24, 29),  # remote push before public tagged-source checks
             (28, 29),  # post-push side-effect check before tagged-source checks
-            (29, 30),  # tagged-source checks before draft creation
-            (30, 31),  # draft creation before exact asset upload
-            (31, 32),  # exact asset upload before authenticated download
-            (29, 51),  # tagged-source checks before release publication
-            (32, 34),  # authenticated downloads before final API inspection
-            (35, 51),  # draft=true immediately before manual publication
-            (36, 51),  # exact intended assets before manual publication
-            (37, 51),  # stable API asset identities before publication
-            (38, 51),  # no asset replacement before manual publication
-            (39, 41),  # immediate re-download before byte comparison
-            (41, 51),  # immediate byte comparison before publication
-            (42, 51),  # no unexpected external side effect before publication
-            (43, 51),  # UTC-date equality before release publication
-            (45, 51),  # candidate identities before release publication
-            (47, 51),  # no source change after tag before publication
-            (50, 51),  # fail-closed disposition before manual publication
-            (51, 52),  # publication before anonymous public verification
-            (52, 53),  # published-release check before anonymous download
-            (53, 54),  # anonymous download before local byte comparison
-            (54, 55),  # byte comparison before reconstruction replay
-            (55, 57),  # reconstruction before fresh-source replay
-            (57, 58),  # fresh-source replay before final release metadata checks
-            (58, 59),  # final metadata checks before rollback procedure
+            (29, 30),  # tagged-source checks before viewer identity check
+            (30, 33),  # authenticated viewer query before draft creation
+            (32, 33),  # exact viewer identity before draft creation
+            (33, 34),  # draft creation before release-identity capture
+            (35, 36),  # release-identity capture before asset upload
+            (36, 37),  # asset upload before asset-identity capture
+            (43, 44),  # complete asset identity before authenticated download
+            (44, 45),  # authenticated download before final API inspection
+            (47, 77),  # exact release-ID endpoint before publication
+            (48, 77),  # stable release identity before publication
+            (50, 77),  # exact author account before publication
+            (51, 77),  # exact tag before publication
+            (52, 77),  # exact title before publication
+            (56, 77),  # exact decoded body bytes before publication
+            (57, 77),  # draft=true before publication
+            (58, 77),  # non-prerelease unpublished state before publication
+            (60, 77),  # stable API asset identities before publication
+            (62, 77),  # exact asset uploaders before publication
+            (63, 65),  # immediate re-download before byte comparison
+            (65, 77),  # immediate byte comparison before publication
+            (66, 77),  # no unexpected external side effect before publication
+            (67, 77),  # UTC-date equality before publication
+            (69, 77),  # candidate identities before publication
+            (71, 77),  # no source change after tag before publication
+            (74, 77),  # fail-closed disposition before publication
+            (76, 77),  # exact release-ID binding before publication
+            (77, 78),  # publication before authenticated metadata replay
+            (78, 79),  # exact-ID query before release-identity replay
+            (81, 82),  # metadata replay before published state check
+            (82, 83),  # published state before timestamp check
+            (84, 85),  # release date before side-effect check
+            (86, 87),  # postpublication checks before anonymous verification
+            (87, 88),  # authenticated replay before anonymous download
+            (88, 89),  # anonymous download before local byte comparison
+            (89, 90),  # byte comparison before reconstruction replay
+            (90, 92),  # reconstruction before fresh-source replay
+            (92, 93),  # fresh-source replay before cleanup stop rule
+            (93, 94),  # fail-closed preservation before reference deletion
+            (94, 95),  # deletion before absence confirmation
+            (98, 99),  # final publication boundary before rollback procedure
         )
 
         for before_index, after_index in required_pairs:
@@ -574,9 +591,10 @@ class ReleaseAuditTests(unittest.TestCase):
         control_indexes = (
             *range(16, 24),  # complete preflight scope, record, and stop rule
             *range(25, 29),  # complete post-push identity and side-effect checks
-            31,  # exact no-replacement asset upload
-            *range(34, 51),  # complete immediate prepublication gate and stop rule
-            *range(52, 60),  # complete post-publication verification and rollback handoff
+            *range(30, 44),  # viewer, draft, release, and asset identities
+            *range(45, 78),  # complete immediate prepublication gate and stop rule
+            *range(78, 99),  # postpublication replay, cleanup, and rollback handoff
+            *range(100, 105),  # editable-text limit and immutable-identity withdrawal
         )
 
         for index in control_indexes:
@@ -655,17 +673,17 @@ class ReleaseAuditTests(unittest.TestCase):
             ),
             (
                 "commented prepublication block",
-                wrap_block(original, markers[33], markers[51], "<!--", "-->"),
+                wrap_block(original, markers[30], markers[77], "<!--", "-->"),
                 "HTML comment delimiters",
             ),
             (
                 "fenced prepublication block",
-                wrap_block(original, markers[33], markers[51], "```text", "```"),
+                wrap_block(original, markers[30], markers[77], "```text", "```"),
                 "publication sequence omits exact marker",
             ),
             (
                 "fenced post-publication verification",
-                wrap_block(original, markers[52], markers[57], "```text", "```"),
+                wrap_block(original, markers[78], markers[87], "```text", "```"),
                 "publication sequence omits exact marker",
             ),
             (
@@ -675,12 +693,12 @@ class ReleaseAuditTests(unittest.TestCase):
             ),
             (
                 "template",
-                wrap_block(original, markers[33], markers[51], "<template>", "</template>"),
+                wrap_block(original, markers[30], markers[77], "<template>", "</template>"),
                 "must not contain raw HTML",
             ),
             (
                 "collapsed details",
-                wrap_block(original, markers[33], markers[51], "<details>", "</details>"),
+                wrap_block(original, markers[30], markers[77], "<details>", "</details>"),
                 "must not contain raw HTML",
             ),
             (
@@ -700,12 +718,12 @@ class ReleaseAuditTests(unittest.TestCase):
             ),
             (
                 "unclosed comment after final action",
-                insert_adjacent(original, markers[51], "<!--", after=True),
+                insert_adjacent(original, markers[77], "<!--", after=True),
                 "HTML comment delimiters",
             ),
             (
                 "fence splice after final action",
-                insert_adjacent(original, markers[51], "```text", after=True),
+                insert_adjacent(original, markers[77], "```text", after=True),
                 "publication sequence omits exact marker",
             ),
             (
@@ -722,7 +740,7 @@ class ReleaseAuditTests(unittest.TestCase):
                 "unclosed fence after final action",
                 insert_adjacent(
                     original,
-                    markers[51],
+                    markers[77],
                     "``````````text",
                     after=True,
                 ),
@@ -811,6 +829,28 @@ class ReleaseAuditTests(unittest.TestCase):
                     markers[30],
                     (
                         "curl -X PATCH https://api.github.com/repos/sepahead/galadriel/releases/1",
+                    ),
+                ),
+                "active alternate release command",
+            ),
+            (
+                "gh API release promotion",
+                insert_after(
+                    original,
+                    markers[30],
+                    (
+                        "gh api --method PATCH /repos/sepahead/galadriel/releases/1 --field draft=false",
+                    ),
+                ),
+                "active alternate release command",
+            ),
+            (
+                "gh API input-file release promotion",
+                insert_after(
+                    original,
+                    markers[30],
+                    (
+                        "gh api /repos/sepahead/galadriel/releases/1 --input mutation.json",
                     ),
                 ),
                 "active alternate release command",

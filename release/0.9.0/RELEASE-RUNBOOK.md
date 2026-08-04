@@ -745,10 +745,24 @@ python3 repo_work/local_convergence.py verify \
 
    These are tagged source checks, not release-asset checks. Keep anonymous
    release-asset download checks after publication.
-7. Create a **draft** GitHub release from `v0.9.0`.
+7. Before draft creation, query the authenticated GitHub viewer with `GET /user`.
+   Require viewer `login` to equal `sepahead` and viewer `id` to equal
+   the integer `10104569`.
+   Create the **draft** GitHub release from `v0.9.0` only after this check passes.
    Use the literal title `Galadriel 0.9.0`.
    Use the exact tracked `RELEASE-NOTES.md` body.
+   Require the draft API `id` to be a positive integer and its `node_id` to be
+   non-empty text. Record both values immediately after creation.
+
    Upload the four named files without replacement.
+   For each of the exact four API assets, require and record this identity tuple:
+
+   - positive integer `id`
+   - non-empty `node_id`
+   - exact `name` and local byte `size`
+   - `state=uploaded`
+   - `uploader.login=sepahead` and integer `uploader.id=10104569`
+   - API digest when the API supplies one
 
    Require exactly those four names in the application programming interface (API) asset list.
    Compare each API byte length with its local file value.
@@ -850,10 +864,22 @@ python3 repo_work/local_convergence.py verify \
    Run the locked build, test, and documentation gates from that downloaded source.
 9. Before publication, require every authenticated-download check above to pass.
    Immediately before manual publication, query the authenticated GitHub API again.
+   Query `GET /repos/sepahead/galadriel/releases/{recorded_numeric_id}`.
+   Require the API `id` and `node_id` to equal the recorded draft values.
+   Require `author.login` to equal `sepahead` and `author.id` to equal
+   the integer account ID `10104569`.
+   Require `tag_name` to equal `v0.9.0`.
+   Require `name` to equal `Galadriel 0.9.0`.
+   JSON-decode the API `body` without normalization and require a string.
+   Encode that string as UTF-8 without normalization.
+   Require the result to equal the complete tracked
+   `release/0.9.0/RELEASE-NOTES.md` file byte-for-byte, including its terminal LF.
    Require the API to still report the intended release as `draft=true`.
+   Require `prerelease=false` and `published_at=null`.
    Require exactly the four intended asset names and sizes.
-   Require every API asset identity to equal its recorded post-upload identity;
-   no replacement is permitted.
+   Require every API asset identity tuple to equal its recorded post-upload tuple.
+   Require each asset uploader to remain `sepahead` with numeric account ID
+   `10104569`. No replacement is permitted.
    Re-download all four assets through the authenticated GitHub path into a new
    empty directory.
    Require each authenticated download to equal its local upload source byte-for-byte.
@@ -867,8 +893,21 @@ python3 repo_work/local_convergence.py verify \
    Stop publication, record the candidate disposition, and restart under the
    applicable new-version or withdrawal procedure.
 
-   Publish the draft only after all preceding gates pass.
-10. Verify the published release and anonymous downloads first.
+   Require the manual publication action below to operate on the release object
+   with the recorded numeric API `id`. Stop if this binding cannot be proved.
+
+   Publish only the draft with the recorded API `id`, and only after all preceding gates pass.
+10. Immediately after publication, query `GET /repos/sepahead/galadriel/releases/{recorded_numeric_id}`.
+   Require the published `id` and `node_id` to equal the recorded draft values.
+   Repeat the exact author, tag, name, decoded-body byte, asset-set, asset-identity,
+   and asset-uploader comparisons from step 9.
+   Require `draft=false` and `prerelease=false`.
+   Require `published_at` to be a valid non-null UTC timestamp whose UTC date
+   equals the declared candidate release date.
+   After publication, require no unexpected second release, package publication,
+   DOI, or Zenodo side effect.
+
+   Only after these checks pass, verify anonymous downloads.
    Download the four public assets anonymously into another empty directory.
    Compare the four files with the local upload sources.
 
@@ -961,9 +1000,7 @@ python3 repo_work/local_convergence.py verify \
    Do not delete the external preservation directory.
    Confirm that none of those references exists.
    Confirm that no applicable legacy GitHub release exists.
-11. Confirm that the release author is Sepehr Mahmoudian.
-   Confirm that the literal title is `Galadriel 0.9.0`.
-   Confirm that the version, date, and tracked body are exact.
+11. Confirm that the version and date are exact.
    Require exactly four attached assets.
 
    Require no DOI, Zenodo, crates.io, deployment, or production claim.
@@ -973,9 +1010,11 @@ python3 repo_work/local_convergence.py verify \
 ## Rollback and withdrawal
 
 Do not move or reuse `v0.9.0`.
-If only publication metadata is wrong, correct the GitHub release text.
-Do not replace assets.
-Record the edit.
+Only an incorrect release title or body is editable publication metadata in this
+procedure. Correct that text and record the edit.
+Do not change the release ID, author, tag, publication history, or assets.
+If the release ID, author, tag, publication history, or any asset identity is
+wrong, follow the full withdrawal procedure below.
 If source, evidence, security, or provenance is wrong:
 
 1. Mark the GitHub release as withdrawn with the exact reason and affected claims.
