@@ -22,8 +22,9 @@ tag-only, abbreviated, floating-main, or local sibling-path substitution
 **SHALL NOT** qualify a release.
 
 **GLD-090-PIN-002:** Registry dependencies **SHALL** resolve through the committed
-`Cargo.lock` with registry checksums. Every qualification command **SHALL** use
-`--locked`. The compatible version requirements in the manifest support
+lockfile with registry checksums. Each dependency-resolving Cargo invocation
+**SHALL** use `--locked`. A retained build **MUST NOT** use a tool that starts
+Cargo without forwarding `--locked`. The compatible manifest requirements support
 maintenance resolution. They are not the qualification identity.
 
 Qualification uses this exact 16-key base environment:
@@ -51,6 +52,8 @@ If `RUSTUP_HOME` is absent, the qualifier derives it from the host `HOME` value.
 The candidate `HOME` value remains isolated.
 The resulting `PATH` and `RUSTUP_HOME` values can contain host paths.
 These values MUST NOT contain credentials.
+The sandbox does not grant read access to the complete `RUSTUP_HOME` tree.
+It grants only the exact Rustup settings file and selected runtime roots.
 
 The qualifier creates isolated `HOME`, `CARGO_HOME`, `CARGO_TARGET_DIR`, and
 `TMPDIR` directories.
@@ -177,6 +180,24 @@ It compares source, snapshot, quarantine, and installed identities.
 It fails closed on size or digest drift.
 It uses only bounded bytes captured from the verified snapshot.
 Only a run that uses `--deep` can have qualification status `PASS`.
+Qualification tests all four feature-isolated CLI profiles.
+These tests execute feature-disabled assertions.
+An all-feature test cannot reach those assertions.
+The deep run tests and checks the complete fuzz workspace.
+It runs 5,000 cases for each declared fuzz target.
+Each target reads tracked semantic seeds.
+Each target uses one fixed pseudorandom seed.
+Each target writes mutations only under the private `TMPDIR`.
+One direct Cargo command builds all fuzz binaries with `--locked` and `--offline`.
+The command uses the pinned nightly compiler and the frozen sanitizer flags.
+The host copies each binary into a private mode-`0500` runner directory.
+It validates each Mach-O load command and run path before and after the copy.
+It requires `LC_LOAD_DYLIB` for all four declared libraries.
+It requires one `/usr/lib/dyld` `LC_LOAD_DYLINKER` command.
+It rejects lazy, weak, re-exported, and upward library loads.
+Each campaign executes its exact snapshot directly.
+The record binds both `Cargo.lock` files and the pinned AddressSanitizer runtime.
+The finalizer rejects a declared fuzz binary that has no retained campaign.
 
 The candidate evidence runner uses a separate build and execution sequence.
 The build command is `cargo build --release --locked -p galadriel-eval --bin galadriel-evidence`.
@@ -223,11 +244,64 @@ It fails before candidate execution if either control is absent.
 The qualifier installs one mode-0500 dispatch for 19 required command names.
 It verifies every dispatch target before and after each bounded process.
 The dispatch binds direct Apple developer Git and the matching developer tools.
-It also binds the running `CPython 3.14.6` executable.
-The sandbox denies direct execution of `/usr/bin/git` and `/usr/bin/python3`.
+The `cc` and `clang` entries resolve to one private mode-`0500` driver.
+The driver executes the pinned Clang and appends the fixed SDK selector after caller arguments.
+The qualifier binds the SDK root link and `SDKSettings.json` around each bounded process.
+This binding does not attest every SDK file or the complete Apple compiler supply chain.
+It binds three executable files in the `CPython 3.14.6` runtime inventory.
+It binds the complete 4,098-entry CPython version tree before and after qualification.
+It binds the six non-system dynamic libraries loaded by that CPython framework.
+The operator starts release Python through `repo_work/verify_release_python_runtime.sh`.
+The native launcher uses privileged Bash startup and root-owned macOS tools.
+It binds the same runtime tree and then replaces itself with the pinned interpreter.
+It removes its private verification state before it replaces itself.
+It restores the caller's umask before Python starts.
+It prevents a changed startup module from running before the first tree measurement.
+It verifies all three executable files and six libraries around each bounded process.
+Each retained Python command uses `-E -s -S`.
+These flags ignore Python environment selectors and disable site initialization.
+The Homebrew version tree contains one outward `site-packages` link.
+That target remains outside the sandbox read allowlist and outside `sys.path`.
+The qualifier binds the exact Rustup settings file before and after qualification.
+It also binds `bin`, `lib`, and `libexec` for each selected Rust toolchain.
+The selected toolchains are `1.89.0`, `1.97.1`, and `nightly-2026-06-16`.
+The three runtime inventories contain 81, 108, and 174 entries, respectively.
+The sandbox grants only those runtime roots under `RUSTUP_HOME`.
+It does not grant the `etc` or `share` roots.
+Retained commands do not use those excluded roots.
+An added runtime read outside the declared roots fails closed in the sandbox.
+The operator supplies the exact `pkgconf 3.0.3` executable through `--pkg-config`.
+The value must use the fixed absolute path in the release input.
+The qualifier verifies the 74,928-byte executable and its SHA-256 identity.
+It verifies mode `0555` and repeats the file check after each bounded process.
+It does not select `pkg-config` from ambient `PATH`.
+The dispatch retains CMake and pkgconf as required named entries.
+The candidate sandbox denies execution of both entries.
+Neither exact locked graph declares their Cargo helper package.
+A future dependency that needs either tool fails closed until its inputs are bound.
+The sandbox does not grant a read binding for either execution-denied tool.
+This rule removes the Anaconda read surface from candidate commands.
+The sandbox grants the CPython version root and exact external library paths.
+It grants the three byte-inventoried Rust runtime root sets.
+It grants each other non-system tool as an exact file or dispatch directory.
+It does not grant the full Homebrew prefix.
+It permits process execution for the pinned launcher and application trampoline.
+The launcher uses that exact trampoline to start the interpreter.
+The sandbox denies direct execution of the framework runtime file.
+The sandbox denies each same-name tool shim in the four system `PATH` roots.
+It permits the exact selected target after these same-name denials.
+It does not deny every differently named executable in an allowed operating-system or runtime root.
+Those executables and external-service behavior remain trusted host inputs.
+The candidate file, write, network, and signal restrictions still apply.
 It denies signal operations by default.
 It permits a candidate process to signal only itself or its children.
 Thus, candidate code cannot signal an unrelated external process through the sandbox policy.
+
+This inventory binds declared non-system runtime inputs.
+It does not prove universal runtime closure.
+It excludes operating-system loader state and data-dependent dynamic loads.
+It also excludes transitive operations performed by candidate-built code.
+It also excludes external services and unobserved crash-path helpers.
 
 The macOS tracker observes process groups.
 It also scans for the inherited sandbox identity.

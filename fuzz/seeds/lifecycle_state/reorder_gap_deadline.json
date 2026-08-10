@@ -1,0 +1,23 @@
+{
+  "operations": [
+    {
+      "operation": "heartbeat",
+      "event_seq": 2,
+      "producer_timestamp_ms": 1,
+      "uptime_ms": 1,
+      "declared_interval_ms": 1000,
+      "declared_deadline_ms": 3000,
+      "last_fusion_seq": null,
+      "active_track_count": 0,
+      "degraded": false,
+      "queue_capacity": 1024,
+      "queue_depth": 0,
+      "dropped_event_count": 0,
+      "published_event_count": 0
+    },
+    {
+      "operation": "advance_time",
+      "delta_ms": 1000
+    }
+  ]
+}

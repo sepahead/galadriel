@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Core types and a normalized innovation squared baseline detector."
+description = "Fail-closed core types, NIS/CUSUM detection, signed correlation, and conservative fusion."
 readme = "README.md"
 publish = false
 

@@ -277,11 +277,12 @@ Do not rewrite the candidate or trust a candidate-provided key:
 
 ```bash
 set -euo pipefail
+release_python=repo_work/verify_release_python_runtime.sh
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 # user.signingkey must name an agent-backed Ed25519 public-key handle.
 
-python3 repo_work/prepare_mutation_evidence.py \
+"$release_python" -E -s -S repo_work/prepare_mutation_evidence.py \
   --repo . \
   --candidate "$(git rev-parse HEAD)" \
   --out /new/path/galadriel-0.9.0-mutation-evidence \
@@ -327,6 +328,19 @@ It also copies the canonical exact-candidate `git.diff`.
 
 Qualify a final clean signed `main` commit into a new directory outside the checkout.
 The deep form runs the pinned hostile-input campaigns.
+It tests the structured fuzz harness and its semantic seed canaries.
+It checks every fuzz target before execution.
+It runs 5,000 cases for the NCP decoder, detector boundary, and lifecycle state targets.
+Each target reads tracked semantic seeds.
+Each target uses one fixed pseudorandom seed.
+Each target writes mutations only to the private qualification root.
+One direct Cargo command builds all three instrumented binaries with `--locked` and `--offline`.
+The host copies each binary to a private mode-`0500` path.
+It validates the exact Mach-O load set and AddressSanitizer run path twice.
+It requires `LC_LOAD_DYLIB` for each library and one `/usr/lib/dyld` linker command.
+It rejects lazy, weak, re-exported, and upward library loads.
+Each campaign executes the retained snapshot directly.
+The provenance binds the workspace and fuzz `Cargo.lock` files.
 It also runs these complete gates:
 
 - build
@@ -341,18 +355,23 @@ It also runs these complete gates:
 - software bill of materials (SBOM)
 - checksum
 
+The feature gate tests all four feature-isolated CLI profiles.
+It executes assertions for absent optional features.
+
 ```bash
 set -euo pipefail
+release_python=repo_work/verify_release_python_runtime.sh
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 
-python3 repo_work/qualify_candidate.py \
+"$release_python" -E -s -S repo_work/qualify_candidate.py \
   --repo . \
   --expected "$(git rev-parse HEAD)" \
   --out /new/path/galadriel-0.9.0-qualification \
   --signing-key "$signing_key" \
   --allowed-signers /independent/path/ALLOWED_SIGNERS \
   --advisory-db /independent/path/advisory-db \
+  --pkg-config /opt/homebrew/Cellar/pkgconf/3.0.3/bin/pkgconf \
   --mutation-evidence /new/path/galadriel-0.9.0-mutation-evidence/mutation-evidence.json \
   --mutation-evidence-signature /new/path/galadriel-0.9.0-mutation-evidence/mutation-evidence.json.sig \
   --evidence-config evidence/galadriel-0.9-candidate.json \
@@ -382,13 +401,50 @@ Cleanup that started for another failure keeps that primary classification.
 The host requires macOS `kqueue` and `/usr/bin/sandbox-exec`.
 The qualifier installs one mode-0500 dispatch for 19 required command names.
 It verifies every dispatch target before and after each bounded process.
-The dispatch binds direct Apple developer Git, its developer tools, and `CPython 3.14.6`.
-The sandbox denies direct execution of `/usr/bin/git` and `/usr/bin/python3`.
+The dispatch binds direct Apple developer Git and its developer tools.
+The `cc` and `clang` entries resolve to one private mode-`0500` driver.
+The driver executes the pinned Clang and applies the fixed SDK after caller arguments.
+The qualifier binds the SDK root link and `SDKSettings.json` around each process.
+It does not attest every SDK file or the complete Apple compiler supply chain.
+It binds the launcher, framework, and application executable for
+`CPython 3.14.6`.
+It binds the complete CPython version tree before and after qualification.
+The native launcher binds that tree and then replaces itself with pinned Python.
+It removes its private verification state before it replaces itself.
+It restores the caller's umask before Python starts.
+It verifies all three executable files and six non-system libraries around each process.
+Retained Python commands use `-E -s -S`.
+The outward Homebrew `site-packages` link remains unreadable and outside `sys.path`.
+It binds the exact Rustup settings file before and after qualification.
+It binds `bin`, `lib`, and `libexec` for all three selected Rust toolchains.
+The sandbox grants those exact runtime roots instead of the complete Rustup home.
+It excludes the unused `etc` and `share` roots from candidate reads.
+The operator supplies the exact `pkgconf 3.0.3` executable through `--pkg-config`.
+The argument must use the fixed absolute release-input path.
+The path cannot be in the checkout or be a symbolic link.
+The qualifier verifies the 74,928-byte executable and its SHA-256 identity.
+It verifies mode `0555` and repeats the file check after each bounded process.
+The sandbox denies each same-name tool shim in the four system `PATH` roots.
+It permits the exact selected target after these same-name denials.
+It does not deny every differently named executable in an allowed operating-system or runtime root.
+Those executables and external-service behavior remain trusted host inputs.
+The candidate file, write, network, and signal restrictions still apply.
+It does not grant read bindings for execution-denied CMake or pkgconf.
+It does not grant the complete Homebrew or Anaconda prefix.
+It grants the CPython version root and exact external library paths.
+It permits the pinned launcher and application trampoline under Homebrew.
+It denies the framework file as a direct process target.
+It keeps CMake and pkgconf in the 19-name dispatch but denies their execution.
+Neither locked graph declares the corresponding Cargo helper package.
+Qualification fails closed if a future dependency needs either tool.
 Critical host Git and SSH operations pin direct Apple developer Git, `/usr/bin/ssh-add`, and `/usr/bin/ssh-keygen`.
 The host verifies each root-owned no-follow identity before and after execution.
 It pins `sandbox-exec` to `/usr/bin/sandbox-exec` and its expected byte identity.
 It records the resolved path, owner, group, and mode.
 It removes dynamic-loader and toolchain selectors from host command environments.
+The record binds declared non-system runtime inputs only.
+It does not prove closure over operating-system loader state or data-dependent loads.
+It does not bind transitive operations performed by candidate-built code.
 
 The candidate sandbox denies signal operations by default.
 It permits signals only to self and children.
@@ -568,11 +624,12 @@ Create the closure tier without a candidate change:
 
 ```bash
 set -euo pipefail
+release_python=repo_work/verify_release_python_runtime.sh
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 # user.signingkey must name an agent-backed Ed25519 public-key handle.
 
-python3 repo_work/finalize_release.py \
+"$release_python" -E -s -S repo_work/finalize_release.py \
   --repo . \
   --candidate "$(git rev-parse HEAD)" \
   --qualification /new/path/galadriel-0.9.0-qualification \
@@ -713,7 +770,8 @@ It binds all these identifiers into the signed map:
 
 ```bash
 set -euo pipefail
-test "$(python3 -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+release_python=repo_work/verify_release_python_runtime.sh
+test "$("$release_python" -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
 candidate="$(git rev-parse 'HEAD^{commit}')"
 tree="$(git rev-parse "$candidate^{tree}")"
 tag=v0.9.0
@@ -723,7 +781,7 @@ test "$tag_target" = "$candidate"
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 
-python3 repo_work/package_release_assets.py build \
+"$release_python" -E -s -S repo_work/package_release_assets.py build \
   --qualification-root /exact/path/galadriel-0.9.0-qualification \
   --closure-root /exact/path/galadriel-0.9.0-closure \
   --out /new/path/galadriel-0.9.0-github-assets \
@@ -772,7 +830,8 @@ Supply the explicit expected identities:
 
 ```bash
 set -euo pipefail
-test "$(python3 -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+release_python=repo_work/verify_release_python_runtime.sh
+test "$("$release_python" -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
 candidate="$(git rev-parse 'HEAD^{commit}')"
 tree="$(git rev-parse "$candidate^{tree}")"
 tag=v0.9.0
@@ -780,7 +839,7 @@ tag_object="$(git rev-parse "$tag^{tag}")"
 tag_target="$(git rev-parse "$tag^{}")"
 test "$tag_target" = "$candidate"
 
-python3 repo_work/package_release_assets.py verify \
+"$release_python" -E -s -S repo_work/package_release_assets.py verify \
   --assets /downloaded/galadriel-0.9.0-github-assets \
   --allowed-signers /independent/path/ALLOWED_SIGNERS \
   --expected-candidate "$candidate" \
@@ -814,7 +873,8 @@ It publishes the two fixed-prefix trees only after complete verification:
 
 ```bash
 set -euo pipefail
-test "$(python3 -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+release_python=repo_work/verify_release_python_runtime.sh
+test "$("$release_python" -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
 candidate="$(git rev-parse 'HEAD^{commit}')"
 tree="$(git rev-parse "$candidate^{tree}")"
 tag=v0.9.0
@@ -822,7 +882,7 @@ tag_object="$(git rev-parse "$tag^{tag}")"
 tag_target="$(git rev-parse "$tag^{}")"
 test "$tag_target" = "$candidate"
 
-python3 repo_work/package_release_assets.py reconstruct \
+"$release_python" -E -s -S repo_work/package_release_assets.py reconstruct \
   --assets /downloaded/galadriel-0.9.0-github-assets \
   --allowed-signers /independent/path/ALLOWED_SIGNERS \
   --out /new/path/galadriel-0.9.0-reconstructed \

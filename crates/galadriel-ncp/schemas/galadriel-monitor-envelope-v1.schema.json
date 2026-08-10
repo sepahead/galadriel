@@ -275,7 +275,7 @@
           "$ref": "#/$defs/positiveSafeUnsignedInteger"
         },
         "track_id": {
-          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+          "$ref": "#/$defs/safeUnsignedInteger"
         },
         "modality": {
           "$ref": "#/$defs/modality"
@@ -612,7 +612,7 @@
           "$ref": "#/$defs/positiveSafeUnsignedInteger"
         },
         "track_id": {
-          "$ref": "#/$defs/positiveSafeUnsignedInteger"
+          "$ref": "#/$defs/safeUnsignedInteger"
         },
         "modality": {
           "$ref": "#/$defs/modality"

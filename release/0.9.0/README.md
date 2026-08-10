@@ -197,6 +197,18 @@ It verifies the accepted configuration, manifest, and exact checksum document.
 It evaluates acceptance from the rebuilt holdout summary.
 Finalization repeats the complete replay against the signed outer inventory.
 Only a run that uses `--deep` can have qualification status `PASS`.
+Qualification tests all four feature-isolated CLI profiles.
+The deep run tests and checks the complete fuzz workspace.
+It runs 5,000 cases for each of the three fuzz targets.
+Each target reads tracked semantic seeds.
+Each target uses one fixed pseudorandom seed.
+It writes mutations only to the private qualification root.
+One direct Cargo command builds all fuzz binaries with `--locked` and `--offline`.
+The host validates and copies each binary to a private mode-`0500` path.
+The verifier requires `LC_LOAD_DYLIB` for each library and one `/usr/lib/dyld` linker command.
+It rejects lazy, weak, re-exported, and upward library loads.
+Each campaign executes its exact snapshot directly.
+The record binds both lockfiles and the pinned AddressSanitizer runtime.
 
 The qualification record uses schema `galadriel.candidate-qualification.v3`.
 The run needs these external inputs:
@@ -208,7 +220,8 @@ The run needs these external inputs:
 - the tracked evidence configuration
 
 ```console
-python3 repo_work/qualify_candidate.py \
+repo_work/verify_release_python_runtime.sh \
+  -E -s -S repo_work/qualify_candidate.py \
   --repo . \
   --expected "$(git rev-parse HEAD)" \
   --require-branch main \
@@ -216,6 +229,7 @@ python3 repo_work/qualify_candidate.py \
   --signing-key "$(git config --get user.signingkey)" \
   --allowed-signers /independent/path/ALLOWED_SIGNERS \
   --advisory-db /independent/path/advisory-db \
+  --pkg-config /opt/homebrew/Cellar/pkgconf/3.0.3/bin/pkgconf \
   --mutation-evidence /path/to/exact-candidate-mutation.json \
   --mutation-evidence-signature /path/to/exact-candidate-mutation.json.sig \
   --evidence-config evidence/galadriel-0.9-candidate.json \
@@ -231,6 +245,36 @@ Critical host Git and SSH operations bind direct Apple developer Git, `/usr/bin/
 The host verifies each root-owned no-follow file identity before and after use.
 It pins `sandbox-exec` to `/usr/bin/sandbox-exec` and its expected byte identity.
 It records the resolved path, owner, group, and mode.
+The `cc` and `clang` entries resolve to one private mode-`0500` driver.
+The driver executes the pinned Clang and applies the fixed SDK after caller arguments.
+The qualifier binds the SDK root link and `SDKSettings.json` around each process.
+It does not attest every SDK file or the complete Apple compiler supply chain.
+The dispatch binds three executable files in the `CPython 3.14.6` runtime inventory.
+It binds the complete CPython version tree before and after qualification.
+The native launcher binds that tree and then replaces itself with pinned Python.
+It removes its private verification state before it replaces itself.
+It restores the caller's umask before Python starts.
+It verifies all three executable files and six non-system libraries around each process.
+Retained Python commands use `-E -s -S`.
+The outward Homebrew `site-packages` link remains unreadable and outside `sys.path`.
+It binds the exact Rustup settings file before and after qualification.
+It binds `bin`, `lib`, and `libexec` for each selected Rust toolchain.
+The sandbox grants those roots instead of the complete Rustup home.
+It excludes the unused Rust `etc` and `share` roots from candidate reads.
+The sandbox does not grant read bindings for execution-denied CMake or pkgconf.
+It does not grant the complete Homebrew or Anaconda prefix.
+It permits the pinned launcher and application trampoline under Homebrew.
+It denies the framework file as a direct process target.
+It denies each same-name tool shim in the four system `PATH` roots.
+It permits the exact selected target after these same-name denials.
+It does not deny every differently named executable in an allowed operating-system or runtime root.
+Those executables and external-service behavior remain trusted host inputs.
+The candidate file, write, network, and signal restrictions still apply.
+It retains CMake and pkgconf as named entries but denies their execution.
+Neither exact locked graph declares their Cargo helper package.
+The runtime record binds declared non-system inputs only.
+It does not prove universal runtime closure.
+It does not bind transitive operations performed by candidate-built code.
 
 The candidate sandbox denies signal operations by default.
 It permits signals only to self and children.

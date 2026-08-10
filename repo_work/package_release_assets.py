@@ -104,8 +104,18 @@ def require_canonical_python() -> None:
     if (
         platform.python_implementation() != "CPython"
         or sys.version_info[:3] != REQUIRED_PYTHON
+        or (
+            sys.flags.ignore_environment,
+            sys.flags.no_user_site,
+            sys.flags.no_site,
+            sys.flags.isolated,
+            sys.flags.safe_path,
+        )
+        != (1, 1, 1, 0, False)
     ):
-        raise ReviewError("release asset operations require CPython 3.14.6")
+        raise ReviewError(
+            "release asset operations require CPython 3.14.6 with -E -s -S"
+        )
 
 
 @dataclass(frozen=True)

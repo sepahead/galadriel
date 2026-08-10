@@ -217,9 +217,7 @@ def parse_subject(path: Path) -> dict[str, str]:
             )
         key, value = line.split("=", 1)
         if key in result or not key or not value:
-            raise ReviewError(
-                f"mutation subject record has a duplicate or empty field: {key!r}"
-            )
+            raise ReviewError("mutation subject record has a duplicate or empty field")
         result[key] = value
     expected = {
         "candidate_commit",

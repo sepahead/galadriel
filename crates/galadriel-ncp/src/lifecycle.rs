@@ -27,9 +27,9 @@ use sha2::{Digest, Sha256};
 use crate::assembler::{AssembledFrame, FrameMonitorEvent};
 use crate::monitor::{ModalityOutcomeKind, MAX_FRAME_ITEMS, REGISTRY_DIGEST_HEX_LEN};
 
-/// Aggregate ceiling for common-projection observations retained by one
-/// lifecycle adapter across every track, modality, and history frame.
-pub const MAX_LIFECYCLE_RETAINED_OBSERVATIONS: usize = 960 * 1_024;
+/// Core-owned aggregate ceiling for observations retained by one lifecycle adapter.
+pub const MAX_LIFECYCLE_RETAINED_OBSERVATIONS: usize =
+    galadriel_core::config::MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS;
 
 /// Hard ceiling for independently keyed lifecycle streams in one detector.
 pub const MAX_LIFECYCLE_STREAMS: usize = 64;
@@ -842,8 +842,8 @@ impl LifecycleDetector {
     ///
     /// # Errors
     ///
-    /// Returns [`LifecycleDetectorError::InvalidConfiguration`] when either
-    /// detector configuration is invalid.
+    /// Returns [`LifecycleDetectorError::InvalidConfiguration`] when the correlation
+    /// family was already derived or the combined history exceeds its ceiling.
     pub fn new(
         detector_config: DetectorConfig,
         correlation_config: CorrConfig,
@@ -870,6 +870,12 @@ impl LifecycleDetector {
         correlation_config: CorrConfig,
         fixed_release_suite: Option<ReleaseSuite>,
     ) -> Result<Self, LifecycleDetectorError> {
+        if correlation_config.axis_family_was_derived() {
+            return Err(LifecycleDetectorError::InvalidConfiguration(format!(
+                "correlation axis family was already derived for {} axes",
+                correlation_config.axis_family_count()
+            )));
+        }
         let history_frames = detector_config
             .window_len()
             .max(correlation_config.window());
@@ -2098,7 +2104,7 @@ mod tests {
 
     #[test]
     fn aggregate_history_bound_rejects_cross_config_state_explosion() {
-        let exact = LifecycleDetector::new(
+        let detector_dominant = LifecycleDetector::new(
             DetectorConfig::try_new(DetectorParams {
                 window_len: 40,
                 min_samples: 1,
@@ -2107,10 +2113,24 @@ mod tests {
                 ..DetectorParams::standalone_advisory_v0_9()
             })
             .expect("exact aggregate-bound detector config is valid"),
+            correlation(4, 4),
+        )
+        .expect("the exact detector-dominant lifecycle ceiling is inclusive");
+        assert_eq!(detector_dominant.max_streams(), 1);
+
+        let correlation_dominant = LifecycleDetector::new(
+            DetectorConfig::try_new(DetectorParams {
+                window_len: 1,
+                min_samples: 1,
+                min_channels: 2,
+                max_tracks: galadriel_core::config::MAX_DETECTOR_TRACKS,
+                ..DetectorParams::standalone_advisory_v0_9()
+            })
+            .expect("short detector config is valid"),
             correlation(40, 4),
         )
-        .expect("the exact lifecycle aggregate ceiling is inclusive");
-        assert_eq!(exact.max_streams(), 1);
+        .expect("the exact correlation-dominant lifecycle ceiling is inclusive");
+        assert_eq!(correlation_dominant.max_streams(), 1);
         assert_eq!(
             40 * galadriel_core::config::MAX_DETECTOR_TRACKS * Modality::ALL.len(),
             MAX_LIFECYCLE_RETAINED_OBSERVATIONS
@@ -2121,19 +2141,47 @@ mod tests {
                 window_len: 1,
                 min_samples: 1,
                 min_channels: 2,
-                max_tracks: 4,
+                max_tracks: galadriel_core::config::MAX_DETECTOR_TRACKS,
                 ..DetectorParams::standalone_advisory_v0_9()
             })
             .expect("test detector config is valid"),
-            correlation(galadriel_core::correlation::MAX_CORRELATION_WINDOW, 4),
+            correlation(41, 4),
         )
-        .expect_err("combined lifecycle retention must be bounded");
+        .expect_err("one frame above the lifecycle ceiling must fail");
 
         assert!(matches!(
             error,
             LifecycleDetectorError::InvalidConfiguration(reason)
-                if reason.contains("may retain")
+                if reason.contains("1007616") && reason.contains("983040")
         ));
+    }
+
+    #[test]
+    fn lifecycle_rejects_an_already_derived_axis_family() {
+        for axis_count in [1, galadriel_core::MAX_CONSISTENCY_PROJECTION_AXES] {
+            let correlation_config = correlation(4, 4)
+                .try_for_axis_family(axis_count)
+                .expect("test axis family is valid");
+            let error = LifecycleDetector::new(
+                DetectorConfig::try_new(DetectorParams {
+                    window_len: 4,
+                    min_samples: 4,
+                    min_channels: 2,
+                    ..DetectorParams::standalone_advisory_v0_9()
+                })
+                .expect("test detector config is valid"),
+                correlation_config,
+            )
+            .expect_err("lifecycle construction must reject a pre-derived family");
+
+            assert!(matches!(
+                error,
+                LifecycleDetectorError::InvalidConfiguration(reason)
+                    if reason == format!(
+                        "correlation axis family was already derived for {axis_count} axes"
+                    )
+            ));
+        }
     }
 
     #[test]

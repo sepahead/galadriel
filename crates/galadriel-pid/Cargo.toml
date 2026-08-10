@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Optional partial information decomposition through the command-line interface `pid` feature."
+description = "Optional geometry-bound mutual-information and partial-information-decomposition research diagnostics."
 publish = false
 
 [lints]

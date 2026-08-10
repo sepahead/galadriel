@@ -26,6 +26,7 @@ import select
 import signal
 import shutil
 import stat
+import struct
 import subprocess
 import sys
 import tarfile
@@ -130,6 +131,23 @@ QUALIFICATION_PATH_TOOLS = (
     "pkg-config",
     "sh",
 )
+EXPLICIT_QUALIFICATION_PATH_TOOLS = frozenset({"pkg-config"})
+QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS = frozenset({"cmake", "pkg-config"})
+PINNED_PKG_CONFIG_VERSION = "3.0.3"
+PINNED_PKG_CONFIG_EXECUTABLE_PATH = Path(
+    "/opt/homebrew/Cellar/pkgconf/3.0.3/bin/pkgconf"
+)
+PINNED_PKG_CONFIG_IDENTITY = (
+    "d1c437b9ad16182ee781175ae4e69b439a91c6c6747a7cd50f878514212730e4",
+    74_928,
+)
+PINNED_PKG_CONFIG_MODE = 0o555
+PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY = (
+    "6d66ac6ca61985979722a42e820ebe31e59ab44963c611f0123b061ecc955cb5",
+    4_502_208,
+)
+PINNED_DEEP_FUZZ_ASAN_LIBRARY_MODE = 0o644
+PINNED_DEEP_FUZZ_ASAN_LIBRARY_BASENAME = "librustc-nightly_rt.asan.dylib"
 DEVELOPER_GIT_PATHS = TRUSTED_DARWIN_GIT_PATHS
 DEVELOPER_TOOL_PATHS = {
     DEVELOPER_GIT_PATHS[0]: {
@@ -160,8 +178,190 @@ DEVELOPER_TOOL_PATHS = {
     },
 }
 QUALIFICATION_TOOL_DISPATCH_PREFIX = "galadriel-tool-dispatch-"
+QUALIFICATION_COMPILER_DRIVER_NAME = "galadriel-compiler-driver"
 QUALIFICATION_SYSTEM_PATHS = ("/bin", "/usr/bin", "/usr/sbin", "/sbin")
 QUALIFICATION_SYSTEM_TOOL_PATHS = {"sh": Path("/bin/sh")}
+QUALIFICATION_DENIED_SYSTEM_TOOL_SHIMS = tuple(
+    Path(directory) / name
+    for directory in QUALIFICATION_SYSTEM_PATHS
+    for name in QUALIFICATION_PATH_TOOLS
+)
+QUALIFICATION_PYTHON_FLAGS = ("-E", "-s", "-S")
+PINNED_CPYTHON_VERSION_ROOT = Path(
+    "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/"
+    "Python.framework/Versions/3.14"
+)
+PINNED_CPYTHON_LAUNCHER_PATH = PINNED_CPYTHON_VERSION_ROOT / "bin/python3.14"
+PINNED_CPYTHON_LAUNCHER_IDENTITY = (
+    "b502cb4c5b46b8d4192ec6bcb600ce8922f1afc396fcf646e8765c6eba74a0bf",
+    52_448,
+    0o755,
+)
+PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES = {
+    "python3-framework": (
+        PINNED_CPYTHON_VERSION_ROOT / "Python",
+        "696ffa2cf9562522c387f7c2b3a990ef67e574df2d921822fe310ea35587cce0",
+        5_454_512,
+        0o755,
+    ),
+    "python3-app": (
+        PINNED_CPYTHON_VERSION_ROOT
+        / "Resources/Python.app/Contents/MacOS/Python",
+        "0c9a985712bb1235d8fe474a6a99810dc118bcae0dfb429a237aac0c907fa3af",
+        51_392,
+        0o755,
+    ),
+}
+PINNED_CPYTHON_FRAMEWORK_LOAD_PATH = Path(
+    "/opt/homebrew/opt/python@3.14/Frameworks/Python.framework/"
+    "Versions/3.14/Python"
+)
+PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES = {
+    "python-mpdecimal": (
+        Path("/opt/homebrew/opt/mpdecimal/lib/libmpdec.4.dylib"),
+        Path(
+            "/opt/homebrew/Cellar/mpdecimal/4.0.1/lib/"
+            "libmpdec.4.0.1.dylib"
+        ),
+        "14286ba02244c25537b3b5c74902c5fa81959d5d2c1fcf06f89808badb67dea8",
+        188_176,
+        0o444,
+    ),
+    "python-openssl-crypto": (
+        Path("/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"),
+        Path("/opt/homebrew/Cellar/openssl@3/3.6.3/lib/libcrypto.3.dylib"),
+        "a12805a18cd5e4f733fa8727b91afa08b587f9da5a760517cd79cb508a3a3f71",
+        4_856_256,
+        0o444,
+    ),
+    "python-openssl-ssl": (
+        Path("/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib"),
+        Path("/opt/homebrew/Cellar/openssl@3/3.6.3/lib/libssl.3.dylib"),
+        "ffd8ac6981000def0928367924b6cb1e7a98712efbc06e2a2f3f750138bd89ca",
+        872_080,
+        0o444,
+    ),
+    "python-sqlite": (
+        Path("/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib"),
+        Path(
+            "/opt/homebrew/Cellar/sqlite/3.53.4/lib/"
+            "libsqlite3.3.53.4.dylib"
+        ),
+        "75feed7151d3e496343ffee9c25960d85188ed99b2ffb1051fe016f912c6c808",
+        1_276_320,
+        0o444,
+    ),
+    "python-xz": (
+        Path("/opt/homebrew/opt/xz/lib/liblzma.5.dylib"),
+        Path("/opt/homebrew/Cellar/xz/5.8.3/lib/liblzma.5.dylib"),
+        "3d5bfa2f097c31463642b1daab5e662b44368bb4da368f85e412e7f9adcbaa10",
+        184_512,
+        0o444,
+    ),
+    "python-zstd": (
+        Path("/opt/homebrew/opt/zstd/lib/libzstd.1.dylib"),
+        Path(
+            "/opt/homebrew/Cellar/zstd/1.5.7_1/lib/"
+            "libzstd.1.5.7.dylib"
+        ),
+        "e2847c4613b386683c234913ae3b7b04299254096caf7616e3b3cd9bb97a39ab",
+        649_648,
+        0o444,
+    ),
+}
+PINNED_CPYTHON_RUNTIME_TREE_IDENTITY = {
+    "schema": "galadriel.cpython-runtime-tree.v1",
+    "root": str(PINNED_CPYTHON_VERSION_ROOT),
+    "root_mode": 0o755,
+    "sha256": "6b1a020bc9f437ea8fd1fea684c3413421961f9f83e8559ed0e75df73d14e486",
+    "entries": 4_098,
+    "regular_files": 3_765,
+    "regular_bytes": 83_397_069,
+}
+PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY = {
+    "schema": "galadriel.cpython-native-runtime-tree.v1",
+    "sha256": "16b62407fe5fd2d03b56abd0e5c30308a41eb84e83f53a7143d2c859f538070b",
+    "entries": 4_098,
+    "regular_files": 3_765,
+    "regular_bytes": 83_397_069,
+}
+MAX_CPYTHON_RUNTIME_TREE_ENTRIES = 5_000
+MAX_CPYTHON_RUNTIME_TREE_DEPTH = 16
+MAX_CPYTHON_RUNTIME_TREE_BYTES = 96 * 1024 * 1024
+PINNED_RUST_HOST_TARGET = "aarch64-apple-darwin"
+PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS = ("bin", "lib", "libexec")
+PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES = {
+    "1.89.0-aarch64-apple-darwin": {
+        "schema": "galadriel.rust-toolchain-runtime-tree.v1",
+        "toolchain": "1.89.0-aarch64-apple-darwin",
+        "components": ["bin", "lib", "libexec"],
+        "root_mode": 0o755,
+        "sha256": "e64ad0a8c5d4cf714caa875f226d1ed1864f4b4fe0ae8479e80339e7081d91a6",
+        "entries": 81,
+        "regular_files": 71,
+        "regular_bytes": 518_013_485,
+    },
+    "1.97.1-aarch64-apple-darwin": {
+        "schema": "galadriel.rust-toolchain-runtime-tree.v1",
+        "toolchain": "1.97.1-aarch64-apple-darwin",
+        "components": ["bin", "lib", "libexec"],
+        "root_mode": 0o755,
+        "sha256": "5c49faad48c5f1607e08fbda6cc3ebea2247228451dedb03c3d5a4991c3c90fe",
+        "entries": 108,
+        "regular_files": 98,
+        "regular_bytes": 573_525_207,
+    },
+    "nightly-2026-06-16-aarch64-apple-darwin": {
+        "schema": "galadriel.rust-toolchain-runtime-tree.v1",
+        "toolchain": "nightly-2026-06-16-aarch64-apple-darwin",
+        "components": ["bin", "lib", "libexec"],
+        "root_mode": 0o755,
+        "sha256": "a944b4ca10f0ceefdd3aa71dc1aa15fd2807dc33d3787c5c2e28a2b44220744f",
+        "entries": 174,
+        "regular_files": 162,
+        "regular_bytes": 638_731_520,
+    },
+}
+PINNED_RUSTUP_SETTINGS_IDENTITY = (
+    "6e498e531090a72487d943bb075e69d820fa144bd6ee858e92b34950901c87ea",
+    98,
+    0o644,
+)
+PINNED_DEVELOPER_SDK_IDENTITIES = {
+    DEVELOPER_GIT_PATHS[0]: {
+        "invoked_root": Path(
+            "/Applications/Xcode.app/Contents/Developer/Platforms/"
+            "MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+        ),
+        "resolved_root": Path(
+            "/Applications/Xcode.app/Contents/Developer/Platforms/"
+            "MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+        ),
+        "link_target": None,
+        "settings_sha256": (
+            "f8d005f09381389167f9e0aeaa169bc9e7dff162ef22ca2fd8e98df7ff1acafe"
+        ),
+        "settings_size_bytes": 7_774,
+        "settings_mode": 0o644,
+    },
+    DEVELOPER_GIT_PATHS[1]: {
+        "invoked_root": Path(
+            "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
+        ),
+        "resolved_root": Path(
+            "/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk"
+        ),
+        "link_target": "MacOSX26.5.sdk",
+        "settings_sha256": (
+            "f8d005f09381389167f9e0aeaa169bc9e7dff162ef22ca2fd8e98df7ff1acafe"
+        ),
+        "settings_size_bytes": 7_774,
+        "settings_mode": 0o644,
+    },
+}
+MAX_RUST_TOOLCHAIN_RUNTIME_ENTRIES = 512
+MAX_RUST_TOOLCHAIN_RUNTIME_DEPTH = 16
+MAX_RUST_TOOLCHAIN_RUNTIME_BYTES = 768 * 1024 * 1024
 SANDBOX_SYSTEM_READ_PATHS = (
     "/Applications/Xcode.app",
     "/Library/Apple",
@@ -175,6 +375,10 @@ SANDBOX_SYSTEM_READ_PATHS = (
     "/sbin",
     "/usr",
     "/private/var/select",
+)
+SANDBOX_RESTRICTED_EXECUTABLE_ROOTS = (
+    Path("/opt/homebrew"),
+    Path("/opt/anaconda3"),
 )
 SANDBOX_EXECUTABLE = Path("/usr/bin/sandbox-exec")
 ADVISORY_DB_URL = "https://github.com/RustSec/advisory-db"
@@ -235,6 +439,14 @@ _QUALIFICATION_TOOL_DISPATCH_BASELINES: dict[
     dict[str, dict[str, Any]],
 ] = {}
 _QUALIFICATION_SYSTEM_PATH_BASELINES: dict[Path, dict[str, Any]] = {}
+_QUALIFICATION_RUNTIME_LIBRARY_PATHS: dict[Path, dict[str, Path]] = {}
+_QUALIFICATION_RUNTIME_LIBRARY_BASELINES: dict[Path, dict[str, dict[str, Any]]] = {}
+_QUALIFICATION_PYTHON_RUNTIME_EXECUTABLE_BASELINES: dict[
+    Path,
+    dict[str, dict[str, Any]],
+] = {}
+_QUALIFICATION_COMPILER_DRIVER_PATHS: dict[Path, Path] = {}
+_QUALIFICATION_COMPILER_INPUT_BASELINES: dict[Path, dict[str, Any]] = {}
 LAUNCH_GATE_SOURCE = (
     "import os,signal,sys\n"
     "os.kill(os.getpid(), signal.SIGSTOP)\n"
@@ -381,7 +593,7 @@ def sandbox_process_probe_paths(profile: Path) -> tuple[Path, Path]:
     )
 
 
-def _probe_identity(path: Path) -> tuple[int, int, int, int, int, int]:
+def _probe_identity(path: Path) -> tuple[int, int, int, int, int, int, int]:
     """Return fields that detect replacement of one process probe."""
 
     try:
@@ -394,6 +606,7 @@ def _probe_identity(path: Path) -> tuple[int, int, int, int, int, int]:
         not stat.S_ISREG(metadata.st_mode)
         or stat.S_IMODE(metadata.st_mode) != 0o400
         or metadata.st_uid != os.getuid()
+        or metadata.st_nlink != 1
         or metadata.st_size != len(PROCESS_PROBE_BYTES)
     ):
         raise ReviewError(f"process-containment probe is invalid: {path}")
@@ -401,6 +614,7 @@ def _probe_identity(path: Path) -> tuple[int, int, int, int, int, int]:
         metadata.st_dev,
         metadata.st_ino,
         metadata.st_mode,
+        metadata.st_nlink,
         metadata.st_size,
         metadata.st_mtime_ns,
         metadata.st_ctime_ns,
@@ -413,8 +627,8 @@ class SandboxProcessIdentity:
 
     deny_path: Path
     allow_path: Path
-    deny_identity: tuple[int, int, int, int, int, int]
-    allow_identity: tuple[int, int, int, int, int, int]
+    deny_identity: tuple[int, int, int, int, int, int, int]
+    allow_identity: tuple[int, int, int, int, int, int, int]
     profile_path: Path
     profile_identity: tuple[int, int, int, int, int, int]
     filesystem_baselines: tuple[tuple[int, str, int], ...]
@@ -1147,6 +1361,7 @@ def _launch_gate_argv(
     return [
         python,
         "-I",
+        "-S",
         "-c",
         LAUNCH_GATE_SOURCE,
         "qualification-launch-gate",
@@ -1188,6 +1403,7 @@ def _sandbox_armed_argv(
         argv[2],
         python,
         "-I",
+        "-S",
         "-c",
         LAUNCH_GATE_SOURCE,
         "sandbox-launch-gate",
@@ -1655,10 +1871,11 @@ def run_bounded_process(
         except BaseException as dispatch_error:
             post_execution_errors.append(dispatch_error)
         try:
-            if executable_file_identity(SANDBOX_EXECUTABLE) != sandbox_executor_identity:
-                raise ReviewError(
-                    "sandbox executor changed during candidate execution"
-                )
+            if (
+                executable_file_identity(SANDBOX_EXECUTABLE)
+                != sandbox_executor_identity
+            ):
+                raise ReviewError("sandbox executor changed during candidate execution")
         except BaseException as executor_error:
             post_execution_errors.append(executor_error)
         if primary_error is not None and hasattr(primary_error, "add_note"):
@@ -1946,6 +2163,56 @@ BASE_COMMANDS = (
         ),
     ),
     CommandSpec(
+        "cli-pure-feature-tests",
+        (
+            "cargo",
+            "test",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--locked",
+        ),
+    ),
+    CommandSpec(
+        "cli-pid-feature-tests",
+        (
+            "cargo",
+            "test",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--features",
+            "pid",
+            "--locked",
+        ),
+    ),
+    CommandSpec(
+        "cli-ncp-feature-tests",
+        (
+            "cargo",
+            "test",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--features",
+            "ncp",
+            "--locked",
+        ),
+    ),
+    CommandSpec(
+        "cli-ncp-live-feature-tests",
+        (
+            "cargo",
+            "test",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--features",
+            "ncp-live",
+            "--locked",
+        ),
+    ),
+    CommandSpec(
         "clippy-all-targets-features",
         (
             "cargo",
@@ -2122,7 +2389,9 @@ def qualification_base_commands(allowed_signers: Path) -> tuple[CommandSpec, ...
     replaced = 0
     for spec in BASE_COMMANDS:
         argv = tuple(
-            replacement if argument == INDEPENDENT_ALLOWED_SIGNERS_PLACEHOLDER else argument
+            replacement
+            if argument == INDEPENDENT_ALLOWED_SIGNERS_PLACEHOLDER
+            else argument
             for argument in spec.argv
         )
         replaced += sum(
@@ -2143,36 +2412,161 @@ def qualification_base_commands(allowed_signers: Path) -> tuple[CommandSpec, ...
         raise ReviewError("qualification signer placeholder count drifted")
     return tuple(materialized)
 
-DEEP_COMMANDS = (
-    CommandSpec(
-        "fuzz-ncp-decode-5000",
-        (
-            "cargo",
-            "+nightly-2026-06-16",
-            "fuzz",
-            "run",
-            "ncp_decode",
-            "--",
-            "-runs=5000",
-            "-max_len=131072",
-        ),
-        timeout_seconds=1_800,
-    ),
-    CommandSpec(
-        "fuzz-detector-boundaries-5000",
-        (
-            "cargo",
-            "+nightly-2026-06-16",
-            "fuzz",
-            "run",
-            "detector_boundaries",
-            "--",
-            "-runs=5000",
-            "-max_len=131072",
-        ),
-        timeout_seconds=1_800,
-    ),
+
+DEEP_FUZZ_COMMAND_TARGETS = {
+    "fuzz-ncp-decode-5000": "ncp_decode",
+    "fuzz-detector-boundaries-5000": "detector_boundaries",
+    "fuzz-lifecycle-state-5000": "lifecycle_state",
+}
+DEEP_FUZZ_TARGETS = tuple(DEEP_FUZZ_COMMAND_TARGETS.values())
+DEEP_FUZZ_SEED_ROOTS = {
+    target: f"fuzz/seeds/{target}" for target in DEEP_FUZZ_TARGETS
+}
+DEEP_FUZZ_RANDOM_SEEDS = {
+    "ncp_decode": 900_090_001,
+    "detector_boundaries": 900_090_002,
+    "lifecycle_state": 900_090_003,
+}
+DEEP_FUZZ_HOST_TARGET = "aarch64-apple-darwin"
+DEEP_FUZZ_DYNAMIC_LINKER = "/usr/lib/dyld"
+DEEP_FUZZ_LOAD_DYLIBS = (
+    f"@rpath/{PINNED_DEEP_FUZZ_ASAN_LIBRARY_BASENAME}",
+    "/usr/lib/libc++.1.dylib",
+    "/usr/lib/libSystem.B.dylib",
+    "/usr/lib/libiconv.2.dylib",
 )
+DEEP_FUZZ_RUSTFLAGS = (
+    "-Cpasses=sancov-module "
+    "-Cllvm-args=-sanitizer-coverage-level=4 "
+    "-Cllvm-args=-sanitizer-coverage-inline-8bit-counters "
+    "-Cllvm-args=-sanitizer-coverage-pc-table "
+    "-Cllvm-args=-sanitizer-coverage-trace-compares "
+    "--cfg fuzzing "
+    "-Cllvm-args=-simplifycfg-branch-fold-threshold=0 "
+    "-Zsanitizer=address "
+    "-Cdebug-assertions "
+    "-Ccodegen-units=1"
+)
+DEEP_FUZZ_BUILD_ENVIRONMENT = (
+    ("ASAN_OPTIONS", "detect_odr_violation=0"),
+    ("RUSTFLAGS", DEEP_FUZZ_RUSTFLAGS),
+)
+DEEP_FUZZ_RUN_ENVIRONMENT = (("ASAN_OPTIONS", "detect_odr_violation=0"),)
+
+
+def deep_fuzz_runner_root(private_root: Path) -> Path:
+    """Return the write-denied root for direct fuzz runner snapshots."""
+
+    if not private_root.is_absolute() or ".." in private_root.parts:
+        raise ReviewError("deep fuzz private root must be absolute")
+    return private_root / "evidence-runner" / "fuzz-runners"
+
+
+def deep_command_specs(private_root: Path) -> tuple[CommandSpec, ...]:
+    """Return the exact locked build and direct deep fuzz campaigns."""
+
+    runner_root = deep_fuzz_runner_root(private_root)
+    common_arguments = (
+        "-runs=5000",
+        "-max_len=131072",
+    )
+    return (
+        CommandSpec(
+            "fuzz-harness-tests",
+            (
+                "cargo",
+                "+nightly-2026-06-16",
+                "test",
+                "--manifest-path",
+                "fuzz/Cargo.toml",
+                "--lib",
+                "--locked",
+                "--offline",
+            ),
+            timeout_seconds=1_800,
+        ),
+        CommandSpec(
+            "fuzz-all-targets-check",
+            (
+                "cargo",
+                "+nightly-2026-06-16",
+                "check",
+                "--manifest-path",
+                "fuzz/Cargo.toml",
+                "--all-targets",
+                "--locked",
+                "--offline",
+            ),
+            timeout_seconds=1_800,
+        ),
+        CommandSpec(
+            "fuzz-instrumented-binaries-build",
+            (
+                "cargo",
+                "+nightly-2026-06-16",
+                "build",
+                "--manifest-path",
+                "fuzz/Cargo.toml",
+                "--target",
+                DEEP_FUZZ_HOST_TARGET,
+                "--release",
+                "--config",
+                'profile.release.debug="line-tables-only"',
+                "--bins",
+                "--locked",
+                "--offline",
+            ),
+            environment=DEEP_FUZZ_BUILD_ENVIRONMENT,
+            timeout_seconds=1_800,
+        ),
+        CommandSpec(
+            "fuzz-ncp-decode-5000",
+            (
+                str(runner_root / "ncp_decode" / "ncp_decode"),
+                *common_arguments,
+                f"-seed={DEEP_FUZZ_RANDOM_SEEDS['ncp_decode']}",
+                "-artifact_prefix=../tmp/fuzz-artifacts/ncp_decode/",
+                "../tmp/fuzz-corpus/ncp_decode",
+                DEEP_FUZZ_SEED_ROOTS["ncp_decode"],
+            ),
+            environment=DEEP_FUZZ_RUN_ENVIRONMENT,
+            timeout_seconds=1_800,
+            subject_executable=str(runner_root / "ncp_decode" / "ncp_decode"),
+        ),
+        CommandSpec(
+            "fuzz-detector-boundaries-5000",
+            (
+                str(runner_root / "detector_boundaries" / "detector_boundaries"),
+                *common_arguments,
+                f"-seed={DEEP_FUZZ_RANDOM_SEEDS['detector_boundaries']}",
+                "-artifact_prefix=../tmp/fuzz-artifacts/detector_boundaries/",
+                "../tmp/fuzz-corpus/detector_boundaries",
+                DEEP_FUZZ_SEED_ROOTS["detector_boundaries"],
+            ),
+            environment=DEEP_FUZZ_RUN_ENVIRONMENT,
+            timeout_seconds=1_800,
+            subject_executable=str(
+                runner_root / "detector_boundaries" / "detector_boundaries"
+            ),
+        ),
+        CommandSpec(
+            "fuzz-lifecycle-state-5000",
+            (
+                str(runner_root / "lifecycle_state" / "lifecycle_state"),
+                *common_arguments,
+                f"-seed={DEEP_FUZZ_RANDOM_SEEDS['lifecycle_state']}",
+                "-artifact_prefix=../tmp/fuzz-artifacts/lifecycle_state/",
+                "../tmp/fuzz-corpus/lifecycle_state",
+                DEEP_FUZZ_SEED_ROOTS["lifecycle_state"],
+            ),
+            environment=DEEP_FUZZ_RUN_ENVIRONMENT,
+            timeout_seconds=1_800,
+            subject_executable=str(runner_root / "lifecycle_state" / "lifecycle_state"),
+        ),
+    )
+
+
+DEEP_COMMANDS = deep_command_specs(Path("/private/galadriel-qualification"))
 
 
 def network_command_preconditions_met(
@@ -2419,6 +2813,8 @@ def build_qualification_environment(
         )
     resolved_tool_directories: list[str] = []
     for name in required_path_tools:
+        if name in EXPLICIT_QUALIFICATION_PATH_TOOLS:
+            continue
         resolved = shutil.which(name, path=path_value)
         if resolved is None or not Path(resolved).is_absolute():
             raise ReviewError(
@@ -2480,6 +2876,128 @@ def build_qualification_environment(
     if tuple(environment) != QUALIFICATION_ENVIRONMENT_KEYS:
         raise ReviewError("qualification environment key order drifted")
     return environment
+
+
+def _deep_fuzz_temporary_root(environment: Mapping[str, str]) -> Path:
+    """Return the verified private temporary root for deep fuzz state."""
+
+    temporary_text = environment.get("TMPDIR")
+    if not temporary_text:
+        raise ReviewError("deep fuzz preparation requires TMPDIR")
+    temporary_root = Path(temporary_text)
+    if not temporary_root.is_absolute():
+        raise ReviewError("deep fuzz TMPDIR must be absolute")
+    try:
+        resolved_root = temporary_root.resolve(strict=True)
+        root_metadata = temporary_root.lstat()
+    except OSError as error:
+        raise ReviewError("deep fuzz TMPDIR is unavailable") from error
+    if (
+        resolved_root != temporary_root
+        or not stat.S_ISDIR(root_metadata.st_mode)
+        or stat.S_IMODE(root_metadata.st_mode) != 0o700
+        or root_metadata.st_uid != os.getuid()
+    ):
+        raise ReviewError("deep fuzz TMPDIR identity is invalid")
+    return temporary_root
+
+
+def _require_private_directory(path: Path, label: str) -> None:
+    """Require one direct owner-private directory."""
+
+    try:
+        metadata = path.lstat()
+    except OSError as error:
+        raise ReviewError(f"{label} is unavailable") from error
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or stat.S_IMODE(metadata.st_mode) != 0o700
+        or metadata.st_uid != os.getuid()
+    ):
+        raise ReviewError(f"{label} identity is invalid")
+
+
+def prepare_deep_fuzz_directories(environment: Mapping[str, str]) -> None:
+    """Create private campaign and write-denied runner directories."""
+
+    temporary_root = _deep_fuzz_temporary_root(environment)
+    for category in ("fuzz-corpus", "fuzz-artifacts"):
+        category_root = temporary_root / category
+        try:
+            category_root.mkdir(mode=0o700, parents=False, exist_ok=False)
+        except OSError as error:
+            raise ReviewError("deep fuzz private directory creation failed") from error
+        _require_private_directory(category_root, "deep fuzz private directory")
+        for target in DEEP_FUZZ_TARGETS:
+            target_root = category_root / target
+            try:
+                target_root.mkdir(mode=0o700, parents=False, exist_ok=False)
+            except OSError as error:
+                raise ReviewError(
+                    "deep fuzz target directory creation failed"
+                ) from error
+            _require_private_directory(target_root, "deep fuzz target directory")
+            if any(target_root.iterdir()):
+                raise ReviewError("deep fuzz target directory is not empty")
+
+    runner_root = deep_fuzz_runner_root(temporary_root.parent)
+    try:
+        runner_root.mkdir(mode=0o700, parents=False, exist_ok=False)
+        for target in DEEP_FUZZ_TARGETS:
+            (runner_root / target).mkdir(mode=0o700, parents=False, exist_ok=False)
+    except OSError as error:
+        raise ReviewError("deep fuzz runner directory creation failed") from error
+    _require_private_directory(runner_root, "deep fuzz runner directory")
+    try:
+        entries = {entry.name: entry for entry in os.scandir(runner_root)}
+    except OSError as error:
+        raise ReviewError("cannot inspect deep fuzz runner directory") from error
+    if set(entries) != set(DEEP_FUZZ_TARGETS):
+        raise ReviewError("deep fuzz runner directory set is invalid")
+    for target in DEEP_FUZZ_TARGETS:
+        path = runner_root / target
+        _require_private_directory(path, "deep fuzz target runner directory")
+        if any(path.iterdir()):
+            raise ReviewError("deep fuzz target runner directory is not empty")
+
+
+def verify_deep_fuzz_command_directories(
+    environment: Mapping[str, str],
+    worktree: Path,
+    target: str,
+    *,
+    require_private_empty: bool,
+) -> None:
+    """Verify one campaign's private corpus, artifact, and runner paths."""
+
+    if target not in DEEP_FUZZ_TARGETS:
+        raise ReviewError("deep fuzz target is not declared")
+    temporary_root = _deep_fuzz_temporary_root(environment)
+    if worktree.resolve() != temporary_root.parent / "worktree":
+        raise ReviewError("deep fuzz relative path contract is invalid")
+    for category in ("fuzz-corpus", "fuzz-artifacts"):
+        category_root = temporary_root / category
+        _require_private_directory(category_root, "deep fuzz private directory")
+        target_root = category_root / target
+        _require_private_directory(target_root, "deep fuzz target directory")
+        if require_private_empty:
+            try:
+                if any(target_root.iterdir()):
+                    raise ReviewError(
+                        "deep fuzz target directory is not initially empty"
+                    )
+            except OSError as error:
+                raise ReviewError(
+                    "cannot inspect deep fuzz target directory"
+                ) from error
+    runner_root = deep_fuzz_runner_root(temporary_root.parent)
+    _require_private_directory(runner_root, "deep fuzz runner directory")
+    target_runner_root = runner_root / target
+    _require_private_directory(
+        target_runner_root,
+        "deep fuzz target runner directory",
+    )
 
 
 def _lstat(path: Path) -> os.stat_result | None:
@@ -2605,6 +3123,7 @@ def _tree_metadata_identity(metadata: os.stat_result) -> tuple[int, ...]:
         metadata.st_dev,
         metadata.st_ino,
         metadata.st_mode,
+        metadata.st_nlink,
         metadata.st_size,
         metadata.st_mtime_ns,
         metadata.st_ctime_ns,
@@ -2693,6 +3212,8 @@ def walk_bounded_tree(
     on_directory: Callable[[str], None] | None = None,
     on_symlink: Callable[[str, str], None] | None = None,
     reject_empty_directories: bool = False,
+    reject_writable_directories: bool = False,
+    reject_multiply_linked_files: bool = False,
     excluded_root_names: frozenset[str] = frozenset(),
 ) -> None:
     """Walk one bounded tree through held no-follow directory descriptors."""
@@ -2709,6 +3230,9 @@ def walk_bounded_tree(
     except OSError as error:
         raise ReviewError(f"{label} root is missing or unsafe: {error}") from error
     root_before = os.fstat(root_descriptor)
+    if reject_writable_directories and stat.S_IMODE(root_before.st_mode) & 0o022:
+        os.close(root_descriptor)
+        raise ReviewError(f"{label} root is group- or world-writable")
     entry_count = 0
 
     def visit(
@@ -2752,6 +3276,11 @@ def walk_bounded_tree(
                     f"{label} entry changed during traversal: {relative}"
                 ) from error
             if stat.S_ISDIR(before.st_mode):
+                if reject_writable_directories and stat.S_IMODE(before.st_mode) & 0o022:
+                    raise ReviewError(
+                        f"{label} contains a group- or world-writable directory: "
+                        f"{relative}"
+                    )
                 if depth >= max_depth:
                     raise ReviewError(f"{label} exceeds its directory-depth limit")
                 try:
@@ -2804,6 +3333,10 @@ def walk_bounded_tree(
                         raise ReviewError(
                             f"{label} file changed during traversal: {relative}"
                         )
+                    if reject_multiply_linked_files and opened.st_nlink != 1:
+                        raise ReviewError(
+                            f"{label} contains a multiply linked file: {relative}"
+                        )
                     on_regular(relative, descriptor, opened)
                     after = os.fstat(descriptor)
                     if _tree_metadata_identity(after) != _tree_metadata_identity(
@@ -2843,6 +3376,264 @@ def walk_bounded_tree(
             raise ReviewError(f"{label} root changed during traversal")
     finally:
         os.close(root_descriptor)
+
+
+def pinned_cpython_runtime_tree_identity() -> dict[str, Any]:
+    """Bind the complete standard-library tree used by pinned CPython."""
+
+    rows: list[dict[str, Any]] = [{"kind": "directory", "path": ""}]
+    regular_files = 0
+    regular_bytes = 0
+
+    def add_directory(relative: str) -> None:
+        rows.append({"kind": "directory", "path": relative})
+
+    def add_regular(
+        relative: str,
+        descriptor: int,
+        metadata: os.stat_result,
+    ) -> None:
+        nonlocal regular_bytes, regular_files
+        mode = stat.S_IMODE(metadata.st_mode)
+        if mode & 0o022 or metadata.st_size > MAX_CPYTHON_RUNTIME_TREE_BYTES - regular_bytes:
+            raise ReviewError("CPython runtime tree contains an unsafe regular file")
+        digest, size = digest_regular_descriptor(
+            descriptor,
+            expected_size=metadata.st_size,
+            label=f"CPython runtime file {relative}",
+        )
+        rows.append(
+            {
+                "kind": "file",
+                "mode": mode,
+                "path": relative,
+                "sha256": digest,
+                "size_bytes": size,
+            }
+        )
+        regular_files += 1
+        regular_bytes += size
+
+    def add_symlink(relative: str, target: str) -> None:
+        try:
+            target.encode("utf-8", "strict")
+        except UnicodeEncodeError as error:
+            raise ReviewError("CPython runtime tree contains a non-UTF-8 link") from error
+        if (
+            not target
+            or Path(target).is_absolute()
+            or any(ord(character) < 0x20 for character in target)
+        ):
+            raise ReviewError("CPython runtime tree contains an unsafe link")
+        rows.append({"kind": "symlink", "path": relative, "target": target})
+
+    try:
+        root_mode = stat.S_IMODE(PINNED_CPYTHON_VERSION_ROOT.lstat().st_mode)
+    except OSError as error:
+        raise ReviewError("CPython runtime tree root is unavailable") from error
+    if root_mode != PINNED_CPYTHON_RUNTIME_TREE_IDENTITY["root_mode"]:
+        raise ReviewError("CPython runtime tree root mode differs from the pin")
+    walk_bounded_tree(
+        PINNED_CPYTHON_VERSION_ROOT,
+        label="CPython runtime tree",
+        max_entries=MAX_CPYTHON_RUNTIME_TREE_ENTRIES,
+        max_depth=MAX_CPYTHON_RUNTIME_TREE_DEPTH,
+        on_regular=add_regular,
+        on_directory=add_directory,
+        on_symlink=add_symlink,
+        reject_writable_directories=True,
+        reject_multiply_linked_files=True,
+    )
+    rows.sort(key=lambda row: (row["path"], row["kind"]))
+    record = {
+        "schema": "galadriel.cpython-runtime-tree.v1",
+        "root": str(PINNED_CPYTHON_VERSION_ROOT),
+        "root_mode": root_mode,
+        "sha256": hashlib.sha256(canonical_json(rows)).hexdigest(),
+        "entries": len(rows),
+        "regular_files": regular_files,
+        "regular_bytes": regular_bytes,
+    }
+    if record != PINNED_CPYTHON_RUNTIME_TREE_IDENTITY:
+        raise ReviewError("CPython runtime tree differs from the pin")
+    return record
+
+
+def qualification_rustup_home(environment: Mapping[str, str]) -> Path:
+    """Return one direct absolute Rustup home from the environment contract."""
+
+    value = environment.get("RUSTUP_HOME")
+    if not isinstance(value, str) or not value:
+        raise ReviewError("qualification Rust toolchain binding requires RUSTUP_HOME")
+    path = Path(value)
+    if not path.is_absolute() or ".." in path.parts or path == Path("/"):
+        raise ReviewError("qualification RUSTUP_HOME is invalid")
+    try:
+        resolved = path.resolve(strict=True)
+        metadata = path.lstat()
+    except OSError as error:
+        raise ReviewError("qualification RUSTUP_HOME is unavailable") from error
+    if (
+        resolved != path
+        or not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or stat.S_IMODE(metadata.st_mode) & 0o022
+    ):
+        raise ReviewError("qualification RUSTUP_HOME is unsafe")
+    return path
+
+
+def rust_toolchain_runtime_read_paths(
+    environment: Mapping[str, str],
+) -> tuple[Path, ...]:
+    """Return the exact Rustup settings and runtime roots used by qualification."""
+
+    rustup_home = qualification_rustup_home(environment)
+    paths = [rustup_home / "settings.toml"]
+    for toolchain in PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES:
+        root = rustup_home / "toolchains" / toolchain
+        paths.extend(
+            root / component for component in PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS
+        )
+    resolved_paths: list[Path] = []
+    for path in paths:
+        try:
+            resolved = path.resolve(strict=True)
+            metadata = path.lstat()
+        except OSError as error:
+            raise ReviewError("qualification Rust runtime input is unavailable") from error
+        if resolved != path or stat.S_ISLNK(metadata.st_mode):
+            raise ReviewError("qualification Rust runtime input is unsafe")
+        if path.name == "settings.toml":
+            valid_type = stat.S_ISREG(metadata.st_mode)
+        else:
+            valid_type = stat.S_ISDIR(metadata.st_mode)
+        if not valid_type or stat.S_IMODE(metadata.st_mode) & 0o022:
+            raise ReviewError("qualification Rust runtime input is unsafe")
+        resolved_paths.append(path)
+    return tuple(resolved_paths)
+
+
+def pinned_rust_toolchain_runtime_identity(
+    environment: Mapping[str, str],
+) -> dict[str, Any]:
+    """Bind each selected Rust runtime tree and the exact Rustup settings file."""
+
+    rustup_home = qualification_rustup_home(environment)
+    settings_path = rustup_home / "settings.toml"
+    settings = _direct_regular_file_identity(
+        settings_path,
+        label="direct qualification Rustup settings file",
+        max_bytes=1024 * 1024,
+        require_owner_executable=False,
+    )
+    if (
+        settings["invoked_path"] != str(settings_path)
+        or settings["resolved_path"] != str(settings_path)
+        or (
+            settings["sha256"],
+            settings["size_bytes"],
+            settings["mode"],
+        )
+        != PINNED_RUSTUP_SETTINGS_IDENTITY
+    ):
+        raise ReviewError("qualification Rustup settings differ from the pin")
+
+    toolchains: dict[str, dict[str, Any]] = {}
+    for toolchain, expected in PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES.items():
+        root = rustup_home / "toolchains" / toolchain
+        try:
+            root_metadata = root.lstat()
+            resolved_root = root.resolve(strict=True)
+        except OSError as error:
+            raise ReviewError("qualification Rust runtime tree is unavailable") from error
+        if (
+            resolved_root != root
+            or not stat.S_ISDIR(root_metadata.st_mode)
+            or stat.S_ISLNK(root_metadata.st_mode)
+            or stat.S_IMODE(root_metadata.st_mode) & 0o022
+        ):
+            raise ReviewError("qualification Rust runtime tree root is unsafe")
+
+        rows: list[dict[str, Any]] = [{"kind": "directory", "path": ""}]
+        regular_files = 0
+        regular_bytes = 0
+
+        def add_directory(relative: str) -> None:
+            rows.append({"kind": "directory", "path": relative})
+
+        def add_regular(
+            relative: str,
+            descriptor: int,
+            metadata: os.stat_result,
+        ) -> None:
+            nonlocal regular_bytes, regular_files
+            mode = stat.S_IMODE(metadata.st_mode)
+            if (
+                mode & 0o022
+                or metadata.st_size
+                > MAX_RUST_TOOLCHAIN_RUNTIME_BYTES - regular_bytes
+            ):
+                raise ReviewError(
+                    "qualification Rust runtime tree contains an unsafe file"
+                )
+            digest, size = digest_regular_descriptor(
+                descriptor,
+                expected_size=metadata.st_size,
+                label=f"Rust runtime file {toolchain}/{relative}",
+            )
+            rows.append(
+                {
+                    "kind": "file",
+                    "mode": mode,
+                    "path": relative,
+                    "sha256": digest,
+                    "size_bytes": size,
+                }
+            )
+            regular_files += 1
+            regular_bytes += size
+
+        def reject_symlink(relative: str, _target: str) -> None:
+            raise ReviewError(
+                f"qualification Rust runtime tree contains a link: {relative}"
+            )
+
+        walk_bounded_tree(
+            root,
+            label=f"Rust runtime tree {toolchain}",
+            max_entries=MAX_RUST_TOOLCHAIN_RUNTIME_ENTRIES,
+            max_depth=MAX_RUST_TOOLCHAIN_RUNTIME_DEPTH,
+            on_regular=add_regular,
+            on_directory=add_directory,
+            on_symlink=reject_symlink,
+            reject_writable_directories=True,
+            reject_multiply_linked_files=True,
+            excluded_root_names=frozenset({"etc", "share"}),
+        )
+        rows.sort(key=lambda row: (row["path"], row["kind"]))
+        observed = {
+            "schema": "galadriel.rust-toolchain-runtime-tree.v1",
+            "toolchain": toolchain,
+            "components": list(PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS),
+            "root_mode": stat.S_IMODE(root_metadata.st_mode),
+            "sha256": hashlib.sha256(canonical_json(rows)).hexdigest(),
+            "entries": len(rows),
+            "regular_files": regular_files,
+            "regular_bytes": regular_bytes,
+        }
+        if observed != expected:
+            raise ReviewError(
+                f"qualification Rust runtime tree differs from the pin: {toolchain}"
+            )
+        toolchains[toolchain] = {"root": str(root), **observed}
+
+    return {
+        "schema": "galadriel.rust-toolchain-runtime.v1",
+        "rustup_home": str(rustup_home),
+        "settings": settings,
+        "toolchains": toolchains,
+    }
 
 
 def verify_materialized_candidate(worktree: Path, commit: str, tree: str) -> None:
@@ -3004,6 +3795,7 @@ def create_standalone_candidate_clone(
             read_only_paths=(Path("/private/var/select"),),
             writable_paths=(destination, scratch),
             tool_read_paths=tuple(clone_tool_read_paths),
+            allowed_executable_paths=(developer_git, Path("/bin/sh")),
         )
         process = run_bounded_process(
             sandboxed_argv(
@@ -3112,29 +3904,59 @@ def qualification_tool_read_paths(
     host_home: Path,
     tool_names: tuple[str, ...] = QUALIFICATION_PATH_TOOLS,
 ) -> tuple[Path, ...]:
-    """Return minimal non-system roots for resolved qualification tools."""
+    """Return declared non-system read roots for resolved qualification tools."""
 
     system_roots = tuple(Path(path) for path in SANDBOX_SYSTEM_READ_PATHS)
     paths: set[Path] = set()
     for name in tool_names:
+        if name in QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS:
+            continue
         invoked_text = shutil.which(name, path=environment["PATH"])
         if invoked_text is None:
             raise ReviewError(f"qualification PATH does not resolve {name}")
         invoked = Path(invoked_text)
         resolved = invoked.resolve(strict=True)
-        for path in (invoked.parent.resolve(strict=True), resolved.parent):
+        if name == "python3":
+            paths.add(invoked.parent.resolve(strict=True))
+            paths.add(PINNED_CPYTHON_VERSION_ROOT)
+            for _load_path, resolved_path, _sha256, _size, _mode in (
+                PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES.values()
+            ):
+                paths.add(resolved_path)
+            continue
+        for path in (invoked.parent.resolve(strict=True), resolved):
             if any(path == root or root in path.parents for root in system_roots):
                 continue
-            if path == host_home or host_home in path.parents:
-                paths.add(path)
-                continue
-            parts = path.parts
-            if len(parts) >= 3 and parts[:2] == ("/", "opt"):
-                paths.add(Path("/", "opt", parts[2]))
-            elif len(parts) >= 3 and parts[:3] == ("/", "usr", "local"):
-                paths.add(Path("/usr/local"))
-            else:
-                paths.add(path)
+            paths.add(path)
+    paths.update(rust_toolchain_runtime_read_paths(environment))
+    return tuple(sorted(paths, key=lambda item: str(item)))
+
+
+def qualification_allowed_executable_paths(
+    executables: Mapping[str, Mapping[str, Any]],
+) -> tuple[Path, ...]:
+    """Return the exact resolved targets allowed after system-shim denials."""
+
+    paths: set[Path] = set()
+    for name in QUALIFICATION_PATH_TOOLS:
+        record = executables.get(name)
+        resolved_text = (
+            record.get("resolved_path") if isinstance(record, Mapping) else None
+        )
+        if not isinstance(resolved_text, str):
+            raise ReviewError(f"qualification executable binding is missing: {name}")
+        resolved = Path(resolved_text)
+        if not resolved.is_absolute() or ".." in resolved.parts:
+            raise ReviewError(f"qualification executable path is invalid: {name}")
+        if name == "python3" and resolved != PINNED_CPYTHON_LAUNCHER_PATH:
+            raise ReviewError(
+                "qualification CPython launcher path differs from the pin"
+            )
+        if name in QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS:
+            continue
+        paths.add(resolved)
+        if name == "python3":
+            paths.add(PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES["python3-app"][0])
     return tuple(sorted(paths, key=lambda item: str(item)))
 
 
@@ -3147,6 +3969,7 @@ def render_candidate_sandbox_profile(
     writable_paths: tuple[Path, ...] = (),
     allowed_home_read_paths: tuple[Path, ...] = (),
     tool_read_paths: tuple[Path, ...] = (),
+    allowed_executable_paths: tuple[Path, ...] = (),
     denied_read_paths: tuple[Path, ...] = (),
     process_probe_paths: tuple[Path, Path],
     allow_network: bool = False,
@@ -3154,6 +3977,16 @@ def render_candidate_sandbox_profile(
     """Render one exact macOS candidate policy from normalized path bindings."""
 
     deny_probe, allow_probe = process_probe_paths
+    effective_allowed_executable_paths = tuple(
+        sorted(
+            {
+                *allowed_executable_paths,
+                PINNED_CPYTHON_LAUNCHER_PATH,
+                PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES["python3-app"][0],
+            },
+            key=lambda item: str(item),
+        )
+    )
     system_read_paths = tuple(Path(path) for path in SANDBOX_SYSTEM_READ_PATHS)
     readable_paths = (
         *system_read_paths,
@@ -3177,8 +4010,6 @@ def render_candidate_sandbox_profile(
         "(deny signal)",
         "(allow signal (target self))",
         "(allow signal (target children))",
-        '(deny process-exec (literal "/usr/bin/git"))',
-        '(deny process-exec (literal "/usr/bin/python3"))',
         "(deny file-read*)",
         "(deny file-write*)",
         '(allow file-write* (literal "/dev/null"))',
@@ -3190,6 +4021,18 @@ def render_candidate_sandbox_profile(
     ]
     if not allow_network:
         rules.append("(deny network*)")
+    rules.extend(
+        f"(deny process-exec (literal {json.dumps(str(path))}))"
+        for path in QUALIFICATION_DENIED_SYSTEM_TOOL_SHIMS
+    )
+    rules.extend(
+        f"(deny process-exec (subpath {json.dumps(str(path))}))"
+        for path in SANDBOX_RESTRICTED_EXECUTABLE_ROOTS
+    )
+    rules.extend(
+        f"(allow process-exec (literal {json.dumps(str(path))}))"
+        for path in effective_allowed_executable_paths
+    )
     rules.extend(
         f"(allow file-write* (subpath {json.dumps(str(path))}))"
         for path in writable_paths
@@ -3242,7 +4085,7 @@ def _create_process_probe(path: Path) -> None:
         raise ReviewError(
             f"cannot create process-containment probe: {path}: {error}"
         ) from error
-    if _probe_identity(path)[3] != len(PROCESS_PROBE_BYTES):
+    if _probe_identity(path)[4] != len(PROCESS_PROBE_BYTES):
         raise ReviewError("process-containment probe has another size")
 
 
@@ -3255,6 +4098,7 @@ def write_candidate_sandbox_profile(
     writable_paths: tuple[Path, ...] = (),
     allowed_home_read_paths: tuple[Path, ...] = (),
     tool_read_paths: tuple[Path, ...] = (),
+    allowed_executable_paths: tuple[Path, ...] = (),
     denied_read_paths: tuple[Path, ...] = (),
     allow_network: bool = False,
 ) -> str:
@@ -3267,7 +4111,18 @@ def write_candidate_sandbox_profile(
     resolved_read_only_paths = tuple(path.resolve() for path in read_only_paths)
     resolved_writable_paths = tuple(path.resolve() for path in writable_paths)
     resolved_home_read_paths = tuple(path.resolve() for path in allowed_home_read_paths)
-    resolved_tool_read_paths = tuple(path.resolve() for path in tool_read_paths)
+    resolved_tool_read_paths: list[Path] = []
+    for path in tool_read_paths:
+        if not path.is_absolute() or ".." in path.parts:
+            raise ReviewError("sandbox tool-read path is not absolute and traversal-free")
+        try:
+            canonical = path.resolve(strict=True)
+        except OSError as error:
+            raise ReviewError("sandbox tool-read path is unavailable") from error
+        resolved_tool_read_paths.append(canonical)
+    resolved_allowed_executable_paths = tuple(
+        path.resolve(strict=True) for path in allowed_executable_paths
+    )
     resolved_denied_read_paths = tuple(path.resolve() for path in denied_read_paths)
     host_home = Path.home().resolve()
     process_probe_paths = sandbox_process_probe_paths(destination)
@@ -3300,7 +4155,8 @@ def write_candidate_sandbox_profile(
         read_only_paths=resolved_read_only_paths,
         writable_paths=resolved_writable_paths,
         allowed_home_read_paths=resolved_home_read_paths,
-        tool_read_paths=resolved_tool_read_paths,
+        tool_read_paths=tuple(resolved_tool_read_paths),
+        allowed_executable_paths=resolved_allowed_executable_paths,
         denied_read_paths=resolved_denied_read_paths,
         process_probe_paths=resolved_process_probe_paths,
         allow_network=allow_network,
@@ -3365,6 +4221,11 @@ def qualification_executed_argv(
     if not executed or not isinstance(executed[0], str) or not executed[0]:
         raise ReviewError("candidate command argv is empty or invalid")
     requested = executed[0]
+    if requested == "python3" or Path(requested).name == "python3":
+        if tuple(executed[1:4]) == QUALIFICATION_PYTHON_FLAGS:
+            return executed
+        executed[1:1] = QUALIFICATION_PYTHON_FLAGS
+        return executed
     if requested != "git" and Path(requested).name != "git":
         return executed
 
@@ -3393,6 +4254,11 @@ def candidate_executed_argv(
     if not argv:
         raise ReviewError("candidate command argv is empty")
     requested = argv[0]
+    if requested == "python3" or Path(requested).name == "python3":
+        executed = list(argv)
+        if tuple(executed[1:4]) != QUALIFICATION_PYTHON_FLAGS:
+            executed[1:1] = QUALIFICATION_PYTHON_FLAGS
+        return executed
     if requested != "git" and Path(requested).name != "git":
         return list(argv)
     git_executable = (
@@ -3415,71 +4281,49 @@ def sandboxed_argv(
     return [str(SANDBOX_EXECUTABLE), "-f", str(profile), *executed]
 
 
-def executable_file_identity(path: Path) -> dict[str, Any]:
-    """Bind one resolved executable to immutable bytes during the run."""
+def executable_file_identity(
+    path: Path,
+    *,
+    require_single_link: bool = True,
+) -> dict[str, Any]:
+    """Bind one resolved executable through a held no-follow descriptor."""
 
     invoked = path
     try:
         resolved = invoked.resolve(strict=True)
-        metadata = resolved.stat()
     except OSError as error:
         raise ReviewError(
             f"cannot inspect qualification executable {path}: {error}"
         ) from error
-    if not resolved.is_file() or resolved.is_symlink():
-        raise ReviewError(f"qualification executable is not a regular file: {resolved}")
-    if not metadata.st_mode & stat.S_IXUSR:
-        raise ReviewError(
-            f"qualification executable is not owner-executable: {resolved}"
-        )
-    if stat.S_IMODE(metadata.st_mode) & 0o022:
-        raise ReviewError(
-            f"qualification executable is group- or world-writable: {resolved}"
-        )
-    if metadata.st_size <= 0 or metadata.st_size > MAX_QUALIFICATION_EXECUTABLE_BYTES:
-        raise ReviewError(f"qualification executable size is invalid: {resolved}")
-    digest, size = digest_file(resolved)
-    try:
-        metadata_after = resolved.stat()
-    except OSError as error:
-        raise ReviewError(
-            f"cannot recheck qualification executable {resolved}: {error}"
-        ) from error
-    if (
-        size != metadata.st_size
-        or metadata_after.st_dev != metadata.st_dev
-        or metadata_after.st_ino != metadata.st_ino
-        or metadata_after.st_size != metadata.st_size
-        or metadata_after.st_mtime_ns != metadata.st_mtime_ns
-        or metadata_after.st_mode != metadata.st_mode
-    ):
-        raise ReviewError(f"qualification executable changed while hashed: {resolved}")
-    return {
-        "invoked_path": str(invoked),
-        "resolved_path": str(resolved),
-        "sha256": digest,
-        "size_bytes": size,
-        "uid": metadata.st_uid,
-        "gid": metadata.st_gid,
-        "mode": stat.S_IMODE(metadata.st_mode),
-    }
+    record = _direct_regular_file_identity(
+        resolved,
+        label="qualification executable",
+        max_bytes=MAX_QUALIFICATION_EXECUTABLE_BYTES,
+        require_owner_executable=True,
+        require_single_link=require_single_link,
+    )
+    record["invoked_path"] = str(invoked)
+    return record
 
 
-def direct_executable_file_identity(path: Path) -> dict[str, Any]:
-    """Bind one direct executable with a no-follow held descriptor."""
+def _direct_regular_file_identity(
+    path: Path,
+    *,
+    label: str,
+    max_bytes: int,
+    require_owner_executable: bool,
+    require_single_link: bool = True,
+) -> dict[str, Any]:
+    """Bind one direct regular file with a no-follow held descriptor."""
 
     if not path.is_absolute():
-        raise ReviewError("direct qualification executable path is not absolute")
+        raise ReviewError(f"{label} path is not absolute")
     try:
         if path.parent.resolve(strict=True) != path.parent:
-            raise ReviewError(
-                "direct qualification executable has a linked parent path"
-            )
+            raise ReviewError(f"{label} has a linked parent path")
         path_before = path.lstat()
     except OSError as error:
-        raise ReviewError(
-            f"cannot inspect direct qualification executable {path}: {error}"
-        ) from error
+        raise ReviewError(f"cannot inspect {label} {path}: {error}") from error
     flags = (
         os.O_RDONLY
         | getattr(os, "O_NONBLOCK", 0)
@@ -3489,9 +4333,7 @@ def direct_executable_file_identity(path: Path) -> dict[str, Any]:
     try:
         descriptor = os.open(path, flags)
     except OSError as error:
-        raise ReviewError(
-            f"cannot open direct qualification executable {path}: {error}"
-        ) from error
+        raise ReviewError(f"cannot open {label} {path}: {error}") from error
     try:
         opened = os.fstat(descriptor)
         identity_before = (
@@ -3517,28 +4359,25 @@ def direct_executable_file_identity(path: Path) -> dict[str, Any]:
             opened.st_ctime_ns,
         )
         if identity_before != opened_identity or not stat.S_ISREG(opened.st_mode):
-            raise ReviewError(
-                "direct qualification executable changed before it was opened"
-            )
+            raise ReviewError(f"{label} changed before it was opened")
         if (
-            not opened.st_mode & stat.S_IXUSR
+            (require_owner_executable and not opened.st_mode & stat.S_IXUSR)
             or stat.S_IMODE(opened.st_mode) & 0o022
+            or (require_single_link and opened.st_nlink != 1)
             or opened.st_size <= 0
-            or opened.st_size > MAX_QUALIFICATION_EXECUTABLE_BYTES
+            or opened.st_size > max_bytes
         ):
-            raise ReviewError("direct qualification executable identity is invalid")
+            raise ReviewError(f"{label} identity is invalid")
         digest, size = digest_regular_descriptor(
             descriptor,
             expected_size=opened.st_size,
-            label="direct qualification executable",
+            label=label,
         )
         descriptor_after = os.fstat(descriptor)
         try:
             path_after = path.lstat()
         except OSError as error:
-            raise ReviewError(
-                "direct qualification executable disappeared while hashed"
-            ) from error
+            raise ReviewError(f"{label} disappeared while hashed") from error
         after_identity = (
             path_after.st_dev,
             path_after.st_ino,
@@ -3565,9 +4404,7 @@ def direct_executable_file_identity(path: Path) -> dict[str, Any]:
             after_identity != identity_before
             or descriptor_after_identity != identity_before
         ):
-            raise ReviewError(
-                "direct qualification executable changed while hashed"
-            )
+            raise ReviewError(f"{label} changed while hashed")
     finally:
         os.close(descriptor)
     return {
@@ -3579,6 +4416,293 @@ def direct_executable_file_identity(path: Path) -> dict[str, Any]:
         "gid": opened.st_gid,
         "mode": stat.S_IMODE(opened.st_mode),
     }
+
+
+def direct_executable_file_identity(path: Path) -> dict[str, Any]:
+    """Bind one direct executable with a no-follow held descriptor."""
+
+    return _direct_regular_file_identity(
+        path,
+        label="direct qualification executable",
+        max_bytes=MAX_QUALIFICATION_EXECUTABLE_BYTES,
+        require_owner_executable=True,
+    )
+
+
+def direct_runtime_library_identity(path: Path) -> dict[str, Any]:
+    """Bind one direct runtime library with a no-follow held descriptor."""
+
+    return _direct_regular_file_identity(
+        path,
+        label="direct qualification runtime library",
+        max_bytes=MAX_QUALIFICATION_EXECUTABLE_BYTES,
+        require_owner_executable=False,
+    )
+
+
+def pinned_cpython_runtime_library_files() -> dict[str, dict[str, Any]]:
+    """Bind each non-system dynamic library loaded by pinned CPython."""
+
+    records: dict[str, dict[str, Any]] = {}
+    for name, (
+        load_path,
+        resolved_path,
+        expected_sha256,
+        expected_size,
+        expected_mode,
+    ) in PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES.items():
+        try:
+            resolved_before = load_path.resolve(strict=True)
+        except OSError as error:
+            raise ReviewError(
+                f"CPython runtime-library load path is unavailable: {name}"
+            ) from error
+        if resolved_before != resolved_path:
+            raise ReviewError(
+                f"CPython runtime-library load path differs from the pin: {name}"
+            )
+        record = direct_runtime_library_identity(resolved_path)
+        if (
+            record["sha256"] != expected_sha256
+            or record["size_bytes"] != expected_size
+            or record["mode"] != expected_mode
+        ):
+            raise ReviewError(f"CPython runtime library differs from the pin: {name}")
+        try:
+            resolved_after = load_path.resolve(strict=True)
+        except OSError as error:
+            raise ReviewError(
+                f"CPython runtime-library load path changed: {name}"
+            ) from error
+        if resolved_after != resolved_before:
+            raise ReviewError(f"CPython runtime-library load path changed: {name}")
+        record["invoked_path"] = str(load_path)
+        records[name] = record
+    return records
+
+
+def pinned_cpython_runtime_executable_files() -> dict[str, dict[str, Any]]:
+    """Bind the two executable files behind the pinned CPython launcher."""
+
+    framework_path = PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES[
+        "python3-framework"
+    ][0]
+    try:
+        framework_load_target = PINNED_CPYTHON_FRAMEWORK_LOAD_PATH.resolve(
+            strict=True
+        )
+    except OSError as error:
+        raise ReviewError("CPython framework load path is unavailable") from error
+    if framework_load_target != framework_path:
+        raise ReviewError("CPython framework load path differs from the pin")
+    records: dict[str, dict[str, Any]] = {}
+    for name, (
+        path,
+        expected_sha256,
+        expected_size,
+        expected_mode,
+    ) in PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES.items():
+        record = direct_executable_file_identity(path)
+        if (
+            record["invoked_path"] != str(path)
+            or record["resolved_path"] != str(path)
+            or record["sha256"] != expected_sha256
+            or record["size_bytes"] != expected_size
+            or record["mode"] != expected_mode
+        ):
+            raise ReviewError(
+                f"qualification CPython runtime executable differs from the pin: {name}"
+            )
+        records[name] = record
+    try:
+        framework_load_target_after = PINNED_CPYTHON_FRAMEWORK_LOAD_PATH.resolve(
+            strict=True
+        )
+    except OSError as error:
+        raise ReviewError("CPython framework load path changed") from error
+    if framework_load_target_after != framework_load_target:
+        raise ReviewError("CPython framework load path changed")
+    return records
+
+
+def require_pinned_cpython_runtime() -> dict[str, Any]:
+    """Authenticate the interpreter and every declared non-system runtime input."""
+
+    try:
+        launcher = Path(sys.executable).resolve(strict=True)
+    except OSError as error:
+        raise ReviewError("qualification CPython launcher is unavailable") from error
+    return {
+        "launcher": validate_pinned_cpython_launcher(launcher),
+        "runtime_executables": pinned_cpython_runtime_executable_files(),
+        "runtime_libraries": pinned_cpython_runtime_library_files(),
+        "runtime_tree": pinned_cpython_runtime_tree_identity(),
+    }
+
+
+def require_release_python_isolation() -> None:
+    """Require the exact no-environment, no-site interpreter startup contract."""
+
+    observed = (
+        sys.flags.ignore_environment,
+        sys.flags.no_user_site,
+        sys.flags.no_site,
+        sys.flags.isolated,
+        sys.flags.safe_path,
+    )
+    if observed != (1, 1, 1, 0, False):
+        raise ReviewError("release Python must start with the exact -E -s -S flags")
+
+
+def validate_pinned_cpython_launcher(path: Path) -> dict[str, Any]:
+    """Require the exact CPython launcher selected for qualification."""
+
+    if path != PINNED_CPYTHON_LAUNCHER_PATH:
+        raise ReviewError("qualification CPython launcher path differs from the pin")
+    record = direct_executable_file_identity(path)
+    expected_sha256, expected_size, expected_mode = PINNED_CPYTHON_LAUNCHER_IDENTITY
+    if (
+        record["sha256"] != expected_sha256
+        or record["size_bytes"] != expected_size
+        or record["mode"] != expected_mode
+    ):
+        raise ReviewError("qualification CPython launcher differs from the pin")
+    return record
+
+
+def validate_pinned_pkg_config_executable(path: Path) -> dict[str, Any]:
+    """Require the exact execution-denied pkg-config dispatch target."""
+
+    if path != PINNED_PKG_CONFIG_EXECUTABLE_PATH:
+        raise ReviewError("qualification pkg-config path differs from the pin")
+    record = direct_executable_file_identity(path)
+    observed = (record["sha256"], record["size_bytes"])
+    if observed != PINNED_PKG_CONFIG_IDENTITY or record["mode"] != PINNED_PKG_CONFIG_MODE:
+        raise ReviewError(
+            "qualification pkg-config executable differs from pinned "
+            f"pkgconf {PINNED_PKG_CONFIG_VERSION}"
+        )
+    return record
+
+
+def macho_runtime_paths(
+    document: bytes,
+    *,
+    label: str,
+) -> tuple[tuple[str, ...], tuple[str, ...], str]:
+    """Return exact mandatory library, run-path, and dynamic-linker commands."""
+
+    header_size = 32
+    if len(document) < header_size:
+        raise ReviewError(f"{label} Mach-O header is truncated")
+    try:
+        (
+            magic,
+            cpu,
+            subtype,
+            kind,
+            command_count,
+            commands_size,
+            _flags,
+            reserved,
+        ) = struct.unpack_from("<IiiIIIII", document, 0)
+    except struct.error as error:
+        raise ReviewError(f"{label} Mach-O header is malformed") from error
+    if (
+        magic != 0xFEEDFACF
+        or cpu != 0x0100000C
+        or subtype != 0
+        or kind != 2
+        or reserved != 0
+        or command_count > 4_096
+        or commands_size > len(document) - header_size
+    ):
+        raise ReviewError(f"{label} Mach-O command table is invalid")
+
+    non_mandatory_load_commands = frozenset(
+        {
+            0x20,  # LC_LAZY_LOAD_DYLIB
+            0x80000018,  # LC_LOAD_WEAK_DYLIB
+            0x8000001F,  # LC_REEXPORT_DYLIB
+            0x80000023,  # LC_LOAD_UPWARD_DYLIB
+        }
+    )
+    offset = header_size
+    commands_end = header_size + commands_size
+    load_paths: list[str] = []
+    run_paths: list[str] = []
+    dynamic_linkers: list[str] = []
+    for _ in range(command_count):
+        if offset + 8 > commands_end:
+            raise ReviewError(f"{label} Mach-O load command is truncated")
+        command, command_size = struct.unpack_from("<II", document, offset)
+        if (
+            command_size < 8
+            or command_size % 8 != 0
+            or offset + command_size > commands_end
+        ):
+            raise ReviewError(f"{label} Mach-O load command size is invalid")
+        if command == 0x27:  # LC_DYLD_ENVIRONMENT
+            raise ReviewError(f"{label} Mach-O embeds a loader environment command")
+        if command in non_mandatory_load_commands:
+            raise ReviewError(
+                f"{label} Mach-O uses a non-mandatory library load command"
+            )
+        if command == 0x0F:  # LC_ID_DYLINKER
+            raise ReviewError(f"{label} Mach-O embeds a dynamic-linker identity")
+        is_load = command == 0x0C  # LC_LOAD_DYLIB
+        is_run_path = command == 0x8000001C  # LC_RPATH
+        is_dynamic_linker = command == 0x0E  # LC_LOAD_DYLINKER
+        if is_load or is_run_path or is_dynamic_linker:
+            minimum_size = 24 if is_load else 12
+            if command_size < minimum_size:
+                raise ReviewError(f"{label} Mach-O path command is truncated")
+            name_offset = struct.unpack_from("<I", document, offset + 8)[0]
+            if name_offset < minimum_size or name_offset >= command_size:
+                raise ReviewError(f"{label} Mach-O path offset is invalid")
+            encoded = document[offset + name_offset : offset + command_size]
+            terminator = encoded.find(b"\0")
+            if terminator <= 0:
+                raise ReviewError(f"{label} Mach-O path is not terminated")
+            try:
+                path = encoded[:terminator].decode("utf-8", "strict")
+            except UnicodeDecodeError as error:
+                raise ReviewError(f"{label} Mach-O path is not UTF-8") from error
+            parsed = Path(path)
+            if (
+                ".." in parsed.parts
+                or any(ord(character) < 0x20 for character in path)
+                or ((is_run_path or is_dynamic_linker) and not parsed.is_absolute())
+                or (
+                    is_load
+                    and not parsed.is_absolute()
+                    and not path.startswith("@rpath/")
+                )
+            ):
+                raise ReviewError(f"{label} Mach-O path is invalid")
+            if is_load:
+                load_paths.append(path)
+            elif is_run_path:
+                run_paths.append(path)
+            else:
+                dynamic_linkers.append(path)
+        offset += command_size
+    if offset != commands_end:
+        raise ReviewError(f"{label} Mach-O command table size is inconsistent")
+    if dynamic_linkers != [DEEP_FUZZ_DYNAMIC_LINKER]:
+        raise ReviewError(
+            f"{label} Mach-O dynamic-linker contract differs from the pin"
+        )
+    return tuple(load_paths), tuple(run_paths), dynamic_linkers[0]
+
+
+def pinned_pkg_config_input_path(executable: str) -> Path:
+    """Require the raw CLI value to equal the exact absolute pinned path."""
+
+    executable_path = Path(executable)
+    if executable_path != PINNED_PKG_CONFIG_EXECUTABLE_PATH:
+        raise ReviewError("--pkg-config must use the exact absolute pinned path")
+    return executable_path
 
 
 def qualification_dispatch_tool_files(
@@ -3644,8 +4768,15 @@ def qualification_dispatch_tool_files(
     if any(
         records[name]["resolved_path"] != str(target)
         for name, target in developer_tools.items()
+        if name not in {"cc", "clang"}
     ):
         raise ReviewError("qualification developer tool dispatch is inconsistent")
+    compiler_driver = _QUALIFICATION_COMPILER_DRIVER_PATHS.get(directory)
+    if compiler_driver is None or any(
+        records[name]["resolved_path"] != str(compiler_driver)
+        for name in ("cc", "clang")
+    ):
+        raise ReviewError("qualification compiler-driver dispatch is inconsistent")
     if any(
         records[name]["resolved_path"] != str(target)
         for name, target in QUALIFICATION_SYSTEM_TOOL_PATHS.items()
@@ -3721,7 +4852,10 @@ def qualification_system_path_state(
                 raise ReviewError(
                     f"cannot inspect qualification system PATH collision: {candidate}"
                 ) from error
-            collisions[str(candidate)] = executable_file_identity(candidate)
+            collisions[str(candidate)] = executable_file_identity(
+                candidate,
+                require_single_link=False,
+            )
 
     for name in QUALIFICATION_PATH_TOOLS:
         if shutil.which(name, path=path_value) != str(dispatch_directory / name):
@@ -3731,11 +4865,247 @@ def qualification_system_path_state(
     return {"directories": directories, "collisions": collisions}
 
 
+def qualification_runtime_library_files(
+    environment: Mapping[str, str],
+) -> dict[str, dict[str, Any]]:
+    """Bind each runtime library used by an enabled retained campaign."""
+
+    path_value = environment.get("PATH")
+    if not isinstance(path_value, str) or not path_value:
+        raise ReviewError("qualification runtime-library binding requires PATH")
+    directory = Path(path_value.split(os.pathsep)[0])
+    library_paths = _QUALIFICATION_RUNTIME_LIBRARY_PATHS.get(directory)
+    if library_paths is None or not set(library_paths).issubset({"fuzz-asan"}):
+        raise ReviewError("qualification runtime-library paths are not registered")
+    expected = {
+        "fuzz-asan": (
+            PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY,
+            PINNED_DEEP_FUZZ_ASAN_LIBRARY_MODE,
+        ),
+    }
+    records = pinned_cpython_runtime_library_files()
+    for name, library_path in library_paths.items():
+        record = direct_runtime_library_identity(library_path)
+        expected_identity, expected_mode = expected[name]
+        if (record["sha256"], record["size_bytes"]) != expected_identity or record[
+            "mode"
+        ] != expected_mode:
+            raise ReviewError(
+                f"qualification {name} runtime library differs from the pin"
+            )
+        records[name] = record
+    return records
+
+
+def deep_fuzz_asan_library_path(environment: Mapping[str, str]) -> Path:
+    """Return the exact AddressSanitizer runtime in the pinned nightly toolchain."""
+
+    rustup_home_text = environment.get("RUSTUP_HOME")
+    if not isinstance(rustup_home_text, str) or not rustup_home_text:
+        raise ReviewError("qualification AddressSanitizer binding requires RUSTUP_HOME")
+    rustup_home = Path(rustup_home_text)
+    if not rustup_home.is_absolute() or ".." in rustup_home.parts:
+        raise ReviewError("qualification RUSTUP_HOME is invalid")
+    return (
+        rustup_home
+        / "toolchains"
+        / f"nightly-2026-06-16-{DEEP_FUZZ_HOST_TARGET}"
+        / "lib"
+        / "rustlib"
+        / DEEP_FUZZ_HOST_TARGET
+        / "lib"
+        / PINNED_DEEP_FUZZ_ASAN_LIBRARY_BASENAME
+    )
+
+
+def validate_deep_fuzz_runner_runtime(
+    executable: Path,
+    asan_library: Path,
+) -> dict[str, Any]:
+    """Require one direct fuzz runner to use the pinned ASan load contract."""
+
+    document = read_bounded_regular_file(
+        executable,
+        max_bytes=MAX_QUALIFICATION_EXECUTABLE_BYTES,
+        label="deep fuzz runner",
+    )
+    load_paths, run_paths, dynamic_linker = macho_runtime_paths(
+        document,
+        label="deep fuzz runner",
+    )
+    if load_paths != DEEP_FUZZ_LOAD_DYLIBS or run_paths != (str(asan_library.parent),):
+        raise ReviewError(
+            "deep fuzz runner Mach-O runtime contract differs from the pin"
+        )
+    asan_record = direct_runtime_library_identity(asan_library)
+    if (
+        asan_record["sha256"],
+        asan_record["size_bytes"],
+    ) != PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY or asan_record[
+        "mode"
+    ] != PINNED_DEEP_FUZZ_ASAN_LIBRARY_MODE:
+        raise ReviewError(
+            "qualification fuzz-asan runtime library differs from the pin"
+        )
+    return {
+        "load_dylibs": list(load_paths),
+        "run_paths": list(run_paths),
+        "dynamic_linker": dynamic_linker,
+        "runtime_library": str(asan_library),
+    }
+
+
+def qualification_compiler_driver_bytes(selected_git: Path) -> bytes:
+    """Return the exact compiler driver that binds the selected macOS SDK."""
+
+    developer_tools = DEVELOPER_TOOL_PATHS.get(selected_git)
+    sdk = PINNED_DEVELOPER_SDK_IDENTITIES.get(selected_git)
+    if developer_tools is None or sdk is None:
+        raise ReviewError("qualification compiler selection is unsupported")
+    compiler = developer_tools["clang"]
+    sdk_root = sdk["resolved_root"]
+    values = (str(compiler), str(sdk_root))
+    if any("'" in value or "\n" in value for value in values):
+        raise ReviewError("qualification compiler path cannot form a safe driver")
+    return (
+        "#!/bin/sh\n"
+        f"exec '{compiler}' \"$@\" -isysroot '{sdk_root}'\n"
+    ).encode("utf-8")
+
+
+def _install_qualification_compiler_driver(
+    directory: Path,
+    selected_git: Path,
+) -> Path:
+    """Install one immutable compiler driver next to the private dispatch."""
+
+    parent = directory.parent
+    try:
+        parent_metadata = parent.lstat()
+    except OSError as error:
+        raise ReviewError("qualification compiler-driver root is unavailable") from error
+    if (
+        not stat.S_ISDIR(parent_metadata.st_mode)
+        or stat.S_ISLNK(parent_metadata.st_mode)
+        or parent_metadata.st_uid != os.getuid()
+        or stat.S_IMODE(parent_metadata.st_mode) != 0o700
+    ):
+        raise ReviewError("qualification compiler-driver root is not private")
+    destination = parent / QUALIFICATION_COMPILER_DRIVER_NAME
+    document = qualification_compiler_driver_bytes(selected_git)
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    try:
+        descriptor = os.open(destination, flags, 0o500)
+        try:
+            offset = 0
+            while offset < len(document):
+                written = os.write(descriptor, document[offset:])
+                if written <= 0:
+                    raise ReviewError(
+                        "cannot completely write qualification compiler driver"
+                    )
+                offset += written
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    except OSError as error:
+        raise ReviewError("cannot install qualification compiler driver") from error
+    record = direct_executable_file_identity(destination)
+    if (
+        record["sha256"] != hashlib.sha256(document).hexdigest()
+        or record["size_bytes"] != len(document)
+        or record["mode"] != 0o500
+    ):
+        raise ReviewError("qualification compiler driver differs after installation")
+    return destination
+
+
+def qualification_compiler_inputs(
+    environment: Mapping[str, str],
+) -> dict[str, Any]:
+    """Bind the compiler implementation, fixed SDK root, and SDK settings."""
+
+    path_value = environment.get("PATH")
+    if not isinstance(path_value, str) or not path_value:
+        raise ReviewError("qualification compiler input binding requires PATH")
+    directory = Path(path_value.split(os.pathsep)[0])
+    driver = _QUALIFICATION_COMPILER_DRIVER_PATHS.get(directory)
+    if driver is None:
+        raise ReviewError("qualification compiler driver is not registered")
+    selected_git = resolve_candidate_git_executable(environment)
+    sdk = PINNED_DEVELOPER_SDK_IDENTITIES.get(selected_git)
+    developer_tools = DEVELOPER_TOOL_PATHS.get(selected_git)
+    if sdk is None or developer_tools is None:
+        raise ReviewError("qualification compiler input selection is unsupported")
+
+    expected_driver = qualification_compiler_driver_bytes(selected_git)
+    driver_record = direct_executable_file_identity(driver)
+    if (
+        driver_record["sha256"] != hashlib.sha256(expected_driver).hexdigest()
+        or driver_record["size_bytes"] != len(expected_driver)
+        or driver_record["mode"] != 0o500
+    ):
+        raise ReviewError("qualification compiler driver differs from the pin")
+
+    implementation = direct_executable_file_identity(developer_tools["clang"])
+    invoked_root = sdk["invoked_root"]
+    resolved_root = sdk["resolved_root"]
+    link_target = sdk["link_target"]
+    try:
+        invoked_metadata = invoked_root.lstat()
+        observed_resolved = invoked_root.resolve(strict=True)
+        observed_link_target = (
+            os.readlink(invoked_root) if stat.S_ISLNK(invoked_metadata.st_mode) else None
+        )
+    except OSError as error:
+        raise ReviewError("qualification macOS SDK root is unavailable") from error
+    if (
+        observed_resolved != resolved_root
+        or observed_link_target != link_target
+        or (
+            link_target is None
+            and (
+                not stat.S_ISDIR(invoked_metadata.st_mode)
+                or stat.S_IMODE(invoked_metadata.st_mode) & 0o022
+            )
+        )
+    ):
+        raise ReviewError("qualification macOS SDK root differs from the pin")
+    settings_path = resolved_root / "SDKSettings.json"
+    settings = direct_runtime_library_identity(settings_path)
+    if (
+        settings["sha256"] != sdk["settings_sha256"]
+        or settings["size_bytes"] != sdk["settings_size_bytes"]
+        or settings["mode"] != sdk["settings_mode"]
+        or settings["uid"] != 0
+        or settings["gid"] != 0
+    ):
+        raise ReviewError("qualification macOS SDK settings differ from the pin")
+    return {
+        "driver": driver_record,
+        "implementation": implementation,
+        "sdk": {
+            "invoked_root": str(invoked_root),
+            "resolved_root": str(resolved_root),
+            "link_target": link_target,
+            "settings": settings,
+        },
+    }
+
+
 def install_qualification_tool_dispatch(
     directory: Path,
     environment: dict[str, str],
     *,
     git_executable: Path,
+    pkg_config_executable: Path,
+    include_deep_runtime: bool = False,
 ) -> dict[str, dict[str, Any]]:
     """Install and bind one complete read-only qualification tool dispatch."""
 
@@ -3777,17 +5147,31 @@ def install_qualification_tool_dispatch(
     ):
         raise ReviewError("qualification requires CPython 3.14.6")
     python_executable = Path(sys.executable).resolve(strict=True)
+    validate_pinned_cpython_launcher(python_executable)
+    python_runtime_executables = pinned_cpython_runtime_executable_files()
     developer_tools = DEVELOPER_TOOL_PATHS[selected_git]
+    pkg_config_record = validate_pinned_pkg_config_executable(pkg_config_executable)
+    pinned_pkg_config = Path(pkg_config_record["resolved_path"])
+    compiler_driver = _install_qualification_compiler_driver(directory, selected_git)
+    previous_driver = _QUALIFICATION_COMPILER_DRIVER_PATHS.setdefault(
+        directory, compiler_driver
+    )
+    if previous_driver != compiler_driver:
+        raise ReviewError("qualification compiler-driver path is ambiguous")
 
     for name in QUALIFICATION_PATH_TOOLS:
         if name == "git":
             target = selected_git
         elif name == "python3":
             target = python_executable
+        elif name in {"cc", "clang"}:
+            target = compiler_driver
         elif name in developer_tools:
             target = developer_tools[name]
         elif name in QUALIFICATION_SYSTEM_TOOL_PATHS:
             target = QUALIFICATION_SYSTEM_TOOL_PATHS[name]
+        elif name == "pkg-config":
+            target = pinned_pkg_config
         else:
             target_text = shutil.which(name, path=base_path)
             if target_text is None:
@@ -3816,6 +5200,41 @@ def install_qualification_tool_dispatch(
     )
     if previous_system_state != system_path_state:
         raise ReviewError("qualification system PATH baseline is ambiguous")
+    runtime_library_paths = (
+        {"fuzz-asan": deep_fuzz_asan_library_path(environment)}
+        if include_deep_runtime
+        else {}
+    )
+    previous_library_paths = _QUALIFICATION_RUNTIME_LIBRARY_PATHS.setdefault(
+        directory,
+        runtime_library_paths,
+    )
+    if previous_library_paths != runtime_library_paths:
+        raise ReviewError("qualification runtime-library path baseline is ambiguous")
+    runtime_libraries = qualification_runtime_library_files(environment)
+    previous_runtime_libraries = _QUALIFICATION_RUNTIME_LIBRARY_BASELINES.setdefault(
+        directory,
+        runtime_libraries,
+    )
+    if previous_runtime_libraries != runtime_libraries:
+        raise ReviewError("qualification runtime-library baseline is ambiguous")
+    previous_python_runtime_executables = (
+        _QUALIFICATION_PYTHON_RUNTIME_EXECUTABLE_BASELINES.setdefault(
+            directory,
+            python_runtime_executables,
+        )
+    )
+    if previous_python_runtime_executables != python_runtime_executables:
+        raise ReviewError(
+            "qualification CPython runtime-executable baseline is ambiguous"
+        )
+    compiler_inputs = qualification_compiler_inputs(environment)
+    previous_compiler_inputs = _QUALIFICATION_COMPILER_INPUT_BASELINES.setdefault(
+        directory,
+        compiler_inputs,
+    )
+    if previous_compiler_inputs != compiler_inputs:
+        raise ReviewError("qualification compiler-input baseline is ambiguous")
     return records
 
 
@@ -3841,9 +5260,17 @@ def verify_qualification_tool_dispatch(
             raise ReviewError("qualification environment lacks the tool dispatch")
         return
     system_path_baseline = _QUALIFICATION_SYSTEM_PATH_BASELINES.get(directory)
+    runtime_library_baseline = _QUALIFICATION_RUNTIME_LIBRARY_BASELINES.get(directory)
+    python_runtime_executable_baseline = (
+        _QUALIFICATION_PYTHON_RUNTIME_EXECUTABLE_BASELINES.get(directory)
+    )
+    compiler_input_baseline = _QUALIFICATION_COMPILER_INPUT_BASELINES.get(directory)
     try:
         dispatch_state = qualification_dispatch_tool_files(environment)
         system_path_state = qualification_system_path_state(environment)
+        runtime_library_state = qualification_runtime_library_files(environment)
+        python_runtime_executable_state = pinned_cpython_runtime_executable_files()
+        compiler_input_state = qualification_compiler_inputs(environment)
     except ReviewError as error:
         raise ReviewError(
             "qualification tool dispatch changed during execution"
@@ -3852,6 +5279,12 @@ def verify_qualification_tool_dispatch(
         dispatch_state != baseline
         or system_path_baseline is None
         or system_path_state != system_path_baseline
+        or runtime_library_baseline is None
+        or runtime_library_state != runtime_library_baseline
+        or python_runtime_executable_baseline is None
+        or python_runtime_executable_state != python_runtime_executable_baseline
+        or compiler_input_baseline is None
+        or compiler_input_state != compiler_input_baseline
     ):
         raise ReviewError("qualification tool dispatch changed during execution")
 
@@ -3861,6 +5294,11 @@ def release_qualification_tool_dispatch(directory: Path) -> None:
 
     _QUALIFICATION_TOOL_DISPATCH_BASELINES.pop(directory, None)
     _QUALIFICATION_SYSTEM_PATH_BASELINES.pop(directory, None)
+    _QUALIFICATION_RUNTIME_LIBRARY_PATHS.pop(directory, None)
+    _QUALIFICATION_RUNTIME_LIBRARY_BASELINES.pop(directory, None)
+    _QUALIFICATION_PYTHON_RUNTIME_EXECUTABLE_BASELINES.pop(directory, None)
+    _QUALIFICATION_COMPILER_INPUT_BASELINES.pop(directory, None)
+    compiler_driver = _QUALIFICATION_COMPILER_DRIVER_PATHS.pop(directory, None)
     try:
         metadata = directory.lstat()
     except FileNotFoundError:
@@ -3874,6 +5312,11 @@ def release_qualification_tool_dispatch(directory: Path) -> None:
             os.chmod(directory, 0o700)
         except OSError as error:
             raise ReviewError("cannot release qualification tool dispatch") from error
+    if compiler_driver is not None:
+        try:
+            compiler_driver.unlink(missing_ok=True)
+        except OSError as error:
+            raise ReviewError("cannot release qualification compiler driver") from error
 
 
 def qualification_tool_files(
@@ -3881,9 +5324,10 @@ def qualification_tool_files(
     *,
     sandbox_profile: Path,
 ) -> dict[str, dict[str, Any]]:
-    """Resolve and hash every executable used by qualification."""
+    """Resolve and hash the declared qualification executable set."""
 
     result = qualification_dispatch_tool_files(environment)
+    result.update(pinned_cpython_runtime_executable_files())
     result["sandbox-exec"] = executable_file_identity(SANDBOX_EXECUTABLE)
     rustup_commands = {
         "rustc-1.89.0": ["rustup", "which", "rustc", "--toolchain", "1.89.0"],
@@ -4027,9 +5471,17 @@ def run_command(
         "timeout_seconds": spec.timeout_seconds,
     }
     combined_output = b""
+    deep_fuzz_target = DEEP_FUZZ_COMMAND_TARGETS.get(spec.name)
     try:
         reject_cargo_configuration(cwd, Path(command_environment["CARGO_HOME"]))
         verify_materialized_candidate(worktree, commit, tree)
+        if deep_fuzz_target is not None:
+            verify_deep_fuzz_command_directories(
+                command_environment,
+                worktree,
+                deep_fuzz_target,
+                require_private_empty=True,
+            )
         if repository_control_snapshot(worktree) != clone_control:
             raise ReviewError("candidate clone Git control state changed")
         if subject_path is not None:
@@ -4082,6 +5534,13 @@ def run_command(
                     )
             reject_cargo_configuration(cwd, Path(command_environment["CARGO_HOME"]))
             verify_materialized_candidate(worktree, commit, tree)
+            if deep_fuzz_target is not None:
+                verify_deep_fuzz_command_directories(
+                    command_environment,
+                    worktree,
+                    deep_fuzz_target,
+                    require_private_empty=False,
+                )
             if repository_control_snapshot(worktree) != clone_control:
                 raise ReviewError("candidate clone Git control state changed")
             if digest_file(selected_sandbox_profile) != (
@@ -5328,15 +6787,11 @@ def snapshot_candidate_executable(
     parent = destination.parent
     try:
         if source.parent.resolve(strict=True) != source.parent:
-            raise ReviewError(
-                "candidate evidence executable has a linked parent path"
-            )
+            raise ReviewError("candidate evidence executable has a linked parent path")
         if parent.resolve(strict=True) != parent:
-            raise ReviewError(
-                "candidate executable snapshot has a linked parent path"
-            )
+            raise ReviewError("candidate executable snapshot has a linked parent path")
         parent_metadata = parent.lstat()
-        parent_entries = tuple(parent.iterdir())
+        destination_metadata = _lstat(destination)
     except OSError as error:
         raise ReviewError(
             "candidate executable snapshot directory is unavailable"
@@ -5346,9 +6801,9 @@ def snapshot_candidate_executable(
         or stat.S_ISLNK(parent_metadata.st_mode)
         or stat.S_IMODE(parent_metadata.st_mode) != 0o700
         or parent_metadata.st_uid != os.getuid()
-        or parent_entries
+        or destination_metadata is not None
     ):
-        raise ReviewError("candidate executable snapshot directory is not private")
+        raise ReviewError("candidate executable snapshot destination is not private")
 
     source_flags = (
         os.O_RDONLY
@@ -5366,7 +6821,7 @@ def snapshot_candidate_executable(
     try:
         source_descriptor = os.open(source, source_flags)
     except OSError as error:
-        raise ReviewError("candidate evidence executable is unavailable") from error
+        raise ReviewError("candidate executable is unavailable") from error
     source_metadata: os.stat_result | None = None
     copied = 0
     digest = hashlib.sha256()
@@ -5381,7 +6836,7 @@ def snapshot_candidate_executable(
             or source_metadata.st_size <= 0
             or source_metadata.st_size > MAX_QUALIFICATION_EXECUTABLE_BYTES
         ):
-            raise ReviewError("candidate evidence executable identity is invalid")
+            raise ReviewError("candidate executable identity is invalid")
         try:
             destination_descriptor = os.open(
                 destination,
@@ -5459,6 +6914,40 @@ def snapshot_candidate_executable(
     return identity
 
 
+def snapshot_deep_fuzz_executables(
+    *,
+    target_directory: Path,
+    private_root: Path,
+    asan_library: Path,
+) -> dict[str, dict[str, Any]]:
+    """Snapshot each locked fuzz build into the write-denied runner root."""
+
+    if not target_directory.is_absolute():
+        raise ReviewError("deep fuzz target directory must be absolute")
+    runner_root = deep_fuzz_runner_root(private_root)
+    records: dict[str, dict[str, Any]] = {}
+    for target in DEEP_FUZZ_TARGETS:
+        source = target_directory / DEEP_FUZZ_HOST_TARGET / "release" / target
+        destination = runner_root / target / target
+        source_runtime = validate_deep_fuzz_runner_runtime(source, asan_library)
+        identity = snapshot_candidate_executable(source, destination)
+        snapshot_runtime = validate_deep_fuzz_runner_runtime(
+            destination,
+            asan_library,
+        )
+        if snapshot_runtime != source_runtime:
+            raise ReviewError(
+                "deep fuzz runner runtime contract changed during snapshot"
+            )
+        records[target] = {
+            "identity": identity,
+            "runtime": source_runtime,
+        }
+    if set(records) != set(DEEP_FUZZ_TARGETS):
+        raise ReviewError("deep fuzz runner snapshot set is incomplete")
+    return records
+
+
 def rust_host_target(rustc_verbose: str) -> tuple[str, str]:
     """Derive the native Rust target from exact verbose compiler output."""
 
@@ -5522,9 +7011,7 @@ def validate_retained_candidate_evidence(
             "commit": commit,
             "tree": tree,
             "tracked_config_path": tracked_config_path,
-            "tracked_config_sha256": hashlib.sha256(
-                tracked_config_bytes
-            ).hexdigest(),
+            "tracked_config_sha256": hashlib.sha256(tracked_config_bytes).hexdigest(),
             "workspace_manifest_sha256": workspace_manifest_sha256,
             "cargo_lock_sha256": cargo_lock_sha256,
             "runner_binary_sha256": runner_sha256,
@@ -5785,6 +7272,11 @@ def main() -> int:
         help="clean external clone at the pinned RustSec advisory database commit",
     )
     parser.add_argument(
+        "--pkg-config",
+        required=True,
+        help=("exact absolute path to the byte-pinned pkgconf 3.0.3 executable"),
+    )
+    parser.add_argument(
         "--mutation-evidence",
         help="signed exact-candidate broad and focused mutation manifest",
     )
@@ -5812,6 +7304,7 @@ def main() -> int:
     signing_key: Path | None = None
     allowed_signers_source: Path | None = None
     advisory_db_source: Path | None = None
+    pkg_config_source: Path | None = None
     mutation_evidence_path: Path | None = None
     mutation_signature_path: Path | None = None
     worktree: Path | None = None
@@ -5822,6 +7315,7 @@ def main() -> int:
     auxiliary_receipts: list[dict[str, Any]] = []
     failure: str | None = None
     try:
+        require_release_python_isolation()
         if os.path.lexists(output) or output == repo or repo in output.parents:
             raise ReviewError("--out must be a new directory outside --repo")
         if not arguments.signing_key:
@@ -5842,6 +7336,13 @@ def main() -> int:
             label="RustSec advisory database",
             directory=True,
         )
+        requested_pkg_config = pinned_pkg_config_input_path(arguments.pkg_config)
+        pkg_config_source = external_input_path(
+            str(requested_pkg_config),
+            repo=repo,
+            label="pinned pkg-config executable",
+        )
+        validate_pinned_pkg_config_executable(pkg_config_source)
         if arguments.mutation_evidence:
             mutation_evidence_path = external_input_path(
                 arguments.mutation_evidence,
@@ -5858,6 +7359,7 @@ def main() -> int:
             raise ReviewError(
                 "successful qualification requires signed exact-candidate mutation evidence"
             )
+        require_pinned_cpython_runtime()
         assert_no_replace_refs(repo)
         candidate_git = resolve_candidate_git_executable()
         if str(git(repo, "status", "--porcelain=v1", "--untracked-files=all")).strip():
@@ -5905,14 +7407,22 @@ def main() -> int:
             target=target,
             source_date_epoch=source_date_epoch,
         )
+        if arguments.deep:
+            prepare_deep_fuzz_directories(environment)
         tool_dispatch_temporary = tempfile.TemporaryDirectory(
             prefix=QUALIFICATION_TOOL_DISPATCH_PREFIX
         )
-        tool_dispatch_directory = Path(tool_dispatch_temporary.name).resolve()
-        install_qualification_tool_dispatch(
+        tool_dispatch_root = Path(tool_dispatch_temporary.name).resolve()
+        tool_dispatch_directory = (
+            tool_dispatch_root / f"{QUALIFICATION_TOOL_DISPATCH_PREFIX}bin"
+        )
+        tool_dispatch_directory.mkdir(mode=0o700, parents=False, exist_ok=False)
+        dispatch_executables = install_qualification_tool_dispatch(
             tool_dispatch_directory,
             environment,
             git_executable=candidate_git,
+            pkg_config_executable=pkg_config_source,
+            include_deep_runtime=arguments.deep,
         )
         signing_key, signing_key_signer = snapshot_agent_backed_public_signing_key(
             signing_key,
@@ -5935,6 +7445,8 @@ def main() -> int:
             environment=environment,
             git_executable=candidate_git,
         )
+        if arguments.deep:
+            verify_materialized_candidate(worktree, commit, tree)
         assert_tracked_allowed_signer(
             worktree / ALLOWED_SIGNERS, expected_signer_metadata
         )
@@ -6009,7 +7521,10 @@ def main() -> int:
             environment,
             host_home=host_home,
         )
-        rustup_home = Path(environment["RUSTUP_HOME"]).resolve()
+        sandbox_allowed_executable_paths = qualification_allowed_executable_paths(
+            dispatch_executables
+        )
+        rustup_home = qualification_rustup_home(environment)
         sandbox_home_tool_paths = {
             Path(entry).resolve()
             for entry in environment["PATH"].split(os.pathsep)
@@ -6017,8 +7532,6 @@ def main() -> int:
             or host_home in Path(entry).resolve().parents
         }
         sandbox_home_read_paths = set(sandbox_home_tool_paths)
-        if rustup_home == host_home or host_home in rustup_home.parents:
-            sandbox_home_read_paths.add(rustup_home)
         sandbox_home_read_paths.update(
             path.resolve()
             for path in sandbox_writable_paths
@@ -6036,6 +7549,7 @@ def main() -> int:
             writable_paths=sandbox_writable_paths,
             allowed_home_read_paths=resolved_sandbox_home_read_paths,
             tool_read_paths=sandbox_tool_read_paths,
+            allowed_executable_paths=sandbox_allowed_executable_paths,
             denied_read_paths=(advisory_source_path,),
         )
         dependency_fetch_sandbox_profile = temporary_root / "dependency-fetch.sb"
@@ -6047,6 +7561,7 @@ def main() -> int:
             writable_paths=sandbox_writable_paths,
             allowed_home_read_paths=resolved_sandbox_home_read_paths,
             tool_read_paths=sandbox_tool_read_paths,
+            allowed_executable_paths=sandbox_allowed_executable_paths,
             denied_read_paths=(advisory_source_path,),
             allow_network=True,
         )
@@ -6112,6 +7627,12 @@ def main() -> int:
         tool_files_before = qualification_tool_files(
             environment,
             sandbox_profile=sandbox_profile,
+        )
+        runtime_libraries_before = qualification_runtime_library_files(environment)
+        compiler_inputs_before = qualification_compiler_inputs(environment)
+        python_runtime_tree_before = pinned_cpython_runtime_tree_identity()
+        rust_toolchain_runtime_before = pinned_rust_toolchain_runtime_identity(
+            environment
         )
         reject_cargo_configuration(worktree, Path(environment["CARGO_HOME"]))
         command_specs = [
@@ -6181,9 +7702,10 @@ def main() -> int:
                 )
             )
         if arguments.deep:
-            command_specs.extend(DEEP_COMMANDS)
+            command_specs.extend(deep_command_specs(temporary_root))
 
         evidence_runner_identity: dict[str, Any] | None = None
+        fuzz_runner_identities: dict[str, dict[str, Any]] = {}
         for index, spec in enumerate(command_specs, 1):
             if not network_command_preconditions_met(spec, results):
                 break
@@ -6213,6 +7735,15 @@ def main() -> int:
                 index=index,
             )
             results.append(result)
+            if (
+                spec.name == "fuzz-instrumented-binaries-build"
+                and result["status"] == "PASS"
+            ):
+                fuzz_runner_identities = snapshot_deep_fuzz_executables(
+                    target_directory=Path(environment["CARGO_TARGET_DIR"]),
+                    private_root=temporary_root,
+                    asan_library=deep_fuzz_asan_library_path(environment),
+                )
             if spec.name == "candidate-evidence":
                 subject = result.get("subject_executable")
                 if subject != {
@@ -6221,6 +7752,18 @@ def main() -> int:
                 }:
                     raise ReviewError(
                         "candidate evidence receipt lacks the exact runner identity"
+                    )
+            fuzz_target = DEEP_FUZZ_COMMAND_TARGETS.get(spec.name)
+            if fuzz_target is not None and result["status"] == "PASS":
+                subject = result.get("subject_executable")
+                if subject != {
+                    "status": "UNCHANGED",
+                    "identity": (
+                        fuzz_runner_identities.get(fuzz_target, {}).get("identity")
+                    ),
+                }:
+                    raise ReviewError(
+                        "deep fuzz receipt lacks the exact runner identity"
                     )
             if result["status"] != "PASS" and not arguments.keep_going:
                 break
@@ -6263,9 +7806,7 @@ def main() -> int:
                     tree=tree,
                     tracked_config_path=evidence_config.as_posix(),
                     tracked_config_bytes=tracked_config_bytes,
-                    workspace_manifest_sha256=digest_file(
-                        worktree / "Cargo.toml"
-                    )[0],
+                    workspace_manifest_sha256=digest_file(worktree / "Cargo.toml")[0],
                     cargo_lock_sha256=digest_file(worktree / "Cargo.lock")[0],
                     runner_identity=evidence_runner_identity,
                     rustc_verbose=rustc_verbose,
@@ -6564,6 +8105,7 @@ def main() -> int:
             "cargo_fuzz": tool_output(
                 ["cargo", "+nightly-2026-06-16", "fuzz", "--version"]
             ),
+            "pkgconf": PINNED_PKG_CONFIG_VERSION,
         }
         if evidence_validation is not None:
             evidence_expectations = evidence_validation["expectations"]
@@ -6571,8 +8113,7 @@ def main() -> int:
             if (
                 tools["rustc"] != evidence_expectations["rustc_verbose"]
                 or not cargo_identity_lines
-                or cargo_identity_lines[0]
-                != evidence_expectations["cargo_version"]
+                or cargo_identity_lines[0] != evidence_expectations["cargo_version"]
             ):
                 raise ReviewError(
                     "candidate evidence toolchain changed after validation"
@@ -6612,6 +8153,20 @@ def main() -> int:
         )
         if tool_files_after != tool_files_before:
             raise ReviewError("a qualification executable changed during the run")
+        runtime_libraries_after = qualification_runtime_library_files(environment)
+        if runtime_libraries_after != runtime_libraries_before:
+            raise ReviewError("a qualification runtime library changed during the run")
+        compiler_inputs_after = qualification_compiler_inputs(environment)
+        if compiler_inputs_after != compiler_inputs_before:
+            raise ReviewError("a qualification compiler input changed during the run")
+        python_runtime_tree_after = pinned_cpython_runtime_tree_identity()
+        if python_runtime_tree_after != python_runtime_tree_before:
+            raise ReviewError("the CPython runtime tree changed during the run")
+        rust_toolchain_runtime_after = pinned_rust_toolchain_runtime_identity(
+            environment
+        )
+        if rust_toolchain_runtime_after != rust_toolchain_runtime_before:
+            raise ReviewError("a Rust toolchain runtime input changed during the run")
         clone_control_after = repository_control_snapshot(worktree)
         if clone_control_after != clone_control:
             raise ReviewError("standalone candidate clone control state changed")
@@ -6640,6 +8195,20 @@ def main() -> int:
             "tool_files": {
                 "status": "UNCHANGED",
                 "executables": tool_files_before,
+                "runtime_libraries": runtime_libraries_before,
+                "compiler": compiler_inputs_before,
+                "python_runtime_tree": python_runtime_tree_before,
+                "rust_toolchain_runtime": rust_toolchain_runtime_before,
+            },
+            "fuzz_runners": {
+                "status": (
+                    "UNCHANGED"
+                    if set(fuzz_runner_identities) == set(DEEP_FUZZ_TARGETS)
+                    else "INCOMPLETE"
+                ),
+                "target_triple": DEEP_FUZZ_HOST_TARGET,
+                "build_environment": dict(DEEP_FUZZ_BUILD_ENVIRONMENT),
+                "runners": fuzz_runner_identities,
             },
             "environment_contract": qualification_environment_contract(
                 source_date_epoch
@@ -6733,7 +8302,15 @@ def main() -> int:
                 "kind": "author-operated sandboxed standalone qualification clone",
                 "tools": tools,
                 "tool_file_inventory_sha256": hashlib.sha256(
-                    canonical_json(tool_files_before)
+                    canonical_json(
+                        {
+                            "executables": tool_files_before,
+                            "runtime_libraries": runtime_libraries_before,
+                            "compiler": compiler_inputs_before,
+                            "python_runtime_tree": python_runtime_tree_before,
+                            "rust_toolchain_runtime": rust_toolchain_runtime_before,
+                        }
+                    )
                 ).hexdigest(),
             },
             "invocation": {
@@ -6758,6 +8335,9 @@ def main() -> int:
             },
             "materials": {
                 "candidate_cargo_lock_sha256": digest_file(worktree / "Cargo.lock")[0],
+                "candidate_fuzz_cargo_lock_sha256": digest_file(
+                    worktree / "fuzz" / "Cargo.lock"
+                )[0],
                 "evidence_config": {
                     "path": arguments.evidence_config,
                     "sha256": config_binding["tracked_blob_sha256"],

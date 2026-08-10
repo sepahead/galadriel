@@ -915,10 +915,8 @@ impl<'de> Visitor<'de> for DuplicateCheckedVisitor {
     {
         let mut keys = HashSet::new();
         while let Some(key) = map.next_key::<String>()? {
-            if !keys.insert(key.clone()) {
-                return Err(de::Error::custom(format!(
-                    "duplicate JSON object key {key:?}"
-                )));
+            if !keys.insert(key) {
+                return Err(de::Error::custom("duplicate JSON object key"));
             }
             map.next_value_seed(DuplicateCheckedSeed)?;
         }
@@ -4599,11 +4597,16 @@ mod tests {
 
         let mut recorded_config = tiny_config_file();
         recorded_config.assessment_step = 1;
+        recorded_config.detector.max_tracks = 10;
         recorded_config.correlation.window = 16_384;
         recorded_config
             .validate()
             .expect("small synthetic arm remains bounded");
         let recorded_config = accept(recorded_config).expect("recorded config must be accepted");
+        assert_eq!(
+            recorded_config.suite.lifecycle_sample_units(),
+            galadriel_core::config::MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS
+        );
         let recorded = (0..8_000_u64)
             .flat_map(|seq| {
                 DEFAULT_MODALITIES.map(|modality| {
@@ -4747,6 +4750,12 @@ mod tests {
         assert_eq!(config.mission_frames, 3_600);
         assert!(config.bootstrap_resamples >= 1_000);
         assert_eq!(config.suite.detector().max_seq_gap(), 1);
+        assert_eq!(config.suite.lifecycle_sample_units(), 786_432);
+        assert_eq!(config.suite.state_bytes(), 12_684_288);
+        assert_eq!(
+            config.suite.identity().to_hex(),
+            "0d9799e2004831174c034b55ed20cd8f6b4f74d8aeaf0529532fc575f4d02a8b"
+        );
         assert_eq!(
             config.work_estimate,
             EvidenceWorkEstimate {
@@ -4772,11 +4781,11 @@ mod tests {
         );
         assert_eq!(
             config.canonical_digest,
-            "e07036531b908e36e0eb827b478046b1b93d544d1cf46cfa8242b936fc3952f9"
+            "1bdae715c9189c905f25829cae448babc2fc5bb39b370d4244f80dae5fbe1d5f"
         );
         assert_eq!(
             sha256_bytes(&config.artifact_config),
-            "f72ea1de3101006dc51c43349e45866e4c066633c4c29f42b50823112cb4bf2d"
+            "c8b57e1f4d81f07b34d1188aefa3714ca3bab80ed69d81dd2cb9e60f8425c8cb"
         );
         let accepted_wire: serde_json::Value = serde_json::from_slice(&config.artifact_config)
             .expect("accepted config JSON should decode");
@@ -4809,6 +4818,15 @@ mod tests {
             .expect_err("duplicate nested key must fail")
             .to_string()
             .contains("duplicate JSON object key"));
+
+        const HOSTILE_KEY: &str = "attacker-controlled-secret-field-name";
+        let hostile_duplicate = format!(r#"{{"{HOSTILE_KEY}":1,"{HOSTILE_KEY}":2}}"#);
+        let hostile_diagnostic = decode_evidence_config(hostile_duplicate.as_bytes())
+            .expect_err("a duplicate hostile key must fail closed")
+            .to_string();
+        assert!(hostile_diagnostic.contains("duplicate JSON object key"));
+        assert!(!hostile_diagnostic.contains(HOSTILE_KEY));
+        assert!(hostile_diagnostic.len() < 128);
 
         let mut unknown: serde_json::Value =
             serde_json::from_str(&json).expect("test JSON must parse");

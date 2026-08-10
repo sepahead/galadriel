@@ -53,7 +53,7 @@ fn attack_start_frame(frames: usize, divisor: usize) -> anyhow::Result<u64> {
 #[command(
     name = "galadriel",
     version,
-    about = "Galadriel's Mirror is a cross-sensor statistical-consistency monitor."
+    about = "Galadriel's Mirror is an experimental, fail-closed advisory cross-sensor consistency monitor."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -1314,7 +1314,7 @@ fn run_demo(frames: usize, seed: u64) -> anyhow::Result<()> {
     println!(
         "  {}",
         dim(
-            "advisory only · calibrated_posterior=false · PID (feature `pid`) escalates where correlation cannot",
+            "advisory only · calibrated_posterior=false · optional PID diagnostics do not replace signed correlation",
             color
         )
     );

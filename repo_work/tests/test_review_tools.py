@@ -44,6 +44,7 @@ from check_feature_graph import (
     parse_graph_output,
     main as feature_graph_main,
     validate_profile_graph,
+    validate_cli_manifest,
     validate_ncp_consumer_descriptor,
     validate_upstream_package_records,
     validate_workspace_manifest,
@@ -66,7 +67,11 @@ from common import ReviewError, canonical_json, load_json, loads_json
 from finalize_release import candidate_json
 import freeze_audit_inputs as freeze
 from freeze_audit_inputs import assert_release_tool_coverage, strict_relative_files
-from qualify_candidate import BoundedProcessResult, capture_report
+from qualify_candidate import (
+    BoundedProcessResult,
+    PINNED_PKG_CONFIG_EXECUTABLE_PATH,
+    capture_report,
+)
 import release_assurance as assurance
 from scripts import release_audit
 import verify_evidence_manifest as evidence_manifest
@@ -102,6 +107,7 @@ class ReviewToolsTest(unittest.TestCase):
             cwd=self.root,
             check=True,
         )
+
         subprocess.run(
             ["git", "config", "user.email", "sepmhn@gmail.com"],
             cwd=self.root,
@@ -123,6 +129,76 @@ class ReviewToolsTest(unittest.TestCase):
         self.head = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=self.root, text=True
         ).strip()
+
+    def test_fuzz_manifest_equals_the_retained_campaign_set(self) -> None:
+        manifest = release_audit.tomllib.loads(
+            (TOOLS.parent / "fuzz" / "Cargo.toml").read_text(encoding="utf-8")
+        )
+        release_audit.validate_fuzz_manifest(manifest)
+
+        extra = copy.deepcopy(manifest)
+        extra["bin"].append(
+            {
+                "name": "unqualified_target",
+                "path": "fuzz_targets/unqualified_target.rs",
+                "test": False,
+                "doc": False,
+                "bench": False,
+            }
+        )
+        with self.assertRaisesRegex(
+            release_audit.AuditError,
+            "retained deep-campaign set",
+        ):
+            release_audit.validate_fuzz_manifest(extra)
+
+        wrong_path = copy.deepcopy(manifest)
+        wrong_path["bin"][0]["path"] = "fuzz_targets/another.rs"
+        with self.assertRaisesRegex(
+            release_audit.AuditError,
+            "retained deep-campaign set",
+        ):
+            release_audit.validate_fuzz_manifest(wrong_path)
+
+        tracked = release_audit.tracked_repository_paths()
+        missing_lifecycle = {
+            path
+            for path in tracked
+            if not path.startswith("fuzz/seeds/lifecycle_state/")
+        }
+        with (
+            mock.patch.object(
+                release_audit,
+                "tracked_repository_paths",
+                return_value=missing_lifecycle,
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError,
+                "fuzz seed corpus is incomplete",
+            ),
+        ):
+            release_audit.validate_fuzz_seed_corpora()
+
+        workspace_lock = release_audit.tomllib.loads(
+            (TOOLS.parent / "Cargo.lock").read_text(encoding="utf-8")
+        )
+        fuzz_lock = release_audit.tomllib.loads(
+            (TOOLS.parent / "fuzz" / "Cargo.lock").read_text(encoding="utf-8")
+        )
+        release_audit.validate_denied_unused_tool_graphs(
+            workspace_lock,
+            fuzz_lock,
+        )
+        injected = copy.deepcopy(fuzz_lock)
+        injected["package"].append({"name": "pkg-config", "version": "0.0.0"})
+        with self.assertRaisesRegex(
+            release_audit.AuditError,
+            "execution-denied build tool",
+        ):
+            release_audit.validate_denied_unused_tool_graphs(
+                workspace_lock,
+                injected,
+            )
 
     def test_common_git_runner_bounds_output_timeout_and_environment(self) -> None:
         recorded: dict[str, Any] = {}
@@ -921,6 +997,35 @@ class ReviewToolsTest(unittest.TestCase):
                 ),
                 "fully verify",
             ),
+            (
+                "bare workflow Python",
+                workflow.replace(
+                    "python3 -E -s -S repo_work/check_feature_graph.py",
+                    "python3 repo_work/check_feature_graph.py",
+                    1,
+                ),
+                "exact -E -s -S flags",
+            ),
+            (
+                "unpinned workflow Python",
+                workflow.replace(
+                    'python-version: "3.14.6"',
+                    'python-version: "3.14.5"',
+                    1,
+                ),
+                "must install exact CPython 3.14.6",
+            ),
+            (
+                "feature-isolated test drift",
+                workflow.replace(
+                    "cargo test -p galadriel-cli --no-default-features "
+                    "--features ncp --locked",
+                    "cargo check -p galadriel-cli --no-default-features "
+                    "--features ncp --locked",
+                    1,
+                ),
+                "feature-isolated CLI command matrix",
+            ),
         )
         for label, mutated, diagnostic in mutations:
             with (
@@ -928,6 +1033,77 @@ class ReviewToolsTest(unittest.TestCase):
                 self.assertRaisesRegex(release_audit.AuditError, diagnostic),
             ):
                 release_audit.validate_ci_qualification_contract(mutated)
+
+        deep_workflow = release_audit.DEEP_QUALITY_WORKFLOW.read_text(encoding="utf-8")
+        release_audit.validate_workflow_python_isolation(
+            deep_workflow, "deep-quality"
+        )
+        release_audit.validate_workflow_python_toolchain(
+            deep_workflow, "deep-quality"
+        )
+        release_audit.validate_deep_quality_fuzz_contract(deep_workflow)
+        with self.assertRaisesRegex(release_audit.AuditError, "exact -E -s -S flags"):
+            release_audit.validate_workflow_python_isolation(
+                deep_workflow.replace(
+                    "python3 -E -s -S repo_work/run_broad_mutation.py",
+                    "python3 repo_work/run_broad_mutation.py",
+                    1,
+                ),
+                "deep-quality",
+            )
+        with self.assertRaisesRegex(
+            release_audit.AuditError,
+            "must install exact CPython 3.14.6",
+        ):
+            release_audit.validate_workflow_python_toolchain(
+                deep_workflow.replace(
+                    'python-version: "3.14.6"',
+                    'python-version: "3.14.5"',
+                    1,
+                ),
+                "deep-quality",
+            )
+        deep_fuzz_mutations = (
+            (
+                deep_workflow.replace("-Ccodegen-units=1", "-Ccodegen-units=2", 1),
+                "fuzz instrumentation contract",
+            ),
+            (
+                deep_workflow.replace(
+                    "          --locked\n          --offline",
+                    "          --locked",
+                    1,
+                ),
+                "fuzz build contract",
+            ),
+            (
+                deep_workflow.replace("-seed=900090003", "-seed=900090004", 1),
+                "fuzz campaign contract differs: lifecycle_state",
+            ),
+        )
+        for mutated, diagnostic in deep_fuzz_mutations:
+            with (
+                self.subTest(diagnostic=diagnostic),
+                self.assertRaisesRegex(release_audit.AuditError, diagnostic),
+            ):
+                release_audit.validate_deep_quality_fuzz_contract(mutated)
+
+        missing_qualification_profile = tuple(
+            spec
+            for spec in release_audit.BASE_COMMANDS
+            if spec.name != "cli-ncp-live-feature-tests"
+        )
+        with (
+            mock.patch.object(
+                release_audit,
+                "BASE_COMMANDS",
+                missing_qualification_profile,
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError, "feature-isolated CLI command matrix"
+            ),
+        ):
+            release_audit.validate_ci_qualification_contract(workflow)
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
@@ -1296,9 +1472,15 @@ class ReviewToolsTest(unittest.TestCase):
                 with self.assertRaisesRegex(ReviewError, "cannot load"):
                     load_json(path)
 
-        path.write_text('{"value": 1, "value": 2}', encoding="utf-8")
-        with self.assertRaisesRegex(ReviewError, "duplicate JSON key"):
+        hostile_key = "attacker-controlled-secret-field-name"
+        path.write_text(
+            "{" + json.dumps(hostile_key) + ": 1, " + json.dumps(hostile_key) + ": 2}",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ReviewError, "duplicate JSON key") as caught:
             load_json(path)
+        self.assertNotIn(hostile_key, str(caught.exception))
+        self.assertLess(len(str(caught.exception)), 256)
 
         with self.assertRaisesRegex(ValueError, "not valid UTF-8"):
             loads_json(b"\xff")
@@ -1448,12 +1630,26 @@ class ReviewToolsTest(unittest.TestCase):
         ):
             assert_release_tool_coverage(self.root)
 
+    def test_audit_input_freeze_rejects_unenumerated_shell_launcher(self) -> None:
+        launcher = self.root / "repo_work/future_release_launcher.sh"
+        launcher.parent.mkdir()
+        launcher.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        subprocess.run(["git", "add", str(launcher)], cwd=self.root, check=True)
+
+        with self.assertRaisesRegex(
+            ReviewError, "tracked release-tool paths are absent"
+        ):
+            assert_release_tool_coverage(self.root)
+
     def test_repository_instruction_files_are_frozen(self) -> None:
         self.assertIn("AGENTS.md", freeze.RELEASE_INPUTS)
         self.assertIn("CLAUDE.mdc", freeze.RELEASE_INPUTS)
         self.assertIn("docs/DEPENDENCY-POLICY.md", freeze.RELEASE_INPUTS)
         self.assertIn("release/0.9.0/RELEASE-RUNBOOK.md", freeze.RELEASE_INPUTS)
         self.assertIn("repo_work/process_containment.py", freeze.RELEASE_INPUTS)
+        self.assertIn(
+            "repo_work/verify_release_python_runtime.sh", freeze.RELEASE_INPUTS
+        )
         self.assertIn("release/0.9.0/requirements-ledger.json", freeze.RELEASE_INPUTS)
         self.assertNotIn(
             "release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json",
@@ -2428,6 +2624,36 @@ class ReviewToolsTest(unittest.TestCase):
                 "ncp-core v0.8.0 (locked)|default\r",
             )
 
+    def test_feature_graph_target_all_tokio_contract_is_exact(self) -> None:
+        expected = frozenset(
+            {
+                "bytes",
+                "default",
+                "fs",
+                "io-util",
+                "libc",
+                "macros",
+                "mio",
+                "net",
+                "rt",
+                "rt-multi-thread",
+                "signal",
+                "signal-hook-registry",
+                "socket2",
+                "sync",
+                "time",
+                "tokio-macros",
+                "windows-sys",
+            }
+        )
+        self.assertEqual(TOKIO_RESOLVED_FEATURES, expected)
+        for profile_name in ("ncp-live", "all"):
+            with self.subTest(profile=profile_name):
+                profile = next(
+                    profile for profile in PROFILES if profile.name == profile_name
+                )
+                self.assertEqual(dict(profile.exact_features)["tokio"], expected)
+
     def test_feature_graph_disables_cargo_terminal_color(self) -> None:
         profile = next(profile for profile in PROFILES if profile.name == "pure")
         completed = assurance.BoundedHostResult(
@@ -2467,6 +2693,13 @@ class ReviewToolsTest(unittest.TestCase):
             FEATURE_GRAPH_TIMEOUT_SECONDS,
         )
         self.assertIn("--color=never", run_cargo.call_args.args[0])
+        edge_index = run_cargo.call_args.args[0].index("-e")
+        self.assertEqual(
+            run_cargo.call_args.args[0][edge_index + 1],
+            "normal,build",
+        )
+        target_index = run_cargo.call_args.args[0].index("--target")
+        self.assertEqual(run_cargo.call_args.args[0][target_index + 1], "all")
 
         invalid_utf8 = assurance.BoundedHostResult(0, b"\xff", b"")
         with mock.patch(
@@ -2530,6 +2763,29 @@ class ReviewToolsTest(unittest.TestCase):
                 "succeeded with unsafe non-printable characters in stderr",
             ):
                 package_graph(self.root, profile)
+
+    def test_cli_manifest_rejects_hidden_build_and_target_edges(self) -> None:
+        base = {
+            "features": {
+                "default": [],
+                "pid": ["dep:galadriel-pid"],
+                "ncp": ["dep:galadriel-ncp"],
+                "ncp-live": [
+                    "ncp",
+                    "galadriel-ncp/zenoh",
+                    "dep:tokio",
+                    "dep:serde",
+                    "dep:serde_json",
+                ],
+            }
+        }
+        validate_cli_manifest(base)
+        for table in ("build-dependencies", "target"):
+            with self.subTest(table=table):
+                hidden = copy.deepcopy(base)
+                hidden[table] = {"forbidden-edge": {"version": "1"}}
+                with self.assertRaisesRegex(ReviewError, f"unaudited {table}"):
+                    validate_cli_manifest(hidden)
 
     def test_machine_ecosystem_cut_binds_the_connection_prose(self) -> None:
         repo = TOOLS.parent
@@ -3979,6 +4235,9 @@ raise SystemExit(3)
 
     def test_candidate_qualifier_refuses_output_inside_subject_repository(self) -> None:
         process = run(
+            "-E",
+            "-s",
+            "-S",
             str(TOOLS / "qualify_candidate.py"),
             "--repo",
             ".",
@@ -3992,6 +4251,8 @@ raise SystemExit(3)
             str(self.root.parent / "external-allowed-signers"),
             "--advisory-db",
             str(self.root.parent / "external-advisory-db"),
+            "--pkg-config",
+            str(PINNED_PKG_CONFIG_EXECUTABLE_PATH),
             "--skip-evidence",
             cwd=self.root,
             expected=2,
@@ -4006,6 +4267,9 @@ raise SystemExit(3)
             output.symlink_to(external / "missing-target")
 
             process = run(
+                "-E",
+                "-s",
+                "-S",
                 str(TOOLS / "qualify_candidate.py"),
                 "--repo",
                 ".",
@@ -4019,6 +4283,8 @@ raise SystemExit(3)
                 str(external / "allowed-signers"),
                 "--advisory-db",
                 str(external / "advisory-db"),
+                "--pkg-config",
+                str(PINNED_PKG_CONFIG_EXECUTABLE_PATH),
                 "--skip-evidence",
                 cwd=self.root,
                 expected=2,

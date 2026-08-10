@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Galadriel sidecar ingestion through the command-line interface `ncp` feature and Neuro-Cybernetic Protocol (NCP) wire 0.8 addressing."
+description = "Bounded JSONL, strict NCP wire-0.8 sidecars, lifecycle assembly, and optional Zenoh observation."
 publish = false
 
 [lints]

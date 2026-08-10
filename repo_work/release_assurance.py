@@ -26,15 +26,14 @@ from typing import Any, Literal, NamedTuple
 
 from common import (
     BoundedHostResult as BoundedHostResult,
+    RootedFileBatchCapture,
     RootedFileCapture,
     RootedFileCaptureRequest,
-    RootedFileDigestRequest,
     SAFE_GIT_CONFIGURATION,
     ReviewError,
     assert_no_replace_refs,
     canonical_relative_parts,
     digest_rooted_regular_file,
-    digest_rooted_regular_files,
     digest_rooted_tree,
     git,
     git_bounded_output,
@@ -92,7 +91,7 @@ EVIDENCE_FIXTURE_SHA256 = (
 )
 EVIDENCE_FIXTURE_BYTES = 184_195
 EVIDENCE_RELEASE_SUITE_IDENTITY = (
-    "c8c0beec29b6f513921c20c5c215f4dd1877992a6a5dab3b97b540ce832fc881"
+    "0d9799e2004831174c034b55ed20cd8f6b4f74d8aeaf0529532fc575f4d02a8b"
 )
 EVIDENCE_SCOPE = (
     "streaming normalized innovation squared (NIS) baseline",
@@ -1910,8 +1909,8 @@ def _accepted_evidence_config_from_source(source: dict[str, Any]) -> dict[str, A
             "identity": EVIDENCE_RELEASE_SUITE_IDENTITY,
             "expected_modalities": ["visual", "acoustic", "radar"],
             "axis_policy": "attested_common_projection_bonferroni_v1",
-            "lifecycle_sample_units": 393_216,
-            "state_bytes": 9_538_560,
+            "lifecycle_sample_units": 786_432,
+            "state_bytes": 12_684_288,
         },
         "preflight_estimate": {
             "synthetic_tracks": 980,

@@ -2,9 +2,9 @@
   <img src="assets/galadriel-logo.svg" alt="Galadriel's Mirror — a sentinel shield with a visor that carries a sweeping red scanning eye. Three fiber-optic sensor channels enter it from below." width="200" height="200" />
 </p>
 
-# galadriel
+# Galadriel's Mirror
 
-<p align="center"><strong>Galadriel's Mirror</strong> — an experimental cross-sensor consistency monitor for multi-sensor fusion.</p>
+<p align="center"><strong>Experimental, fail-closed cross-sensor consistency monitoring for multi-sensor fusion.</strong></p>
 
 <p align="center">
   <a href="https://github.com/sepahead/galadriel/actions/workflows/ci.yml"><img src="https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg" alt="continuous integration"></a>
@@ -74,6 +74,32 @@ flowchart LR
     I --> F
     F --> V[nominal / anomaly evidence / insufficient]
 ```
+
+## Run the source demo
+
+```bash
+cargo run --locked --bin galadriel -- demo --frames 128 --seed 7
+```
+
+Representative output from that exact command follows. The traces are shortened.
+
+```text
+═══ GALADRIEL'S MIRROR · cross-sensor consistency monitor ═══
+┌─ CLEAN — corroborated airspace picture
+│  visual    μ=2.93  ● consistent
+└▷ VERDICT: NOMINAL
+┌─ PHANTOM DOA — targeted single-channel spoof (acoustic)
+│  acoustic  μ=66.68 ● ANOMALOUS
+└▷ VERDICT: ATTRIBUTED-INCONSISTENCY (spoof-like evidence; cause unclassified) [acoustic]
+┌─ BROADBAND JAM — correlated all-channel denial
+└▷ VERDICT: BROAD-DEGRADATION (jam-like evidence; cause unclassified)
+┌─ SYNTHETIC MOMENT-MATCHED SPOOF
+│  baseline: NOMINAL — blind (NIS stays in-covariance)
+└▷ correlation: ATTRIBUTED-INCONSISTENCY [acoustic]
+```
+
+The demo uses synthetic common-frame observations.
+It shows code paths. It does not show field performance.
 
 ## Ecosystem boundaries
 
@@ -189,32 +215,6 @@ from Galadriel's unchanged wire-0.8 dependency pin.
 [`docs/ECOSYSTEM-CONNECTIONS.md`](docs/ECOSYSTEM-CONNECTIONS.md) records the dated evidence and claim-by-claim interpretation.
 Current external repository heads can move independently.
 Version 0.9.0 claims only the dependency revisions and local evidence named here.
-
-## Run the source demo
-
-```bash
-cargo run --locked --bin galadriel -- demo --frames 128 --seed 7
-```
-
-Representative output from that exact command (traces shortened here):
-
-```text
-═══ GALADRIEL'S MIRROR · cross-sensor consistency monitor ═══
-┌─ CLEAN — corroborated airspace picture
-│  visual    μ=2.93  ● consistent
-└▷ VERDICT: NOMINAL
-┌─ PHANTOM DOA — targeted single-channel spoof (acoustic)
-│  acoustic  μ=66.68 ● ANOMALOUS
-└▷ VERDICT: ATTRIBUTED-INCONSISTENCY (spoof-like evidence; cause unclassified) [acoustic]
-┌─ BROADBAND JAM — correlated all-channel denial
-└▷ VERDICT: BROAD-DEGRADATION (jam-like evidence; cause unclassified)
-┌─ SYNTHETIC MOMENT-MATCHED SPOOF
-│  baseline: NOMINAL — blind (NIS stays in-covariance)
-└▷ correlation: ATTRIBUTED-INCONSISTENCY [acoustic]
-```
-
-The demo uses synthetic common-frame observations.
-It shows code paths. It does not show field performance.
 
 ## Evidence status
 

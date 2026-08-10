@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "A comparison of partial information decomposition, mutual information, and Pearson correlation."
+description = "Synthetic comparison of signed correlation, mutual information, and partial information decomposition."
 publish = false
 
 [lints]

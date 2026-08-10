@@ -108,6 +108,7 @@ dependencies = [
  "galadriel-core",
  "galadriel-ncp",
  "libfuzzer-sys",
+ "serde",
  "serde_json",
 ]
 

@@ -69,11 +69,11 @@ jobs:
         run: cargo install cargo-public-api --version 0.52.0 --locked
 
       - name: Verify exact-epoch secure deployment profile
-        run: python3 scripts/secure_deployment.py check
+        run: python3 -E -s -S scripts/secure_deployment.py check
 
       - name: Verify release governance and review tooling
         run: >-
-          python3 -m unittest -v
+          python3 -E -s -S -m unittest -v
           scripts.tests.test_release_audit
           repo_work.tests.test_release_audit_snapshot
           repo_work.tests.test_evidence_batch_transaction
@@ -90,16 +90,16 @@ jobs:
 
       - name: Verify generated release-audit artifacts
         run: |
-          python3 repo_work/build_task_dispositions.py verify
-          python3 repo_work/local_convergence.py schema --repo .
-          python3 repo_work/freeze_audit_inputs.py verify-lifecycle \
+          python3 -E -s -S repo_work/build_task_dispositions.py verify
+          python3 -E -s -S repo_work/local_convergence.py schema --repo .
+          python3 -E -s -S repo_work/freeze_audit_inputs.py verify-lifecycle \
             --repo . \
             --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
             --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
-          python3 scripts/release_audit.py verify
+          python3 -E -s -S scripts/release_audit.py verify
 
       - name: Verify exact public API snapshots
-        run: python3 repo_work/check_public_api.py
+        run: python3 -E -s -S repo_work/check_public_api.py
 
       - name: Format
         run: cargo fmt --all --check
@@ -107,13 +107,17 @@ jobs:
       - name: Clippy (workspace, all targets and features)
         run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
-      - name: Check feature-isolated CLI graphs
+      - name: Check and test feature-isolated CLI graphs
         run: |
-          python3 repo_work/check_feature_graph.py
+          python3 -E -s -S repo_work/check_feature_graph.py
           cargo check -p galadriel-cli --no-default-features --locked
           cargo check -p galadriel-cli --no-default-features --features pid --locked
           cargo check -p galadriel-cli --no-default-features --features ncp --locked
           cargo check -p galadriel-cli --no-default-features --features ncp-live --locked
+          cargo test -p galadriel-cli --no-default-features --locked
+          cargo test -p galadriel-cli --no-default-features --features pid --locked
+          cargo test -p galadriel-cli --no-default-features --features ncp --locked
+          cargo test -p galadriel-cli --no-default-features --features ncp-live --locked
 
       - name: Test (workspace, all features)
         run: cargo test --workspace --all-features --locked
@@ -127,7 +131,7 @@ jobs:
         run: cargo build -p galadriel-core --no-default-features --locked
 
       - name: Assert vulnerable Zenoh compression path stays disabled
-        run: python3 repo_work/check_vulnerable_features.py
+        run: python3 -E -s -S repo_work/check_vulnerable_features.py
 
   current-stable:
     name: current stable · clippy · test
@@ -186,6 +190,11 @@ jobs:
           test "$(git rev-parse "HEAD^{commit}")" = "$EXPECTED_SUBJECT"
           git rev-parse "HEAD^{commit}"
           git rev-parse "HEAD^{tree}"
+
+      - name: Install pinned release Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.6"
 
       - name: Install pinned workspace toolchain
         uses: dtolnay/rust-toolchain@c1709d61444fb708e6ed87924f95626398d8d115 # 1.89.0
@@ -255,7 +264,7 @@ jobs:
             > "$inventory_root/license-inventory.json" \
             2> "$inventory_root/license-inventory.stderr"
           test ! -s "$inventory_root/license-inventory.stderr"
-          python3 repo_work/qualification_artifacts.py \
+          python3 -E -s -S repo_work/qualification_artifacts.py \
             --metadata "$inventory_root/cargo-metadata.json" \
             --lockfile Cargo.lock \
             --license-inventory "$inventory_root/license-inventory.json"

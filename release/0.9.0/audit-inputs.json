@@ -10,7 +10,7 @@
     "source_preparation_state": "UNPUBLISHED_CANDIDATE",
     "candidate_release_date": null
   },
-  "audit_date": "2026-08-04",
+  "audit_date": "2026-08-10",
   "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "url": "https://github.com/sepahead/galadriel",
@@ -76,6 +76,12 @@
       "role": "pinned source-archive and repository verifier"
     },
     {
+      "name": "apple-compiler-inputs",
+      "version": "21.0.0",
+      "identity": "Apple compiler inputs; developer_git=/Applications/Xcode.app/Contents/Developer/usr/bin/git,compiler_path=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang,compiler_sha256=7def90dd8829726686213a747fc5bff1583df933dae5edc55d755479e0bfe00a,compiler_size_bytes=141373024,sdk_invoked_root=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk,sdk_resolved_root=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk,sdk_link_target=DIRECT,sdk_settings_sha256=f8d005f09381389167f9e0aeaa169bc9e7dff162ef22ca2fd8e98df7ff1acafe,sdk_settings_size_bytes=7774,sdk_settings_mode=0o644,driver_sha256=4a8fd4b45a8d53cbe7687a5384316a4472c518709d2f18b5726e7352d791c886,driver_size_bytes=222,driver_mode=0o500; developer_git=/Library/Developer/CommandLineTools/usr/bin/git,compiler_path=/Library/Developer/CommandLineTools/usr/bin/clang,compiler_sha256=1220c0afafa12a6ae599d097ee7cf8b87c6b4d8e3fbb9783cee6b319a80683ba,compiler_size_bytes=290664032,sdk_invoked_root=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk,sdk_resolved_root=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk,sdk_link_target=MacOSX26.5.sdk,sdk_settings_sha256=f8d005f09381389167f9e0aeaa169bc9e7dff162ef22ca2fd8e98df7ff1acafe,sdk_settings_size_bytes=7774,sdk_settings_mode=0o644,driver_sha256=559babdba3fcfc31f1d8b43fac20bb5a0e6cbcb82c4777ef09f3c348a9147418,driver_size_bytes=140,driver_mode=0o500",
+      "role": "byte-pinned Apple compiler implementation, fixed SDK selector, and trusted compiler driver"
+    },
+    {
       "name": "rustc",
       "version": "1.89.0",
       "identity": "rustc 1.89.0 (29483883e 2025-08-04)\nbinary: rustc\ncommit-hash: 29483883eed69d5fb4db01964cdf2af4d86e9cb2\ncommit-date: 2025-08-04\nhost: aarch64-apple-darwin\nrelease: 1.89.0\nLLVM version: 20.1.7",
@@ -90,8 +96,8 @@
     {
       "name": "python",
       "version": "3.14.6",
-      "identity": "Python 3.14.6",
-      "role": "standard-library release audit and secure-deployment tooling"
+      "identity": "Python 3.14.6; launcher_path=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/bin/python3.14; launcher_sha256=b502cb4c5b46b8d4192ec6bcb600ce8922f1afc396fcf646e8765c6eba74a0bf; launcher_size_bytes=52448; launcher_mode=0o755; python3-framework_path=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Python; python3-framework_sha256=696ffa2cf9562522c387f7c2b3a990ef67e574df2d921822fe310ea35587cce0; python3-framework_size_bytes=5454512; python3-framework_mode=0o755; python3-app_path=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python; python3-app_sha256=0c9a985712bb1235d8fe474a6a99810dc118bcae0dfb429a237aac0c907fa3af; python3-app_size_bytes=51392; python3-app_mode=0o755; python-mpdecimal_load_path=/opt/homebrew/opt/mpdecimal/lib/libmpdec.4.dylib; python-mpdecimal_resolved_path=/opt/homebrew/Cellar/mpdecimal/4.0.1/lib/libmpdec.4.0.1.dylib; python-mpdecimal_sha256=14286ba02244c25537b3b5c74902c5fa81959d5d2c1fcf06f89808badb67dea8; python-mpdecimal_size_bytes=188176; python-mpdecimal_mode=0o444; python-openssl-crypto_load_path=/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib; python-openssl-crypto_resolved_path=/opt/homebrew/Cellar/openssl@3/3.6.3/lib/libcrypto.3.dylib; python-openssl-crypto_sha256=a12805a18cd5e4f733fa8727b91afa08b587f9da5a760517cd79cb508a3a3f71; python-openssl-crypto_size_bytes=4856256; python-openssl-crypto_mode=0o444; python-openssl-ssl_load_path=/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib; python-openssl-ssl_resolved_path=/opt/homebrew/Cellar/openssl@3/3.6.3/lib/libssl.3.dylib; python-openssl-ssl_sha256=ffd8ac6981000def0928367924b6cb1e7a98712efbc06e2a2f3f750138bd89ca; python-openssl-ssl_size_bytes=872080; python-openssl-ssl_mode=0o444; python-sqlite_load_path=/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib; python-sqlite_resolved_path=/opt/homebrew/Cellar/sqlite/3.53.4/lib/libsqlite3.3.53.4.dylib; python-sqlite_sha256=75feed7151d3e496343ffee9c25960d85188ed99b2ffb1051fe016f912c6c808; python-sqlite_size_bytes=1276320; python-sqlite_mode=0o444; python-xz_load_path=/opt/homebrew/opt/xz/lib/liblzma.5.dylib; python-xz_resolved_path=/opt/homebrew/Cellar/xz/5.8.3/lib/liblzma.5.dylib; python-xz_sha256=3d5bfa2f097c31463642b1daab5e662b44368bb4da368f85e412e7f9adcbaa10; python-xz_size_bytes=184512; python-xz_mode=0o444; python-zstd_load_path=/opt/homebrew/opt/zstd/lib/libzstd.1.dylib; python-zstd_resolved_path=/opt/homebrew/Cellar/zstd/1.5.7_1/lib/libzstd.1.5.7.dylib; python-zstd_sha256=e2847c4613b386683c234913ae3b7b04299254096caf7616e3b3cd9bb97a39ab; python-zstd_size_bytes=649648; python-zstd_mode=0o444; runtime_tree_schema=galadriel.cpython-runtime-tree.v1; runtime_tree_root=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14; runtime_tree_sha256=6b1a020bc9f437ea8fd1fea684c3413421961f9f83e8559ed0e75df73d14e486; runtime_tree_entries=4098; runtime_tree_regular_files=3765; runtime_tree_regular_bytes=83397069; native_preflight_schema=galadriel.cpython-native-runtime-tree.v1; native_preflight_sha256=16b62407fe5fd2d03b56abd0e5c30308a41eb84e83f53a7143d2c859f538070b; native_preflight_entries=4098; native_preflight_regular_files=3765; native_preflight_regular_bytes=83397069; native_preflight_script_sha256=5a666938bc7a52d0f19c6773d07e94504c199bc8064a89dabc160f7d8df40f22",
+      "role": "pinned release-tool interpreter, complete version tree, and non-system dynamic-library set"
     },
     {
       "name": "host",
@@ -108,14 +114,14 @@
     {
       "name": "rustc-nightly",
       "version": "nightly-2026-06-16",
-      "identity": "rustc 1.98.0-nightly (01dfd7924 2026-06-15)\nbinary: rustc\ncommit-hash: 01dfd79246f1b2d5f146616deff08223a840a9ae\ncommit-date: 2026-06-15\nhost: aarch64-apple-darwin\nrelease: 1.98.0-nightly\nLLVM version: 22.1.7",
+      "identity": "rustc 1.98.0-nightly (01dfd7924 2026-06-15)\nbinary: rustc\ncommit-hash: 01dfd79246f1b2d5f146616deff08223a840a9ae\ncommit-date: 2026-06-15\nhost: aarch64-apple-darwin\nrelease: 1.98.0-nightly\nLLVM version: 22.1.7; asan_relative_path=toolchains/nightly-2026-06-16-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/librustc-nightly_rt.asan.dylib; asan_sha256=6d66ac6ca61985979722a42e820ebe31e59ab44963c611f0123b061ecc955cb5; asan_size_bytes=4502208; asan_mode=0o644",
       "role": "public-API inventory, bounded fuzz, and hostile-input campaigns"
     },
     {
       "name": "cargo-fuzz",
       "version": "0.13.2",
       "identity": "cargo-fuzz 0.13.2",
-      "role": "bounded libFuzzer campaign runner"
+      "role": "developer fuzz campaign driver and qualification instrumentation reference"
     },
     {
       "name": "rustc-current-stable",
@@ -128,6 +134,30 @@
       "version": "1.97.1",
       "identity": "cargo 1.97.1 (c980f4866 2026-06-30)\nrelease: 1.97.1\ncommit-hash: c980f4866141969fab6254a680546a277789d6f0\ncommit-date: 2026-06-30\nhost: aarch64-apple-darwin\nlibgit2: 1.9.2 (sys:0.20.4 vendored)\nlibcurl: 8.7.1 (sys:0.4.88+curl-8.20.0 system ssl:(SecureTransport) LibreSSL/3.3.6)\nssl: OpenSSL 3.6.2 7 Apr 2026\nos: Mac OS 26.5.1 [64-bit]",
       "role": "recorded current-stable compatibility package manager"
+    },
+    {
+      "name": "rust-runtime-1.89.0",
+      "version": "1.89.0",
+      "identity": "Rust toolchain runtime; schema=galadriel.rust-toolchain-runtime-tree.v1; toolchain=1.89.0-aarch64-apple-darwin; components=bin,lib,libexec; root_mode=0o755; sha256=e64ad0a8c5d4cf714caa875f226d1ed1864f4b4fe0ae8479e80339e7081d91a6; entries=81; regular_files=71; regular_bytes=518013485; excluded_root_names=etc,share",
+      "role": "byte-pinned executable runtime tree for the minimum supported Rust toolchain"
+    },
+    {
+      "name": "rust-runtime-1.97.1",
+      "version": "1.97.1",
+      "identity": "Rust toolchain runtime; schema=galadriel.rust-toolchain-runtime-tree.v1; toolchain=1.97.1-aarch64-apple-darwin; components=bin,lib,libexec; root_mode=0o755; sha256=5c49faad48c5f1607e08fbda6cc3ebea2247228451dedb03c3d5a4991c3c90fe; entries=108; regular_files=98; regular_bytes=573525207; excluded_root_names=etc,share",
+      "role": "byte-pinned executable runtime tree for the current-stable Rust toolchain"
+    },
+    {
+      "name": "rust-runtime-nightly",
+      "version": "nightly-2026-06-16",
+      "identity": "Rust toolchain runtime; schema=galadriel.rust-toolchain-runtime-tree.v1; toolchain=nightly-2026-06-16-aarch64-apple-darwin; components=bin,lib,libexec; root_mode=0o755; sha256=a944b4ca10f0ceefdd3aa71dc1aa15fd2807dc33d3787c5c2e28a2b44220744f; entries=174; regular_files=162; regular_bytes=638731520; excluded_root_names=etc,share",
+      "role": "byte-pinned executable runtime tree for public API and fuzz qualification"
+    },
+    {
+      "name": "rustup-settings",
+      "version": "12",
+      "identity": "Rustup settings schema version 12; relative_path=settings.toml; sha256=6e498e531090a72487d943bb075e69d820fa144bd6ee858e92b34950901c87ea; size_bytes=98; mode=0o644",
+      "role": "byte-pinned Rustup selection input for all retained Rust commands"
     },
     {
       "name": "cargo-deny",
@@ -146,6 +176,12 @@
       "version": "0.5.9",
       "identity": "cargo-cyclonedx-cyclonedx 0.5.9",
       "role": "CycloneDX 1.5 workspace SBOM generator"
+    },
+    {
+      "name": "pkgconf",
+      "version": "3.0.3",
+      "identity": "pkgconf 3.0.3; executable_path=/opt/homebrew/Cellar/pkgconf/3.0.3/bin/pkgconf; executable_sha256=d1c437b9ad16182ee781175ae4e69b439a91c6c6747a7cd50f878514212730e4; executable_size_bytes=74928; executable_mode=0o555; candidate_execution=DENIED_UNUSED",
+      "role": "byte-pinned execution-denied entry in the required qualification dispatch"
     },
     {
       "name": "cargo-mutants",
@@ -304,7 +340,9 @@
         "crates/**/*.rs",
         "crates/*/schemas/*",
         "fuzz/fuzz_targets/*.rs",
-        "fuzz/corpus/**/*"
+        "fuzz/src/*.rs",
+        "fuzz/corpus/**/*",
+        "fuzz/seeds/**/*"
       ]
     },
     {
@@ -329,6 +367,7 @@
         "scripts/*.py",
         "scripts/tests/*.py",
         "repo_work/*.py",
+        "repo_work/*.sh",
         "repo_work/tests/*.py"
       ]
     }

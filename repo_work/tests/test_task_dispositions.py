@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -45,6 +46,24 @@ class TaskClosurePlanTests(unittest.TestCase):
                     "cannot encode canonical JSON",
                 ):
                     encoder({"value": 10**128})
+
+        hostile_key = "attacker-controlled-secret-field-name"
+        with tempfile.TemporaryDirectory(dir=target) as directory:
+            path = Path(directory) / "duplicate.json"
+            path.write_text(
+                "{"
+                + json.dumps(hostile_key)
+                + ": 1, "
+                + json.dumps(hostile_key)
+                + ": 2}",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                build_task_dispositions.DispositionError, "duplicate JSON key"
+            ) as caught:
+                build_task_dispositions.load_json(path)
+            self.assertNotIn(hostile_key, str(caught.exception))
+            self.assertLess(len(str(caught.exception)), 512)
 
     def test_static_plan_covers_t000_through_t115_without_complete_results(
         self,

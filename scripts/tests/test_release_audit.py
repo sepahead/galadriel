@@ -35,11 +35,21 @@ class ReleaseAuditTests(unittest.TestCase):
                     ):
                         secure_deployment._load_json(path)
 
-            path.write_bytes(b'{"value": 1, "value": 2}')
+            hostile_key = "attacker-controlled-secret-field-name"
+            path.write_text(
+                "{"
+                + json.dumps(hostile_key)
+                + ": 1, "
+                + json.dumps(hostile_key)
+                + ": 2}",
+                encoding="utf-8",
+            )
             with self.assertRaisesRegex(
                 secure_deployment.ProfileError, "duplicate JSON object key"
-            ):
+            ) as caught:
                 secure_deployment._load_json(path)
+            self.assertNotIn(hostile_key, str(caught.exception))
+            self.assertLess(len(str(caught.exception)), 512)
 
             path.write_bytes(b'{"value": ' + b"9" * 5_000 + b"}")
             output = root / "rendered"
@@ -74,9 +84,21 @@ class ReleaseAuditTests(unittest.TestCase):
     def test_duplicate_json_keys_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "duplicate.json"
-            path.write_text('{"schema": 1, "schema": 2}\n', encoding="utf-8")
-            with self.assertRaisesRegex(release_audit.AuditError, "duplicate JSON key"):
+            hostile_key = "attacker-controlled-secret-field-name"
+            path.write_text(
+                "{"
+                + json.dumps(hostile_key)
+                + ": 1, "
+                + json.dumps(hostile_key)
+                + ": 2}\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                release_audit.AuditError, "duplicate JSON key"
+            ) as caught:
                 release_audit.load_json(path)
+            self.assertNotIn(hostile_key, str(caught.exception))
+            self.assertLess(len(str(caught.exception)), 512)
 
     def test_nonfinite_and_oversized_json_numbers_are_rejected(self) -> None:
         invalid_documents = (
@@ -114,6 +136,138 @@ class ReleaseAuditTests(unittest.TestCase):
         encoded = release_audit.canonical_bytes(first)
         self.assertEqual(encoded, release_audit.canonical_bytes(second))
         self.assertEqual(encoded, release_audit.canonical_bytes(json.loads(encoded)))
+
+    def test_release_python_native_preflight_is_cross_bound(self) -> None:
+        release_audit.validate_release_python_native_preflight()
+
+        script = release_audit.ROOT / "repo_work/verify_release_python_runtime.sh"
+        original_read_text = Path.read_text
+
+        def drifted_digest(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            document = original_read_text(path, *args, **kwargs)
+            if path == script:
+                return document.replace(
+                    "expected_tree_sha256=16b62407",
+                    "expected_tree_sha256=06b62407",
+                    1,
+                )
+            return document
+
+        with patch.object(Path, "read_text", drifted_digest):
+            with self.assertRaisesRegex(
+                release_audit.AuditError,
+                "another expected_tree_sha256",
+            ):
+                release_audit.validate_release_python_native_preflight()
+
+        def weakened_body(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            document = original_read_text(path, *args, **kwargs)
+            if path == script:
+                return document.replace(
+                    "pinned native file changed while hashed",
+                    "pinned native file accepted after hashing",
+                    1,
+                )
+            return document
+
+        with patch.object(Path, "read_text", weakened_body):
+            with self.assertRaisesRegex(
+                release_audit.AuditError,
+                "native preflight bytes differ",
+            ):
+                release_audit.validate_release_python_native_preflight()
+
+        original_document = original_read_text(script, encoding="utf-8")
+        unclean_document = original_document.replace(
+            "cleanup\ntrap - EXIT\n"
+            'builtin umask "$original_umask"\n'
+            'builtin exec "$release_python" -E -s -S "$@"\n',
+            'builtin exec "$release_python" -E -s -S "$@"\n',
+            1,
+        )
+
+        def unclean_launch(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            if path == script:
+                return unclean_document
+            return original_read_text(path, *args, **kwargs)
+
+        with (
+            patch.object(Path, "read_text", unclean_launch),
+            patch.object(
+                release_audit,
+                "RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256",
+                hashlib.sha256(unclean_document.encode("utf-8")).hexdigest(),
+            ),
+        ):
+            with self.assertRaisesRegex(
+                release_audit.AuditError,
+                "does not clean and restore caller state",
+            ):
+                release_audit.validate_release_python_native_preflight()
+
+        unrestored_document = original_document.replace(
+            'builtin umask "$original_umask"\n',
+            "",
+            1,
+        )
+
+        def unrestored_umask(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            if path == script:
+                return unrestored_document
+            return original_read_text(path, *args, **kwargs)
+
+        with (
+            patch.object(Path, "read_text", unrestored_umask),
+            patch.object(
+                release_audit,
+                "RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256",
+                hashlib.sha256(unrestored_document.encode("utf-8")).hexdigest(),
+            ),
+        ):
+            with self.assertRaisesRegex(
+                release_audit.AuditError,
+                "does not clean and restore caller state",
+            ):
+                release_audit.validate_release_python_native_preflight()
+
+        runbook = release_audit.ROOT / "release/0.9.0/RELEASE-RUNBOOK.md"
+
+        def bypassed_launcher(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            document = original_read_text(path, *args, **kwargs)
+            if path == runbook:
+                return document.replace(
+                    "release_python=repo_work/verify_release_python_runtime.sh",
+                    "release_python=/unverified/python3",
+                    1,
+                )
+            return document
+
+        with patch.object(Path, "read_text", bypassed_launcher):
+            with self.assertRaisesRegex(
+                release_audit.AuditError,
+                "runbook block requires the native launcher",
+            ):
+                release_audit.validate_release_python_native_preflight()
 
     def test_handoff_task_chain_is_complete_and_contiguous(self) -> None:
         tasks = release_audit.validate_tasks()

@@ -68,18 +68,49 @@ from qualification_artifacts import (
 )
 from qualify_candidate import (
     DEPENDENCY_FETCH_COMMAND_NAMES,
-    DEEP_COMMANDS,
+    DEEP_FUZZ_DYNAMIC_LINKER,
+    DEEP_FUZZ_HOST_TARGET,
+    DEEP_FUZZ_COMMAND_TARGETS,
+    DEEP_FUZZ_BUILD_ENVIRONMENT,
     GIT_ARCHIVE_GLOBAL_ARGS,
+    DEEP_FUZZ_LOAD_DYLIBS,
+    DEEP_FUZZ_TARGETS,
     QUALIFICATION_PATH_TOOLS,
+    QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS,
+    PINNED_PKG_CONFIG_EXECUTABLE_PATH,
+    PINNED_PKG_CONFIG_IDENTITY,
+    PINNED_PKG_CONFIG_MODE,
+    PINNED_PKG_CONFIG_VERSION,
+    PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY,
+    PINNED_DEEP_FUZZ_ASAN_LIBRARY_BASENAME,
+    PINNED_DEEP_FUZZ_ASAN_LIBRARY_MODE,
+    PINNED_DEVELOPER_SDK_IDENTITIES,
+    PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES,
+    PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES,
+    PINNED_CPYTHON_RUNTIME_TREE_IDENTITY,
+    PINNED_CPYTHON_VERSION_ROOT,
+    PINNED_CPYTHON_LAUNCHER_IDENTITY,
+    PINNED_CPYTHON_LAUNCHER_PATH,
+    PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS,
+    PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES,
+    PINNED_RUSTUP_SETTINGS_IDENTITY,
+    QUALIFICATION_PYTHON_FLAGS,
+    QUALIFICATION_COMPILER_DRIVER_NAME,
     QUALIFICATION_SYSTEM_TOOL_PATHS,
     QUALIFICATION_TOOL_DISPATCH_PREFIX,
     SANDBOX_SYSTEM_READ_PATHS,
     CommandSpec,
+    deep_command_specs,
+    deep_fuzz_runner_root,
     execution_policy_contract,
     external_input_path,
+    qualification_allowed_executable_paths,
+    qualification_compiler_driver_bytes,
     qualification_executed_argv,
     qualification_base_commands,
     qualification_environment_contract,
+    require_pinned_cpython_runtime,
+    require_release_python_isolation,
     render_candidate_sandbox_profile,
     repository_control_snapshot,
     verify_source_archive,
@@ -161,6 +192,7 @@ IGNORED_ADVISORY = "RUSTSEC-2026-0041"
 EXPECTED_TOOL_FILE_NAMES = frozenset(
     {
         *QUALIFICATION_PATH_TOOLS,
+        *PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES,
         "sandbox-exec",
         "rustc-1.89.0",
         "cargo-1.89.0",
@@ -178,6 +210,12 @@ EXPECTED_TOOL_FILE_NAMES = frozenset(
 )
 TOOL_FILE_BASENAMES = {
     **{name: name for name in QUALIFICATION_PATH_TOOLS},
+    **{
+        name: path.name
+        for name, (path, _sha256, _size, _mode) in (
+            PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES.items()
+        )
+    },
     "sandbox-exec": "sandbox-exec",
     "rustc-1.89.0": "rustc",
     "cargo-1.89.0": "cargo",
@@ -271,6 +309,12 @@ EXPECTED_DEVELOPER_TOOL_IDENTITIES = {
     },
 }
 EXPECTED_TOOL_FILE_IDENTITIES = {
+    **{
+        name: (sha256, size)
+        for name, (_path, sha256, size, _mode) in (
+            PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES.items()
+        )
+    },
     "ar": EXPECTED_DEVELOPER_TOOL_IDENTITIES[
         Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
     ]["ar"][1:],
@@ -310,12 +354,14 @@ EXPECTED_TOOL_FILE_IDENTITIES = {
         "acdc7b1733d52476fc2ce456a2a0292b82c367566fe0d2ab15c12b99974c8d24",
         5550016,
     ),
-    "cc": EXPECTED_DEVELOPER_TOOL_IDENTITIES[
-        Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
-    ]["cc"][1:],
-    "clang": EXPECTED_DEVELOPER_TOOL_IDENTITIES[
-        Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
-    ]["clang"][1:],
+    "cc": (
+        "4a8fd4b45a8d53cbe7687a5384316a4472c518709d2f18b5726e7352d791c886",
+        222,
+    ),
+    "clang": (
+        "4a8fd4b45a8d53cbe7687a5384316a4472c518709d2f18b5726e7352d791c886",
+        222,
+    ),
     "clippy-driver-1.89.0": (
         "d96c5d7a8e3fbb6920ade89d389f96d19003f654c75d96383d7b2fb21b883ab8",
         12354144,
@@ -337,14 +383,8 @@ EXPECTED_TOOL_FILE_IDENTITIES = {
     "make": EXPECTED_DEVELOPER_TOOL_IDENTITIES[
         Path("/Applications/Xcode.app/Contents/Developer/usr/bin/git")
     ]["make"][1:],
-    "pkg-config": (
-        "d1c437b9ad16182ee781175ae4e69b439a91c6c6747a7cd50f878514212730e4",
-        74928,
-    ),
-    "python3": (
-        "b502cb4c5b46b8d4192ec6bcb600ce8922f1afc396fcf646e8765c6eba74a0bf",
-        52_448,
-    ),
+    "pkg-config": PINNED_PKG_CONFIG_IDENTITY,
+    "python3": PINNED_CPYTHON_LAUNCHER_IDENTITY[:2],
     "rustc": (
         "aeb4105778ca1bd3c6b0e75768f581c656633cd51368fa61289b6a71696ac7e1",
         11_053_296,
@@ -392,6 +432,21 @@ EXPECTED_TOOL_FILE_IDENTITIES = {
     "ssh-keygen": (
         "bddae9c4ea46fd903574ec6ff61eda75e133f940fa538f2adca80af474767596",
         849024,
+    ),
+}
+EXPECTED_RUNTIME_LIBRARY_IDENTITIES = {
+    **{
+        name: (load_path, resolved_path, sha256, size, mode)
+        for name, (load_path, resolved_path, sha256, size, mode) in (
+            PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES.items()
+        )
+    },
+    "fuzz-asan": (
+        None,
+        None,
+        PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY[0],
+        PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY[1],
+        PINNED_DEEP_FUZZ_ASAN_LIBRARY_MODE,
     ),
 }
 FROZEN_COMMAND_ARGUMENTS = {
@@ -461,6 +516,41 @@ FROZEN_COMMAND_ARGUMENTS = {
         "--format",
         "json",
     ),
+    "fuzz-harness-tests": (
+        "cargo",
+        "+nightly-2026-06-16",
+        "test",
+        "--manifest-path",
+        "fuzz/Cargo.toml",
+        "--lib",
+        "--locked",
+        "--offline",
+    ),
+    "fuzz-all-targets-check": (
+        "cargo",
+        "+nightly-2026-06-16",
+        "check",
+        "--manifest-path",
+        "fuzz/Cargo.toml",
+        "--all-targets",
+        "--locked",
+        "--offline",
+    ),
+    "fuzz-instrumented-binaries-build": (
+        "cargo",
+        "+nightly-2026-06-16",
+        "build",
+        "--manifest-path",
+        "fuzz/Cargo.toml",
+        "--target",
+        "aarch64-apple-darwin",
+        "--release",
+        "--config",
+        'profile.release.debug="line-tables-only"',
+        "--bins",
+        "--locked",
+        "--offline",
+    ),
 }
 FROZEN_QUALIFICATION_COMMAND_NAMES = (
     "verify-commit-signature-external-key",
@@ -482,6 +572,10 @@ FROZEN_QUALIFICATION_COMMAND_NAMES = (
     "cli-pid-feature-graph",
     "cli-ncp-feature-graph",
     "cli-ncp-live-feature-graph",
+    "cli-pure-feature-tests",
+    "cli-pid-feature-tests",
+    "cli-ncp-feature-tests",
+    "cli-ncp-live-feature-tests",
     "clippy-all-targets-features",
     "clippy-production-no-unwrap-expect-panic",
     "tests-all-features",
@@ -500,8 +594,12 @@ FROZEN_QUALIFICATION_COMMAND_NAMES = (
     "public-api-snapshots",
     "candidate-evidence-build",
     "candidate-evidence",
+    "fuzz-harness-tests",
+    "fuzz-all-targets-check",
+    "fuzz-instrumented-binaries-build",
     "fuzz-ncp-decode-5000",
     "fuzz-detector-boundaries-5000",
+    "fuzz-lifecycle-state-5000",
 )
 CLOSURE_RESERVED_ROOT_PATHS = frozenset(
     {
@@ -601,6 +699,7 @@ LLVM version: 22.1.7""",
     "cargo_cyclonedx": "cargo-cyclonedx-cyclonedx 0.5.9",
     "cargo_public_api": "cargo-public-api 0.52.0",
     "cargo_fuzz": "cargo-fuzz 0.13.2",
+    "pkgconf": PINNED_PKG_CONFIG_VERSION,
 }
 
 
@@ -2645,6 +2744,7 @@ def validate_qualification_record(
         "host",
         "tools",
         "tool_files",
+        "fuzz_runners",
         "environment_contract",
         "repository_control",
         "sandbox",
@@ -3009,6 +3109,13 @@ def validate_qualification_sandbox(
         allow_empty=True,
     )
     tool_read_paths = recorded_paths(bindings["tool_read_paths"], "tool read paths")
+    tool_files = qualification.get("tool_files")
+    executables = (
+        tool_files.get("executables") if isinstance(tool_files, dict) else None
+    )
+    if not isinstance(executables, dict):
+        raise ReviewError("qualification sandbox lacks executable bindings")
+    allowed_executable_paths = qualification_allowed_executable_paths(executables)
     candidate_probe_paths = (
         recorded_path(
             bindings["candidate_process_probe_deny"],
@@ -3084,7 +3191,7 @@ def validate_qualification_sandbox(
     )
     home_read_set = {
         path
-        for path in (*home_tool_paths, rustup_home, *writable_paths)
+        for path in (*home_tool_paths, *writable_paths)
         if path == host_home or host_home in path.parents
     }
     allowed_home_read_paths = tuple(sorted(home_read_set, key=lambda item: str(item)))
@@ -3152,6 +3259,7 @@ def validate_qualification_sandbox(
             writable_paths=writable_paths,
             allowed_home_read_paths=allowed_home_read_paths,
             tool_read_paths=tool_read_paths,
+            allowed_executable_paths=allowed_executable_paths,
             denied_read_paths=(advisory_source,),
             process_probe_paths=candidate_probe_paths,
             allow_network=False,
@@ -3164,6 +3272,7 @@ def validate_qualification_sandbox(
             writable_paths=writable_paths,
             allowed_home_read_paths=allowed_home_read_paths,
             tool_read_paths=tool_read_paths,
+            allowed_executable_paths=allowed_executable_paths,
             denied_read_paths=(advisory_source,),
             process_probe_paths=dependency_fetch_probe_paths,
             allow_network=True,
@@ -3218,18 +3327,221 @@ def _absolute_identity_path(value: Any, label: str) -> Path:
     return path
 
 
+def _expected_runtime_library_paths(
+    qualification: dict[str, Any],
+    name: str,
+) -> tuple[Path, Path]:
+    """Return fixed or Rustup-derived runtime-library paths."""
+
+    expected_invoked, expected_resolved = EXPECTED_RUNTIME_LIBRARY_IDENTITIES[name][
+        :2
+    ]
+    if expected_invoked is not None and expected_resolved is not None:
+        return expected_invoked, expected_resolved
+    sandbox = qualification.get("sandbox")
+    bindings = sandbox.get("bindings") if isinstance(sandbox, dict) else None
+    if not isinstance(bindings, dict):
+        raise ReviewError("qualification runtime-library binding is missing")
+    rustup_home = _absolute_identity_path(
+        bindings.get("rustup_home"),
+        "qualification Rustup home",
+    )
+    path = (
+        rustup_home
+        / "toolchains"
+        / f"nightly-2026-06-16-{DEEP_FUZZ_HOST_TARGET}"
+        / "lib"
+        / "rustlib"
+        / DEEP_FUZZ_HOST_TARGET
+        / "lib"
+        / PINNED_DEEP_FUZZ_ASAN_LIBRARY_BASENAME
+    )
+    return path, path
+
+
+def validate_qualification_compiler_inputs(
+    tool_files: dict[str, Any],
+    selected_developer_git: Path,
+) -> dict[str, Any]:
+    """Require the fixed compiler driver, implementation, and macOS SDK input."""
+
+    compiler = tool_files.get("compiler")
+    sdk_pin = PINNED_DEVELOPER_SDK_IDENTITIES.get(selected_developer_git)
+    developer_tools = EXPECTED_DEVELOPER_TOOL_IDENTITIES.get(
+        selected_developer_git
+    )
+    if (
+        not isinstance(compiler, dict)
+        or set(compiler) != {"driver", "implementation", "sdk"}
+        or sdk_pin is None
+        or developer_tools is None
+    ):
+        raise ReviewError("qualification compiler input record is malformed")
+    record_fields = {
+        "invoked_path",
+        "resolved_path",
+        "sha256",
+        "size_bytes",
+        "uid",
+        "gid",
+        "mode",
+    }
+    driver = compiler["driver"]
+    implementation = compiler["implementation"]
+    sdk = compiler["sdk"]
+    if (
+        not isinstance(driver, dict)
+        or set(driver) != record_fields
+        or not isinstance(implementation, dict)
+        or set(implementation) != record_fields
+        or not isinstance(sdk, dict)
+        or set(sdk) != {"invoked_root", "resolved_root", "link_target", "settings"}
+        or not isinstance(sdk["settings"], dict)
+        or set(sdk["settings"]) != record_fields
+    ):
+        raise ReviewError("qualification compiler input record is malformed")
+
+    driver_path = _absolute_identity_path(
+        driver["resolved_path"], "qualification compiler-driver path"
+    )
+    expected_driver = qualification_compiler_driver_bytes(selected_developer_git)
+    if (
+        driver["invoked_path"] != str(driver_path)
+        or driver_path.name != QUALIFICATION_COMPILER_DRIVER_NAME
+        or driver["sha256"] != hashlib.sha256(expected_driver).hexdigest()
+        or driver["size_bytes"] != len(expected_driver)
+        or type(driver["uid"]) is not int
+        or driver["uid"] < 0
+        or type(driver["gid"]) is not int
+        or driver["gid"] < 0
+        or driver["mode"] != 0o500
+    ):
+        raise ReviewError("qualification compiler driver identity is invalid")
+
+    expected_implementation_path, expected_sha256, expected_size = developer_tools[
+        "clang"
+    ]
+    if (
+        implementation["invoked_path"] != str(expected_implementation_path)
+        or implementation["resolved_path"] != str(expected_implementation_path)
+        or implementation["sha256"] != expected_sha256
+        or implementation["size_bytes"] != expected_size
+        or implementation["uid"] != 0
+        or implementation["gid"] != 0
+        or implementation["mode"] != 0o755
+    ):
+        raise ReviewError("qualification compiler implementation is invalid")
+
+    invoked_root = _absolute_identity_path(
+        sdk["invoked_root"], "qualification macOS SDK invoked root"
+    )
+    resolved_root = _absolute_identity_path(
+        sdk["resolved_root"], "qualification macOS SDK resolved root"
+    )
+    settings = sdk["settings"]
+    settings_path = resolved_root / "SDKSettings.json"
+    if (
+        invoked_root != sdk_pin["invoked_root"]
+        or resolved_root != sdk_pin["resolved_root"]
+        or sdk["link_target"] != sdk_pin["link_target"]
+        or settings["invoked_path"] != str(settings_path)
+        or settings["resolved_path"] != str(settings_path)
+        or settings["sha256"] != sdk_pin["settings_sha256"]
+        or settings["size_bytes"] != sdk_pin["settings_size_bytes"]
+        or settings["uid"] != 0
+        or settings["gid"] != 0
+        or settings["mode"] != sdk_pin["settings_mode"]
+    ):
+        raise ReviewError("qualification macOS SDK identity is invalid")
+    return compiler
+
+
 def validate_qualification_tool_files(qualification: dict[str, Any]) -> None:
-    """Require exact executable path, digest, owner, group, and mode records."""
+    """Require exact executable and enabled runtime-library records."""
 
     tool_files = qualification.get("tool_files")
     if (
         not isinstance(tool_files, dict)
-        or set(tool_files) != {"status", "executables"}
+        or set(tool_files)
+        != {
+            "status",
+            "executables",
+            "runtime_libraries",
+            "compiler",
+            "python_runtime_tree",
+            "rust_toolchain_runtime",
+        }
         or tool_files["status"] != "UNCHANGED"
         or not isinstance(tool_files["executables"], dict)
         or set(tool_files["executables"]) != EXPECTED_TOOL_FILE_NAMES
+        or not isinstance(tool_files["runtime_libraries"], dict)
+        or set(tool_files["runtime_libraries"])
+        != set(EXPECTED_RUNTIME_LIBRARY_IDENTITIES)
+        or tool_files["python_runtime_tree"]
+        != PINNED_CPYTHON_RUNTIME_TREE_IDENTITY
     ):
-        raise ReviewError("qualification executable identity set is incomplete")
+        raise ReviewError("qualification tool-file identity set is incomplete")
+
+    rust_runtime = tool_files["rust_toolchain_runtime"]
+    sandbox = qualification.get("sandbox")
+    bindings = sandbox.get("bindings") if isinstance(sandbox, dict) else None
+    if not isinstance(bindings, dict):
+        raise ReviewError("qualification Rust toolchain binding is missing")
+    rustup_home = _absolute_identity_path(
+        bindings.get("rustup_home"), "qualification Rustup home"
+    )
+    if (
+        not isinstance(rust_runtime, dict)
+        or set(rust_runtime) != {"schema", "rustup_home", "settings", "toolchains"}
+        or rust_runtime["schema"] != "galadriel.rust-toolchain-runtime.v1"
+        or rust_runtime["rustup_home"] != str(rustup_home)
+        or not isinstance(rust_runtime["settings"], dict)
+        or not isinstance(rust_runtime["toolchains"], dict)
+        or set(rust_runtime["toolchains"])
+        != set(PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES)
+    ):
+        raise ReviewError("qualification Rust toolchain runtime is malformed")
+
+    rust_settings = rust_runtime["settings"]
+    record_fields = {
+        "invoked_path",
+        "resolved_path",
+        "sha256",
+        "size_bytes",
+        "uid",
+        "gid",
+        "mode",
+    }
+    expected_settings_path = rustup_home / "settings.toml"
+    if (
+        set(rust_settings) != record_fields
+        or rust_settings["invoked_path"] != str(expected_settings_path)
+        or rust_settings["resolved_path"] != str(expected_settings_path)
+        or (
+            rust_settings["sha256"],
+            rust_settings["size_bytes"],
+            rust_settings["mode"],
+        )
+        != PINNED_RUSTUP_SETTINGS_IDENTITY
+        or type(rust_settings["uid"]) is not int
+        or rust_settings["uid"] < 0
+        or type(rust_settings["gid"]) is not int
+        or rust_settings["gid"] < 0
+    ):
+        raise ReviewError("qualification Rustup settings identity is invalid")
+
+    for toolchain, expected in PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES.items():
+        record = rust_runtime["toolchains"][toolchain]
+        expected_root = rustup_home / "toolchains" / toolchain
+        if (
+            not isinstance(record, dict)
+            or set(record) != {"root", *expected}
+            or record["root"] != str(expected_root)
+            or {key: record[key] for key in expected} != expected
+        ):
+            raise ReviewError(
+                f"qualification Rust runtime tree is invalid: {toolchain}"
+            )
 
     git_record = tool_files["executables"]["git"]
     selected_developer_git = _absolute_identity_path(
@@ -3241,18 +3553,13 @@ def validate_qualification_tool_files(qualification: dict[str, Any]) -> None:
     )
     if developer_tool_identities is None:
         raise ReviewError("qualification recorded another direct developer Git")
+    compiler = validate_qualification_compiler_inputs(
+        tool_files,
+        selected_developer_git,
+    )
 
     identities_by_resolved_path: dict[str, tuple[Any, ...]] = {}
     dispatch_directory: Path | None = None
-    record_fields = {
-        "invoked_path",
-        "resolved_path",
-        "sha256",
-        "size_bytes",
-        "uid",
-        "gid",
-        "mode",
-    }
     for name, record in tool_files["executables"].items():
         if not isinstance(record, dict) or set(record) != record_fields:
             raise ReviewError(f"qualification executable identity is malformed: {name}")
@@ -3293,6 +3600,48 @@ def validate_qualification_tool_files(qualification: dict[str, Any]) -> None:
             ):
                 raise ReviewError("qualification recorded another direct developer Git")
             expected_identity = EXPECTED_DEVELOPER_GIT_IDENTITIES[resolved]
+        elif name == "python3":
+            if (
+                resolved != PINNED_CPYTHON_LAUNCHER_PATH
+                or mode != PINNED_CPYTHON_LAUNCHER_IDENTITY[2]
+            ):
+                raise ReviewError("qualification recorded another CPython launcher")
+            expected_identity = PINNED_CPYTHON_LAUNCHER_IDENTITY[:2]
+        elif name == "pkg-config":
+            if (
+                resolved != PINNED_PKG_CONFIG_EXECUTABLE_PATH
+                or mode != PINNED_PKG_CONFIG_MODE
+            ):
+                raise ReviewError("qualification recorded another pkg-config target")
+            expected_identity = PINNED_PKG_CONFIG_IDENTITY
+        elif name in {"cc", "clang"}:
+            driver = compiler["driver"]
+            driver_path = _absolute_identity_path(
+                driver["resolved_path"], "qualification compiler-driver path"
+            )
+            if (
+                resolved != driver_path
+                or uid != driver["uid"]
+                or gid != driver["gid"]
+                or mode != driver["mode"]
+            ):
+                raise ReviewError(
+                    f"qualification recorded another compiler driver: {name}"
+                )
+            expected_identity = (driver["sha256"], driver["size_bytes"])
+        elif name in PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES:
+            expected_path, expected_sha256, expected_size, expected_mode = (
+                PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES[name]
+            )
+            if (
+                invoked != expected_path
+                or resolved != expected_path
+                or mode != expected_mode
+            ):
+                raise ReviewError(
+                    f"qualification recorded another CPython runtime file: {name}"
+                )
+            expected_identity = (expected_sha256, expected_size)
         elif name in developer_tool_identities:
             expected_path, expected_sha256, expected_size = developer_tool_identities[
                 name
@@ -3350,6 +3699,64 @@ def validate_qualification_tool_files(qualification: dict[str, Any]) -> None:
         ):
             raise ReviewError("qualification recorded another sandbox executable")
 
+    compiler_driver_path = _absolute_identity_path(
+        compiler["driver"]["resolved_path"],
+        "qualification compiler-driver path",
+    )
+    if (
+        dispatch_directory is None
+        or compiler_driver_path.parent != dispatch_directory.parent
+    ):
+        raise ReviewError("qualification compiler driver layout is invalid")
+
+    for name, record in tool_files["runtime_libraries"].items():
+        if not isinstance(record, dict) or set(record) != record_fields:
+            raise ReviewError(
+                f"qualification runtime-library identity is malformed: {name}"
+            )
+        _, _, expected_sha256, expected_size, expected_mode = (
+            EXPECTED_RUNTIME_LIBRARY_IDENTITIES[name]
+        )
+        expected_invoked, expected_resolved = _expected_runtime_library_paths(
+            qualification, name
+        )
+        invoked = _absolute_identity_path(
+            record["invoked_path"], f"{name} runtime-library invoked path"
+        )
+        resolved = _absolute_identity_path(
+            record["resolved_path"], f"{name} runtime-library resolved path"
+        )
+        size = record["size_bytes"]
+        uid = record["uid"]
+        gid = record["gid"]
+        mode = record["mode"]
+        if (
+            invoked != expected_invoked
+            or resolved != expected_resolved
+            or not _lower_hex(record["sha256"], 64)
+            or record["sha256"] != expected_sha256
+            or type(size) is not int
+            or size != expected_size
+            or size <= 0
+            or size > MAX_QUALIFICATION_EXECUTABLE_BYTES
+            or type(uid) is not int
+            or uid < 0
+            or type(gid) is not int
+            or gid < 0
+            or type(mode) is not int
+            or mode != expected_mode
+            or (mode & 0o022) != 0
+        ):
+            raise ReviewError(
+                f"qualification runtime-library metadata is invalid: {name}"
+            )
+        identity = (record["sha256"], size, uid, gid, mode)
+        previous = identities_by_resolved_path.setdefault(str(resolved), identity)
+        if previous != identity:
+            raise ReviewError(
+                f"qualification tool-file path has conflicting identities: {resolved}"
+            )
+
     rustup_proxy_paths = {
         _absolute_identity_path(
             tool_files["executables"][name]["resolved_path"],
@@ -3359,6 +3766,49 @@ def validate_qualification_tool_files(qualification: dict[str, Any]) -> None:
     }
     if len(rustup_proxy_paths) != 1:
         raise ReviewError("qualification Cargo and Rust compiler proxies disagree")
+
+
+def validate_qualification_fuzz_runners(
+    qualification: dict[str, Any],
+    *,
+    private_root: Path,
+) -> None:
+    """Bind every direct fuzz runner to its receipt and Mach-O runtime contract."""
+
+    record = qualification.get("fuzz_runners")
+    if (
+        not isinstance(record, dict)
+        or set(record) != {"status", "target_triple", "build_environment", "runners"}
+        or record["status"] != "UNCHANGED"
+        or record["target_triple"] != DEEP_FUZZ_HOST_TARGET
+        or record["build_environment"] != dict(DEEP_FUZZ_BUILD_ENVIRONMENT)
+        or not isinstance(record["runners"], dict)
+        or set(record["runners"]) != set(DEEP_FUZZ_TARGETS)
+    ):
+        raise ReviewError("qualification fuzz-runner set is incomplete")
+    runner_root = deep_fuzz_runner_root(private_root)
+    _, asan_library = _expected_runtime_library_paths(qualification, "fuzz-asan")
+    expected_runtime = {
+        "load_dylibs": list(DEEP_FUZZ_LOAD_DYLIBS),
+        "run_paths": [str(asan_library.parent)],
+        "dynamic_linker": DEEP_FUZZ_DYNAMIC_LINKER,
+        "runtime_library": str(asan_library),
+    }
+    for command_name, target in DEEP_FUZZ_COMMAND_TARGETS.items():
+        runner = record["runners"].get(target)
+        if not isinstance(runner, dict) or set(runner) != {"identity", "runtime"}:
+            raise ReviewError(f"qualification fuzz runner is malformed: {target}")
+        identity = qualification_command_subject_identity(
+            qualification,
+            command_name,
+        )
+        expected_path = runner_root / target / target
+        if (
+            runner["identity"] != identity
+            or Path(identity["invoked_path"]) != expected_path
+            or runner["runtime"] != expected_runtime
+        ):
+            raise ReviewError(f"qualification fuzz runner is invalid: {target}")
 
 
 def recorded_qualification_git_executable(qualification: dict[str, Any]) -> Path:
@@ -3386,24 +3836,17 @@ def _path_is_within(path: Path, root: Path) -> bool:
     return path == root or root in path.parents
 
 
-def _qualification_tool_read_root(directory: Path, host_home: Path) -> Path | None:
-    """Reconstruct the minimal recorded read root for one tool directory."""
+def _qualification_tool_read_binding(path: Path) -> Path | None:
+    """Return one exact non-system sandbox read binding."""
 
     system_roots = tuple(Path(path) for path in SANDBOX_SYSTEM_READ_PATHS)
-    if any(_path_is_within(directory, root) for root in system_roots):
+    if any(_path_is_within(path, root) for root in system_roots):
         return None
-    if _path_is_within(directory, host_home):
-        return directory
-    parts = directory.parts
-    if len(parts) >= 3 and parts[:2] == ("/", "opt"):
-        return Path("/", "opt", parts[2])
-    if len(parts) >= 3 and parts[:3] == ("/", "usr", "local"):
-        return Path("/usr/local")
-    return directory
+    return path
 
 
 def validate_qualification_tool_bindings(qualification: dict[str, Any]) -> None:
-    """Bind each executable path to the exact retained sandbox read roots."""
+    """Bind each tool-file path to the exact retained sandbox read roots."""
 
     sandbox = qualification.get("sandbox")
     bindings = sandbox.get("bindings") if isinstance(sandbox, dict) else None
@@ -3411,8 +3854,21 @@ def validate_qualification_tool_bindings(qualification: dict[str, Any]) -> None:
     executables = (
         tool_files.get("executables") if isinstance(tool_files, dict) else None
     )
-    if not isinstance(bindings, dict) or not isinstance(executables, dict):
-        raise ReviewError("qualification executable sandbox bindings are missing")
+    runtime_libraries = (
+        tool_files.get("runtime_libraries") if isinstance(tool_files, dict) else None
+    )
+    rust_runtime = (
+        tool_files.get("rust_toolchain_runtime")
+        if isinstance(tool_files, dict)
+        else None
+    )
+    if (
+        not isinstance(bindings, dict)
+        or not isinstance(executables, dict)
+        or not isinstance(runtime_libraries, dict)
+        or not isinstance(rust_runtime, dict)
+    ):
+        raise ReviewError("qualification tool-file sandbox bindings are missing")
 
     host_home = _absolute_identity_path(
         bindings.get("host_home"), "qualification host home"
@@ -3447,6 +3903,8 @@ def validate_qualification_tool_bindings(qualification: dict[str, Any]) -> None:
     expected_home_tool_paths: set[Path] = set()
     expected_tool_read_paths: set[Path] = set()
     for name in QUALIFICATION_PATH_TOOLS:
+        if name in QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS:
+            continue
         record = executables.get(name)
         if not isinstance(record, dict):
             raise ReviewError(f"qualification executable binding is missing: {name}")
@@ -3458,10 +3916,54 @@ def validate_qualification_tool_bindings(qualification: dict[str, Any]) -> None:
         )
         if _path_is_within(invoked.parent, host_home):
             expected_home_tool_paths.add(invoked.parent)
-        for directory in (invoked.parent, resolved.parent):
-            read_root = _qualification_tool_read_root(directory, host_home)
-            if read_root is not None:
-                expected_tool_read_paths.add(read_root)
+        read_binding = _qualification_tool_read_binding(invoked.parent)
+        if read_binding is not None:
+            expected_tool_read_paths.add(read_binding)
+        if name == "python3":
+            expected_tool_read_paths.add(PINNED_CPYTHON_VERSION_ROOT)
+            for _load_path, resolved_path, _sha256, _size, _mode in (
+                PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES.values()
+            ):
+                expected_tool_read_paths.add(resolved_path)
+            continue
+        read_binding = _qualification_tool_read_binding(resolved)
+        if read_binding is not None:
+            expected_tool_read_paths.add(read_binding)
+
+    if rust_runtime.get("rustup_home") != str(rustup_home):
+        raise ReviewError("qualification Rust runtime home binding differs")
+    expected_tool_read_paths.add(rustup_home / "settings.toml")
+    toolchains = rust_runtime.get("toolchains")
+    if not isinstance(toolchains, dict):
+        raise ReviewError("qualification Rust runtime tree binding is missing")
+    for toolchain in PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES:
+        record = toolchains.get(toolchain)
+        expected_root = rustup_home / "toolchains" / toolchain
+        if not isinstance(record, dict) or record.get("root") != str(expected_root):
+            raise ReviewError("qualification Rust runtime tree binding differs")
+        expected_tool_read_paths.update(
+            expected_root / component
+            for component in PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS
+        )
+
+    for name in EXPECTED_RUNTIME_LIBRARY_IDENTITIES:
+        record = runtime_libraries.get(name)
+        if not isinstance(record, dict):
+            raise ReviewError(
+                f"qualification runtime-library binding is missing: {name}"
+            )
+        invoked = _absolute_identity_path(
+            record.get("invoked_path"), f"{name} runtime-library invoked path"
+        )
+        resolved = _absolute_identity_path(
+            record.get("resolved_path"), f"{name} runtime-library resolved path"
+        )
+        for path in (invoked, resolved):
+            if _path_is_within(path, rustup_home):
+                continue
+            read_binding = _qualification_tool_read_binding(path)
+            if read_binding is not None:
+                expected_tool_read_paths.add(read_binding)
 
     expected_home = tuple(sorted(expected_home_tool_paths, key=lambda item: str(item)))
     expected_read = tuple(sorted(expected_tool_read_paths, key=lambda item: str(item)))
@@ -3471,7 +3973,10 @@ def validate_qualification_tool_bindings(qualification: dict[str, Any]) -> None:
         )
 
     rustup_tool_names = (
-        EXPECTED_TOOL_FILE_NAMES - set(QUALIFICATION_PATH_TOOLS) - {"sandbox-exec"}
+        EXPECTED_TOOL_FILE_NAMES
+        - set(QUALIFICATION_PATH_TOOLS)
+        - set(PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES)
+        - {"sandbox-exec"}
     )
     for name in rustup_tool_names:
         record = executables.get(name)
@@ -3556,7 +4061,11 @@ def _dynamic_qualification_specs(
         )
 
     inventory_argv = by_name["tracked-source-inventory"].get("argv")
-    if not isinstance(inventory_argv, list) or len(inventory_argv) != 6:
+    if (
+        not isinstance(inventory_argv, list)
+        or len(inventory_argv) != 6 + len(QUALIFICATION_PYTHON_FLAGS)
+        or tuple(inventory_argv[1:4]) != QUALIFICATION_PYTHON_FLAGS
+    ):
         raise ReviewError("qualification source-inventory command is malformed")
     inventory = _absolute_recorded_path(
         inventory_argv[-1], "qualification source-inventory output"
@@ -3660,6 +4169,7 @@ def validate_qualification_commands(
     sandbox_policy_sha256: str,
     dependency_fetch_policy_sha256: str,
     git_executable: Path,
+    private_root: Path | None = None,
     recorded_root: Path | None = None,
     allowed_signers_snapshot: Path | None = None,
 ) -> None:
@@ -3683,6 +4193,7 @@ def validate_qualification_commands(
         "claim-language-inventory",
         "candidate-evidence-build",
         "candidate-evidence",
+        *DEEP_FUZZ_COMMAND_TARGETS,
     }
     if not dynamic_names.issubset(by_name):
         raise ReviewError("qualification omitted a dynamic candidate-bound command")
@@ -3690,6 +4201,8 @@ def validate_qualification_commands(
         raise ReviewError(
             "qualification command validation lacks the independent signer snapshot"
         )
+    if private_root is None or not private_root.is_absolute():
+        raise ReviewError("qualification command validation lacks the private root")
     dynamic = _dynamic_qualification_specs(
         by_name,
         recorded_root if recorded_root is not None else qualification_root,
@@ -3705,7 +4218,7 @@ def validate_qualification_commands(
         *qualification_base_commands(allowed_signers_snapshot),
         dynamic_by_name["candidate-evidence-build"],
         dynamic_by_name["candidate-evidence"],
-        *DEEP_COMMANDS,
+        *deep_command_specs(private_root),
     ]
     spec_by_name = {spec.name: spec for spec in ordered_specs}
     for name, argv in FROZEN_COMMAND_ARGUMENTS.items():
@@ -3768,7 +4281,10 @@ def validate_qualification_commands(
                     f"qualification command has an unexpected subject: {spec.name}"
                 )
         else:
-            identity = candidate_evidence_subject_identity({"commands": [result]})
+            identity = qualification_command_subject_identity(
+                {"commands": [result]},
+                spec.name,
+            )
             if identity["invoked_path"] != spec.subject_executable:
                 raise ReviewError(
                     f"qualification command used another subject: {spec.name}"
@@ -4773,21 +5289,22 @@ def candidate_evidence_outer_artifacts(
     return normalized
 
 
-def candidate_evidence_subject_identity(
+def qualification_command_subject_identity(
     qualification: dict[str, Any],
+    command_name: str,
 ) -> dict[str, Any]:
-    """Return the unchanged direct runner identity from its command receipt."""
+    """Return one unchanged direct subject identity from its command receipt."""
 
     commands = qualification.get("commands")
     if not isinstance(commands, list):
-        raise ReviewError("qualification evidence command receipt is missing")
+        raise ReviewError("qualification subject command receipt is missing")
     matches = [
         command
         for command in commands
-        if isinstance(command, dict) and command.get("name") == "candidate-evidence"
+        if isinstance(command, dict) and command.get("name") == command_name
     ]
     if len(matches) != 1:
-        raise ReviewError("qualification evidence command receipt is not unique")
+        raise ReviewError("qualification subject command receipt is not unique")
     subject = matches[0].get("subject_executable")
     identity = subject.get("identity") if isinstance(subject, dict) else None
     expected_fields = {
@@ -4806,17 +5323,15 @@ def candidate_evidence_subject_identity(
         or not isinstance(identity, dict)
         or set(identity) != expected_fields
     ):
-        raise ReviewError("qualification evidence runner receipt is malformed")
+        raise ReviewError("qualification subject runner receipt is malformed")
     invoked = _absolute_recorded_path(
-        identity.get("invoked_path"), "qualification evidence runner invoked path"
+        identity.get("invoked_path"), "qualification subject runner invoked path"
     )
     resolved = _absolute_recorded_path(
-        identity.get("resolved_path"), "qualification evidence runner resolved path"
+        identity.get("resolved_path"), "qualification subject runner resolved path"
     )
     if (
         invoked != resolved
-        or invoked.name != "galadriel-evidence"
-        or invoked.parent.name != "evidence-runner"
         or not _lower_hex(identity.get("sha256"), 64)
         or type(identity.get("size_bytes")) is not int
         or not 0 < identity["size_bytes"] <= MAX_QUALIFICATION_EXECUTABLE_BYTES
@@ -4826,6 +5341,21 @@ def candidate_evidence_subject_identity(
         or identity["gid"] < 0
         or identity.get("mode") != 0o500
     ):
+        raise ReviewError("qualification subject runner identity is invalid")
+    return identity
+
+
+def candidate_evidence_subject_identity(
+    qualification: dict[str, Any],
+) -> dict[str, Any]:
+    """Return the exact candidate-evidence runner identity."""
+
+    identity = qualification_command_subject_identity(
+        qualification,
+        "candidate-evidence",
+    )
+    invoked = Path(identity["invoked_path"])
+    if invoked.name != "galadriel-evidence" or invoked.parent.name != "evidence-runner":
         raise ReviewError("qualification evidence runner identity is invalid")
     return identity
 
@@ -5136,6 +5666,14 @@ def verify_qualification(
     )
     validate_qualification_tool_files(qualification)
     git_executable = recorded_qualification_git_executable(qualification)
+    private_root = _absolute_recorded_path(
+        sandbox_bindings["private_root"],
+        "qualification private root",
+    )
+    validate_qualification_fuzz_runners(
+        qualification,
+        private_root=private_root,
+    )
     validate_qualification_commands(
         qualification.get("commands"),
         manifest_artifacts=manifest_artifacts,
@@ -5143,6 +5681,7 @@ def verify_qualification(
         sandbox_policy_sha256=sandbox_policy_sha256,
         dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
         git_executable=git_executable,
+        private_root=private_root,
         recorded_root=recorded_root,
         allowed_signers_snapshot=allowed_signers_snapshot,
     )
@@ -5513,7 +6052,21 @@ def verify_qualification(
         "kind": "author-operated sandboxed standalone qualification clone",
         "tools": tools,
         "tool_file_inventory_sha256": hashlib.sha256(
-            canonical_json(qualification["tool_files"]["executables"])
+            canonical_json(
+                {
+                    "executables": qualification["tool_files"]["executables"],
+                    "runtime_libraries": qualification["tool_files"][
+                        "runtime_libraries"
+                    ],
+                    "compiler": qualification["tool_files"]["compiler"],
+                    "python_runtime_tree": qualification["tool_files"][
+                        "python_runtime_tree"
+                    ],
+                    "rust_toolchain_runtime": qualification["tool_files"][
+                        "rust_toolchain_runtime"
+                    ],
+                }
+            )
         ).hexdigest(),
     }
     expected_invocation = {
@@ -5534,6 +6087,11 @@ def verify_qualification(
     }
     expected_materials = {
         "candidate_cargo_lock_sha256": candidate_digest(repo, commit, "Cargo.lock"),
+        "candidate_fuzz_cargo_lock_sha256": candidate_digest(
+            repo,
+            commit,
+            "fuzz/Cargo.lock",
+        ),
         "evidence_config": {
             "path": "evidence/galadriel-0.9-candidate.json",
             "sha256": config_binding["tracked_blob_sha256"],
@@ -5919,6 +6477,7 @@ def main() -> int:
     signing_key_snapshot: Path | None = None
     publication_committed = False
     try:
+        require_release_python_isolation()
         if qualification_root.is_symlink() or not qualification_root.is_dir():
             raise ReviewError("qualification root is missing or unsafe")
         if allowed_signers_source == repo or repo in allowed_signers_source.parents:
@@ -6037,6 +6596,7 @@ def main() -> int:
             snapshots / "SIGNING_KEY.pub",
         )
         signing_key_snapshot = signing_key
+        require_pinned_cpython_runtime()
         initial_candidate_state = finalization_candidate_control(
             repo,
             expected_commit=arguments.candidate,

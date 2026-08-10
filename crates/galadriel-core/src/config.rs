@@ -34,8 +34,8 @@ pub const MAX_DETECTOR_STATE_BYTES: usize = 256 * 1024 * 1024;
 /// NIS sample buffer and exact-sum cache.
 pub const CHANNEL_STATE_AND_MAP_OVERHEAD_BYTES: usize = 256;
 
-/// Conservative full-suite lifecycle sample-work ceiling.
-pub const MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS: usize = 8_000_000;
+/// Aggregate lifecycle observation ceiling across all tracks and modalities.
+pub const MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS: usize = 983_040;
 
 /// Conservative full-suite retained and transient-state ceiling.
 pub const MAX_RELEASE_SUITE_STATE_BYTES: usize = 384 * 1024 * 1024;
@@ -542,7 +542,7 @@ pub enum ProducerAxisFamilyPolicy {
 pub struct ReleaseSuiteParams {
     /// Already accepted magnitude detector component.
     pub detector: DetectorConfig,
-    /// Already accepted signed-correlation component.
+    /// Accepted base correlation component whose axis family is not yet derived.
     pub correlation: CorrConfig,
     /// Complete expected modality set.
     pub expected_modalities: Vec<Modality>,
@@ -584,7 +584,7 @@ pub enum ReleaseSuiteError {
 ///
 /// Construction sorts and validates at most six modalities (`O(m log m)`, `O(m)`
 /// storage). It checks
-/// `max(detector.window_len, correlation.window) * max_tracks * modalities`
+/// `max(detector.window_len, correlation.window) * max_tracks * all modalities`
 /// before any detector allocation, includes every detector channel state's sample
 /// buffer, 272-byte exact cache and map/state overhead, and budgets a full aligned
 /// correlation tail. PID is not a field of this type.
@@ -615,6 +615,13 @@ impl ReleaseSuite {
         params: ReleaseSuiteParams,
         source_profile: Option<ReleaseProfile>,
     ) -> Result<Self, ReleaseSuiteError> {
+        if params.correlation.axis_family_was_derived() {
+            return Err(ReleaseSuiteError::Correlation(
+                crate::CorrConfigError::AxisFamilyAlreadyDerived {
+                    current: params.correlation.axis_family_count(),
+                },
+            ));
+        }
         if params.expected_modalities.is_empty() {
             return Err(ReleaseSuiteError::EmptyModalities);
         }
@@ -642,7 +649,7 @@ impl ReleaseSuite {
         let lifecycle_sample_units = params
             .detector
             .max_tracks()
-            .checked_mul(expected_modalities.len())
+            .checked_mul(Modality::ALL.len())
             .and_then(|channels| channels.checked_mul(lifecycle_window))
             .ok_or(ReleaseSuiteError::AggregateOverflow)?;
         if matches!(
@@ -995,9 +1002,8 @@ mod tests {
         );
         assert_eq!(left.identity(), right.identity());
         assert_eq!(left.expected_modalities(), right.expected_modalities());
-        let expected_lifecycle_units = left.detector().max_tracks()
-            * left.expected_modalities().len()
-            * left.correlation().window();
+        let expected_lifecycle_units =
+            left.detector().max_tracks() * Modality::ALL.len() * left.correlation().window();
         let expected_state_bytes = left.detector().retained_state_bytes()
             + expected_lifecycle_units * std::mem::size_of::<f64>()
             + 3 * left.correlation().window() * std::mem::size_of::<f64>();
@@ -1022,7 +1028,7 @@ mod tests {
 
         assert_eq!(
             identity,
-            "6e88f0907af330ddd0919738e241038e2bc912076bda873c90fdd63bab9c756a"
+            "e54a80bbf77bd20ff18a07ef87c418cebe66857b7d83a74ade5a8227e2c960b4"
         );
 
         let complete_identity = ReleaseSuite::standalone_advisory_v0_9(&Modality::ALL)
@@ -1065,6 +1071,110 @@ mod tests {
             ReleaseSuite::standalone_advisory_v0_9(&[Modality::Visual]),
             Err(ReleaseSuiteError::TooFewModalities { .. })
         ));
+    }
+
+    #[test]
+    fn release_suite_lifecycle_bound_is_exact_for_each_dominant_window() {
+        let detector_dominant = ReleaseSuite::try_new(ReleaseSuiteParams {
+            detector: DetectorConfig::try_new(DetectorParams {
+                window_len: 40,
+                min_samples: 1,
+                max_tracks: MAX_DETECTOR_TRACKS,
+                ..DetectorParams::standalone_advisory_v0_9()
+            })
+            .expect("exact-bound detector config is valid"),
+            correlation: CorrConfig::try_new(crate::CorrParams {
+                window: 4,
+                min_samples: 4,
+                ..crate::CorrParams::standalone_advisory_v0_9()
+            })
+            .expect("short correlation config is valid"),
+            expected_modalities: vec![Modality::Visual, Modality::Radar],
+            axis_policy: ProducerAxisFamilyPolicy::AttestedCommonProjectionBonferroniV1,
+        })
+        .expect("the exact detector-dominant lifecycle ceiling is inclusive");
+        assert_eq!(
+            detector_dominant.lifecycle_sample_units(),
+            MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS
+        );
+
+        let correlation_dominant = ReleaseSuite::try_new(ReleaseSuiteParams {
+            detector: DetectorConfig::try_new(DetectorParams {
+                window_len: 1,
+                min_samples: 1,
+                max_tracks: MAX_DETECTOR_TRACKS,
+                ..DetectorParams::standalone_advisory_v0_9()
+            })
+            .expect("short detector config is valid"),
+            correlation: CorrConfig::try_new(crate::CorrParams {
+                window: 40,
+                min_samples: 4,
+                ..crate::CorrParams::standalone_advisory_v0_9()
+            })
+            .expect("exact-bound correlation config is valid"),
+            expected_modalities: vec![Modality::Visual, Modality::Radar],
+            axis_policy: ProducerAxisFamilyPolicy::AttestedCommonProjectionBonferroniV1,
+        })
+        .expect("the exact correlation-dominant lifecycle ceiling is inclusive");
+        assert_eq!(
+            correlation_dominant.lifecycle_sample_units(),
+            MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS
+        );
+    }
+
+    #[test]
+    fn release_suite_rejects_one_frame_above_lifecycle_bound() {
+        let error = ReleaseSuite::try_new(ReleaseSuiteParams {
+            detector: DetectorConfig::try_new(DetectorParams {
+                window_len: 1,
+                min_samples: 1,
+                max_tracks: MAX_DETECTOR_TRACKS,
+                ..DetectorParams::standalone_advisory_v0_9()
+            })
+            .expect("short detector config is valid"),
+            correlation: CorrConfig::try_new(crate::CorrParams {
+                window: 41,
+                min_samples: 4,
+                ..crate::CorrParams::standalone_advisory_v0_9()
+            })
+            .expect("one-frame-over correlation config is independently valid"),
+            expected_modalities: vec![Modality::Visual, Modality::Radar],
+            axis_policy: ProducerAxisFamilyPolicy::AttestedCommonProjectionBonferroniV1,
+        })
+        .expect_err("one frame above the lifecycle ceiling must fail composition");
+
+        assert_eq!(
+            error,
+            ReleaseSuiteError::LifecycleWorkLimitExceeded {
+                requested: 41 * MAX_DETECTOR_TRACKS * Modality::ALL.len(),
+                maximum: MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS,
+            }
+        );
+    }
+
+    #[test]
+    fn release_suite_rejects_an_already_derived_axis_family() {
+        for axis_count in [1, crate::MAX_CONSISTENCY_PROJECTION_AXES] {
+            let correlation = CorrConfig::standalone_advisory_v0_9()
+                .expect("named correlation config is valid")
+                .try_for_axis_family(axis_count)
+                .expect("test axis family is valid");
+            let error = ReleaseSuite::try_new(ReleaseSuiteParams {
+                detector: DetectorConfig::standalone_advisory_v0_9()
+                    .expect("named detector config is valid"),
+                correlation,
+                expected_modalities: vec![Modality::Visual, Modality::Radar],
+                axis_policy: ProducerAxisFamilyPolicy::AttestedCommonProjectionBonferroniV1,
+            })
+            .expect_err("suite composition must reject a pre-derived family");
+
+            assert_eq!(
+                error,
+                ReleaseSuiteError::Correlation(crate::CorrConfigError::AxisFamilyAlreadyDerived {
+                    current: axis_count,
+                })
+            );
+        }
     }
 
     #[test]

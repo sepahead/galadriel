@@ -1,0 +1,1 @@
+{"kind":"galadriel_pid_observation","schema_version":"1.0","ncp_version":"0.8","contract_hash":"d1b50a2d8a265276","session_id":"uav3","producer_id":"crebain","observation":{"track_id":42,"timestamp_ms":1700000000000,"seq":7,"modality":"radar","nis":2.75,"dof":3}}

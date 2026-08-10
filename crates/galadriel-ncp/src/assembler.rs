@@ -4068,6 +4068,36 @@ mod tests {
     }
 
     #[test]
+    fn assembler_completes_two_route_frame_for_track_zero() {
+        let start = Instant::now();
+        let mut assembler = assembler(start);
+        let observation =
+            test_observation(0, 1_001, 1, Modality::Visual, 1.0, Some(projection(101)));
+        let mut zero_track_outcome = outcome(1, 101);
+        zero_track_outcome.track_id = 0;
+
+        let observation_events =
+            assembler.ingest_observation_bytes(&observation_bytes(observation), start);
+        assert!(ready(&observation_events).is_none());
+        let outcome_events = assembler.ingest_monitor_bytes(
+            &monitor_bytes(1, ProducerEvent::ModalityOutcome(zero_track_outcome)),
+            start,
+        );
+        assert!(ready(&outcome_events).is_none());
+        let summary_events = assembler.ingest_monitor_bytes(
+            &monitor_bytes(2, ProducerEvent::FrameSummary(summary(1, 101))),
+            start,
+        );
+
+        let frame = ready(&summary_events).expect("both routes complete track zero");
+        assert_eq!(frame.observations()[0].track_id().get(), 0);
+        assert!(matches!(
+            frame.monitor_events(),
+            [FrameMonitorEvent::Outcome(value)] if value.track_id == 0
+        ));
+    }
+
+    #[test]
     fn pinned_registry_rejects_one_dimensional_projection_on_observation_first_ingress() {
         let start = Instant::now();
         let mut assembler = assembler_with_registry(start, pinned_fixture_registry());

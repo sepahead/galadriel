@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import csv
 import contextlib
@@ -19,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import typing
 import unittest
 from collections import Counter
 from collections.abc import Callable, Mapping
@@ -88,7 +90,6 @@ import qualify_candidate as qualifier  # noqa: E402
 from qualify_candidate import (  # noqa: E402
     BASE_COMMANDS,
     DEPENDENCY_FETCH_COMMAND_NAMES,
-    DEEP_COMMANDS,
     EXPECTED_CANDIDATE_EVIDENCE_FILES,
     CommandSpec,
     QUALIFICATION_ENVIRONMENT_KEYS,
@@ -96,8 +97,10 @@ from qualify_candidate import (  # noqa: E402
     build_qualification_environment,
     capture_report,
     decode_candidate_evidence_json,
+    deep_command_specs,
     execution_policy_contract,
     network_command_preconditions_met,
+    prepare_deep_fuzz_directories,
     qualification_environment_contract,
     qualification_outcome,
     reject_cargo_configuration,
@@ -109,8 +112,9 @@ from qualify_candidate import (  # noqa: E402
     write_atomic_canonical_json,
     write_receipt_log,
     write_candidate_sandbox_profile,
+    verify_deep_fuzz_command_directories,
 )
-from prepare_mutation_evidence import mutation_command  # noqa: E402
+from prepare_mutation_evidence import mutation_command, parse_subject  # noqa: E402
 import release_assurance as assurance  # noqa: E402
 from release_assurance import (  # noqa: E402
     ACCEPTANCE_METRIC_DOMAINS,
@@ -3006,9 +3010,7 @@ class BindingAndManifestTests(GitFixture):
         marker = shim_root / "invoked"
         shim = shim_root / "ssh-add"
         shim.write_text(
-            "#!/bin/sh\n"
-            f"printf invoked > {marker}\n"
-            f"/bin/cat {handle}\n",
+            f"#!/bin/sh\nprintf invoked > {marker}\n/bin/cat {handle}\n",
             encoding="utf-8",
         )
         shim.chmod(0o700)
@@ -3198,6 +3200,44 @@ class DispositionTests(GitFixture):
 
 
 class DecisionAndRunnerTests(unittest.TestCase):
+    def test_process_receipt_and_probe_identity_shapes_are_exact(self) -> None:
+        source = Path(qualifier.__file__).read_text(encoding="utf-8")
+        module = ast.parse(source)
+        classes = {
+            node.name: node
+            for node in module.body
+            if isinstance(node, ast.ClassDef)
+        }
+        result_class = classes["BoundedProcessResult"]
+        annotated_fields = [
+            node.target.id
+            for node in result_class.body
+            if isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+        ]
+        self.assertEqual(
+            annotated_fields,
+            [
+                "returncode",
+                "timed_out",
+                "stdout",
+                "stderr",
+                "output_limit_exceeded",
+                "containment_error",
+            ],
+        )
+
+        identity_hints = typing.get_type_hints(qualifier.SandboxProcessIdentity)
+        expected_identity_fields = (int,) * 7
+        self.assertEqual(
+            typing.get_args(identity_hints["deny_identity"]),
+            expected_identity_fields,
+        )
+        self.assertEqual(
+            typing.get_args(identity_hints["allow_identity"]),
+            expected_identity_fields,
+        )
+
     @staticmethod
     def make_candidate_evidence(root: Path) -> Path:
         evidence = root / "candidate-evidence"
@@ -3621,7 +3661,7 @@ if child.returncode != -signal.SIGTERM:
                 *qualifier.qualification_base_commands(Path(trust)),
                 evidence_build,
                 evidence_run,
-                *DEEP_COMMANDS,
+                *deep_command_specs(recorded_root),
             ]
             commands = []
             manifest = {}
@@ -3724,6 +3764,7 @@ if child.returncode != -signal.SIGTERM:
                 sandbox_policy_sha256=candidate_policy_sha256,
                 dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
                 git_executable=git_executable,
+                private_root=recorded_root,
                 allowed_signers_snapshot=Path(trust),
             )
             logical_git = copy.deepcopy(commands)
@@ -3736,6 +3777,7 @@ if child.returncode != -signal.SIGTERM:
                     sandbox_policy_sha256=candidate_policy_sha256,
                     dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
                     git_executable=git_executable,
+                    private_root=recorded_root,
                     allowed_signers_snapshot=Path(trust),
                 )
             wrong_output = copy.deepcopy(commands)
@@ -3748,6 +3790,7 @@ if child.returncode != -signal.SIGTERM:
                     sandbox_policy_sha256=candidate_policy_sha256,
                     dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
                     git_executable=git_executable,
+                    private_root=recorded_root,
                     allowed_signers_snapshot=Path(trust),
                 )
             commands[5]["argv"] = ["true"]
@@ -3759,6 +3802,7 @@ if child.returncode != -signal.SIGTERM:
                     sandbox_policy_sha256=candidate_policy_sha256,
                     dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
                     git_executable=git_executable,
+                    private_root=recorded_root,
                     allowed_signers_snapshot=Path(trust),
                 )
 
@@ -4306,6 +4350,21 @@ if child.returncode != -signal.SIGTERM:
             )
         acceptance = focused_liveness_mutation_command(MUTATION_LIVENESS_CHECKS[2])
         self.assertEqual(acceptance[-3:], ["--", "--bin", "galadriel-evidence"])
+
+    def test_mutation_subject_diagnostic_omits_untrusted_field_text(self) -> None:
+        hostile_key = "attacker-controlled-secret-field-name"
+        with tempfile.TemporaryDirectory() as directory:
+            subject = Path(directory) / "SUBJECT.txt"
+            subject.write_text(
+                f"{hostile_key}=first\n{hostile_key}=second\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ReviewError, "duplicate or empty field"
+            ) as caught:
+                parse_subject(subject)
+        self.assertNotIn(hostile_key, str(caught.exception))
+        self.assertLess(len(str(caught.exception)), 128)
 
     def test_mutation_environment_binds_linux_candidate_tree_containment(
         self,
@@ -5907,6 +5966,7 @@ if child.returncode != -signal.SIGTERM:
             "host": {},
             "tools": {},
             "tool_files": {},
+            "fuzz_runners": {},
             "environment_contract": {},
             "repository_control": {},
             "sandbox": {},
@@ -6478,6 +6538,96 @@ if child.returncode != -signal.SIGTERM:
                     required_path_tools=("missing-tool",),
                 )
 
+    def test_qualification_environment_does_not_require_ambient_pkg_config(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private = root / "private"
+            private.mkdir()
+            tools = qualification_tool_fixture(root)
+            (tools / "pkg-config").unlink()
+
+            environment = build_qualification_environment(
+                {
+                    "PATH": str(tools),
+                    "HOME": "/host/home",
+                    "RUSTUP_HOME": "/host/rustup",
+                },
+                private_root=private,
+                target=private / "target",
+                source_date_epoch="1234567890",
+            )
+
+            self.assertIsNone(shutil.which("pkg-config", path=environment["PATH"]))
+
+    def test_deep_fuzz_directories_are_private_empty_and_single_use(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private = root / "private"
+            private.mkdir()
+            tools = qualification_tool_fixture(root)
+            environment = build_qualification_environment(
+                {
+                    "PATH": str(tools),
+                    "HOME": "/host/home",
+                    "RUSTUP_HOME": "/host/rustup",
+                },
+                private_root=private,
+                target=private / "target",
+                source_date_epoch="1234567890",
+            )
+
+            worktree = private / "worktree"
+            worktree.mkdir()
+            (private / "evidence-runner").mkdir(mode=0o700)
+            prepare_deep_fuzz_directories(environment)
+
+            for category in ("fuzz-corpus", "fuzz-artifacts"):
+                for target in (
+                    "ncp_decode",
+                    "detector_boundaries",
+                    "lifecycle_state",
+                ):
+                    path = Path(environment["TMPDIR"]) / category / target
+                    self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o700)
+                    self.assertEqual(list(path.iterdir()), [])
+                    verify_deep_fuzz_command_directories(
+                        environment,
+                        worktree,
+                        target,
+                        require_private_empty=True,
+                    )
+
+            with self.assertRaisesRegex(ReviewError, "creation failed"):
+                prepare_deep_fuzz_directories(environment)
+
+            unexpected = (
+                Path(environment["TMPDIR"])
+                / "fuzz-corpus"
+                / "ncp_decode"
+                / "unexpected"
+            )
+            unexpected.write_bytes(b"unexpected")
+            with self.assertRaisesRegex(ReviewError, "not initially empty"):
+                verify_deep_fuzz_command_directories(
+                    environment,
+                    worktree,
+                    "ncp_decode",
+                    require_private_empty=True,
+                )
+
+    def test_deep_fuzz_corpus_rejects_a_linked_temporary_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "target"
+            target.mkdir(mode=0o700)
+            linked = root / "linked"
+            linked.symlink_to(target, target_is_directory=True)
+
+            with self.assertRaisesRegex(ReviewError, "identity is invalid"):
+                prepare_deep_fuzz_directories({"TMPDIR": str(linked)})
+
     def test_cargo_configuration_is_rejected_at_each_search_level(self) -> None:
         cases = (
             "worktree-config",
@@ -6771,6 +6921,9 @@ if child.returncode != -signal.SIGTERM:
         process = subprocess.run(
             [
                 "python3",
+                "-E",
+                "-s",
+                "-S",
                 str(script),
                 "--repo",
                 "/definitely/missing/repository",
@@ -6881,6 +7034,8 @@ if child.returncode != -signal.SIGTERM:
                     "finalize_release.validate_candidate_plan_documents",
                     side_effect=KeyError("lens_catalog"),
                 ),
+                mock.patch("finalize_release.require_release_python_isolation"),
+                mock.patch("finalize_release.require_pinned_cpython_runtime"),
                 mock.patch("finalize_release.sys.stderr", stderr),
             ):
                 self.assertEqual(finalize_release_main(), 2)
@@ -6943,6 +7098,9 @@ if child.returncode != -signal.SIGTERM:
 
             base = [
                 sys.executable,
+                "-E",
+                "-s",
+                "-S",
                 str(script),
                 "--repo",
                 str(repo),

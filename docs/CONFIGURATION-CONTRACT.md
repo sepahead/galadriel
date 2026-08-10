@@ -384,6 +384,9 @@ confirmation payload.
 - Multi-axis derivation divides family budgets once and validates the result. It
   creates one immutable derived config for the axis loop. Axis count and the
   derived value form part of configuration identity.
+- Release-suite and lifecycle composition require an underived base
+  `CorrConfig`. Composition derives the axis family exactly once during each
+  assessment. It rejects a previously derived config before it allocates state.
 - Lifecycle composition **MUST** check
   `max(window_len, corr.window) * max_tracks * Modality::ALL.len() <= 983_040`.
   Complete this check before retaining track history. Valid components do not

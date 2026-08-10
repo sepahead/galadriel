@@ -50,16 +50,64 @@ jobs:
         with:
           workspaces: "fuzz -> target"
 
-      - name: Install pinned cargo-fuzz
+      - name: Fetch locked fuzz dependencies
+        run: cargo +nightly-2026-06-16 fetch --manifest-path fuzz/Cargo.toml --locked
+
+      - name: Verify fuzz harness and semantic seed canaries
+        run: |
+          cargo +nightly-2026-06-16 test --manifest-path fuzz/Cargo.toml --lib --locked --offline
+          cargo +nightly-2026-06-16 check --manifest-path fuzz/Cargo.toml --all-targets --locked --offline
+
+      - name: Build locked instrumented fuzz runners
+        env:
+          ASAN_OPTIONS: detect_odr_violation=0
+          RUSTFLAGS: >-
+            -Cpasses=sancov-module
+            -Cllvm-args=-sanitizer-coverage-level=4
+            -Cllvm-args=-sanitizer-coverage-inline-8bit-counters
+            -Cllvm-args=-sanitizer-coverage-pc-table
+            -Cllvm-args=-sanitizer-coverage-trace-compares
+            --cfg fuzzing
+            -Cllvm-args=-simplifycfg-branch-fold-threshold=0
+            -Zsanitizer=address
+            -Cdebug-assertions
+            -Ccodegen-units=1
         run: >-
-          cargo +nightly-2026-06-16 install
-          cargo-fuzz --version 0.13.2 --locked
+          cargo +nightly-2026-06-16 build
+          --manifest-path fuzz/Cargo.toml
+          --target x86_64-unknown-linux-gnu
+          --release
+          --config 'profile.release.debug="line-tables-only"'
+          --bins
+          --locked
+          --offline
 
       - name: Fuzz typed NCP and JSONL decoding
-        run: cargo +nightly-2026-06-16 fuzz run ncp_decode -- -runs=5000 -max_len=131072
+        run: |
+          mkdir -p "$RUNNER_TEMP/fuzz-corpus/ncp_decode" "$RUNNER_TEMP/fuzz-artifacts/ncp_decode"
+          ASAN_OPTIONS=detect_odr_violation=0 \
+          fuzz/target/x86_64-unknown-linux-gnu/release/ncp_decode \
+            -runs=5000 -max_len=131072 -seed=900090001 \
+            "-artifact_prefix=$RUNNER_TEMP/fuzz-artifacts/ncp_decode/" \
+            "$RUNNER_TEMP/fuzz-corpus/ncp_decode" fuzz/seeds/ncp_decode
 
       - name: Fuzz detector and provenance boundaries
-        run: cargo +nightly-2026-06-16 fuzz run detector_boundaries -- -runs=5000 -max_len=131072
+        run: |
+          mkdir -p "$RUNNER_TEMP/fuzz-corpus/detector_boundaries" "$RUNNER_TEMP/fuzz-artifacts/detector_boundaries"
+          ASAN_OPTIONS=detect_odr_violation=0 \
+          fuzz/target/x86_64-unknown-linux-gnu/release/detector_boundaries \
+            -runs=5000 -max_len=131072 -seed=900090002 \
+            "-artifact_prefix=$RUNNER_TEMP/fuzz-artifacts/detector_boundaries/" \
+            "$RUNNER_TEMP/fuzz-corpus/detector_boundaries" fuzz/seeds/detector_boundaries
+
+      - name: Fuzz cross-route assembly and lifecycle state
+        run: |
+          mkdir -p "$RUNNER_TEMP/fuzz-corpus/lifecycle_state" "$RUNNER_TEMP/fuzz-artifacts/lifecycle_state"
+          ASAN_OPTIONS=detect_odr_violation=0 \
+          fuzz/target/x86_64-unknown-linux-gnu/release/lifecycle_state \
+            -runs=5000 -max_len=131072 -seed=900090003 \
+            "-artifact_prefix=$RUNNER_TEMP/fuzz-artifacts/lifecycle_state/" \
+            "$RUNNER_TEMP/fuzz-corpus/lifecycle_state" fuzz/seeds/lifecycle_state
 
   mutation-diff:
     name: mutation check for changed Rust · ${{ matrix.label }}
@@ -108,6 +156,11 @@ jobs:
           git rev-parse "HEAD^{commit}"
           git rev-parse "HEAD^{tree}"
 
+      - name: Install pinned release Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.6"
+
       - name: Install release Rust
         uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
         with:
@@ -150,11 +203,11 @@ jobs:
 
       - name: Run exact focused mutation checks
         if: matrix.shard == '2/4'
-        run: python3 repo_work/check_focused_mutation.py --run
+        run: python3 -E -s -S repo_work/check_focused_mutation.py --run
 
       - name: Validate exact focused mutation outcomes
         if: matrix.shard == '2/4'
-        run: python3 repo_work/check_focused_mutation.py
+        run: python3 -E -s -S repo_work/check_focused_mutation.py
 
       - name: Mutate changed Rust
         # The evaluation and justification harnesses contain long Monte Carlo studies.
@@ -166,7 +219,7 @@ jobs:
         # Those mutants can block unrelated worker threads after the decisive assertion.
         # The focused command covers functions that the broad runner excludes with the study harness.
         run: >-
-          python3 repo_work/run_broad_mutation.py
+          python3 -E -s -S repo_work/run_broad_mutation.py
           --root .
           --shard '${{ matrix.shard }}'
 

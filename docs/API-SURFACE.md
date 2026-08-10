@@ -58,6 +58,63 @@ construct the binding or attach it to replacement component reports. Unbound
 component fusion APIs are diagnostic compatibility surfaces. They do not return
 an accepted `DefaultReport`.
 
+**GLD-090-API-006:** Version 0.9.0 adds a type-safe authority
+snapshot construction path. The additions include these public types:
+
+- `AuthoritySemanticsId`
+- `AuthoritySnapshotParams`
+- `VelocityLimit`
+- `SlewLimit`
+- `CommandTtlMillis`
+- `LeaseExpiryMillis`
+- `WatchdogEpoch`
+
+The root module re-exports each new type. `AuthoritySnapshot::new_strict` creates
+a bound snapshot. `semantics_id`, `velocity_limit`, `slew_limit`, `command_ttl`,
+`lease_expiry`, and `watchdog` expose its typed values.
+
+The exact `AuthoritySnapshot::new` signature remains callable. Its raw `u64`
+getters also remain callable with their existing return types. The constructor is
+deprecated because it creates an unbound legacy snapshot. Exact record-only
+comparison of an unchanged legacy snapshot remains accepted.
+
+Restrict-only validation now rejects every unbound legacy snapshot. It also
+rejects mismatched authority semantics identities before it compares scalar
+values. This change is an intentional fail-closed behavioral narrowing. It closes
+unit, clock, profile, and same-type field ambiguity within version 0.9.0.
+
+Version 0.9.0 contains no authority consumer and no implemented advisory
+publisher. The preceding public version did not contain this surface. This
+compatibility disposition incorporates the correction into version 0.9.0.
+It does not require a minor-version change.
+
+**GLD-090-API-007:** Release-suite and lifecycle composition now reject a
+`CorrConfig` whose axis family was already derived. These entry points require
+an underived base correlation config. Each assessment derives the family once
+for its active projection axes.
+
+The affected public inputs were constructible earlier in version 0.9.0 development.
+They could not complete a projected assessment because that path derived the
+family again and failed closed. The new constructor rejection moves the same
+failure before suite or lifecycle state allocation.
+
+**GLD-090-API-008:** The public
+`MAX_RELEASE_LIFECYCLE_SAMPLE_UNITS` constant is now `983_040`.
+The version 0.9.0 candidate previously used `8_000_000`.
+
+`ReleaseSuite::try_new` now budgets all six modalities for every retained
+lifecycle window. It previously budgeted only the submitted expected modalities.
+The change can reject a custom suite that the earlier candidate accepted.
+It also changes the reported lifecycle work, state-byte estimate, and suite
+identity when the expected modality set has fewer than six values.
+
+For the three-modality standalone profile, the identity changed from
+`6e88f0907af330ddd0919738e241038e2bc912076bda873c90fdd63bab9c756a` to
+`e54a80bbf77bd20ff18a07ef87c418cebe66857b7d83a74ade5a8227e2c960b4`.
+The correction aligns core composition with the six-modality lifecycle
+allocation bound. It closes a core-to-lifecycle admission mismatch before
+publication.
+
 The binding identifies the submitted input. Different bindings can carry equal
 detector verdicts. It does not require each observation to change a verdict.
 

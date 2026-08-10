@@ -134,7 +134,7 @@ def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     value: dict[str, Any] = {}
     for key, member in pairs:
         if key in value:
-            raise DuplicateJsonKeyError(f"duplicate JSON object key {key!r}")
+            raise DuplicateJsonKeyError("duplicate JSON object key")
         value[key] = member
     return value
 

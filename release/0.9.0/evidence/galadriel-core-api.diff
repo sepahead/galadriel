@@ -1,6 +1,6 @@
 --- release/0.9.0/api/galadriel-core.baseline.txt
 +++ release/0.9.0/api/galadriel-core.0.9.0.txt
-@@ -1,12 +1,151 @@
+@@ -1,12 +1,482 @@
  pub mod galadriel_core
 +pub mod galadriel_core::authority
 +pub enum galadriel_core::authority::AdvisoryPolicy
@@ -89,15 +89,68 @@
 +pub fn galadriel_core::authority::Authorization::from(T) -> T
 +impl<T> typenum::type_operators::Same for galadriel_core::authority::Authorization
 +pub type galadriel_core::authority::Authorization::Output = T
++pub struct galadriel_core::authority::AuthoritySemanticsId(_)
++impl galadriel_core::authority::AuthoritySemanticsId
++pub const fn galadriel_core::authority::AuthoritySemanticsId::as_bytes(&self) -> &[u8; 32]
++pub const fn galadriel_core::authority::AuthoritySemanticsId::new([u8; 32]) -> Self
++impl core::clone::Clone for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::clone(&self) -> galadriel_core::authority::AuthoritySemanticsId
++impl core::cmp::Eq for galadriel_core::authority::AuthoritySemanticsId
++impl core::cmp::PartialEq for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::eq(&self, &galadriel_core::authority::AuthoritySemanticsId) -> bool
++impl core::fmt::Debug for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::StructuralPartialEq for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::Freeze for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::Send for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::Sync for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::Unpin for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::UnsafeUnpin for galadriel_core::authority::AuthoritySemanticsId
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::AuthoritySemanticsId
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::AuthoritySemanticsId
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::AuthoritySemanticsId where U: core::convert::From<T>
++pub fn galadriel_core::authority::AuthoritySemanticsId::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::AuthoritySemanticsId where U: core::convert::Into<T>
++pub type galadriel_core::authority::AuthoritySemanticsId::Error = core::convert::Infallible
++pub fn galadriel_core::authority::AuthoritySemanticsId::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::AuthoritySemanticsId where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::AuthoritySemanticsId::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::AuthoritySemanticsId::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::AuthoritySemanticsId where T: core::clone::Clone
++pub type galadriel_core::authority::AuthoritySemanticsId::Owned = T
++pub fn galadriel_core::authority::AuthoritySemanticsId::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::AuthoritySemanticsId::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::AuthoritySemanticsId where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySemanticsId::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::AuthoritySemanticsId where T: ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySemanticsId::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::AuthoritySemanticsId where T: ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySemanticsId::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::AuthoritySemanticsId where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::AuthoritySemanticsId::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::AuthoritySemanticsId
++pub type galadriel_core::authority::AuthoritySemanticsId::Output = T
 +pub struct galadriel_core::authority::AuthoritySnapshot
 +impl galadriel_core::authority::AuthoritySnapshot
 +pub const fn galadriel_core::authority::AuthoritySnapshot::authorization(&self) -> galadriel_core::authority::Authorization
 +pub const fn galadriel_core::authority::AuthoritySnapshot::capability_digest(&self) -> &[u8; 32]
++pub const fn galadriel_core::authority::AuthoritySnapshot::command_ttl(&self) -> galadriel_core::authority::CommandTtlMillis
 +pub const fn galadriel_core::authority::AuthoritySnapshot::command_ttl_ms(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::lease_expiry(&self) -> galadriel_core::authority::LeaseExpiryMillis
 +pub const fn galadriel_core::authority::AuthoritySnapshot::lease_expiry_ms(&self) -> u64
 +pub const fn galadriel_core::authority::AuthoritySnapshot::new(galadriel_core::authority::Authorization, u64, u64, u64, u64, u64, [u8; 32]) -> Self
++pub const fn galadriel_core::authority::AuthoritySnapshot::new_strict(galadriel_core::authority::AuthoritySnapshotParams) -> Self
++pub const fn galadriel_core::authority::AuthoritySnapshot::semantics_id(&self) -> core::option::Option<&galadriel_core::authority::AuthoritySemanticsId>
++pub const fn galadriel_core::authority::AuthoritySnapshot::slew_limit(&self) -> galadriel_core::authority::SlewLimit
 +pub const fn galadriel_core::authority::AuthoritySnapshot::slew_limit_units(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::velocity_limit(&self) -> galadriel_core::authority::VelocityLimit
 +pub const fn galadriel_core::authority::AuthoritySnapshot::velocity_limit_units(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::watchdog(&self) -> galadriel_core::authority::WatchdogEpoch
 +pub const fn galadriel_core::authority::AuthoritySnapshot::watchdog_epoch(&self) -> u64
 +impl core::clone::Clone for galadriel_core::authority::AuthoritySnapshot
 +pub fn galadriel_core::authority::AuthoritySnapshot::clone(&self) -> galadriel_core::authority::AuthoritySnapshot
@@ -139,6 +192,284 @@
 +pub fn galadriel_core::authority::AuthoritySnapshot::from(T) -> T
 +impl<T> typenum::type_operators::Same for galadriel_core::authority::AuthoritySnapshot
 +pub type galadriel_core::authority::AuthoritySnapshot::Output = T
++pub struct galadriel_core::authority::AuthoritySnapshotParams
++pub galadriel_core::authority::AuthoritySnapshotParams::authorization: galadriel_core::authority::Authorization
++pub galadriel_core::authority::AuthoritySnapshotParams::capability_digest: [u8; 32]
++pub galadriel_core::authority::AuthoritySnapshotParams::command_ttl: galadriel_core::authority::CommandTtlMillis
++pub galadriel_core::authority::AuthoritySnapshotParams::lease_expiry: galadriel_core::authority::LeaseExpiryMillis
++pub galadriel_core::authority::AuthoritySnapshotParams::semantics_id: galadriel_core::authority::AuthoritySemanticsId
++pub galadriel_core::authority::AuthoritySnapshotParams::slew_limit: galadriel_core::authority::SlewLimit
++pub galadriel_core::authority::AuthoritySnapshotParams::velocity_limit: galadriel_core::authority::VelocityLimit
++pub galadriel_core::authority::AuthoritySnapshotParams::watchdog_epoch: galadriel_core::authority::WatchdogEpoch
++impl core::clone::Clone for galadriel_core::authority::AuthoritySnapshotParams
++pub fn galadriel_core::authority::AuthoritySnapshotParams::clone(&self) -> galadriel_core::authority::AuthoritySnapshotParams
++impl core::cmp::Eq for galadriel_core::authority::AuthoritySnapshotParams
++impl core::cmp::PartialEq for galadriel_core::authority::AuthoritySnapshotParams
++pub fn galadriel_core::authority::AuthoritySnapshotParams::eq(&self, &galadriel_core::authority::AuthoritySnapshotParams) -> bool
++impl core::fmt::Debug for galadriel_core::authority::AuthoritySnapshotParams
++pub fn galadriel_core::authority::AuthoritySnapshotParams::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::marker::StructuralPartialEq for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::Freeze for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::Send for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::Sync for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::Unpin for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::UnsafeUnpin for galadriel_core::authority::AuthoritySnapshotParams
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::AuthoritySnapshotParams
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::AuthoritySnapshotParams
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::AuthoritySnapshotParams where U: core::convert::From<T>
++pub fn galadriel_core::authority::AuthoritySnapshotParams::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::AuthoritySnapshotParams where U: core::convert::Into<T>
++pub type galadriel_core::authority::AuthoritySnapshotParams::Error = core::convert::Infallible
++pub fn galadriel_core::authority::AuthoritySnapshotParams::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::AuthoritySnapshotParams where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::AuthoritySnapshotParams::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::AuthoritySnapshotParams::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::AuthoritySnapshotParams where T: core::clone::Clone
++pub type galadriel_core::authority::AuthoritySnapshotParams::Owned = T
++pub fn galadriel_core::authority::AuthoritySnapshotParams::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::AuthoritySnapshotParams::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::AuthoritySnapshotParams where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySnapshotParams::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::AuthoritySnapshotParams where T: ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySnapshotParams::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::AuthoritySnapshotParams where T: ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySnapshotParams::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::AuthoritySnapshotParams where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::AuthoritySnapshotParams::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::AuthoritySnapshotParams
++pub fn galadriel_core::authority::AuthoritySnapshotParams::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::AuthoritySnapshotParams
++pub type galadriel_core::authority::AuthoritySnapshotParams::Output = T
++pub struct galadriel_core::authority::CommandTtlMillis(_)
++impl galadriel_core::authority::CommandTtlMillis
++pub const fn galadriel_core::authority::CommandTtlMillis::get(self) -> u64
++pub const fn galadriel_core::authority::CommandTtlMillis::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::clone(&self) -> galadriel_core::authority::CommandTtlMillis
++impl core::cmp::Eq for galadriel_core::authority::CommandTtlMillis
++impl core::cmp::PartialEq for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::eq(&self, &galadriel_core::authority::CommandTtlMillis) -> bool
++impl core::fmt::Debug for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::CommandTtlMillis
++impl core::marker::StructuralPartialEq for galadriel_core::authority::CommandTtlMillis
++impl core::marker::Freeze for galadriel_core::authority::CommandTtlMillis
++impl core::marker::Send for galadriel_core::authority::CommandTtlMillis
++impl core::marker::Sync for galadriel_core::authority::CommandTtlMillis
++impl core::marker::Unpin for galadriel_core::authority::CommandTtlMillis
++impl core::marker::UnsafeUnpin for galadriel_core::authority::CommandTtlMillis
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::CommandTtlMillis
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::CommandTtlMillis
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::CommandTtlMillis where U: core::convert::From<T>
++pub fn galadriel_core::authority::CommandTtlMillis::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::CommandTtlMillis where U: core::convert::Into<T>
++pub type galadriel_core::authority::CommandTtlMillis::Error = core::convert::Infallible
++pub fn galadriel_core::authority::CommandTtlMillis::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::CommandTtlMillis where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::CommandTtlMillis::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::CommandTtlMillis::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::CommandTtlMillis where T: core::clone::Clone
++pub type galadriel_core::authority::CommandTtlMillis::Owned = T
++pub fn galadriel_core::authority::CommandTtlMillis::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::CommandTtlMillis::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::CommandTtlMillis where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::CommandTtlMillis::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::CommandTtlMillis where T: ?core::marker::Sized
++pub fn galadriel_core::authority::CommandTtlMillis::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::CommandTtlMillis where T: ?core::marker::Sized
++pub fn galadriel_core::authority::CommandTtlMillis::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::CommandTtlMillis where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::CommandTtlMillis::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::CommandTtlMillis
++pub type galadriel_core::authority::CommandTtlMillis::Output = T
++pub struct galadriel_core::authority::LeaseExpiryMillis(_)
++impl galadriel_core::authority::LeaseExpiryMillis
++pub const fn galadriel_core::authority::LeaseExpiryMillis::get(self) -> u64
++pub const fn galadriel_core::authority::LeaseExpiryMillis::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::clone(&self) -> galadriel_core::authority::LeaseExpiryMillis
++impl core::cmp::Eq for galadriel_core::authority::LeaseExpiryMillis
++impl core::cmp::PartialEq for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::eq(&self, &galadriel_core::authority::LeaseExpiryMillis) -> bool
++impl core::fmt::Debug for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::StructuralPartialEq for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::Freeze for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::Send for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::Sync for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::Unpin for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::UnsafeUnpin for galadriel_core::authority::LeaseExpiryMillis
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::LeaseExpiryMillis
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::LeaseExpiryMillis
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::LeaseExpiryMillis where U: core::convert::From<T>
++pub fn galadriel_core::authority::LeaseExpiryMillis::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::LeaseExpiryMillis where U: core::convert::Into<T>
++pub type galadriel_core::authority::LeaseExpiryMillis::Error = core::convert::Infallible
++pub fn galadriel_core::authority::LeaseExpiryMillis::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::LeaseExpiryMillis where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::LeaseExpiryMillis::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::LeaseExpiryMillis::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::LeaseExpiryMillis where T: core::clone::Clone
++pub type galadriel_core::authority::LeaseExpiryMillis::Owned = T
++pub fn galadriel_core::authority::LeaseExpiryMillis::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::LeaseExpiryMillis::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::LeaseExpiryMillis where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::LeaseExpiryMillis::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::LeaseExpiryMillis where T: ?core::marker::Sized
++pub fn galadriel_core::authority::LeaseExpiryMillis::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::LeaseExpiryMillis where T: ?core::marker::Sized
++pub fn galadriel_core::authority::LeaseExpiryMillis::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::LeaseExpiryMillis where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::LeaseExpiryMillis::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::LeaseExpiryMillis
++pub type galadriel_core::authority::LeaseExpiryMillis::Output = T
++pub struct galadriel_core::authority::SlewLimit(_)
++impl galadriel_core::authority::SlewLimit
++pub const fn galadriel_core::authority::SlewLimit::get(self) -> u64
++pub const fn galadriel_core::authority::SlewLimit::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::clone(&self) -> galadriel_core::authority::SlewLimit
++impl core::cmp::Eq for galadriel_core::authority::SlewLimit
++impl core::cmp::PartialEq for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::eq(&self, &galadriel_core::authority::SlewLimit) -> bool
++impl core::fmt::Debug for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::SlewLimit
++impl core::marker::StructuralPartialEq for galadriel_core::authority::SlewLimit
++impl core::marker::Freeze for galadriel_core::authority::SlewLimit
++impl core::marker::Send for galadriel_core::authority::SlewLimit
++impl core::marker::Sync for galadriel_core::authority::SlewLimit
++impl core::marker::Unpin for galadriel_core::authority::SlewLimit
++impl core::marker::UnsafeUnpin for galadriel_core::authority::SlewLimit
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::SlewLimit
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::SlewLimit
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::SlewLimit where U: core::convert::From<T>
++pub fn galadriel_core::authority::SlewLimit::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::SlewLimit where U: core::convert::Into<T>
++pub type galadriel_core::authority::SlewLimit::Error = core::convert::Infallible
++pub fn galadriel_core::authority::SlewLimit::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::SlewLimit where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::SlewLimit::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::SlewLimit::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::SlewLimit where T: core::clone::Clone
++pub type galadriel_core::authority::SlewLimit::Owned = T
++pub fn galadriel_core::authority::SlewLimit::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::SlewLimit::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::SlewLimit where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::SlewLimit::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::SlewLimit where T: ?core::marker::Sized
++pub fn galadriel_core::authority::SlewLimit::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::SlewLimit where T: ?core::marker::Sized
++pub fn galadriel_core::authority::SlewLimit::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::SlewLimit where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::SlewLimit::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::SlewLimit
++pub type galadriel_core::authority::SlewLimit::Output = T
++pub struct galadriel_core::authority::VelocityLimit(_)
++impl galadriel_core::authority::VelocityLimit
++pub const fn galadriel_core::authority::VelocityLimit::get(self) -> u64
++pub const fn galadriel_core::authority::VelocityLimit::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::clone(&self) -> galadriel_core::authority::VelocityLimit
++impl core::cmp::Eq for galadriel_core::authority::VelocityLimit
++impl core::cmp::PartialEq for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::eq(&self, &galadriel_core::authority::VelocityLimit) -> bool
++impl core::fmt::Debug for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::VelocityLimit
++impl core::marker::StructuralPartialEq for galadriel_core::authority::VelocityLimit
++impl core::marker::Freeze for galadriel_core::authority::VelocityLimit
++impl core::marker::Send for galadriel_core::authority::VelocityLimit
++impl core::marker::Sync for galadriel_core::authority::VelocityLimit
++impl core::marker::Unpin for galadriel_core::authority::VelocityLimit
++impl core::marker::UnsafeUnpin for galadriel_core::authority::VelocityLimit
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::VelocityLimit
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::VelocityLimit
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::VelocityLimit where U: core::convert::From<T>
++pub fn galadriel_core::authority::VelocityLimit::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::VelocityLimit where U: core::convert::Into<T>
++pub type galadriel_core::authority::VelocityLimit::Error = core::convert::Infallible
++pub fn galadriel_core::authority::VelocityLimit::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::VelocityLimit where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::VelocityLimit::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::VelocityLimit::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::VelocityLimit where T: core::clone::Clone
++pub type galadriel_core::authority::VelocityLimit::Owned = T
++pub fn galadriel_core::authority::VelocityLimit::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::VelocityLimit::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::VelocityLimit where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::VelocityLimit::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::VelocityLimit where T: ?core::marker::Sized
++pub fn galadriel_core::authority::VelocityLimit::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::VelocityLimit where T: ?core::marker::Sized
++pub fn galadriel_core::authority::VelocityLimit::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::VelocityLimit where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::VelocityLimit::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::VelocityLimit
++pub type galadriel_core::authority::VelocityLimit::Output = T
++pub struct galadriel_core::authority::WatchdogEpoch(_)
++impl galadriel_core::authority::WatchdogEpoch
++pub const fn galadriel_core::authority::WatchdogEpoch::get(self) -> u64
++pub const fn galadriel_core::authority::WatchdogEpoch::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::clone(&self) -> galadriel_core::authority::WatchdogEpoch
++impl core::cmp::Eq for galadriel_core::authority::WatchdogEpoch
++impl core::cmp::PartialEq for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::eq(&self, &galadriel_core::authority::WatchdogEpoch) -> bool
++impl core::fmt::Debug for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::WatchdogEpoch
++impl core::marker::StructuralPartialEq for galadriel_core::authority::WatchdogEpoch
++impl core::marker::Freeze for galadriel_core::authority::WatchdogEpoch
++impl core::marker::Send for galadriel_core::authority::WatchdogEpoch
++impl core::marker::Sync for galadriel_core::authority::WatchdogEpoch
++impl core::marker::Unpin for galadriel_core::authority::WatchdogEpoch
++impl core::marker::UnsafeUnpin for galadriel_core::authority::WatchdogEpoch
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::WatchdogEpoch
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::WatchdogEpoch
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::WatchdogEpoch where U: core::convert::From<T>
++pub fn galadriel_core::authority::WatchdogEpoch::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::WatchdogEpoch where U: core::convert::Into<T>
++pub type galadriel_core::authority::WatchdogEpoch::Error = core::convert::Infallible
++pub fn galadriel_core::authority::WatchdogEpoch::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::WatchdogEpoch where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::WatchdogEpoch::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::WatchdogEpoch::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::WatchdogEpoch where T: core::clone::Clone
++pub type galadriel_core::authority::WatchdogEpoch::Owned = T
++pub fn galadriel_core::authority::WatchdogEpoch::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::WatchdogEpoch::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::WatchdogEpoch where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::WatchdogEpoch::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::WatchdogEpoch where T: ?core::marker::Sized
++pub fn galadriel_core::authority::WatchdogEpoch::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::WatchdogEpoch where T: ?core::marker::Sized
++pub fn galadriel_core::authority::WatchdogEpoch::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::WatchdogEpoch where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::WatchdogEpoch::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::WatchdogEpoch
++pub type galadriel_core::authority::WatchdogEpoch::Output = T
 +pub fn galadriel_core::authority::validate_advisory_effect(galadriel_core::authority::AdvisoryPolicy, &galadriel_core::authority::AuthoritySnapshot, &galadriel_core::authority::AuthoritySnapshot) -> galadriel_core::error::Result<()>
  pub mod galadriel_core::baseline
  pub struct galadriel_core::baseline::NisStat
@@ -158,7 +489,7 @@
  impl core::clone::Clone for galadriel_core::baseline::NisStat
  pub fn galadriel_core::baseline::NisStat::clone(&self) -> galadriel_core::baseline::NisStat
  impl core::cmp::PartialEq for galadriel_core::baseline::NisStat
-@@ -21,34 +160,485 @@
+@@ -21,34 +491,485 @@
  impl core::marker::UnsafeUnpin for galadriel_core::baseline::NisStat
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::baseline::NisStat
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::baseline::NisStat
@@ -664,7 +995,7 @@
  impl core::fmt::Debug for galadriel_core::config::DetectorConfig
  pub fn galadriel_core::config::DetectorConfig::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::marker::StructuralPartialEq for galadriel_core::config::DetectorConfig
-@@ -59,11 +649,343 @@
+@@ -59,11 +980,343 @@
  impl core::marker::UnsafeUnpin for galadriel_core::config::DetectorConfig
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::config::DetectorConfig
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::config::DetectorConfig
@@ -1008,7 +1339,7 @@
  pub enum galadriel_core::correlation::CorrVerdict
  pub galadriel_core::correlation::CorrVerdict::Decoupled(alloc::vec::Vec<galadriel_core::observation::Modality>)
  pub galadriel_core::correlation::CorrVerdict::InsufficientEvidence
-@@ -75,6 +997,8 @@
+@@ -75,6 +1328,8 @@
  impl core::fmt::Debug for galadriel_core::correlation::CorrVerdict
  pub fn galadriel_core::correlation::CorrVerdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::marker::StructuralPartialEq for galadriel_core::correlation::CorrVerdict
@@ -1017,7 +1348,7 @@
  impl core::marker::Freeze for galadriel_core::correlation::CorrVerdict
  impl core::marker::Send for galadriel_core::correlation::CorrVerdict
  impl core::marker::Sync for galadriel_core::correlation::CorrVerdict
-@@ -82,15 +1006,45 @@
+@@ -82,15 +1337,45 @@
  impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrVerdict
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrVerdict
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrVerdict
@@ -1067,7 +1398,7 @@
  impl core::marker::Freeze for galadriel_core::correlation::CorrChannel
  impl core::marker::Send for galadriel_core::correlation::CorrChannel
  impl core::marker::Sync for galadriel_core::correlation::CorrChannel
-@@ -98,20 +1052,55 @@
+@@ -98,20 +1383,55 @@
  impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrChannel
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrChannel
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrChannel
@@ -1131,7 +1462,7 @@
  impl core::marker::Freeze for galadriel_core::correlation::CorrConfig
  impl core::marker::Send for galadriel_core::correlation::CorrConfig
  impl core::marker::Sync for galadriel_core::correlation::CorrConfig
-@@ -119,14 +1108,98 @@
+@@ -119,14 +1439,98 @@
  impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrConfig
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrConfig
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrConfig
@@ -1233,7 +1564,7 @@
  impl core::marker::Freeze for galadriel_core::correlation::CorrReport
  impl core::marker::Send for galadriel_core::correlation::CorrReport
  impl core::marker::Sync for galadriel_core::correlation::CorrReport
-@@ -134,6 +1207,30 @@
+@@ -134,6 +1538,30 @@
  impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrReport
@@ -1264,7 +1595,7 @@
  pub const galadriel_core::correlation::MAX_CORRELATION_PAIR_SAMPLES: usize
  pub const galadriel_core::correlation::MAX_CORRELATION_WINDOW: usize
  pub fn galadriel_core::correlation::abs_pearson(&[f64], &[f64]) -> galadriel_core::error::Result<f64>
-@@ -161,6 +1258,30 @@
+@@ -161,6 +1589,30 @@
  impl core::marker::UnsafeUnpin for galadriel_core::cusum::Cusum
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::cusum::Cusum
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::cusum::Cusum
@@ -1295,7 +1626,7 @@
  pub mod galadriel_core::decision
  pub enum galadriel_core::decision::Verdict
  pub galadriel_core::decision::Verdict::AttributedInconsistency
-@@ -188,21 +1309,49 @@
+@@ -188,21 +1640,49 @@
  impl core::marker::UnsafeUnpin for galadriel_core::decision::Verdict
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::Verdict
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::Verdict
@@ -1356,7 +1687,7 @@
  impl core::clone::Clone for galadriel_core::decision::ChannelReport
  pub fn galadriel_core::decision::ChannelReport::clone(&self) -> galadriel_core::decision::ChannelReport
  impl core::cmp::PartialEq for galadriel_core::decision::ChannelReport
-@@ -212,8 +1361,6 @@
+@@ -212,8 +1692,6 @@
  impl core::marker::StructuralPartialEq for galadriel_core::decision::ChannelReport
  impl serde_core::ser::Serialize for galadriel_core::decision::ChannelReport
  pub fn galadriel_core::decision::ChannelReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
@@ -1365,7 +1696,7 @@
  impl core::marker::Freeze for galadriel_core::decision::ChannelReport
  impl core::marker::Send for galadriel_core::decision::ChannelReport
  impl core::marker::Sync for galadriel_core::decision::ChannelReport
-@@ -221,17 +1368,43 @@
+@@ -221,17 +1699,43 @@
  impl core::marker::UnsafeUnpin for galadriel_core::decision::ChannelReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::ChannelReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::ChannelReport
@@ -1413,7 +1744,7 @@
  impl core::marker::Freeze for galadriel_core::decision::Mirror
  impl core::marker::Send for galadriel_core::decision::Mirror
  impl core::marker::Sync for galadriel_core::decision::Mirror
-@@ -239,12 +1412,35 @@
+@@ -239,12 +1743,35 @@
  impl core::marker::UnsafeUnpin for galadriel_core::decision::Mirror
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::Mirror
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::Mirror
@@ -1454,7 +1785,7 @@
  impl core::clone::Clone for galadriel_core::decision::MirrorReport
  pub fn galadriel_core::decision::MirrorReport::clone(&self) -> galadriel_core::decision::MirrorReport
  impl core::cmp::PartialEq for galadriel_core::decision::MirrorReport
-@@ -254,8 +1450,6 @@
+@@ -254,8 +1781,6 @@
  impl core::marker::StructuralPartialEq for galadriel_core::decision::MirrorReport
  impl serde_core::ser::Serialize for galadriel_core::decision::MirrorReport
  pub fn galadriel_core::decision::MirrorReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
@@ -1463,7 +1794,7 @@
  impl core::marker::Freeze for galadriel_core::decision::MirrorReport
  impl core::marker::Send for galadriel_core::decision::MirrorReport
  impl core::marker::Sync for galadriel_core::decision::MirrorReport
-@@ -263,8 +1457,1117 @@
+@@ -263,8 +1788,1117 @@
  impl core::marker::UnsafeUnpin for galadriel_core::decision::MirrorReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::MirrorReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::MirrorReport
@@ -2581,7 +2912,7 @@
  pub galadriel_core::error::GaladrielError::InsufficientSamples
  pub galadriel_core::error::GaladrielError::InsufficientSamples::have: usize
  pub galadriel_core::error::GaladrielError::InsufficientSamples::need: usize
-@@ -272,13 +2575,21 @@
+@@ -272,13 +2906,21 @@
  pub galadriel_core::error::GaladrielError::InvalidConfig(alloc::string::String)
  pub galadriel_core::error::GaladrielError::InvalidObservation(alloc::string::String)
  pub galadriel_core::error::GaladrielError::NonFinite(&'static str)
@@ -2603,7 +2934,7 @@
  impl core::fmt::Debug for galadriel_core::error::GaladrielError
  pub fn galadriel_core::error::GaladrielError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::fmt::Display for galadriel_core::error::GaladrielError
-@@ -291,6 +2602,32 @@
+@@ -291,6 +2933,32 @@
  impl core::marker::UnsafeUnpin for galadriel_core::error::GaladrielError
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::error::GaladrielError
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::error::GaladrielError
@@ -2636,7 +2967,7 @@
  pub type galadriel_core::error::Result<T> = core::result::Result<T, galadriel_core::error::GaladrielError>
  pub mod galadriel_core::fusion
  #[non_exhaustive] pub enum galadriel_core::fusion::ConsistencyEvidence
-@@ -316,6 +2653,30 @@
+@@ -316,6 +2984,30 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::ConsistencyEvidence
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::ConsistencyEvidence
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::ConsistencyEvidence
@@ -2667,7 +2998,7 @@
  pub enum galadriel_core::fusion::FusedVerdict
  pub galadriel_core::fusion::FusedVerdict::AttributedInconsistency
  pub galadriel_core::fusion::FusedVerdict::AttributedInconsistency::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
-@@ -332,6 +2693,8 @@
+@@ -332,6 +3024,8 @@
  impl core::fmt::Debug for galadriel_core::fusion::FusedVerdict
  pub fn galadriel_core::fusion::FusedVerdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::marker::StructuralPartialEq for galadriel_core::fusion::FusedVerdict
@@ -2676,7 +3007,7 @@
  impl core::marker::Freeze for galadriel_core::fusion::FusedVerdict
  impl core::marker::Send for galadriel_core::fusion::FusedVerdict
  impl core::marker::Sync for galadriel_core::fusion::FusedVerdict
-@@ -339,6 +2702,30 @@
+@@ -339,6 +3033,30 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::FusedVerdict
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::FusedVerdict
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::FusedVerdict
@@ -2707,7 +3038,7 @@
  pub enum galadriel_core::fusion::MagnitudeEvidence
  pub galadriel_core::fusion::MagnitudeEvidence::Elevated
  pub galadriel_core::fusion::MagnitudeEvidence::InCovariance
-@@ -353,6 +2740,8 @@
+@@ -353,6 +3071,8 @@
  pub fn galadriel_core::fusion::MagnitudeEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::marker::Copy for galadriel_core::fusion::MagnitudeEvidence
  impl core::marker::StructuralPartialEq for galadriel_core::fusion::MagnitudeEvidence
@@ -2716,7 +3047,7 @@
  impl core::marker::Freeze for galadriel_core::fusion::MagnitudeEvidence
  impl core::marker::Send for galadriel_core::fusion::MagnitudeEvidence
  impl core::marker::Sync for galadriel_core::fusion::MagnitudeEvidence
-@@ -360,13 +2749,44 @@
+@@ -360,13 +3080,44 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::MagnitudeEvidence
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::MagnitudeEvidence
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::MagnitudeEvidence
@@ -2763,7 +3094,7 @@
  impl core::marker::Freeze for galadriel_core::fusion::AxisCorrelationReport
  impl core::marker::Send for galadriel_core::fusion::AxisCorrelationReport
  impl core::marker::Sync for galadriel_core::fusion::AxisCorrelationReport
-@@ -374,15 +2794,46 @@
+@@ -374,15 +3125,46 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::AxisCorrelationReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::AxisCorrelationReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::AxisCorrelationReport
@@ -2814,7 +3145,7 @@
  impl core::marker::Freeze for galadriel_core::fusion::DefaultReport
  impl core::marker::Send for galadriel_core::fusion::DefaultReport
  impl core::marker::Sync for galadriel_core::fusion::DefaultReport
-@@ -390,6 +2841,30 @@
+@@ -390,6 +3172,30 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::DefaultReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::DefaultReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::DefaultReport
@@ -2845,7 +3176,7 @@
  pub struct galadriel_core::fusion::NonEmptyModalities(_)
  impl galadriel_core::fusion::NonEmptyModalities
  pub fn galadriel_core::fusion::NonEmptyModalities::as_slice(&self) -> &[galadriel_core::observation::Modality]
-@@ -410,9 +2885,77 @@
+@@ -410,9 +3216,77 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::NonEmptyModalities
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::NonEmptyModalities
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::NonEmptyModalities
@@ -2925,7 +3256,7 @@
  pub mod galadriel_core::observation
  pub enum galadriel_core::observation::Modality
  pub galadriel_core::observation::Modality::Acoustic
-@@ -424,6 +2967,7 @@
+@@ -424,6 +3298,7 @@
  impl galadriel_core::observation::Modality
  pub const galadriel_core::observation::Modality::ALL: [galadriel_core::observation::Modality; 6]
  pub fn galadriel_core::observation::Modality::label(self) -> &'static str
@@ -2933,7 +3264,7 @@
  impl core::clone::Clone for galadriel_core::observation::Modality
  pub fn galadriel_core::observation::Modality::clone(&self) -> galadriel_core::observation::Modality
  impl core::cmp::Eq for galadriel_core::observation::Modality
-@@ -446,26 +2990,50 @@
+@@ -446,26 +3321,50 @@
  impl core::marker::UnsafeUnpin for galadriel_core::observation::Modality
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::Modality
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::Modality
@@ -2993,7 +3324,7 @@
  impl core::marker::Freeze for galadriel_core::observation::ConsistencyProjection
  impl core::marker::Send for galadriel_core::observation::ConsistencyProjection
  impl core::marker::Sync for galadriel_core::observation::ConsistencyProjection
-@@ -473,27 +3041,57 @@
+@@ -473,27 +3372,57 @@
  impl core::marker::UnsafeUnpin for galadriel_core::observation::ConsistencyProjection
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::ConsistencyProjection
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::ConsistencyProjection
@@ -3063,7 +3394,7 @@
  impl core::marker::Freeze for galadriel_core::observation::PidObservation
  impl core::marker::Send for galadriel_core::observation::PidObservation
  impl core::marker::Sync for galadriel_core::observation::PidObservation
-@@ -501,9 +3099,822 @@
+@@ -501,9 +3430,822 @@
  impl core::marker::UnsafeUnpin for galadriel_core::observation::PidObservation
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::PidObservation
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::PidObservation
@@ -3886,7 +4217,7 @@
  pub mod galadriel_core::window
  pub struct galadriel_core::window::NisWindow
  impl galadriel_core::window::NisWindow
-@@ -528,7 +3939,453 @@
+@@ -528,7 +4270,453 @@
  impl core::marker::UnsafeUnpin for galadriel_core::window::NisWindow
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::window::NisWindow
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::window::NisWindow
@@ -4340,7 +4671,7 @@
  #[non_exhaustive] pub enum galadriel_core::ConsistencyEvidence
  pub galadriel_core::ConsistencyEvidence::Conflicted(alloc::vec::Vec<galadriel_core::observation::Modality>)
  pub galadriel_core::ConsistencyEvidence::Decoupled(galadriel_core::fusion::NonEmptyModalities)
-@@ -552,6 +4409,146 @@
+@@ -552,6 +4740,146 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::ConsistencyEvidence
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::ConsistencyEvidence
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::ConsistencyEvidence
@@ -4487,7 +4818,7 @@
  pub enum galadriel_core::CorrVerdict
  pub galadriel_core::CorrVerdict::Decoupled(alloc::vec::Vec<galadriel_core::observation::Modality>)
  pub galadriel_core::CorrVerdict::InsufficientEvidence
-@@ -563,6 +4560,8 @@
+@@ -563,6 +4891,8 @@
  impl core::fmt::Debug for galadriel_core::correlation::CorrVerdict
  pub fn galadriel_core::correlation::CorrVerdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::marker::StructuralPartialEq for galadriel_core::correlation::CorrVerdict
@@ -4496,7 +4827,7 @@
  impl core::marker::Freeze for galadriel_core::correlation::CorrVerdict
  impl core::marker::Send for galadriel_core::correlation::CorrVerdict
  impl core::marker::Sync for galadriel_core::correlation::CorrVerdict
-@@ -570,6 +4569,449 @@
+@@ -570,6 +4900,449 @@
  impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrVerdict
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrVerdict
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrVerdict
@@ -4946,7 +5277,7 @@
  pub enum galadriel_core::FusedVerdict
  pub galadriel_core::FusedVerdict::AttributedInconsistency
  pub galadriel_core::FusedVerdict::AttributedInconsistency::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
-@@ -586,6 +5028,8 @@
+@@ -586,6 +5359,8 @@
  impl core::fmt::Debug for galadriel_core::fusion::FusedVerdict
  pub fn galadriel_core::fusion::FusedVerdict::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::marker::StructuralPartialEq for galadriel_core::fusion::FusedVerdict
@@ -4955,7 +5286,7 @@
  impl core::marker::Freeze for galadriel_core::fusion::FusedVerdict
  impl core::marker::Send for galadriel_core::fusion::FusedVerdict
  impl core::marker::Sync for galadriel_core::fusion::FusedVerdict
-@@ -593,7 +5037,34 @@
+@@ -593,7 +5368,34 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::FusedVerdict
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::FusedVerdict
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::FusedVerdict
@@ -4990,7 +5321,7 @@
  pub galadriel_core::GaladrielError::InsufficientSamples
  pub galadriel_core::GaladrielError::InsufficientSamples::have: usize
  pub galadriel_core::GaladrielError::InsufficientSamples::need: usize
-@@ -601,13 +5072,21 @@
+@@ -601,13 +5403,21 @@
  pub galadriel_core::GaladrielError::InvalidConfig(alloc::string::String)
  pub galadriel_core::GaladrielError::InvalidObservation(alloc::string::String)
  pub galadriel_core::GaladrielError::NonFinite(&'static str)
@@ -5012,7 +5343,7 @@
  impl core::fmt::Debug for galadriel_core::error::GaladrielError
  pub fn galadriel_core::error::GaladrielError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::fmt::Display for galadriel_core::error::GaladrielError
-@@ -620,6 +5099,80 @@
+@@ -620,6 +5430,80 @@
  impl core::marker::UnsafeUnpin for galadriel_core::error::GaladrielError
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::error::GaladrielError
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::error::GaladrielError
@@ -5093,7 +5424,7 @@
  pub enum galadriel_core::MagnitudeEvidence
  pub galadriel_core::MagnitudeEvidence::Elevated
  pub galadriel_core::MagnitudeEvidence::InCovariance
-@@ -634,6 +5187,8 @@
+@@ -634,6 +5518,8 @@
  pub fn galadriel_core::fusion::MagnitudeEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::marker::Copy for galadriel_core::fusion::MagnitudeEvidence
  impl core::marker::StructuralPartialEq for galadriel_core::fusion::MagnitudeEvidence
@@ -5102,7 +5433,7 @@
  impl core::marker::Freeze for galadriel_core::fusion::MagnitudeEvidence
  impl core::marker::Send for galadriel_core::fusion::MagnitudeEvidence
  impl core::marker::Sync for galadriel_core::fusion::MagnitudeEvidence
-@@ -641,6 +5196,30 @@
+@@ -641,6 +5527,30 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::MagnitudeEvidence
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::MagnitudeEvidence
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::MagnitudeEvidence
@@ -5133,7 +5464,7 @@
  pub enum galadriel_core::Modality
  pub galadriel_core::Modality::Acoustic
  pub galadriel_core::Modality::Lidar
-@@ -651,6 +5230,7 @@
+@@ -651,6 +5561,7 @@
  impl galadriel_core::observation::Modality
  pub const galadriel_core::observation::Modality::ALL: [galadriel_core::observation::Modality; 6]
  pub fn galadriel_core::observation::Modality::label(self) -> &'static str
@@ -5141,7 +5472,7 @@
  impl core::clone::Clone for galadriel_core::observation::Modality
  pub fn galadriel_core::observation::Modality::clone(&self) -> galadriel_core::observation::Modality
  impl core::cmp::Eq for galadriel_core::observation::Modality
-@@ -673,6 +5253,390 @@
+@@ -673,6 +5584,390 @@
  impl core::marker::UnsafeUnpin for galadriel_core::observation::Modality
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::Modality
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::Modality
@@ -5532,7 +5863,7 @@
  pub enum galadriel_core::Verdict
  pub galadriel_core::Verdict::AttributedInconsistency
  pub galadriel_core::Verdict::AttributedInconsistency::channels: alloc::vec::Vec<galadriel_core::observation::Modality>
-@@ -699,13 +5663,296 @@
+@@ -699,13 +5994,397 @@
  impl core::marker::UnsafeUnpin for galadriel_core::decision::Verdict
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::Verdict
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::Verdict
@@ -5762,15 +6093,68 @@
 +impl<T> serde_core::de::DeserializeOwned for galadriel_core::AssessmentScope where T: for<'de> serde_core::de::Deserialize<'de>
 +impl<T> typenum::type_operators::Same for galadriel_core::AssessmentScope
 +pub type galadriel_core::AssessmentScope::Output = T
++pub struct galadriel_core::AuthoritySemanticsId(_)
++impl galadriel_core::authority::AuthoritySemanticsId
++pub const fn galadriel_core::authority::AuthoritySemanticsId::as_bytes(&self) -> &[u8; 32]
++pub const fn galadriel_core::authority::AuthoritySemanticsId::new([u8; 32]) -> Self
++impl core::clone::Clone for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::clone(&self) -> galadriel_core::authority::AuthoritySemanticsId
++impl core::cmp::Eq for galadriel_core::authority::AuthoritySemanticsId
++impl core::cmp::PartialEq for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::eq(&self, &galadriel_core::authority::AuthoritySemanticsId) -> bool
++impl core::fmt::Debug for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::StructuralPartialEq for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::Freeze for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::Send for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::Sync for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::Unpin for galadriel_core::authority::AuthoritySemanticsId
++impl core::marker::UnsafeUnpin for galadriel_core::authority::AuthoritySemanticsId
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::AuthoritySemanticsId
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::AuthoritySemanticsId
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::AuthoritySemanticsId where U: core::convert::From<T>
++pub fn galadriel_core::authority::AuthoritySemanticsId::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::AuthoritySemanticsId where U: core::convert::Into<T>
++pub type galadriel_core::authority::AuthoritySemanticsId::Error = core::convert::Infallible
++pub fn galadriel_core::authority::AuthoritySemanticsId::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::AuthoritySemanticsId where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::AuthoritySemanticsId::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::AuthoritySemanticsId::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::AuthoritySemanticsId where T: core::clone::Clone
++pub type galadriel_core::authority::AuthoritySemanticsId::Owned = T
++pub fn galadriel_core::authority::AuthoritySemanticsId::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::AuthoritySemanticsId::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::AuthoritySemanticsId where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySemanticsId::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::AuthoritySemanticsId where T: ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySemanticsId::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::AuthoritySemanticsId where T: ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySemanticsId::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::AuthoritySemanticsId where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::AuthoritySemanticsId::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::AuthoritySemanticsId
++pub fn galadriel_core::authority::AuthoritySemanticsId::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::AuthoritySemanticsId
++pub type galadriel_core::authority::AuthoritySemanticsId::Output = T
 +pub struct galadriel_core::AuthoritySnapshot
 +impl galadriel_core::authority::AuthoritySnapshot
 +pub const fn galadriel_core::authority::AuthoritySnapshot::authorization(&self) -> galadriel_core::authority::Authorization
 +pub const fn galadriel_core::authority::AuthoritySnapshot::capability_digest(&self) -> &[u8; 32]
++pub const fn galadriel_core::authority::AuthoritySnapshot::command_ttl(&self) -> galadriel_core::authority::CommandTtlMillis
 +pub const fn galadriel_core::authority::AuthoritySnapshot::command_ttl_ms(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::lease_expiry(&self) -> galadriel_core::authority::LeaseExpiryMillis
 +pub const fn galadriel_core::authority::AuthoritySnapshot::lease_expiry_ms(&self) -> u64
 +pub const fn galadriel_core::authority::AuthoritySnapshot::new(galadriel_core::authority::Authorization, u64, u64, u64, u64, u64, [u8; 32]) -> Self
++pub const fn galadriel_core::authority::AuthoritySnapshot::new_strict(galadriel_core::authority::AuthoritySnapshotParams) -> Self
++pub const fn galadriel_core::authority::AuthoritySnapshot::semantics_id(&self) -> core::option::Option<&galadriel_core::authority::AuthoritySemanticsId>
++pub const fn galadriel_core::authority::AuthoritySnapshot::slew_limit(&self) -> galadriel_core::authority::SlewLimit
 +pub const fn galadriel_core::authority::AuthoritySnapshot::slew_limit_units(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::velocity_limit(&self) -> galadriel_core::authority::VelocityLimit
 +pub const fn galadriel_core::authority::AuthoritySnapshot::velocity_limit_units(&self) -> u64
++pub const fn galadriel_core::authority::AuthoritySnapshot::watchdog(&self) -> galadriel_core::authority::WatchdogEpoch
 +pub const fn galadriel_core::authority::AuthoritySnapshot::watchdog_epoch(&self) -> u64
 +impl core::clone::Clone for galadriel_core::authority::AuthoritySnapshot
 +pub fn galadriel_core::authority::AuthoritySnapshot::clone(&self) -> galadriel_core::authority::AuthoritySnapshot
@@ -5812,6 +6196,54 @@
 +pub fn galadriel_core::authority::AuthoritySnapshot::from(T) -> T
 +impl<T> typenum::type_operators::Same for galadriel_core::authority::AuthoritySnapshot
 +pub type galadriel_core::authority::AuthoritySnapshot::Output = T
++pub struct galadriel_core::AuthoritySnapshotParams
++pub galadriel_core::AuthoritySnapshotParams::authorization: galadriel_core::authority::Authorization
++pub galadriel_core::AuthoritySnapshotParams::capability_digest: [u8; 32]
++pub galadriel_core::AuthoritySnapshotParams::command_ttl: galadriel_core::authority::CommandTtlMillis
++pub galadriel_core::AuthoritySnapshotParams::lease_expiry: galadriel_core::authority::LeaseExpiryMillis
++pub galadriel_core::AuthoritySnapshotParams::semantics_id: galadriel_core::authority::AuthoritySemanticsId
++pub galadriel_core::AuthoritySnapshotParams::slew_limit: galadriel_core::authority::SlewLimit
++pub galadriel_core::AuthoritySnapshotParams::velocity_limit: galadriel_core::authority::VelocityLimit
++pub galadriel_core::AuthoritySnapshotParams::watchdog_epoch: galadriel_core::authority::WatchdogEpoch
++impl core::clone::Clone for galadriel_core::authority::AuthoritySnapshotParams
++pub fn galadriel_core::authority::AuthoritySnapshotParams::clone(&self) -> galadriel_core::authority::AuthoritySnapshotParams
++impl core::cmp::Eq for galadriel_core::authority::AuthoritySnapshotParams
++impl core::cmp::PartialEq for galadriel_core::authority::AuthoritySnapshotParams
++pub fn galadriel_core::authority::AuthoritySnapshotParams::eq(&self, &galadriel_core::authority::AuthoritySnapshotParams) -> bool
++impl core::fmt::Debug for galadriel_core::authority::AuthoritySnapshotParams
++pub fn galadriel_core::authority::AuthoritySnapshotParams::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::marker::StructuralPartialEq for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::Freeze for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::Send for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::Sync for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::Unpin for galadriel_core::authority::AuthoritySnapshotParams
++impl core::marker::UnsafeUnpin for galadriel_core::authority::AuthoritySnapshotParams
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::AuthoritySnapshotParams
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::AuthoritySnapshotParams
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::AuthoritySnapshotParams where U: core::convert::From<T>
++pub fn galadriel_core::authority::AuthoritySnapshotParams::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::AuthoritySnapshotParams where U: core::convert::Into<T>
++pub type galadriel_core::authority::AuthoritySnapshotParams::Error = core::convert::Infallible
++pub fn galadriel_core::authority::AuthoritySnapshotParams::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::AuthoritySnapshotParams where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::AuthoritySnapshotParams::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::AuthoritySnapshotParams::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::AuthoritySnapshotParams where T: core::clone::Clone
++pub type galadriel_core::authority::AuthoritySnapshotParams::Owned = T
++pub fn galadriel_core::authority::AuthoritySnapshotParams::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::AuthoritySnapshotParams::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::AuthoritySnapshotParams where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySnapshotParams::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::AuthoritySnapshotParams where T: ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySnapshotParams::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::AuthoritySnapshotParams where T: ?core::marker::Sized
++pub fn galadriel_core::authority::AuthoritySnapshotParams::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::AuthoritySnapshotParams where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::AuthoritySnapshotParams::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::AuthoritySnapshotParams
++pub fn galadriel_core::authority::AuthoritySnapshotParams::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::AuthoritySnapshotParams
++pub type galadriel_core::authority::AuthoritySnapshotParams::Output = T
  pub struct galadriel_core::AxisCorrelationReport
 -pub galadriel_core::AxisCorrelationReport::axis: usize
 -pub galadriel_core::AxisCorrelationReport::report: galadriel_core::correlation::CorrReport
@@ -5831,7 +6263,7 @@
  impl core::marker::Freeze for galadriel_core::fusion::AxisCorrelationReport
  impl core::marker::Send for galadriel_core::fusion::AxisCorrelationReport
  impl core::marker::Sync for galadriel_core::fusion::AxisCorrelationReport
-@@ -713,21 +5960,48 @@
+@@ -713,21 +6392,48 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::AxisCorrelationReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::AxisCorrelationReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::AxisCorrelationReport
@@ -5891,7 +6323,7 @@
  impl core::clone::Clone for galadriel_core::decision::ChannelReport
  pub fn galadriel_core::decision::ChannelReport::clone(&self) -> galadriel_core::decision::ChannelReport
  impl core::cmp::PartialEq for galadriel_core::decision::ChannelReport
-@@ -737,8 +6011,6 @@
+@@ -737,8 +6443,6 @@
  impl core::marker::StructuralPartialEq for galadriel_core::decision::ChannelReport
  impl serde_core::ser::Serialize for galadriel_core::decision::ChannelReport
  pub fn galadriel_core::decision::ChannelReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
@@ -5900,7 +6332,7 @@
  impl core::marker::Freeze for galadriel_core::decision::ChannelReport
  impl core::marker::Send for galadriel_core::decision::ChannelReport
  impl core::marker::Sync for galadriel_core::decision::ChannelReport
-@@ -746,10 +6018,86 @@
+@@ -746,10 +6450,132 @@
  impl core::marker::UnsafeUnpin for galadriel_core::decision::ChannelReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::ChannelReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::ChannelReport
@@ -5928,6 +6360,52 @@
 +pub fn galadriel_core::decision::ChannelReport::from(T) -> T
 +impl<T> typenum::type_operators::Same for galadriel_core::decision::ChannelReport
 +pub type galadriel_core::decision::ChannelReport::Output = T
++pub struct galadriel_core::CommandTtlMillis(_)
++impl galadriel_core::authority::CommandTtlMillis
++pub const fn galadriel_core::authority::CommandTtlMillis::get(self) -> u64
++pub const fn galadriel_core::authority::CommandTtlMillis::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::clone(&self) -> galadriel_core::authority::CommandTtlMillis
++impl core::cmp::Eq for galadriel_core::authority::CommandTtlMillis
++impl core::cmp::PartialEq for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::eq(&self, &galadriel_core::authority::CommandTtlMillis) -> bool
++impl core::fmt::Debug for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::CommandTtlMillis
++impl core::marker::StructuralPartialEq for galadriel_core::authority::CommandTtlMillis
++impl core::marker::Freeze for galadriel_core::authority::CommandTtlMillis
++impl core::marker::Send for galadriel_core::authority::CommandTtlMillis
++impl core::marker::Sync for galadriel_core::authority::CommandTtlMillis
++impl core::marker::Unpin for galadriel_core::authority::CommandTtlMillis
++impl core::marker::UnsafeUnpin for galadriel_core::authority::CommandTtlMillis
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::CommandTtlMillis
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::CommandTtlMillis
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::CommandTtlMillis where U: core::convert::From<T>
++pub fn galadriel_core::authority::CommandTtlMillis::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::CommandTtlMillis where U: core::convert::Into<T>
++pub type galadriel_core::authority::CommandTtlMillis::Error = core::convert::Infallible
++pub fn galadriel_core::authority::CommandTtlMillis::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::CommandTtlMillis where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::CommandTtlMillis::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::CommandTtlMillis::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::CommandTtlMillis where T: core::clone::Clone
++pub type galadriel_core::authority::CommandTtlMillis::Owned = T
++pub fn galadriel_core::authority::CommandTtlMillis::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::CommandTtlMillis::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::CommandTtlMillis where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::CommandTtlMillis::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::CommandTtlMillis where T: ?core::marker::Sized
++pub fn galadriel_core::authority::CommandTtlMillis::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::CommandTtlMillis where T: ?core::marker::Sized
++pub fn galadriel_core::authority::CommandTtlMillis::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::CommandTtlMillis where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::CommandTtlMillis::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::CommandTtlMillis
++pub fn galadriel_core::authority::CommandTtlMillis::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::CommandTtlMillis
++pub type galadriel_core::authority::CommandTtlMillis::Output = T
 +pub struct galadriel_core::ConfigDigest(_)
 +impl galadriel_core::ConfigDigest
 +pub const fn galadriel_core::ConfigDigest::as_bytes(&self) -> &[u8; 32]
@@ -5989,7 +6467,7 @@
  impl core::clone::Clone for galadriel_core::ConsistencyChannels
  pub fn galadriel_core::ConsistencyChannels::clone(&self) -> galadriel_core::ConsistencyChannels
  impl core::fmt::Debug for galadriel_core::ConsistencyChannels
-@@ -761,26 +6109,49 @@
+@@ -761,26 +6587,49 @@
  impl core::marker::UnsafeUnpin for galadriel_core::ConsistencyChannels
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::ConsistencyChannels
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::ConsistencyChannels
@@ -6048,7 +6526,7 @@
  impl core::marker::Freeze for galadriel_core::observation::ConsistencyProjection
  impl core::marker::Send for galadriel_core::observation::ConsistencyProjection
  impl core::marker::Sync for galadriel_core::observation::ConsistencyProjection
-@@ -788,15 +6159,46 @@
+@@ -788,15 +6637,46 @@
  impl core::marker::UnsafeUnpin for galadriel_core::observation::ConsistencyProjection
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::ConsistencyProjection
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::ConsistencyProjection
@@ -6099,7 +6577,7 @@
  impl core::marker::Freeze for galadriel_core::correlation::CorrChannel
  impl core::marker::Send for galadriel_core::correlation::CorrChannel
  impl core::marker::Sync for galadriel_core::correlation::CorrChannel
-@@ -804,20 +6206,55 @@
+@@ -804,20 +6684,55 @@
  impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrChannel
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrChannel
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrChannel
@@ -6163,7 +6641,7 @@
  impl core::marker::Freeze for galadriel_core::correlation::CorrConfig
  impl core::marker::Send for galadriel_core::correlation::CorrConfig
  impl core::marker::Sync for galadriel_core::correlation::CorrConfig
-@@ -825,14 +6262,98 @@
+@@ -825,14 +6740,98 @@
  impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrConfig
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrConfig
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrConfig
@@ -6265,7 +6743,7 @@
  impl core::marker::Freeze for galadriel_core::correlation::CorrReport
  impl core::marker::Send for galadriel_core::correlation::CorrReport
  impl core::marker::Sync for galadriel_core::correlation::CorrReport
-@@ -840,6 +6361,30 @@
+@@ -840,6 +6839,30 @@
  impl core::marker::UnsafeUnpin for galadriel_core::correlation::CorrReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::correlation::CorrReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::correlation::CorrReport
@@ -6296,7 +6774,7 @@
  pub struct galadriel_core::Cusum
  impl galadriel_core::cusum::Cusum
  pub fn galadriel_core::cusum::Cusum::alarm(&self) -> bool
-@@ -861,15 +6406,46 @@
+@@ -861,15 +6884,46 @@
  impl core::marker::UnsafeUnpin for galadriel_core::cusum::Cusum
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::cusum::Cusum
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::cusum::Cusum
@@ -6347,7 +6825,7 @@
  impl core::marker::Freeze for galadriel_core::fusion::DefaultReport
  impl core::marker::Send for galadriel_core::fusion::DefaultReport
  impl core::marker::Sync for galadriel_core::fusion::DefaultReport
-@@ -877,26 +6453,57 @@
+@@ -877,26 +6931,57 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::DefaultReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::DefaultReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::DefaultReport
@@ -6419,7 +6897,7 @@
  impl core::fmt::Debug for galadriel_core::config::DetectorConfig
  pub fn galadriel_core::config::DetectorConfig::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
  impl core::marker::StructuralPartialEq for galadriel_core::config::DetectorConfig
-@@ -907,17 +6514,327 @@
+@@ -907,17 +6992,373 @@
  impl core::marker::UnsafeUnpin for galadriel_core::config::DetectorConfig
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::config::DetectorConfig
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::config::DetectorConfig
@@ -6731,6 +7209,52 @@
 +impl<T> serde_core::de::DeserializeOwned for galadriel_core::domain::FrozenPriorId where T: for<'de> serde_core::de::Deserialize<'de>
 +impl<T> typenum::type_operators::Same for galadriel_core::domain::FrozenPriorId
 +pub type galadriel_core::domain::FrozenPriorId::Output = T
++pub struct galadriel_core::LeaseExpiryMillis(_)
++impl galadriel_core::authority::LeaseExpiryMillis
++pub const fn galadriel_core::authority::LeaseExpiryMillis::get(self) -> u64
++pub const fn galadriel_core::authority::LeaseExpiryMillis::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::clone(&self) -> galadriel_core::authority::LeaseExpiryMillis
++impl core::cmp::Eq for galadriel_core::authority::LeaseExpiryMillis
++impl core::cmp::PartialEq for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::eq(&self, &galadriel_core::authority::LeaseExpiryMillis) -> bool
++impl core::fmt::Debug for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::StructuralPartialEq for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::Freeze for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::Send for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::Sync for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::Unpin for galadriel_core::authority::LeaseExpiryMillis
++impl core::marker::UnsafeUnpin for galadriel_core::authority::LeaseExpiryMillis
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::LeaseExpiryMillis
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::LeaseExpiryMillis
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::LeaseExpiryMillis where U: core::convert::From<T>
++pub fn galadriel_core::authority::LeaseExpiryMillis::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::LeaseExpiryMillis where U: core::convert::Into<T>
++pub type galadriel_core::authority::LeaseExpiryMillis::Error = core::convert::Infallible
++pub fn galadriel_core::authority::LeaseExpiryMillis::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::LeaseExpiryMillis where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::LeaseExpiryMillis::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::LeaseExpiryMillis::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::LeaseExpiryMillis where T: core::clone::Clone
++pub type galadriel_core::authority::LeaseExpiryMillis::Owned = T
++pub fn galadriel_core::authority::LeaseExpiryMillis::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::LeaseExpiryMillis::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::LeaseExpiryMillis where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::LeaseExpiryMillis::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::LeaseExpiryMillis where T: ?core::marker::Sized
++pub fn galadriel_core::authority::LeaseExpiryMillis::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::LeaseExpiryMillis where T: ?core::marker::Sized
++pub fn galadriel_core::authority::LeaseExpiryMillis::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::LeaseExpiryMillis where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::LeaseExpiryMillis::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::LeaseExpiryMillis
++pub fn galadriel_core::authority::LeaseExpiryMillis::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::LeaseExpiryMillis
++pub type galadriel_core::authority::LeaseExpiryMillis::Output = T
  pub struct galadriel_core::Mirror
  impl galadriel_core::decision::Mirror
 -pub fn galadriel_core::decision::Mirror::assess(&self, u64, u64) -> galadriel_core::error::Result<galadriel_core::decision::MirrorReport>
@@ -6751,7 +7275,7 @@
  impl core::marker::Freeze for galadriel_core::decision::Mirror
  impl core::marker::Send for galadriel_core::decision::Mirror
  impl core::marker::Sync for galadriel_core::decision::Mirror
-@@ -925,12 +6842,35 @@
+@@ -925,12 +7366,35 @@
  impl core::marker::UnsafeUnpin for galadriel_core::decision::Mirror
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::Mirror
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::Mirror
@@ -6792,7 +7316,7 @@
  impl core::clone::Clone for galadriel_core::decision::MirrorReport
  pub fn galadriel_core::decision::MirrorReport::clone(&self) -> galadriel_core::decision::MirrorReport
  impl core::cmp::PartialEq for galadriel_core::decision::MirrorReport
-@@ -940,8 +6880,6 @@
+@@ -940,8 +7404,6 @@
  impl core::marker::StructuralPartialEq for galadriel_core::decision::MirrorReport
  impl serde_core::ser::Serialize for galadriel_core::decision::MirrorReport
  pub fn galadriel_core::decision::MirrorReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
@@ -6801,7 +7325,7 @@
  impl core::marker::Freeze for galadriel_core::decision::MirrorReport
  impl core::marker::Send for galadriel_core::decision::MirrorReport
  impl core::marker::Sync for galadriel_core::decision::MirrorReport
-@@ -949,6 +6887,30 @@
+@@ -949,6 +7411,30 @@
  impl core::marker::UnsafeUnpin for galadriel_core::decision::MirrorReport
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::decision::MirrorReport
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::decision::MirrorReport
@@ -6832,7 +7356,7 @@
  pub struct galadriel_core::NisWindow
  impl galadriel_core::window::NisWindow
  pub fn galadriel_core::window::NisWindow::capacity(&self) -> usize
-@@ -972,6 +6934,30 @@
+@@ -972,6 +7458,30 @@
  impl core::marker::UnsafeUnpin for galadriel_core::window::NisWindow
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::window::NisWindow
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::window::NisWindow
@@ -6863,7 +7387,7 @@
  pub struct galadriel_core::NonEmptyModalities(_)
  impl galadriel_core::fusion::NonEmptyModalities
  pub fn galadriel_core::fusion::NonEmptyModalities::as_slice(&self) -> &[galadriel_core::observation::Modality]
-@@ -992,27 +6978,101 @@
+@@ -992,27 +7502,101 @@
  impl core::marker::UnsafeUnpin for galadriel_core::fusion::NonEmptyModalities
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::fusion::NonEmptyModalities
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::fusion::NonEmptyModalities
@@ -6977,7 +7501,7 @@
  impl core::marker::Freeze for galadriel_core::observation::PidObservation
  impl core::marker::Send for galadriel_core::observation::PidObservation
  impl core::marker::Sync for galadriel_core::observation::PidObservation
-@@ -1020,22 +7080,1040 @@
+@@ -1020,22 +7604,1178 @@
  impl core::marker::UnsafeUnpin for galadriel_core::observation::PidObservation
  impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::observation::PidObservation
  impl core::panic::unwind_safe::UnwindSafe for galadriel_core::observation::PidObservation
@@ -7521,6 +8045,52 @@
 +impl<T> serde_core::de::DeserializeOwned for galadriel_core::domain::SessionId where T: for<'de> serde_core::de::Deserialize<'de>
 +impl<T> typenum::type_operators::Same for galadriel_core::domain::SessionId
 +pub type galadriel_core::domain::SessionId::Output = T
++pub struct galadriel_core::SlewLimit(_)
++impl galadriel_core::authority::SlewLimit
++pub const fn galadriel_core::authority::SlewLimit::get(self) -> u64
++pub const fn galadriel_core::authority::SlewLimit::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::clone(&self) -> galadriel_core::authority::SlewLimit
++impl core::cmp::Eq for galadriel_core::authority::SlewLimit
++impl core::cmp::PartialEq for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::eq(&self, &galadriel_core::authority::SlewLimit) -> bool
++impl core::fmt::Debug for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::SlewLimit
++impl core::marker::StructuralPartialEq for galadriel_core::authority::SlewLimit
++impl core::marker::Freeze for galadriel_core::authority::SlewLimit
++impl core::marker::Send for galadriel_core::authority::SlewLimit
++impl core::marker::Sync for galadriel_core::authority::SlewLimit
++impl core::marker::Unpin for galadriel_core::authority::SlewLimit
++impl core::marker::UnsafeUnpin for galadriel_core::authority::SlewLimit
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::SlewLimit
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::SlewLimit
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::SlewLimit where U: core::convert::From<T>
++pub fn galadriel_core::authority::SlewLimit::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::SlewLimit where U: core::convert::Into<T>
++pub type galadriel_core::authority::SlewLimit::Error = core::convert::Infallible
++pub fn galadriel_core::authority::SlewLimit::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::SlewLimit where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::SlewLimit::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::SlewLimit::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::SlewLimit where T: core::clone::Clone
++pub type galadriel_core::authority::SlewLimit::Owned = T
++pub fn galadriel_core::authority::SlewLimit::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::SlewLimit::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::SlewLimit where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::SlewLimit::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::SlewLimit where T: ?core::marker::Sized
++pub fn galadriel_core::authority::SlewLimit::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::SlewLimit where T: ?core::marker::Sized
++pub fn galadriel_core::authority::SlewLimit::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::SlewLimit where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::SlewLimit::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::SlewLimit
++pub fn galadriel_core::authority::SlewLimit::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::SlewLimit
++pub type galadriel_core::authority::SlewLimit::Output = T
 +pub struct galadriel_core::StateGeneration(_)
 +impl galadriel_core::domain::StateGeneration
 +pub const galadriel_core::domain::StateGeneration::MAX: u64
@@ -7986,6 +8556,98 @@
 +pub fn galadriel_core::outcome::UnclassifiedAnomaly::from(T) -> T
 +impl<T> typenum::type_operators::Same for galadriel_core::outcome::UnclassifiedAnomaly
 +pub type galadriel_core::outcome::UnclassifiedAnomaly::Output = T
++pub struct galadriel_core::VelocityLimit(_)
++impl galadriel_core::authority::VelocityLimit
++pub const fn galadriel_core::authority::VelocityLimit::get(self) -> u64
++pub const fn galadriel_core::authority::VelocityLimit::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::clone(&self) -> galadriel_core::authority::VelocityLimit
++impl core::cmp::Eq for galadriel_core::authority::VelocityLimit
++impl core::cmp::PartialEq for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::eq(&self, &galadriel_core::authority::VelocityLimit) -> bool
++impl core::fmt::Debug for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::VelocityLimit
++impl core::marker::StructuralPartialEq for galadriel_core::authority::VelocityLimit
++impl core::marker::Freeze for galadriel_core::authority::VelocityLimit
++impl core::marker::Send for galadriel_core::authority::VelocityLimit
++impl core::marker::Sync for galadriel_core::authority::VelocityLimit
++impl core::marker::Unpin for galadriel_core::authority::VelocityLimit
++impl core::marker::UnsafeUnpin for galadriel_core::authority::VelocityLimit
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::VelocityLimit
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::VelocityLimit
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::VelocityLimit where U: core::convert::From<T>
++pub fn galadriel_core::authority::VelocityLimit::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::VelocityLimit where U: core::convert::Into<T>
++pub type galadriel_core::authority::VelocityLimit::Error = core::convert::Infallible
++pub fn galadriel_core::authority::VelocityLimit::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::VelocityLimit where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::VelocityLimit::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::VelocityLimit::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::VelocityLimit where T: core::clone::Clone
++pub type galadriel_core::authority::VelocityLimit::Owned = T
++pub fn galadriel_core::authority::VelocityLimit::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::VelocityLimit::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::VelocityLimit where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::VelocityLimit::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::VelocityLimit where T: ?core::marker::Sized
++pub fn galadriel_core::authority::VelocityLimit::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::VelocityLimit where T: ?core::marker::Sized
++pub fn galadriel_core::authority::VelocityLimit::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::VelocityLimit where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::VelocityLimit::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::VelocityLimit
++pub fn galadriel_core::authority::VelocityLimit::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::VelocityLimit
++pub type galadriel_core::authority::VelocityLimit::Output = T
++pub struct galadriel_core::WatchdogEpoch(_)
++impl galadriel_core::authority::WatchdogEpoch
++pub const fn galadriel_core::authority::WatchdogEpoch::get(self) -> u64
++pub const fn galadriel_core::authority::WatchdogEpoch::new(u64) -> Self
++impl core::clone::Clone for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::clone(&self) -> galadriel_core::authority::WatchdogEpoch
++impl core::cmp::Eq for galadriel_core::authority::WatchdogEpoch
++impl core::cmp::PartialEq for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::eq(&self, &galadriel_core::authority::WatchdogEpoch) -> bool
++impl core::fmt::Debug for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
++impl core::hash::Hash for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::hash<__H: core::hash::Hasher>(&self, &mut __H)
++impl core::marker::Copy for galadriel_core::authority::WatchdogEpoch
++impl core::marker::StructuralPartialEq for galadriel_core::authority::WatchdogEpoch
++impl core::marker::Freeze for galadriel_core::authority::WatchdogEpoch
++impl core::marker::Send for galadriel_core::authority::WatchdogEpoch
++impl core::marker::Sync for galadriel_core::authority::WatchdogEpoch
++impl core::marker::Unpin for galadriel_core::authority::WatchdogEpoch
++impl core::marker::UnsafeUnpin for galadriel_core::authority::WatchdogEpoch
++impl core::panic::unwind_safe::RefUnwindSafe for galadriel_core::authority::WatchdogEpoch
++impl core::panic::unwind_safe::UnwindSafe for galadriel_core::authority::WatchdogEpoch
++impl<T, U> core::convert::Into<U> for galadriel_core::authority::WatchdogEpoch where U: core::convert::From<T>
++pub fn galadriel_core::authority::WatchdogEpoch::into(self) -> U
++impl<T, U> core::convert::TryFrom<U> for galadriel_core::authority::WatchdogEpoch where U: core::convert::Into<T>
++pub type galadriel_core::authority::WatchdogEpoch::Error = core::convert::Infallible
++pub fn galadriel_core::authority::WatchdogEpoch::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
++impl<T, U> core::convert::TryInto<U> for galadriel_core::authority::WatchdogEpoch where U: core::convert::TryFrom<T>
++pub type galadriel_core::authority::WatchdogEpoch::Error = <U as core::convert::TryFrom<T>>::Error
++pub fn galadriel_core::authority::WatchdogEpoch::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
++impl<T> alloc::borrow::ToOwned for galadriel_core::authority::WatchdogEpoch where T: core::clone::Clone
++pub type galadriel_core::authority::WatchdogEpoch::Owned = T
++pub fn galadriel_core::authority::WatchdogEpoch::clone_into(&self, &mut T)
++pub fn galadriel_core::authority::WatchdogEpoch::to_owned(&self) -> T
++impl<T> core::any::Any for galadriel_core::authority::WatchdogEpoch where T: 'static + ?core::marker::Sized
++pub fn galadriel_core::authority::WatchdogEpoch::type_id(&self) -> core::any::TypeId
++impl<T> core::borrow::Borrow<T> for galadriel_core::authority::WatchdogEpoch where T: ?core::marker::Sized
++pub fn galadriel_core::authority::WatchdogEpoch::borrow(&self) -> &T
++impl<T> core::borrow::BorrowMut<T> for galadriel_core::authority::WatchdogEpoch where T: ?core::marker::Sized
++pub fn galadriel_core::authority::WatchdogEpoch::borrow_mut(&mut self) -> &mut T
++impl<T> core::clone::CloneToUninit for galadriel_core::authority::WatchdogEpoch where T: core::clone::Clone
++pub unsafe fn galadriel_core::authority::WatchdogEpoch::clone_to_uninit(&self, *mut u8)
++impl<T> core::convert::From<T> for galadriel_core::authority::WatchdogEpoch
++pub fn galadriel_core::authority::WatchdogEpoch::from(T) -> T
++impl<T> typenum::type_operators::Same for galadriel_core::authority::WatchdogEpoch
++pub type galadriel_core::authority::WatchdogEpoch::Output = T
 +pub const galadriel_core::CHANNEL_STATE_AND_MAP_OVERHEAD_BYTES: usize
  pub const galadriel_core::COVARIANCE_SYMMETRY_RELATIVE_TOLERANCE: f64
  pub const galadriel_core::DEFAULT_ALIGNMENT_MAX_INTER_SAMPLE_GAP_MS: u64

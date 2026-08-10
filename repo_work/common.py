@@ -151,7 +151,7 @@ def reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
-            raise ReviewError(f"duplicate JSON key: {key!r}")
+            raise ReviewError("duplicate JSON key")
         result[key] = value
     return result
 

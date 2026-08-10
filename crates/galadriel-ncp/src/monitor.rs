@@ -164,7 +164,7 @@ pub struct ModalityOutcome {
     pub context_id: u64,
     /// Globally unique frozen-prior identifier for this fusion frame.
     pub prior_id: u64,
-    /// Numeric track identifier.
+    /// Numeric track identifier, including zero.
     pub track_id: u64,
     /// Sensor modality being accounted for.
     pub modality: Modality,
@@ -250,7 +250,7 @@ pub struct ModalityMiss {
     pub context_id: u64,
     /// Globally unique frozen-prior identifier for this fusion frame.
     pub prior_id: u64,
-    /// Numeric track identifier.
+    /// Numeric track identifier, including zero.
     pub track_id: u64,
     /// Missing sensor modality.
     pub modality: Modality,
@@ -1053,7 +1053,7 @@ fn validate_frame_identity(
     validate_positive_json_integer("event.context_id", context_id)?;
     validate_positive_json_integer("event.prior_id", prior_id)?;
     if let Some(track_id) = track_id {
-        validate_positive_json_integer("event.track_id", track_id)?;
+        validate_json_integer("event.track_id", track_id)?;
     }
     Ok(())
 }
@@ -1235,6 +1235,19 @@ mod tests {
             }
         }
         value
+    }
+
+    fn modality_miss(track_id: u64) -> ModalityMiss {
+        ModalityMiss {
+            fusion_seq: 1,
+            fusion_timestamp_ms: 2,
+            frame_id: 3,
+            context_id: 4,
+            prior_id: 5,
+            track_id,
+            modality: Modality::Radar,
+            reason: ModalityMissReason::NoMeasurement,
+        }
     }
 
     #[test]
@@ -1953,24 +1966,66 @@ mod tests {
     }
 
     #[test]
-    fn modality_miss_validates_frame_and_track_identity() {
-        let miss = ModalityMiss {
-            fusion_seq: 1,
-            fusion_timestamp_ms: 2,
-            frame_id: 3,
-            context_id: 4,
-            prior_id: 5,
-            track_id: 0,
-            modality: Modality::Radar,
-            reason: ModalityMissReason::NoMeasurement,
-        };
+    fn modality_outcome_with_zero_track_id_round_trips() {
+        let mut outcome = valid_outcome(ModalityOutcomeKind::Updated);
+        outcome.track_id = 0;
+        let event = ProducerEvent::ModalityOutcome(outcome);
+        let encoded = MonitorEnvelope::try_new("uav3", "crebain", 1, event.clone())
+            .and_then(|envelope| envelope.encode())
+            .expect("zero-track outcome is valid");
 
-        assert_eq!(
-            miss.validate(),
-            Err(MonitorError::ZeroIdentifier {
-                field: "event.track_id"
-            })
-        );
+        let decoded = MonitorEnvelope::decode(&encoded).expect("zero-track outcome decodes");
+
+        assert_eq!(decoded.event(), &event);
+    }
+
+    #[test]
+    fn modality_miss_with_zero_track_id_round_trips() {
+        let event = ProducerEvent::ModalityMiss(modality_miss(0));
+        let encoded = MonitorEnvelope::try_new("uav3", "crebain", 1, event.clone())
+            .and_then(|envelope| envelope.encode())
+            .expect("zero-track miss is valid");
+
+        let decoded = MonitorEnvelope::decode(&encoded).expect("zero-track miss decodes");
+
+        assert_eq!(decoded.event(), &event);
+    }
+
+    #[test]
+    fn track_id_json_safe_maximum_is_accepted_for_outcome_and_miss() {
+        let mut outcome = valid_outcome(ModalityOutcomeKind::Updated);
+        outcome.track_id = JSON_SAFE_INTEGER_MAX as u64;
+        let events = [
+            ProducerEvent::ModalityOutcome(outcome),
+            ProducerEvent::ModalityMiss(modality_miss(JSON_SAFE_INTEGER_MAX as u64)),
+        ];
+
+        for event in events {
+            event
+                .validate()
+                .expect("the exact JSON-safe track boundary is valid");
+        }
+    }
+
+    #[test]
+    fn track_id_above_json_safe_maximum_is_rejected_for_outcome_and_miss() {
+        let unsafe_track_id = JSON_SAFE_INTEGER_MAX as u64 + 1;
+        let mut outcome = valid_outcome(ModalityOutcomeKind::Updated);
+        outcome.track_id = unsafe_track_id;
+        let events = [
+            ProducerEvent::ModalityOutcome(outcome),
+            ProducerEvent::ModalityMiss(modality_miss(unsafe_track_id)),
+        ];
+
+        for event in events {
+            assert_eq!(
+                event.validate(),
+                Err(MonitorError::IntegerOutOfRange {
+                    field: "event.track_id",
+                    value: unsafe_track_id,
+                })
+            );
+        }
     }
 
     #[test]
@@ -2069,6 +2124,19 @@ mod tests {
             MonitorEnvelope::decode(&encoded),
             Err(MonitorError::ZeroEventSequence)
         );
+    }
+
+    #[test]
+    fn monitor_schema_uses_full_safe_unsigned_range_for_track_ids() {
+        let schema: serde_json::Value =
+            serde_json::from_str(MONITOR_SCHEMA_JSON).expect("embedded monitor schema is JSON");
+
+        for definition in ["modalityOutcome", "modalityMiss"] {
+            assert_eq!(
+                schema["$defs"][definition]["properties"]["track_id"]["$ref"],
+                "#/$defs/safeUnsignedInteger"
+            );
+        }
     }
 
     #[test]

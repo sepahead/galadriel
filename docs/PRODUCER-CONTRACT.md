@@ -200,6 +200,12 @@ The monitor route is a separate compatibility boundary. Its Rust types, JSON
 Schema, golden examples, and negative fixtures are frozen together. The bounded
 decoder rejects unknown fields and unknown tagged-union variants.
 
+A monitor v1 outcome or miss `track_id` uses the complete JSON-safe unsigned
+range `0..=9_007_199_254_740_991`. The range includes zero. An earlier version
+0.9.0 draft schema incorrectly required a positive value. This correction aligns
+the monitor route with the frozen core track identity
+grammar and observation schema.
+
 Schema evolution MUST use explicit compatibility and version rules. An
 incompatible shape requires a new schema version. It cannot use permissive
 best-effort decoding.

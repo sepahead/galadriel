@@ -616,7 +616,7 @@ mod tests {
             AssessmentBinding::for_release_stream(&scope, std::slice::from_ref(&base), &suite);
         assert_eq!(
             base_binding.digest().to_hex(),
-            "25b3a35232c6643536f83768653171428430980981b033e6d28be717637e4236"
+            "bf08fead56010eee014ffb15ae323c2c51dd260c7eeb4a2665499843075cddb5"
         );
         let mutations = [
             scalar(2, 100, 7, Modality::Visual, 3.0, 3),

@@ -62,7 +62,11 @@ pub mod observation;
 pub mod outcome;
 pub mod window;
 
-pub use authority::{validate_advisory_effect, AdvisoryPolicy, AuthoritySnapshot, Authorization};
+pub use authority::{
+    validate_advisory_effect, AdvisoryPolicy, AuthoritySemanticsId, AuthoritySnapshot,
+    AuthoritySnapshotParams, Authorization, CommandTtlMillis, LeaseExpiryMillis, SlewLimit,
+    VelocityLimit, WatchdogEpoch,
+};
 pub use config::{
     AssessmentClassification, ConfigurationClass, DetectorConfig, DetectorConfigError,
     DetectorParams, DetectorProfile, ExploratoryResearchProfile, ExploratorySubsetResearch,

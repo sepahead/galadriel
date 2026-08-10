@@ -130,6 +130,7 @@ TOKIO_RESOLVED_FEATURES = frozenset(
         "sync",
         "time",
         "tokio-macros",
+        "windows-sys",
     }
 )
 FEATURE_GRAPH_TIMEOUT_SECONDS = 120
@@ -333,8 +334,10 @@ def package_graph(repo: Path, profile: Profile) -> dict[str, frozenset[str]]:
         profile.package,
         "--no-default-features",
         *profile.cargo_arguments,
+        "--target",
+        "all",
         "-e",
-        "normal",
+        "normal,build",
         "--locked",
         "--prefix",
         "none",
@@ -500,6 +503,14 @@ def validate_manifest(repo: Path) -> None:
     validate_workspace_manifest(workspace_manifest)
     with (repo / "crates/galadriel-cli/Cargo.toml").open("rb") as handle:
         manifest = tomllib.load(handle)
+    validate_cli_manifest(manifest)
+
+
+def validate_cli_manifest(manifest: object) -> None:
+    """Reject hidden build or target edges and drifted CLI feature aliases."""
+
+    if not isinstance(manifest, dict):
+        raise ReviewError("galadriel-cli manifest must be a table")
     expected = {
         "default": [],
         "pid": ["dep:galadriel-pid"],
@@ -517,6 +528,11 @@ def validate_manifest(repo: Path) -> None:
             "galadriel-cli feature aliases differ from the audited contract: "
             + json.dumps(manifest.get("features"), sort_keys=True)
         )
+    for table in ("build-dependencies", "target"):
+        if table in manifest:
+            raise ReviewError(
+                f"galadriel-cli manifest contains unaudited {table} edges"
+            )
 
 
 def validate_workspace_manifest(manifest: object) -> None:

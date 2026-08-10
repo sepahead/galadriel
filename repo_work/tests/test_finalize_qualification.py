@@ -6,9 +6,11 @@ import ast
 import copy
 import errno
 import hashlib
+import json
 import os
 import shutil
 import signal
+import struct
 import subprocess
 import sys
 import tempfile
@@ -34,6 +36,7 @@ from finalize_release import (  # noqa: E402
     EXPECTED_DEVELOPER_TOOL_IDENTITIES,
     EXPECTED_GIT_PACKAGE_SOURCES,
     EXPECTED_RELEASE_CRATES,
+    EXPECTED_RUNTIME_LIBRARY_IDENTITIES,
     EXPECTED_TOOL_FILE_IDENTITIES,
     EXPECTED_TOOL_FILE_NAMES,
     MAX_QUALIFICATION_LOG_HEADER_BYTES,
@@ -55,6 +58,7 @@ from finalize_release import (  # noqa: E402
     validate_finalizer_candidate_evidence,
     validate_package_patch_receipts,
     validate_qualification_environment,
+    validate_qualification_fuzz_runners,
     validate_qualification_record,
     validate_qualification_sandbox,
     validate_qualification_tool_bindings,
@@ -69,8 +73,32 @@ import qualify_candidate as qualifier  # noqa: E402
 from qualify_candidate import (  # noqa: E402
     AuxiliaryRunner,
     BoundedProcessResult,
+    DEEP_FUZZ_BUILD_ENVIRONMENT,
+    DEEP_FUZZ_COMMAND_TARGETS,
+    DEEP_FUZZ_DYNAMIC_LINKER,
+    DEEP_FUZZ_HOST_TARGET,
+    DEEP_FUZZ_LOAD_DYLIBS,
+    DEEP_FUZZ_TARGETS,
+    PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY,
+    PINNED_DEEP_FUZZ_ASAN_LIBRARY_MODE,
+    PINNED_DEVELOPER_SDK_IDENTITIES,
+    PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES,
+    PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES,
+    PINNED_CPYTHON_RUNTIME_TREE_IDENTITY,
+    PINNED_CPYTHON_VERSION_ROOT,
+    PINNED_CPYTHON_LAUNCHER_PATH,
+    PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS,
+    PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES,
+    PINNED_RUSTUP_SETTINGS_IDENTITY,
+    QUALIFICATION_PYTHON_FLAGS,
+    QUALIFICATION_COMPILER_DRIVER_NAME,
     QUALIFICATION_ENVIRONMENT_KEYS,
     QUALIFICATION_PATH_TOOLS,
+    QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS,
+    PINNED_PKG_CONFIG_EXECUTABLE_PATH,
+    PINNED_PKG_CONFIG_IDENTITY,
+    PINNED_PKG_CONFIG_MODE,
+    PINNED_PKG_CONFIG_VERSION,
     QUALIFICATION_SYSTEM_PATHS,
     QUALIFICATION_SYSTEM_TOOL_PATHS,
     SANDBOX_EXECUTABLE,
@@ -83,17 +111,26 @@ from qualify_candidate import (  # noqa: E402
     _wait_for_launch_gate,
     candidate_executed_argv,
     create_standalone_candidate_clone,
+    deep_fuzz_runner_root,
     executable_file_identity,
     execution_policy_contract,
     install_qualification_tool_dispatch,
+    macho_runtime_paths,
+    pinned_pkg_config_input_path,
+    qualification_allowed_executable_paths,
+    qualification_compiler_driver_bytes,
     qualification_system_path_state,
     qualification_tool_read_paths,
     qualification_environment_contract,
     release_qualification_tool_dispatch,
     render_candidate_sandbox_profile,
     resolve_candidate_git_executable,
+    rust_toolchain_runtime_read_paths,
     run_bounded_process,
     sandboxed_argv,
+    snapshot_deep_fuzz_executables,
+    validate_deep_fuzz_runner_runtime,
+    validate_pinned_pkg_config_executable,
     verify_qualification_tool_dispatch,
     write_candidate_sandbox_profile,
 )
@@ -101,6 +138,12 @@ from qualify_candidate import (  # noqa: E402
 
 COMMIT = "a" * 40
 TREE = "b" * 40
+
+
+def pinned_pkg_config_path() -> Path:
+    """Return the exact pkgconf executable path used by qualification."""
+
+    return PINNED_PKG_CONFIG_EXECUTABLE_PATH.resolve(strict=True)
 
 
 def test_tool_read_root() -> Path:
@@ -177,15 +220,24 @@ def tool_file_record(name: str) -> dict[str, object]:
     if name == "sandbox-exec":
         path = Path("/usr/bin/sandbox-exec")
         resolved = path
+    elif name in PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES:
+        path = PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES[name][0]
+        resolved = path
     elif name in QUALIFICATION_PATH_TOOLS:
         path = Path("/fixture/galadriel-tool-dispatch-fixture") / name
         selected_git = next(iter(EXPECTED_DEVELOPER_GIT_IDENTITIES))
         if name == "git":
             resolved = selected_git
+        elif name in {"cc", "clang"}:
+            resolved = Path("/fixture") / QUALIFICATION_COMPILER_DRIVER_NAME
         elif name in EXPECTED_DEVELOPER_TOOL_IDENTITIES[selected_git]:
             resolved = EXPECTED_DEVELOPER_TOOL_IDENTITIES[selected_git][name][0]
         elif name in QUALIFICATION_SYSTEM_TOOL_PATHS:
             resolved = QUALIFICATION_SYSTEM_TOOL_PATHS[name]
+        elif name == "python3":
+            resolved = PINNED_CPYTHON_LAUNCHER_PATH
+        elif name == "pkg-config":
+            resolved = PINNED_PKG_CONFIG_EXECUTABLE_PATH
         elif name in {"cargo", "rustc"}:
             resolved = Path("/fixture/tools/rustup/rustup")
         else:
@@ -207,6 +259,7 @@ def tool_file_record(name: str) -> dict[str, object]:
             in EXPECTED_DEVELOPER_TOOL_IDENTITIES[
                 next(iter(EXPECTED_DEVELOPER_GIT_IDENTITIES))
             ]
+            and name not in {"cc", "clang"}
             else 501
         ),
         "gid": (
@@ -217,13 +270,244 @@ def tool_file_record(name: str) -> dict[str, object]:
             in EXPECTED_DEVELOPER_TOOL_IDENTITIES[
                 next(iter(EXPECTED_DEVELOPER_GIT_IDENTITIES))
             ]
+            and name not in {"cc", "clang"}
             else 20
         ),
-        "mode": 0o755,
+        "mode": (
+            PINNED_PKG_CONFIG_MODE
+            if name == "pkg-config"
+            else 0o500
+            if name in {"cc", "clang"}
+            else 0o755
+        ),
+    }
+
+
+def runtime_library_record(name: str) -> dict[str, object]:
+    """Return one exact synthetic runtime-library identity record."""
+
+    invoked, resolved, sha256, size_bytes, mode = (
+        EXPECTED_RUNTIME_LIBRARY_IDENTITIES[name]
+    )
+    if invoked is None or resolved is None:
+        invoked = (
+            Path("/fixture/tools")
+            / "toolchains"
+            / "nightly-2026-06-16-aarch64-apple-darwin"
+            / "lib"
+            / "rustlib"
+            / "aarch64-apple-darwin"
+            / "lib"
+            / "librustc-nightly_rt.asan.dylib"
+        )
+        resolved = invoked
+    return {
+        "invoked_path": str(invoked),
+        "resolved_path": str(resolved),
+        "sha256": sha256,
+        "size_bytes": size_bytes,
+        "uid": 501,
+        "gid": 80,
+        "mode": mode,
+    }
+
+
+def rust_toolchain_runtime_record(rustup_home: Path) -> dict[str, object]:
+    """Return one exact synthetic Rust toolchain runtime record."""
+
+    settings_path = rustup_home / "settings.toml"
+    return {
+        "schema": "galadriel.rust-toolchain-runtime.v1",
+        "rustup_home": str(rustup_home),
+        "settings": {
+            "invoked_path": str(settings_path),
+            "resolved_path": str(settings_path),
+            "sha256": PINNED_RUSTUP_SETTINGS_IDENTITY[0],
+            "size_bytes": PINNED_RUSTUP_SETTINGS_IDENTITY[1],
+            "uid": 501,
+            "gid": 20,
+            "mode": PINNED_RUSTUP_SETTINGS_IDENTITY[2],
+        },
+        "toolchains": {
+            toolchain: {
+                "root": str(rustup_home / "toolchains" / toolchain),
+                **copy.deepcopy(identity),
+            }
+            for toolchain, identity in (
+                PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES.items()
+            )
+        },
+    }
+
+
+def compiler_input_record() -> dict[str, object]:
+    """Return one exact synthetic compiler and macOS SDK input record."""
+
+    selected_git = next(iter(EXPECTED_DEVELOPER_GIT_IDENTITIES))
+    implementation_path, implementation_sha256, implementation_size = (
+        EXPECTED_DEVELOPER_TOOL_IDENTITIES[selected_git]["clang"]
+    )
+    sdk = PINNED_DEVELOPER_SDK_IDENTITIES[selected_git]
+    driver_path = Path("/fixture") / QUALIFICATION_COMPILER_DRIVER_NAME
+    settings_path = sdk["resolved_root"] / "SDKSettings.json"
+    return {
+        "driver": {
+            "invoked_path": str(driver_path),
+            "resolved_path": str(driver_path),
+            "sha256": EXPECTED_TOOL_FILE_IDENTITIES["cc"][0],
+            "size_bytes": EXPECTED_TOOL_FILE_IDENTITIES["cc"][1],
+            "uid": 501,
+            "gid": 20,
+            "mode": 0o500,
+        },
+        "implementation": {
+            "invoked_path": str(implementation_path),
+            "resolved_path": str(implementation_path),
+            "sha256": implementation_sha256,
+            "size_bytes": implementation_size,
+            "uid": 0,
+            "gid": 0,
+            "mode": 0o755,
+        },
+        "sdk": {
+            "invoked_root": str(sdk["invoked_root"]),
+            "resolved_root": str(sdk["resolved_root"]),
+            "link_target": sdk["link_target"],
+            "settings": {
+                "invoked_path": str(settings_path),
+                "resolved_path": str(settings_path),
+                "sha256": sdk["settings_sha256"],
+                "size_bytes": sdk["settings_size_bytes"],
+                "uid": 0,
+                "gid": 0,
+                "mode": sdk["settings_mode"],
+            },
+        },
     }
 
 
 class FinalizeQualificationTest(unittest.TestCase):
+    def test_candidate_python_uses_the_exact_no_site_prefix(self) -> None:
+        self.assertEqual(
+            candidate_executed_argv(["python3", "script.py"], {}),
+            ["python3", *QUALIFICATION_PYTHON_FLAGS, "script.py"],
+        )
+        self.assertEqual(
+            candidate_executed_argv(
+                ["python3", *QUALIFICATION_PYTHON_FLAGS, "script.py"],
+                {},
+            ),
+            ["python3", *QUALIFICATION_PYTHON_FLAGS, "script.py"],
+        )
+
+        environment = dict(os.environ)
+        environment.update(
+            {
+                "PYTHONHOME": "/tmp/galadriel-invalid-python-home",
+                "PYTHONPATH": "/tmp/galadriel-injected-python-path",
+                "PYTHONUSERBASE": "/tmp/galadriel-injected-user-base",
+            }
+        )
+        process = subprocess.run(
+            [
+                sys.executable,
+                *QUALIFICATION_PYTHON_FLAGS,
+                "-c",
+                (
+                    "import json,sys; print(json.dumps({"
+                    "'ignore_environment':sys.flags.ignore_environment,"
+                    "'no_user_site':sys.flags.no_user_site,"
+                    "'no_site':sys.flags.no_site,"
+                    "'isolated':sys.flags.isolated,"
+                    "'safe_path':sys.flags.safe_path,"
+                    "'path':sys.path},sort_keys=True))"
+                ),
+            ],
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        state = json.loads(process.stdout)
+        self.assertEqual(state["ignore_environment"], 1)
+        self.assertEqual(state["no_user_site"], 1)
+        self.assertEqual(state["no_site"], 1)
+        self.assertEqual(state["isolated"], 0)
+        self.assertFalse(state["safe_path"])
+        self.assertNotIn("/tmp/galadriel-injected-python-path", state["path"])
+        self.assertFalse(
+            any("site-packages" in path for path in state["path"]),
+            state["path"],
+        )
+        qualifier.require_release_python_isolation()
+
+        for observed in (
+            (0, 1, 1, 0, False),
+            (1, 0, 1, 0, False),
+            (1, 1, 0, 0, False),
+            (1, 1, 1, 1, True),
+            (1, 1, 1, 0, True),
+        ):
+            with (
+                self.subTest(observed=observed),
+                patch.object(
+                    qualifier.sys,
+                    "flags",
+                    SimpleNamespace(
+                        ignore_environment=observed[0],
+                        no_user_site=observed[1],
+                        no_site=observed[2],
+                        isolated=observed[3],
+                        safe_path=observed[4],
+                    ),
+                ),
+                self.assertRaisesRegex(ReviewError, "exact -E -s -S flags"),
+            ):
+                qualifier.require_release_python_isolation()
+
+    def test_sandbox_profile_canonicalizes_linked_tool_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            worktree = root / "worktree"
+            source_repo = root / "source"
+            worktree.mkdir()
+            source_repo.mkdir()
+            target = root / "tool-target"
+            target.write_bytes(b"tool\n")
+            linked = root / "tool-link"
+            linked.symlink_to(target)
+            sandbox_executable = root / "sandbox-exec"
+            sandbox_executable.write_bytes(b"fixture\n")
+            profile = root / "candidate.sb"
+
+            with patch.object(
+                qualifier,
+                "SANDBOX_EXECUTABLE",
+                sandbox_executable,
+            ):
+                digest = write_candidate_sandbox_profile(
+                    profile,
+                    worktree=worktree,
+                    source_repo=source_repo,
+                    tool_read_paths=(linked,),
+                )
+
+            probes = tuple(
+                path.resolve(strict=True)
+                for path in qualifier.sandbox_process_probe_paths(profile)
+            )
+            expected = render_candidate_sandbox_profile(
+                worktree=worktree,
+                source_repo=source_repo,
+                host_home=Path.home().resolve(),
+                tool_read_paths=(target,),
+                process_probe_paths=probes,
+            )
+            self.assertEqual(profile.read_bytes(), expected)
+            self.assertEqual(hashlib.sha256(expected).hexdigest(), digest)
+            self.assertNotIn(str(linked).encode("utf-8"), expected)
+            self.assertIn(str(target).encode("utf-8"), expected)
+
     def test_every_candidate_process_wrapper_receives_the_environment(self) -> None:
         tree = ast.parse((TOOLS / "qualify_candidate.py").read_text(encoding="utf-8"))
         wrapper_names = {
@@ -249,6 +533,433 @@ class FinalizeQualificationTest(unittest.TestCase):
                 f"qualify_candidate.py:{node.lineno} omits the common environment",
             )
         self.assertTrue(all(count > 0 for count in observed.values()))
+
+    def test_pkg_config_selection_requires_the_pinned_byte_identity(self) -> None:
+        record = {
+            "resolved_path": str(PINNED_PKG_CONFIG_EXECUTABLE_PATH),
+            "sha256": PINNED_PKG_CONFIG_IDENTITY[0],
+            "size_bytes": PINNED_PKG_CONFIG_IDENTITY[1],
+            "mode": PINNED_PKG_CONFIG_MODE,
+        }
+        with patch(
+            "qualify_candidate.direct_executable_file_identity",
+            return_value=record,
+        ) as identify:
+            self.assertIs(
+                validate_pinned_pkg_config_executable(
+                    PINNED_PKG_CONFIG_EXECUTABLE_PATH
+                ),
+                record,
+            )
+        identify.assert_called_once_with(PINNED_PKG_CONFIG_EXECUTABLE_PATH)
+
+        drifted = dict(record, sha256="0" * 64)
+        with (
+            patch(
+                "qualify_candidate.direct_executable_file_identity",
+                return_value=drifted,
+            ),
+            self.assertRaisesRegex(
+                ReviewError,
+                f"pinned pkgconf {PINNED_PKG_CONFIG_VERSION}",
+            ),
+        ):
+            validate_pinned_pkg_config_executable(PINNED_PKG_CONFIG_EXECUTABLE_PATH)
+
+        with self.assertRaisesRegex(ReviewError, "path differs from the pin"):
+            validate_pinned_pkg_config_executable(
+                Path("/independent/tools/pkgconf-3.0.3")
+            )
+
+    def test_direct_runtime_inputs_reject_hard_links(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            executable = root / "tool"
+            executable.write_bytes(b"tool\n")
+            executable.chmod(0o500)
+            os.link(executable, root / "another-name")
+            with self.assertRaisesRegex(ReviewError, "identity is invalid"):
+                qualifier.direct_executable_file_identity(executable)
+
+    def test_rust_runtime_tree_binding_is_exact_and_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            rustup_home = root / ".rustup"
+            toolchain_name = "fixture-aarch64-apple-darwin"
+            toolchain = rustup_home / "toolchains" / toolchain_name
+            for component in PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS:
+                (toolchain / component).mkdir(parents=True, exist_ok=True)
+            settings = rustup_home / "settings.toml"
+            settings.write_bytes(b'version = "12"\n')
+            settings.chmod(0o644)
+            executable = toolchain / "bin" / "rustc"
+            executable.write_bytes(b"fixture-rustc\n")
+            executable.chmod(0o555)
+            rows = [
+                {"kind": "directory", "path": ""},
+                {"kind": "directory", "path": "bin"},
+                {
+                    "kind": "file",
+                    "mode": 0o555,
+                    "path": "bin/rustc",
+                    "sha256": hashlib.sha256(b"fixture-rustc\n").hexdigest(),
+                    "size_bytes": len(b"fixture-rustc\n"),
+                },
+                {"kind": "directory", "path": "lib"},
+                {"kind": "directory", "path": "libexec"},
+            ]
+            rows.sort(key=lambda row: (row["path"], row["kind"]))
+            tree_identity = {
+                "schema": "galadriel.rust-toolchain-runtime-tree.v1",
+                "toolchain": toolchain_name,
+                "components": list(PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS),
+                "root_mode": 0o755,
+                "sha256": hashlib.sha256(canonical_json(rows)).hexdigest(),
+                "entries": len(rows),
+                "regular_files": 1,
+                "regular_bytes": len(b"fixture-rustc\n"),
+            }
+            settings_identity = (
+                hashlib.sha256(b'version = "12"\n').hexdigest(),
+                len(b'version = "12"\n'),
+                0o644,
+            )
+            environment = {"RUSTUP_HOME": str(rustup_home)}
+            with (
+                patch.object(
+                    qualifier,
+                    "PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES",
+                    {toolchain_name: tree_identity},
+                ),
+                patch.object(
+                    qualifier,
+                    "PINNED_RUSTUP_SETTINGS_IDENTITY",
+                    settings_identity,
+                ),
+            ):
+                record = qualifier.pinned_rust_toolchain_runtime_identity(
+                    environment
+                )
+                self.assertEqual(
+                    record["toolchains"][toolchain_name]["sha256"],
+                    tree_identity["sha256"],
+                )
+
+                (toolchain / "lib").chmod(0o777)
+                with self.assertRaisesRegex(ReviewError, "writable directory"):
+                    qualifier.pinned_rust_toolchain_runtime_identity(environment)
+                (toolchain / "lib").chmod(0o755)
+
+                os.link(executable, toolchain / "bin" / "rustc-copy")
+                with self.assertRaisesRegex(ReviewError, "multiply linked file"):
+                    qualifier.pinned_rust_toolchain_runtime_identity(environment)
+
+    def test_pkg_config_cli_path_is_exact_and_raw_absolute(self) -> None:
+        self.assertEqual(
+            pinned_pkg_config_input_path(str(PINNED_PKG_CONFIG_EXECUTABLE_PATH)),
+            PINNED_PKG_CONFIG_EXECUTABLE_PATH,
+        )
+        cases = (
+            "relative/pkgconf",
+            "/opt/homebrew/Cellar/pkgconf/3.0.3/bin/../bin/pkgconf",
+            "/opt/homebrew/bin/pkg-config",
+        )
+        for executable in cases:
+            with self.subTest(executable=executable):
+                with self.assertRaisesRegex(ReviewError, "exact absolute pinned path"):
+                    pinned_pkg_config_input_path(executable)
+
+    def test_deep_fuzz_runner_macho_runtime_contract_is_exact(self) -> None:
+        asan_library = Path(
+            "/fixture/rustup/toolchains/nightly-2026-06-16-aarch64-apple-darwin/"
+            "lib/rustlib/aarch64-apple-darwin/lib/"
+            "librustc-nightly_rt.asan.dylib"
+        )
+
+        def path_command(command: int, path: str) -> bytes:
+            encoded = path.encode("utf-8") + b"\0"
+            minimum = 12 if command in {0x0E, 0x8000001C} else 24
+            size = (minimum + len(encoded) + 7) & ~7
+            if command in {0x0E, 0x8000001C}:
+                prefix = struct.pack("<III", command, size, minimum)
+            else:
+                prefix = struct.pack("<IIIIII", command, size, minimum, 0, 0, 0)
+            return prefix + encoded + bytes(size - minimum - len(encoded))
+
+        def macho(
+            loads: tuple[str, ...],
+            run_paths: tuple[str, ...],
+            *,
+            load_command: int = 0x0C,
+            dynamic_linkers: tuple[str, ...] = (DEEP_FUZZ_DYNAMIC_LINKER,),
+        ) -> bytes:
+            commands = b"".join(path_command(load_command, path) for path in loads)
+            commands += b"".join(path_command(0x8000001C, path) for path in run_paths)
+            commands += b"".join(
+                path_command(0x0E, path) for path in dynamic_linkers
+            )
+            header = struct.pack(
+                "<IiiIIIII",
+                0xFEEDFACF,
+                0x0100000C,
+                0,
+                2,
+                len(loads) + len(run_paths) + len(dynamic_linkers),
+                len(commands),
+                0,
+                0,
+            )
+            return header + commands
+
+        valid_document = macho(DEEP_FUZZ_LOAD_DYLIBS, (str(asan_library.parent),))
+        runtime_library_record = {
+            "sha256": PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY[0],
+            "size_bytes": PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY[1],
+            "mode": PINNED_DEEP_FUZZ_ASAN_LIBRARY_MODE,
+        }
+        with (
+            patch(
+                "qualify_candidate.read_bounded_regular_file",
+                return_value=valid_document,
+            ),
+            patch(
+                "qualify_candidate.direct_runtime_library_identity",
+                return_value=runtime_library_record,
+            ),
+        ):
+            self.assertEqual(
+                validate_deep_fuzz_runner_runtime(
+                    Path("/fixture/runner"), asan_library
+                ),
+                {
+                    "load_dylibs": list(DEEP_FUZZ_LOAD_DYLIBS),
+                    "run_paths": [str(asan_library.parent)],
+                    "dynamic_linker": DEEP_FUZZ_DYNAMIC_LINKER,
+                    "runtime_library": str(asan_library),
+                },
+            )
+
+        invalid_contracts = (
+            (DEEP_FUZZ_LOAD_DYLIBS[:-1], (str(asan_library.parent),)),
+            (
+                (*DEEP_FUZZ_LOAD_DYLIBS, "/tmp/injected.dylib"),
+                (str(asan_library.parent),),
+            ),
+            (tuple(reversed(DEEP_FUZZ_LOAD_DYLIBS)), (str(asan_library.parent),)),
+            (DEEP_FUZZ_LOAD_DYLIBS, ()),
+            (DEEP_FUZZ_LOAD_DYLIBS, (str(asan_library.parent), "/tmp/injected")),
+            (DEEP_FUZZ_LOAD_DYLIBS, ("/tmp/another-runtime",)),
+        )
+        for loads, run_paths in invalid_contracts:
+            with (
+                self.subTest(loads=loads, run_paths=run_paths),
+                patch(
+                    "qualify_candidate.read_bounded_regular_file",
+                    return_value=macho(loads, run_paths),
+                ),
+                self.assertRaisesRegex(ReviewError, "runtime contract differs"),
+            ):
+                validate_deep_fuzz_runner_runtime(
+                    Path("/fixture/runner"),
+                    asan_library,
+                )
+
+        for load_command in (0x20, 0x80000018, 0x8000001F, 0x80000023):
+            with (
+                self.subTest(load_command=load_command),
+                patch(
+                    "qualify_candidate.read_bounded_regular_file",
+                    return_value=macho(
+                        DEEP_FUZZ_LOAD_DYLIBS,
+                        (str(asan_library.parent),),
+                        load_command=load_command,
+                    ),
+                ),
+                self.assertRaisesRegex(ReviewError, "non-mandatory library load"),
+            ):
+                validate_deep_fuzz_runner_runtime(
+                    Path("/fixture/runner"),
+                    asan_library,
+                )
+
+        with (
+            patch(
+                "qualify_candidate.read_bounded_regular_file",
+                return_value=macho(
+                    DEEP_FUZZ_LOAD_DYLIBS,
+                    (str(asan_library.parent),),
+                    load_command=0x0F,
+                ),
+            ),
+            self.assertRaisesRegex(ReviewError, "dynamic-linker identity"),
+        ):
+            validate_deep_fuzz_runner_runtime(
+                Path("/fixture/runner"),
+                asan_library,
+            )
+
+        for dynamic_linkers in (
+            (),
+            ("/tmp/injected-dyld",),
+            (DEEP_FUZZ_DYNAMIC_LINKER, "/tmp/injected-dyld"),
+        ):
+            with (
+                self.subTest(dynamic_linkers=dynamic_linkers),
+                patch(
+                    "qualify_candidate.read_bounded_regular_file",
+                    return_value=macho(
+                        DEEP_FUZZ_LOAD_DYLIBS,
+                        (str(asan_library.parent),),
+                        dynamic_linkers=dynamic_linkers,
+                    ),
+                ),
+                self.assertRaisesRegex(ReviewError, "dynamic-linker contract"),
+            ):
+                validate_deep_fuzz_runner_runtime(
+                    Path("/fixture/runner"),
+                    asan_library,
+                )
+
+        drifted_runtime_library = dict(runtime_library_record, sha256="0" * 64)
+        with (
+            patch(
+                "qualify_candidate.read_bounded_regular_file",
+                return_value=valid_document,
+            ),
+            patch(
+                "qualify_candidate.direct_runtime_library_identity",
+                return_value=drifted_runtime_library,
+            ),
+            self.assertRaisesRegex(ReviewError, "fuzz-asan runtime library differs"),
+        ):
+            validate_deep_fuzz_runner_runtime(Path("/fixture/runner"), asan_library)
+
+    def test_deep_fuzz_macho_parser_rejects_unsafe_commands(self) -> None:
+        header = struct.pack(
+            "<IiiIIIII",
+            0xFEEDFACF,
+            0x0100000C,
+            0,
+            2,
+            1,
+            8,
+            0,
+            0,
+        )
+        cases = (
+            b"",
+            struct.pack("<IiiIIIII", 0xFEEDFACF, 0, 0, 2, 0, 0, 0, 0),
+            header + struct.pack("<II", 0x27, 8),
+            header + struct.pack("<II", 0x0C, 24),
+            header + struct.pack("<II", 0x0C, 7),
+        )
+        for document in cases:
+            with self.subTest(size=len(document)), self.assertRaises(ReviewError):
+                macho_runtime_paths(document, label="deep fuzz runner")
+
+    def test_deep_fuzz_snapshot_rejects_runtime_drift(self) -> None:
+        stable_runtime = {
+            "load_dylibs": list(DEEP_FUZZ_LOAD_DYLIBS),
+            "run_paths": ["/fixture/asan"],
+            "dynamic_linker": DEEP_FUZZ_DYNAMIC_LINKER,
+            "runtime_library": "/fixture/asan/librustc-nightly_rt.asan.dylib",
+        }
+        drifted_runtime = dict(stable_runtime, run_paths=["/tmp/injected"])
+        with (
+            patch(
+                "qualify_candidate.validate_deep_fuzz_runner_runtime",
+                side_effect=(stable_runtime, drifted_runtime),
+            ),
+            patch(
+                "qualify_candidate.snapshot_candidate_executable",
+                return_value={"sha256": "a" * 64},
+            ),
+            self.assertRaisesRegex(ReviewError, "changed during snapshot"),
+        ):
+            snapshot_deep_fuzz_executables(
+                target_directory=Path("/fixture/target"),
+                private_root=Path("/fixture/private"),
+                asan_library=Path("/fixture/asan/librustc-nightly_rt.asan.dylib"),
+            )
+        self.assertEqual(DEEP_FUZZ_TARGETS[0], "ncp_decode")
+
+    def test_finalizer_binds_every_direct_fuzz_runner(self) -> None:
+        private_root = Path("/fixture/private")
+        rustup_home = Path("/fixture/rustup")
+        asan_library = (
+            rustup_home
+            / "toolchains"
+            / f"nightly-2026-06-16-{DEEP_FUZZ_HOST_TARGET}"
+            / "lib"
+            / "rustlib"
+            / DEEP_FUZZ_HOST_TARGET
+            / "lib"
+            / "librustc-nightly_rt.asan.dylib"
+        )
+        runtime = {
+            "load_dylibs": list(DEEP_FUZZ_LOAD_DYLIBS),
+            "run_paths": [str(asan_library.parent)],
+            "dynamic_linker": DEEP_FUZZ_DYNAMIC_LINKER,
+            "runtime_library": str(asan_library),
+        }
+        commands = []
+        runners = {}
+        for index, (command_name, target) in enumerate(
+            DEEP_FUZZ_COMMAND_TARGETS.items(),
+            1,
+        ):
+            path = deep_fuzz_runner_root(private_root) / target / target
+            identity = {
+                "invoked_path": str(path),
+                "resolved_path": str(path),
+                "sha256": f"{index:x}" * 64,
+                "size_bytes": 1_024 + index,
+                "uid": 501,
+                "gid": 20,
+                "mode": 0o500,
+            }
+            commands.append(
+                {
+                    "name": command_name,
+                    "subject_executable": {
+                        "status": "UNCHANGED",
+                        "identity": identity,
+                    },
+                }
+            )
+            runners[target] = {"identity": identity, "runtime": runtime}
+        qualification = {
+            "commands": commands,
+            "sandbox": {"bindings": {"rustup_home": str(rustup_home)}},
+            "fuzz_runners": {
+                "status": "UNCHANGED",
+                "target_triple": DEEP_FUZZ_HOST_TARGET,
+                "build_environment": dict(DEEP_FUZZ_BUILD_ENVIRONMENT),
+                "runners": runners,
+            },
+        }
+        validate_qualification_fuzz_runners(
+            qualification,
+            private_root=private_root,
+        )
+
+        omitted = copy.deepcopy(qualification)
+        omitted["fuzz_runners"]["runners"].pop(DEEP_FUZZ_TARGETS[-1])
+        with self.assertRaisesRegex(ReviewError, "set is incomplete"):
+            validate_qualification_fuzz_runners(
+                omitted,
+                private_root=private_root,
+            )
+
+        drifted = copy.deepcopy(qualification)
+        drifted["fuzz_runners"]["runners"][DEEP_FUZZ_TARGETS[0]]["runtime"][
+            "run_paths"
+        ] = ["/tmp/injected"]
+        with self.assertRaisesRegex(ReviewError, "runner is invalid"):
+            validate_qualification_fuzz_runners(
+                drifted,
+                private_root=private_root,
+            )
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS tool dispatch test")
     def test_candidate_git_dispatch_and_receipt_bind_developer_git(self) -> None:
@@ -276,11 +987,13 @@ class FinalizeQualificationTest(unittest.TestCase):
                 environment = {
                     "CARGO_HOME": str(cargo_home),
                     "PATH": os.environ["PATH"],
+                    "RUSTUP_HOME": str(Path.home() / ".rustup"),
                 }
                 records = install_qualification_tool_dispatch(
                     dispatch_directory,
                     environment,
                     git_executable=developer_git,
+                    pkg_config_executable=pinned_pkg_config_path(),
                 )
                 self.assertEqual(set(records), set(QUALIFICATION_PATH_TOOLS))
                 entries = tuple(dispatch_directory.iterdir())
@@ -361,12 +1074,16 @@ class FinalizeQualificationTest(unittest.TestCase):
             worktree.mkdir()
             dispatch_directory = root / "galadriel-tool-dispatch-fixture"
             dispatch_directory.mkdir(mode=0o700)
-            environment = {"PATH": os.environ["PATH"]}
+            environment = {
+                "PATH": os.environ["PATH"],
+                "RUSTUP_HOME": str(Path.home() / ".rustup"),
+            }
             try:
                 records = install_qualification_tool_dispatch(
                     dispatch_directory,
                     environment,
                     git_executable=resolve_candidate_git_executable(),
+                    pkg_config_executable=pinned_pkg_config_path(),
                 )
                 profile = root / "candidate.sb"
                 write_candidate_sandbox_profile(
@@ -1032,12 +1749,16 @@ class FinalizeQualificationTest(unittest.TestCase):
             dispatch_directory = root / "galadriel-tool-dispatch-fixture"
             dispatch_directory.mkdir(mode=0o700)
             developer_git = resolve_candidate_git_executable()
-            environment = {"PATH": os.environ["PATH"]}
+            environment = {
+                "PATH": os.environ["PATH"],
+                "RUSTUP_HOME": str(Path.home() / ".rustup"),
+            }
             try:
                 records = install_qualification_tool_dispatch(
                     dispatch_directory,
                     environment,
                     git_executable=developer_git,
+                    pkg_config_executable=pinned_pkg_config_path(),
                 )
                 profile = root / "candidate.sb"
                 write_candidate_sandbox_profile(
@@ -1069,6 +1790,15 @@ class FinalizeQualificationTest(unittest.TestCase):
             finally:
                 release_qualification_tool_dispatch(dispatch_directory)
 
+    def test_compiler_driver_applies_the_pinned_sdk_after_caller_arguments(self) -> None:
+        for selected_git, sdk in PINNED_DEVELOPER_SDK_IDENTITIES.items():
+            with self.subTest(selected_git=selected_git):
+                document = qualification_compiler_driver_bytes(selected_git).decode(
+                    "utf-8"
+                )
+                suffix = f'"$@" -isysroot \'{sdk["resolved_root"]}\'\n'
+                self.assertTrue(document.endswith(suffix), document)
+
     @unittest.skipUnless(sys.platform == "darwin", "macOS tool dispatch test")
     def test_candidate_tool_dispatch_resolves_all_names_and_compiles(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1080,14 +1810,22 @@ class FinalizeQualificationTest(unittest.TestCase):
             source = worktree / "probe.c"
             source.write_text("int probe(void) { return 0; }\n", encoding="utf-8")
             object_file = writable / "probe.o"
+            rust_source = worktree / "probe.rs"
+            rust_source.write_text("fn main() {}\n", encoding="utf-8")
+            rust_binary = writable / "rust-probe"
             dispatch_directory = root / "galadriel-tool-dispatch-fixture"
             dispatch_directory.mkdir(mode=0o700)
-            environment = {"PATH": os.environ["PATH"]}
+            environment = {
+                "PATH": os.environ["PATH"],
+                "RUSTUP_HOME": str(Path.home() / ".rustup"),
+                "TMPDIR": str(writable),
+            }
             try:
                 records = install_qualification_tool_dispatch(
                     dispatch_directory,
                     environment,
                     git_executable=resolve_candidate_git_executable(),
+                    pkg_config_executable=pinned_pkg_config_path(),
                 )
                 self.assertEqual(
                     19,
@@ -1122,6 +1860,14 @@ class FinalizeQualificationTest(unittest.TestCase):
                         expected_identity = EXPECTED_DEVELOPER_GIT_IDENTITIES[
                             selected_git
                         ]
+                    elif name in {"cc", "clang"}:
+                        compiler_driver = qualification_compiler_driver_bytes(
+                            selected_git
+                        )
+                        expected_identity = (
+                            hashlib.sha256(compiler_driver).hexdigest(),
+                            len(compiler_driver),
+                        )
                     elif name in developer_identities:
                         expected_identity = developer_identities[name][1:]
                     else:
@@ -1141,18 +1887,24 @@ class FinalizeQualificationTest(unittest.TestCase):
                         environment,
                         host_home=Path.home().resolve(),
                     ),
+                    allowed_executable_paths=qualification_allowed_executable_paths(
+                        records
+                    ),
                 )
                 script = """\
 set -eu
 dispatch=$1
 source=$2
 object_file=$3
-shift 3
+rust_source=$4
+rust_binary=$5
+shift 5
 for tool
 do
     [ "$(command -v "$tool")" = "$dispatch/$tool" ]
 done
-cc -c "$source" -o "$object_file"
+cc -isysroot "$source.missing-sdk" -c "$source" -o "$object_file"
+rustc +1.89.0 "$rust_source" -o "$rust_binary"
 """
                 result = run_bounded_process(
                     sandboxed_argv(
@@ -1165,7 +1917,14 @@ cc -c "$source" -o "$object_file"
                             str(dispatch_directory),
                             str(source),
                             str(object_file),
-                            *QUALIFICATION_PATH_TOOLS,
+                            str(rust_source),
+                            str(rust_binary),
+                            *(
+                                name
+                                for name in QUALIFICATION_PATH_TOOLS
+                                if name
+                                not in QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS
+                            ),
                         ],
                         environment=environment,
                     ),
@@ -1176,6 +1935,7 @@ cc -c "$source" -o "$object_file"
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertGreater(object_file.stat().st_size, 0)
+                self.assertGreater(rust_binary.stat().st_size, 0)
                 self.assertFalse(result.timed_out)
                 self.assertFalse(result.output_limit_exceeded)
                 self.assertIsNone(result.containment_error)
@@ -1190,24 +1950,65 @@ cc -c "$source" -o "$object_file"
             worktree.mkdir()
             dispatch_directory = root / "galadriel-tool-dispatch-fixture"
             dispatch_directory.mkdir(mode=0o700)
-            environment = {"PATH": os.environ["PATH"]}
+            environment = {
+                "PATH": os.environ["PATH"],
+                "RUSTUP_HOME": str(Path.home() / ".rustup"),
+            }
             try:
-                install_qualification_tool_dispatch(
+                dispatch_records = install_qualification_tool_dispatch(
                     dispatch_directory,
                     environment,
                     git_executable=resolve_candidate_git_executable(),
+                    pkg_config_executable=pinned_pkg_config_path(),
                 )
+                tool_read_paths = qualification_tool_read_paths(
+                    environment,
+                    host_home=Path.home().resolve(),
+                )
+                self.assertNotIn(Path("/opt/homebrew"), tool_read_paths)
+                self.assertNotIn(Path("/opt/anaconda3"), tool_read_paths)
+                self.assertNotIn(Path(environment["RUSTUP_HOME"]), tool_read_paths)
+                self.assertTrue(
+                    set(rust_toolchain_runtime_read_paths(environment)).issubset(
+                        tool_read_paths
+                    )
+                )
+                for name in QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS:
+                    denied_path = Path(dispatch_records[name]["resolved_path"])
+                    self.assertFalse(
+                        any(
+                            binding == denied_path or binding in denied_path.parents
+                            for binding in tool_read_paths
+                        ),
+                        name,
+                    )
                 profile = root / "candidate.sb"
                 write_candidate_sandbox_profile(
                     profile,
                     worktree=worktree,
                     source_repo=ROOT,
-                    tool_read_paths=qualification_tool_read_paths(
-                        environment,
-                        host_home=Path.home().resolve(),
+                    tool_read_paths=tool_read_paths,
+                    allowed_executable_paths=qualification_allowed_executable_paths(
+                        dispatch_records
                     ),
                 )
-                for executable in ("/usr/bin/git", "/usr/bin/python3"):
+                allowed_executable_paths = qualification_allowed_executable_paths(
+                    dispatch_records
+                )
+                framework_path = PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES[
+                    "python3-framework"
+                ][0]
+                application_path = PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES[
+                    "python3-app"
+                ][0]
+                self.assertNotIn(framework_path, allowed_executable_paths)
+                self.assertIn(application_path, allowed_executable_paths)
+                for executable in (
+                    "/usr/bin/git",
+                    "/usr/bin/python3",
+                    "/usr/bin/cc",
+                    "/usr/bin/clang",
+                ):
                     with self.subTest(executable=executable):
                         result = run_bounded_process(
                             [
@@ -1227,6 +2028,97 @@ cc -c "$source" -o "$object_file"
                         self.assertFalse(result.timed_out)
                         self.assertFalse(result.output_limit_exceeded)
                         self.assertIsNone(result.containment_error)
+
+                unlisted = next(
+                    (
+                        path
+                        for path in (
+                            Path("/opt/homebrew/bin/rg"),
+                            Path("/opt/homebrew/bin/openssl"),
+                            Path("/opt/anaconda3/bin/python"),
+                        )
+                        if path.is_file()
+                        and path.resolve(strict=True)
+                        not in qualification_allowed_executable_paths(dispatch_records)
+                    ),
+                    None,
+                )
+                if unlisted is None:
+                    self.skipTest("host has no unlisted executable below /opt")
+                unlisted_result = run_bounded_process(
+                    [
+                        str(SANDBOX_EXECUTABLE),
+                        "-f",
+                        str(profile),
+                        str(unlisted),
+                        "--version",
+                    ],
+                    cwd=worktree,
+                    environment=environment,
+                    timeout_seconds=2,
+                    separate_stderr=True,
+                )
+                self.assertNotEqual(unlisted_result.returncode, 0)
+                self.assertFalse(unlisted_result.timed_out)
+                self.assertFalse(unlisted_result.output_limit_exceeded)
+                self.assertIsNone(unlisted_result.containment_error)
+
+                escaped_site_file = (
+                    PINNED_CPYTHON_VERSION_ROOT
+                    / "lib/python3.14/site-packages/pip/__init__.py"
+                )
+                self.assertTrue(escaped_site_file.is_file())
+                self.assertNotIn(
+                    PINNED_CPYTHON_VERSION_ROOT,
+                    escaped_site_file.resolve(strict=True).parents,
+                )
+                escaped_site_result = run_bounded_process(
+                    sandboxed_argv(
+                        profile,
+                        [
+                            "python3",
+                            "-c",
+                            f"open({str(escaped_site_file)!r}, 'rb').read(1)",
+                        ],
+                        environment=environment,
+                    ),
+                    cwd=worktree,
+                    environment=environment,
+                    timeout_seconds=2,
+                    separate_stderr=True,
+                )
+                self.assertNotEqual(escaped_site_result.returncode, 0)
+                self.assertFalse(escaped_site_result.timed_out)
+                self.assertFalse(escaped_site_result.output_limit_exceeded)
+                self.assertIsNone(escaped_site_result.containment_error)
+
+                for name in QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS:
+                    with self.subTest(denied_unused=name):
+                        denied_unused_result = run_bounded_process(
+                            sandboxed_argv(
+                                profile,
+                                [name, "--version"],
+                                environment=environment,
+                            ),
+                            cwd=worktree,
+                            environment=environment,
+                            timeout_seconds=2,
+                            separate_stderr=True,
+                        )
+                        self.assertNotEqual(denied_unused_result.returncode, 0)
+
+                listed_result = run_bounded_process(
+                    sandboxed_argv(
+                        profile,
+                        ["python3", "--version"],
+                        environment=environment,
+                    ),
+                    cwd=worktree,
+                    environment=environment,
+                    timeout_seconds=2,
+                    separate_stderr=True,
+                )
+                self.assertEqual(listed_result.returncode, 0, listed_result.stderr)
             finally:
                 release_qualification_tool_dispatch(dispatch_directory)
 
@@ -1481,10 +2373,7 @@ raise SystemExit(42)
                 if root_exited and not crossed_deadline:
                     assert monotonic_origin is not None
                     monotonic_offset_seconds = (
-                        monotonic_origin
-                        + timeout_seconds
-                        + 0.5
-                        - real_monotonic()
+                        monotonic_origin + timeout_seconds + 0.5 - real_monotonic()
                     )
                     crossed_deadline = True
                 return root_exited
@@ -2596,6 +3485,7 @@ while not marker.exists() and time.monotonic() < deadline:
             "host": {},
             "tools": {},
             "tool_files": {},
+            "fuzz_runners": {},
             "environment_contract": {},
             "repository_control": {},
             "sandbox": {},
@@ -2731,9 +3621,7 @@ while not marker.exists() and time.monotonic() < deadline:
                 candidate_evidence,
                 reproducibility_root,
             )
-            allowed_home_read_paths = tuple(
-                sorted((*home_tool_paths, rustup_home), key=lambda item: str(item))
-            )
+            allowed_home_read_paths = home_tool_paths
             bindings = {
                 "candidate_worktree": str(worktree),
                 "source_repository": str(repo),
@@ -2766,6 +3654,9 @@ while not marker.exists() and time.monotonic() < deadline:
                     private_root / "dependency-fetch.sb.containment-allow"
                 ),
             }
+            sandbox_executables = {
+                name: tool_file_record(name) for name in QUALIFICATION_PATH_TOOLS
+            }
             sandbox_root = qualification_root / "sandbox"
             sandbox_root.mkdir(parents=True)
             policies = {}
@@ -2785,6 +3676,9 @@ while not marker.exists() and time.monotonic() < deadline:
                     writable_paths=writable_paths,
                     allowed_home_read_paths=allowed_home_read_paths,
                     tool_read_paths=tool_read_paths,
+                    allowed_executable_paths=qualification_allowed_executable_paths(
+                        sandbox_executables
+                    ),
                     denied_read_paths=(advisory_source,),
                     process_probe_paths=process_probe_paths,
                     allow_network=allow_network,
@@ -2807,6 +3701,7 @@ while not marker.exists() and time.monotonic() < deadline:
                     policy,
                 )
             qualification = {
+                "tool_files": {"executables": sandbox_executables},
                 "commands": [
                     {
                         "name": "candidate-evidence",
@@ -2944,6 +3839,10 @@ while not marker.exists() and time.monotonic() < deadline:
         executables = {
             name: tool_file_record(name) for name in EXPECTED_TOOL_FILE_NAMES
         }
+        runtime_libraries = {
+            name: runtime_library_record(name)
+            for name in EXPECTED_RUNTIME_LIBRARY_IDENTITIES
+        }
         home_tool_directories = tuple(
             sorted(
                 {
@@ -2953,30 +3852,58 @@ while not marker.exists() and time.monotonic() < deadline:
                 key=lambda item: str(item),
             )
         )
-        tool_read_directories = tuple(
-            sorted(
-                {
-                    Path(executables[name][field]).parent
-                    for name in QUALIFICATION_PATH_TOOLS
-                    for field in ("invoked_path", "resolved_path")
-                    if not any(
-                        Path(root) == Path(executables[name][field]).parent
-                        or Path(root) in Path(executables[name][field]).parent.parents
-                        for root in SANDBOX_SYSTEM_READ_PATHS
-                    )
-                },
-                key=lambda item: str(item),
+        rustup_home = Path("/fixture/tools")
+        system_roots = tuple(Path(path) for path in SANDBOX_SYSTEM_READ_PATHS)
+
+        def is_system(path: Path) -> bool:
+            return any(path == root or root in path.parents for root in system_roots)
+
+        tool_read_paths: set[Path] = set()
+        for name in QUALIFICATION_PATH_TOOLS:
+            if name in QUALIFICATION_PRESENT_BUT_DENIED_UNUSED_TOOLS:
+                continue
+            invoked = Path(executables[name]["invoked_path"])
+            resolved = Path(executables[name]["resolved_path"])
+            if not is_system(invoked.parent):
+                tool_read_paths.add(invoked.parent)
+            if name == "python3":
+                tool_read_paths.add(PINNED_CPYTHON_VERSION_ROOT)
+                for _load_path, resolved_path, _sha256, _size, _mode in (
+                    PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES.values()
+                ):
+                    tool_read_paths.add(resolved_path)
+            elif not is_system(resolved):
+                tool_read_paths.add(resolved)
+        for record in runtime_libraries.values():
+            for field in ("invoked_path", "resolved_path"):
+                path = Path(record[field])
+                if path != rustup_home and rustup_home not in path.parents:
+                    tool_read_paths.add(path)
+        tool_read_paths.add(rustup_home / "settings.toml")
+        for toolchain in PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES:
+            root = rustup_home / "toolchains" / toolchain
+            tool_read_paths.update(
+                root / component
+                for component in PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS
             )
-        )
+        tool_read_directories = tuple(sorted(tool_read_paths, key=lambda item: str(item)))
         qualification = {
             "tool_files": {
                 "status": "UNCHANGED",
                 "executables": executables,
+                "runtime_libraries": runtime_libraries,
+                "compiler": compiler_input_record(),
+                "python_runtime_tree": copy.deepcopy(
+                    PINNED_CPYTHON_RUNTIME_TREE_IDENTITY
+                ),
+                "rust_toolchain_runtime": rust_toolchain_runtime_record(
+                    rustup_home
+                ),
             },
             "sandbox": {
                 "bindings": {
                     "host_home": "/fixture",
-                    "rustup_home": "/fixture/tools",
+                    "rustup_home": str(rustup_home),
                     "home_tool_paths": [str(path) for path in home_tool_directories],
                     "tool_read_paths": [str(path) for path in tool_read_directories],
                 },
@@ -2985,10 +3912,68 @@ while not marker.exists() and time.monotonic() < deadline:
         validate_qualification_tool_files(qualification)
         validate_qualification_tool_bindings(qualification)
 
+        drifted_tree = copy.deepcopy(qualification)
+        drifted_tree["tool_files"]["python_runtime_tree"]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(ReviewError, "identity set is incomplete"):
+            validate_qualification_tool_files(drifted_tree)
+
+        drifted_compiler = copy.deepcopy(qualification)
+        drifted_compiler["tool_files"]["compiler"]["sdk"]["settings"][
+            "sha256"
+        ] = "0" * 64
+        with self.assertRaisesRegex(ReviewError, "macOS SDK identity"):
+            validate_qualification_tool_files(drifted_compiler)
+
+        drifted_rust_tree = copy.deepcopy(qualification)
+        drifted_rust_tree["tool_files"]["rust_toolchain_runtime"]["toolchains"][
+            "1.89.0-aarch64-apple-darwin"
+        ]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(ReviewError, "Rust runtime tree is invalid"):
+            validate_qualification_tool_files(drifted_rust_tree)
+
+        omitted_rust_read_root = copy.deepcopy(qualification)
+        omitted_rust_read_root["sandbox"]["bindings"]["tool_read_paths"].remove(
+            str(
+                rustup_home
+                / "toolchains/1.89.0-aarch64-apple-darwin/libexec"
+            )
+        )
+        with self.assertRaisesRegex(ReviewError, "tool roots disagree"):
+            validate_qualification_tool_bindings(omitted_rust_read_root)
+
         omitted = copy.deepcopy(qualification)
         omitted["tool_files"]["executables"].pop("cargo")
         with self.assertRaisesRegex(ReviewError, "identity set is incomplete"):
             validate_qualification_tool_files(omitted)
+
+        omitted_library = copy.deepcopy(qualification)
+        omitted_library["tool_files"]["runtime_libraries"].pop("fuzz-asan")
+        with self.assertRaisesRegex(ReviewError, "identity set is incomplete"):
+            validate_qualification_tool_files(omitted_library)
+
+        drifted_library = copy.deepcopy(qualification)
+        drifted_library["tool_files"]["runtime_libraries"]["fuzz-asan"]["sha256"] = (
+            "0" * 64
+        )
+        with self.assertRaisesRegex(ReviewError, "runtime-library metadata"):
+            validate_qualification_tool_files(drifted_library)
+
+        writable_library = copy.deepcopy(qualification)
+        writable_library["tool_files"]["runtime_libraries"]["fuzz-asan"]["mode"] = (
+            0o666
+        )
+        with self.assertRaisesRegex(ReviewError, "runtime-library metadata"):
+            validate_qualification_tool_files(writable_library)
+
+        moved_library = copy.deepcopy(qualification)
+        moved_library["tool_files"]["runtime_libraries"]["fuzz-asan"][
+            "resolved_path"
+        ] = (
+            "/fixture/tools/toolchains/nightly-2026-06-16-aarch64-apple-darwin/"
+            "lib/rustlib/aarch64-apple-darwin/lib/another-asan.dylib"
+        )
+        with self.assertRaisesRegex(ReviewError, "runtime-library metadata"):
+            validate_qualification_tool_files(moved_library)
 
         writable = copy.deepcopy(qualification)
         writable["tool_files"]["executables"]["cargo"]["mode"] = 0o775
@@ -3234,6 +4219,7 @@ while not marker.exists() and time.monotonic() < deadline:
             "tracked-source-inventory": {
                 "argv": [
                     "python3",
+                    *QUALIFICATION_PYTHON_FLAGS,
                     "repo_work/audit_tracked_files.py",
                     "--repo",
                     ".",

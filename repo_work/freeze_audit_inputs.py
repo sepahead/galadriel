@@ -120,6 +120,7 @@ RELEASE_INPUTS = (
     "repo_work/reproduce_baseline.py",
     "repo_work/run_broad_mutation.py",
     "repo_work/scan_claim_language.py",
+    "repo_work/verify_release_python_runtime.sh",
     "repo_work/tests/test_candidate_evidence_bundle.py",
     "repo_work/tests/test_finalize_qualification.py",
     "repo_work/tests/test_evidence_batch_transaction.py",

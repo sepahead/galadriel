@@ -76,5 +76,8 @@ fn fixed_seed_demo_exercises_the_real_cli_and_semantic_scenarios() {
         assert!(pid.contains("[acoustic]"));
     }
 
-    assert!(stdout.contains("advisory only · calibrated_posterior=false"));
+    assert!(stdout.contains(
+        "advisory only · calibrated_posterior=false · optional PID diagnostics do not replace signed correlation"
+    ));
+    assert!(!stdout.contains("PID (feature `pid`) escalates where correlation cannot"));
 }

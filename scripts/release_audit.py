@@ -46,6 +46,7 @@ from repo_work.common import (  # noqa: E402
     write_rooted_regular_file,
 )
 from finalize_release import (  # noqa: E402
+    EXPECTED_DEVELOPER_TOOL_IDENTITIES,
     EXPECTED_QUALIFICATION_TOOLS,
     RUSTSEC_ADVISORY_DATABASE,
 )
@@ -55,6 +56,30 @@ from qualify_candidate import (  # noqa: E402
     ADVISORY_DB_TREE,
     ADVISORY_DB_URL,
     BASE_COMMANDS,
+    DEEP_FUZZ_RANDOM_SEEDS,
+    DEEP_FUZZ_RUSTFLAGS,
+    DEEP_FUZZ_SEED_ROOTS,
+    DEEP_FUZZ_TARGETS,
+    DEEP_FUZZ_HOST_TARGET,
+    PINNED_PKG_CONFIG_EXECUTABLE_PATH,
+    PINNED_PKG_CONFIG_IDENTITY,
+    PINNED_PKG_CONFIG_MODE,
+    PINNED_PKG_CONFIG_VERSION,
+    PINNED_CPYTHON_LAUNCHER_IDENTITY,
+    PINNED_CPYTHON_LAUNCHER_PATH,
+    PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES,
+    PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES,
+    PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY,
+    PINNED_CPYTHON_RUNTIME_TREE_IDENTITY,
+    PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS,
+    PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES,
+    PINNED_RUSTUP_SETTINGS_IDENTITY,
+    PINNED_DEEP_FUZZ_ASAN_LIBRARY_BASENAME,
+    PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY,
+    PINNED_DEEP_FUZZ_ASAN_LIBRARY_MODE,
+    PINNED_DEVELOPER_SDK_IDENTITIES,
+    QUALIFICATION_PYTHON_FLAGS,
+    qualification_compiler_driver_bytes,
 )
 
 
@@ -228,7 +253,10 @@ PUBLICATION_SEQUENCE_MARKERS = (
     "wrong, follow the full withdrawal procedure below.",
 )
 RELEASE_RUNBOOK_CONTRACT_SHA256 = (
-    "e57ad9bf5ce6ad4b709d77c0a6ec4fd6cfa831dbdaa2ae84bc67acec20792315"
+    "d94f5230aa7a81111daac6b4eba12a40f54e22c24399d4c64178f96cff22451a"
+)
+RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256 = (
+    "5a666938bc7a52d0f19c6773d07e94504c199bc8064a89dabc160f7d8df40f22"
 )
 
 AUDIT_SELF_EXCLUSIONS = frozenset({AUDIT_OUTPUT.relative_to(ROOT).as_posix()})
@@ -332,9 +360,11 @@ AUDIT_TO_QUALIFICATION_TOOL = {
     "cargo-deny": "cargo_deny",
     "cargo-audit": "cargo_audit",
     "cargo-cyclonedx": "cargo_cyclonedx",
+    "pkgconf": "pkgconf",
 }
 REQUIRED_TOOL_VERSIONS = {
     "git": "2.50.1",
+    "apple-compiler-inputs": "21.0.0",
     "rustc": "1.89.0",
     "cargo": "1.89.0",
     "python": "3.14.6",
@@ -344,20 +374,418 @@ REQUIRED_TOOL_VERSIONS = {
     "cargo-fuzz": "0.13.2",
     "rustc-current-stable": "1.97.1",
     "cargo-current-stable": "1.97.1",
+    "rust-runtime-1.89.0": "1.89.0",
+    "rust-runtime-1.97.1": "1.97.1",
+    "rust-runtime-nightly": "nightly-2026-06-16",
+    "rustup-settings": "12",
     "cargo-deny": "0.19.9",
     "cargo-audit": "0.22.2",
     "cargo-cyclonedx": "0.5.9",
     "cargo-mutants": "27.1.0",
+    "pkgconf": "3.0.3",
     "OpenSSH": "10.2p1",
     "GitHub CLI": "2.95.0",
 }
+
+
+def rust_toolchain_runtime_identity_text(toolchain: str) -> str:
+    """Return one canonical audit-input identity for a Rust runtime tree."""
+
+    identity = PINNED_RUST_TOOLCHAIN_RUNTIME_IDENTITIES[toolchain]
+    if identity["components"] != list(PINNED_RUST_TOOLCHAIN_RUNTIME_COMPONENTS):
+        raise RuntimeError("Rust runtime component identity is inconsistent")
+
+    def format_value(key: str, value: Any) -> str:
+        if key == "root_mode":
+            return f"{value:#o}"
+        if isinstance(value, list):
+            return ",".join(value)
+        return str(value)
+
+    values = "; ".join(
+        f"{key}={format_value(key, value)}" for key, value in identity.items()
+    )
+    return f"Rust toolchain runtime; {values}; excluded_root_names=etc,share"
+
+
+def apple_compiler_inputs_identity_text() -> str:
+    """Return the canonical identity for each allowed Apple compiler path."""
+
+    rows: list[str] = []
+    for selected_git, sdk in PINNED_DEVELOPER_SDK_IDENTITIES.items():
+        compiler_path, compiler_sha256, compiler_size = (
+            EXPECTED_DEVELOPER_TOOL_IDENTITIES[selected_git]["clang"]
+        )
+        driver = qualification_compiler_driver_bytes(selected_git)
+        link_target = sdk["link_target"]
+        rows.append(
+            ",".join(
+                (
+                    f"developer_git={selected_git}",
+                    f"compiler_path={compiler_path}",
+                    f"compiler_sha256={compiler_sha256}",
+                    f"compiler_size_bytes={compiler_size}",
+                    f"sdk_invoked_root={sdk['invoked_root']}",
+                    f"sdk_resolved_root={sdk['resolved_root']}",
+                    f"sdk_link_target={link_target if link_target is not None else 'DIRECT'}",
+                    f"sdk_settings_sha256={sdk['settings_sha256']}",
+                    f"sdk_settings_size_bytes={sdk['settings_size_bytes']}",
+                    f"sdk_settings_mode={sdk['settings_mode']:#o}",
+                    f"driver_sha256={hashlib.sha256(driver).hexdigest()}",
+                    f"driver_size_bytes={len(driver)}",
+                    "driver_mode=0o500",
+                )
+            )
+        )
+    return "Apple compiler inputs; " + "; ".join(rows)
+
+
 ADDITIONAL_TOOL_IDENTITIES = {
     "host": "arm64",
+    "apple-compiler-inputs": apple_compiler_inputs_identity_text(),
+    "python": (
+        f"Python 3.14.6; launcher_path={PINNED_CPYTHON_LAUNCHER_PATH}; "
+        f"launcher_sha256={PINNED_CPYTHON_LAUNCHER_IDENTITY[0]}; "
+        f"launcher_size_bytes={PINNED_CPYTHON_LAUNCHER_IDENTITY[1]}; "
+        f"launcher_mode={PINNED_CPYTHON_LAUNCHER_IDENTITY[2]:#o}; "
+        + "; ".join(
+            f"{name}_path={path}; {name}_sha256={sha256}; "
+            f"{name}_size_bytes={size}; {name}_mode={mode:#o}"
+            for name, (path, sha256, size, mode) in (
+                PINNED_CPYTHON_RUNTIME_EXECUTABLE_IDENTITIES.items()
+            )
+        )
+        + "; "
+        + "; ".join(
+            f"{name}_load_path={load_path}; {name}_resolved_path={resolved_path}; "
+            f"{name}_sha256={sha256}; {name}_size_bytes={size}; "
+            f"{name}_mode={mode:#o}"
+            for name, (load_path, resolved_path, sha256, size, mode) in (
+                PINNED_CPYTHON_RUNTIME_LIBRARY_IDENTITIES.items()
+            )
+        )
+        + "; runtime_tree_schema="
+        + str(PINNED_CPYTHON_RUNTIME_TREE_IDENTITY["schema"])
+        + "; runtime_tree_root="
+        + str(PINNED_CPYTHON_RUNTIME_TREE_IDENTITY["root"])
+        + "; runtime_tree_sha256="
+        + str(PINNED_CPYTHON_RUNTIME_TREE_IDENTITY["sha256"])
+        + "; runtime_tree_entries="
+        + str(PINNED_CPYTHON_RUNTIME_TREE_IDENTITY["entries"])
+        + "; runtime_tree_regular_files="
+        + str(PINNED_CPYTHON_RUNTIME_TREE_IDENTITY["regular_files"])
+        + "; runtime_tree_regular_bytes="
+        + str(PINNED_CPYTHON_RUNTIME_TREE_IDENTITY["regular_bytes"])
+        + "; native_preflight_schema="
+        + str(PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY["schema"])
+        + "; native_preflight_sha256="
+        + str(PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY["sha256"])
+        + "; native_preflight_entries="
+        + str(PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY["entries"])
+        + "; native_preflight_regular_files="
+        + str(PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY["regular_files"])
+        + "; native_preflight_regular_bytes="
+        + str(PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY["regular_bytes"])
+        + "; native_preflight_script_sha256="
+        + RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256
+    ),
+    "rustc-nightly": (
+        f"{EXPECTED_QUALIFICATION_TOOLS['rustc_fuzz_nightly']}; "
+        "asan_relative_path="
+        f"toolchains/nightly-2026-06-16-{DEEP_FUZZ_HOST_TARGET}/lib/rustlib/"
+        f"{DEEP_FUZZ_HOST_TARGET}/lib/{PINNED_DEEP_FUZZ_ASAN_LIBRARY_BASENAME}; "
+        f"asan_sha256={PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY[0]}; "
+        f"asan_size_bytes={PINNED_DEEP_FUZZ_ASAN_LIBRARY_IDENTITY[1]}; "
+        f"asan_mode={PINNED_DEEP_FUZZ_ASAN_LIBRARY_MODE:#o}"
+    ),
+    "rust-runtime-1.89.0": rust_toolchain_runtime_identity_text(
+        "1.89.0-aarch64-apple-darwin"
+    ),
+    "rust-runtime-1.97.1": rust_toolchain_runtime_identity_text(
+        "1.97.1-aarch64-apple-darwin"
+    ),
+    "rust-runtime-nightly": rust_toolchain_runtime_identity_text(
+        "nightly-2026-06-16-aarch64-apple-darwin"
+    ),
+    "rustup-settings": (
+        "Rustup settings schema version 12; relative_path=settings.toml; "
+        f"sha256={PINNED_RUSTUP_SETTINGS_IDENTITY[0]}; "
+        f"size_bytes={PINNED_RUSTUP_SETTINGS_IDENTITY[1]}; "
+        f"mode={PINNED_RUSTUP_SETTINGS_IDENTITY[2]:#o}"
+    ),
     "cargo-mutants": "cargo-mutants 27.1.0 installed with --locked",
     "OpenSSH": "OpenSSH_10.2p1, LibreSSL 3.3.6",
     "GitHub CLI": "gh version 2.95.0 (2026-06-17)",
+    "pkgconf": (
+        f"pkgconf {PINNED_PKG_CONFIG_VERSION}; "
+        f"executable_path={PINNED_PKG_CONFIG_EXECUTABLE_PATH}; "
+        f"executable_sha256={PINNED_PKG_CONFIG_IDENTITY[0]}; "
+        f"executable_size_bytes={PINNED_PKG_CONFIG_IDENTITY[1]}; "
+        f"executable_mode={PINNED_PKG_CONFIG_MODE:#o}; "
+        "candidate_execution=DENIED_UNUSED"
+    ),
 }
+
+
+def validate_release_python_native_preflight(
+    snapshot: "RepositorySnapshot | None" = None,
+) -> None:
+    """Bind the native Python launcher to the recorded runtime and procedure."""
+
+    path = ROOT / "repo_work/verify_release_python_runtime.sh"
+    document = (
+        _snapshot_text(path, snapshot)
+        if snapshot is not None
+        else path.read_text(encoding="utf-8")
+    )
+    expected_assignments = {
+        "expected_entries": PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY["entries"],
+        "expected_regular_files": PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY[
+            "regular_files"
+        ],
+        "expected_regular_bytes": PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY[
+            "regular_bytes"
+        ],
+        "expected_tree_sha256": PINNED_CPYTHON_NATIVE_RUNTIME_TREE_IDENTITY[
+            "sha256"
+        ],
+    }
+    for name, value in expected_assignments.items():
+        if document.count(f"{name}={value}\n") != 1:
+            raise AuditError(
+                f"release Python native preflight has another {name} value"
+            )
+    if not document.startswith("#!/bin/bash -p\n") or "set -euo pipefail\n" not in document:
+        raise AuditError("release Python native preflight shell contract differs")
+    launch_cleanup = (
+        "cleanup\n"
+        "trap - EXIT\n"
+        'builtin umask "$original_umask"\n'
+        'builtin exec "$release_python" -E -s -S "$@"\n'
+    )
+    if document.count(launch_cleanup) != 1:
+        raise AuditError(
+            "release Python native launcher does not clean and restore caller state"
+        )
+    observed_digest = hashlib.sha256(document.encode("utf-8")).hexdigest()
+    if observed_digest != RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256:
+        raise AuditError("release Python native preflight bytes differ")
+
+    runbook_path = ROOT / "release/0.9.0/RELEASE-RUNBOOK.md"
+    runbook = (
+        _snapshot_text(runbook_path, snapshot)
+        if snapshot is not None
+        else runbook_path.read_text(encoding="utf-8")
+    )
+    launcher_assignment = "release_python=repo_work/verify_release_python_runtime.sh"
+    if runbook.count(launcher_assignment) != 10:
+        raise AuditError("each release Python runbook block requires the native launcher")
+    if "/opt/homebrew/Cellar/python@3.14/" in runbook:
+        raise AuditError("the release runbook bypasses the native Python launcher")
+
+    operator_readme_path = ROOT / "repo_work/README.md"
+    operator_readme = (
+        _snapshot_text(operator_readme_path, snapshot)
+        if snapshot is not None
+        else operator_readme_path.read_text(encoding="utf-8")
+    )
+    if operator_readme.count(launcher_assignment) != 6:
+        raise AuditError("each operator Python block requires the native launcher")
+    release_readme_path = ROOT / "release/0.9.0/README.md"
+    release_readme = (
+        _snapshot_text(release_readme_path, snapshot)
+        if snapshot is not None
+        else release_readme_path.read_text(encoding="utf-8")
+    )
+    if release_readme.count("repo_work/verify_release_python_runtime.sh \\\n") != 1:
+        raise AuditError("the release example requires the native Python launcher")
+
+
+def validate_fuzz_manifest(manifest: Mapping[str, Any]) -> None:
+    """Require each declared fuzz binary to have one retained deep campaign."""
+
+    dependencies = manifest.get("dependencies")
+    if not isinstance(dependencies, dict):
+        raise AuditError("fuzz manifest dependencies are malformed")
+    for dependency in ("galadriel-core", "galadriel-ncp"):
+        record = dependencies.get(dependency)
+        if not isinstance(record, dict) or record.get("version") != VERSION:
+            raise AuditError(
+                f"fuzz dependency {dependency} must track release {VERSION}"
+            )
+
+    expected_bins = [
+        {
+            "name": target,
+            "path": f"fuzz_targets/{target}.rs",
+            "test": False,
+            "doc": False,
+            "bench": False,
+        }
+        for target in DEEP_FUZZ_TARGETS
+    ]
+    if manifest.get("bin") != expected_bins:
+        raise AuditError(
+            "fuzz manifest binaries must equal the retained deep-campaign set"
+        )
+
+
+def validate_fuzz_seed_corpora(
+    snapshot: "RepositorySnapshot | None" = None,
+) -> None:
+    """Require a bounded tracked semantic corpus for every fuzz target."""
+
+    tracked = tracked_repository_paths(snapshot)
+    for target in DEEP_FUZZ_TARGETS:
+        prefix = f"fuzz/seeds/{target}/"
+        members = sorted(path for path in tracked if path.startswith(prefix))
+        if not members or len(members) > 64:
+            raise AuditError(f"fuzz seed corpus is incomplete or excessive: {target}")
+        for path in members:
+            relative = path.removeprefix(prefix)
+            if not relative or "/" in relative or relative.startswith("."):
+                raise AuditError(f"fuzz seed path is not a direct safe member: {path}")
+            data = (
+                snapshot.files[path].data
+                if snapshot is not None
+                else (ROOT / path).read_bytes()
+            )
+            if not data or len(data) > 128 * 1024:
+                raise AuditError(f"fuzz seed size is invalid: {path}")
+
+
+def validate_denied_unused_tool_graphs(
+    workspace_lock: Mapping[str, Any],
+    fuzz_lock: Mapping[str, Any],
+) -> None:
+    """Reject a locked package graph that declares denied external build tools."""
+
+    denied_package_names = {"cmake", "pkg-config", "pkgconf"}
+    for label, lock in (("workspace", workspace_lock), ("fuzz", fuzz_lock)):
+        packages = lock.get("package")
+        if not isinstance(packages, list) or not all(
+            isinstance(package, dict) and isinstance(package.get("name"), str)
+            for package in packages
+        ):
+            raise AuditError(f"{label} Cargo lock package set is malformed")
+        observed = {package["name"] for package in packages}
+        forbidden = sorted(observed & denied_package_names)
+        if forbidden:
+            raise AuditError(
+                f"{label} Cargo lock requires an execution-denied build tool: "
+                f"{forbidden}"
+            )
+
+
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+DEEP_QUALITY_WORKFLOW = ROOT / ".github" / "workflows" / "deep-quality.yml"
+PINNED_SETUP_PYTHON_ACTION = (
+    "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97"
+)
+PINNED_WORKFLOW_PYTHON_VERSION = "3.14.6"
+FEATURE_ISOLATED_CLI_COMMANDS = (
+    ("feature-graph-contract", ("python3", "repo_work/check_feature_graph.py")),
+    (
+        "cli-pure-feature-graph",
+        (
+            "cargo",
+            "check",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--locked",
+        ),
+    ),
+    (
+        "cli-pid-feature-graph",
+        (
+            "cargo",
+            "check",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--features",
+            "pid",
+            "--locked",
+        ),
+    ),
+    (
+        "cli-ncp-feature-graph",
+        (
+            "cargo",
+            "check",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--features",
+            "ncp",
+            "--locked",
+        ),
+    ),
+    (
+        "cli-ncp-live-feature-graph",
+        (
+            "cargo",
+            "check",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--features",
+            "ncp-live",
+            "--locked",
+        ),
+    ),
+    (
+        "cli-pure-feature-tests",
+        (
+            "cargo",
+            "test",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--locked",
+        ),
+    ),
+    (
+        "cli-pid-feature-tests",
+        (
+            "cargo",
+            "test",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--features",
+            "pid",
+            "--locked",
+        ),
+    ),
+    (
+        "cli-ncp-feature-tests",
+        (
+            "cargo",
+            "test",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--features",
+            "ncp",
+            "--locked",
+        ),
+    ),
+    (
+        "cli-ncp-live-feature-tests",
+        (
+            "cargo",
+            "test",
+            "-p",
+            "galadriel-cli",
+            "--no-default-features",
+            "--features",
+            "ncp-live",
+            "--locked",
+        ),
+    ),
+)
 
 
 class AuditError(RuntimeError):
@@ -675,7 +1103,7 @@ def reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
-            raise AuditError(f"duplicate JSON key: {key!r}")
+            raise AuditError("duplicate JSON key")
         result[key] = value
     return result
 
@@ -794,9 +1222,8 @@ def visible_markdown_lines(
             fence_character = token[0]
             fence_length = len(token)
             continue
-        if (
-            not include_code_blocks
-            and (visible_line.startswith("    ") or visible_line.startswith("\t"))
+        if not include_code_blocks and (
+            visible_line.startswith("    ") or visible_line.startswith("\t")
         ):
             continue
         stripped = visible_line.strip()
@@ -1022,6 +1449,34 @@ def validate_toolchain_input_contract(toolchains: list[dict[str, Any]]) -> None:
         if by_name[name]["version"] != version:
             raise AuditError(f"{name}: tool version differs from release contract")
     for audit_name, qualification_name in AUDIT_TO_QUALIFICATION_TOOL.items():
+        if audit_name == "pkgconf":
+            if (
+                EXPECTED_QUALIFICATION_TOOLS[qualification_name]
+                != by_name[audit_name]["version"]
+            ):
+                raise AuditError(
+                    "pkgconf: qualification output differs from the pinned version"
+                )
+            continue
+        if audit_name == "python":
+            if (
+                EXPECTED_QUALIFICATION_TOOLS[qualification_name]
+                != f"Python {by_name[audit_name]['version']}"
+            ):
+                raise AuditError(
+                    "python: qualification output differs from the pinned version"
+                )
+            continue
+        if audit_name == "rustc-nightly":
+            if (
+                not by_name[audit_name]["identity"].startswith(
+                    EXPECTED_QUALIFICATION_TOOLS[qualification_name] + "; "
+                )
+            ):
+                raise AuditError(
+                    "rustc-nightly: qualification output differs from the pin"
+                )
+            continue
         if (
             by_name[audit_name]["identity"]
             != EXPECTED_QUALIFICATION_TOOLS[qualification_name]
@@ -1063,11 +1518,227 @@ def _workflow_scalar(workflow: str, name: str) -> str:
     return matches[0].strip("'\"")
 
 
+def validate_workflow_python_isolation(workflow: str, label: str) -> None:
+    """Require each workflow Python process to disable ambient site initialization."""
+
+    python_command = re.compile(
+        r"(?<![A-Za-z0-9_.-])python(?:3(?:\.[0-9]+)?)?"
+        r"(?![A-Za-z0-9_.-])(?P<arguments>[^\n]*)"
+    )
+    isolated_prefix = re.compile(r"\s+-E\s+-s\s+-S(?:\s|$)")
+    for match in python_command.finditer(workflow):
+        if isolated_prefix.match(match.group("arguments")) is None:
+            raise AuditError(
+                f"{label} workflow Python commands must use the exact -E -s -S flags"
+            )
+
+
+def validate_workflow_python_toolchain(workflow: str, label: str) -> None:
+    """Require each Python-using job to install the exact interpreter."""
+
+    python_command = re.compile(
+        r"(?<![A-Za-z0-9_.-])python(?:3(?:\.[0-9]+)?)?"
+        r"(?![A-Za-z0-9_.-])"
+    )
+    jobs = re.findall(
+        r"(?ms)^  (?P<name>[A-Za-z0-9_-]+):\n"
+        r"(?P<body>.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)",
+        workflow,
+    )
+    if not jobs:
+        raise AuditError(f"{label} workflow does not contain jobs")
+    for name, body in jobs:
+        if python_command.search(body) is None:
+            continue
+        setup_references = re.findall(
+            r"(?m)^\s*uses:\s*(actions/setup-python@[0-9a-f]{40})\s*(?:#.*)?$",
+            body,
+        )
+        setup_steps = re.findall(
+            r"(?ms)^      - name: Install pinned release Python\n"
+            r"(?P<step>.*?)(?=^      - name:|\Z)",
+            body,
+        )
+        if (
+            setup_references != [PINNED_SETUP_PYTHON_ACTION]
+            or len(setup_steps) != 1
+            or re.search(
+                rf"(?m)^\s*uses:\s*{re.escape(PINNED_SETUP_PYTHON_ACTION)}"
+                r"\s*(?:#.*)?$",
+                setup_steps[0],
+            )
+            is None
+        ):
+            raise AuditError(
+                f"{label} workflow Python job {name} must install exact "
+                f"CPython {PINNED_WORKFLOW_PYTHON_VERSION}"
+            )
+        if (
+            re.search(
+                rf'(?m)^\s*python-version:\s*"{re.escape(PINNED_WORKFLOW_PYTHON_VERSION)}"\s*$',
+                setup_steps[0],
+            )
+            is None
+        ):
+            raise AuditError(
+                f"{label} workflow Python job {name} must install exact "
+                f"CPython {PINNED_WORKFLOW_PYTHON_VERSION}"
+            )
+
+
+def _workflow_step_body(workflow: str, name: str) -> str:
+    step = re.search(
+        rf"(?ms)^      - name: {re.escape(name)}\n"
+        r"(?P<body>.*?)(?=^      - name:|\Z)",
+        workflow,
+    )
+    if step is None:
+        raise AuditError(f"deep-quality workflow omits step {name!r}")
+    return step.group("body")
+
+
+def validate_deep_quality_fuzz_contract(workflow: str) -> None:
+    """Bind the deep workflow to locked direct fuzz builds and campaigns."""
+
+    if "cargo +nightly-2026-06-16 fuzz run" in workflow:
+        raise AuditError("deep-quality must not use nested cargo-fuzz builds")
+
+    fetch = _workflow_step_body(workflow, "Fetch locked fuzz dependencies")
+    if (
+        "run: cargo +nightly-2026-06-16 fetch "
+        "--manifest-path fuzz/Cargo.toml --locked"
+    ) not in fetch:
+        raise AuditError("deep-quality fuzz dependency fetch contract differs")
+
+    canaries = _workflow_step_body(
+        workflow, "Verify fuzz harness and semantic seed canaries"
+    )
+    expected_canaries = (
+        "cargo +nightly-2026-06-16 test --manifest-path fuzz/Cargo.toml "
+        "--lib --locked --offline",
+        "cargo +nightly-2026-06-16 check --manifest-path fuzz/Cargo.toml "
+        "--all-targets --locked --offline",
+    )
+    observed_canaries = tuple(
+        line.strip()
+        for line in canaries.splitlines()
+        if line.strip().startswith("cargo +nightly")
+    )
+    if observed_canaries != expected_canaries:
+        raise AuditError("deep-quality fuzz canary contract differs")
+
+    build = _workflow_step_body(workflow, "Build locked instrumented fuzz runners")
+    rustflags = re.search(
+        r"(?ms)^          RUSTFLAGS: >-\n"
+        r"(?P<value>(?:            [^\n]+\n)+)",
+        build,
+    )
+    observed_rustflags = (
+        " ".join(line.strip() for line in rustflags.group("value").splitlines())
+        if rustflags is not None
+        else ""
+    )
+    if (
+        "ASAN_OPTIONS: detect_odr_violation=0" not in build
+        or observed_rustflags != DEEP_FUZZ_RUSTFLAGS
+    ):
+        raise AuditError("deep-quality fuzz instrumentation contract differs")
+    build_run = re.search(
+        r"(?ms)^        run: >-\n(?P<value>(?:          [^\n]+\n?)+)",
+        build,
+    )
+    build_command = (
+        " ".join(line.strip() for line in build_run.group("value").splitlines())
+        if build_run is not None
+        else ""
+    )
+    expected_build = (
+        "cargo +nightly-2026-06-16 build --manifest-path fuzz/Cargo.toml "
+        "--target x86_64-unknown-linux-gnu --release "
+        "--config 'profile.release.debug=\"line-tables-only\"' --bins "
+        "--locked --offline"
+    )
+    if build_command != expected_build:
+        raise AuditError("deep-quality fuzz build contract differs")
+
+    campaign_steps = {
+        "ncp_decode": "Fuzz typed NCP and JSONL decoding",
+        "detector_boundaries": "Fuzz detector and provenance boundaries",
+        "lifecycle_state": "Fuzz cross-route assembly and lifecycle state",
+    }
+    if set(campaign_steps) != set(DEEP_FUZZ_TARGETS):
+        raise AuditError("deep-quality fuzz target set differs")
+    for target, step_name in campaign_steps.items():
+        body = _workflow_step_body(workflow, step_name)
+        required = (
+            f'"$RUNNER_TEMP/fuzz-corpus/{target}"',
+            f'"$RUNNER_TEMP/fuzz-artifacts/{target}"',
+            f"fuzz/target/x86_64-unknown-linux-gnu/release/{target}",
+            "-runs=5000 -max_len=131072 "
+            f"-seed={DEEP_FUZZ_RANDOM_SEEDS[target]}",
+            f'"-artifact_prefix=$RUNNER_TEMP/fuzz-artifacts/{target}/"',
+            f'"$RUNNER_TEMP/fuzz-corpus/{target}" {DEEP_FUZZ_SEED_ROOTS[target]}',
+            "ASAN_OPTIONS=detect_odr_violation=0",
+        )
+        if any(fragment not in body for fragment in required):
+            raise AuditError(
+                f"deep-quality fuzz campaign contract differs: {target}"
+            )
+
+
+def validate_feature_isolated_cli_contract(workflow: str) -> None:
+    """Cross-bind the feature-isolated command matrix in CI and qualification."""
+
+    qualification_by_name = {spec.name: spec for spec in BASE_COMMANDS}
+    if len(qualification_by_name) != len(BASE_COMMANDS):
+        raise AuditError("qualification command names are duplicated")
+    for name, expected_argv in FEATURE_ISOLATED_CLI_COMMANDS:
+        spec = qualification_by_name.get(name)
+        if spec is None or spec.argv != expected_argv:
+            raise AuditError(
+                "CI and qualification feature-isolated CLI command matrix differs"
+            )
+
+    step = re.search(
+        r"(?ms)^      - name: Check and test feature-isolated CLI graphs\n"
+        r"(?P<body>.*?)(?=^      - name:|\Z)",
+        workflow,
+    )
+    if step is None:
+        raise AuditError(
+            "CI and qualification feature-isolated CLI command matrix differs"
+        )
+    observed = tuple(
+        line.strip()
+        for line in step.group("body").splitlines()
+        if line.startswith("          ") and line.strip()
+    )
+    expected = tuple(
+        " ".join(
+            (
+                argv[0],
+                *QUALIFICATION_PYTHON_FLAGS,
+                *argv[1:],
+            )
+            if argv[0] == "python3"
+            else argv
+        )
+        for _, argv in FEATURE_ISOLATED_CLI_COMMANDS
+    )
+    if observed != expected:
+        raise AuditError(
+            "CI and qualification feature-isolated CLI command matrix differs"
+        )
+
+
 def validate_ci_qualification_contract(workflow: str | None = None) -> None:
     """Require CI to use the candidate qualification pins and offline policy."""
 
     if workflow is None:
         workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    validate_workflow_python_isolation(workflow, "CI")
+    validate_workflow_python_toolchain(workflow, "CI")
+    validate_feature_isolated_cli_contract(workflow)
     expected_environment = {
         "RUSTSEC_ADVISORY_DB_URL": ADVISORY_DB_URL,
         "RUSTSEC_ADVISORY_DB_COMMIT": ADVISORY_DB_COMMIT,
@@ -1306,6 +1977,23 @@ def validate_inputs(
     validate_ci_qualification_contract(
         _snapshot_text(CI_WORKFLOW, snapshot) if snapshot is not None else None
     )
+    validate_workflow_python_isolation(
+        _snapshot_text(DEEP_QUALITY_WORKFLOW, snapshot)
+        if snapshot is not None
+        else DEEP_QUALITY_WORKFLOW.read_text(encoding="utf-8"),
+        "deep-quality",
+    )
+    validate_workflow_python_toolchain(
+        _snapshot_text(DEEP_QUALITY_WORKFLOW, snapshot)
+        if snapshot is not None
+        else DEEP_QUALITY_WORKFLOW.read_text(encoding="utf-8"),
+        "deep-quality",
+    )
+    validate_deep_quality_fuzz_contract(
+        _snapshot_text(DEEP_QUALITY_WORKFLOW, snapshot)
+        if snapshot is not None
+        else DEEP_QUALITY_WORKFLOW.read_text(encoding="utf-8")
+    )
     if not inputs["adaptation_decision"].startswith("release/0.9.0/"):
         raise AuditError(
             "adaptation decision must be retained inside the release record"
@@ -1515,9 +2203,7 @@ def validate_project_metadata(
     if threat_status not in VALID_THREAT_REGISTER_STATUSES:
         raise AuditError("threat register has an unsupported lifecycle status")
     if unpublished_mode and threat_status != "LIVING_UNTIL_CANDIDATE_FREEZE":
-        raise AuditError(
-            "UNPUBLISHED_CANDIDATE requires LIVING_UNTIL_CANDIDATE_FREEZE"
-        )
+        raise AuditError("UNPUBLISHED_CANDIDATE requires LIVING_UNTIL_CANDIDATE_FREEZE")
     if threat_status == "FROZEN_AT_CANDIDATE" and not dated_mode:
         raise AuditError("FROZEN_AT_CANDIDATE requires a date-bound candidate source")
     release_date_records = {
@@ -1535,9 +2221,7 @@ def validate_project_metadata(
         ),
     }
     if "<!--" in release_runbook or "-->" in release_runbook:
-        raise AuditError(
-            "RELEASE-RUNBOOK.md must not contain HTML comment delimiters"
-        )
+        raise AuditError("RELEASE-RUNBOOK.md must not contain HTML comment delimiters")
     if re.search(r"<\s*/?\s*[A-Za-z][^>]*>", release_runbook):
         raise AuditError("RELEASE-RUNBOOK.md must not contain raw HTML tags")
     publication_lines = rendered_markdown_prose_lines(release_runbook)
@@ -1607,10 +2291,13 @@ def validate_project_metadata(
         )
         for line in publication_instructions
     )
-    if re.search(
-        r"(?i)\bgh\s+release\s+(?:create|edit|upload|delete)\b",
-        publication_corpus,
-    ) or active_release_api_command:
+    if (
+        re.search(
+            r"(?i)\bgh\s+release\s+(?:create|edit|upload|delete)\b",
+            publication_corpus,
+        )
+        or active_release_api_command
+    ):
         raise AuditError(
             "RELEASE-RUNBOOK.md contains an active alternate release command"
         )
@@ -1629,12 +2316,9 @@ def validate_project_metadata(
                 "RELEASE-RUNBOOK.md contains an early remote mutation imperative"
             )
     pre_push_corpus = " ".join(pre_push_instructions)
-    if (
-        re.search(r"(?i)\bgit\s+(?:push|send-pack)\b", pre_push_corpus)
-        or (
-            "/git/refs" in pre_push_corpus
-            and re.search(r"(?i)\b(?:gh\s+api|curl)\b", pre_push_corpus)
-        )
+    if re.search(r"(?i)\bgit\s+(?:push|send-pack)\b", pre_push_corpus) or (
+        "/git/refs" in pre_push_corpus
+        and re.search(r"(?i)\b(?:gh\s+api|curl)\b", pre_push_corpus)
     ):
         raise AuditError(
             "RELEASE-RUNBOOK.md contains an active remote-ref mutation command "
@@ -1653,9 +2337,7 @@ def validate_project_metadata(
             "The source preparation state is `DATE_BOUND_CANDIDATE` with candidate "
             f"release date {candidate_release_date}."
         )
-        runbook_date_line = (
-            "The source declares one date-bound candidate release date."
-        )
+        runbook_date_line = "The source declares one date-bound candidate release date."
     normalized_runbook = release_runbook
     for source_line, placeholder in (
         (
@@ -1928,7 +2610,9 @@ def validate_project_metadata(
             f"candidate release date {candidate_release_date}."
         )
         if clm_010["limitations"].count(expected_claim_state) != 1:
-            raise AuditError("claims.json CLM-010 does not identify the date-bound mode")
+            raise AuditError(
+                "claims.json CLM-010 does not identify the date-bound mode"
+            )
         stale_unpublished_markers = (
             "UNPUBLISHED_CANDIDATE",
             "unpublished candidate",
@@ -1979,11 +2663,13 @@ def validate_project_metadata(
                 f"{member} must remain publish=false for the GitHub-only 0.9.0"
             )
     fuzz = tomllib.loads(text(ROOT / "fuzz/Cargo.toml"))
-    for dependency in ("galadriel-core", "galadriel-ncp"):
-        if fuzz["dependencies"][dependency].get("version") != VERSION:
-            raise AuditError(
-                f"fuzz dependency {dependency} must track release {VERSION}"
-            )
+    validate_release_python_native_preflight(snapshot)
+    validate_fuzz_manifest(fuzz)
+    validate_fuzz_seed_corpora(snapshot)
+    validate_denied_unused_tool_graphs(
+        tomllib.loads(text(ROOT / "Cargo.lock")),
+        tomllib.loads(text(ROOT / "fuzz/Cargo.lock")),
+    )
     return {
         "authors": package["authors"],
         "license": package["license"],
@@ -2100,7 +2786,9 @@ def validate_claims(
     for boundary in required_ncp_boundaries:
         if boundary not in ncp_limitations:
             raise AuditError(f"CLM-008 omits NCP boundary: {boundary}")
-    if re.search(r"https://github\.com/sepahead/NCP/(?:tree|blob)/main", ncp_limitations):
+    if re.search(
+        r"https://github\.com/sepahead/NCP/(?:tree|blob)/main", ncp_limitations
+    ):
         raise AuditError("CLM-008 must not bind NCP status to mutable main")
     return document["claims"]
 
@@ -2298,9 +2986,7 @@ def validate_ecosystem_cut(
     if seen != expected_ids:
         raise AuditError("ecosystem cut must contain exactly ECO-001 through ECO-014")
     ncp_status = next(
-        observation
-        for observation in observations
-        if observation["id"] == "ECO-014"
+        observation for observation in observations if observation["id"] == "ECO-014"
     )
     expected_ncp_identity = {
         "project": "NCP",

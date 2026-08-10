@@ -318,7 +318,7 @@ mod tests {
         assert!(expected_work <= MAX_PID_RESEARCH_SUITE_QUADRATIC_FIT_WORK);
         assert_eq!(
             suite.identity().to_hex(),
-            "4c0b4c91a1e26f08715329aabd2dcf955876d5a751ac8e16821076ebf421331b"
+            "ed09f6a96d47cec9530ba99141f1cd5e8bfd0ceeffbe37d591fec4a66366a244"
         );
     }
 

@@ -7,6 +7,8 @@
 
 use ncp_core::Keys;
 use ncp_zenoh::{ZenohBus, ZenohConfig, ZenohError, NCP_ZENOH_CONFIG_ENV};
+use serde::de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor};
+use serde::Deserializer;
 use sha2::{Digest as _, Sha256};
 use std::collections::HashSet;
 use std::io::Read;
@@ -696,6 +698,98 @@ fn valid_secure_client_endpoint(value: &str) -> bool {
     valid_client_authority(endpoint.address().as_str())
 }
 
+#[derive(Clone, Copy)]
+struct DuplicateCheckedSeed;
+
+impl<'de> DeserializeSeed<'de> for DuplicateCheckedSeed {
+    type Value = ();
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(DuplicateCheckedVisitor)
+    }
+}
+
+struct DuplicateCheckedVisitor;
+
+impl<'de> Visitor<'de> for DuplicateCheckedVisitor {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("a JSON value without duplicate object keys")
+    }
+
+    fn visit_bool<E>(self, _value: bool) -> Result<Self::Value, E> {
+        Ok(())
+    }
+
+    fn visit_i64<E>(self, _value: i64) -> Result<Self::Value, E> {
+        Ok(())
+    }
+
+    fn visit_u64<E>(self, _value: u64) -> Result<Self::Value, E> {
+        Ok(())
+    }
+
+    fn visit_f64<E>(self, _value: f64) -> Result<Self::Value, E> {
+        Ok(())
+    }
+
+    fn visit_str<E>(self, _value: &str) -> Result<Self::Value, E> {
+        Ok(())
+    }
+
+    fn visit_string<E>(self, _value: String) -> Result<Self::Value, E> {
+        Ok(())
+    }
+
+    fn visit_none<E>(self) -> Result<Self::Value, E> {
+        Ok(())
+    }
+
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        DuplicateCheckedSeed.deserialize(deserializer)
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E> {
+        Ok(())
+    }
+
+    fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        while sequence.next_element_seed(DuplicateCheckedSeed)?.is_some() {}
+        Ok(())
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut keys = HashSet::new();
+        while let Some(key) = map.next_key::<String>()? {
+            if !keys.insert(key) {
+                return Err(de::Error::custom("duplicate JSON object key"));
+            }
+            map.next_value_seed(DuplicateCheckedSeed)?;
+        }
+        Ok(())
+    }
+}
+
+fn reject_duplicate_json_keys(document: &str) -> Result<(), serde_json::Error> {
+    let mut duplicate_checked = serde_json::Deserializer::from_str(document);
+    DuplicateCheckedSeed
+        .deserialize(&mut duplicate_checked)
+        .and_then(|()| duplicate_checked.end())
+}
+
 fn load_bounded_secure_config(path: &Path) -> Result<ZenohConfig, SecureConfigError> {
     let file = std::fs::File::open(path).map_err(|source| SecureConfigError::OpenConfig {
         path: path.to_path_buf(),
@@ -730,6 +824,8 @@ fn load_bounded_secure_config(path: &Path) -> Result<ZenohConfig, SecureConfigEr
     }
     let document = String::from_utf8(bytes)
         .map_err(|source| SecureConfigError::InvalidConfigUtf8 { source })?;
+    reject_duplicate_json_keys(&document)
+        .map_err(|source| SecureConfigError::InvalidConfigDocument { source })?;
     let value: serde_json::Value = serde_json::from_str(&document)
         .map_err(|source| SecureConfigError::InvalidConfigDocument { source })?;
     if contains_external_config_include(&value) {
@@ -1102,6 +1198,68 @@ mod tests {
         ));
 
         std::fs::remove_file(path).expect("include fixture cleans up");
+    }
+
+    #[test]
+    fn secure_config_loader_rejects_duplicate_object_keys_at_every_depth_and_order() {
+        let cases = [
+            ("top-level known key", r#"{"mode":"client","mode":"peer"}"#),
+            (
+                "nested security key",
+                r#"{"transport":{"link":{"tls":{"enable_mtls":true,"enable_mtls":false}}}}"#,
+            ),
+            (
+                "reversed nested security key",
+                r#"{"transport":{"link":{"tls":{"enable_mtls":false,"enable_mtls":true}}}}"#,
+            ),
+            (
+                "arbitrary nested metadata",
+                r#"{"metadata":{"label":"primary","label":"fallback"}}"#,
+            ),
+            (
+                "nested external include key",
+                r#"{"transport":{"__config__":"one.json5","__config__":"two.json5"}}"#,
+            ),
+        ];
+
+        for (label, document) in cases {
+            let path = config_fixture_path();
+            std::fs::write(&path, document).expect("duplicate-key fixture writes");
+            let result = load_bounded_secure_config(&path);
+            std::fs::remove_file(path).expect("duplicate-key fixture cleans up");
+
+            match result {
+                Err(SecureConfigError::InvalidConfigDocument { source }) => assert!(
+                    source.to_string().contains("duplicate JSON object key"),
+                    "{label} returned the wrong JSON diagnostic: {source}"
+                ),
+                other => panic!("{label} was not rejected as duplicate JSON: {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn duplicate_key_preparse_accepts_equal_names_in_distinct_objects() {
+        let document = r#"{
+            "connect": {"endpoints": []},
+            "listen": {"endpoints": []}
+        }"#;
+
+        reject_duplicate_json_keys(document)
+            .expect("equal names in distinct objects are not duplicate keys");
+    }
+
+    #[test]
+    fn duplicate_key_diagnostic_does_not_echo_the_untrusted_key() {
+        const HOSTILE_KEY: &str = "attacker-controlled-secret-field-name";
+        let document = format!(r#"{{"{HOSTILE_KEY}":1,"{HOSTILE_KEY}":2}}"#);
+        let error = reject_duplicate_json_keys(&document)
+            .expect_err("a duplicate hostile key must fail closed");
+        let diagnostic = error.to_string();
+
+        assert!(diagnostic.contains("duplicate JSON object key"));
+        assert!(!diagnostic.contains(HOSTILE_KEY));
+        assert!(diagnostic.len() < 128);
     }
 
     #[test]

@@ -46,6 +46,19 @@ policy snapshot unchanged. A future independently admitted restrict-only handler
 watchdog identities. `validate_advisory_effect` is the machine-testable reference
 for these transitions.
 
+**GLD-090-AUTH-003:** A restrict-only comparison **SHALL** use snapshots created
+with `AuthoritySnapshot::new_strict`. Each snapshot **SHALL** contain the same
+`AuthoritySemanticsId`. This identity binds the velocity unit and scale, slew unit
+and scale, lease clock domain and epoch, and interpretation profile.
+`CommandTtlMillis` fixes the command TTL unit. The other distinct scalar types
+prevent field substitution. The identity is a caller declaration. It does not
+authenticate the consumer or its canonical description.
+
+The legacy `AuthoritySnapshot::new` signature remains available for 0.9 source
+migration. It creates an unbound snapshot. `validate_advisory_effect` rejects an
+unbound or mismatched snapshot in restrict-only mode before it compares scalar
+values. Record-only mode can still compare two exactly equal legacy snapshots.
+
 ## 1. What Galadriel is and is not
 
 - Galadriel detects statistical inconsistency, not truth.
@@ -188,6 +201,8 @@ This section is normative for integrators.
 
    Replayed, stale, wrong-session, and malformed advisories **MUST** have no policy
    effect.
+   An unbound snapshot or changed authority semantics identity **MUST** have no
+   restrict-only effect.
    A Galadriel crash or absence **MUST NOT** change the profile.
    Advisory flooding **MUST NOT** exhaust consumer memory or delay a command
    deadline.
@@ -226,6 +241,7 @@ calibrated the stream.
 It also provides a strict two-route operational Zenoh receiver.
 It remains read-only for downstream policy.
 No signed Galadriel-to-consumer advisory publisher exists.
+The type-safe authority validator does not implement such a publisher.
 
 Raw `PidObservation` replay has no complete producer and lifecycle scope.
 The CLI labels this replay output as unbound and diagnostic-only.

@@ -16,6 +16,7 @@ import tempfile
 import unittest
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 TOOLS = Path(__file__).resolve().parents[1]
@@ -35,6 +36,20 @@ TAG_OBJECT = "3" * 40
 
 
 class PackageReleaseAssetsTest(unittest.TestCase):
+    def test_canonical_python_rejects_ambient_site_initialization(self) -> None:
+        unsafe_flags = SimpleNamespace(
+            ignore_environment=0,
+            no_user_site=0,
+            no_site=0,
+            isolated=0,
+            safe_path=False,
+        )
+        with (
+            mock.patch.object(pack.sys, "flags", unsafe_flags),
+            self.assertRaisesRegex(ReviewError, "with -E -s -S"),
+        ):
+            pack.require_canonical_python()
+
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
