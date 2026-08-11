@@ -186,7 +186,7 @@ QUALIFICATION_DENIED_SYSTEM_TOOL_SHIMS = tuple(
     for directory in QUALIFICATION_SYSTEM_PATHS
     for name in QUALIFICATION_PATH_TOOLS
 )
-QUALIFICATION_PYTHON_FLAGS = ("-E", "-s", "-S")
+QUALIFICATION_PYTHON_FLAGS = ("-B", "-E", "-s", "-S")
 PINNED_CPYTHON_VERSION_ROOT = Path(
     "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/"
     "Python.framework/Versions/3.14"
@@ -4222,7 +4222,8 @@ def qualification_executed_argv(
         raise ReviewError("candidate command argv is empty or invalid")
     requested = executed[0]
     if requested == "python3" or Path(requested).name == "python3":
-        if tuple(executed[1:4]) == QUALIFICATION_PYTHON_FLAGS:
+        prefix_end = 1 + len(QUALIFICATION_PYTHON_FLAGS)
+        if tuple(executed[1:prefix_end]) == QUALIFICATION_PYTHON_FLAGS:
             return executed
         executed[1:1] = QUALIFICATION_PYTHON_FLAGS
         return executed
@@ -4256,7 +4257,8 @@ def candidate_executed_argv(
     requested = argv[0]
     if requested == "python3" or Path(requested).name == "python3":
         executed = list(argv)
-        if tuple(executed[1:4]) != QUALIFICATION_PYTHON_FLAGS:
+        prefix_end = 1 + len(QUALIFICATION_PYTHON_FLAGS)
+        if tuple(executed[1:prefix_end]) != QUALIFICATION_PYTHON_FLAGS:
             executed[1:1] = QUALIFICATION_PYTHON_FLAGS
         return executed
     if requested != "git" and Path(requested).name != "git":
@@ -4541,17 +4543,20 @@ def require_pinned_cpython_runtime() -> dict[str, Any]:
 
 
 def require_release_python_isolation() -> None:
-    """Require the exact no-environment, no-site interpreter startup contract."""
+    """Require flags that disable import-cache writes and ambient Python startup inputs."""
 
     observed = (
+        sys.flags.dont_write_bytecode,
         sys.flags.ignore_environment,
         sys.flags.no_user_site,
         sys.flags.no_site,
         sys.flags.isolated,
         sys.flags.safe_path,
     )
-    if observed != (1, 1, 1, 0, False):
-        raise ReviewError("release Python must start with the exact -E -s -S flags")
+    if observed != (1, 1, 1, 1, 0, False):
+        raise ReviewError(
+            "release Python must start with the exact -B -E -s -S flags"
+        )
 
 
 def validate_pinned_cpython_launcher(path: Path) -> dict[str, Any]:

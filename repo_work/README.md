@@ -31,8 +31,8 @@ The generator refreshes only the derived residual-risk text.
 Verify that source state with these commands:
 
 ```bash
-python3 repo_work/build_task_dispositions.py verify
-python3 scripts/release_audit.py verify
+python3 -B -E -s -S repo_work/build_task_dispositions.py verify
+python3 -B -E -s -S scripts/release_audit.py verify
 ```
 
 The release process produces exact-file completion after the signed candidate exists.
@@ -42,13 +42,13 @@ An external closure bundle retains these records.
 Run them from a clean candidate checkout:
 
 ```bash
-python3 repo_work/check_frozen_head.py --expected "$(git rev-parse HEAD)"
-python3 repo_work/check_feature_graph.py
-python3 repo_work/local_convergence.py schema --repo .
-python3 repo_work/check_public_api.py
-python3 repo_work/audit_tracked_files.py --repo . --out audit/generated
-python3 repo_work/make_review_packets.py audit/generated/FILE_REVIEW_LEDGER.csv --lanes 3
-python3 repo_work/scan_claim_language.py --repo . --out audit/generated/CLAIM_LANGUAGE.json
+python3 -B -E -s -S repo_work/check_frozen_head.py --expected "$(git rev-parse HEAD)"
+python3 -B -E -s -S repo_work/check_feature_graph.py
+python3 -B -E -s -S repo_work/local_convergence.py schema --repo .
+python3 -B -E -s -S repo_work/check_public_api.py
+python3 -B -E -s -S repo_work/audit_tracked_files.py --repo . --out audit/generated
+python3 -B -E -s -S repo_work/make_review_packets.py audit/generated/FILE_REVIEW_LEDGER.csv --lanes 3
+python3 -B -E -s -S repo_work/scan_claim_language.py --repo . --out audit/generated/CLAIM_LANGUAGE.json
 ```
 
 The file ledger binds each tracked path, Git mode, blob identifier, SHA-256 value, and size.
@@ -69,7 +69,7 @@ If the candidate checkout is dirty, reproduce the frozen unmodified baseline sep
 The output directory must not exist before this command:
 
 ```bash
-python3 repo_work/reproduce_baseline.py \
+python3 -B -E -s -S repo_work/reproduce_baseline.py \
   --repo . \
   --commit 94e2f8cc01f352d2bf899b7f656997f143a2588f \
   --out /new/path/galadriel-baseline-94e2f8cc
@@ -110,12 +110,12 @@ freeze_dir="$(mktemp -d "${TMPDIR:-/tmp}/galadriel-0.9.0-freeze.XXXXXX")"
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 test "$(basename "$independent_allowed_signers")" = ALLOWED_SIGNERS
-python3 scripts/release_audit.py generate
+python3 -B -E -s -S scripts/release_audit.py generate
 git add release/0.9.0/requirements-ledger.json
 ledger_blob="$(git rev-parse :release/0.9.0/requirements-ledger.json)"
 test "$(git hash-object release/0.9.0/requirements-ledger.json)" = \
   "$ledger_blob"
-python3 repo_work/freeze_audit_inputs.py \
+python3 -B -E -s -S repo_work/freeze_audit_inputs.py \
   --repo . \
   --handoff-root "$handoff_root" \
   --out "$freeze_dir/FROZEN-AUDIT-INPUTS-0.9.0.json" \
@@ -124,7 +124,7 @@ ssh-keygen -Y sign \
   -f "$signing_key" \
   -n galadriel-release-audit \
   "$freeze_dir/FROZEN-AUDIT-INPUTS-0.9.0.json"
-python3 repo_work/freeze_audit_inputs.py verify \
+python3 -B -E -s -S repo_work/freeze_audit_inputs.py verify \
   --repo . \
   --handoff-root "$handoff_root" \
   --out "$freeze_dir/FROZEN-AUDIT-INPUTS-0.9.0.json" \
@@ -138,7 +138,7 @@ install -m 0644 "$freeze_dir/FROZEN-AUDIT-INPUTS-0.9.0.json.sig" \
 git add \
   release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
   release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json.sig
-python3 scripts/release_audit.py generate
+python3 -B -E -s -S scripts/release_audit.py generate
 test "$(git rev-parse :release/0.9.0/requirements-ledger.json)" = \
   "$ledger_blob"
 test "$(git hash-object release/0.9.0/requirements-ledger.json)" = \
@@ -147,12 +147,12 @@ git diff --exit-code -- release/0.9.0/requirements-ledger.json
 git add release/0.9.0/audit-manifest.json
 git diff --exit-code
 test -z "$(git ls-files --others --exclude-standard)"
-python3 repo_work/freeze_audit_inputs.py verify \
+python3 -B -E -s -S repo_work/freeze_audit_inputs.py verify \
   --repo . \
   --handoff-root "$handoff_root" \
   --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
   --allowed-signers "$independent_allowed_signers"
-python3 scripts/release_audit.py verify
+python3 -B -E -s -S scripts/release_audit.py verify
 git diff --cached --check
 ```
 
@@ -282,7 +282,7 @@ signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 # user.signingkey must name an agent-backed Ed25519 public-key handle.
 
-"$release_python" -E -s -S repo_work/prepare_mutation_evidence.py \
+"$release_python" -B -E -s -S repo_work/prepare_mutation_evidence.py \
   --repo . \
   --candidate "$(git rev-parse HEAD)" \
   --out /new/path/galadriel-0.9.0-mutation-evidence \
@@ -364,7 +364,7 @@ release_python=repo_work/verify_release_python_runtime.sh
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 
-"$release_python" -E -s -S repo_work/qualify_candidate.py \
+"$release_python" -B -E -s -S repo_work/qualify_candidate.py \
   --repo . \
   --expected "$(git rev-parse HEAD)" \
   --out /new/path/galadriel-0.9.0-qualification \
@@ -413,7 +413,8 @@ The native launcher binds that tree and then replaces itself with pinned Python.
 It removes its private verification state before it replaces itself.
 It restores the caller's umask before Python starts.
 It verifies all three executable files and six non-system libraries around each process.
-Retained Python commands use `-E -s -S`.
+Retained Python commands use `-B -E -s -S`.
+The `-B` flag prevents Python from writing `.pyc` files when it imports source modules.
 The outward Homebrew `site-packages` link remains unreadable and outside `sys.path`.
 It binds the exact Rustup settings file before and after qualification.
 It binds `bin`, `lib`, and `libexec` for all three selected Rust toolchains.
@@ -612,7 +613,7 @@ Finalization aborts before closure publication if it finds one of these conditio
 - inventory change during a copy
 
 After you intentionally refresh an accepted snapshot, regenerate its derived core comparison.
-Use `python3 repo_work/check_public_api.py --refresh-diff`.
+Use `python3 -B -E -s -S repo_work/check_public_api.py --refresh-diff`.
 The command first proves that both retained snapshots exactly match source and the pinned tool.
 It never rewrites either snapshot.
 Its unified difference omits mutable file timestamps.
@@ -629,7 +630,7 @@ signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 # user.signingkey must name an agent-backed Ed25519 public-key handle.
 
-"$release_python" -E -s -S repo_work/finalize_release.py \
+"$release_python" -B -E -s -S repo_work/finalize_release.py \
   --repo . \
   --candidate "$(git rev-parse HEAD)" \
   --qualification /new/path/galadriel-0.9.0-qualification \
@@ -771,7 +772,7 @@ It binds all these identifiers into the signed map:
 ```bash
 set -euo pipefail
 release_python=repo_work/verify_release_python_runtime.sh
-test "$("$release_python" -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+test "$("$release_python" -B -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
 candidate="$(git rev-parse 'HEAD^{commit}')"
 tree="$(git rev-parse "$candidate^{tree}")"
 tag=v0.9.0
@@ -781,7 +782,7 @@ test "$tag_target" = "$candidate"
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 
-"$release_python" -E -s -S repo_work/package_release_assets.py build \
+"$release_python" -B -E -s -S repo_work/package_release_assets.py build \
   --qualification-root /exact/path/galadriel-0.9.0-qualification \
   --closure-root /exact/path/galadriel-0.9.0-closure \
   --out /new/path/galadriel-0.9.0-github-assets \
@@ -831,7 +832,7 @@ Supply the explicit expected identities:
 ```bash
 set -euo pipefail
 release_python=repo_work/verify_release_python_runtime.sh
-test "$("$release_python" -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+test "$("$release_python" -B -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
 candidate="$(git rev-parse 'HEAD^{commit}')"
 tree="$(git rev-parse "$candidate^{tree}")"
 tag=v0.9.0
@@ -839,7 +840,7 @@ tag_object="$(git rev-parse "$tag^{tag}")"
 tag_target="$(git rev-parse "$tag^{}")"
 test "$tag_target" = "$candidate"
 
-"$release_python" -E -s -S repo_work/package_release_assets.py verify \
+"$release_python" -B -E -s -S repo_work/package_release_assets.py verify \
   --assets /downloaded/galadriel-0.9.0-github-assets \
   --allowed-signers /independent/path/ALLOWED_SIGNERS \
   --expected-candidate "$candidate" \
@@ -874,7 +875,7 @@ It publishes the two fixed-prefix trees only after complete verification:
 ```bash
 set -euo pipefail
 release_python=repo_work/verify_release_python_runtime.sh
-test "$("$release_python" -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+test "$("$release_python" -B -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
 candidate="$(git rev-parse 'HEAD^{commit}')"
 tree="$(git rev-parse "$candidate^{tree}")"
 tag=v0.9.0
@@ -882,7 +883,7 @@ tag_object="$(git rev-parse "$tag^{tag}")"
 tag_target="$(git rev-parse "$tag^{}")"
 test "$tag_target" = "$candidate"
 
-"$release_python" -E -s -S repo_work/package_release_assets.py reconstruct \
+"$release_python" -B -E -s -S repo_work/package_release_assets.py reconstruct \
   --assets /downloaded/galadriel-0.9.0-github-assets \
   --allowed-signers /independent/path/ALLOWED_SIGNERS \
   --out /new/path/galadriel-0.9.0-reconstructed \

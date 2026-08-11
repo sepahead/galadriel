@@ -20,6 +20,7 @@ from release_assurance import (  # noqa: E402
     git_tree_inventory,
     validate_completed_file_ledger,
 )
+from qualify_candidate import QUALIFICATION_PYTHON_FLAGS  # noqa: E402
 
 
 class FileModeIdentityTests(unittest.TestCase):
@@ -63,7 +64,12 @@ class FileModeIdentityTests(unittest.TestCase):
 
     def _run_tool(self, tool: str, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(TOOLS / tool), *arguments],
+            [
+                sys.executable,
+                *QUALIFICATION_PYTHON_FLAGS,
+                str(TOOLS / tool),
+                *arguments,
+            ],
             cwd=self.repo,
             check=False,
             capture_output=True,

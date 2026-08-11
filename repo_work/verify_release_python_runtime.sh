@@ -294,11 +294,11 @@ case "$-" in
   *p*) ;;
   *) fail "launch mode requires privileged Bash startup" ;;
 esac
-if (( $# >= 3 )) && test "$1" = -E && test "$2" = -s && test "$3" = -S; then
-  shift 3
+if (( $# >= 4 )) && test "$1" = -B && test "$2" = -E && test "$3" = -s && test "$4" = -S; then
+  shift 4
 fi
 (( $# > 0 )) || fail "launch mode requires a Python command"
 cleanup
 trap - EXIT
 builtin umask "$original_umask"
-builtin exec "$release_python" -E -s -S "$@"
+builtin exec "$release_python" -B -E -s -S "$@"

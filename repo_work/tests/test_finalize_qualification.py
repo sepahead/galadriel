@@ -387,7 +387,11 @@ def compiler_input_record() -> dict[str, object]:
 
 
 class FinalizeQualificationTest(unittest.TestCase):
-    def test_candidate_python_uses_the_exact_no_site_prefix(self) -> None:
+    def test_candidate_python_uses_exact_no_import_cache_no_site_prefix(self) -> None:
+        self.assertEqual(
+            QUALIFICATION_PYTHON_FLAGS,
+            ("-B", "-E", "-s", "-S"),
+        )
         self.assertEqual(
             candidate_executed_argv(["python3", "script.py"], {}),
             ["python3", *QUALIFICATION_PYTHON_FLAGS, "script.py"],
@@ -415,6 +419,7 @@ class FinalizeQualificationTest(unittest.TestCase):
                 "-c",
                 (
                     "import json,sys; print(json.dumps({"
+                    "'dont_write_bytecode':sys.flags.dont_write_bytecode,"
                     "'ignore_environment':sys.flags.ignore_environment,"
                     "'no_user_site':sys.flags.no_user_site,"
                     "'no_site':sys.flags.no_site,"
@@ -429,6 +434,7 @@ class FinalizeQualificationTest(unittest.TestCase):
             text=True,
         )
         state = json.loads(process.stdout)
+        self.assertEqual(state["dont_write_bytecode"], 1)
         self.assertEqual(state["ignore_environment"], 1)
         self.assertEqual(state["no_user_site"], 1)
         self.assertEqual(state["no_site"], 1)
@@ -439,14 +445,43 @@ class FinalizeQualificationTest(unittest.TestCase):
             any("site-packages" in path for path in state["path"]),
             state["path"],
         )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "bytecode_probe.py").write_text(
+                "VALUE = 'loaded'\n",
+                encoding="utf-8",
+            )
+            process = subprocess.run(
+                [
+                    sys.executable,
+                    *QUALIFICATION_PYTHON_FLAGS,
+                    "-c",
+                    (
+                        "import sys; "
+                        "sys.path.insert(0, sys.argv[1]); "
+                        "import bytecode_probe; "
+                        "print(sys.flags.dont_write_bytecode, bytecode_probe.VALUE)"
+                    ),
+                    str(root),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(process.stdout, "1 loaded\n")
+            self.assertFalse((root / "__pycache__").exists())
+            self.assertEqual(list(root.rglob("*.pyc")), [])
+
         qualifier.require_release_python_isolation()
 
         for observed in (
-            (0, 1, 1, 0, False),
-            (1, 0, 1, 0, False),
-            (1, 1, 0, 0, False),
-            (1, 1, 1, 1, True),
-            (1, 1, 1, 0, True),
+            (0, 1, 1, 1, 0, False),
+            (1, 0, 1, 1, 0, False),
+            (1, 1, 0, 1, 0, False),
+            (1, 1, 1, 0, 0, False),
+            (1, 1, 1, 1, 1, True),
+            (1, 1, 1, 1, 0, True),
         ):
             with (
                 self.subTest(observed=observed),
@@ -454,14 +489,18 @@ class FinalizeQualificationTest(unittest.TestCase):
                     qualifier.sys,
                     "flags",
                     SimpleNamespace(
-                        ignore_environment=observed[0],
-                        no_user_site=observed[1],
-                        no_site=observed[2],
-                        isolated=observed[3],
-                        safe_path=observed[4],
+                        dont_write_bytecode=observed[0],
+                        ignore_environment=observed[1],
+                        no_user_site=observed[2],
+                        no_site=observed[3],
+                        isolated=observed[4],
+                        safe_path=observed[5],
                     ),
                 ),
-                self.assertRaisesRegex(ReviewError, "exact -E -s -S flags"),
+                self.assertRaisesRegex(
+                    ReviewError,
+                    "exact -B -E -s -S flags",
+                ),
             ):
                 qualifier.require_release_python_isolation()
 

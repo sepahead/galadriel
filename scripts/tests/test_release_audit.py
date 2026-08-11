@@ -56,6 +56,7 @@ class ReleaseAuditTests(unittest.TestCase):
             result = subprocess.run(
                 [
                     sys.executable,
+                    *release_audit.QUALIFICATION_PYTHON_FLAGS,
                     str(release_audit.ROOT / "scripts" / "secure_deployment.py"),
                     "render",
                     "--profile",
@@ -189,8 +190,8 @@ class ReleaseAuditTests(unittest.TestCase):
         unclean_document = original_document.replace(
             "cleanup\ntrap - EXIT\n"
             'builtin umask "$original_umask"\n'
-            'builtin exec "$release_python" -E -s -S "$@"\n',
-            'builtin exec "$release_python" -E -s -S "$@"\n',
+            'builtin exec "$release_python" -B -E -s -S "$@"\n',
+            'builtin exec "$release_python" -B -E -s -S "$@"\n',
             1,
         )
 

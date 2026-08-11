@@ -70,6 +70,7 @@ from freeze_audit_inputs import assert_release_tool_coverage, strict_relative_fi
 from qualify_candidate import (
     BoundedProcessResult,
     PINNED_PKG_CONFIG_EXECUTABLE_PATH,
+    QUALIFICATION_PYTHON_FLAGS,
     capture_report,
 )
 import release_assurance as assurance
@@ -84,7 +85,7 @@ def run(
     *arguments: str, cwd: Path, expected: int = 0
 ) -> subprocess.CompletedProcess[str]:
     process = subprocess.run(
-        ["python3", *arguments],
+        ["python3", *QUALIFICATION_PYTHON_FLAGS, *arguments],
         cwd=cwd,
         check=False,
         capture_output=True,
@@ -1000,11 +1001,49 @@ class ReviewToolsTest(unittest.TestCase):
             (
                 "bare workflow Python",
                 workflow.replace(
-                    "python3 -E -s -S repo_work/check_feature_graph.py",
+                    "python3 -B -E -s -S repo_work/check_feature_graph.py",
                     "python3 repo_work/check_feature_graph.py",
                     1,
                 ),
-                "exact -E -s -S flags",
+                "exact -B -E -s -S flags",
+            ),
+            (
+                "workflow Python without import-cache guard",
+                workflow.replace(
+                    "python3 -B -E -s -S repo_work/check_feature_graph.py",
+                    "python3 -E -s -S repo_work/check_feature_graph.py",
+                    1,
+                ),
+                "exact -B -E -s -S flags",
+            ),
+            (
+                "missing import-cache directory postcondition",
+                workflow.replace(
+                    'test -z "$(find scripts repo_work -type d -name '
+                    '__pycache__ -print -quit)"',
+                    "true",
+                    1,
+                ),
+                "reject Python import-cache artifacts",
+            ),
+            (
+                "missing bytecode-file postcondition",
+                workflow.replace(
+                    'test -z "$(find scripts repo_work -type f -name '
+                    "'*.pyc' -print -quit)\"",
+                    "true",
+                    1,
+                ),
+                "reject Python import-cache artifacts",
+            ),
+            (
+                "renamed import-cache postcondition",
+                workflow.replace(
+                    "- name: Reject Python import-cache artifacts",
+                    "- name: Document Python import-cache artifacts",
+                    1,
+                ),
+                "must define step 'Reject Python import-cache artifacts' exactly once",
             ),
             (
                 "unpinned workflow Python",
@@ -1042,11 +1081,26 @@ class ReviewToolsTest(unittest.TestCase):
             deep_workflow, "deep-quality"
         )
         release_audit.validate_deep_quality_fuzz_contract(deep_workflow)
-        with self.assertRaisesRegex(release_audit.AuditError, "exact -E -s -S flags"):
+        with self.assertRaisesRegex(
+            release_audit.AuditError,
+            "exact -B -E -s -S flags",
+        ):
             release_audit.validate_workflow_python_isolation(
                 deep_workflow.replace(
-                    "python3 -E -s -S repo_work/run_broad_mutation.py",
+                    "python3 -B -E -s -S repo_work/run_broad_mutation.py",
                     "python3 repo_work/run_broad_mutation.py",
+                    1,
+                ),
+                "deep-quality",
+            )
+        with self.assertRaisesRegex(
+            release_audit.AuditError,
+            "use -B instead of PYTHONDONTWRITEBYTECODE",
+        ):
+            release_audit.validate_workflow_python_isolation(
+                deep_workflow.replace(
+                    "MUTATION_CANDIDATE_SHA:",
+                    'PYTHONDONTWRITEBYTECODE: "1"\n      MUTATION_CANDIDATE_SHA:',
                     1,
                 ),
                 "deep-quality",
@@ -4005,7 +4059,7 @@ raise SystemExit(3)
 """
         try:
             process = subprocess.run(
-                [sys.executable, "-c", program, str(TOOLS), str(fifo)],
+                [sys.executable, "-B", "-c", program, str(TOOLS), str(fifo)],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -4036,7 +4090,7 @@ raise SystemExit(3)
 """
         try:
             process = subprocess.run(
-                [sys.executable, "-c", program, str(TOOLS), str(fifo)],
+                [sys.executable, "-B", "-c", program, str(TOOLS), str(fifo)],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -4235,9 +4289,6 @@ raise SystemExit(3)
 
     def test_candidate_qualifier_refuses_output_inside_subject_repository(self) -> None:
         process = run(
-            "-E",
-            "-s",
-            "-S",
             str(TOOLS / "qualify_candidate.py"),
             "--repo",
             ".",
@@ -4267,9 +4318,6 @@ raise SystemExit(3)
             output.symlink_to(external / "missing-target")
 
             process = run(
-                "-E",
-                "-s",
-                "-S",
                 str(TOOLS / "qualify_candidate.py"),
                 "--repo",
                 ".",

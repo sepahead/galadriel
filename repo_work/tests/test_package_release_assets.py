@@ -36,19 +36,32 @@ TAG_OBJECT = "3" * 40
 
 
 class PackageReleaseAssetsTest(unittest.TestCase):
-    def test_canonical_python_rejects_ambient_site_initialization(self) -> None:
-        unsafe_flags = SimpleNamespace(
-            ignore_environment=0,
-            no_user_site=0,
-            no_site=0,
-            isolated=0,
-            safe_path=False,
+    def test_canonical_python_rejects_noncanonical_startup_flags(self) -> None:
+        unsafe_flags = (
+            SimpleNamespace(
+                dont_write_bytecode=0,
+                ignore_environment=1,
+                no_user_site=1,
+                no_site=1,
+                isolated=0,
+                safe_path=False,
+            ),
+            SimpleNamespace(
+                dont_write_bytecode=1,
+                ignore_environment=0,
+                no_user_site=0,
+                no_site=0,
+                isolated=0,
+                safe_path=False,
+            ),
         )
-        with (
-            mock.patch.object(pack.sys, "flags", unsafe_flags),
-            self.assertRaisesRegex(ReviewError, "with -E -s -S"),
-        ):
-            pack.require_canonical_python()
+        for flags in unsafe_flags:
+            with (
+                self.subTest(flags=flags),
+                mock.patch.object(pack.sys, "flags", flags),
+                self.assertRaisesRegex(ReviewError, "with -B -E -s -S"),
+            ):
+                pack.require_canonical_python()
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()

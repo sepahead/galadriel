@@ -87,7 +87,7 @@ They are inert review fixtures. They are not credentials or a production deploym
    Render the profile:
 
    ```bash
-   python3 scripts/secure_deployment.py render \
+   python3 -B -E -s -S scripts/secure_deployment.py render \
      --profile /secure/config/galadriel-profile.json \
      --output-dir /secure/config/galadriel-epoch
    ```
@@ -134,7 +134,7 @@ Each profile field MUST then satisfy its closed type, identity, path, endpoint, 
 Run the reference fixture and maintained security regression suite with this command:
 
 ```bash
-python3 scripts/secure_deployment.py check
+python3 -B -E -s -S scripts/secure_deployment.py check
 ```
 
 The static check verifies the committed configuration fixture.

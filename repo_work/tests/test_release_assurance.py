@@ -4657,6 +4657,7 @@ if child.returncode != -signal.SIGTERM:
             )
             command = [
                 sys.executable,
+                *qualifier.QUALIFICATION_PYTHON_FLAGS,
                 str(TOOLS / "check_focused_mutation.py"),
                 "--root",
                 str(root),
@@ -6351,7 +6352,8 @@ if child.returncode != -signal.SIGTERM:
             ) -> subprocess.CompletedProcess[str]:
                 return subprocess.run(
                     [
-                        "python3",
+                        sys.executable,
+                        *qualifier.QUALIFICATION_PYTHON_FLAGS,
                         str(TOOLS / "local_convergence.py"),
                         "verify",
                         "--repo",
@@ -6921,9 +6923,7 @@ if child.returncode != -signal.SIGTERM:
         process = subprocess.run(
             [
                 "python3",
-                "-E",
-                "-s",
-                "-S",
+                *qualifier.QUALIFICATION_PYTHON_FLAGS,
                 str(script),
                 "--repo",
                 "/definitely/missing/repository",
@@ -6947,6 +6947,8 @@ if child.returncode != -signal.SIGTERM:
                 "/missing/decision.sig",
                 "--signing-key",
                 "/missing/key",
+                "--allowed-signers",
+                "/missing/allowed-signers",
                 "--out",
                 "/tmp/galadriel-finalizer-early-failure-test",
             ],
@@ -6955,6 +6957,10 @@ if child.returncode != -signal.SIGTERM:
             text=True,
         )
         self.assertEqual(process.returncode, 2)
+        self.assertIn(
+            "release finalization failed: qualification root is missing or unsafe",
+            process.stderr,
+        )
         self.assertNotIn("UnboundLocalError", process.stderr)
 
     def test_finalizer_reports_key_error_as_a_controlled_failure(self) -> None:
@@ -7098,9 +7104,7 @@ if child.returncode != -signal.SIGTERM:
 
             base = [
                 sys.executable,
-                "-E",
-                "-s",
-                "-S",
+                *qualifier.QUALIFICATION_PYTHON_FLAGS,
                 str(script),
                 "--repo",
                 str(repo),

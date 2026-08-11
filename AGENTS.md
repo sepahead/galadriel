@@ -392,18 +392,18 @@ Use `.github/workflows/ci.yml` as the exact command source.
 At minimum, run these repository gates:
 
 ```bash
-python3 scripts/secure_deployment.py check
-python3 repo_work/build_task_dispositions.py verify
-python3 repo_work/local_convergence.py schema --repo .
-python3 repo_work/freeze_audit_inputs.py verify-lifecycle \
+python3 -B -E -s -S scripts/secure_deployment.py check
+python3 -B -E -s -S repo_work/build_task_dispositions.py verify
+python3 -B -E -s -S repo_work/local_convergence.py schema --repo .
+python3 -B -E -s -S repo_work/freeze_audit_inputs.py verify-lifecycle \
   --repo . \
   --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
   --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
-python3 scripts/release_audit.py verify
-python3 repo_work/check_public_api.py
+python3 -B -E -s -S scripts/release_audit.py verify
+python3 -B -E -s -S repo_work/check_public_api.py
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-python3 repo_work/check_feature_graph.py
+python3 -B -E -s -S repo_work/check_feature_graph.py
 cargo test --workspace --all-features --locked
 RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked
 cargo build -p galadriel-core --no-default-features --locked
@@ -416,7 +416,7 @@ cargo deny --offline --manifest-path fuzz/Cargo.toml --all-features --locked che
 For a frozen candidate, also run this strict audit-input gate:
 
 ```bash
-python3 repo_work/freeze_audit_inputs.py verify \
+python3 -B -E -s -S repo_work/freeze_audit_inputs.py verify \
   --repo . \
   --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
   --allowed-signers /independent/path/ALLOWED_SIGNERS

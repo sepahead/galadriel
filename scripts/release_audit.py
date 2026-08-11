@@ -253,10 +253,10 @@ PUBLICATION_SEQUENCE_MARKERS = (
     "wrong, follow the full withdrawal procedure below.",
 )
 RELEASE_RUNBOOK_CONTRACT_SHA256 = (
-    "d94f5230aa7a81111daac6b4eba12a40f54e22c24399d4c64178f96cff22451a"
+    "7323406fb305715760f96e64faf8ea055eaa0ae8a2aec98746338220cce1bacc"
 )
 RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256 = (
-    "5a666938bc7a52d0f19c6773d07e94504c199bc8064a89dabc160f7d8df40f22"
+    "31251370fcde67b312610ec4f18609f5c708f134289d4e69029f70ca5f482f9f"
 )
 
 AUDIT_SELF_EXCLUSIONS = frozenset({AUDIT_OUTPUT.relative_to(ROOT).as_posix()})
@@ -561,7 +561,7 @@ def validate_release_python_native_preflight(
         "cleanup\n"
         "trap - EXIT\n"
         'builtin umask "$original_umask"\n'
-        'builtin exec "$release_python" -E -s -S "$@"\n'
+        'builtin exec "$release_python" -B -E -s -S "$@"\n'
     )
     if document.count(launch_cleanup) != 1:
         raise AuditError(
@@ -1519,18 +1519,28 @@ def _workflow_scalar(workflow: str, name: str) -> str:
 
 
 def validate_workflow_python_isolation(workflow: str, label: str) -> None:
-    """Require each workflow Python process to disable ambient site initialization."""
+    """Require flags that disable import-cache writes and ambient Python startup inputs."""
 
     python_command = re.compile(
         r"(?<![A-Za-z0-9_.-])python(?:3(?:\.[0-9]+)?)?"
         r"(?![A-Za-z0-9_.-])(?P<arguments>[^\n]*)"
     )
-    isolated_prefix = re.compile(r"\s+-E\s+-s\s+-S(?:\s|$)")
+    exact_flags = " ".join(QUALIFICATION_PYTHON_FLAGS)
+    isolated_prefix = re.compile(
+        r"\s+"
+        + r"\s+".join(re.escape(flag) for flag in QUALIFICATION_PYTHON_FLAGS)
+        + r"(?:\s|$)"
+    )
     for match in python_command.finditer(workflow):
         if isolated_prefix.match(match.group("arguments")) is None:
             raise AuditError(
-                f"{label} workflow Python commands must use the exact -E -s -S flags"
+                f"{label} workflow Python commands must use the exact "
+                f"{exact_flags} flags"
             )
+    if re.search(r"(?m)^\s*PYTHONDONTWRITEBYTECODE\s*:", workflow):
+        raise AuditError(
+            f"{label} workflow must use -B instead of PYTHONDONTWRITEBYTECODE"
+        )
 
 
 def validate_workflow_python_toolchain(workflow: str, label: str) -> None:
@@ -1586,15 +1596,22 @@ def validate_workflow_python_toolchain(workflow: str, label: str) -> None:
             )
 
 
-def _workflow_step_body(workflow: str, name: str) -> str:
-    step = re.search(
-        rf"(?ms)^      - name: {re.escape(name)}\n"
-        r"(?P<body>.*?)(?=^      - name:|\Z)",
-        workflow,
+def _workflow_step_body(
+    workflow: str,
+    name: str,
+    *,
+    label: str = "deep-quality",
+) -> str:
+    steps = tuple(
+        re.finditer(
+            rf"(?ms)^      - name: {re.escape(name)}\n"
+            r"(?P<body>.*?)(?=^      - name:|\Z)",
+            workflow,
+        )
     )
-    if step is None:
-        raise AuditError(f"deep-quality workflow omits step {name!r}")
-    return step.group("body")
+    if len(steps) != 1:
+        raise AuditError(f"{label} workflow must define step {name!r} exactly once")
+    return steps[0].group("body")
 
 
 def validate_deep_quality_fuzz_contract(workflow: str) -> None:
@@ -1739,6 +1756,22 @@ def validate_ci_qualification_contract(workflow: str | None = None) -> None:
     validate_workflow_python_isolation(workflow, "CI")
     validate_workflow_python_toolchain(workflow, "CI")
     validate_feature_isolated_cli_contract(workflow)
+    python_cache_guards = (
+        'test -z "$(find scripts repo_work -type d -name __pycache__ -print -quit)"',
+        'test -z "$(find scripts repo_work -type f -name \'*.pyc\' -print -quit)"',
+    )
+    python_cache_step = _workflow_step_body(
+        workflow,
+        "Reject Python import-cache artifacts",
+        label="CI",
+    )
+    python_cache_lines = tuple(
+        line.strip() for line in python_cache_step.splitlines() if line.strip()
+    )
+    if python_cache_lines != ("run: |", *python_cache_guards):
+        raise AuditError(
+            "CI workflow must reject Python import-cache artifacts with the exact commands"
+        )
     expected_environment = {
         "RUSTSEC_ADVISORY_DB_URL": ADVISORY_DB_URL,
         "RUSTSEC_ADVISORY_DB_COMMIT": ADVISORY_DB_COMMIT,

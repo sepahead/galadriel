@@ -216,25 +216,25 @@ done <<'PINNED_NATIVE_INPUTS'
 /opt/homebrew/Cellar/pkgconf/3.0.3/bin/pkgconf|555|74928|d1c437b9ad16182ee781175ae4e69b439a91c6c6747a7cd50f878514212730e4
 PINNED_NATIVE_INPUTS
 test "$(/usr/bin/readlink "$pinned_pkgconf_root/bin/pkg-config")" = pkgconf
-"$release_python" -E -s -S -c \
+"$release_python" -B -E -s -S -c \
   'import sys; sys.path.insert(0, "repo_work"); from pathlib import Path; from qualify_candidate import validate_pinned_pkg_config_executable; validate_pinned_pkg_config_executable(Path(sys.argv[1]))' \
   "$pkg_config_executable"
-"$release_python" -E -s -S -c \
+"$release_python" -B -E -s -S -c \
   'import sys; sys.path.insert(0, "repo_work"); from pathlib import Path; from qualify_candidate import pinned_cpython_runtime_executable_files, pinned_cpython_runtime_library_files, pinned_cpython_runtime_tree_identity, validate_pinned_cpython_launcher; validate_pinned_cpython_launcher(Path(sys.executable)); pinned_cpython_runtime_executable_files(); pinned_cpython_runtime_library_files(); pinned_cpython_runtime_tree_identity()'
 rustup_home="${RUSTUP_HOME:-$HOME/.rustup}"
-"$release_python" -E -s -S -c \
+"$release_python" -B -E -s -S -c \
   'import sys; sys.path.insert(0, "repo_work"); from qualify_candidate import pinned_rust_toolchain_runtime_identity; pinned_rust_toolchain_runtime_identity({"RUSTUP_HOME": sys.argv[1]})' \
   "$rustup_home"
 candidate="$(git rev-parse 'HEAD^{commit}')"
-"$release_python" -E -s -S -c \
+"$release_python" -B -E -s -S -c \
   'import sys; sys.path.insert(0, "repo_work"); from pathlib import Path; from release_assurance import refresh_canonical_origin_main; refresh_canonical_origin_main(Path("."), sys.argv[1])' \
   "$candidate"
 test "$(git branch --show-current)" = main
 test "$(git status --porcelain=v1)" = ""
 test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
 cargo fetch --locked
-"$release_python" -E -s -S scripts/secure_deployment.py check
-"$release_python" -E -s -S -m unittest -v \
+"$release_python" -B -E -s -S scripts/secure_deployment.py check
+"$release_python" -B -E -s -S -m unittest -v \
   scripts.tests.test_release_audit \
   repo_work.tests.test_release_audit_snapshot \
   repo_work.tests.test_evidence_batch_transaction \
@@ -248,21 +248,23 @@ cargo fetch --locked
   repo_work.tests.test_finalize_qualification \
   repo_work.tests.test_qualification_artifacts \
   repo_work.tests.test_host_process_bounds
-"$release_python" -E -s -S repo_work/build_task_dispositions.py verify
-"$release_python" -E -s -S repo_work/local_convergence.py schema --repo .
-"$release_python" -E -s -S repo_work/freeze_audit_inputs.py verify-lifecycle \
+test -z "$(find scripts repo_work -type d -name __pycache__ -print -quit)"
+test -z "$(find scripts repo_work -type f -name '*.pyc' -print -quit)"
+"$release_python" -B -E -s -S repo_work/build_task_dispositions.py verify
+"$release_python" -B -E -s -S repo_work/local_convergence.py schema --repo .
+"$release_python" -B -E -s -S repo_work/freeze_audit_inputs.py verify-lifecycle \
   --repo . \
   --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
   --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
-"$release_python" -E -s -S repo_work/freeze_audit_inputs.py verify \
+"$release_python" -B -E -s -S repo_work/freeze_audit_inputs.py verify \
   --repo . \
   --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
   --allowed-signers /independent/path/ALLOWED_SIGNERS
-"$release_python" -E -s -S scripts/release_audit.py verify
-"$release_python" -E -s -S repo_work/check_public_api.py
+"$release_python" -B -E -s -S scripts/release_audit.py verify
+"$release_python" -B -E -s -S repo_work/check_public_api.py
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-"$release_python" -E -s -S repo_work/check_feature_graph.py
+"$release_python" -B -E -s -S repo_work/check_feature_graph.py
 cargo check -p galadriel-cli --no-default-features --locked
 cargo check -p galadriel-cli --no-default-features --features pid --locked
 cargo check -p galadriel-cli --no-default-features --features ncp --locked
@@ -274,7 +276,7 @@ cargo test -p galadriel-cli --no-default-features --features ncp-live --locked
 cargo test --workspace --all-features --locked
 RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked
 cargo build -p galadriel-core --no-default-features --locked
-"$release_python" -E -s -S repo_work/check_vulnerable_features.py
+"$release_python" -B -E -s -S repo_work/check_vulnerable_features.py
 cargo fetch --locked --manifest-path fuzz/Cargo.toml
 cargo deny --offline --all-features --locked check
 inventory_root="$(mktemp -d)"
@@ -298,7 +300,7 @@ cargo deny \
   > "$inventory_root/license-inventory.json" \
   2> "$inventory_root/license-inventory.stderr"
 test ! -s "$inventory_root/license-inventory.stderr"
-"$release_python" -E -s -S repo_work/qualification_artifacts.py \
+"$release_python" -B -E -s -S repo_work/qualification_artifacts.py \
   --metadata "$inventory_root/cargo-metadata.json" \
   --lockfile Cargo.lock \
   --license-inventory "$inventory_root/license-inventory.json"
@@ -308,7 +310,8 @@ cargo deny --offline --manifest-path fuzz/Cargo.toml --all-features --locked che
 The native launcher uses privileged Bash startup and root-owned macOS tools.
 It removes each `DYLD_`, `LD_`, and `PYTHON` selector before Python startup.
 It binds the launcher, framework executables, declared dynamic libraries, Homebrew links, and complete CPython version tree.
-It then replaces itself with the pinned interpreter under fixed `-E -s -S` flags.
+It then replaces itself with the pinned interpreter under fixed `-B -E -s -S` flags.
+The `-B` flag prevents Python from writing `.pyc` files when it imports source modules.
 It removes its private verification state before it replaces itself.
 It restores the caller's umask before Python starts.
 The Python process independently measures the same runtime and records it.
@@ -379,7 +382,7 @@ release_python=repo_work/verify_release_python_runtime.sh
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 
-"$release_python" -E -s -S repo_work/prepare_mutation_evidence.py \
+"$release_python" -B -E -s -S repo_work/prepare_mutation_evidence.py \
   --repo . \
   --candidate "$(git rev-parse HEAD)" \
   --out /new/path/galadriel-0.9.0-mutation-evidence \
@@ -471,11 +474,11 @@ release_python=repo_work/verify_release_python_runtime.sh
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 candidate="$(git rev-parse 'HEAD^{commit}')"
-"$release_python" -E -s -S -c \
+"$release_python" -B -E -s -S -c \
   'import sys; sys.path.insert(0, "repo_work"); from pathlib import Path; from release_assurance import refresh_canonical_origin_main; refresh_canonical_origin_main(Path("."), sys.argv[1])' \
   "$candidate"
 
-"$release_python" -E -s -S repo_work/qualify_candidate.py \
+"$release_python" -B -E -s -S repo_work/qualify_candidate.py \
   --repo . \
   --expected "$(git rev-parse HEAD)" \
   --require-branch main \
@@ -507,7 +510,7 @@ It does not attest every SDK file or the complete Apple compiler supply chain.
 It binds three executable files in the `CPython 3.14.6` runtime inventory.
 It binds the complete CPython version tree before and after qualification.
 It verifies all three executable files and six non-system libraries around each process.
-Retained Python commands use `-E -s -S`.
+Retained Python commands use `-B -E -s -S`.
 The outward Homebrew `site-packages` link remains unreadable and outside `sys.path`.
 It binds the exact Rustup settings file before and after qualification.
 It binds `bin`, `lib`, and `libexec` for all three selected Rust toolchains.
@@ -589,11 +592,11 @@ release_python=repo_work/verify_release_python_runtime.sh
 signing_key="$(git config --get user.signingkey)"
 test -n "$signing_key"
 candidate="$(git rev-parse 'HEAD^{commit}')"
-"$release_python" -E -s -S -c \
+"$release_python" -B -E -s -S -c \
   'import sys; sys.path.insert(0, "repo_work"); from pathlib import Path; from release_assurance import refresh_canonical_origin_main; refresh_canonical_origin_main(Path("."), sys.argv[1])' \
   "$candidate"
 
-"$release_python" -E -s -S repo_work/finalize_release.py \
+"$release_python" -B -E -s -S repo_work/finalize_release.py \
   --repo . \
   --candidate "$(git rev-parse HEAD)" \
   --qualification /new/path/galadriel-0.9.0-qualification \
@@ -655,7 +658,7 @@ the retained closure artifacts and exact candidate:
 
 ```bash
 release_python=repo_work/verify_release_python_runtime.sh
-"$release_python" -E -s -S repo_work/local_convergence.py verify \
+"$release_python" -B -E -s -S repo_work/local_convergence.py verify \
   --repo . \
   --manifest /new/path/galadriel-0.9.0-closure/LOCAL-CONVERGENCE.json \
   --signature /new/path/galadriel-0.9.0-closure/LOCAL-CONVERGENCE.json.sig \
@@ -678,7 +681,7 @@ release_python=repo_work/verify_release_python_runtime.sh
    set -euo pipefail
    release_python=repo_work/verify_release_python_runtime.sh
    candidate="$(git rev-parse 'HEAD^{commit}')"
-   "$release_python" -E -s -S -c \
+   "$release_python" -B -E -s -S -c \
      'import sys; sys.path.insert(0, "repo_work"); from pathlib import Path; from release_assurance import refresh_canonical_origin_main; refresh_canonical_origin_main(Path("."), sys.argv[1])' \
      "$candidate"
    test "$(git rev-parse 'HEAD^{commit}')" = "$candidate"
@@ -708,7 +711,7 @@ release_python=repo_work/verify_release_python_runtime.sh
    ```bash
    set -euo pipefail
    release_python=repo_work/verify_release_python_runtime.sh
-   test "$("$release_python" -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+   test "$("$release_python" -B -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
    candidate="$(git rev-parse 'HEAD^{commit}')"
    tree="$(git rev-parse "$candidate^{tree}")"
    tag=v0.9.0
@@ -719,7 +722,7 @@ release_python=repo_work/verify_release_python_runtime.sh
    test -n "$signing_key"
 
    # user.signingkey must name an agent-backed Ed25519 public-key handle.
-   "$release_python" -E -s -S repo_work/package_release_assets.py build \
+   "$release_python" -B -E -s -S repo_work/package_release_assets.py build \
      --qualification-root /exact/path/galadriel-0.9.0-qualification \
      --closure-root /exact/path/galadriel-0.9.0-closure \
      --out /new/path/galadriel-0.9.0-github-assets \
@@ -755,7 +758,7 @@ release_python=repo_work/verify_release_python_runtime.sh
    ```bash
    set -euo pipefail
    release_python=repo_work/verify_release_python_runtime.sh
-   test "$("$release_python" -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+   test "$("$release_python" -B -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
    candidate="$(git rev-parse 'HEAD^{commit}')"
    tree="$(git rev-parse "$candidate^{tree}")"
    tag=v0.9.0
@@ -763,7 +766,7 @@ release_python=repo_work/verify_release_python_runtime.sh
    tag_target="$(git rev-parse "$tag^{}")"
    test "$tag_target" = "$candidate"
 
-   "$release_python" -E -s -S repo_work/package_release_assets.py verify \
+   "$release_python" -B -E -s -S repo_work/package_release_assets.py verify \
      --assets /new/path/galadriel-0.9.0-github-assets \
      --allowed-signers /independent/path/ALLOWED_SIGNERS \
      --expected-candidate "$candidate" \
@@ -847,7 +850,7 @@ release_python=repo_work/verify_release_python_runtime.sh
    test "${#schema_paths[@]}" -eq 3
 
    for path in "${schema_paths[@]}"; do
-     schema_id="$("$release_python" -E -s -S -c \
+     schema_id="$("$release_python" -B -E -s -S -c \
        'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["$id"])' \
        "$path")"
      test "$schema_id" = \
@@ -911,7 +914,7 @@ release_python=repo_work/verify_release_python_runtime.sh
    ```bash
    set -euo pipefail
    release_python=repo_work/verify_release_python_runtime.sh
-   test "$("$release_python" -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
+   test "$("$release_python" -B -E -s -S -c 'import platform; print(platform.python_implementation(), platform.python_version())')" = "CPython 3.14.6"
    local_assets=/new/path/galadriel-0.9.0-github-assets
    downloaded_assets=/downloaded/galadriel-0.9.0-github-assets
    asset_names=(
@@ -931,7 +934,7 @@ release_python=repo_work/verify_release_python_runtime.sh
    tag_target="$(git rev-parse "$tag^{}")"
    test "$tag_target" = "$candidate"
 
-   "$release_python" -E -s -S repo_work/package_release_assets.py reconstruct \
+   "$release_python" -B -E -s -S repo_work/package_release_assets.py reconstruct \
      --assets "$downloaded_assets" \
      --allowed-signers /independent/path/ALLOWED_SIGNERS \
      --out /new/path/galadriel-0.9.0-reconstructed \
@@ -973,7 +976,7 @@ release_python=repo_work/verify_release_python_runtime.sh
      -s "$closure_root/CLOSURE-MANIFEST.json.sig" \
      < "$closure_root/CLOSURE-MANIFEST.json"
 
-   "$release_python" -E -s -S -c \
+   "$release_python" -B -E -s -S -c \
      'import sys; sys.path.insert(0, "repo_work"); from pathlib import Path; from finalize_release import verify_sha256sums; roots = sys.argv[1:]; len(roots) == 2 or sys.exit("expected exactly two tier roots"); tuple(verify_sha256sums(Path(root)) for root in roots)' \
      "$qualification_root" "$closure_root"
    ```

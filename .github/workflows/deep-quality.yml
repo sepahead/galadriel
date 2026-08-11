@@ -117,7 +117,6 @@ jobs:
       github.event_name == 'workflow_dispatch'
     env:
       MUTATION_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      PYTHONDONTWRITEBYTECODE: "1"
     runs-on: ubuntu-24.04
     # The frozen release diff currently spans every runtime package. Four
     # deterministic shards retain complete coverage without turning a runner
@@ -203,11 +202,11 @@ jobs:
 
       - name: Run exact focused mutation checks
         if: matrix.shard == '2/4'
-        run: python3 -E -s -S repo_work/check_focused_mutation.py --run
+        run: python3 -B -E -s -S repo_work/check_focused_mutation.py --run
 
       - name: Validate exact focused mutation outcomes
         if: matrix.shard == '2/4'
-        run: python3 -E -s -S repo_work/check_focused_mutation.py
+        run: python3 -B -E -s -S repo_work/check_focused_mutation.py
 
       - name: Mutate changed Rust
         # The evaluation and justification harnesses contain long Monte Carlo studies.
@@ -219,7 +218,7 @@ jobs:
         # Those mutants can block unrelated worker threads after the decisive assertion.
         # The focused command covers functions that the broad runner excludes with the study harness.
         run: >-
-          python3 -E -s -S repo_work/run_broad_mutation.py
+          python3 -B -E -s -S repo_work/run_broad_mutation.py
           --root .
           --shard '${{ matrix.shard }}'
 

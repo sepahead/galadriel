@@ -258,8 +258,11 @@ It removes its private verification state before it replaces itself.
 It restores the caller's umask before Python starts.
 It prevents a changed startup module from running before the first tree measurement.
 It verifies all three executable files and six libraries around each bounded process.
-Each retained Python command uses `-E -s -S`.
-These flags ignore Python environment selectors and disable site initialization.
+Each retained Python command uses `-B -E -s -S`.
+The `-B` flag prevents Python from writing `.pyc` files when it imports source modules.
+The CI workflow rejects any remaining import bytecode cache after the governance test suite.
+The `-E` flag ignores Python environment selectors.
+The `-s` and `-S` flags disable site initialization.
 The Homebrew version tree contains one outward `site-packages` link.
 That target remains outside the sandbox read allowlist and outside `sys.path`.
 The qualifier binds the exact Rustup settings file before and after qualification.

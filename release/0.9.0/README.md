@@ -126,8 +126,8 @@ Prose alone **SHALL NOT** close a task.
 Generate and verify deterministic audit artifacts with these commands:
 
 ```console
-python3 scripts/release_audit.py generate
-python3 scripts/release_audit.py verify
+python3 -B -E -s -S scripts/release_audit.py generate
+python3 -B -E -s -S scripts/release_audit.py verify
 ```
 
 ## Candidate qualification
@@ -221,7 +221,7 @@ The run needs these external inputs:
 
 ```console
 repo_work/verify_release_python_runtime.sh \
-  -E -s -S repo_work/qualify_candidate.py \
+  -B -E -s -S repo_work/qualify_candidate.py \
   --repo . \
   --expected "$(git rev-parse HEAD)" \
   --require-branch main \
@@ -255,7 +255,8 @@ The native launcher binds that tree and then replaces itself with pinned Python.
 It removes its private verification state before it replaces itself.
 It restores the caller's umask before Python starts.
 It verifies all three executable files and six non-system libraries around each process.
-Retained Python commands use `-E -s -S`.
+Retained Python commands use `-B -E -s -S`.
+The `-B` flag prevents Python from writing `.pyc` files when it imports source modules.
 The outward Homebrew `site-packages` link remains unreadable and outside `sys.path`.
 It binds the exact Rustup settings file before and after qualification.
 It binds `bin`, `lib`, and `libexec` for each selected Rust toolchain.

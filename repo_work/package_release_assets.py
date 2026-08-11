@@ -105,16 +105,17 @@ def require_canonical_python() -> None:
         platform.python_implementation() != "CPython"
         or sys.version_info[:3] != REQUIRED_PYTHON
         or (
+            sys.flags.dont_write_bytecode,
             sys.flags.ignore_environment,
             sys.flags.no_user_site,
             sys.flags.no_site,
             sys.flags.isolated,
             sys.flags.safe_path,
         )
-        != (1, 1, 1, 0, False)
+        != (1, 1, 1, 1, 0, False)
     ):
         raise ReviewError(
-            "release asset operations require CPython 3.14.6 with -E -s -S"
+            "release asset operations require CPython 3.14.6 with -B -E -s -S"
         )
 
 

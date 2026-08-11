@@ -4064,7 +4064,8 @@ def _dynamic_qualification_specs(
     if (
         not isinstance(inventory_argv, list)
         or len(inventory_argv) != 6 + len(QUALIFICATION_PYTHON_FLAGS)
-        or tuple(inventory_argv[1:4]) != QUALIFICATION_PYTHON_FLAGS
+        or tuple(inventory_argv[1 : 1 + len(QUALIFICATION_PYTHON_FLAGS)])
+        != QUALIFICATION_PYTHON_FLAGS
     ):
         raise ReviewError("qualification source-inventory command is malformed")
     inventory = _absolute_recorded_path(

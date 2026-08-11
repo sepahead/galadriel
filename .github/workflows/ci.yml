@@ -69,11 +69,11 @@ jobs:
         run: cargo install cargo-public-api --version 0.52.0 --locked
 
       - name: Verify exact-epoch secure deployment profile
-        run: python3 -E -s -S scripts/secure_deployment.py check
+        run: python3 -B -E -s -S scripts/secure_deployment.py check
 
       - name: Verify release governance and review tooling
         run: >-
-          python3 -E -s -S -m unittest -v
+          python3 -B -E -s -S -m unittest -v
           scripts.tests.test_release_audit
           repo_work.tests.test_release_audit_snapshot
           repo_work.tests.test_evidence_batch_transaction
@@ -88,18 +88,23 @@ jobs:
           repo_work.tests.test_qualification_artifacts
           repo_work.tests.test_host_process_bounds
 
+      - name: Reject Python import-cache artifacts
+        run: |
+          test -z "$(find scripts repo_work -type d -name __pycache__ -print -quit)"
+          test -z "$(find scripts repo_work -type f -name '*.pyc' -print -quit)"
+
       - name: Verify generated release-audit artifacts
         run: |
-          python3 -E -s -S repo_work/build_task_dispositions.py verify
-          python3 -E -s -S repo_work/local_convergence.py schema --repo .
-          python3 -E -s -S repo_work/freeze_audit_inputs.py verify-lifecycle \
+          python3 -B -E -s -S repo_work/build_task_dispositions.py verify
+          python3 -B -E -s -S repo_work/local_convergence.py schema --repo .
+          python3 -B -E -s -S repo_work/freeze_audit_inputs.py verify-lifecycle \
             --repo . \
             --out release/0.9.0/audit/FROZEN-AUDIT-INPUTS-0.9.0.json \
             --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
-          python3 -E -s -S scripts/release_audit.py verify
+          python3 -B -E -s -S scripts/release_audit.py verify
 
       - name: Verify exact public API snapshots
-        run: python3 -E -s -S repo_work/check_public_api.py
+        run: python3 -B -E -s -S repo_work/check_public_api.py
 
       - name: Format
         run: cargo fmt --all --check
@@ -109,7 +114,7 @@ jobs:
 
       - name: Check and test feature-isolated CLI graphs
         run: |
-          python3 -E -s -S repo_work/check_feature_graph.py
+          python3 -B -E -s -S repo_work/check_feature_graph.py
           cargo check -p galadriel-cli --no-default-features --locked
           cargo check -p galadriel-cli --no-default-features --features pid --locked
           cargo check -p galadriel-cli --no-default-features --features ncp --locked
@@ -131,7 +136,7 @@ jobs:
         run: cargo build -p galadriel-core --no-default-features --locked
 
       - name: Assert vulnerable Zenoh compression path stays disabled
-        run: python3 -E -s -S repo_work/check_vulnerable_features.py
+        run: python3 -B -E -s -S repo_work/check_vulnerable_features.py
 
   current-stable:
     name: current stable · clippy · test
@@ -264,7 +269,7 @@ jobs:
             > "$inventory_root/license-inventory.json" \
             2> "$inventory_root/license-inventory.stderr"
           test ! -s "$inventory_root/license-inventory.stderr"
-          python3 -E -s -S repo_work/qualification_artifacts.py \
+          python3 -B -E -s -S repo_work/qualification_artifacts.py \
             --metadata "$inventory_root/cargo-metadata.json" \
             --lockfile Cargo.lock \
             --license-inventory "$inventory_root/license-inventory.json"
