@@ -149,6 +149,10 @@ This control is process cleanup.
 It is not a control group, container, or deployment-isolation boundary.
 It cannot attribute work that an existing external service performs.
 
+The release audit binds each frozen focused mutant to its tracked source span.
+Before each focused run, pinned cargo-mutants enumerates the complete selected set.
+The runner rejects a source-span, transformation, or set difference before mutation execution.
+
 ## Qualification artifact contract
 
 `qualification.json` uses schema `galadriel.candidate-qualification.v3`.

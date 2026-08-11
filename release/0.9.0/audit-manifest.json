@@ -893,12 +893,12 @@
       "size_bytes": 7578
     },
     {
-      "git_blob_id": "8de5c06f35948e50a8caa62c15d6d47c79fe22b6",
+      "git_blob_id": "1269b5ddddf583f3c9e1a79f50144564e56d0ebc",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "95927c874985072cd5deb991b9279bc0f9f99b7d7b79f593678d54c90c3909cd",
-      "size_bytes": 25431
+      "sha256": "57de97cc8974d6eaa6844de692ad8c0dc121f40f05a9841e787629a13aba3b1e",
+      "size_bytes": 25690
     },
     {
       "git_blob_id": "7c4735896477250de1752739a2da65abafa516f8",
@@ -1245,12 +1245,12 @@
       "size_bytes": 19680
     },
     {
-      "git_blob_id": "5dc56773a93a7de6093e7ecd1cd81d1015c53e4e",
+      "git_blob_id": "a1abd309bc051274898ef4d8a6fb7969f64e2bf6",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "29bcaa040af0ba42311c4ca96df101280fe9a8d50cd7fc46defbbb8f5e7af23a",
-      "size_bytes": 59096
+      "sha256": "af6a17920019042a371c412fc4b0015ca416c7ec1241aba3c8daa0c89ade6f08",
+      "size_bytes": 59341
     },
     {
       "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
@@ -1501,12 +1501,12 @@
       "size_bytes": 67085
     },
     {
-      "git_blob_id": "b6f932554573c5c2f0dd4e96155c7830e950a3ea",
+      "git_blob_id": "1663329b66fd9ce8cb71991957ef45aa5af5caf3",
       "git_mode": "100644",
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "6af5e28893014765f28a180505442378171a2d856e7a22bd166c85e23244236a",
-      "size_bytes": 45200
+      "sha256": "c5d0293926d2e13282e41a3f2c4bd43996471bd8666b53fe2557bcb19bd10a93",
+      "size_bytes": 45379
     },
     {
       "git_blob_id": "c6659c5a4bc0b26d3f8dc89b8b9e385a0e2eba88",
@@ -1533,12 +1533,12 @@
       "size_bytes": 22605
     },
     {
-      "git_blob_id": "bd7b5f92bb001b6e3a7f875d55411501c636ab9e",
+      "git_blob_id": "0f3696f46a66c4be3b3fbcecfe953646972017a6",
       "git_mode": "100644",
       "path": "repo_work/check_focused_mutation.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "301326530ca2b1cf967c35d06757c6fb2d0c4129707af2f5f87589cb3cf5bc4e",
-      "size_bytes": 15924
+      "sha256": "1d3adb29cb880bfc0d7bac60cf57ff662b8a79f022a7b126da937bc6923db8f5",
+      "size_bytes": 17943
     },
     {
       "git_blob_id": "c67a82ff1f19b8871b082e9754385d4035f7f81c",
@@ -1645,12 +1645,12 @@
       "size_bytes": 319930
     },
     {
-      "git_blob_id": "48b076b1f6b2c62ffe6bc7fdced9ca4442150414",
+      "git_blob_id": "ca96163cd174f92eee681df8b7ff80944be584dc",
       "git_mode": "100644",
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2fa0bfe67cfd99af6a0b7650e23ea1e45c788655354d06783a5e60df1ed646f9",
-      "size_bytes": 270532
+      "sha256": "f0487a63157460bbc03ef3cf0bd666177a9a0284758ffe0a062b3cbb62694b00",
+      "size_bytes": 278816
     },
     {
       "git_blob_id": "3dc0129f528c1a7031dcdbba666d0c0b9b890a98",
@@ -1709,12 +1709,12 @@
       "size_bytes": 171769
     },
     {
-      "git_blob_id": "6d119cbe9f96fd4913f2bddce189540faacf561b",
+      "git_blob_id": "edba4557cee34802ad42f5b4969542897076aec1",
       "git_mode": "100644",
       "path": "repo_work/tests/test_host_process_bounds.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "10d0648385edb8586c25038634b81364a99169001abbd64939385e2d28956432",
-      "size_bytes": 88824
+      "sha256": "4c364de231001c5511a3114fe43465d755ab250c41c6788049c190133a67df2e",
+      "size_bytes": 89259
     },
     {
       "git_blob_id": "4f99c7b3629e7238b9e786d6e663dc5765d6440a",
@@ -1741,12 +1741,12 @@
       "size_bytes": 12931
     },
     {
-      "git_blob_id": "8ec5d6071c6cb24bc2908299cb5487a8c6940520",
+      "git_blob_id": "9c1d823eef8532f3b6efe6c6b198ee4fd0e87bbf",
       "git_mode": "100644",
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "44796c5388ffb2bf872fa18cd5cab7b716d99730b8297907b0bfac1ae5c1e75a",
-      "size_bytes": 289956
+      "sha256": "6c91031245c8be87b28299e033bb2a4879a478315a02a6153d946ff5aaf2a094",
+      "size_bytes": 292704
     },
     {
       "git_blob_id": "bf7c1a3caa4c775b4addca1e762a7bc627dfa251",
@@ -1797,12 +1797,12 @@
       "size_bytes": 212
     },
     {
-      "git_blob_id": "777daf5384e3185eb44cd2ce270a55dfa37b9cd8",
+      "git_blob_id": "fe20253c38cefd0d8931b839e2514a4248e759b1",
       "git_mode": "100755",
       "path": "scripts/release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "b5e340d415a2a4b5d3f4c917bc49727fcdb434110482e4437108feefb02f3c56",
-      "size_bytes": 141163
+      "sha256": "dbc356235515d8d1fc2959aea1506fe08a2126b3b217b8a3bf72343dc07eb82b",
+      "size_bytes": 141683
     },
     {
       "git_blob_id": "e962e5f5bde6281fcd36c55095ae4c2904e77f8b",
@@ -2148,19 +2148,19 @@
     },
     {
       "kind": "external_reference",
-      "line": 404,
+      "line": 408,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
     },
     {
       "kind": "external_reference",
-      "line": 410,
+      "line": 414,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
     },
     {
       "kind": "external_reference",
-      "line": 416,
+      "line": 420,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
@@ -2742,12 +2742,12 @@
       "size_bytes": 1260
     },
     {
-      "git_blob_id": "8de5c06f35948e50a8caa62c15d6d47c79fe22b6",
+      "git_blob_id": "1269b5ddddf583f3c9e1a79f50144564e56d0ebc",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "95927c874985072cd5deb991b9279bc0f9f99b7d7b79f593678d54c90c3909cd",
-      "size_bytes": 25431
+      "sha256": "57de97cc8974d6eaa6844de692ad8c0dc121f40f05a9841e787629a13aba3b1e",
+      "size_bytes": 25690
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -2758,12 +2758,12 @@
       "size_bytes": 6391
     },
     {
-      "git_blob_id": "5dc56773a93a7de6093e7ecd1cd81d1015c53e4e",
+      "git_blob_id": "a1abd309bc051274898ef4d8a6fb7969f64e2bf6",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "29bcaa040af0ba42311c4ca96df101280fe9a8d50cd7fc46defbbb8f5e7af23a",
-      "size_bytes": 59096
+      "sha256": "af6a17920019042a371c412fc4b0015ca416c7ec1241aba3c8daa0c89ade6f08",
+      "size_bytes": 59341
     }
   ],
   "release": {

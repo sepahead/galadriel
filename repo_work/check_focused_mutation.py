@@ -24,13 +24,17 @@ from release_assurance import (
     CARGO_MUTANTS_IDENTITY,
     FOCUSED_MUTATION_ENVIRONMENT_CONTRACT,
     FOCUSED_MUTATION_RECEIPT,
+    FOCUSED_MUTATION_SOURCE_FILES,
     GIT_OBJECT,
     MUTATION_LIVENESS_CHECKS,
     MUTATION_PATH_TOOLS,
     RUSTC_IDENTITY,
     focused_liveness_mutation_command,
+    focused_liveness_mutation_list_command,
     run_bounded_host_command,
     validate_focused_liveness_outcomes,
+    validate_focused_mutant_listing,
+    validate_focused_mutant_sources,
     validate_focused_mutation_receipt,
 )
 from qualify_candidate import (
@@ -61,6 +65,7 @@ MAX_FOCUSED_INPUT_BYTES = (
     + len(MUTATION_LIVENESS_CHECKS) * MAX_OUTCOMES_BYTES
     + MAX_RECEIPT_BYTES
 )
+MAX_FOCUSED_SOURCE_BYTES = 8 * 1024 * 1024
 MAX_IDENTITY_STDOUT_BYTES = 64 * 1024
 MAX_IDENTITY_STDERR_BYTES = 64 * 1024
 IDENTITY_TIMEOUT_SECONDS = 120
@@ -70,6 +75,7 @@ FETCH_TIMEOUT_SECONDS = 600
 MAX_MUTATION_STDOUT_BYTES = 64 * 1024 * 1024
 MAX_MUTATION_STDERR_BYTES = 64 * 1024 * 1024
 FOCUSED_MUTATION_TIMEOUT_SECONDS = 3 * 60 * 60
+MAX_MUTATION_LIST_BYTES = 16 * 1024 * 1024
 
 
 def focused_stage_allowlist(
@@ -166,6 +172,16 @@ def run_checks(root: Path, commit: str, tree: str) -> dict[str, dict[str, int]]:
         allowed_exact=initial_exact,
         allowed_prefixes=initial_prefixes,
         required_untracked=initial_required,
+    )
+    validate_focused_mutant_sources(
+        {
+            relative: read_artifact(
+                root / relative,
+                max_bytes=MAX_FOCUSED_SOURCE_BYTES,
+                label=f"focused mutation source {relative}",
+            )
+            for relative in FOCUSED_MUTATION_SOURCE_FILES
+        }
     )
     github_run = github_run_provenance(os.environ, commit)
     retained_diff = read_artifact(
@@ -275,6 +291,41 @@ def run_checks(root: Path, commit: str, tree: str) -> dict[str, dict[str, int]]:
         for index, check in enumerate(MUTATION_LIVENESS_CHECKS):
             check_id = str(check["id"])
             command = focused_liveness_mutation_command(check)
+            reject_cargo_configuration(root, cargo_home)
+            list_process = run_bounded_host_command(
+                focused_liveness_mutation_list_command(check),
+                cwd=root,
+                environment=environment,
+                context=f"focused mutation check {check_id} listing",
+                max_stdout_bytes=MAX_MUTATION_LIST_BYTES,
+                max_stderr_bytes=MAX_IDENTITY_STDERR_BYTES,
+                timeout_seconds=IDENTITY_TIMEOUT_SECONDS,
+                containment=CANDIDATE_TREE_CONTAINMENT,
+            )
+            reject_cargo_configuration(root, cargo_home)
+            if list_process.returncode != 0:
+                raise ReviewError(
+                    f"focused mutation check {check_id} listing exited "
+                    f"{list_process.returncode}"
+                )
+            list_exact, list_prefixes, list_required = focused_stage_allowlist(
+                index, receipt=False
+            )
+            assert_candidate_checkout(
+                root,
+                commit,
+                tree,
+                allowed_exact=list_exact,
+                allowed_prefixes=list_prefixes,
+                required_untracked=list_required,
+            )
+            assert_stage_inputs(
+                root,
+                "2/4",
+                immutable_inputs,
+                include_focused=False,
+            )
+            validate_focused_mutant_listing(list_process.stdout, check)
             reject_cargo_configuration(root, cargo_home)
             process = run_bounded_host_command(
                 command,

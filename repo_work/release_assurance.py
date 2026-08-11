@@ -19,6 +19,7 @@ import stat
 import struct
 import tempfile
 from collections import Counter
+from collections.abc import Mapping
 from decimal import Decimal, localcontext
 from datetime import datetime
 from pathlib import Path
@@ -368,8 +369,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "bootstrap_seed",
         "-> u64",
-        (1153, 1, 1155, 2),
-        (1154, 41, 1154, 42),
+        (1151, 1, 1153, 2),
+        (1152, 41, 1152, 42),
         "|",
         "BinaryOperator",
         "replace ^ with | in bootstrap_seed",
@@ -377,8 +378,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "bootstrap_seed",
         "-> u64",
-        (1153, 1, 1155, 2),
-        (1154, 41, 1154, 42),
+        (1151, 1, 1153, 2),
+        (1152, 41, 1152, 42),
         "&",
         "BinaryOperator",
         "replace ^ with & in bootstrap_seed",
@@ -386,8 +387,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "bootstrap_seed",
         "-> u64",
-        (1153, 1, 1155, 2),
-        (1154, 21, 1154, 22),
+        (1151, 1, 1153, 2),
+        (1152, 21, 1152, 22),
         "|",
         "BinaryOperator",
         "replace ^ with | in bootstrap_seed",
@@ -395,8 +396,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "bootstrap_seed",
         "-> u64",
-        (1153, 1, 1155, 2),
-        (1154, 21, 1154, 22),
+        (1151, 1, 1153, 2),
+        (1152, 21, 1152, 22),
         "&",
         "BinaryOperator",
         "replace ^ with & in bootstrap_seed",
@@ -404,8 +405,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "interval_envelope",
         "-> [f64; 2]",
-        (2783, 1, 2787, 2),
-        (2784, 5, 2786, 7),
+        (2781, 1, 2785, 2),
+        (2782, 5, 2784, 7),
         "[0.0; 2]",
         "FnValue",
         "replace interval_envelope -> [f64; 2] with [0.0; 2]",
@@ -413,8 +414,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "interval_envelope",
         "-> [f64; 2]",
-        (2783, 1, 2787, 2),
-        (2784, 5, 2786, 7),
+        (2781, 1, 2785, 2),
+        (2782, 5, 2784, 7),
         "[1.0; 2]",
         "FnValue",
         "replace interval_envelope -> [f64; 2] with [1.0; 2]",
@@ -422,8 +423,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "interval_envelope",
         "-> [f64; 2]",
-        (2783, 1, 2787, 2),
-        (2784, 5, 2786, 7),
+        (2781, 1, 2785, 2),
+        (2782, 5, 2784, 7),
         "[-1.0; 2]",
         "FnValue",
         "replace interval_envelope -> [f64; 2] with [-1.0; 2]",
@@ -431,8 +432,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "bootstrap_sample_is_sufficient",
         "-> bool",
-        (2836, 1, 2838, 2),
-        (2837, 5, 2837, 60),
+        (2834, 1, 2836, 2),
+        (2835, 5, 2835, 60),
         "true",
         "FnValue",
         "replace bootstrap_sample_is_sufficient -> bool with true",
@@ -440,8 +441,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "bootstrap_sample_is_sufficient",
         "-> bool",
-        (2836, 1, 2838, 2),
-        (2837, 5, 2837, 60),
+        (2834, 1, 2836, 2),
+        (2835, 5, 2835, 60),
         "false",
         "FnValue",
         "replace bootstrap_sample_is_sufficient -> bool with false",
@@ -449,8 +450,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "bootstrap_sample_is_sufficient",
         "-> bool",
-        (2836, 1, 2838, 2),
-        (2837, 30, 2837, 32),
+        (2834, 1, 2836, 2),
+        (2835, 30, 2835, 32),
         "<",
         "BinaryOperator",
         "replace >= with < in bootstrap_sample_is_sufficient",
@@ -458,8 +459,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "estimate_metric",
         "-> MetricEstimate",
-        (2845, 1, 3019, 2),
-        (2851, 5, 3018, 6),
+        (2843, 1, 3017, 2),
+        (2849, 5, 3016, 6),
         "Default::default()",
         "FnValue",
         "replace estimate_metric -> MetricEstimate with Default::default()",
@@ -467,8 +468,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "estimate_metric",
         "-> MetricEstimate",
-        (2845, 1, 3019, 2),
-        (2874, 7, 2874, 9),
+        (2843, 1, 3017, 2),
+        (2872, 7, 2872, 9),
         "||",
         "BinaryOperator",
         "replace && with || in estimate_metric",
@@ -476,8 +477,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "estimate_metric",
         "-> MetricEstimate",
-        (2845, 1, 3019, 2),
-        (2874, 26, 2874, 27),
+        (2843, 1, 3017, 2),
+        (2872, 26, 2872, 27),
         "==",
         "BinaryOperator",
         "replace < with == in estimate_metric",
@@ -485,8 +486,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "estimate_metric",
         "-> MetricEstimate",
-        (2845, 1, 3019, 2),
-        (2874, 26, 2874, 27),
+        (2843, 1, 3017, 2),
+        (2872, 26, 2872, 27),
         ">",
         "BinaryOperator",
         "replace < with > in estimate_metric",
@@ -494,8 +495,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "estimate_metric",
         "-> MetricEstimate",
-        (2845, 1, 3019, 2),
-        (2874, 26, 2874, 27),
+        (2843, 1, 3017, 2),
+        (2872, 26, 2872, 27),
         "<=",
         "BinaryOperator",
         "replace < with <= in estimate_metric",
@@ -503,8 +504,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "estimate_metric",
         "-> MetricEstimate",
-        (2845, 1, 3019, 2),
-        (2907, 25, 2907, 26),
+        (2843, 1, 3017, 2),
+        (2905, 25, 2905, 26),
         "",
         "UnaryOperator",
         "delete ! in estimate_metric",
@@ -512,8 +513,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "estimate_metric",
         "-> MetricEstimate",
-        (2845, 1, 3019, 2),
-        (2938, 20, 2938, 22),
+        (2843, 1, 3017, 2),
+        (2936, 20, 2936, 22),
         "!=",
         "BinaryOperator",
         "replace == with != in estimate_metric",
@@ -521,8 +522,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "estimate_metric",
         "-> MetricEstimate",
-        (2845, 1, 3019, 2),
-        (2955, 20, 2955, 22),
+        (2843, 1, 3017, 2),
+        (2953, 20, 2953, 22),
         "!=",
         "BinaryOperator",
         "replace == with != in estimate_metric",
@@ -530,8 +531,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "estimate_metric",
         "-> MetricEstimate",
-        (2845, 1, 3019, 2),
-        (2971, 20, 2971, 22),
+        (2843, 1, 3017, 2),
+        (2969, 20, 2969, 22),
         "!=",
         "BinaryOperator",
         "replace == with != in estimate_metric",
@@ -539,8 +540,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "summarize_condition",
         "-> ConditionSummary",
-        (3145, 1, 3244, 2),
-        (3149, 5, 3243, 6),
+        (3143, 1, 3242, 2),
+        (3147, 5, 3241, 6),
         "Default::default()",
         "FnValue",
         "replace summarize_condition -> ConditionSummary with Default::default()",
@@ -548,8 +549,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "summarize_condition",
         "-> ConditionSummary",
-        (3145, 1, 3244, 2),
-        (3151, 35, 3151, 37),
+        (3143, 1, 3242, 2),
+        (3149, 35, 3149, 37),
         "!=",
         "BinaryOperator",
         "replace == with != in summarize_condition",
@@ -557,8 +558,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "summarize_condition",
         "-> ConditionSummary",
-        (3145, 1, 3244, 2),
-        (3153, 47, 3153, 49),
+        (3143, 1, 3242, 2),
+        (3151, 47, 3151, 49),
         "!=",
         "BinaryOperator",
         "replace == with != in summarize_condition",
@@ -566,8 +567,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "summarize_condition",
         "-> ConditionSummary",
-        (3145, 1, 3244, 2),
-        (3166, 53, 3166, 54),
+        (3143, 1, 3242, 2),
+        (3164, 53, 3164, 54),
         "%",
         "BinaryOperator",
         "replace / with % in summarize_condition",
@@ -575,8 +576,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "summarize_condition",
         "-> ConditionSummary",
-        (3145, 1, 3244, 2),
-        (3166, 53, 3166, 54),
+        (3143, 1, 3242, 2),
+        (3164, 53, 3164, 54),
         "*",
         "BinaryOperator",
         "replace / with * in summarize_condition",
@@ -584,8 +585,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "summarize_condition",
         "-> ConditionSummary",
-        (3145, 1, 3244, 2),
-        (3174, 30, 3174, 31),
+        (3143, 1, 3242, 2),
+        (3172, 30, 3172, 31),
         "",
         "UnaryOperator",
         "delete ! in summarize_condition",
@@ -593,8 +594,8 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
     _acceptance_mutant(
         "build_summary",
         "-> EvidenceSummary",
-        (3286, 1, 3336, 2),
-        (3291, 5, 3335, 6),
+        (3284, 1, 3334, 2),
+        (3289, 5, 3333, 6),
         "Default::default()",
         "FnValue",
         "replace build_summary -> EvidenceSummary with Default::default()",
@@ -602,11 +603,11 @@ ACCEPTANCE_EVIDENCE_MUTANTS = (
 )
 ACCEPTANCE_EVIDENCE_UNVIABLE_NAMES = frozenset(
     {
-        "crates/galadriel-eval/src/evidence_main.rs:2851:5: replace "
+        "crates/galadriel-eval/src/evidence_main.rs:2849:5: replace "
         "estimate_metric -> MetricEstimate with Default::default()",
-        "crates/galadriel-eval/src/evidence_main.rs:3149:5: replace "
+        "crates/galadriel-eval/src/evidence_main.rs:3147:5: replace "
         "summarize_condition -> ConditionSummary with Default::default()",
-        "crates/galadriel-eval/src/evidence_main.rs:3291:5: replace "
+        "crates/galadriel-eval/src/evidence_main.rs:3289:5: replace "
         "build_summary -> EvidenceSummary with Default::default()",
     }
 )
@@ -738,6 +739,132 @@ MUTATION_LIVENESS_CHECKS = (
         "unviable_mutants": ACCEPTANCE_EVIDENCE_UNVIABLE_MUTANTS,
     },
 )
+FOCUSED_MUTATION_SOURCE_FILES = tuple(
+    sorted(
+        {
+            mutant.file
+            for check in MUTATION_LIVENESS_CHECKS
+            for mutant in check["required_mutants"]
+        }
+    )
+)
+
+
+def _focused_source_span(
+    document: bytes,
+    span: tuple[int, int, int, int],
+    *,
+    context: str,
+) -> bytes:
+    """Return one exact one-based cargo-mutants source span."""
+
+    if b"\r" in document or b"\0" in document:
+        raise ReviewError(f"{context} source has a noncanonical byte")
+    lines = document.split(b"\n")
+    start_line, start_column, end_line, end_column = span
+    if (
+        start_line < 1
+        or end_line < start_line
+        or start_column < 1
+        or end_column < 1
+        or start_line > len(lines)
+        or end_line > len(lines)
+    ):
+        raise ReviewError(f"{context} source span is outside the source")
+    start = lines[start_line - 1]
+    end = lines[end_line - 1]
+    if start_column > len(start) + 1 or end_column > len(end) + 1:
+        raise ReviewError(f"{context} source column is outside the source")
+    if start_line == end_line:
+        if end_column <= start_column:
+            raise ReviewError(f"{context} source span is empty or reversed")
+        return start[start_column - 1 : end_column - 1]
+    pieces = [start[start_column - 1 :]]
+    pieces.extend(lines[start_line : end_line - 1])
+    pieces.append(end[: end_column - 1])
+    return b"\n".join(pieces)
+
+
+def validate_focused_mutant_sources(sources: Mapping[str, bytes]) -> None:
+    """Bind each frozen focused mutant to its exact current source span."""
+
+    if set(sources) != set(FOCUSED_MUTATION_SOURCE_FILES):
+        raise ReviewError("focused mutation source file set differs")
+    function_spans: dict[tuple[str, str], tuple[int, int, int, int]] = {}
+    for check in MUTATION_LIVENESS_CHECKS:
+        for mutant in check["required_mutants"]:
+            document = sources[mutant.file]
+            context = f"focused mutant {mutant.name}"
+            name_prefix = f"{mutant.file}:{mutant.span[0]}:{mutant.span[1]}: "
+            if not mutant.name.startswith(name_prefix):
+                raise ReviewError(f"{context} name differs from its source span")
+
+            function_key = (mutant.file, mutant.function_name)
+            previous_span = function_spans.setdefault(
+                function_key, mutant.function_span
+            )
+            if previous_span != mutant.function_span:
+                raise ReviewError(f"{context} has another function span")
+            function_source = _focused_source_span(
+                document,
+                mutant.function_span,
+                context=f"{context} function",
+            )
+            short_name = mutant.function_name.rsplit("::", 1)[-1]
+            if not function_source.startswith(f"fn {short_name}".encode("utf-8")):
+                raise ReviewError(f"{context} function span differs from the source")
+            if not function_source.endswith(b"}"):
+                raise ReviewError(f"{context} function span lacks its closing brace")
+            header, separator, body_with_close = function_source.partition(b"{")
+            if not separator or not body_with_close.endswith(b"}"):
+                raise ReviewError(f"{context} function body is not bounded")
+            if mutant.return_type and mutant.return_type.encode("utf-8") not in header:
+                raise ReviewError(f"{context} function return type differs")
+            if not (
+                mutant.function_span[:2] <= mutant.span[:2]
+                and mutant.span[2:] <= mutant.function_span[2:]
+            ):
+                raise ReviewError(f"{context} mutation span leaves its function")
+
+            mutation_source = _focused_source_span(
+                document,
+                mutant.span,
+                context=f"{context} mutation",
+            )
+            transformation = mutant.name[len(name_prefix) :]
+            if mutant.genre == "FnValue":
+                return_type = f" {mutant.return_type}" if mutant.return_type else ""
+                expected = (
+                    f"replace {mutant.function_name}{return_type} "
+                    f"with {mutant.replacement}"
+                )
+                if transformation != expected:
+                    raise ReviewError(f"{context} function replacement differs")
+                if mutation_source.strip() != body_with_close[:-1].strip():
+                    raise ReviewError(f"{context} function body span differs")
+            elif mutant.genre == "BinaryOperator":
+                suffix = f" with {mutant.replacement} in {mutant.function_name}"
+                if not transformation.startswith(
+                    "replace "
+                ) or not transformation.endswith(suffix):
+                    raise ReviewError(f"{context} operator replacement differs")
+                original = transformation[len("replace ") : -len(suffix)]
+                if mutation_source != original.encode("utf-8"):
+                    raise ReviewError(
+                        f"{context} operator span differs from the source"
+                    )
+            elif mutant.genre == "UnaryOperator":
+                try:
+                    original = mutation_source.decode("utf-8", "strict")
+                except UnicodeDecodeError as error:
+                    raise ReviewError(
+                        f"{context} unary operator is not UTF-8"
+                    ) from error
+                expected = f"delete {original} in {mutant.function_name}"
+                if mutant.replacement or transformation != expected:
+                    raise ReviewError(f"{context} unary replacement differs")
+            else:
+                raise ReviewError(f"{context} has another mutation genre")
 
 
 def broad_mutation_command(shard_id: str) -> list[str]:
@@ -850,6 +977,29 @@ def focused_liveness_mutation_command(check: dict[str, Any]) -> list[str]:
             str(check["binary"]),
         ]
     raise ReviewError(f"unknown focused mutation check kind: {kind!r}")
+
+
+def focused_liveness_mutation_list_command(check: dict[str, Any]) -> list[str]:
+    """Return the exact locked preflight command for one focused mutant set."""
+
+    command = focused_liveness_mutation_command(check)
+    try:
+        baseline = command.index("--baseline")
+    except ValueError as error:
+        raise ReviewError(
+            "focused mutation command lacks its baseline selector"
+        ) from error
+    if command[:baseline].count("--no-shuffle") != 1:
+        raise ReviewError("focused mutation command lacks its fixed ordering")
+    return [
+        *command[:baseline],
+        "--list",
+        "--json",
+        "--all-features",
+        "--cargo-arg=--locked",
+        "--colors",
+        "never",
+    ]
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -5378,6 +5528,54 @@ def _focused_mutant_signature(value: Any, context: str) -> FocusedMutant:
         ),
         _focused_exact_text(value["genre"], f"{context} genre"),
     )
+
+
+def validate_focused_mutant_listing(
+    document: bytes,
+    check: Mapping[str, Any],
+) -> int:
+    """Require cargo-mutants to enumerate the complete frozen focused set."""
+
+    check_id = str(check["id"])
+    value = _load_mutation_json(
+        document,
+        max_depth=12,
+        max_nodes=200_000,
+        label=f"focused mutation check {check_id} listing",
+    )
+    required: Counter[FocusedMutant] = Counter(check["required_mutants"])
+    if not isinstance(value, list) or len(value) != sum(required.values()):
+        raise ReviewError(
+            f"focused mutation check {check_id} listing has another size"
+        )
+    observed: Counter[FocusedMutant] = Counter()
+    identity_keys = {
+        "name",
+        "package",
+        "file",
+        "function",
+        "span",
+        "replacement",
+        "genre",
+    }
+    for index, item in enumerate(value):
+        context = f"focused mutation check {check_id} listing item {index}"
+        require_keys(item, {*identity_keys, "diff"}, context)
+        identity = {key: item[key] for key in identity_keys}
+        mutant = _focused_mutant_signature(identity, context)
+        transformation = mutant.name.removeprefix(
+            f"{mutant.file}:{mutant.span[0]}:{mutant.span[1]}: "
+        )
+        expected_diff_prefix = f"--- {mutant.file}\n+++ {transformation}\n"
+        diff = item["diff"]
+        if not isinstance(diff, str) or not diff.startswith(expected_diff_prefix):
+            raise ReviewError(f"{context} diff header differs")
+        observed[mutant] += 1
+    if observed != required:
+        raise ReviewError(
+            f"focused mutation check {check_id} listing targets another mutant set"
+        )
+    return sum(observed.values())
 
 
 def _validate_broad_phase(

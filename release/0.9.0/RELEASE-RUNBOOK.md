@@ -152,6 +152,10 @@ Restart every candidate-bound check.
    The observational mutation-baseline job remains residual evidence.
    It is not a successful release gate.
 
+   The release audit binds each frozen focused mutant to its tracked source span.
+   Pinned cargo-mutants enumerates each selected set before the focused run.
+   The enumerated identities MUST equal the frozen source spans and transformations.
+
    The acceptance-estimation outcome has 23 caught mutants and three exact compile-unviable mutants.
    It has no missed, timed-out, or surviving mutant.
    All supply-chain and frozen-input semantic gates also pass.

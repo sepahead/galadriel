@@ -81,6 +81,10 @@ from qualify_candidate import (  # noqa: E402
     QUALIFICATION_PYTHON_FLAGS,
     qualification_compiler_driver_bytes,
 )
+from release_assurance import (  # noqa: E402
+    FOCUSED_MUTATION_SOURCE_FILES,
+    validate_focused_mutant_sources,
+)
 
 
 RELEASE = ROOT / "release" / "0.9.0"
@@ -253,7 +257,7 @@ PUBLICATION_SEQUENCE_MARKERS = (
     "wrong, follow the full withdrawal procedure below.",
 )
 RELEASE_RUNBOOK_CONTRACT_SHA256 = (
-    "7323406fb305715760f96e64faf8ea055eaa0ae8a2aec98746338220cce1bacc"
+    "a8956959dfa9d54eada8f0e19cadcc69a02f79267b97fd497b49ed815e4fd419"
 )
 RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256 = (
     "31251370fcde67b312610ec4f18609f5c708f134289d4e69029f70ca5f482f9f"
@@ -2027,6 +2031,18 @@ def validate_inputs(
         if snapshot is not None
         else DEEP_QUALITY_WORKFLOW.read_text(encoding="utf-8")
     )
+    focused_sources = {
+        relative: (
+            _snapshot_bytes(ROOT / relative, snapshot)
+            if snapshot is not None
+            else (ROOT / relative).read_bytes()
+        )
+        for relative in FOCUSED_MUTATION_SOURCE_FILES
+    }
+    try:
+        validate_focused_mutant_sources(focused_sources)
+    except ReviewError as error:
+        raise AuditError(str(error)) from error
     if not inputs["adaptation_decision"].startswith("release/0.9.0/"):
         raise AuditError(
             "adaptation decision must be retained inside the release record"

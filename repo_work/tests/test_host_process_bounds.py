@@ -67,7 +67,7 @@ class HostProcessBoundTests(unittest.TestCase):
         """Run one containment failure in a disposable Linux process."""
 
         return subprocess.run(
-            [sys.executable, "-I", "-c", source, str(TOOLS)],
+            [sys.executable, "-B", "-I", "-c", source, str(TOOLS)],
             cwd=REPOSITORY,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
@@ -75,6 +75,15 @@ class HostProcessBoundTests(unittest.TestCase):
             check=False,
             timeout=15,
             start_new_session=True,
+        )
+
+    def test_isolated_linux_harness_disables_import_caches(self) -> None:
+        completed = subprocess.CompletedProcess([], 0, b"", b"")
+        with mock.patch.object(subprocess, "run", return_value=completed) as runner:
+            self.assertIs(self.run_isolated_linux_harness("pass"), completed)
+        self.assertEqual(
+            runner.call_args.args[0][:4],
+            [sys.executable, "-B", "-I", "-c"],
         )
 
     def test_assigned_scripts_have_no_direct_subprocess_invocation(self) -> None:

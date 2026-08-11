@@ -269,6 +269,8 @@ It is not a successful release gate.
 Two direct-test runs cover synchronization mutants.
 When active, those mutants intentionally block unrelated full-suite tests.
 One binary-test run covers acceptance-estimation functions in `galadriel-eval`.
+Before each focused run, pinned cargo-mutants enumerates the complete selected set.
+The runner rejects a source-span, transformation, or set difference before mutation execution.
 Assemble all 13 mutation artifacts.
 These artifacts are seven outcome files, five run receipts, and one retained `git.diff`.
 

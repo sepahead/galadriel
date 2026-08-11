@@ -124,6 +124,7 @@ from release_assurance import (  # noqa: E402
     CARGO_MUTANTS_IDENTITY,
     FOCUSED_MUTATION_RECEIPT,
     FOCUSED_MUTATION_ENVIRONMENT_CONTRACT,
+    FOCUSED_MUTATION_SOURCE_FILES,
     FocusedMutant,
     MUTATION_DIFF_OPTIONS,
     MUTATION_BASELINE_COMMIT,
@@ -136,6 +137,7 @@ from release_assurance import (  # noqa: E402
     derive_external_allowed_signers,
     evaluate_acceptance,
     focused_liveness_mutation_command,
+    focused_liveness_mutation_list_command,
     git_tree_inventory,
     require_agent_backed_public_signing_key,
     require_origin_main_candidate,
@@ -153,6 +155,8 @@ from release_assurance import (  # noqa: E402
     validate_mutation_outcomes,
     validate_mutation_evidence,
     validate_focused_liveness_outcomes,
+    validate_focused_mutant_listing,
+    validate_focused_mutant_sources,
     validate_focused_mutation_receipt,
     validate_reviewed_task_dispositions,
     verify_artifact_manifest,
@@ -4186,6 +4190,50 @@ if child.returncode != -signal.SIGTERM:
             with self.assertRaisesRegex(ReviewError, "function must be an object"):
                 validate_focused_liveness_outcomes(path, check)
 
+    def test_focused_mutants_bind_their_current_source_spans(self) -> None:
+        sources = {
+            relative: (ROOT / relative).read_bytes()
+            for relative in FOCUSED_MUTATION_SOURCE_FILES
+        }
+        validate_focused_mutant_sources(sources)
+
+        shifted = dict(sources)
+        acceptance = shifted[assurance.ACCEPTANCE_MUTANT_FILE]
+        shifted[assurance.ACCEPTANCE_MUTANT_FILE] = acceptance.replace(
+            b"\nfn bootstrap_seed", b"\n\nfn bootstrap_seed", 1
+        )
+        with self.assertRaisesRegex(ReviewError, "function span differs"):
+            validate_focused_mutant_sources(shifted)
+
+        changed_operator = dict(sources)
+        changed_operator[assurance.ACCEPTANCE_MUTANT_FILE] = acceptance.replace(
+            b"mix64(base_seed ^", b"mix64(base_seed |", 1
+        )
+        with self.assertRaisesRegex(ReviewError, "operator span differs"):
+            validate_focused_mutant_sources(changed_operator)
+
+    def test_focused_mutant_listing_binds_the_complete_frozen_set(self) -> None:
+        check = MUTATION_LIVENESS_CHECKS[2]
+        listing = []
+        for mutant in check["required_mutants"]:
+            identity = focused_mutant_document(mutant)
+            transformation = mutant.name.removeprefix(
+                f"{mutant.file}:{mutant.span[0]}:{mutant.span[1]}: "
+            )
+            identity["diff"] = f"--- {mutant.file}\n+++ {transformation}\n"
+            listing.append(identity)
+        document = canonical_json(listing)
+        self.assertEqual(validate_focused_mutant_listing(document, check), 26)
+
+        missing = canonical_json(listing[:-1])
+        with self.assertRaisesRegex(ReviewError, "listing has another size"):
+            validate_focused_mutant_listing(missing, check)
+
+        changed_diff = copy.deepcopy(listing)
+        changed_diff[0]["diff"] = "--- another.rs\n+++ another mutation\n"
+        with self.assertRaisesRegex(ReviewError, "diff header differs"):
+            validate_focused_mutant_listing(canonical_json(changed_diff), check)
+
     def test_focused_acceptance_mutation_binds_caught_and_unviable_sets(self) -> None:
         check = MUTATION_LIVENESS_CHECKS[2]
         document = focused_outcomes_document(check)
@@ -4350,6 +4398,15 @@ if child.returncode != -signal.SIGTERM:
             )
         acceptance = focused_liveness_mutation_command(MUTATION_LIVENESS_CHECKS[2])
         self.assertEqual(acceptance[-3:], ["--", "--bin", "galadriel-evidence"])
+        for check in MUTATION_LIVENESS_CHECKS:
+            listing = focused_liveness_mutation_list_command(check)
+            self.assertEqual(listing[:3], ["cargo", "mutants", "--no-config"])
+            self.assertEqual(listing.count("--list"), 1)
+            self.assertEqual(listing.count("--json"), 1)
+            self.assertEqual(listing.count("--no-shuffle"), 1)
+            self.assertEqual(listing.count("--cargo-arg=--locked"), 1)
+            self.assertNotIn("--baseline", listing)
+            self.assertNotIn("--output", listing)
 
     def test_mutation_subject_diagnostic_omits_untrusted_field_text(self) -> None:
         hostile_key = "attacker-controlled-secret-field-name"
