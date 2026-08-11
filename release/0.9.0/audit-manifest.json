@@ -1741,12 +1741,12 @@
       "size_bytes": 12931
     },
     {
-      "git_blob_id": "66acc1a0f3c74f3fb9bae332476ee8dbd8cddd2e",
+      "git_blob_id": "8ec5d6071c6cb24bc2908299cb5487a8c6940520",
       "git_mode": "100644",
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "16411a8e148202212a6206acba74646ef22e59381da8e299dbb72cacbcab62e2",
-      "size_bytes": 289313
+      "sha256": "44796c5388ffb2bf872fa18cd5cab7b716d99730b8297907b0bfac1ae5c1e75a",
+      "size_bytes": 289956
     },
     {
       "git_blob_id": "bf7c1a3caa4c775b4addca1e762a7bc627dfa251",

@@ -6549,19 +6549,36 @@ if child.returncode != -signal.SIGTERM:
             private.mkdir()
             tools = qualification_tool_fixture(root)
             (tools / "pkg-config").unlink()
+            self.assertFalse((tools / "pkg-config").exists())
 
-            environment = build_qualification_environment(
-                {
-                    "PATH": str(tools),
-                    "HOME": "/host/home",
-                    "RUSTUP_HOME": "/host/rustup",
-                },
-                private_root=private,
-                target=private / "target",
-                source_date_epoch="1234567890",
-            )
+            real_which = shutil.which
 
-            self.assertIsNone(shutil.which("pkg-config", path=environment["PATH"]))
+            def reject_pkg_config_lookup(
+                name: str,
+                *,
+                path: str | None = None,
+            ) -> str | None:
+                if name == "pkg-config":
+                    self.fail("qualification environment looked up ambient pkg-config")
+                return real_which(name, path=path)
+
+            with mock.patch.object(
+                qualifier.shutil,
+                "which",
+                side_effect=reject_pkg_config_lookup,
+            ):
+                environment = build_qualification_environment(
+                    {
+                        "PATH": str(tools),
+                        "HOME": "/host/home",
+                        "RUSTUP_HOME": "/host/rustup",
+                    },
+                    private_root=private,
+                    target=private / "target",
+                    source_date_epoch="1234567890",
+                )
+
+            self.assertEqual(environment["PATH"].split(os.pathsep)[0], str(tools))
 
     def test_deep_fuzz_directories_are_private_empty_and_single_use(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
