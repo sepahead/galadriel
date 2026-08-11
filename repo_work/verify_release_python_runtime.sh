@@ -1,6 +1,6 @@
 #!/bin/bash -p
 
-# Verify and launch the pinned release Python without an unverified startup gap.
+# Verify declared release-Python runtime inputs before launching the pinned interpreter.
 
 set -euo pipefail
 

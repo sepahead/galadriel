@@ -91,6 +91,11 @@ This research source version has no remediation-time SLA.
   The host captures each no-follow file identity and digest before execution.
   It requires the same identity after execution.
   It removes dynamic-loader and toolchain selectors from the host command environment.
+- Qualification inventories the declared CPython and Rustup runtime inputs before and after the retained command sequence.
+  These checkpoints detect a persistent change.
+  They do not make user-owned toolchain paths immutable.
+  A process under the same operating-system user can replace a path between checkpoints.
+  Use a separately protected, read-only toolchain for stronger execution-byte assurance.
 - Qualification pins `sandbox-exec` to `/usr/bin/sandbox-exec`.
   It records the resolved path, SHA-256 value, size, owner, group, and mode.
   Finalization requires the expected SHA-256 value and size.

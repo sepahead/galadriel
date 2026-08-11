@@ -277,6 +277,13 @@ The sandbox grants only those runtime roots under `RUSTUP_HOME`.
 It does not grant the `etc` or `share` roots.
 Retained commands do not use those excluded roots.
 An added runtime read outside the declared roots fails closed in the sandbox.
+
+These inventories detect a change that persists to a checkpoint.
+They do not make the user-owned Homebrew or Rustup trees immutable.
+A concurrent process under the same operating-system user can replace a path between checkpoints.
+The sandbox prevents candidate writes but does not control that external process.
+Use a separately protected, read-only toolchain for stronger execution-byte assurance.
+
 The operator supplies the exact `pkgconf 3.0.3` executable through `--pkg-config`.
 The value must use the fixed absolute path in the release input.
 The qualifier verifies the 74,928-byte executable and its SHA-256 identity.

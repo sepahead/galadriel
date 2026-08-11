@@ -186,6 +186,17 @@ Before `1.0`, minor releases can contain breaking changes.
   Prohibit `GO` while an acceptance criterion fails.
 - Pin current-stable qualification and continuous integration checks to Rust and Cargo 1.97.1.
   Preserve Rust 1.89.0 as the workspace minimum supported Rust version.
+- Execute tests for the default, PID, NCP, and NCP-live CLI feature profiles.
+  An all-feature test cannot substitute for feature-disabled behavior.
+- Add tracked semantic seeds and a bounded stateful lifecycle fuzz target.
+  Build all three fuzz runners once with the pinned nightly toolchain, `--locked`, and `--offline`.
+  The deep workflow executes each native runner for 5,000 deterministic cases.
+  Qualification validates each macOS runner's Mach-O contract and copies it to a private mode-0500 snapshot.
+  Qualification executes each snapshot directly for 5,000 deterministic cases.
+- Bind the complete declared CPython version tree and selected Rustup runtime roots around qualification.
+  Run retained Python commands with `-B -E -s -S`.
+  Deny candidate execution of the retained but unused CMake and pkgconf tools.
+  Inventory checkpoints detect persistent drift but do not make user-owned toolchain paths immutable.
 - Add exact semantic validation for retained release artifacts.
   Bind the 437-package metadata graph to `Cargo.lock`.
   Bind source-archive types, modes, owners, times, and content to the exact Git tree.
@@ -218,6 +229,8 @@ Before `1.0`, minor releases can contain breaking changes.
   The validator rejects transitions outside record-only or monotonically restrict-only behavior.
   `Nominal` cannot grant authority, relax a limit, or extend TTL or lease.
   It cannot refresh a watchdog or change capabilities.
+  Typed snapshot parameters bind physical-limit units, lease-clock semantics, and policy identity.
+  The legacy untyped constructor remains record-only and cannot enter restrict-only validation.
 - Remove the accidental public chi-square implementation module.
   Consumers use typed detector reports instead of a numerical backend.
 
@@ -249,6 +262,10 @@ Before `1.0`, minor releases can contain breaking changes.
   The configured CA still constrains router-side client mTLS.
   Deployments use a private router name that a public authority cannot issue.
   They control name resolution or add external exact-certificate or SPKI pinning.
+- Parse every runtime Zenoh configuration as strict JSON before the Zenoh parser receives it.
+  Require one top-level object and reject a trailing document.
+  Reject decoded-equivalent duplicate keys at each object depth.
+  Reject JSON5 extensions even when the file name ends in `.json5`.
 - Refuse `SidecarTap::close()` on a tap that `from_bus` created.
   `ZenohBus` clones share one Zenoh session and one retained-subscriber registry.
   Without this refusal, a close from the tap can silently stop the **host's** complete transport.
@@ -503,6 +520,10 @@ Before `1.0`, minor releases can contain breaking changes.
   A sensor subset could reach `Nominal`.
   Release code now uses `ReleaseSuite` and `Mirror::from_release_suite`.
   Explicit subset research uses `Mirror::for_exploratory_subset`.
+- Align `ReleaseSuite` construction with the NCP lifecycle resource contract.
+  Budget all six registered modalities under the 983,040 sample-unit ceiling.
+  Reject a correlation family that already contains derived axes.
+  This fail-closed correction changes acceptance and suite identities from earlier unpublished drafts.
 - Record that the `galadriel-pid` sidecar route and kind name is historical.
   PID is now optional.
   Defer a rename to the next sidecar-schema version change.
@@ -516,6 +537,9 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Fixed
 
+- Accept monitor outcome and miss track identifier zero across core, runtime, and schema validation.
+  The complete JSON-safe unsigned range is `0..=9_007_199_254_740_991`.
+  An earlier unpublished monitor-schema draft incorrectly required a positive value.
 - Make Wilson binomial intervals conservatively contain the exact rational point estimate for every valid machine count.
   This rule includes counts beyond the exact-integer range of `f64`.
   Use failure-side symmetry and outward-rounded complements.

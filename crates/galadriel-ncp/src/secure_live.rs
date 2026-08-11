@@ -702,7 +702,7 @@ fn valid_secure_client_endpoint(value: &str) -> bool {
 struct DuplicateCheckedSeed;
 
 impl<'de> DeserializeSeed<'de> for DuplicateCheckedSeed {
-    type Value = ();
+    type Value = DuplicateCheckComplete;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -714,50 +714,38 @@ impl<'de> DeserializeSeed<'de> for DuplicateCheckedSeed {
 
 struct DuplicateCheckedVisitor;
 
+#[derive(Clone, Copy)]
+struct DuplicateCheckComplete;
+
 impl<'de> Visitor<'de> for DuplicateCheckedVisitor {
-    type Value = ();
+    type Value = DuplicateCheckComplete;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str("a JSON value without duplicate object keys")
     }
 
     fn visit_bool<E>(self, _value: bool) -> Result<Self::Value, E> {
-        Ok(())
+        Ok(DuplicateCheckComplete)
     }
 
     fn visit_i64<E>(self, _value: i64) -> Result<Self::Value, E> {
-        Ok(())
+        Ok(DuplicateCheckComplete)
     }
 
     fn visit_u64<E>(self, _value: u64) -> Result<Self::Value, E> {
-        Ok(())
+        Ok(DuplicateCheckComplete)
     }
 
     fn visit_f64<E>(self, _value: f64) -> Result<Self::Value, E> {
-        Ok(())
+        Ok(DuplicateCheckComplete)
     }
 
     fn visit_str<E>(self, _value: &str) -> Result<Self::Value, E> {
-        Ok(())
-    }
-
-    fn visit_string<E>(self, _value: String) -> Result<Self::Value, E> {
-        Ok(())
-    }
-
-    fn visit_none<E>(self) -> Result<Self::Value, E> {
-        Ok(())
-    }
-
-    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        DuplicateCheckedSeed.deserialize(deserializer)
+        Ok(DuplicateCheckComplete)
     }
 
     fn visit_unit<E>(self) -> Result<Self::Value, E> {
-        Ok(())
+        Ok(DuplicateCheckComplete)
     }
 
     fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
@@ -765,7 +753,7 @@ impl<'de> Visitor<'de> for DuplicateCheckedVisitor {
         A: SeqAccess<'de>,
     {
         while sequence.next_element_seed(DuplicateCheckedSeed)?.is_some() {}
-        Ok(())
+        Ok(DuplicateCheckComplete)
     }
 
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
@@ -779,15 +767,25 @@ impl<'de> Visitor<'de> for DuplicateCheckedVisitor {
             }
             map.next_value_seed(DuplicateCheckedSeed)?;
         }
-        Ok(())
+        Ok(DuplicateCheckComplete)
     }
 }
 
-fn reject_duplicate_json_keys(document: &str) -> Result<(), serde_json::Error> {
+fn parse_duplicate_checked_json_object(
+    document: &str,
+) -> Result<serde_json::Value, serde_json::Error> {
     let mut duplicate_checked = serde_json::Deserializer::from_str(document);
-    DuplicateCheckedSeed
-        .deserialize(&mut duplicate_checked)
-        .and_then(|()| duplicate_checked.end())
+    DuplicateCheckedSeed.deserialize(&mut duplicate_checked)?;
+    duplicate_checked.end()?;
+    // The arbitrary-precision number adapter can use map visitation.
+    // Check the public value shape instead of inferring the root type from callbacks.
+    let value: serde_json::Value = serde_json::from_str(document)?;
+    if !value.is_object() {
+        return Err(<serde_json::Error as de::Error>::custom(
+            "secure Zenoh config must be a JSON object",
+        ));
+    }
+    Ok(value)
 }
 
 fn load_bounded_secure_config(path: &Path) -> Result<ZenohConfig, SecureConfigError> {
@@ -824,9 +822,7 @@ fn load_bounded_secure_config(path: &Path) -> Result<ZenohConfig, SecureConfigEr
     }
     let document = String::from_utf8(bytes)
         .map_err(|source| SecureConfigError::InvalidConfigUtf8 { source })?;
-    reject_duplicate_json_keys(&document)
-        .map_err(|source| SecureConfigError::InvalidConfigDocument { source })?;
-    let value: serde_json::Value = serde_json::from_str(&document)
+    let value = parse_duplicate_checked_json_object(&document)
         .map_err(|source| SecureConfigError::InvalidConfigDocument { source })?;
     if contains_external_config_include(&value) {
         return Err(SecureConfigError::ExternalConfigInclude);
@@ -1217,6 +1213,10 @@ mod tests {
                 r#"{"metadata":{"label":"primary","label":"fallback"}}"#,
             ),
             (
+                "escaped equivalent key",
+                r#"{"mode":"client","\u006dode":"peer"}"#,
+            ),
+            (
                 "nested external include key",
                 r#"{"transport":{"__config__":"one.json5","__config__":"two.json5"}}"#,
             ),
@@ -1245,15 +1245,56 @@ mod tests {
             "listen": {"endpoints": []}
         }"#;
 
-        reject_duplicate_json_keys(document)
+        parse_duplicate_checked_json_object(document)
             .expect("equal names in distinct objects are not duplicate keys");
+    }
+
+    #[test]
+    fn duplicate_key_preparse_requires_one_top_level_object() {
+        for document in ["[]", r#""value""#, "-1", "1", "1.5", "true", "null"] {
+            let error = parse_duplicate_checked_json_object(document)
+                .expect_err("a secure Zenoh config must be one JSON object");
+            assert!(
+                error
+                    .to_string()
+                    .contains("secure Zenoh config must be a JSON object"),
+                "wrong top-level JSON diagnostic for {document}: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn duplicate_key_preparse_rejects_an_extreme_top_level_number() {
+        parse_duplicate_checked_json_object("1e400")
+            .expect_err("an extreme number must not become a top-level config object");
+    }
+
+    #[test]
+    fn duplicate_key_preparse_rejects_a_trailing_json_document() {
+        let error = parse_duplicate_checked_json_object("{} {}")
+            .expect_err("a valid object prefix must not hide a trailing document");
+
+        assert!(error.to_string().contains("trailing characters"));
+    }
+
+    #[test]
+    fn duplicate_key_preparse_expectation_is_specific_and_secret_free() {
+        let error = <serde::de::value::Error as serde::de::Error>::invalid_type(
+            serde::de::Unexpected::Unit,
+            &DuplicateCheckedVisitor,
+        );
+        let diagnostic = error.to_string();
+
+        assert!(diagnostic.contains("a JSON value without duplicate object keys"));
+        assert!(!diagnostic.contains("secret"));
+        assert!(diagnostic.len() < 128);
     }
 
     #[test]
     fn duplicate_key_diagnostic_does_not_echo_the_untrusted_key() {
         const HOSTILE_KEY: &str = "attacker-controlled-secret-field-name";
         let document = format!(r#"{{"{HOSTILE_KEY}":1,"{HOSTILE_KEY}":2}}"#);
-        let error = reject_duplicate_json_keys(&document)
+        let error = parse_duplicate_checked_json_object(&document)
             .expect_err("a duplicate hostile key must fail closed");
         let diagnostic = error.to_string();
 

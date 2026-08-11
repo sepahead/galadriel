@@ -49,16 +49,25 @@ Partial information decomposition (PID) and Neuro-Cybernetic Protocol (NCP) inte
 - Core checks the terminal sequence and terminal-frame timestamp against the stream.
 - Assessment binding v2 binds the scope, release suite, and exact ordered observations.
 - Scope labels provide internal identity integrity. They do not authenticate a producer.
+- Authority snapshots use typed physical-limit units, lease-clock semantics, and policy identity.
+- The verdict-independent authority-effect validator permits only record-only or
+  monotonically restrict-only transitions.
+- The legacy untyped authority constructor remains record-only.
 - Optional PID analysis abstains before it adds observation noise to a degenerate column.
 - Raw JSONL replay is unbound and diagnostic-only.
 - Raw replay cannot create a sealed core or PID whole-stream report.
 - Offline and optional live sidecar ingestion enforce common-projection and frozen-prior boundaries.
 - They also enforce configuration, session, producer, lifecycle, and replay boundaries.
+- Runtime Zenoh configurations must contain one strict JSON object.
+- The loader rejects JSON5 extensions, trailing documents, external includes, and decoded-equivalent duplicate keys.
 - Session and producer fields use the Galadriel core identity grammar.
 - The pre-release schemas narrowed these fields from generic NCP segments to that grammar.
 - Authorized producers must use the narrower grammar before live operation.
 - Identity constructors reject oversized or noncanonical input before retained-state allocation or subscription effects.
 - Identity errors no longer retain the rejected text.
+- `ReleaseSuite` budgets all six registered modalities under the 983,040 sample-unit lifecycle ceiling.
+- Suite construction rejects a correlation family that already contains derived axes.
+- Monitor outcome and miss track identifiers use the complete JSON-safe unsigned range, including zero.
 - The runtime overflow guard covers frame, reorder, steady-heartbeat, and initial-heartbeat deadlines.
 - Live standard output uses `galadriel.observe.lifecycle.v1`.
 - Each JSON line includes `calibrated_posterior=false`, one receipt, and ordered assessments.
@@ -74,6 +83,12 @@ Partial information decomposition (PID) and Neuro-Cybernetic Protocol (NCP) inte
 ### Release assurance
 
 - Release tools check the feature graph, public API, and security profile.
+- Continuous integration executes tests for the default, PID, NCP, and NCP-live CLI feature profiles.
+- The deep workflow checks the complete fuzz workspace and its tracked semantic seed canaries.
+- It builds all three fuzz runners once with the pinned nightly toolchain, `--locked`, and `--offline`.
+- The deep workflow executes each native runner for 5,000 deterministic cases.
+- Qualification validates each macOS runner's Mach-O contract.
+- Qualification executes each private mode-0500 snapshot for 5,000 deterministic cases.
 - The active audit-input pair uses schema `galadriel.frozen-audit-inputs.v2`.
 - It binds each path, Git mode, blob identifier, SHA-256 value, and size.
 - One bounded index capture supplies source semantics and release-tool coverage.
@@ -125,6 +140,9 @@ Partial information decomposition (PID) and Neuro-Cybernetic Protocol (NCP) inte
 - Its SHA-256 value is `bfc26634ed164598c75c91fc462f0fa527b73634859faeb9476f2631bf529619`.
 - The current-stable checks use Rust and Cargo 1.97.1.
 - Canonical asset construction, verification, and reconstruction use CPython 3.14.6.
+- Qualification inventories the complete declared CPython version tree and selected Rustup runtime roots.
+- Retained Python commands use `-B -E -s -S`.
+- The sandbox denies candidate execution of the retained but unused CMake and pkgconf tools.
 - Qualification uses the exact 16-key base environment and isolated writable tool state.
 - Qualification rejects a file, directory, or link at each Cargo configuration path.
 - Qualification refreshes public `main` through the literal repository URL and exact refspec.
@@ -303,6 +321,9 @@ They are not release pins or reciprocal acceptance.
 - Evidence that is missing, stale, in conflict, or insufficient fails closed.
 - The pinned Zenoh client does not prove exclusive router certificate selection.
 - A deployment must apply the documented router authentication control.
+- Toolchain inventory checkpoints detect persistent drift but do not make user-owned paths immutable.
+- A process under the same operating-system user can replace a path between checkpoints.
+- Use a separately protected, read-only toolchain for stronger execution-byte assurance.
 - Current calibration evidence is diagnostic.
 - It does not qualify the monitor for restrictive operational policy use.
 

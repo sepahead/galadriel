@@ -125,12 +125,12 @@
       "size_bytes": 25517
     },
     {
-      "git_blob_id": "9fdb159a5a1738e75c6e3222fed41641716f2383",
+      "git_blob_id": "a6518d2faab6865d5c5a2b7cdbb03fb682ab6f40",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "119d2da10591b155971077fca7150114572eef5f862e4198670e58dcc4ddc3fd",
-      "size_bytes": 52299
+      "sha256": "c54d03cdf3a630252ac6f123779301599be0879813caa9b639c2f1977bf355b9",
+      "size_bytes": 54296
     },
     {
       "git_blob_id": "c3d694548de778604161b216002b6da2f2a7b5e3",
@@ -221,12 +221,12 @@
       "size_bytes": 6391
     },
     {
-      "git_blob_id": "58fb4d1aaea0c7039c03e0a7d200f2e7566c5012",
+      "git_blob_id": "d6fa51717aaef124fa19a700261f5b5e304148bb",
       "git_mode": "100644",
       "path": "SECURITY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "03755f5119d196fca960ad62d3ff0f19a998c37ba0073d179640a50c82a3d3ff",
-      "size_bytes": 12464
+      "sha256": "4992bbf6a33bfe6e7cf203b37e9862a8369f8e7b314489694522ff1fe8b02f23",
+      "size_bytes": 12870
     },
     {
       "git_blob_id": "67257f62dd8485af3886c2d2cf073a52c0acc226",
@@ -613,12 +613,12 @@
       "size_bytes": 96567
     },
     {
-      "git_blob_id": "6724066ce7bfc6366123682e9d012b66cf7729c0",
+      "git_blob_id": "754c88d769d65d6120592cb45e9801c698e6b73d",
       "git_mode": "100644",
       "path": "crates/galadriel-ncp/src/secure_live.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "cbdf4f23cda043c27b6090f5fd64d04d0433eec4e38d59a89df081a1437852f8",
-      "size_bytes": 48376
+      "sha256": "7b901b33868ecbde49c3aeb64020451f8c9e59d311055b243ed6c9552609ee12",
+      "size_bytes": 50284
     },
     {
       "git_blob_id": "dfb7e26a149fbdf25f67e1d2b3ef934e8145eaae",
@@ -893,12 +893,12 @@
       "size_bytes": 7578
     },
     {
-      "git_blob_id": "1269b5ddddf583f3c9e1a79f50144564e56d0ebc",
+      "git_blob_id": "16c9bb443a8b75edf0aa0a202960493adb6fc66f",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "57de97cc8974d6eaa6844de692ad8c0dc121f40f05a9841e787629a13aba3b1e",
-      "size_bytes": 25690
+      "sha256": "139ef80dc8eb6207d23de7a29d3d16f6e146a7cbcd31b6b232b74c5e23c56762",
+      "size_bytes": 26092
     },
     {
       "git_blob_id": "7c4735896477250de1752739a2da65abafa516f8",
@@ -981,12 +981,12 @@
       "size_bytes": 33284
     },
     {
-      "git_blob_id": "f67414df787fac4c6d807b9f673a67d5cdb54ebb",
+      "git_blob_id": "c303dcaedaa67c1115e90cd2bb382c66867b44cc",
       "git_mode": "100644",
       "path": "docs/SECURE-DEPLOYMENT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "9d5683b10e107eb45f73d497ff65a3ab8f9f3d3a9b984ac03bcaa4e00dc32fe6",
-      "size_bytes": 18117
+      "sha256": "e2f251aeba9bb6415693784e8b248a95d844ebe5c2dee8031f5eb4b27fe7f4e2",
+      "size_bytes": 18181
     },
     {
       "git_blob_id": "f5c215bff841601a9273fe7e18a3cae2395e5df6",
@@ -1229,28 +1229,28 @@
       "size_bytes": 32297
     },
     {
-      "git_blob_id": "dee9ec4f0d5cd6e23ef4dfc512805a715324b1e7",
+      "git_blob_id": "419b53ff4ce8275a5e270fae3e6074f3e03d0162",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "30b68d488aadffb45a9ee5d360f5e442e7a80b5f548ed64276ff0e3f16cf9238",
-      "size_bytes": 21529
+      "sha256": "a6e676d6d6a15922d8c9529c5a93c88e4b57fe50748eb7cea8ceadd4c06fe256",
+      "size_bytes": 21931
     },
     {
-      "git_blob_id": "34e58c1830b8e4a951c555a13d32e74ec44a448c",
+      "git_blob_id": "058507c2b1a3a99d461b4ce69d301ba1542a9a78",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "53b52701bd33a7687b03b8fd93face6b4516426b0615bbe4c6997d24f5e5f441",
-      "size_bytes": 19680
+      "sha256": "df91739a97f84987a8839b28c711832a81e6d440534b02074b61953a2a7dd58d",
+      "size_bytes": 21501
     },
     {
-      "git_blob_id": "a1abd309bc051274898ef4d8a6fb7969f64e2bf6",
+      "git_blob_id": "00033ae1152eb5b46a5eadec4794d130634211b1",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "af6a17920019042a371c412fc4b0015ca416c7ec1241aba3c8daa0c89ade6f08",
-      "size_bytes": 59341
+      "sha256": "3715462f8c14f496a6c0d25e667ec2e24b2f4981911d2289c3ce756a6c239330",
+      "size_bytes": 59743
     },
     {
       "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
@@ -1293,11 +1293,11 @@
       "size_bytes": 99554
     },
     {
-      "git_blob_id": "a522fce1e047b83507a640257eea8238184254a7",
+      "git_blob_id": "9836c80e9d57c3cd8b1c7527f55fade194309a3f",
       "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "1e5831834077cba792afd17f13a33fb87915d02ae972cc5be3ce3a4499c4f77b",
+      "sha256": "63af6038b7a2018855b4579c553b57f58f7c4e0e56a085f5816d4d7bee111c19",
       "size_bytes": 20659
     },
     {
@@ -1501,12 +1501,12 @@
       "size_bytes": 67085
     },
     {
-      "git_blob_id": "1663329b66fd9ce8cb71991957ef45aa5af5caf3",
+      "git_blob_id": "fdaaafc5a7efefe9b7e3662da019ae726ed4066c",
       "git_mode": "100644",
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "c5d0293926d2e13282e41a3f2c4bd43996471bd8666b53fe2557bcb19bd10a93",
-      "size_bytes": 45379
+      "sha256": "a36a1ab25c189992b52e594978c7dfb912850f35fca6c527887b7aeebcc6e456",
+      "size_bytes": 45781
     },
     {
       "git_blob_id": "c6659c5a4bc0b26d3f8dc89b8b9e385a0e2eba88",
@@ -1781,12 +1781,12 @@
       "size_bytes": 4954
     },
     {
-      "git_blob_id": "9b119563d4e555d6def8bb31c560db107e6fece8",
+      "git_blob_id": "331dc3e6abc784e4edce95b3a73414c302619191",
       "git_mode": "100755",
       "path": "repo_work/verify_release_python_runtime.sh",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "31251370fcde67b312610ec4f18609f5c708f134289d4e69029f70ca5f482f9f",
-      "size_bytes": 12199
+      "sha256": "917a7308fd7c3c5adcd1bac4218425ee26226abe50762cf3bbd1d3b6f256f11f",
+      "size_bytes": 12207
     },
     {
       "git_blob_id": "c5d3e3e03fd87a481feb6cc50b864f93b3979d8f",
@@ -1797,11 +1797,11 @@
       "size_bytes": 212
     },
     {
-      "git_blob_id": "fe20253c38cefd0d8931b839e2514a4248e759b1",
+      "git_blob_id": "33f423561b967ce58a6df2897644360e9fa90067",
       "git_mode": "100755",
       "path": "scripts/release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "dbc356235515d8d1fc2959aea1506fe08a2126b3b217b8a3bf72343dc07eb82b",
+      "sha256": "1f5deb543308d850e835287c014208db171bf245e9620076a6d79bcd77edcf76",
       "size_bytes": 141683
     },
     {
@@ -2100,7 +2100,7 @@
     },
     {
       "kind": "external_reference",
-      "line": 102,
+      "line": 107,
       "path": "SECURITY.md",
       "url": "https://github.com/RustSec/advisory-db"
     },
@@ -2148,19 +2148,19 @@
     },
     {
       "kind": "external_reference",
-      "line": 408,
+      "line": 415,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
     },
     {
       "kind": "external_reference",
-      "line": 414,
+      "line": 421,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
     },
     {
       "kind": "external_reference",
-      "line": 420,
+      "line": 427,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
@@ -2678,12 +2678,12 @@
   ],
   "normative_documents": [
     {
-      "git_blob_id": "dee9ec4f0d5cd6e23ef4dfc512805a715324b1e7",
+      "git_blob_id": "419b53ff4ce8275a5e270fae3e6074f3e03d0162",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "30b68d488aadffb45a9ee5d360f5e442e7a80b5f548ed64276ff0e3f16cf9238",
-      "size_bytes": 21529
+      "sha256": "a6e676d6d6a15922d8c9529c5a93c88e4b57fe50748eb7cea8ceadd4c06fe256",
+      "size_bytes": 21931
     },
     {
       "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
@@ -2742,12 +2742,12 @@
       "size_bytes": 1260
     },
     {
-      "git_blob_id": "1269b5ddddf583f3c9e1a79f50144564e56d0ebc",
+      "git_blob_id": "16c9bb443a8b75edf0aa0a202960493adb6fc66f",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "57de97cc8974d6eaa6844de692ad8c0dc121f40f05a9841e787629a13aba3b1e",
-      "size_bytes": 25690
+      "sha256": "139ef80dc8eb6207d23de7a29d3d16f6e146a7cbcd31b6b232b74c5e23c56762",
+      "size_bytes": 26092
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -2758,12 +2758,12 @@
       "size_bytes": 6391
     },
     {
-      "git_blob_id": "a1abd309bc051274898ef4d8a6fb7969f64e2bf6",
+      "git_blob_id": "00033ae1152eb5b46a5eadec4794d130634211b1",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "af6a17920019042a371c412fc4b0015ca416c7ec1241aba3c8daa0c89ade6f08",
-      "size_bytes": 59341
+      "sha256": "3715462f8c14f496a6c0d25e667ec2e24b2f4981911d2289c3ce756a6c239330",
+      "size_bytes": 59743
     }
   ],
   "release": {
@@ -2885,7 +2885,7 @@
       "version": "1.89.0"
     },
     {
-      "identity": "Python 3.14.6; launcher_path=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/bin/python3.14; launcher_sha256=b502cb4c5b46b8d4192ec6bcb600ce8922f1afc396fcf646e8765c6eba74a0bf; launcher_size_bytes=52448; launcher_mode=0o755; python3-framework_path=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Python; python3-framework_sha256=696ffa2cf9562522c387f7c2b3a990ef67e574df2d921822fe310ea35587cce0; python3-framework_size_bytes=5454512; python3-framework_mode=0o755; python3-app_path=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python; python3-app_sha256=0c9a985712bb1235d8fe474a6a99810dc118bcae0dfb429a237aac0c907fa3af; python3-app_size_bytes=51392; python3-app_mode=0o755; python-mpdecimal_load_path=/opt/homebrew/opt/mpdecimal/lib/libmpdec.4.dylib; python-mpdecimal_resolved_path=/opt/homebrew/Cellar/mpdecimal/4.0.1/lib/libmpdec.4.0.1.dylib; python-mpdecimal_sha256=14286ba02244c25537b3b5c74902c5fa81959d5d2c1fcf06f89808badb67dea8; python-mpdecimal_size_bytes=188176; python-mpdecimal_mode=0o444; python-openssl-crypto_load_path=/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib; python-openssl-crypto_resolved_path=/opt/homebrew/Cellar/openssl@3/3.6.3/lib/libcrypto.3.dylib; python-openssl-crypto_sha256=a12805a18cd5e4f733fa8727b91afa08b587f9da5a760517cd79cb508a3a3f71; python-openssl-crypto_size_bytes=4856256; python-openssl-crypto_mode=0o444; python-openssl-ssl_load_path=/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib; python-openssl-ssl_resolved_path=/opt/homebrew/Cellar/openssl@3/3.6.3/lib/libssl.3.dylib; python-openssl-ssl_sha256=ffd8ac6981000def0928367924b6cb1e7a98712efbc06e2a2f3f750138bd89ca; python-openssl-ssl_size_bytes=872080; python-openssl-ssl_mode=0o444; python-sqlite_load_path=/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib; python-sqlite_resolved_path=/opt/homebrew/Cellar/sqlite/3.53.4/lib/libsqlite3.3.53.4.dylib; python-sqlite_sha256=75feed7151d3e496343ffee9c25960d85188ed99b2ffb1051fe016f912c6c808; python-sqlite_size_bytes=1276320; python-sqlite_mode=0o444; python-xz_load_path=/opt/homebrew/opt/xz/lib/liblzma.5.dylib; python-xz_resolved_path=/opt/homebrew/Cellar/xz/5.8.3/lib/liblzma.5.dylib; python-xz_sha256=3d5bfa2f097c31463642b1daab5e662b44368bb4da368f85e412e7f9adcbaa10; python-xz_size_bytes=184512; python-xz_mode=0o444; python-zstd_load_path=/opt/homebrew/opt/zstd/lib/libzstd.1.dylib; python-zstd_resolved_path=/opt/homebrew/Cellar/zstd/1.5.7_1/lib/libzstd.1.5.7.dylib; python-zstd_sha256=e2847c4613b386683c234913ae3b7b04299254096caf7616e3b3cd9bb97a39ab; python-zstd_size_bytes=649648; python-zstd_mode=0o444; runtime_tree_schema=galadriel.cpython-runtime-tree.v1; runtime_tree_root=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14; runtime_tree_sha256=6b1a020bc9f437ea8fd1fea684c3413421961f9f83e8559ed0e75df73d14e486; runtime_tree_entries=4098; runtime_tree_regular_files=3765; runtime_tree_regular_bytes=83397069; native_preflight_schema=galadriel.cpython-native-runtime-tree.v1; native_preflight_sha256=16b62407fe5fd2d03b56abd0e5c30308a41eb84e83f53a7143d2c859f538070b; native_preflight_entries=4098; native_preflight_regular_files=3765; native_preflight_regular_bytes=83397069; native_preflight_script_sha256=31251370fcde67b312610ec4f18609f5c708f134289d4e69029f70ca5f482f9f",
+      "identity": "Python 3.14.6; launcher_path=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/bin/python3.14; launcher_sha256=b502cb4c5b46b8d4192ec6bcb600ce8922f1afc396fcf646e8765c6eba74a0bf; launcher_size_bytes=52448; launcher_mode=0o755; python3-framework_path=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Python; python3-framework_sha256=696ffa2cf9562522c387f7c2b3a990ef67e574df2d921822fe310ea35587cce0; python3-framework_size_bytes=5454512; python3-framework_mode=0o755; python3-app_path=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python; python3-app_sha256=0c9a985712bb1235d8fe474a6a99810dc118bcae0dfb429a237aac0c907fa3af; python3-app_size_bytes=51392; python3-app_mode=0o755; python-mpdecimal_load_path=/opt/homebrew/opt/mpdecimal/lib/libmpdec.4.dylib; python-mpdecimal_resolved_path=/opt/homebrew/Cellar/mpdecimal/4.0.1/lib/libmpdec.4.0.1.dylib; python-mpdecimal_sha256=14286ba02244c25537b3b5c74902c5fa81959d5d2c1fcf06f89808badb67dea8; python-mpdecimal_size_bytes=188176; python-mpdecimal_mode=0o444; python-openssl-crypto_load_path=/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib; python-openssl-crypto_resolved_path=/opt/homebrew/Cellar/openssl@3/3.6.3/lib/libcrypto.3.dylib; python-openssl-crypto_sha256=a12805a18cd5e4f733fa8727b91afa08b587f9da5a760517cd79cb508a3a3f71; python-openssl-crypto_size_bytes=4856256; python-openssl-crypto_mode=0o444; python-openssl-ssl_load_path=/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib; python-openssl-ssl_resolved_path=/opt/homebrew/Cellar/openssl@3/3.6.3/lib/libssl.3.dylib; python-openssl-ssl_sha256=ffd8ac6981000def0928367924b6cb1e7a98712efbc06e2a2f3f750138bd89ca; python-openssl-ssl_size_bytes=872080; python-openssl-ssl_mode=0o444; python-sqlite_load_path=/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib; python-sqlite_resolved_path=/opt/homebrew/Cellar/sqlite/3.53.4/lib/libsqlite3.3.53.4.dylib; python-sqlite_sha256=75feed7151d3e496343ffee9c25960d85188ed99b2ffb1051fe016f912c6c808; python-sqlite_size_bytes=1276320; python-sqlite_mode=0o444; python-xz_load_path=/opt/homebrew/opt/xz/lib/liblzma.5.dylib; python-xz_resolved_path=/opt/homebrew/Cellar/xz/5.8.3/lib/liblzma.5.dylib; python-xz_sha256=3d5bfa2f097c31463642b1daab5e662b44368bb4da368f85e412e7f9adcbaa10; python-xz_size_bytes=184512; python-xz_mode=0o444; python-zstd_load_path=/opt/homebrew/opt/zstd/lib/libzstd.1.dylib; python-zstd_resolved_path=/opt/homebrew/Cellar/zstd/1.5.7_1/lib/libzstd.1.5.7.dylib; python-zstd_sha256=e2847c4613b386683c234913ae3b7b04299254096caf7616e3b3cd9bb97a39ab; python-zstd_size_bytes=649648; python-zstd_mode=0o444; runtime_tree_schema=galadriel.cpython-runtime-tree.v1; runtime_tree_root=/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14; runtime_tree_sha256=6b1a020bc9f437ea8fd1fea684c3413421961f9f83e8559ed0e75df73d14e486; runtime_tree_entries=4098; runtime_tree_regular_files=3765; runtime_tree_regular_bytes=83397069; native_preflight_schema=galadriel.cpython-native-runtime-tree.v1; native_preflight_sha256=16b62407fe5fd2d03b56abd0e5c30308a41eb84e83f53a7143d2c859f538070b; native_preflight_entries=4098; native_preflight_regular_files=3765; native_preflight_regular_bytes=83397069; native_preflight_script_sha256=917a7308fd7c3c5adcd1bac4218425ee26226abe50762cf3bbd1d3b6f256f11f",
       "name": "python",
       "role": "pinned release-tool interpreter, complete version tree, and non-system dynamic-library set",
       "version": "3.14.6"

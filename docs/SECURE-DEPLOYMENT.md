@@ -144,7 +144,9 @@ Thus, review and digest calculation do not depend on a permissive parser.
 
 The runtime security-profile opener accepts only a standalone regular-file configuration.
 Before parsing, it reads no more than 262,144 bytes, inclusive.
-It requires strict JSON content when the filename uses the Zenoh `.json5` convention.
+It requires strict JSON content for every filename suffix.
+A `.json5` suffix does not enable JSON5 extensions.
+It requires one top-level JSON object.
 At each JSON object depth, it rejects a `__config__` external-include key.
 
 At validation time, each configured CA, public certificate, and private key has an inclusive limit of 1,048,576 bytes.

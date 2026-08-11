@@ -262,6 +262,13 @@ It binds the exact Rustup settings file before and after qualification.
 It binds `bin`, `lib`, and `libexec` for each selected Rust toolchain.
 The sandbox grants those roots instead of the complete Rustup home.
 It excludes the unused Rust `etc` and `share` roots from candidate reads.
+
+These inventories detect a change that persists to a checkpoint.
+They do not make the user-owned Homebrew or Rustup trees immutable.
+A concurrent process under the same operating-system user can replace a path between checkpoints.
+The sandbox prevents candidate writes but does not control that external process.
+Use a separately protected, read-only toolchain for stronger execution-byte assurance.
+
 The sandbox does not grant read bindings for execution-denied CMake or pkgconf.
 It does not grant the complete Homebrew or Anaconda prefix.
 It permits the pinned launcher and application trampoline under Homebrew.

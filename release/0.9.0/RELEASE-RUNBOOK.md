@@ -520,6 +520,13 @@ It binds the exact Rustup settings file before and after qualification.
 It binds `bin`, `lib`, and `libexec` for all three selected Rust toolchains.
 The sandbox grants those roots instead of the complete Rustup home.
 It excludes the unused Rust `etc` and `share` roots from candidate reads.
+
+These inventories detect a change that persists to a checkpoint.
+They do not make the user-owned Homebrew or Rustup trees immutable.
+A concurrent process under the same operating-system user can replace a path between checkpoints.
+The sandbox prevents candidate writes but does not control that external process.
+Use a separately protected, read-only toolchain for stronger execution-byte assurance.
+
 The operator supplies the exact `pkgconf 3.0.3` executable through `--pkg-config`.
 The argument must use the fixed absolute release-input path.
 The path cannot be in the checkout or be a symbolic link.
