@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Throughput benchmarks — the **cost** companion to the accuracy (`EVALUATION.md` §2)
 //! and latency (§2.1) studies. They price each detector on one representative workload
-//! (a 300-frame, 3-channel stealthy-spoofed stream) so the "correlation by default, PID
-//! on escalation" recommendation is grounded in cost, not just accuracy.
+//! (a 300-frame, 3-channel fixed-law stealthy-spoofed stream) so the cost comparison
+//! does not submit a change point under an i.i.d. declaration.
 //!
 //! Run with `cargo bench -p galadriel-eval`.
 
@@ -14,12 +14,23 @@ use galadriel_core::{
     DetectorParams, Mirror, Modality, PidObservation, ProducerAxisFamilyPolicy, ReleaseSuite,
     ReleaseSuiteParams, Sequence, TrackId,
 };
-use galadriel_pid::{
-    analyze, assess_stream, scalar_channels, PidConfig, PidResearchProfile, PidResearchSuite,
+use galadriel_dependence::{
+    analyze, assess_with_dependence, scalar_channels, ContinuousLawDeclaration, DeclaredMiInput,
+    DependenceResearchSuite, MiConsensusConfig, MiConsensusResearchProfile,
 };
 use galadriel_sim::scenario::{generate_spoofed, ScenarioConfig, ScenarioParams, StealthySpoof};
 
 const MODS: [Modality; 3] = [Modality::Visual, Modality::Radar, Modality::Acoustic];
+
+fn law() -> ContinuousLawDeclaration {
+    ContinuousLawDeclaration::try_iid(
+        "The benchmark simulator declares nonsingular jointly Gaussian bivariate populations with finite mutual information.",
+        "Binary64 sample representation of pseudorandom draws intended from the declared continuous law; no deliberate quantization, added noise, or tie-breaking transform; exact ties abstain.",
+        "Rows are independent within one fixed-parameter synthetic benchmark episode.",
+        "All benchmark projection coordinates use the same fixed simulator innovation unit and identity gauge; no sample-fitted rescaling is applied.",
+    )
+    .expect("benchmark continuous-law declaration is valid")
+}
 
 fn stream(frames: usize) -> (AssessmentScope, Vec<PidObservation>) {
     let cfg = ScenarioConfig::try_new(ScenarioParams {
@@ -39,7 +50,7 @@ fn stream(frames: usize) -> (AssessmentScope, Vec<PidObservation>) {
         &cfg,
         StealthySpoof {
             target: Modality::Acoustic,
-            start_frame: (frames as u64) / 3,
+            start_frame: 0,
         },
     )
     .expect("valid benchmark scenario");
@@ -49,17 +60,19 @@ fn stream(frames: usize) -> (AssessmentScope, Vec<PidObservation>) {
 fn bench_detectors(c: &mut Criterion) {
     let (scope, s) = stream(300);
     let channels = scalar_channels(&s, &MODS, 0).expect("valid benchmark channels");
+    let mi_input = DeclaredMiInput::try_new(channels.clone(), "benchmark-detectors")
+        .expect("valid benchmark MI input");
     let track_id = s.first().expect("benchmark stream is non-empty").track_id();
     let last_seq = s
         .iter()
         .map(PidObservation::sequence)
         .max()
         .expect("benchmark stream is non-empty");
-    let pid_config = PidResearchProfile::CircularDeleteBlockV0_9
-        .try_config()
-        .expect("0.9 circular delete-block PID profile is valid");
-    let pid_suite = PidResearchSuite::circular_delete_block_v0_9(&MODS)
-        .expect("0.9 circular delete-block PID suite is valid");
+    let mi_config = MiConsensusResearchProfile::ExhaustiveCircularDeleteBlockV0_9
+        .try_config(law())
+        .expect("0.9 circular delete-block MI profile is valid");
+    let mi_suite = DependenceResearchSuite::exhaustive_circular_delete_block_v0_9(&MODS, law())
+        .expect("0.9 circular delete-block MI suite is valid");
     let release_suite = ReleaseSuite::standalone_advisory_v0_9(&MODS)
         .expect("standalone-advisory benchmark suite is valid");
     let mut g = c.benchmark_group("detectors");
@@ -84,13 +97,13 @@ fn bench_detectors(c: &mut Criterion) {
     });
 
     // The escalation: geometry-gated KSG mutual information.
-    g.bench_function("pid_ksg_mi", |b| {
-        b.iter(|| black_box(analyze(&channels, &pid_config)))
+    g.bench_function("mi_ksg_mi", |b| {
+        b.iter(|| black_box(analyze(&mi_input, &mi_config)))
     });
 
-    // The full NIS ⊕ PID fusion.
-    g.bench_function("fused_nis_pid", |b| {
-        b.iter(|| black_box(assess_stream(&scope, &s, &pid_suite)))
+    // The unchanged default plus the non-authoritative MI companion.
+    g.bench_function("default_with_mi_companion", |b| {
+        b.iter(|| black_box(assess_with_dependence(&scope, &s, &mi_suite)))
     });
 
     g.finish();
@@ -103,7 +116,8 @@ fn bench_cost_vs_window(c: &mut Criterion) {
     let full = scalar_channels(&base, &MODS, 0).expect("valid benchmark channels");
     let mut g = c.benchmark_group("cost_vs_window");
     for &w in &[32usize, 64, 128, 256, 512] {
-        // The like-for-like comparison: both consistency scores over the same W samples.
+        // The same row count and W samples for two distinct estimands; timings
+        // compare implementation cost, not scientific interchangeability.
         let chans: Vec<(Modality, Vec<f64>)> = full
             .iter()
             .map(|(m, v)| (*m, v[v.len() - w..].to_vec()))
@@ -114,18 +128,20 @@ fn bench_cost_vs_window(c: &mut Criterion) {
             ..CorrParams::standalone_advisory_v0_9()
         })
         .expect("correlation scaling benchmark config is valid");
-        let mut pid_params = PidResearchProfile::PointEstimateOnlyV0_9.params();
-        pid_params.window = w;
-        pid_params.min_samples = (w / 2).max(pid_params.geom_k + 1);
-        // This benchmark isolates KSG point-estimate scaling. Circular delete-block
-        // confirmation has its own bounded fit count and diversity requirements.
-        let pid_cfg = PidConfig::try_new(pid_params)
-            .expect("point-estimate PID scaling benchmark config is valid");
+        let mut mi_params = MiConsensusResearchProfile::PointEstimateOnlyV0_9.params();
+        mi_params.window = w;
+        mi_params.min_samples = (w / 2).max(mi_params.geom_k + 1);
+        // This benchmark isolates KSG point-estimate scaling. Exhaustive circular
+        // delete-block stability has its own bounded fit count and row requirements.
+        let mi_cfg = MiConsensusConfig::try_new(mi_params, law())
+            .expect("point-estimate MI scaling benchmark config is valid");
+        let mi_input = DeclaredMiInput::try_new(chans.clone(), format!("benchmark-window-{w}"))
+            .expect("valid scaling benchmark MI input");
         g.bench_with_input(BenchmarkId::new("correlation", w), &w, |b, _| {
             b.iter(|| black_box(correlation::analyze(&chans, &corr_cfg)))
         });
-        g.bench_with_input(BenchmarkId::new("pid_ksg", w), &w, |b, _| {
-            b.iter(|| black_box(analyze(&chans, &pid_cfg)))
+        g.bench_with_input(BenchmarkId::new("mi_ksg", w), &w, |b, _| {
+            b.iter(|| black_box(analyze(&mi_input, &mi_cfg)))
         });
     }
     g.finish();

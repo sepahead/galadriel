@@ -1,8 +1,8 @@
 # When Partial Information Decomposition is justified or forced
 
-Galadriel includes an optional mutual information and Partial Information
-Decomposition (MI/PID) path.
-This document gives the decision rule for its use.
+Galadriel includes an optional pairwise-MI companion and separate offline Partial
+Information Decomposition (PID) studies. These are different estimands and APIs.
+This document gives the decision rule for each use.
 It does not present pre-audit synthetic numbers as current detector evidence.
 Galadriel pins pid-rs revision
 `1cd2424f7967e1752dcc8e53859e8fdad3566f51` for this path.
@@ -11,10 +11,11 @@ Galadriel pins pid-rs revision
 > The canonical studies are synthetic or theoretical.
 > [`PID_RS_1_0_MIGRATION.md`](PID_RS_1_0_MIGRATION.md) records a fixed-seed
 > pid-rs 0.4 to 1.0 reproduction.
-> The reproduction includes complete-channel geometry gates.
-> It also includes an explicit observation-noise model.
-> It also includes bounded circular delete-block settings and fail-closed fusion.
-> This result is compatibility evidence, not calibration.
+> The reproduction is historical compatibility evidence, not calibration. The
+> current opt-in in-process/library companion adds no noise, enumerates every
+> circular deletion start, and never enters fusion. Its executable integrations
+> are the synthetic demo, evaluation, and benchmark; `replay`, `observe`, and NCP
+> do not invoke it. Real PID remains offline.
 >
 > It does not show that recorded Crebain residuals occupy a PID-justified regime.
 
@@ -42,7 +43,7 @@ The runtime default is stricter than the analytical absolute-correlation
 comparison.
 It uses signed correlation.
 A sign flip is operationally inconsistent even when MI and `|rho|` do not change.
-The sign-invariant PID path **MUST NOT** override that geometry.
+The sign-invariant MI companion **MUST NOT** override that geometry.
 
 ## 2. Nonlinear dependence: MI can be justified
 
@@ -52,11 +53,13 @@ Canonical examples include a nonlinear magnitude relation.
 They also include randomized sign coupling with zero population correlation and
 a constrained variable.
 
-The synthetic study tests a KSG estimate that passes the configured input gates.
-It asks whether the estimate separates coupled windows from independent windows.
-The study accounts for finite sample size, dimensionality, ties, and estimator uncertainty.
+The synthetic study tests a report-first KSG estimate that passes the configured input gates.
+It asks whether the estimate separates coupled windows from finite-sample
+random-permutation controls. Conditional on the generated rows, those controls
+are exchangeable and are not independent-law samples. The study accounts for
+finite sample size, dimensionality, ties, and estimator uncertainty.
 A positive result justifies MI research for that specified coupling.
-It does not justify PID for arbitrary producer data.
+It does not justify PID or a runtime security decision for arbitrary producer data.
 
 ## 3. Synergy: decomposition can be justified
 
@@ -65,25 +68,97 @@ In exclusive-or (XOR) or sign-parity constructions, neither source alone predict
 the target.
 The source pair does predict the target.
 Joint information can reveal this relation.
-PID then identifies redundant, unique, or synergistic parts.
+Galadriel's joint contrast
+`Q = I(A,B;T) - max(I(A;T), I(B;T))` already reveals that pairwise blindness.
+A named PID goes further only when the scientific question is how a specified
+functional allocates the joint information among redundant, unique, and
+synergistic atoms.
 
-This case is the strongest conceptual reason to use decomposition instead of
-pairwise MI.
+This case is a strong reason to use a joint or multivariate dependence statistic
+instead of pairwise MI.
+It does not, by itself, establish that a decomposition is necessary.
 It is also narrow.
 The target variable, source geometry, estimator, and atom semantics **MUST**
 correspond to an actual system estimand.
 A canonical XOR result does not show that a sensor-fusion residual stream
 contains operational synergy.
 
-Galadriel reports shared-exclusions (`I^sx`) atoms as advisory research evidence.
+Galadriel reports categorical Makkeh–Gutknecht–Wibral shared-exclusions
+(`I^sx`) atoms and, in a separate study, the related-but-distinct continuous
+Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID2 atoms as offline research
+evidence.
 That definition permits negative local or aggregate atoms.
 The atoms are not probabilities, confidence values, or calibrated attack scores.
+
+Every result carries a sealed, version 2 schema-tagged `PidQuestionSpec`: distinct
+functional identity; a bounded graph of role-typed primary-reference edges with
+complete teams; the explicit boundary that the Schick-Poland general construction
+is not evaluated; the Williams–Beer original antichain lattice distinct from the
+Gutknecht–Wibral–Makkeh part-whole derivation; exact pid-core sample-evaluator route;
+ordered sources; external target; exact generated input law and finite-sample
+selection/conditioning; source count; a typed list of every produced PID atom's
+quantity ID, two-source lattice coordinate, construction, component set,
+within-trial aggregation law, and native unit; exact root aggregate-field mapping;
+coupled-law versus within-trial permutation-control interpretation; route configuration;
+transform and row relation;
+support/gauge statement; sign convention;
+output-unit relation; native evaluator units; and atom-aggregate units. AUC and
+bootstrap-interval fields are separately typed as dimensionless. The
+categorical evaluator and every retained upstream trial stay in nats, while its
+named aggregate atom fields convert once to bits. The continuous evaluator,
+retained reports, and aggregates all stay in nats. The categorical graph distinguishes the MGW
+pointwise definition from both the original lattice and the later part-whole paper.
+The continuous graph distinguishes Ehrlich et al. from its KSG estimator basis and
+also records that its atom coordinates use the original lattice while not evaluating
+the Williams–Beer `I_min` functional.
+The attached
+`PidDependencyIdentity` is a mechanically checked package/version/Git
+revision/feature envelope. The pinned pid-rs revision predates its richer
+software-identity API, so Galadriel does not inflate this envelope into source,
+build, binary, or attestation identity.
+
+A sibling `JustificationStudyProtocol` gives the Pearson comparator, pairwise-MI
+composition, project-defined joint contrast `Q`, PID-question scope, and
+permutation-control relation separate identities. It maps every non-PID root field,
+including `Q` and joint-MI means, to a quantity, statistic, and unit. It also
+serializes one independently generated coupled trial plus its within-trial control
+as the sampling unit, the exact paired-index percentile AUC-bootstrap procedure,
+generation/bootstrap seed domains, quantile selection, resample count, interval
+scope, and absence of a multiplicity guarantee. The RNG API/version string is
+descriptive; the exact resolved crate bytes and Galadriel source revision are not
+bound by this result. Categorical MI and `Q` are
+derived from the exact `DiscreteSxPid2Result` retained for that trial; there is no
+second local entropy implementation. Serialized `q_*` fields name `Q`, while only
+`sxpid_syn_*` or `isx_syn_*` fields name a PID synergy atom.
+The paired categorical control keeps the exact source rows and permutes only the
+target. A fixed-seed canary therefore requires all four MGW informative partial
+atoms to agree between each coupled/control pair while permitting the
+response-specific misinformative and net atoms to change. This is a
+Galadriel-side use-case invariant; a later pid-rs fixed-law fixture can supply a
+separate cross-repository check without being a prerequisite for this test.
+
+Successful categorical and continuous result values are schema-tagged and
+serializable. They retain every complete upstream `DiscreteSxPid2Result` or
+`Pid2Report` used by their aggregate rows instead of reducing each trial to an
+atom scalar. Each trial envelope carries its native nats unit so it cannot inherit
+the categorical aggregate's bit label. Aggregate fields are private, and each
+result can recompute every report-derived AUC, interval, and mean bit-for-bit
+through `verifies_report_derived_aggregates`. Pearson rows are explicitly outside
+that verifier because the current result does not retain their raw inputs.
+`JustificationError` preserves a typed `GaladrielError` or `pid_core::PidError`
+source instead of relabeling evaluator, resource, allocation, or numerical
+failures as malformed channels. This is scientific result evidence, not yet a publication bundle:
+the current command does not bind a Galadriel source tree, toolchain, executable,
+hardware, or exact input-row bytes, and any trial error aborts the study rather
+than emitting a typed per-trial error record.
 
 ## 4. Sequential evidence
 
 Windowed estimators have refill latency after a change.
-Pointwise local-information statistics can, in principle, supply a cumulative
-sum (CUSUM) more quickly.
+Local-information statistics can, in principle, supply a cumulative sum (CUSUM)
+more quickly. The repository's current local kNN score is a project-defined
+two-variable log-density-ratio heuristic. It is not the categorical MGW or
+continuous Ehrlich PID construction.
 This use requires a clean reference or calibration distribution.
 It also requires validation of false-alarm behavior.
 The canonical sequential study motivates future work.
@@ -161,26 +236,28 @@ Use the least complex statistic that observes the registered estimand:
    magnitude changes in accepted observations.
 2. Use signed correlation when comparable residuals have an expected positive
    linear consensus.
-3. Add MI only when recorded evidence shows meaningful nonlinear dependence that
-   signed correlation misses.
-4. Add PID atoms only for a documented joint target and source synergy question.
-   The estimator geometry **MUST** have enough data.
+3. Add the MI companion only when recorded evidence shows meaningful nonlinear
+   dependence that signed correlation misses. Keep it outside the authoritative verdict
+   until a frozen representative streaming study qualifies incremental value.
+4. Add PID only for a documented joint target and ordered source question. Name
+   the categorical MGW or continuous Ehrlich functional, evaluator, law,
+   transforms, gauges, row relation, units, and software identity.
 5. Return an error for invalid input.
 6. Return `InsufficientEvidence` for an unavailable estimand.
 
-PID is additive and sign-invariant.
-It cannot:
+The symmetric MI graph and offline PID atoms cannot:
 
 - repair mixed coordinate frames or sequentially changing priors
 - create evidence for a missing, degenerate, non-finite, or short modality series
 - create an honest majority from two channels
 - resolve tied or contradictory consensus geometry
-- change bootstrap failure into a low, optimistic score
+- change unavailable geometry or an unstable exhaustive deletion into an
+  optimistic graph event
 - change a signed-correlation contradiction into corroboration
 
 ## 7. Required producer evidence
 
-Before PID use, the selected conforming producer **MUST** emit:
+Before bound runtime dependence research, the selected conforming producer **MUST** emit:
 
 - `consistency_projection` in the normal runtime path for each requested modality
 - matching nonzero physical-frame and projection-context identifiers
@@ -194,9 +271,10 @@ It has no attested common projection.
 Galadriel does not use its mixed-frame, sequential-prior innovations as a
 fallback.
 The fixture supports bounded parsing and basic NIS baseline checks only.
-Unbound correlation and PID diagnostics return `InsufficientEvidence`.
+Unbound correlation diagnostics return `InsufficientEvidence`; direct MI inputs
+must carry an explicit caller-declared episode and law.
 Raw replay has no complete assessment scope.
-It cannot construct an accepted core or PID fused report.
+It cannot construct an accepted core or dependence companion report.
 
 ## 8. Reproduce the canonical studies
 
@@ -205,9 +283,13 @@ cargo run --locked -p galadriel-justify --release
 cargo test -p galadriel-justify --locked
 ```
 
-Regenerated results **MUST** record the commit, toolchain, trial count, window,
-and seeds.
-They **MUST** also record bootstrap settings.
+Regenerated results intended for citation **MUST** place the serializable PID
+results inside a separate, versioned publication bundle that records the
+Galadriel commit/tree state, toolchain, build profile, executable identity,
+hardware, trial count, window, and seeds. Do not fold this future MI/PID bundle
+into the frozen streaming NIS/correlation evidence artifact.
+They **MUST** also record resampling settings for AUC intervals and identify the
+distinct no-noise KSG, categorical MGW, continuous Ehrlich, and local-MI heuristic paths.
 They **MUST** record each inconclusive or error outcome.
 Do not make exact numbers project claims before the audited implementation and
 tests pass.

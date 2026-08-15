@@ -3,7 +3,7 @@
 //! Under the null hypothesis each `NIS ~ χ²(dof)` i.i.d., so a window of `n`
 //! samples has sum `~ χ²(n·dof)`. The right-tail p-value flags an improbably
 //! **high** sum: evidence of inflated innovations, without identifying their cause.
-//! This is the statistic the optional PID engine must add value over.
+//! This is the statistic an optional dependence study must add value over.
 
 use crate::chi2;
 use crate::window::NisWindow;

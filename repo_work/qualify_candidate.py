@@ -2124,7 +2124,7 @@ BASE_COMMANDS = (
         ),
     ),
     CommandSpec(
-        "cli-pid-feature-graph",
+        "cli-dependence-feature-graph",
         (
             "cargo",
             "check",
@@ -2132,7 +2132,7 @@ BASE_COMMANDS = (
             "galadriel-cli",
             "--no-default-features",
             "--features",
-            "pid",
+            "dependence",
             "--locked",
         ),
     ),
@@ -2174,7 +2174,7 @@ BASE_COMMANDS = (
         ),
     ),
     CommandSpec(
-        "cli-pid-feature-tests",
+        "cli-dependence-feature-tests",
         (
             "cargo",
             "test",
@@ -2182,7 +2182,7 @@ BASE_COMMANDS = (
             "galadriel-cli",
             "--no-default-features",
             "--features",
-            "pid",
+            "dependence",
             "--locked",
         ),
     ),
@@ -2288,8 +2288,8 @@ BASE_COMMANDS = (
         ("cargo", "test", "-p", "galadriel-core", "--release", "--locked"),
     ),
     CommandSpec(
-        "pid-release-tests",
-        ("cargo", "test", "-p", "galadriel-pid", "--release", "--locked"),
+        "dependence-release-tests",
+        ("cargo", "test", "-p", "galadriel-dependence", "--release", "--locked"),
     ),
     CommandSpec(
         "evaluation-benchmark-build",

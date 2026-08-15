@@ -41,8 +41,8 @@
 //!
 //! This is an **advisory** detector. It assesses *statistical consistency*.
 //! It does not assess truth. A moment-matched spoof can keep each channel's NIS
-//! within its covariance. The signed-correlation default and optional PID path can
-//! observe some common-projection changes. They cannot distinguish every attack
+//! within its covariance. The signed-correlation default and optional pairwise-MI
+//! companion can observe some common-projection changes. They cannot distinguish every attack
 //! from benign decorrelation. See the repository's
 //! `docs/JUSTIFICATION.md` and `docs/EVALUATION.md`.
 
@@ -139,12 +139,25 @@ fn validate_consistency_input_len(length: usize) -> Result<()> {
 /// the retained suffix. Prior identifiers are checked across the full bounded input,
 /// including frame/context changes, but are not retained because each sequence must
 /// use a different frozen snapshot.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct ConsistencyChannels {
     /// Common physical coordinate-frame identifier.
     pub frame_id: ProjectionFrameId,
     /// Common projection/calibration-context identifier.
     pub context_id: ProjectionContextId,
+    /// First sequence in the retained contiguous suffix.
+    pub first_sequence: Sequence,
+    /// Last sequence in the retained contiguous suffix.
+    pub last_sequence: Sequence,
+    /// Earliest modality timestamp in the first retained frame.
+    pub first_timestamp_ms: TimestampMillis,
+    /// Latest modality timestamp in the last retained frame.
+    pub last_timestamp_ms: TimestampMillis,
+    /// Exact ordered sequence identity of every retained aligned row.
+    pub row_sequences: Vec<Sequence>,
+    /// Exact per-row minimum and maximum modality timestamps, in the same order
+    /// as [`Self::row_sequences`].
+    pub row_timestamp_bounds: Vec<(TimestampMillis, TimestampMillis)>,
     /// One aligned channel set per active projection axis.
     pub axes: Vec<Vec<(Modality, Vec<f64>)>>,
 }
@@ -364,7 +377,12 @@ pub fn consistency_channels_with_temporal_limits(
     };
     let mut aligned: Vec<Vec<(Modality, Vec<f64>)>> = Vec::new();
     let mut suffix_provenance = None::<(ProjectionFrameId, ProjectionContextId, u8)>;
+    let mut first_aligned_seq = None::<Sequence>;
     let mut last_aligned_seq = None::<Sequence>;
+    let mut first_aligned_timestamp = None::<TimestampMillis>;
+    let mut last_aligned_timestamp = None::<TimestampMillis>;
+    let mut aligned_sequences = Vec::<Sequence>::new();
+    let mut aligned_timestamp_bounds = Vec::<(TimestampMillis, TimestampMillis)>::new();
     for (sequence, frame) in frames {
         if !modalities
             .iter()
@@ -372,7 +390,12 @@ pub fn consistency_channels_with_temporal_limits(
         {
             aligned.clear();
             suffix_provenance = None;
+            first_aligned_seq = None;
             last_aligned_seq = None;
+            first_aligned_timestamp = None;
+            last_aligned_timestamp = None;
+            aligned_sequences.clear();
+            aligned_timestamp_bounds.clear();
             continue;
         }
         let present = modalities
@@ -382,7 +405,12 @@ pub fn consistency_channels_with_temporal_limits(
         if present == 0 {
             aligned.clear();
             suffix_provenance = None;
+            first_aligned_seq = None;
             last_aligned_seq = None;
+            first_aligned_timestamp = None;
+            last_aligned_timestamp = None;
+            aligned_sequences.clear();
+            aligned_timestamp_bounds.clear();
             continue;
         }
         if present != modalities.len() {
@@ -421,12 +449,26 @@ pub fn consistency_channels_with_temporal_limits(
         let (minimum_timestamp, maximum_timestamp) = modalities
             .iter()
             .map(|modality| frame[modality].1)
-            .fold((u64::MAX, 0_u64), |(minimum, maximum), timestamp| {
-                (minimum.min(timestamp.get()), maximum.max(timestamp.get()))
+            .fold((None, None), |(minimum, maximum), timestamp| {
+                (
+                    Some(minimum.map_or(timestamp, |value: TimestampMillis| value.min(timestamp))),
+                    Some(maximum.map_or(timestamp, |value: TimestampMillis| value.max(timestamp))),
+                )
             });
+        let minimum_timestamp = minimum_timestamp.ok_or_else(|| {
+            GaladrielError::InvalidChannels(format!(
+                "consistency frame {sequence} has no modality timestamp"
+            ))
+        })?;
+        let maximum_timestamp = maximum_timestamp.ok_or_else(|| {
+            GaladrielError::InvalidChannels(format!(
+                "consistency frame {sequence} has no modality timestamp"
+            ))
+        })?;
         let sequence_contiguous =
             last_aligned_seq.is_none_or(|last| sequence.get() - last.get() <= max_seq_gap);
-        let timestamp_coherent = maximum_timestamp - minimum_timestamp <= max_timestamp_skew_ms;
+        let timestamp_coherent =
+            maximum_timestamp.get() - minimum_timestamp.get() <= max_timestamp_skew_ms;
         let timestamps_contiguous = !temporal_breaks.contains(&sequence);
         let provenance_contiguous = suffix_provenance.is_none_or(|value| value == provenance);
         if !sequence_contiguous
@@ -436,11 +478,18 @@ pub fn consistency_channels_with_temporal_limits(
         {
             aligned.clear();
             suffix_provenance = None;
+            first_aligned_seq = None;
             last_aligned_seq = None;
+            first_aligned_timestamp = None;
+            last_aligned_timestamp = None;
+            aligned_sequences.clear();
+            aligned_timestamp_bounds.clear();
         }
         if timestamp_coherent {
             if aligned.is_empty() {
                 aligned = (0..first.dimensions()).map(|_| empty_axis()).collect();
+                first_aligned_seq = Some(sequence);
+                first_aligned_timestamp = Some(minimum_timestamp);
             }
             for (axis, channels) in aligned.iter_mut().enumerate() {
                 for (modality, values) in channels {
@@ -459,16 +508,72 @@ pub fn consistency_channels_with_temporal_limits(
             }
             suffix_provenance = Some(provenance);
             last_aligned_seq = Some(sequence);
+            last_aligned_timestamp = Some(maximum_timestamp);
+            aligned_sequences.push(sequence);
+            aligned_timestamp_bounds.push((minimum_timestamp, maximum_timestamp));
         }
     }
     let Some((frame_id, context_id, _)) = suffix_provenance else {
         return Ok(None);
     };
+    let (
+        Some(first_sequence),
+        Some(last_sequence),
+        Some(first_timestamp_ms),
+        Some(last_timestamp_ms),
+    ) = (
+        first_aligned_seq,
+        last_aligned_seq,
+        first_aligned_timestamp,
+        last_aligned_timestamp,
+    )
+    else {
+        return Err(GaladrielError::InvalidChannels(
+            "retained consistency suffix omitted its sequence or timestamp bounds".into(),
+        ));
+    };
+    let aligned_rows = aligned
+        .first()
+        .and_then(|axis| axis.first())
+        .map_or(0, |(_, values)| values.len());
+    validate_retained_row_identity_lengths(
+        aligned_rows,
+        aligned_sequences.len(),
+        aligned_timestamp_bounds.len(),
+    )?;
     Ok(Some(ConsistencyChannels {
         frame_id,
         context_id,
+        first_sequence,
+        last_sequence,
+        first_timestamp_ms,
+        last_timestamp_ms,
+        row_sequences: aligned_sequences,
+        row_timestamp_bounds: aligned_timestamp_bounds,
         axes: aligned,
     }))
+}
+
+fn validate_retained_row_identity_lengths(
+    aligned_rows: usize,
+    sequence_rows: usize,
+    timestamp_rows: usize,
+) -> Result<()> {
+    let mismatch = || {
+        GaladrielError::InvalidChannels(
+            "retained consistency suffix row identities do not match aligned values".into(),
+        )
+    };
+    if aligned_rows == 0 {
+        return Err(mismatch());
+    }
+    if sequence_rows != aligned_rows {
+        return Err(mismatch());
+    }
+    if timestamp_rows != aligned_rows {
+        return Err(mismatch());
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -518,6 +623,20 @@ mod scalar_channel_tests {
         );
 
         assert!(matches!(result, Ok(None)));
+    }
+
+    #[test]
+    fn retained_row_identity_postconditions_fail_independently() {
+        assert!(validate_retained_row_identity_lengths(1, 1, 1).is_ok());
+        for lengths in [(0, 0, 0), (1, 0, 1), (1, 1, 0)] {
+            assert_eq!(
+                validate_retained_row_identity_lengths(lengths.0, lengths.1, lengths.2)
+                    .unwrap_err(),
+                GaladrielError::InvalidChannels(
+                    "retained consistency suffix row identities do not match aligned values".into()
+                )
+            );
+        }
     }
 
     #[expect(
@@ -825,6 +944,14 @@ mod scalar_channel_tests {
 
         assert_eq!(channels.axes.len(), 3);
         assert_eq!(channels.axes[2][1].1, vec![4.0]);
+        assert_eq!(channels.row_sequences, vec![Sequence::new(0).unwrap()]);
+        assert_eq!(
+            channels.row_timestamp_bounds,
+            vec![(
+                TimestampMillis::new(0).unwrap(),
+                TimestampMillis::new(0).unwrap()
+            )]
+        );
     }
 
     #[test]

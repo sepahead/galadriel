@@ -52,7 +52,7 @@ WORKSPACE_NAMES = (
     "galadriel-eval",
     "galadriel-justify",
     "galadriel-ncp",
-    "galadriel-pid",
+    "galadriel-dependence",
     "galadriel-sim",
 )
 

@@ -51,12 +51,79 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Changed
 
+- Replace the PID-named runtime research crate and CLI feature with
+  `galadriel-dependence` and `dependence`. Preserve the frozen NCP route, schema,
+  `PidObservation`, and historical capture names as compatibility identifiers.
+- Make the optional runtime path a report-first pairwise KSG-MI companion. Require
+  explicit law and episode declarations, coherent same-row preprocessing, no
+  added noise, complete pair evidence, exact row receipts, and checked work.
+- Keep categorical Makkeh–Gutknecht–Wibral and continuous Ehrlich PID as distinct
+  offline justification studies with fixed source and target questions. Bind each
+  question to role-typed primary-literature edges, including the categorical
+  MGW definition, original Williams–Beer antichain lattice, later part-whole
+  derivation, KSG estimator basis, and explicit non-alias boundary for the
+  Schick-Poland general construction; serialize every complete upstream trial report.
+  Separate native evaluator/trial units from aggregate/display units so the
+  categorical bit conversion cannot relabel retained pid-core nats. Give Pearson,
+  pairwise MI, project-defined `Q`, and PID outputs separate typed identities;
+  bind exact generated laws, trial-arm roles, root-field statistics/units, RNG and
+  paired-bootstrap rules in version 2 schemas; seal aggregates and make
+  report-derived summaries mechanically verifiable.
 - Update the pinned checkout action to version 7.0.1.
 - Update Tokio to version 1.53.1 for the optional live NCP path.
 - Keep statrs at version 0.18 until the statistical requalification is complete.
+- Bound hosted all-feature regression witnesses at the admitted minimum trial,
+  bootstrap, capture, and preregistered-grid sizes while leaving the public
+  synthetic study profiles and evidence-runner defaults unchanged.
+- Bind every previously surviving sealed dependence-evidence accessor to its
+  retained value and add hostile controls for constructor boundaries, exact
+  tail selection, two-factor input verification, and even-cardinality
+  strict-majority graph semantics.
+- Add one-coordinate hostile controls for every geometry screen and upstream KSG
+  receipt check, projection row and axis provenance, identity encoding, suite
+  work composition, tied largest cliques, deletion plans, and separation margins.
+- Record path-anchored mutation exclusions for five contract-equivalent
+  comparisons and five constructor-fixed evidence getters whose generated
+  replacements are identical over the reachable domain, instead of
+  manufacturing unreachable test states to inflate the catch count.
+- Add a paired categorical MGW canary: holding the exact source rows fixed while
+  permuting only the target preserves every informative partial atom, while a
+  hostile control proves that response-specific misinformation does change.
+- State scalar-column degeneracy as exact finite-value constancy. For the
+  admitted at-most-512 finite binary64 rows this is equivalent to the former
+  normalized spread calculation, while removing arithmetic that could not
+  change the disposition.
 
 ### Fixed
 
+- Remove PID atoms and rotating arithmetic-mean targets from the operational
+  sensor-consensus report. The previous rows estimated different questions and
+  were not comparable PID atoms.
+- Prevent optional MI from changing `FusedVerdict` or `ConsistencyEvidence`.
+- Replace sampled delete-block "confirmation" with an exhaustive deterministic
+  stability envelope that refits preprocessing and reruns geometry, every pair,
+  the global threshold, clique, and attribution for each circular start.
+- Distinguish an unavailable graph classification from an available complete-pair
+  descriptive score; incomplete pair evidence withholds both.
+- Serialize every accepted named/custom MI parameter and the fixed KSG evaluator
+  contract, including unavailable reports; bind the modality ceiling into config
+  identity and distinguish resource rejection from scientific/deletion instability.
+- Withhold every channel maximum when any requested MI edge is unavailable, and
+  classify impossible pid-rs adapter failures as internal faults instead of
+  accepted-configuration rejection.
+- Make an ambiguous zero-radius local-MI neighbor shell a typed study failure
+  instead of silently substituting numeric zero.
+- Count the exact KSG/PID2 constituent pair-distance routes in justification
+  preflight, including the full joined-source KSG report, with checked `u128`
+  composition and a hostile control against the reports actually executed.
+- Label evaluation MI separation latency as oracle-onset-segmented posthoc
+  sensitivity, distinct from online accepted-alarm latency.
+- Report MI AUC as selection-conditional, recompute correlation on identical
+  joint-complete cases, and add sharp worst/best bounds for arbitrarily ranked
+  missing scores rather than assuming availability is random.
+- Bound direct MI input retention, validation, and cloning to the newest 512 rows;
+  distinguish a missed zero-strength adaptive grid point from catching every point;
+  reject malformed adaptive-study rows in the formatter.
 - Bind the Tokio 1.53.1 graph to its exact qualification license inventory and verify that binding in CI.
 - Preserve the primary output-limit result when qualification cleanup crosses the command deadline.
 - Classify a root exit first observed at or after the qualification deadline as a timeout, including exit status zero.
@@ -186,7 +253,7 @@ Before `1.0`, minor releases can contain breaking changes.
   Prohibit `GO` while an acceptance criterion fails.
 - Pin current-stable qualification and continuous integration checks to Rust and Cargo 1.97.1.
   Preserve Rust 1.89.0 as the workspace minimum supported Rust version.
-- Execute tests for the default, PID, NCP, and NCP-live CLI feature profiles.
+- Execute tests for the default, dependence, NCP, and NCP-live CLI feature profiles.
   An all-feature test cannot substitute for feature-disabled behavior.
 - Add tracked semantic seeds and a bounded stateful lifecycle fuzz target.
   Build all three fuzz runners once with the pinned nightly toolchain, `--locked`, and `--offline`.
@@ -623,10 +690,8 @@ Before `1.0`, minor releases can contain breaking changes.
   Remove an observationally redundant fusion condition that the audit exposed.
 - Bind the pid-rs migration evidence to the actual squash commit and tree on `main` from pull request #16.
   Retain the audited source-snapshot identities that produced the paired compatibility run.
-- Preserve a complete conflict-free signed-correlation attribution when partial positive
-  PID evidence names the same channels.
-  Optional PID insufficiency cannot erase the separately assessable signed default.
-  PID-only partial evidence still fails closed.
+- Remove the former partial-PID fusion path. The opt-in pairwise-MI companion
+  cannot erase, override, or enter the separately accepted signed default.
 - Reject duplicate JSON keys on the live sidecar path.
   Payloads now deserialize directly into the typed envelope.
   They do not pass through a `serde_json::Value` intermediate.

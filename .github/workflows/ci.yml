@@ -25,7 +25,7 @@ jobs:
   check:
     name: fmt · clippy · test · docs · MSRV
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -116,11 +116,11 @@ jobs:
         run: |
           python3 -B -E -s -S repo_work/check_feature_graph.py
           cargo check -p galadriel-cli --no-default-features --locked
-          cargo check -p galadriel-cli --no-default-features --features pid --locked
+          cargo check -p galadriel-cli --no-default-features --features dependence --locked
           cargo check -p galadriel-cli --no-default-features --features ncp --locked
           cargo check -p galadriel-cli --no-default-features --features ncp-live --locked
           cargo test -p galadriel-cli --no-default-features --locked
-          cargo test -p galadriel-cli --no-default-features --features pid --locked
+          cargo test -p galadriel-cli --no-default-features --features dependence --locked
           cargo test -p galadriel-cli --no-default-features --features ncp --locked
           cargo test -p galadriel-cli --no-default-features --features ncp-live --locked
 
@@ -141,7 +141,7 @@ jobs:
   current-stable:
     name: current stable · clippy · test
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

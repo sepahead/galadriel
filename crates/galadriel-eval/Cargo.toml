@@ -30,7 +30,7 @@ harness = false
 [dependencies]
 galadriel-core = { workspace = true }
 galadriel-sim = { workspace = true }
-galadriel-pid = { workspace = true }
+galadriel-dependence = { workspace = true }
 galadriel-ncp = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }

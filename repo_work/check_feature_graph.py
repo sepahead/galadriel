@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import stat
 import sys
 import tomllib
@@ -17,10 +18,12 @@ from common import ReviewError
 from release_assurance import run_bounded_host_command
 
 
+PID_PIN = "1cd2424f7967e1752dcc8e53859e8fdad3566f51"
+PID_VERSION = "1.0.0"
 PID_SOURCE = (
     "git+https://github.com/sepahead/pid-rs?"
-    "rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51"
-    "#1cd2424f7967e1752dcc8e53859e8fdad3566f51"
+    f"rev={PID_PIN}"
+    f"#{PID_PIN}"
 )
 NCP_SOURCE = (
     "git+https://github.com/sepahead/NCP?"
@@ -38,7 +41,7 @@ ZENOH_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
 
 EXPECTED_UPSTREAM_MANIFESTS = {
     "pid-core": {
-        "version": "1.0.0",
+        "version": PID_VERSION,
         "source": PID_SOURCE,
         "features": {
             "default": frozenset(),
@@ -67,7 +70,7 @@ EXPECTED_UPSTREAM_MANIFESTS = {
         },
     },
     "pid-runlog": {
-        "version": "1.0.0",
+        "version": PID_VERSION,
         "source": PID_SOURCE,
         "features": {},
     },
@@ -100,13 +103,9 @@ EXPECTED_DEFAULT_MEMBERS = [
     "crates/galadriel-cli",
 ]
 
-PID_RESOLVED_FEATURES = frozenset(
-    {
-        "default",
-        "experimental-continuous",
-        "experimental-pipelines",
-        "research-mixed-dimension-pid3",
-    }
+PID_STABLE_RESOLVED_FEATURES = frozenset({"default"})
+PID_CONTINUOUS_RESOLVED_FEATURES = frozenset(
+    {"default", "experimental-continuous"}
 )
 NCP_RESOLVED_FEATURES = frozenset({"default"})
 ZENOH_RESOLVED_FEATURES = frozenset(
@@ -160,7 +159,7 @@ PROFILES = (
         frozenset({"galadriel-cli", "galadriel-core", "galadriel-sim"}),
         frozenset(
             {
-                "galadriel-pid",
+                "galadriel-dependence",
                 "pid-core",
                 "pid-runlog",
                 "galadriel-ncp",
@@ -172,11 +171,11 @@ PROFILES = (
         ),
     ),
     Profile(
-        "pid",
-        ("--features", "pid"),
-        frozenset({"galadriel-pid", "pid-core", "pid-runlog"}),
+        "dependence",
+        ("--features", "dependence"),
+        frozenset({"galadriel-dependence", "pid-core", "pid-runlog"}),
         frozenset({"galadriel-ncp", "ncp-core", "ncp-zenoh", "zenoh", "tokio"}),
-        (("pid-core", PID_RESOLVED_FEATURES),),
+        (("pid-core", PID_STABLE_RESOLVED_FEATURES),),
     ),
     Profile(
         "ncp",
@@ -184,7 +183,7 @@ PROFILES = (
         frozenset({"galadriel-ncp", "ncp-core"}),
         frozenset(
             {
-                "galadriel-pid",
+                "galadriel-dependence",
                 "pid-core",
                 "pid-runlog",
                 "ncp-zenoh",
@@ -198,7 +197,7 @@ PROFILES = (
         "ncp-live",
         ("--features", "ncp-live"),
         frozenset({"galadriel-ncp", "ncp-core", "ncp-zenoh", "zenoh", "tokio"}),
-        frozenset({"galadriel-pid", "pid-core", "pid-runlog"}),
+        frozenset({"galadriel-dependence", "pid-core", "pid-runlog"}),
         (
             ("ncp-core", NCP_RESOLVED_FEATURES),
             ("ncp-zenoh", NCP_RESOLVED_FEATURES),
@@ -211,7 +210,7 @@ PROFILES = (
         ("--all-features",),
         frozenset(
             {
-                "galadriel-pid",
+                "galadriel-dependence",
                 "pid-core",
                 "pid-runlog",
                 "galadriel-ncp",
@@ -223,7 +222,7 @@ PROFILES = (
         ),
         frozenset(),
         (
-            ("pid-core", PID_RESOLVED_FEATURES),
+            ("pid-core", PID_STABLE_RESOLVED_FEATURES),
             ("ncp-core", NCP_RESOLVED_FEATURES),
             ("ncp-zenoh", NCP_RESOLVED_FEATURES),
             ("zenoh", ZENOH_RESOLVED_FEATURES),
@@ -238,7 +237,7 @@ PROFILES = (
                 "galadriel-eval",
                 "galadriel-core",
                 "galadriel-sim",
-                "galadriel-pid",
+                "galadriel-dependence",
                 "pid-core",
                 "pid-runlog",
                 "galadriel-ncp",
@@ -247,7 +246,7 @@ PROFILES = (
         ),
         frozenset({"ncp-zenoh", "zenoh", "tokio"}),
         (
-            ("pid-core", PID_RESOLVED_FEATURES),
+            ("pid-core", PID_STABLE_RESOLVED_FEATURES),
             ("ncp-core", NCP_RESOLVED_FEATURES),
         ),
         "galadriel-eval",
@@ -258,7 +257,7 @@ PROFILES = (
         frozenset({"galadriel-justify", "galadriel-core", "pid-core", "pid-runlog"}),
         frozenset(
             {
-                "galadriel-pid",
+                "galadriel-dependence",
                 "galadriel-ncp",
                 "ncp-core",
                 "ncp-zenoh",
@@ -266,7 +265,7 @@ PROFILES = (
                 "tokio",
             }
         ),
-        (("pid-core", PID_RESOLVED_FEATURES),),
+        (("pid-core", PID_CONTINUOUS_RESOLVED_FEATURES),),
         "galadriel-justify",
     ),
 )
@@ -501,9 +500,55 @@ def validate_manifest(repo: Path) -> None:
     with (repo / "Cargo.toml").open("rb") as handle:
         workspace_manifest = tomllib.load(handle)
     validate_workspace_manifest(workspace_manifest)
+    validate_pid_source_identity(repo, workspace_manifest)
     with (repo / "crates/galadriel-cli/Cargo.toml").open("rb") as handle:
         manifest = tomllib.load(handle)
     validate_cli_manifest(manifest)
+
+
+def validate_pid_source_identity(repo: Path, manifest: object) -> None:
+    """Tie public adapter identity constants to the exact workspace dependency pin."""
+
+    if not isinstance(manifest, dict):
+        raise ReviewError("root Cargo manifest must be a table")
+    workspace = manifest.get("workspace")
+    dependencies = workspace.get("dependencies") if isinstance(workspace, dict) else None
+    pid = dependencies.get("pid-core") if isinstance(dependencies, dict) else None
+    expected = {
+        "version": PID_VERSION,
+        "git": "https://github.com/sepahead/pid-rs",
+        "rev": PID_PIN,
+    }
+    if pid != expected:
+        raise ReviewError("workspace pid-core dependency differs from the audited identity")
+
+    sources = (
+        ("dependence", repo / "crates/galadriel-dependence/src/engine.rs"),
+        ("offline PID study", repo / "crates/galadriel-justify/src/lib.rs"),
+    )
+    for label, source in sources:
+        if (
+            not source.is_file()
+            or source.is_symlink()
+            or source.stat().st_size > 512 * 1024
+        ):
+            raise ReviewError(f"{label} identity source is missing or unsafe")
+        document = source.read_text(encoding="utf-8")
+        declarations = dict(
+            re.findall(
+                r'^pub const (PID_RS_VERSION|PID_RS_REVISION|PID_RS_GIT_REPOSITORY): &str = "([^"]+)";$',
+                document,
+                flags=re.MULTILINE,
+            )
+        )
+        if declarations != {
+            "PID_RS_VERSION": PID_VERSION,
+            "PID_RS_REVISION": PID_PIN,
+            "PID_RS_GIT_REPOSITORY": expected["git"],
+        }:
+            raise ReviewError(
+                f"{label} public pid-rs identity constants differ from Cargo.toml"
+            )
 
 
 def validate_cli_manifest(manifest: object) -> None:
@@ -513,7 +558,7 @@ def validate_cli_manifest(manifest: object) -> None:
         raise ReviewError("galadriel-cli manifest must be a table")
     expected = {
         "default": [],
-        "pid": ["dep:galadriel-pid"],
+        "dependence": ["dep:galadriel-dependence"],
         "ncp": ["dep:galadriel-ncp"],
         "ncp-live": [
             "ncp",

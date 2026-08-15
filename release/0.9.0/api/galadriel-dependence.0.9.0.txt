@@ -1,0 +1,1962 @@
+pub mod galadriel_dependence
+pub use galadriel_dependence::FusedVerdict
+pub use galadriel_dependence::consistency_channels_with_temporal_limits
+pub use galadriel_dependence::scalar_channels
+pub enum galadriel_dependence::ContinuousSamplingRegime
+pub galadriel_dependence::ContinuousSamplingRegime::IndependentIdenticallyDistributed
+impl galadriel_dependence::ContinuousSamplingRegime
+pub const fn galadriel_dependence::ContinuousSamplingRegime::name(self) -> &'static str
+impl core::clone::Clone for galadriel_dependence::ContinuousSamplingRegime
+pub fn galadriel_dependence::ContinuousSamplingRegime::clone(&self) -> galadriel_dependence::ContinuousSamplingRegime
+impl core::cmp::Eq for galadriel_dependence::ContinuousSamplingRegime
+impl core::cmp::PartialEq for galadriel_dependence::ContinuousSamplingRegime
+pub fn galadriel_dependence::ContinuousSamplingRegime::eq(&self, &galadriel_dependence::ContinuousSamplingRegime) -> bool
+impl core::fmt::Debug for galadriel_dependence::ContinuousSamplingRegime
+pub fn galadriel_dependence::ContinuousSamplingRegime::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_dependence::ContinuousSamplingRegime
+impl core::marker::StructuralPartialEq for galadriel_dependence::ContinuousSamplingRegime
+impl serde_core::ser::Serialize for galadriel_dependence::ContinuousSamplingRegime
+pub fn galadriel_dependence::ContinuousSamplingRegime::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::ContinuousSamplingRegime
+impl core::marker::Send for galadriel_dependence::ContinuousSamplingRegime
+impl core::marker::Sync for galadriel_dependence::ContinuousSamplingRegime
+impl core::marker::Unpin for galadriel_dependence::ContinuousSamplingRegime
+impl core::marker::UnsafeUnpin for galadriel_dependence::ContinuousSamplingRegime
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::ContinuousSamplingRegime
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::ContinuousSamplingRegime
+impl<T, U> core::convert::Into<U> for galadriel_dependence::ContinuousSamplingRegime where U: core::convert::From<T>
+pub fn galadriel_dependence::ContinuousSamplingRegime::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::ContinuousSamplingRegime where U: core::convert::Into<T>
+pub type galadriel_dependence::ContinuousSamplingRegime::Error = core::convert::Infallible
+pub fn galadriel_dependence::ContinuousSamplingRegime::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::ContinuousSamplingRegime where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::ContinuousSamplingRegime::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::ContinuousSamplingRegime::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::ContinuousSamplingRegime where T: core::clone::Clone
+pub type galadriel_dependence::ContinuousSamplingRegime::Owned = T
+pub fn galadriel_dependence::ContinuousSamplingRegime::clone_into(&self, &mut T)
+pub fn galadriel_dependence::ContinuousSamplingRegime::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::ContinuousSamplingRegime where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::ContinuousSamplingRegime::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::ContinuousSamplingRegime where T: ?core::marker::Sized
+pub fn galadriel_dependence::ContinuousSamplingRegime::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::ContinuousSamplingRegime where T: ?core::marker::Sized
+pub fn galadriel_dependence::ContinuousSamplingRegime::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::ContinuousSamplingRegime where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::ContinuousSamplingRegime::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::ContinuousSamplingRegime
+pub fn galadriel_dependence::ContinuousSamplingRegime::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::ContinuousSamplingRegime
+pub type galadriel_dependence::ContinuousSamplingRegime::Output = T
+pub enum galadriel_dependence::DependenceResearchClassification
+pub galadriel_dependence::DependenceResearchClassification::CustomAcceptedResearch
+pub galadriel_dependence::DependenceResearchClassification::NamedResearchProfile
+impl core::clone::Clone for galadriel_dependence::DependenceResearchClassification
+pub fn galadriel_dependence::DependenceResearchClassification::clone(&self) -> galadriel_dependence::DependenceResearchClassification
+impl core::cmp::Eq for galadriel_dependence::DependenceResearchClassification
+impl core::cmp::PartialEq for galadriel_dependence::DependenceResearchClassification
+pub fn galadriel_dependence::DependenceResearchClassification::eq(&self, &galadriel_dependence::DependenceResearchClassification) -> bool
+impl core::fmt::Debug for galadriel_dependence::DependenceResearchClassification
+pub fn galadriel_dependence::DependenceResearchClassification::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_dependence::DependenceResearchClassification
+impl core::marker::StructuralPartialEq for galadriel_dependence::DependenceResearchClassification
+impl serde_core::ser::Serialize for galadriel_dependence::DependenceResearchClassification
+pub fn galadriel_dependence::DependenceResearchClassification::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::DependenceResearchClassification
+impl core::marker::Send for galadriel_dependence::DependenceResearchClassification
+impl core::marker::Sync for galadriel_dependence::DependenceResearchClassification
+impl core::marker::Unpin for galadriel_dependence::DependenceResearchClassification
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceResearchClassification
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceResearchClassification
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceResearchClassification
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceResearchClassification where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceResearchClassification::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceResearchClassification where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceResearchClassification::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceResearchClassification::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceResearchClassification where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceResearchClassification::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceResearchClassification::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceResearchClassification where T: core::clone::Clone
+pub type galadriel_dependence::DependenceResearchClassification::Owned = T
+pub fn galadriel_dependence::DependenceResearchClassification::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceResearchClassification::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::DependenceResearchClassification where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchClassification::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceResearchClassification where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchClassification::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceResearchClassification where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchClassification::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceResearchClassification where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceResearchClassification::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceResearchClassification
+pub fn galadriel_dependence::DependenceResearchClassification::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceResearchClassification
+pub type galadriel_dependence::DependenceResearchClassification::Output = T
+pub enum galadriel_dependence::DependenceResearchSuiteError
+pub galadriel_dependence::DependenceResearchSuiteError::MiConsensusConfig(galadriel_dependence::MiConsensusConfigError)
+pub galadriel_dependence::DependenceResearchSuiteError::ReleaseSuite(galadriel_core::config::ReleaseSuiteError)
+pub galadriel_dependence::DependenceResearchSuiteError::TooFewModalities
+pub galadriel_dependence::DependenceResearchSuiteError::TooFewModalities::available: usize
+pub galadriel_dependence::DependenceResearchSuiteError::TooFewModalities::minimum: usize
+pub galadriel_dependence::DependenceResearchSuiteError::WorkEstimateOverflow
+pub galadriel_dependence::DependenceResearchSuiteError::WorkLimitExceeded
+pub galadriel_dependence::DependenceResearchSuiteError::WorkLimitExceeded::maximum: usize
+pub galadriel_dependence::DependenceResearchSuiteError::WorkLimitExceeded::requested: usize
+impl core::clone::Clone for galadriel_dependence::DependenceResearchSuiteError
+pub fn galadriel_dependence::DependenceResearchSuiteError::clone(&self) -> galadriel_dependence::DependenceResearchSuiteError
+impl core::cmp::Eq for galadriel_dependence::DependenceResearchSuiteError
+impl core::cmp::PartialEq for galadriel_dependence::DependenceResearchSuiteError
+pub fn galadriel_dependence::DependenceResearchSuiteError::eq(&self, &galadriel_dependence::DependenceResearchSuiteError) -> bool
+impl core::convert::From<galadriel_core::config::ReleaseSuiteError> for galadriel_dependence::DependenceResearchSuiteError
+pub fn galadriel_dependence::DependenceResearchSuiteError::from(galadriel_core::config::ReleaseSuiteError) -> Self
+impl core::convert::From<galadriel_dependence::DependenceResearchSuiteError> for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::from(galadriel_dependence::DependenceResearchSuiteError) -> Self
+impl core::convert::From<galadriel_dependence::MiConsensusConfigError> for galadriel_dependence::DependenceResearchSuiteError
+pub fn galadriel_dependence::DependenceResearchSuiteError::from(galadriel_dependence::MiConsensusConfigError) -> Self
+impl core::error::Error for galadriel_dependence::DependenceResearchSuiteError
+pub fn galadriel_dependence::DependenceResearchSuiteError::source(&self) -> core::option::Option<&(dyn core::error::Error + 'static)>
+impl core::fmt::Debug for galadriel_dependence::DependenceResearchSuiteError
+pub fn galadriel_dependence::DependenceResearchSuiteError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_dependence::DependenceResearchSuiteError
+pub fn galadriel_dependence::DependenceResearchSuiteError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::DependenceResearchSuiteError
+impl core::marker::Freeze for galadriel_dependence::DependenceResearchSuiteError
+impl core::marker::Send for galadriel_dependence::DependenceResearchSuiteError
+impl core::marker::Sync for galadriel_dependence::DependenceResearchSuiteError
+impl core::marker::Unpin for galadriel_dependence::DependenceResearchSuiteError
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceResearchSuiteError
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceResearchSuiteError
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceResearchSuiteError
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceResearchSuiteError where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceResearchSuiteError::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceResearchSuiteError where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceResearchSuiteError::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceResearchSuiteError::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceResearchSuiteError where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceResearchSuiteError::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceResearchSuiteError::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceResearchSuiteError where T: core::clone::Clone
+pub type galadriel_dependence::DependenceResearchSuiteError::Owned = T
+pub fn galadriel_dependence::DependenceResearchSuiteError::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceResearchSuiteError::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_dependence::DependenceResearchSuiteError where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteError::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_dependence::DependenceResearchSuiteError where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteError::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceResearchSuiteError where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteError::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceResearchSuiteError where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteError::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceResearchSuiteError where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceResearchSuiteError::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceResearchSuiteError
+pub fn galadriel_dependence::DependenceResearchSuiteError::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceResearchSuiteError
+pub type galadriel_dependence::DependenceResearchSuiteError::Output = T
+pub enum galadriel_dependence::DependenceStability
+pub galadriel_dependence::DependenceStability::ExhaustiveCircularDeleteBlock
+pub galadriel_dependence::DependenceStability::ExhaustiveCircularDeleteBlock::block_size: usize
+pub galadriel_dependence::DependenceStability::PointEstimateOnly
+impl galadriel_dependence::DependenceStability
+pub const fn galadriel_dependence::DependenceStability::block_size(&self) -> core::option::Option<usize>
+pub const fn galadriel_dependence::DependenceStability::name(&self) -> &'static str
+impl core::clone::Clone for galadriel_dependence::DependenceStability
+pub fn galadriel_dependence::DependenceStability::clone(&self) -> galadriel_dependence::DependenceStability
+impl core::cmp::Eq for galadriel_dependence::DependenceStability
+impl core::cmp::PartialEq for galadriel_dependence::DependenceStability
+pub fn galadriel_dependence::DependenceStability::eq(&self, &galadriel_dependence::DependenceStability) -> bool
+impl core::fmt::Debug for galadriel_dependence::DependenceStability
+pub fn galadriel_dependence::DependenceStability::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::DependenceStability
+impl core::marker::Freeze for galadriel_dependence::DependenceStability
+impl core::marker::Send for galadriel_dependence::DependenceStability
+impl core::marker::Sync for galadriel_dependence::DependenceStability
+impl core::marker::Unpin for galadriel_dependence::DependenceStability
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceStability
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceStability
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceStability
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceStability where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceStability::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceStability where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceStability::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceStability::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceStability where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceStability::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceStability::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceStability where T: core::clone::Clone
+pub type galadriel_dependence::DependenceStability::Owned = T
+pub fn galadriel_dependence::DependenceStability::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceStability::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::DependenceStability where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceStability::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceStability where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceStability::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceStability where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceStability::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceStability where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceStability::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceStability
+pub fn galadriel_dependence::DependenceStability::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceStability
+pub type galadriel_dependence::DependenceStability::Output = T
+pub enum galadriel_dependence::DependenceStabilityParams
+pub galadriel_dependence::DependenceStabilityParams::ExhaustiveCircularDeleteBlock
+pub galadriel_dependence::DependenceStabilityParams::ExhaustiveCircularDeleteBlock::block_size: usize
+pub galadriel_dependence::DependenceStabilityParams::PointEstimateOnly
+impl core::clone::Clone for galadriel_dependence::DependenceStabilityParams
+pub fn galadriel_dependence::DependenceStabilityParams::clone(&self) -> galadriel_dependence::DependenceStabilityParams
+impl core::cmp::Eq for galadriel_dependence::DependenceStabilityParams
+impl core::cmp::PartialEq for galadriel_dependence::DependenceStabilityParams
+pub fn galadriel_dependence::DependenceStabilityParams::eq(&self, &galadriel_dependence::DependenceStabilityParams) -> bool
+impl core::fmt::Debug for galadriel_dependence::DependenceStabilityParams
+pub fn galadriel_dependence::DependenceStabilityParams::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::DependenceStabilityParams
+impl core::marker::Freeze for galadriel_dependence::DependenceStabilityParams
+impl core::marker::Send for galadriel_dependence::DependenceStabilityParams
+impl core::marker::Sync for galadriel_dependence::DependenceStabilityParams
+impl core::marker::Unpin for galadriel_dependence::DependenceStabilityParams
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceStabilityParams
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceStabilityParams
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceStabilityParams
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceStabilityParams where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceStabilityParams::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceStabilityParams where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceStabilityParams::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceStabilityParams::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceStabilityParams where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceStabilityParams::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceStabilityParams::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceStabilityParams where T: core::clone::Clone
+pub type galadriel_dependence::DependenceStabilityParams::Owned = T
+pub fn galadriel_dependence::DependenceStabilityParams::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceStabilityParams::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::DependenceStabilityParams where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceStabilityParams::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceStabilityParams where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceStabilityParams::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceStabilityParams where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceStabilityParams::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceStabilityParams where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceStabilityParams::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceStabilityParams
+pub fn galadriel_dependence::DependenceStabilityParams::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceStabilityParams
+pub type galadriel_dependence::DependenceStabilityParams::Output = T
+pub enum galadriel_dependence::EpisodeReceiptOrigin
+pub galadriel_dependence::EpisodeReceiptOrigin::CallerDeclaredAlignmentAsserted
+pub galadriel_dependence::EpisodeReceiptOrigin::CoreAssessmentBinding
+impl core::clone::Clone for galadriel_dependence::EpisodeReceiptOrigin
+pub fn galadriel_dependence::EpisodeReceiptOrigin::clone(&self) -> galadriel_dependence::EpisodeReceiptOrigin
+impl core::cmp::Eq for galadriel_dependence::EpisodeReceiptOrigin
+impl core::cmp::PartialEq for galadriel_dependence::EpisodeReceiptOrigin
+pub fn galadriel_dependence::EpisodeReceiptOrigin::eq(&self, &galadriel_dependence::EpisodeReceiptOrigin) -> bool
+impl core::fmt::Debug for galadriel_dependence::EpisodeReceiptOrigin
+pub fn galadriel_dependence::EpisodeReceiptOrigin::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_dependence::EpisodeReceiptOrigin
+impl core::marker::StructuralPartialEq for galadriel_dependence::EpisodeReceiptOrigin
+impl serde_core::ser::Serialize for galadriel_dependence::EpisodeReceiptOrigin
+pub fn galadriel_dependence::EpisodeReceiptOrigin::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::EpisodeReceiptOrigin
+impl core::marker::Send for galadriel_dependence::EpisodeReceiptOrigin
+impl core::marker::Sync for galadriel_dependence::EpisodeReceiptOrigin
+impl core::marker::Unpin for galadriel_dependence::EpisodeReceiptOrigin
+impl core::marker::UnsafeUnpin for galadriel_dependence::EpisodeReceiptOrigin
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::EpisodeReceiptOrigin
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::EpisodeReceiptOrigin
+impl<T, U> core::convert::Into<U> for galadriel_dependence::EpisodeReceiptOrigin where U: core::convert::From<T>
+pub fn galadriel_dependence::EpisodeReceiptOrigin::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::EpisodeReceiptOrigin where U: core::convert::Into<T>
+pub type galadriel_dependence::EpisodeReceiptOrigin::Error = core::convert::Infallible
+pub fn galadriel_dependence::EpisodeReceiptOrigin::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::EpisodeReceiptOrigin where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::EpisodeReceiptOrigin::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::EpisodeReceiptOrigin::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::EpisodeReceiptOrigin where T: core::clone::Clone
+pub type galadriel_dependence::EpisodeReceiptOrigin::Owned = T
+pub fn galadriel_dependence::EpisodeReceiptOrigin::clone_into(&self, &mut T)
+pub fn galadriel_dependence::EpisodeReceiptOrigin::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::EpisodeReceiptOrigin where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::EpisodeReceiptOrigin::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::EpisodeReceiptOrigin where T: ?core::marker::Sized
+pub fn galadriel_dependence::EpisodeReceiptOrigin::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::EpisodeReceiptOrigin where T: ?core::marker::Sized
+pub fn galadriel_dependence::EpisodeReceiptOrigin::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::EpisodeReceiptOrigin where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::EpisodeReceiptOrigin::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::EpisodeReceiptOrigin
+pub fn galadriel_dependence::EpisodeReceiptOrigin::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::EpisodeReceiptOrigin
+pub type galadriel_dependence::EpisodeReceiptOrigin::Output = T
+pub enum galadriel_dependence::MiAxisFamilyAvailability
+pub galadriel_dependence::MiAxisFamilyAvailability::Produced
+pub galadriel_dependence::MiAxisFamilyAvailability::UnavailableNoCommonProjection
+impl core::clone::Clone for galadriel_dependence::MiAxisFamilyAvailability
+pub fn galadriel_dependence::MiAxisFamilyAvailability::clone(&self) -> galadriel_dependence::MiAxisFamilyAvailability
+impl core::cmp::Eq for galadriel_dependence::MiAxisFamilyAvailability
+impl core::cmp::PartialEq for galadriel_dependence::MiAxisFamilyAvailability
+pub fn galadriel_dependence::MiAxisFamilyAvailability::eq(&self, &galadriel_dependence::MiAxisFamilyAvailability) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiAxisFamilyAvailability
+pub fn galadriel_dependence::MiAxisFamilyAvailability::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_dependence::MiAxisFamilyAvailability
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiAxisFamilyAvailability
+impl serde_core::ser::Serialize for galadriel_dependence::MiAxisFamilyAvailability
+pub fn galadriel_dependence::MiAxisFamilyAvailability::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::MiAxisFamilyAvailability
+impl core::marker::Send for galadriel_dependence::MiAxisFamilyAvailability
+impl core::marker::Sync for galadriel_dependence::MiAxisFamilyAvailability
+impl core::marker::Unpin for galadriel_dependence::MiAxisFamilyAvailability
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiAxisFamilyAvailability
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiAxisFamilyAvailability
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiAxisFamilyAvailability
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiAxisFamilyAvailability where U: core::convert::From<T>
+pub fn galadriel_dependence::MiAxisFamilyAvailability::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiAxisFamilyAvailability where U: core::convert::Into<T>
+pub type galadriel_dependence::MiAxisFamilyAvailability::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiAxisFamilyAvailability::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiAxisFamilyAvailability where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiAxisFamilyAvailability::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiAxisFamilyAvailability::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiAxisFamilyAvailability where T: core::clone::Clone
+pub type galadriel_dependence::MiAxisFamilyAvailability::Owned = T
+pub fn galadriel_dependence::MiAxisFamilyAvailability::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiAxisFamilyAvailability::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiAxisFamilyAvailability where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiAxisFamilyAvailability::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiAxisFamilyAvailability where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiAxisFamilyAvailability::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiAxisFamilyAvailability where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiAxisFamilyAvailability::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiAxisFamilyAvailability where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiAxisFamilyAvailability::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiAxisFamilyAvailability
+pub fn galadriel_dependence::MiAxisFamilyAvailability::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiAxisFamilyAvailability
+pub type galadriel_dependence::MiAxisFamilyAvailability::Output = T
+pub enum galadriel_dependence::MiConsensusConfigError
+pub galadriel_dependence::MiConsensusConfigError::DeclarationTextEmpty
+pub galadriel_dependence::MiConsensusConfigError::DeclarationTextEmpty::field: &'static str
+pub galadriel_dependence::MiConsensusConfigError::DeclarationTextTooLong
+pub galadriel_dependence::MiConsensusConfigError::DeclarationTextTooLong::field: &'static str
+pub galadriel_dependence::MiConsensusConfigError::DeclarationTextTooLong::maximum: usize
+pub galadriel_dependence::MiConsensusConfigError::DeleteBlockSizeInvalid
+pub galadriel_dependence::MiConsensusConfigError::DistanceCvMinimumInvalid
+pub galadriel_dependence::MiConsensusConfigError::GeometryKTooSmall
+pub galadriel_dependence::MiConsensusConfigError::IntrinsicDimensionMaximumInvalid
+pub galadriel_dependence::MiConsensusConfigError::IntrinsicDimensionMinimumInvalid
+pub galadriel_dependence::MiConsensusConfigError::MiFloorInvalid
+pub galadriel_dependence::MiConsensusConfigError::MinimumSamplesOutOfRange
+pub galadriel_dependence::MiConsensusConfigError::NearestNeighborRatioInvalid
+pub galadriel_dependence::MiConsensusConfigError::SeparationRatioInvalid
+pub galadriel_dependence::MiConsensusConfigError::WindowOutOfRange
+pub galadriel_dependence::MiConsensusConfigError::WorkEstimateExceedsLimit
+pub galadriel_dependence::MiConsensusConfigError::WorkEstimateExceedsLimit::maximum: usize
+pub galadriel_dependence::MiConsensusConfigError::WorkEstimateExceedsLimit::requested: usize
+pub galadriel_dependence::MiConsensusConfigError::WorkEstimateOverflow
+impl core::clone::Clone for galadriel_dependence::MiConsensusConfigError
+pub fn galadriel_dependence::MiConsensusConfigError::clone(&self) -> galadriel_dependence::MiConsensusConfigError
+impl core::cmp::Eq for galadriel_dependence::MiConsensusConfigError
+impl core::cmp::PartialEq for galadriel_dependence::MiConsensusConfigError
+pub fn galadriel_dependence::MiConsensusConfigError::eq(&self, &galadriel_dependence::MiConsensusConfigError) -> bool
+impl core::convert::From<galadriel_dependence::MiConsensusConfigError> for galadriel_core::error::GaladrielError
+pub fn galadriel_core::error::GaladrielError::from(galadriel_dependence::MiConsensusConfigError) -> Self
+impl core::convert::From<galadriel_dependence::MiConsensusConfigError> for galadriel_dependence::DependenceResearchSuiteError
+pub fn galadriel_dependence::DependenceResearchSuiteError::from(galadriel_dependence::MiConsensusConfigError) -> Self
+impl core::error::Error for galadriel_dependence::MiConsensusConfigError
+impl core::fmt::Debug for galadriel_dependence::MiConsensusConfigError
+pub fn galadriel_dependence::MiConsensusConfigError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_dependence::MiConsensusConfigError
+pub fn galadriel_dependence::MiConsensusConfigError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiConsensusConfigError
+impl core::marker::Freeze for galadriel_dependence::MiConsensusConfigError
+impl core::marker::Send for galadriel_dependence::MiConsensusConfigError
+impl core::marker::Sync for galadriel_dependence::MiConsensusConfigError
+impl core::marker::Unpin for galadriel_dependence::MiConsensusConfigError
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiConsensusConfigError
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiConsensusConfigError
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiConsensusConfigError
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiConsensusConfigError where U: core::convert::From<T>
+pub fn galadriel_dependence::MiConsensusConfigError::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiConsensusConfigError where U: core::convert::Into<T>
+pub type galadriel_dependence::MiConsensusConfigError::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiConsensusConfigError::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiConsensusConfigError where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiConsensusConfigError::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiConsensusConfigError::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiConsensusConfigError where T: core::clone::Clone
+pub type galadriel_dependence::MiConsensusConfigError::Owned = T
+pub fn galadriel_dependence::MiConsensusConfigError::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiConsensusConfigError::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_dependence::MiConsensusConfigError where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfigError::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_dependence::MiConsensusConfigError where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfigError::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiConsensusConfigError where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfigError::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiConsensusConfigError where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfigError::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiConsensusConfigError where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiConsensusConfigError::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiConsensusConfigError
+pub fn galadriel_dependence::MiConsensusConfigError::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiConsensusConfigError
+pub type galadriel_dependence::MiConsensusConfigError::Output = T
+pub enum galadriel_dependence::MiConsensusResearchProfile
+pub galadriel_dependence::MiConsensusResearchProfile::ExhaustiveCircularDeleteBlockV0_9
+pub galadriel_dependence::MiConsensusResearchProfile::PointEstimateOnlyV0_9
+impl galadriel_dependence::MiConsensusResearchProfile
+pub const fn galadriel_dependence::MiConsensusResearchProfile::name(self) -> &'static str
+pub const fn galadriel_dependence::MiConsensusResearchProfile::params(self) -> galadriel_dependence::MiConsensusParams
+pub fn galadriel_dependence::MiConsensusResearchProfile::try_config(self, galadriel_dependence::ContinuousLawDeclaration) -> core::result::Result<galadriel_dependence::MiConsensusConfig, galadriel_dependence::MiConsensusConfigError>
+impl core::clone::Clone for galadriel_dependence::MiConsensusResearchProfile
+pub fn galadriel_dependence::MiConsensusResearchProfile::clone(&self) -> galadriel_dependence::MiConsensusResearchProfile
+impl core::cmp::Eq for galadriel_dependence::MiConsensusResearchProfile
+impl core::cmp::PartialEq for galadriel_dependence::MiConsensusResearchProfile
+pub fn galadriel_dependence::MiConsensusResearchProfile::eq(&self, &galadriel_dependence::MiConsensusResearchProfile) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiConsensusResearchProfile
+pub fn galadriel_dependence::MiConsensusResearchProfile::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_dependence::MiConsensusResearchProfile
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiConsensusResearchProfile
+impl core::marker::Freeze for galadriel_dependence::MiConsensusResearchProfile
+impl core::marker::Send for galadriel_dependence::MiConsensusResearchProfile
+impl core::marker::Sync for galadriel_dependence::MiConsensusResearchProfile
+impl core::marker::Unpin for galadriel_dependence::MiConsensusResearchProfile
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiConsensusResearchProfile
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiConsensusResearchProfile
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiConsensusResearchProfile
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiConsensusResearchProfile where U: core::convert::From<T>
+pub fn galadriel_dependence::MiConsensusResearchProfile::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiConsensusResearchProfile where U: core::convert::Into<T>
+pub type galadriel_dependence::MiConsensusResearchProfile::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiConsensusResearchProfile::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiConsensusResearchProfile where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiConsensusResearchProfile::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiConsensusResearchProfile::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiConsensusResearchProfile where T: core::clone::Clone
+pub type galadriel_dependence::MiConsensusResearchProfile::Owned = T
+pub fn galadriel_dependence::MiConsensusResearchProfile::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiConsensusResearchProfile::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiConsensusResearchProfile where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusResearchProfile::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiConsensusResearchProfile where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusResearchProfile::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiConsensusResearchProfile where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusResearchProfile::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiConsensusResearchProfile where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiConsensusResearchProfile::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiConsensusResearchProfile
+pub fn galadriel_dependence::MiConsensusResearchProfile::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiConsensusResearchProfile
+pub type galadriel_dependence::MiConsensusResearchProfile::Output = T
+pub enum galadriel_dependence::MiGraphDisposition
+pub galadriel_dependence::MiGraphDisposition::NoSeparationAtConfiguredThreshold
+pub galadriel_dependence::MiGraphDisposition::SeparatedFromMajorityGraph(alloc::vec::Vec<galadriel_core::observation::Modality>)
+pub galadriel_dependence::MiGraphDisposition::Unavailable(galadriel_dependence::MiGraphUnavailableReason)
+impl core::clone::Clone for galadriel_dependence::MiGraphDisposition
+pub fn galadriel_dependence::MiGraphDisposition::clone(&self) -> galadriel_dependence::MiGraphDisposition
+impl core::cmp::Eq for galadriel_dependence::MiGraphDisposition
+impl core::cmp::PartialEq for galadriel_dependence::MiGraphDisposition
+pub fn galadriel_dependence::MiGraphDisposition::eq(&self, &galadriel_dependence::MiGraphDisposition) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiGraphDisposition
+pub fn galadriel_dependence::MiGraphDisposition::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiGraphDisposition
+impl serde_core::ser::Serialize for galadriel_dependence::MiGraphDisposition
+pub fn galadriel_dependence::MiGraphDisposition::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::MiGraphDisposition
+impl core::marker::Send for galadriel_dependence::MiGraphDisposition
+impl core::marker::Sync for galadriel_dependence::MiGraphDisposition
+impl core::marker::Unpin for galadriel_dependence::MiGraphDisposition
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiGraphDisposition
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiGraphDisposition
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiGraphDisposition
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiGraphDisposition where U: core::convert::From<T>
+pub fn galadriel_dependence::MiGraphDisposition::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiGraphDisposition where U: core::convert::Into<T>
+pub type galadriel_dependence::MiGraphDisposition::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiGraphDisposition::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiGraphDisposition where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiGraphDisposition::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiGraphDisposition::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiGraphDisposition where T: core::clone::Clone
+pub type galadriel_dependence::MiGraphDisposition::Owned = T
+pub fn galadriel_dependence::MiGraphDisposition::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiGraphDisposition::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiGraphDisposition where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiGraphDisposition::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiGraphDisposition where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiGraphDisposition::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiGraphDisposition where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiGraphDisposition::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiGraphDisposition where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiGraphDisposition::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiGraphDisposition
+pub fn galadriel_dependence::MiGraphDisposition::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiGraphDisposition
+pub type galadriel_dependence::MiGraphDisposition::Output = T
+pub enum galadriel_dependence::MiGraphUnavailableReason
+pub galadriel_dependence::MiGraphUnavailableReason::AmbiguousMajorityGraph
+pub galadriel_dependence::MiGraphUnavailableReason::DegenerateColumn
+pub galadriel_dependence::MiGraphUnavailableReason::PairEvidenceUnavailable
+pub galadriel_dependence::MiGraphUnavailableReason::PairResourceRejected
+pub galadriel_dependence::MiGraphUnavailableReason::ReferenceBelowConfiguredFloor
+pub galadriel_dependence::MiGraphUnavailableReason::ResourceRejectedDuringExhaustiveDeletion
+pub galadriel_dependence::MiGraphUnavailableReason::TooFewChannelsOrRows
+pub galadriel_dependence::MiGraphUnavailableReason::UnstableUnderExhaustiveDeletion
+impl core::clone::Clone for galadriel_dependence::MiGraphUnavailableReason
+pub fn galadriel_dependence::MiGraphUnavailableReason::clone(&self) -> galadriel_dependence::MiGraphUnavailableReason
+impl core::cmp::Eq for galadriel_dependence::MiGraphUnavailableReason
+impl core::cmp::PartialEq for galadriel_dependence::MiGraphUnavailableReason
+pub fn galadriel_dependence::MiGraphUnavailableReason::eq(&self, &galadriel_dependence::MiGraphUnavailableReason) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiGraphUnavailableReason
+pub fn galadriel_dependence::MiGraphUnavailableReason::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiGraphUnavailableReason
+impl serde_core::ser::Serialize for galadriel_dependence::MiGraphUnavailableReason
+pub fn galadriel_dependence::MiGraphUnavailableReason::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::MiGraphUnavailableReason
+impl core::marker::Send for galadriel_dependence::MiGraphUnavailableReason
+impl core::marker::Sync for galadriel_dependence::MiGraphUnavailableReason
+impl core::marker::Unpin for galadriel_dependence::MiGraphUnavailableReason
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiGraphUnavailableReason
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiGraphUnavailableReason
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiGraphUnavailableReason
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiGraphUnavailableReason where U: core::convert::From<T>
+pub fn galadriel_dependence::MiGraphUnavailableReason::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiGraphUnavailableReason where U: core::convert::Into<T>
+pub type galadriel_dependence::MiGraphUnavailableReason::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiGraphUnavailableReason::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiGraphUnavailableReason where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiGraphUnavailableReason::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiGraphUnavailableReason::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiGraphUnavailableReason where T: core::clone::Clone
+pub type galadriel_dependence::MiGraphUnavailableReason::Owned = T
+pub fn galadriel_dependence::MiGraphUnavailableReason::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiGraphUnavailableReason::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiGraphUnavailableReason where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiGraphUnavailableReason::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiGraphUnavailableReason where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiGraphUnavailableReason::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiGraphUnavailableReason where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiGraphUnavailableReason::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiGraphUnavailableReason where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiGraphUnavailableReason::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiGraphUnavailableReason
+pub fn galadriel_dependence::MiGraphUnavailableReason::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiGraphUnavailableReason
+pub type galadriel_dependence::MiGraphUnavailableReason::Output = T
+pub enum galadriel_dependence::PairMiOutcome
+pub galadriel_dependence::PairMiOutcome::Estimated(galadriel_dependence::PairKsgEvidence)
+pub galadriel_dependence::PairMiOutcome::Unavailable
+pub galadriel_dependence::PairMiOutcome::Unavailable::category: galadriel_dependence::PairUnavailableCategory
+pub galadriel_dependence::PairMiOutcome::Unavailable::note: alloc::string::String
+impl core::clone::Clone for galadriel_dependence::PairMiOutcome
+pub fn galadriel_dependence::PairMiOutcome::clone(&self) -> galadriel_dependence::PairMiOutcome
+impl core::cmp::PartialEq for galadriel_dependence::PairMiOutcome
+pub fn galadriel_dependence::PairMiOutcome::eq(&self, &galadriel_dependence::PairMiOutcome) -> bool
+impl core::fmt::Debug for galadriel_dependence::PairMiOutcome
+pub fn galadriel_dependence::PairMiOutcome::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::PairMiOutcome
+impl serde_core::ser::Serialize for galadriel_dependence::PairMiOutcome
+pub fn galadriel_dependence::PairMiOutcome::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::PairMiOutcome
+impl core::marker::Send for galadriel_dependence::PairMiOutcome
+impl core::marker::Sync for galadriel_dependence::PairMiOutcome
+impl core::marker::Unpin for galadriel_dependence::PairMiOutcome
+impl core::marker::UnsafeUnpin for galadriel_dependence::PairMiOutcome
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::PairMiOutcome
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::PairMiOutcome
+impl<T, U> core::convert::Into<U> for galadriel_dependence::PairMiOutcome where U: core::convert::From<T>
+pub fn galadriel_dependence::PairMiOutcome::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::PairMiOutcome where U: core::convert::Into<T>
+pub type galadriel_dependence::PairMiOutcome::Error = core::convert::Infallible
+pub fn galadriel_dependence::PairMiOutcome::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::PairMiOutcome where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::PairMiOutcome::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::PairMiOutcome::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::PairMiOutcome where T: core::clone::Clone
+pub type galadriel_dependence::PairMiOutcome::Owned = T
+pub fn galadriel_dependence::PairMiOutcome::clone_into(&self, &mut T)
+pub fn galadriel_dependence::PairMiOutcome::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::PairMiOutcome where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::PairMiOutcome::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::PairMiOutcome where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairMiOutcome::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::PairMiOutcome where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairMiOutcome::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::PairMiOutcome where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::PairMiOutcome::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::PairMiOutcome
+pub fn galadriel_dependence::PairMiOutcome::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::PairMiOutcome
+pub type galadriel_dependence::PairMiOutcome::Output = T
+pub enum galadriel_dependence::PairUnavailableCategory
+pub galadriel_dependence::PairUnavailableCategory::GeometryRejected
+pub galadriel_dependence::PairUnavailableCategory::NumericalAbstention
+pub galadriel_dependence::PairUnavailableCategory::ObservedSampleIncompatibility
+pub galadriel_dependence::PairUnavailableCategory::PopulationAssumptionUnavailable
+pub galadriel_dependence::PairUnavailableCategory::ResourceRejected
+impl core::clone::Clone for galadriel_dependence::PairUnavailableCategory
+pub fn galadriel_dependence::PairUnavailableCategory::clone(&self) -> galadriel_dependence::PairUnavailableCategory
+impl core::cmp::Eq for galadriel_dependence::PairUnavailableCategory
+impl core::cmp::PartialEq for galadriel_dependence::PairUnavailableCategory
+pub fn galadriel_dependence::PairUnavailableCategory::eq(&self, &galadriel_dependence::PairUnavailableCategory) -> bool
+impl core::fmt::Debug for galadriel_dependence::PairUnavailableCategory
+pub fn galadriel_dependence::PairUnavailableCategory::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_dependence::PairUnavailableCategory
+impl core::marker::StructuralPartialEq for galadriel_dependence::PairUnavailableCategory
+impl serde_core::ser::Serialize for galadriel_dependence::PairUnavailableCategory
+pub fn galadriel_dependence::PairUnavailableCategory::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::PairUnavailableCategory
+impl core::marker::Send for galadriel_dependence::PairUnavailableCategory
+impl core::marker::Sync for galadriel_dependence::PairUnavailableCategory
+impl core::marker::Unpin for galadriel_dependence::PairUnavailableCategory
+impl core::marker::UnsafeUnpin for galadriel_dependence::PairUnavailableCategory
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::PairUnavailableCategory
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::PairUnavailableCategory
+impl<T, U> core::convert::Into<U> for galadriel_dependence::PairUnavailableCategory where U: core::convert::From<T>
+pub fn galadriel_dependence::PairUnavailableCategory::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::PairUnavailableCategory where U: core::convert::Into<T>
+pub type galadriel_dependence::PairUnavailableCategory::Error = core::convert::Infallible
+pub fn galadriel_dependence::PairUnavailableCategory::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::PairUnavailableCategory where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::PairUnavailableCategory::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::PairUnavailableCategory::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::PairUnavailableCategory where T: core::clone::Clone
+pub type galadriel_dependence::PairUnavailableCategory::Owned = T
+pub fn galadriel_dependence::PairUnavailableCategory::clone_into(&self, &mut T)
+pub fn galadriel_dependence::PairUnavailableCategory::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::PairUnavailableCategory where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::PairUnavailableCategory::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::PairUnavailableCategory where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairUnavailableCategory::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::PairUnavailableCategory where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairUnavailableCategory::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::PairUnavailableCategory where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::PairUnavailableCategory::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::PairUnavailableCategory
+pub fn galadriel_dependence::PairUnavailableCategory::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::PairUnavailableCategory
+pub type galadriel_dependence::PairUnavailableCategory::Output = T
+pub struct galadriel_dependence::AxisMiConsensusReport
+impl galadriel_dependence::AxisMiConsensusReport
+pub const fn galadriel_dependence::AxisMiConsensusReport::assessment_binding(&self) -> &galadriel_dependence::DependenceAssessmentBinding
+pub const fn galadriel_dependence::AxisMiConsensusReport::axis(&self) -> usize
+pub const fn galadriel_dependence::AxisMiConsensusReport::projection_receipt(&self) -> &galadriel_dependence::ProjectionAxisReceipt
+pub const fn galadriel_dependence::AxisMiConsensusReport::report(&self) -> &galadriel_dependence::MiConsensusReport
+impl core::clone::Clone for galadriel_dependence::AxisMiConsensusReport
+pub fn galadriel_dependence::AxisMiConsensusReport::clone(&self) -> galadriel_dependence::AxisMiConsensusReport
+impl core::fmt::Debug for galadriel_dependence::AxisMiConsensusReport
+pub fn galadriel_dependence::AxisMiConsensusReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl serde_core::ser::Serialize for galadriel_dependence::AxisMiConsensusReport
+pub fn galadriel_dependence::AxisMiConsensusReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::AxisMiConsensusReport
+impl core::marker::Send for galadriel_dependence::AxisMiConsensusReport
+impl core::marker::Sync for galadriel_dependence::AxisMiConsensusReport
+impl core::marker::Unpin for galadriel_dependence::AxisMiConsensusReport
+impl core::marker::UnsafeUnpin for galadriel_dependence::AxisMiConsensusReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::AxisMiConsensusReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::AxisMiConsensusReport
+impl<T, U> core::convert::Into<U> for galadriel_dependence::AxisMiConsensusReport where U: core::convert::From<T>
+pub fn galadriel_dependence::AxisMiConsensusReport::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::AxisMiConsensusReport where U: core::convert::Into<T>
+pub type galadriel_dependence::AxisMiConsensusReport::Error = core::convert::Infallible
+pub fn galadriel_dependence::AxisMiConsensusReport::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::AxisMiConsensusReport where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::AxisMiConsensusReport::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::AxisMiConsensusReport::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::AxisMiConsensusReport where T: core::clone::Clone
+pub type galadriel_dependence::AxisMiConsensusReport::Owned = T
+pub fn galadriel_dependence::AxisMiConsensusReport::clone_into(&self, &mut T)
+pub fn galadriel_dependence::AxisMiConsensusReport::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::AxisMiConsensusReport where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::AxisMiConsensusReport::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::AxisMiConsensusReport where T: ?core::marker::Sized
+pub fn galadriel_dependence::AxisMiConsensusReport::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::AxisMiConsensusReport where T: ?core::marker::Sized
+pub fn galadriel_dependence::AxisMiConsensusReport::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::AxisMiConsensusReport where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::AxisMiConsensusReport::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::AxisMiConsensusReport
+pub fn galadriel_dependence::AxisMiConsensusReport::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::AxisMiConsensusReport
+pub type galadriel_dependence::AxisMiConsensusReport::Output = T
+pub struct galadriel_dependence::CandidateMarginEnvelope
+impl galadriel_dependence::CandidateMarginEnvelope
+pub const fn galadriel_dependence::CandidateMarginEnvelope::maximum_nats(&self) -> f64
+pub const fn galadriel_dependence::CandidateMarginEnvelope::minimum_nats(&self) -> f64
+pub const fn galadriel_dependence::CandidateMarginEnvelope::modality(&self) -> galadriel_core::observation::Modality
+impl core::clone::Clone for galadriel_dependence::CandidateMarginEnvelope
+pub fn galadriel_dependence::CandidateMarginEnvelope::clone(&self) -> galadriel_dependence::CandidateMarginEnvelope
+impl core::cmp::PartialEq for galadriel_dependence::CandidateMarginEnvelope
+pub fn galadriel_dependence::CandidateMarginEnvelope::eq(&self, &galadriel_dependence::CandidateMarginEnvelope) -> bool
+impl core::fmt::Debug for galadriel_dependence::CandidateMarginEnvelope
+pub fn galadriel_dependence::CandidateMarginEnvelope::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::CandidateMarginEnvelope
+impl serde_core::ser::Serialize for galadriel_dependence::CandidateMarginEnvelope
+pub fn galadriel_dependence::CandidateMarginEnvelope::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::CandidateMarginEnvelope
+impl core::marker::Send for galadriel_dependence::CandidateMarginEnvelope
+impl core::marker::Sync for galadriel_dependence::CandidateMarginEnvelope
+impl core::marker::Unpin for galadriel_dependence::CandidateMarginEnvelope
+impl core::marker::UnsafeUnpin for galadriel_dependence::CandidateMarginEnvelope
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::CandidateMarginEnvelope
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::CandidateMarginEnvelope
+impl<T, U> core::convert::Into<U> for galadriel_dependence::CandidateMarginEnvelope where U: core::convert::From<T>
+pub fn galadriel_dependence::CandidateMarginEnvelope::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::CandidateMarginEnvelope where U: core::convert::Into<T>
+pub type galadriel_dependence::CandidateMarginEnvelope::Error = core::convert::Infallible
+pub fn galadriel_dependence::CandidateMarginEnvelope::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::CandidateMarginEnvelope where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::CandidateMarginEnvelope::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::CandidateMarginEnvelope::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::CandidateMarginEnvelope where T: core::clone::Clone
+pub type galadriel_dependence::CandidateMarginEnvelope::Owned = T
+pub fn galadriel_dependence::CandidateMarginEnvelope::clone_into(&self, &mut T)
+pub fn galadriel_dependence::CandidateMarginEnvelope::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::CandidateMarginEnvelope where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::CandidateMarginEnvelope::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::CandidateMarginEnvelope where T: ?core::marker::Sized
+pub fn galadriel_dependence::CandidateMarginEnvelope::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::CandidateMarginEnvelope where T: ?core::marker::Sized
+pub fn galadriel_dependence::CandidateMarginEnvelope::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::CandidateMarginEnvelope where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::CandidateMarginEnvelope::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::CandidateMarginEnvelope
+pub fn galadriel_dependence::CandidateMarginEnvelope::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::CandidateMarginEnvelope
+pub type galadriel_dependence::CandidateMarginEnvelope::Output = T
+pub struct galadriel_dependence::ChannelDependence
+impl galadriel_dependence::ChannelDependence
+pub const fn galadriel_dependence::ChannelDependence::is_separated_from_majority_graph(&self) -> bool
+pub const fn galadriel_dependence::ChannelDependence::modality(&self) -> galadriel_core::observation::Modality
+pub const fn galadriel_dependence::ChannelDependence::n(&self) -> usize
+pub const fn galadriel_dependence::ChannelDependence::strongest_pair_mi_nats(&self) -> core::option::Option<f64>
+impl core::clone::Clone for galadriel_dependence::ChannelDependence
+pub fn galadriel_dependence::ChannelDependence::clone(&self) -> galadriel_dependence::ChannelDependence
+impl core::cmp::PartialEq for galadriel_dependence::ChannelDependence
+pub fn galadriel_dependence::ChannelDependence::eq(&self, &galadriel_dependence::ChannelDependence) -> bool
+impl core::fmt::Debug for galadriel_dependence::ChannelDependence
+pub fn galadriel_dependence::ChannelDependence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::ChannelDependence
+impl serde_core::ser::Serialize for galadriel_dependence::ChannelDependence
+pub fn galadriel_dependence::ChannelDependence::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::ChannelDependence
+impl core::marker::Send for galadriel_dependence::ChannelDependence
+impl core::marker::Sync for galadriel_dependence::ChannelDependence
+impl core::marker::Unpin for galadriel_dependence::ChannelDependence
+impl core::marker::UnsafeUnpin for galadriel_dependence::ChannelDependence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::ChannelDependence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::ChannelDependence
+impl<T, U> core::convert::Into<U> for galadriel_dependence::ChannelDependence where U: core::convert::From<T>
+pub fn galadriel_dependence::ChannelDependence::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::ChannelDependence where U: core::convert::Into<T>
+pub type galadriel_dependence::ChannelDependence::Error = core::convert::Infallible
+pub fn galadriel_dependence::ChannelDependence::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::ChannelDependence where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::ChannelDependence::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::ChannelDependence::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::ChannelDependence where T: core::clone::Clone
+pub type galadriel_dependence::ChannelDependence::Owned = T
+pub fn galadriel_dependence::ChannelDependence::clone_into(&self, &mut T)
+pub fn galadriel_dependence::ChannelDependence::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::ChannelDependence where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::ChannelDependence::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::ChannelDependence where T: ?core::marker::Sized
+pub fn galadriel_dependence::ChannelDependence::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::ChannelDependence where T: ?core::marker::Sized
+pub fn galadriel_dependence::ChannelDependence::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::ChannelDependence where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::ChannelDependence::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::ChannelDependence
+pub fn galadriel_dependence::ChannelDependence::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::ChannelDependence
+pub type galadriel_dependence::ChannelDependence::Output = T
+pub struct galadriel_dependence::ContinuousLawDeclaration
+impl galadriel_dependence::ContinuousLawDeclaration
+pub fn galadriel_dependence::ContinuousLawDeclaration::coordinate_gauge(&self) -> &str
+pub fn galadriel_dependence::ContinuousLawDeclaration::observation_model(&self) -> &str
+pub fn galadriel_dependence::ContinuousLawDeclaration::population_model(&self) -> &str
+pub fn galadriel_dependence::ContinuousLawDeclaration::sampling_model(&self) -> &str
+pub const fn galadriel_dependence::ContinuousLawDeclaration::sampling_regime(&self) -> galadriel_dependence::ContinuousSamplingRegime
+pub fn galadriel_dependence::ContinuousLawDeclaration::try_iid(impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, galadriel_dependence::MiConsensusConfigError>
+impl core::clone::Clone for galadriel_dependence::ContinuousLawDeclaration
+pub fn galadriel_dependence::ContinuousLawDeclaration::clone(&self) -> galadriel_dependence::ContinuousLawDeclaration
+impl core::cmp::Eq for galadriel_dependence::ContinuousLawDeclaration
+impl core::cmp::PartialEq for galadriel_dependence::ContinuousLawDeclaration
+pub fn galadriel_dependence::ContinuousLawDeclaration::eq(&self, &galadriel_dependence::ContinuousLawDeclaration) -> bool
+impl core::fmt::Debug for galadriel_dependence::ContinuousLawDeclaration
+pub fn galadriel_dependence::ContinuousLawDeclaration::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::ContinuousLawDeclaration
+impl serde_core::ser::Serialize for galadriel_dependence::ContinuousLawDeclaration
+pub fn galadriel_dependence::ContinuousLawDeclaration::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::ContinuousLawDeclaration
+impl core::marker::Send for galadriel_dependence::ContinuousLawDeclaration
+impl core::marker::Sync for galadriel_dependence::ContinuousLawDeclaration
+impl core::marker::Unpin for galadriel_dependence::ContinuousLawDeclaration
+impl core::marker::UnsafeUnpin for galadriel_dependence::ContinuousLawDeclaration
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::ContinuousLawDeclaration
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::ContinuousLawDeclaration
+impl<T, U> core::convert::Into<U> for galadriel_dependence::ContinuousLawDeclaration where U: core::convert::From<T>
+pub fn galadriel_dependence::ContinuousLawDeclaration::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::ContinuousLawDeclaration where U: core::convert::Into<T>
+pub type galadriel_dependence::ContinuousLawDeclaration::Error = core::convert::Infallible
+pub fn galadriel_dependence::ContinuousLawDeclaration::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::ContinuousLawDeclaration where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::ContinuousLawDeclaration::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::ContinuousLawDeclaration::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::ContinuousLawDeclaration where T: core::clone::Clone
+pub type galadriel_dependence::ContinuousLawDeclaration::Owned = T
+pub fn galadriel_dependence::ContinuousLawDeclaration::clone_into(&self, &mut T)
+pub fn galadriel_dependence::ContinuousLawDeclaration::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::ContinuousLawDeclaration where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::ContinuousLawDeclaration::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::ContinuousLawDeclaration where T: ?core::marker::Sized
+pub fn galadriel_dependence::ContinuousLawDeclaration::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::ContinuousLawDeclaration where T: ?core::marker::Sized
+pub fn galadriel_dependence::ContinuousLawDeclaration::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::ContinuousLawDeclaration where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::ContinuousLawDeclaration::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::ContinuousLawDeclaration
+pub fn galadriel_dependence::ContinuousLawDeclaration::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::ContinuousLawDeclaration
+pub type galadriel_dependence::ContinuousLawDeclaration::Output = T
+pub struct galadriel_dependence::DeclaredMiInput
+impl galadriel_dependence::DeclaredMiInput
+pub const fn galadriel_dependence::DeclaredMiInput::alignment_is_caller_asserted(&self) -> bool
+pub fn galadriel_dependence::DeclaredMiInput::channels(&self) -> &[(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)]
+pub fn galadriel_dependence::DeclaredMiInput::episode_label(&self) -> &str
+pub const fn galadriel_dependence::DeclaredMiInput::origin(&self) -> galadriel_dependence::EpisodeReceiptOrigin
+pub fn galadriel_dependence::DeclaredMiInput::try_new(alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>, impl core::convert::Into<alloc::string::String>) -> galadriel_core::error::Result<Self>
+impl core::clone::Clone for galadriel_dependence::DeclaredMiInput
+pub fn galadriel_dependence::DeclaredMiInput::clone(&self) -> galadriel_dependence::DeclaredMiInput
+impl core::fmt::Debug for galadriel_dependence::DeclaredMiInput
+pub fn galadriel_dependence::DeclaredMiInput::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_dependence::DeclaredMiInput
+impl core::marker::Send for galadriel_dependence::DeclaredMiInput
+impl core::marker::Sync for galadriel_dependence::DeclaredMiInput
+impl core::marker::Unpin for galadriel_dependence::DeclaredMiInput
+impl core::marker::UnsafeUnpin for galadriel_dependence::DeclaredMiInput
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DeclaredMiInput
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DeclaredMiInput
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DeclaredMiInput where U: core::convert::From<T>
+pub fn galadriel_dependence::DeclaredMiInput::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DeclaredMiInput where U: core::convert::Into<T>
+pub type galadriel_dependence::DeclaredMiInput::Error = core::convert::Infallible
+pub fn galadriel_dependence::DeclaredMiInput::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DeclaredMiInput where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DeclaredMiInput::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DeclaredMiInput::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DeclaredMiInput where T: core::clone::Clone
+pub type galadriel_dependence::DeclaredMiInput::Owned = T
+pub fn galadriel_dependence::DeclaredMiInput::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DeclaredMiInput::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::DeclaredMiInput where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DeclaredMiInput::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DeclaredMiInput where T: ?core::marker::Sized
+pub fn galadriel_dependence::DeclaredMiInput::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DeclaredMiInput where T: ?core::marker::Sized
+pub fn galadriel_dependence::DeclaredMiInput::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DeclaredMiInput where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DeclaredMiInput::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DeclaredMiInput
+pub fn galadriel_dependence::DeclaredMiInput::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DeclaredMiInput
+pub type galadriel_dependence::DeclaredMiInput::Output = T
+pub struct galadriel_dependence::DeleteBlockStabilityEnvelope
+impl galadriel_dependence::DeleteBlockStabilityEnvelope
+pub const fn galadriel_dependence::DeleteBlockStabilityEnvelope::block_size(&self) -> usize
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::candidate_margins(&self) -> &[galadriel_dependence::CandidateMarginEnvelope]
+pub const fn galadriel_dependence::DeleteBlockStabilityEnvelope::consensus_margin_maximum_nats(&self) -> f64
+pub const fn galadriel_dependence::DeleteBlockStabilityEnvelope::consensus_margin_minimum_nats(&self) -> f64
+pub const fn galadriel_dependence::DeleteBlockStabilityEnvelope::deletions_evaluated(&self) -> usize
+impl core::clone::Clone for galadriel_dependence::DeleteBlockStabilityEnvelope
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::clone(&self) -> galadriel_dependence::DeleteBlockStabilityEnvelope
+impl core::cmp::PartialEq for galadriel_dependence::DeleteBlockStabilityEnvelope
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::eq(&self, &galadriel_dependence::DeleteBlockStabilityEnvelope) -> bool
+impl core::fmt::Debug for galadriel_dependence::DeleteBlockStabilityEnvelope
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::DeleteBlockStabilityEnvelope
+impl serde_core::ser::Serialize for galadriel_dependence::DeleteBlockStabilityEnvelope
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::DeleteBlockStabilityEnvelope
+impl core::marker::Send for galadriel_dependence::DeleteBlockStabilityEnvelope
+impl core::marker::Sync for galadriel_dependence::DeleteBlockStabilityEnvelope
+impl core::marker::Unpin for galadriel_dependence::DeleteBlockStabilityEnvelope
+impl core::marker::UnsafeUnpin for galadriel_dependence::DeleteBlockStabilityEnvelope
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DeleteBlockStabilityEnvelope
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DeleteBlockStabilityEnvelope
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DeleteBlockStabilityEnvelope where U: core::convert::From<T>
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DeleteBlockStabilityEnvelope where U: core::convert::Into<T>
+pub type galadriel_dependence::DeleteBlockStabilityEnvelope::Error = core::convert::Infallible
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DeleteBlockStabilityEnvelope where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DeleteBlockStabilityEnvelope::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DeleteBlockStabilityEnvelope where T: core::clone::Clone
+pub type galadriel_dependence::DeleteBlockStabilityEnvelope::Owned = T
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::DeleteBlockStabilityEnvelope where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DeleteBlockStabilityEnvelope where T: ?core::marker::Sized
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DeleteBlockStabilityEnvelope where T: ?core::marker::Sized
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DeleteBlockStabilityEnvelope where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DeleteBlockStabilityEnvelope::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DeleteBlockStabilityEnvelope
+pub fn galadriel_dependence::DeleteBlockStabilityEnvelope::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DeleteBlockStabilityEnvelope
+pub type galadriel_dependence::DeleteBlockStabilityEnvelope::Output = T
+pub struct galadriel_dependence::DependenceAssessmentBinding
+impl galadriel_dependence::DependenceAssessmentBinding
+pub const fn galadriel_dependence::DependenceAssessmentBinding::digest(&self) -> galadriel_dependence::DependenceAssessmentDigest
+pub const fn galadriel_dependence::DependenceAssessmentBinding::release_binding(&self) -> &galadriel_core::identity::AssessmentBinding
+pub const fn galadriel_dependence::DependenceAssessmentBinding::suite_identity(&self) -> galadriel_dependence::DependenceResearchSuiteDigest
+pub fn galadriel_dependence::DependenceAssessmentBinding::verifies(&self, &galadriel_core::identity::AssessmentScope, &[galadriel_core::observation::PidObservation], &galadriel_dependence::DependenceResearchSuite) -> bool
+impl core::clone::Clone for galadriel_dependence::DependenceAssessmentBinding
+pub fn galadriel_dependence::DependenceAssessmentBinding::clone(&self) -> galadriel_dependence::DependenceAssessmentBinding
+impl core::cmp::Eq for galadriel_dependence::DependenceAssessmentBinding
+impl core::cmp::PartialEq for galadriel_dependence::DependenceAssessmentBinding
+pub fn galadriel_dependence::DependenceAssessmentBinding::eq(&self, &galadriel_dependence::DependenceAssessmentBinding) -> bool
+impl core::fmt::Debug for galadriel_dependence::DependenceAssessmentBinding
+pub fn galadriel_dependence::DependenceAssessmentBinding::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_dependence::DependenceAssessmentBinding
+pub fn galadriel_dependence::DependenceAssessmentBinding::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::StructuralPartialEq for galadriel_dependence::DependenceAssessmentBinding
+impl serde_core::ser::Serialize for galadriel_dependence::DependenceAssessmentBinding
+pub fn galadriel_dependence::DependenceAssessmentBinding::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::DependenceAssessmentBinding
+impl core::marker::Send for galadriel_dependence::DependenceAssessmentBinding
+impl core::marker::Sync for galadriel_dependence::DependenceAssessmentBinding
+impl core::marker::Unpin for galadriel_dependence::DependenceAssessmentBinding
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceAssessmentBinding
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceAssessmentBinding
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceAssessmentBinding
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceAssessmentBinding where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceAssessmentBinding::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceAssessmentBinding where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceAssessmentBinding::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceAssessmentBinding::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceAssessmentBinding where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceAssessmentBinding::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceAssessmentBinding::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceAssessmentBinding where T: core::clone::Clone
+pub type galadriel_dependence::DependenceAssessmentBinding::Owned = T
+pub fn galadriel_dependence::DependenceAssessmentBinding::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceAssessmentBinding::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::DependenceAssessmentBinding where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentBinding::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceAssessmentBinding where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentBinding::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceAssessmentBinding where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentBinding::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceAssessmentBinding where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceAssessmentBinding::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceAssessmentBinding
+pub fn galadriel_dependence::DependenceAssessmentBinding::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceAssessmentBinding
+pub type galadriel_dependence::DependenceAssessmentBinding::Output = T
+pub struct galadriel_dependence::DependenceAssessmentDigest(_)
+impl galadriel_dependence::DependenceAssessmentDigest
+pub const fn galadriel_dependence::DependenceAssessmentDigest::as_bytes(&self) -> &[u8; 32]
+pub fn galadriel_dependence::DependenceAssessmentDigest::to_hex(self) -> alloc::string::String
+impl core::clone::Clone for galadriel_dependence::DependenceAssessmentDigest
+pub fn galadriel_dependence::DependenceAssessmentDigest::clone(&self) -> galadriel_dependence::DependenceAssessmentDigest
+impl core::cmp::Eq for galadriel_dependence::DependenceAssessmentDigest
+impl core::cmp::PartialEq for galadriel_dependence::DependenceAssessmentDigest
+pub fn galadriel_dependence::DependenceAssessmentDigest::eq(&self, &galadriel_dependence::DependenceAssessmentDigest) -> bool
+impl core::fmt::Debug for galadriel_dependence::DependenceAssessmentDigest
+pub fn galadriel_dependence::DependenceAssessmentDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_dependence::DependenceAssessmentDigest
+pub fn galadriel_dependence::DependenceAssessmentDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_dependence::DependenceAssessmentDigest
+pub fn galadriel_dependence::DependenceAssessmentDigest::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for galadriel_dependence::DependenceAssessmentDigest
+impl core::marker::StructuralPartialEq for galadriel_dependence::DependenceAssessmentDigest
+impl serde_core::ser::Serialize for galadriel_dependence::DependenceAssessmentDigest
+pub fn galadriel_dependence::DependenceAssessmentDigest::serialize<S>(&self, S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error> where S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::DependenceAssessmentDigest
+impl core::marker::Send for galadriel_dependence::DependenceAssessmentDigest
+impl core::marker::Sync for galadriel_dependence::DependenceAssessmentDigest
+impl core::marker::Unpin for galadriel_dependence::DependenceAssessmentDigest
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceAssessmentDigest
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceAssessmentDigest
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceAssessmentDigest
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceAssessmentDigest where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceAssessmentDigest::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceAssessmentDigest where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceAssessmentDigest::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceAssessmentDigest::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceAssessmentDigest where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceAssessmentDigest::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceAssessmentDigest::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceAssessmentDigest where T: core::clone::Clone
+pub type galadriel_dependence::DependenceAssessmentDigest::Owned = T
+pub fn galadriel_dependence::DependenceAssessmentDigest::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceAssessmentDigest::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_dependence::DependenceAssessmentDigest where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentDigest::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_dependence::DependenceAssessmentDigest where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentDigest::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceAssessmentDigest where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentDigest::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceAssessmentDigest where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentDigest::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceAssessmentDigest where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceAssessmentDigest::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceAssessmentDigest
+pub fn galadriel_dependence::DependenceAssessmentDigest::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceAssessmentDigest
+pub type galadriel_dependence::DependenceAssessmentDigest::Output = T
+pub struct galadriel_dependence::DependenceAssessmentReport
+impl galadriel_dependence::DependenceAssessmentReport
+pub const fn galadriel_dependence::DependenceAssessmentReport::assessment_binding(&self) -> &galadriel_dependence::DependenceAssessmentBinding
+pub const fn galadriel_dependence::DependenceAssessmentReport::assessment_scope(&self) -> &galadriel_core::identity::AssessmentScope
+pub const fn galadriel_dependence::DependenceAssessmentReport::authoritative_verdict(&self) -> &galadriel_core::fusion::FusedVerdict
+pub const fn galadriel_dependence::DependenceAssessmentReport::classification(&self) -> galadriel_dependence::DependenceResearchClassification
+pub const fn galadriel_dependence::DependenceAssessmentReport::default_report(&self) -> &galadriel_core::fusion::DefaultReport
+pub fn galadriel_dependence::DependenceAssessmentReport::mi_axes(&self) -> &[galadriel_dependence::AxisMiConsensusReport]
+pub const fn galadriel_dependence::DependenceAssessmentReport::mi_axis_family_availability(&self) -> galadriel_dependence::MiAxisFamilyAvailability
+pub fn galadriel_dependence::DependenceAssessmentReport::note(&self) -> &str
+pub const fn galadriel_dependence::DependenceAssessmentReport::schema(&self) -> &'static str
+pub const fn galadriel_dependence::DependenceAssessmentReport::suite_identity(&self) -> galadriel_dependence::DependenceResearchSuiteDigest
+impl core::clone::Clone for galadriel_dependence::DependenceAssessmentReport
+pub fn galadriel_dependence::DependenceAssessmentReport::clone(&self) -> galadriel_dependence::DependenceAssessmentReport
+impl core::fmt::Debug for galadriel_dependence::DependenceAssessmentReport
+pub fn galadriel_dependence::DependenceAssessmentReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl serde_core::ser::Serialize for galadriel_dependence::DependenceAssessmentReport
+pub fn galadriel_dependence::DependenceAssessmentReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::DependenceAssessmentReport
+impl core::marker::Send for galadriel_dependence::DependenceAssessmentReport
+impl core::marker::Sync for galadriel_dependence::DependenceAssessmentReport
+impl core::marker::Unpin for galadriel_dependence::DependenceAssessmentReport
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceAssessmentReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceAssessmentReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceAssessmentReport
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceAssessmentReport where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceAssessmentReport::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceAssessmentReport where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceAssessmentReport::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceAssessmentReport::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceAssessmentReport where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceAssessmentReport::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceAssessmentReport::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceAssessmentReport where T: core::clone::Clone
+pub type galadriel_dependence::DependenceAssessmentReport::Owned = T
+pub fn galadriel_dependence::DependenceAssessmentReport::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceAssessmentReport::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::DependenceAssessmentReport where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentReport::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceAssessmentReport where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentReport::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceAssessmentReport where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceAssessmentReport::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceAssessmentReport where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceAssessmentReport::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceAssessmentReport
+pub fn galadriel_dependence::DependenceAssessmentReport::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceAssessmentReport
+pub type galadriel_dependence::DependenceAssessmentReport::Output = T
+pub struct galadriel_dependence::DependenceResearchSuite
+impl galadriel_dependence::DependenceResearchSuite
+pub const fn galadriel_dependence::DependenceResearchSuite::classification(&self) -> galadriel_dependence::DependenceResearchClassification
+pub fn galadriel_dependence::DependenceResearchSuite::exhaustive_circular_delete_block_v0_9(&[galadriel_core::observation::Modality], galadriel_dependence::ContinuousLawDeclaration) -> core::result::Result<Self, galadriel_dependence::DependenceResearchSuiteError>
+pub const fn galadriel_dependence::DependenceResearchSuite::identity(&self) -> galadriel_dependence::DependenceResearchSuiteDigest
+pub const fn galadriel_dependence::DependenceResearchSuite::maximum_quadratic_fit_work(&self) -> usize
+pub const fn galadriel_dependence::DependenceResearchSuite::mi_consensus_config(&self) -> &galadriel_dependence::MiConsensusConfig
+pub fn galadriel_dependence::DependenceResearchSuite::point_estimate_only_v0_9(&[galadriel_core::observation::Modality], galadriel_dependence::ContinuousLawDeclaration) -> core::result::Result<Self, galadriel_dependence::DependenceResearchSuiteError>
+pub const fn galadriel_dependence::DependenceResearchSuite::release_suite(&self) -> &galadriel_core::config::ReleaseSuite
+pub const fn galadriel_dependence::DependenceResearchSuite::source_profile(&self) -> core::option::Option<galadriel_dependence::MiConsensusResearchProfile>
+pub fn galadriel_dependence::DependenceResearchSuite::try_new(galadriel_dependence::DependenceResearchSuiteParams) -> core::result::Result<Self, galadriel_dependence::DependenceResearchSuiteError>
+impl core::clone::Clone for galadriel_dependence::DependenceResearchSuite
+pub fn galadriel_dependence::DependenceResearchSuite::clone(&self) -> galadriel_dependence::DependenceResearchSuite
+impl core::fmt::Debug for galadriel_dependence::DependenceResearchSuite
+pub fn galadriel_dependence::DependenceResearchSuite::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_dependence::DependenceResearchSuite
+impl core::marker::Send for galadriel_dependence::DependenceResearchSuite
+impl core::marker::Sync for galadriel_dependence::DependenceResearchSuite
+impl core::marker::Unpin for galadriel_dependence::DependenceResearchSuite
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceResearchSuite
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceResearchSuite
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceResearchSuite
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceResearchSuite where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceResearchSuite::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceResearchSuite where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceResearchSuite::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceResearchSuite::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceResearchSuite where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceResearchSuite::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceResearchSuite::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceResearchSuite where T: core::clone::Clone
+pub type galadriel_dependence::DependenceResearchSuite::Owned = T
+pub fn galadriel_dependence::DependenceResearchSuite::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceResearchSuite::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::DependenceResearchSuite where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuite::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceResearchSuite where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuite::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceResearchSuite where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuite::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceResearchSuite where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceResearchSuite::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceResearchSuite
+pub fn galadriel_dependence::DependenceResearchSuite::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceResearchSuite
+pub type galadriel_dependence::DependenceResearchSuite::Output = T
+pub struct galadriel_dependence::DependenceResearchSuiteDigest(_)
+impl galadriel_dependence::DependenceResearchSuiteDigest
+pub const fn galadriel_dependence::DependenceResearchSuiteDigest::as_bytes(&self) -> &[u8; 32]
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::to_hex(self) -> alloc::string::String
+impl core::clone::Clone for galadriel_dependence::DependenceResearchSuiteDigest
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::clone(&self) -> galadriel_dependence::DependenceResearchSuiteDigest
+impl core::cmp::Eq for galadriel_dependence::DependenceResearchSuiteDigest
+impl core::cmp::PartialEq for galadriel_dependence::DependenceResearchSuiteDigest
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::eq(&self, &galadriel_dependence::DependenceResearchSuiteDigest) -> bool
+impl core::fmt::Debug for galadriel_dependence::DependenceResearchSuiteDigest
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_dependence::DependenceResearchSuiteDigest
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_dependence::DependenceResearchSuiteDigest
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for galadriel_dependence::DependenceResearchSuiteDigest
+impl core::marker::StructuralPartialEq for galadriel_dependence::DependenceResearchSuiteDigest
+impl serde_core::ser::Serialize for galadriel_dependence::DependenceResearchSuiteDigest
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::serialize<S>(&self, S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error> where S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::DependenceResearchSuiteDigest
+impl core::marker::Send for galadriel_dependence::DependenceResearchSuiteDigest
+impl core::marker::Sync for galadriel_dependence::DependenceResearchSuiteDigest
+impl core::marker::Unpin for galadriel_dependence::DependenceResearchSuiteDigest
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceResearchSuiteDigest
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceResearchSuiteDigest
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceResearchSuiteDigest
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceResearchSuiteDigest where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceResearchSuiteDigest where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceResearchSuiteDigest::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceResearchSuiteDigest where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceResearchSuiteDigest::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceResearchSuiteDigest where T: core::clone::Clone
+pub type galadriel_dependence::DependenceResearchSuiteDigest::Owned = T
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_dependence::DependenceResearchSuiteDigest where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_dependence::DependenceResearchSuiteDigest where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceResearchSuiteDigest where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceResearchSuiteDigest where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceResearchSuiteDigest where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceResearchSuiteDigest::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceResearchSuiteDigest
+pub fn galadriel_dependence::DependenceResearchSuiteDigest::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceResearchSuiteDigest
+pub type galadriel_dependence::DependenceResearchSuiteDigest::Output = T
+pub struct galadriel_dependence::DependenceResearchSuiteParams
+pub galadriel_dependence::DependenceResearchSuiteParams::mi_consensus: galadriel_dependence::MiConsensusConfig
+pub galadriel_dependence::DependenceResearchSuiteParams::release_suite: galadriel_core::config::ReleaseSuite
+impl core::clone::Clone for galadriel_dependence::DependenceResearchSuiteParams
+pub fn galadriel_dependence::DependenceResearchSuiteParams::clone(&self) -> galadriel_dependence::DependenceResearchSuiteParams
+impl core::fmt::Debug for galadriel_dependence::DependenceResearchSuiteParams
+pub fn galadriel_dependence::DependenceResearchSuiteParams::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for galadriel_dependence::DependenceResearchSuiteParams
+impl core::marker::Send for galadriel_dependence::DependenceResearchSuiteParams
+impl core::marker::Sync for galadriel_dependence::DependenceResearchSuiteParams
+impl core::marker::Unpin for galadriel_dependence::DependenceResearchSuiteParams
+impl core::marker::UnsafeUnpin for galadriel_dependence::DependenceResearchSuiteParams
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::DependenceResearchSuiteParams
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::DependenceResearchSuiteParams
+impl<T, U> core::convert::Into<U> for galadriel_dependence::DependenceResearchSuiteParams where U: core::convert::From<T>
+pub fn galadriel_dependence::DependenceResearchSuiteParams::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::DependenceResearchSuiteParams where U: core::convert::Into<T>
+pub type galadriel_dependence::DependenceResearchSuiteParams::Error = core::convert::Infallible
+pub fn galadriel_dependence::DependenceResearchSuiteParams::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::DependenceResearchSuiteParams where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::DependenceResearchSuiteParams::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::DependenceResearchSuiteParams::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::DependenceResearchSuiteParams where T: core::clone::Clone
+pub type galadriel_dependence::DependenceResearchSuiteParams::Owned = T
+pub fn galadriel_dependence::DependenceResearchSuiteParams::clone_into(&self, &mut T)
+pub fn galadriel_dependence::DependenceResearchSuiteParams::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::DependenceResearchSuiteParams where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteParams::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::DependenceResearchSuiteParams where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteParams::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::DependenceResearchSuiteParams where T: ?core::marker::Sized
+pub fn galadriel_dependence::DependenceResearchSuiteParams::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::DependenceResearchSuiteParams where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::DependenceResearchSuiteParams::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::DependenceResearchSuiteParams
+pub fn galadriel_dependence::DependenceResearchSuiteParams::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::DependenceResearchSuiteParams
+pub type galadriel_dependence::DependenceResearchSuiteParams::Output = T
+pub struct galadriel_dependence::MiAcceptedConfigEvidence
+impl galadriel_dependence::MiAcceptedConfigEvidence
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::delete_block_size(&self) -> core::option::Option<usize>
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::distance_pairwise_cv_minimum(&self) -> f64
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::geometry_k(&self) -> usize
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::intrinsic_dimension_local_median_minimum(&self) -> f64
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::intrinsic_dimension_maximum(&self) -> f64
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::intrinsic_dimension_minimum(&self) -> f64
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::maximum_input_tail_rows(&self) -> usize
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::maximum_modalities(&self) -> usize
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::mi_floor_nats(&self) -> f64
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::minimum_samples(&self) -> usize
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::nearest_neighbor_over_pairwise_mean_maximum(&self) -> f64
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::pair_point_fit_units(&self) -> usize
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::quadratic_fit_work(&self) -> usize
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::quadratic_fit_work_maximum(&self) -> usize
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::required_samples(&self) -> usize
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::research_profile(&self) -> &'static str
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::separation_ratio(&self) -> f64
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::stability_protocol(&self) -> &'static str
+pub const fn galadriel_dependence::MiAcceptedConfigEvidence::window(&self) -> usize
+impl core::clone::Clone for galadriel_dependence::MiAcceptedConfigEvidence
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::clone(&self) -> galadriel_dependence::MiAcceptedConfigEvidence
+impl core::cmp::PartialEq for galadriel_dependence::MiAcceptedConfigEvidence
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::eq(&self, &galadriel_dependence::MiAcceptedConfigEvidence) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiAcceptedConfigEvidence
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiAcceptedConfigEvidence
+impl serde_core::ser::Serialize for galadriel_dependence::MiAcceptedConfigEvidence
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::MiAcceptedConfigEvidence
+impl core::marker::Send for galadriel_dependence::MiAcceptedConfigEvidence
+impl core::marker::Sync for galadriel_dependence::MiAcceptedConfigEvidence
+impl core::marker::Unpin for galadriel_dependence::MiAcceptedConfigEvidence
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiAcceptedConfigEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiAcceptedConfigEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiAcceptedConfigEvidence
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiAcceptedConfigEvidence where U: core::convert::From<T>
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiAcceptedConfigEvidence where U: core::convert::Into<T>
+pub type galadriel_dependence::MiAcceptedConfigEvidence::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiAcceptedConfigEvidence where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiAcceptedConfigEvidence::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiAcceptedConfigEvidence where T: core::clone::Clone
+pub type galadriel_dependence::MiAcceptedConfigEvidence::Owned = T
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiAcceptedConfigEvidence where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiAcceptedConfigEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiAcceptedConfigEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiAcceptedConfigEvidence where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiAcceptedConfigEvidence::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiAcceptedConfigEvidence
+pub fn galadriel_dependence::MiAcceptedConfigEvidence::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiAcceptedConfigEvidence
+pub type galadriel_dependence::MiAcceptedConfigEvidence::Output = T
+pub struct galadriel_dependence::MiConsensusConfig
+impl galadriel_dependence::MiConsensusConfig
+pub const fn galadriel_dependence::MiConsensusConfig::classification(&self) -> galadriel_dependence::DependenceResearchClassification
+pub const fn galadriel_dependence::MiConsensusConfig::cv_min(&self) -> f64
+pub const fn galadriel_dependence::MiConsensusConfig::geom_k(&self) -> usize
+pub const fn galadriel_dependence::MiConsensusConfig::id_max(&self) -> f64
+pub const fn galadriel_dependence::MiConsensusConfig::id_min(&self) -> f64
+pub fn galadriel_dependence::MiConsensusConfig::identity(&self) -> galadriel_dependence::MiConsensusConfigDigest
+pub const fn galadriel_dependence::MiConsensusConfig::law(&self) -> &galadriel_dependence::ContinuousLawDeclaration
+pub const fn galadriel_dependence::MiConsensusConfig::mi_floor_nats(&self) -> f64
+pub const fn galadriel_dependence::MiConsensusConfig::min_samples(&self) -> usize
+pub const fn galadriel_dependence::MiConsensusConfig::nn_ratio_max(&self) -> f64
+pub const fn galadriel_dependence::MiConsensusConfig::quadratic_fit_work(&self) -> usize
+pub fn galadriel_dependence::MiConsensusConfig::required_samples(&self) -> usize
+pub const fn galadriel_dependence::MiConsensusConfig::separation_ratio(&self) -> f64
+pub const fn galadriel_dependence::MiConsensusConfig::source_profile(&self) -> core::option::Option<galadriel_dependence::MiConsensusResearchProfile>
+pub const fn galadriel_dependence::MiConsensusConfig::stability(&self) -> &galadriel_dependence::DependenceStability
+pub fn galadriel_dependence::MiConsensusConfig::try_new(galadriel_dependence::MiConsensusParams, galadriel_dependence::ContinuousLawDeclaration) -> core::result::Result<Self, galadriel_dependence::MiConsensusConfigError>
+pub const fn galadriel_dependence::MiConsensusConfig::window(&self) -> usize
+impl core::clone::Clone for galadriel_dependence::MiConsensusConfig
+pub fn galadriel_dependence::MiConsensusConfig::clone(&self) -> galadriel_dependence::MiConsensusConfig
+impl core::cmp::PartialEq for galadriel_dependence::MiConsensusConfig
+pub fn galadriel_dependence::MiConsensusConfig::eq(&self, &galadriel_dependence::MiConsensusConfig) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiConsensusConfig
+pub fn galadriel_dependence::MiConsensusConfig::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiConsensusConfig
+impl core::marker::Freeze for galadriel_dependence::MiConsensusConfig
+impl core::marker::Send for galadriel_dependence::MiConsensusConfig
+impl core::marker::Sync for galadriel_dependence::MiConsensusConfig
+impl core::marker::Unpin for galadriel_dependence::MiConsensusConfig
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiConsensusConfig
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiConsensusConfig
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiConsensusConfig
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiConsensusConfig where U: core::convert::From<T>
+pub fn galadriel_dependence::MiConsensusConfig::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiConsensusConfig where U: core::convert::Into<T>
+pub type galadriel_dependence::MiConsensusConfig::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiConsensusConfig::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiConsensusConfig where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiConsensusConfig::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiConsensusConfig::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiConsensusConfig where T: core::clone::Clone
+pub type galadriel_dependence::MiConsensusConfig::Owned = T
+pub fn galadriel_dependence::MiConsensusConfig::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiConsensusConfig::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiConsensusConfig where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfig::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiConsensusConfig where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfig::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiConsensusConfig where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfig::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiConsensusConfig where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiConsensusConfig::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiConsensusConfig
+pub fn galadriel_dependence::MiConsensusConfig::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiConsensusConfig
+pub type galadriel_dependence::MiConsensusConfig::Output = T
+pub struct galadriel_dependence::MiConsensusConfigDigest(_)
+impl galadriel_dependence::MiConsensusConfigDigest
+pub const fn galadriel_dependence::MiConsensusConfigDigest::as_bytes(&self) -> &[u8; 32]
+pub fn galadriel_dependence::MiConsensusConfigDigest::to_hex(self) -> alloc::string::String
+impl core::clone::Clone for galadriel_dependence::MiConsensusConfigDigest
+pub fn galadriel_dependence::MiConsensusConfigDigest::clone(&self) -> galadriel_dependence::MiConsensusConfigDigest
+impl core::cmp::Eq for galadriel_dependence::MiConsensusConfigDigest
+impl core::cmp::PartialEq for galadriel_dependence::MiConsensusConfigDigest
+pub fn galadriel_dependence::MiConsensusConfigDigest::eq(&self, &galadriel_dependence::MiConsensusConfigDigest) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiConsensusConfigDigest
+pub fn galadriel_dependence::MiConsensusConfigDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_dependence::MiConsensusConfigDigest
+pub fn galadriel_dependence::MiConsensusConfigDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_dependence::MiConsensusConfigDigest
+pub fn galadriel_dependence::MiConsensusConfigDigest::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for galadriel_dependence::MiConsensusConfigDigest
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiConsensusConfigDigest
+impl serde_core::ser::Serialize for galadriel_dependence::MiConsensusConfigDigest
+pub fn galadriel_dependence::MiConsensusConfigDigest::serialize<S>(&self, S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error> where S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::MiConsensusConfigDigest
+impl core::marker::Send for galadriel_dependence::MiConsensusConfigDigest
+impl core::marker::Sync for galadriel_dependence::MiConsensusConfigDigest
+impl core::marker::Unpin for galadriel_dependence::MiConsensusConfigDigest
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiConsensusConfigDigest
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiConsensusConfigDigest
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiConsensusConfigDigest
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiConsensusConfigDigest where U: core::convert::From<T>
+pub fn galadriel_dependence::MiConsensusConfigDigest::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiConsensusConfigDigest where U: core::convert::Into<T>
+pub type galadriel_dependence::MiConsensusConfigDigest::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiConsensusConfigDigest::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiConsensusConfigDigest where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiConsensusConfigDigest::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiConsensusConfigDigest::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiConsensusConfigDigest where T: core::clone::Clone
+pub type galadriel_dependence::MiConsensusConfigDigest::Owned = T
+pub fn galadriel_dependence::MiConsensusConfigDigest::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiConsensusConfigDigest::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_dependence::MiConsensusConfigDigest where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfigDigest::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_dependence::MiConsensusConfigDigest where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfigDigest::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiConsensusConfigDigest where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfigDigest::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiConsensusConfigDigest where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusConfigDigest::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiConsensusConfigDigest where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiConsensusConfigDigest::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiConsensusConfigDigest
+pub fn galadriel_dependence::MiConsensusConfigDigest::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiConsensusConfigDigest
+pub type galadriel_dependence::MiConsensusConfigDigest::Output = T
+pub struct galadriel_dependence::MiConsensusParams
+pub galadriel_dependence::MiConsensusParams::cv_min: f64
+pub galadriel_dependence::MiConsensusParams::geom_k: usize
+pub galadriel_dependence::MiConsensusParams::id_max: f64
+pub galadriel_dependence::MiConsensusParams::id_min: f64
+pub galadriel_dependence::MiConsensusParams::mi_floor_nats: f64
+pub galadriel_dependence::MiConsensusParams::min_samples: usize
+pub galadriel_dependence::MiConsensusParams::nn_ratio_max: f64
+pub galadriel_dependence::MiConsensusParams::separation_ratio: f64
+pub galadriel_dependence::MiConsensusParams::stability: galadriel_dependence::DependenceStabilityParams
+pub galadriel_dependence::MiConsensusParams::window: usize
+impl core::clone::Clone for galadriel_dependence::MiConsensusParams
+pub fn galadriel_dependence::MiConsensusParams::clone(&self) -> galadriel_dependence::MiConsensusParams
+impl core::cmp::PartialEq for galadriel_dependence::MiConsensusParams
+pub fn galadriel_dependence::MiConsensusParams::eq(&self, &galadriel_dependence::MiConsensusParams) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiConsensusParams
+pub fn galadriel_dependence::MiConsensusParams::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiConsensusParams
+impl core::marker::Freeze for galadriel_dependence::MiConsensusParams
+impl core::marker::Send for galadriel_dependence::MiConsensusParams
+impl core::marker::Sync for galadriel_dependence::MiConsensusParams
+impl core::marker::Unpin for galadriel_dependence::MiConsensusParams
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiConsensusParams
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiConsensusParams
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiConsensusParams
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiConsensusParams where U: core::convert::From<T>
+pub fn galadriel_dependence::MiConsensusParams::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiConsensusParams where U: core::convert::Into<T>
+pub type galadriel_dependence::MiConsensusParams::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiConsensusParams::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiConsensusParams where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiConsensusParams::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiConsensusParams::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiConsensusParams where T: core::clone::Clone
+pub type galadriel_dependence::MiConsensusParams::Owned = T
+pub fn galadriel_dependence::MiConsensusParams::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiConsensusParams::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiConsensusParams where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusParams::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiConsensusParams where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusParams::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiConsensusParams where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusParams::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiConsensusParams where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiConsensusParams::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiConsensusParams
+pub fn galadriel_dependence::MiConsensusParams::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiConsensusParams
+pub type galadriel_dependence::MiConsensusParams::Output = T
+pub struct galadriel_dependence::MiConsensusReport
+impl galadriel_dependence::MiConsensusReport
+pub fn galadriel_dependence::MiConsensusReport::channels(&self) -> &[galadriel_dependence::ChannelDependence]
+pub const fn galadriel_dependence::MiConsensusReport::disposition(&self) -> &galadriel_dependence::MiGraphDisposition
+pub const fn galadriel_dependence::MiConsensusReport::estimator(&self) -> &galadriel_dependence::MiEstimatorEvidence
+pub fn galadriel_dependence::MiConsensusReport::note(&self) -> &str
+pub fn galadriel_dependence::MiConsensusReport::pairs(&self) -> &[galadriel_dependence::PairMiReport]
+pub const fn galadriel_dependence::MiConsensusReport::row_set(&self) -> &galadriel_dependence::RowSetReceipt
+pub const fn galadriel_dependence::MiConsensusReport::schema(&self) -> &'static str
+pub const fn galadriel_dependence::MiConsensusReport::stability(&self) -> core::option::Option<&galadriel_dependence::DeleteBlockStabilityEnvelope>
+pub const fn galadriel_dependence::MiConsensusReport::threshold_nats(&self) -> core::option::Option<f64>
+pub fn galadriel_dependence::MiConsensusReport::verifies_input(&self, &galadriel_dependence::DeclaredMiInput, &galadriel_dependence::MiConsensusConfig) -> bool
+impl core::clone::Clone for galadriel_dependence::MiConsensusReport
+pub fn galadriel_dependence::MiConsensusReport::clone(&self) -> galadriel_dependence::MiConsensusReport
+impl core::fmt::Debug for galadriel_dependence::MiConsensusReport
+pub fn galadriel_dependence::MiConsensusReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl serde_core::ser::Serialize for galadriel_dependence::MiConsensusReport
+pub fn galadriel_dependence::MiConsensusReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::MiConsensusReport
+impl core::marker::Send for galadriel_dependence::MiConsensusReport
+impl core::marker::Sync for galadriel_dependence::MiConsensusReport
+impl core::marker::Unpin for galadriel_dependence::MiConsensusReport
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiConsensusReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiConsensusReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiConsensusReport
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiConsensusReport where U: core::convert::From<T>
+pub fn galadriel_dependence::MiConsensusReport::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiConsensusReport where U: core::convert::Into<T>
+pub type galadriel_dependence::MiConsensusReport::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiConsensusReport::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiConsensusReport where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiConsensusReport::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiConsensusReport::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiConsensusReport where T: core::clone::Clone
+pub type galadriel_dependence::MiConsensusReport::Owned = T
+pub fn galadriel_dependence::MiConsensusReport::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiConsensusReport::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiConsensusReport where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusReport::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiConsensusReport where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusReport::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiConsensusReport where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiConsensusReport::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiConsensusReport where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiConsensusReport::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiConsensusReport
+pub fn galadriel_dependence::MiConsensusReport::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiConsensusReport
+pub type galadriel_dependence::MiConsensusReport::Output = T
+pub struct galadriel_dependence::MiEstimatorEvidence
+impl galadriel_dependence::MiEstimatorEvidence
+pub const fn galadriel_dependence::MiEstimatorEvidence::accepted_config(&self) -> &galadriel_dependence::MiAcceptedConfigEvidence
+pub const fn galadriel_dependence::MiEstimatorEvidence::calibrated_security_role(&self) -> bool
+pub const fn galadriel_dependence::MiEstimatorEvidence::classification(&self) -> galadriel_dependence::DependenceResearchClassification
+pub const fn galadriel_dependence::MiEstimatorEvidence::composition_id(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::config_identity(&self) -> galadriel_dependence::MiConsensusConfigDigest
+pub fn galadriel_dependence::MiEstimatorEvidence::coordinate_gauge(&self) -> &str
+pub const fn galadriel_dependence::MiEstimatorEvidence::estimator_id(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::estimator_reference(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::functional_id(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::geometry_protocol_id(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::graph_rule_id(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::ksg_evaluator_config(&self) -> &galadriel_dependence::MiKsgEvaluatorConfigEvidence
+pub const fn galadriel_dependence::MiEstimatorEvidence::law(&self) -> &galadriel_dependence::ContinuousLawDeclaration
+pub const fn galadriel_dependence::MiEstimatorEvidence::observation_transform(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::pid_rs_git_repository(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::pid_rs_revision(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::pid_rs_version(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::preprocessing_relation(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::report_route_id(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::research_profile(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::tail_selection_rule_id(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::units(&self) -> &'static str
+pub const fn galadriel_dependence::MiEstimatorEvidence::upstream_warning_policy_id(&self) -> &'static str
+impl core::clone::Clone for galadriel_dependence::MiEstimatorEvidence
+pub fn galadriel_dependence::MiEstimatorEvidence::clone(&self) -> galadriel_dependence::MiEstimatorEvidence
+impl core::cmp::PartialEq for galadriel_dependence::MiEstimatorEvidence
+pub fn galadriel_dependence::MiEstimatorEvidence::eq(&self, &galadriel_dependence::MiEstimatorEvidence) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiEstimatorEvidence
+pub fn galadriel_dependence::MiEstimatorEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiEstimatorEvidence
+impl serde_core::ser::Serialize for galadriel_dependence::MiEstimatorEvidence
+pub fn galadriel_dependence::MiEstimatorEvidence::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::MiEstimatorEvidence
+impl core::marker::Send for galadriel_dependence::MiEstimatorEvidence
+impl core::marker::Sync for galadriel_dependence::MiEstimatorEvidence
+impl core::marker::Unpin for galadriel_dependence::MiEstimatorEvidence
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiEstimatorEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiEstimatorEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiEstimatorEvidence
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiEstimatorEvidence where U: core::convert::From<T>
+pub fn galadriel_dependence::MiEstimatorEvidence::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiEstimatorEvidence where U: core::convert::Into<T>
+pub type galadriel_dependence::MiEstimatorEvidence::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiEstimatorEvidence::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiEstimatorEvidence where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiEstimatorEvidence::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiEstimatorEvidence::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiEstimatorEvidence where T: core::clone::Clone
+pub type galadriel_dependence::MiEstimatorEvidence::Owned = T
+pub fn galadriel_dependence::MiEstimatorEvidence::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiEstimatorEvidence::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiEstimatorEvidence where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiEstimatorEvidence::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiEstimatorEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiEstimatorEvidence::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiEstimatorEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiEstimatorEvidence::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiEstimatorEvidence where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiEstimatorEvidence::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiEstimatorEvidence
+pub fn galadriel_dependence::MiEstimatorEvidence::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiEstimatorEvidence
+pub type galadriel_dependence::MiEstimatorEvidence::Output = T
+pub struct galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl galadriel_dependence::MiKsgEvaluatorConfigEvidence
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::estimand_definition_revision(&self) -> &'static str
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::estimator_revision(&self) -> &'static str
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::exact_backend_policy(&self) -> &'static str
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::geometry_model(&self) -> &'static str
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::metric(&self) -> &'static str
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::negative_handling(&self) -> &'static str
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::neighbors(&self) -> usize
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_boundary(&self) -> &'static str
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_contract(&self) -> &'static str
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_density_regular(&self) -> bool
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_finite_information(&self) -> bool
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_intrinsic_dimension(&self) -> core::option::Option<usize>
+pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::tie_epsilon(&self) -> f64
+impl core::clone::Clone for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::clone(&self) -> galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl core::cmp::PartialEq for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::eq(&self, &galadriel_dependence::MiKsgEvaluatorConfigEvidence) -> bool
+impl core::fmt::Debug for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl serde_core::ser::Serialize for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl core::marker::Send for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl core::marker::Sync for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl core::marker::Unpin for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl core::marker::UnsafeUnpin for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+impl<T, U> core::convert::Into<U> for galadriel_dependence::MiKsgEvaluatorConfigEvidence where U: core::convert::From<T>
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::MiKsgEvaluatorConfigEvidence where U: core::convert::Into<T>
+pub type galadriel_dependence::MiKsgEvaluatorConfigEvidence::Error = core::convert::Infallible
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::MiKsgEvaluatorConfigEvidence where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::MiKsgEvaluatorConfigEvidence::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::MiKsgEvaluatorConfigEvidence where T: core::clone::Clone
+pub type galadriel_dependence::MiKsgEvaluatorConfigEvidence::Owned = T
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::clone_into(&self, &mut T)
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::MiKsgEvaluatorConfigEvidence where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::MiKsgEvaluatorConfigEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::MiKsgEvaluatorConfigEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::MiKsgEvaluatorConfigEvidence where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::MiKsgEvaluatorConfigEvidence
+pub type galadriel_dependence::MiKsgEvaluatorConfigEvidence::Output = T
+pub struct galadriel_dependence::PairGeometryEvidence
+impl galadriel_dependence::PairGeometryEvidence
+pub const fn galadriel_dependence::PairGeometryEvidence::distance_pairwise_cv(&self) -> f64
+pub const fn galadriel_dependence::PairGeometryEvidence::distance_pairwise_cv_minimum(&self) -> f64
+pub fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension(&self) -> f64
+pub fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension_k(&self) -> usize
+pub const fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension_local_median_minimum(&self) -> f64
+pub const fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension_maximum(&self) -> f64
+pub const fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension_minimum(&self) -> f64
+pub fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension_report(&self) -> &pid_core::geometry::IntrinsicDimensionReport
+pub const fn galadriel_dependence::PairGeometryEvidence::nearest_neighbor_over_pairwise_mean(&self) -> f64
+pub const fn galadriel_dependence::PairGeometryEvidence::nearest_neighbor_ratio_maximum(&self) -> f64
+impl core::clone::Clone for galadriel_dependence::PairGeometryEvidence
+pub fn galadriel_dependence::PairGeometryEvidence::clone(&self) -> galadriel_dependence::PairGeometryEvidence
+impl core::cmp::PartialEq for galadriel_dependence::PairGeometryEvidence
+pub fn galadriel_dependence::PairGeometryEvidence::eq(&self, &galadriel_dependence::PairGeometryEvidence) -> bool
+impl core::fmt::Debug for galadriel_dependence::PairGeometryEvidence
+pub fn galadriel_dependence::PairGeometryEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::PairGeometryEvidence
+impl serde_core::ser::Serialize for galadriel_dependence::PairGeometryEvidence
+pub fn galadriel_dependence::PairGeometryEvidence::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::PairGeometryEvidence
+impl core::marker::Send for galadriel_dependence::PairGeometryEvidence
+impl core::marker::Sync for galadriel_dependence::PairGeometryEvidence
+impl core::marker::Unpin for galadriel_dependence::PairGeometryEvidence
+impl core::marker::UnsafeUnpin for galadriel_dependence::PairGeometryEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::PairGeometryEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::PairGeometryEvidence
+impl<T, U> core::convert::Into<U> for galadriel_dependence::PairGeometryEvidence where U: core::convert::From<T>
+pub fn galadriel_dependence::PairGeometryEvidence::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::PairGeometryEvidence where U: core::convert::Into<T>
+pub type galadriel_dependence::PairGeometryEvidence::Error = core::convert::Infallible
+pub fn galadriel_dependence::PairGeometryEvidence::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::PairGeometryEvidence where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::PairGeometryEvidence::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::PairGeometryEvidence::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::PairGeometryEvidence where T: core::clone::Clone
+pub type galadriel_dependence::PairGeometryEvidence::Owned = T
+pub fn galadriel_dependence::PairGeometryEvidence::clone_into(&self, &mut T)
+pub fn galadriel_dependence::PairGeometryEvidence::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::PairGeometryEvidence where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::PairGeometryEvidence::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::PairGeometryEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairGeometryEvidence::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::PairGeometryEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairGeometryEvidence::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::PairGeometryEvidence where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::PairGeometryEvidence::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::PairGeometryEvidence
+pub fn galadriel_dependence::PairGeometryEvidence::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::PairGeometryEvidence
+pub type galadriel_dependence::PairGeometryEvidence::Output = T
+pub struct galadriel_dependence::PairKsgEvidence
+impl galadriel_dependence::PairKsgEvidence
+pub fn galadriel_dependence::PairKsgEvidence::assumption_ledger(&self) -> &[pid_core::report::AssumptionLedgerEntry]
+pub const fn galadriel_dependence::PairKsgEvidence::config_identity(&self) -> galadriel_dependence::MiConsensusConfigDigest
+pub fn galadriel_dependence::PairKsgEvidence::estimand(&self) -> &pid_core::report::EstimandIdentity
+pub const fn galadriel_dependence::PairKsgEvidence::estimator_id(&self) -> &'static str
+pub const fn galadriel_dependence::PairKsgEvidence::functional_id(&self) -> &'static str
+pub const fn galadriel_dependence::PairKsgEvidence::geometry(&self) -> &galadriel_dependence::PairGeometryEvidence
+pub fn galadriel_dependence::PairKsgEvidence::graph_row_values_sha256(&self) -> &str
+pub fn galadriel_dependence::PairKsgEvidence::k(&self) -> usize
+pub fn galadriel_dependence::PairKsgEvidence::method_status(&self) -> pid_core::ksg::KsgMethodStatus
+pub fn galadriel_dependence::PairKsgEvidence::n_samples(&self) -> usize
+pub fn galadriel_dependence::PairKsgEvidence::observation_model_description(&self) -> &str
+pub const fn galadriel_dependence::PairKsgEvidence::pid_rs_git_repository(&self) -> &'static str
+pub const fn galadriel_dependence::PairKsgEvidence::pid_rs_revision(&self) -> &'static str
+pub const fn galadriel_dependence::PairKsgEvidence::pid_rs_version(&self) -> &'static str
+pub fn galadriel_dependence::PairKsgEvidence::preprocessing_description(&self) -> &str
+pub fn galadriel_dependence::PairKsgEvidence::report_warnings(&self) -> &[pid_core::report::WarningCode]
+pub fn galadriel_dependence::PairKsgEvidence::resource_estimate(&self) -> pid_core::resource::ResourceEstimate
+pub fn galadriel_dependence::PairKsgEvidence::sampling_model_description(&self) -> core::option::Option<&str>
+pub fn galadriel_dependence::PairKsgEvidence::scientific_status(&self) -> pid_core::report::ScientificStatus
+pub fn galadriel_dependence::PairKsgEvidence::signed_estimate_nats(&self) -> f64
+pub fn galadriel_dependence::PairKsgEvidence::support_contract(&self) -> pid_core::support::SupportContract
+pub const fn galadriel_dependence::PairKsgEvidence::units(&self) -> &'static str
+pub fn galadriel_dependence::PairKsgEvidence::upstream_report(&self) -> &pid_core::ksg::KsgMiReport
+pub fn galadriel_dependence::PairKsgEvidence::warnings(&self) -> &[pid_core::ksg::KsgReportWarning]
+impl core::clone::Clone for galadriel_dependence::PairKsgEvidence
+pub fn galadriel_dependence::PairKsgEvidence::clone(&self) -> galadriel_dependence::PairKsgEvidence
+impl core::cmp::PartialEq for galadriel_dependence::PairKsgEvidence
+pub fn galadriel_dependence::PairKsgEvidence::eq(&self, &galadriel_dependence::PairKsgEvidence) -> bool
+impl core::fmt::Debug for galadriel_dependence::PairKsgEvidence
+pub fn galadriel_dependence::PairKsgEvidence::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::PairKsgEvidence
+impl serde_core::ser::Serialize for galadriel_dependence::PairKsgEvidence
+pub fn galadriel_dependence::PairKsgEvidence::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::PairKsgEvidence
+impl core::marker::Send for galadriel_dependence::PairKsgEvidence
+impl core::marker::Sync for galadriel_dependence::PairKsgEvidence
+impl core::marker::Unpin for galadriel_dependence::PairKsgEvidence
+impl core::marker::UnsafeUnpin for galadriel_dependence::PairKsgEvidence
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::PairKsgEvidence
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::PairKsgEvidence
+impl<T, U> core::convert::Into<U> for galadriel_dependence::PairKsgEvidence where U: core::convert::From<T>
+pub fn galadriel_dependence::PairKsgEvidence::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::PairKsgEvidence where U: core::convert::Into<T>
+pub type galadriel_dependence::PairKsgEvidence::Error = core::convert::Infallible
+pub fn galadriel_dependence::PairKsgEvidence::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::PairKsgEvidence where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::PairKsgEvidence::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::PairKsgEvidence::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::PairKsgEvidence where T: core::clone::Clone
+pub type galadriel_dependence::PairKsgEvidence::Owned = T
+pub fn galadriel_dependence::PairKsgEvidence::clone_into(&self, &mut T)
+pub fn galadriel_dependence::PairKsgEvidence::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::PairKsgEvidence where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::PairKsgEvidence::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::PairKsgEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairKsgEvidence::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::PairKsgEvidence where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairKsgEvidence::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::PairKsgEvidence where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::PairKsgEvidence::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::PairKsgEvidence
+pub fn galadriel_dependence::PairKsgEvidence::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::PairKsgEvidence
+pub type galadriel_dependence::PairKsgEvidence::Output = T
+pub struct galadriel_dependence::PairMiReport
+impl galadriel_dependence::PairMiReport
+pub fn galadriel_dependence::PairMiReport::estimate_nats(&self) -> core::option::Option<f64>
+pub const fn galadriel_dependence::PairMiReport::first(&self) -> galadriel_core::observation::Modality
+pub const fn galadriel_dependence::PairMiReport::outcome(&self) -> &galadriel_dependence::PairMiOutcome
+pub const fn galadriel_dependence::PairMiReport::second(&self) -> galadriel_core::observation::Modality
+impl core::clone::Clone for galadriel_dependence::PairMiReport
+pub fn galadriel_dependence::PairMiReport::clone(&self) -> galadriel_dependence::PairMiReport
+impl core::cmp::PartialEq for galadriel_dependence::PairMiReport
+pub fn galadriel_dependence::PairMiReport::eq(&self, &galadriel_dependence::PairMiReport) -> bool
+impl core::fmt::Debug for galadriel_dependence::PairMiReport
+pub fn galadriel_dependence::PairMiReport::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::PairMiReport
+impl serde_core::ser::Serialize for galadriel_dependence::PairMiReport
+pub fn galadriel_dependence::PairMiReport::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::PairMiReport
+impl core::marker::Send for galadriel_dependence::PairMiReport
+impl core::marker::Sync for galadriel_dependence::PairMiReport
+impl core::marker::Unpin for galadriel_dependence::PairMiReport
+impl core::marker::UnsafeUnpin for galadriel_dependence::PairMiReport
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::PairMiReport
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::PairMiReport
+impl<T, U> core::convert::Into<U> for galadriel_dependence::PairMiReport where U: core::convert::From<T>
+pub fn galadriel_dependence::PairMiReport::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::PairMiReport where U: core::convert::Into<T>
+pub type galadriel_dependence::PairMiReport::Error = core::convert::Infallible
+pub fn galadriel_dependence::PairMiReport::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::PairMiReport where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::PairMiReport::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::PairMiReport::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::PairMiReport where T: core::clone::Clone
+pub type galadriel_dependence::PairMiReport::Owned = T
+pub fn galadriel_dependence::PairMiReport::clone_into(&self, &mut T)
+pub fn galadriel_dependence::PairMiReport::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::PairMiReport where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::PairMiReport::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::PairMiReport where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairMiReport::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::PairMiReport where T: ?core::marker::Sized
+pub fn galadriel_dependence::PairMiReport::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::PairMiReport where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::PairMiReport::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::PairMiReport
+pub fn galadriel_dependence::PairMiReport::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::PairMiReport
+pub type galadriel_dependence::PairMiReport::Output = T
+pub struct galadriel_dependence::ProjectionAxisDigest(_)
+impl galadriel_dependence::ProjectionAxisDigest
+pub const fn galadriel_dependence::ProjectionAxisDigest::as_bytes(&self) -> &[u8; 32]
+pub fn galadriel_dependence::ProjectionAxisDigest::to_hex(self) -> alloc::string::String
+impl core::clone::Clone for galadriel_dependence::ProjectionAxisDigest
+pub fn galadriel_dependence::ProjectionAxisDigest::clone(&self) -> galadriel_dependence::ProjectionAxisDigest
+impl core::cmp::Eq for galadriel_dependence::ProjectionAxisDigest
+impl core::cmp::PartialEq for galadriel_dependence::ProjectionAxisDigest
+pub fn galadriel_dependence::ProjectionAxisDigest::eq(&self, &galadriel_dependence::ProjectionAxisDigest) -> bool
+impl core::fmt::Debug for galadriel_dependence::ProjectionAxisDigest
+pub fn galadriel_dependence::ProjectionAxisDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for galadriel_dependence::ProjectionAxisDigest
+pub fn galadriel_dependence::ProjectionAxisDigest::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for galadriel_dependence::ProjectionAxisDigest
+pub fn galadriel_dependence::ProjectionAxisDigest::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for galadriel_dependence::ProjectionAxisDigest
+impl core::marker::StructuralPartialEq for galadriel_dependence::ProjectionAxisDigest
+impl serde_core::ser::Serialize for galadriel_dependence::ProjectionAxisDigest
+pub fn galadriel_dependence::ProjectionAxisDigest::serialize<S>(&self, S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error> where S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::ProjectionAxisDigest
+impl core::marker::Send for galadriel_dependence::ProjectionAxisDigest
+impl core::marker::Sync for galadriel_dependence::ProjectionAxisDigest
+impl core::marker::Unpin for galadriel_dependence::ProjectionAxisDigest
+impl core::marker::UnsafeUnpin for galadriel_dependence::ProjectionAxisDigest
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::ProjectionAxisDigest
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::ProjectionAxisDigest
+impl<T, U> core::convert::Into<U> for galadriel_dependence::ProjectionAxisDigest where U: core::convert::From<T>
+pub fn galadriel_dependence::ProjectionAxisDigest::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::ProjectionAxisDigest where U: core::convert::Into<T>
+pub type galadriel_dependence::ProjectionAxisDigest::Error = core::convert::Infallible
+pub fn galadriel_dependence::ProjectionAxisDigest::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::ProjectionAxisDigest where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::ProjectionAxisDigest::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::ProjectionAxisDigest::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::ProjectionAxisDigest where T: core::clone::Clone
+pub type galadriel_dependence::ProjectionAxisDigest::Owned = T
+pub fn galadriel_dependence::ProjectionAxisDigest::clone_into(&self, &mut T)
+pub fn galadriel_dependence::ProjectionAxisDigest::to_owned(&self) -> T
+impl<T> alloc::string::ToString for galadriel_dependence::ProjectionAxisDigest where T: core::fmt::Display + ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionAxisDigest::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for galadriel_dependence::ProjectionAxisDigest where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionAxisDigest::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::ProjectionAxisDigest where T: ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionAxisDigest::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::ProjectionAxisDigest where T: ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionAxisDigest::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::ProjectionAxisDigest where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::ProjectionAxisDigest::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::ProjectionAxisDigest
+pub fn galadriel_dependence::ProjectionAxisDigest::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::ProjectionAxisDigest
+pub type galadriel_dependence::ProjectionAxisDigest::Output = T
+pub struct galadriel_dependence::ProjectionAxisReceipt
+impl galadriel_dependence::ProjectionAxisReceipt
+pub const fn galadriel_dependence::ProjectionAxisReceipt::axis(&self) -> usize
+pub const fn galadriel_dependence::ProjectionAxisReceipt::axis_count(&self) -> usize
+pub const fn galadriel_dependence::ProjectionAxisReceipt::context_id(&self) -> galadriel_core::domain::ProjectionContextId
+pub const fn galadriel_dependence::ProjectionAxisReceipt::digest(&self) -> galadriel_dependence::ProjectionAxisDigest
+pub fn galadriel_dependence::ProjectionAxisReceipt::first_sequence(&self) -> core::option::Option<galadriel_core::domain::Sequence>
+pub fn galadriel_dependence::ProjectionAxisReceipt::first_timestamp_ms(&self) -> core::option::Option<galadriel_core::domain::TimestampMillis>
+pub const fn galadriel_dependence::ProjectionAxisReceipt::frame_id(&self) -> galadriel_core::domain::ProjectionFrameId
+pub fn galadriel_dependence::ProjectionAxisReceipt::last_sequence(&self) -> core::option::Option<galadriel_core::domain::Sequence>
+pub fn galadriel_dependence::ProjectionAxisReceipt::last_timestamp_ms(&self) -> core::option::Option<galadriel_core::domain::TimestampMillis>
+pub fn galadriel_dependence::ProjectionAxisReceipt::modality_order(&self) -> &[galadriel_core::observation::Modality]
+pub const fn galadriel_dependence::ProjectionAxisReceipt::row_count(&self) -> usize
+pub fn galadriel_dependence::ProjectionAxisReceipt::selected_rows(&self) -> &[galadriel_dependence::ProjectionRowIdentity]
+impl core::clone::Clone for galadriel_dependence::ProjectionAxisReceipt
+pub fn galadriel_dependence::ProjectionAxisReceipt::clone(&self) -> galadriel_dependence::ProjectionAxisReceipt
+impl core::cmp::Eq for galadriel_dependence::ProjectionAxisReceipt
+impl core::cmp::PartialEq for galadriel_dependence::ProjectionAxisReceipt
+pub fn galadriel_dependence::ProjectionAxisReceipt::eq(&self, &galadriel_dependence::ProjectionAxisReceipt) -> bool
+impl core::fmt::Debug for galadriel_dependence::ProjectionAxisReceipt
+pub fn galadriel_dependence::ProjectionAxisReceipt::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::ProjectionAxisReceipt
+impl serde_core::ser::Serialize for galadriel_dependence::ProjectionAxisReceipt
+pub fn galadriel_dependence::ProjectionAxisReceipt::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::ProjectionAxisReceipt
+impl core::marker::Send for galadriel_dependence::ProjectionAxisReceipt
+impl core::marker::Sync for galadriel_dependence::ProjectionAxisReceipt
+impl core::marker::Unpin for galadriel_dependence::ProjectionAxisReceipt
+impl core::marker::UnsafeUnpin for galadriel_dependence::ProjectionAxisReceipt
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::ProjectionAxisReceipt
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::ProjectionAxisReceipt
+impl<T, U> core::convert::Into<U> for galadriel_dependence::ProjectionAxisReceipt where U: core::convert::From<T>
+pub fn galadriel_dependence::ProjectionAxisReceipt::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::ProjectionAxisReceipt where U: core::convert::Into<T>
+pub type galadriel_dependence::ProjectionAxisReceipt::Error = core::convert::Infallible
+pub fn galadriel_dependence::ProjectionAxisReceipt::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::ProjectionAxisReceipt where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::ProjectionAxisReceipt::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::ProjectionAxisReceipt::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::ProjectionAxisReceipt where T: core::clone::Clone
+pub type galadriel_dependence::ProjectionAxisReceipt::Owned = T
+pub fn galadriel_dependence::ProjectionAxisReceipt::clone_into(&self, &mut T)
+pub fn galadriel_dependence::ProjectionAxisReceipt::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::ProjectionAxisReceipt where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionAxisReceipt::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::ProjectionAxisReceipt where T: ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionAxisReceipt::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::ProjectionAxisReceipt where T: ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionAxisReceipt::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::ProjectionAxisReceipt where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::ProjectionAxisReceipt::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::ProjectionAxisReceipt
+pub fn galadriel_dependence::ProjectionAxisReceipt::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::ProjectionAxisReceipt
+pub type galadriel_dependence::ProjectionAxisReceipt::Output = T
+pub struct galadriel_dependence::ProjectionRowIdentity
+impl galadriel_dependence::ProjectionRowIdentity
+pub const fn galadriel_dependence::ProjectionRowIdentity::maximum_timestamp_ms(self) -> galadriel_core::domain::TimestampMillis
+pub const fn galadriel_dependence::ProjectionRowIdentity::minimum_timestamp_ms(self) -> galadriel_core::domain::TimestampMillis
+pub const fn galadriel_dependence::ProjectionRowIdentity::sequence(self) -> galadriel_core::domain::Sequence
+impl core::clone::Clone for galadriel_dependence::ProjectionRowIdentity
+pub fn galadriel_dependence::ProjectionRowIdentity::clone(&self) -> galadriel_dependence::ProjectionRowIdentity
+impl core::cmp::Eq for galadriel_dependence::ProjectionRowIdentity
+impl core::cmp::PartialEq for galadriel_dependence::ProjectionRowIdentity
+pub fn galadriel_dependence::ProjectionRowIdentity::eq(&self, &galadriel_dependence::ProjectionRowIdentity) -> bool
+impl core::fmt::Debug for galadriel_dependence::ProjectionRowIdentity
+pub fn galadriel_dependence::ProjectionRowIdentity::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for galadriel_dependence::ProjectionRowIdentity
+impl core::marker::StructuralPartialEq for galadriel_dependence::ProjectionRowIdentity
+impl serde_core::ser::Serialize for galadriel_dependence::ProjectionRowIdentity
+pub fn galadriel_dependence::ProjectionRowIdentity::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::ProjectionRowIdentity
+impl core::marker::Send for galadriel_dependence::ProjectionRowIdentity
+impl core::marker::Sync for galadriel_dependence::ProjectionRowIdentity
+impl core::marker::Unpin for galadriel_dependence::ProjectionRowIdentity
+impl core::marker::UnsafeUnpin for galadriel_dependence::ProjectionRowIdentity
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::ProjectionRowIdentity
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::ProjectionRowIdentity
+impl<T, U> core::convert::Into<U> for galadriel_dependence::ProjectionRowIdentity where U: core::convert::From<T>
+pub fn galadriel_dependence::ProjectionRowIdentity::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::ProjectionRowIdentity where U: core::convert::Into<T>
+pub type galadriel_dependence::ProjectionRowIdentity::Error = core::convert::Infallible
+pub fn galadriel_dependence::ProjectionRowIdentity::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::ProjectionRowIdentity where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::ProjectionRowIdentity::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::ProjectionRowIdentity::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::ProjectionRowIdentity where T: core::clone::Clone
+pub type galadriel_dependence::ProjectionRowIdentity::Owned = T
+pub fn galadriel_dependence::ProjectionRowIdentity::clone_into(&self, &mut T)
+pub fn galadriel_dependence::ProjectionRowIdentity::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::ProjectionRowIdentity where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionRowIdentity::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::ProjectionRowIdentity where T: ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionRowIdentity::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::ProjectionRowIdentity where T: ?core::marker::Sized
+pub fn galadriel_dependence::ProjectionRowIdentity::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::ProjectionRowIdentity where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::ProjectionRowIdentity::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::ProjectionRowIdentity
+pub fn galadriel_dependence::ProjectionRowIdentity::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::ProjectionRowIdentity
+pub type galadriel_dependence::ProjectionRowIdentity::Output = T
+pub struct galadriel_dependence::RowSetReceipt
+impl galadriel_dependence::RowSetReceipt
+pub const fn galadriel_dependence::RowSetReceipt::channel_count(&self) -> usize
+pub fn galadriel_dependence::RowSetReceipt::episode_label(&self) -> &str
+pub const fn galadriel_dependence::RowSetReceipt::origin(&self) -> galadriel_dependence::EpisodeReceiptOrigin
+pub const fn galadriel_dependence::RowSetReceipt::rows_per_channel(&self) -> usize
+pub fn galadriel_dependence::RowSetReceipt::sha256_hex(&self) -> alloc::string::String
+pub fn galadriel_dependence::RowSetReceipt::verifies(&self, &galadriel_dependence::DeclaredMiInput, &galadriel_dependence::MiConsensusConfig) -> bool
+impl core::clone::Clone for galadriel_dependence::RowSetReceipt
+pub fn galadriel_dependence::RowSetReceipt::clone(&self) -> galadriel_dependence::RowSetReceipt
+impl core::cmp::Eq for galadriel_dependence::RowSetReceipt
+impl core::cmp::PartialEq for galadriel_dependence::RowSetReceipt
+pub fn galadriel_dependence::RowSetReceipt::eq(&self, &galadriel_dependence::RowSetReceipt) -> bool
+impl core::fmt::Debug for galadriel_dependence::RowSetReceipt
+pub fn galadriel_dependence::RowSetReceipt::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for galadriel_dependence::RowSetReceipt
+impl serde_core::ser::Serialize for galadriel_dependence::RowSetReceipt
+pub fn galadriel_dependence::RowSetReceipt::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl core::marker::Freeze for galadriel_dependence::RowSetReceipt
+impl core::marker::Send for galadriel_dependence::RowSetReceipt
+impl core::marker::Sync for galadriel_dependence::RowSetReceipt
+impl core::marker::Unpin for galadriel_dependence::RowSetReceipt
+impl core::marker::UnsafeUnpin for galadriel_dependence::RowSetReceipt
+impl core::panic::unwind_safe::RefUnwindSafe for galadriel_dependence::RowSetReceipt
+impl core::panic::unwind_safe::UnwindSafe for galadriel_dependence::RowSetReceipt
+impl<T, U> core::convert::Into<U> for galadriel_dependence::RowSetReceipt where U: core::convert::From<T>
+pub fn galadriel_dependence::RowSetReceipt::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for galadriel_dependence::RowSetReceipt where U: core::convert::Into<T>
+pub type galadriel_dependence::RowSetReceipt::Error = core::convert::Infallible
+pub fn galadriel_dependence::RowSetReceipt::try_from(U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for galadriel_dependence::RowSetReceipt where U: core::convert::TryFrom<T>
+pub type galadriel_dependence::RowSetReceipt::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn galadriel_dependence::RowSetReceipt::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for galadriel_dependence::RowSetReceipt where T: core::clone::Clone
+pub type galadriel_dependence::RowSetReceipt::Owned = T
+pub fn galadriel_dependence::RowSetReceipt::clone_into(&self, &mut T)
+pub fn galadriel_dependence::RowSetReceipt::to_owned(&self) -> T
+impl<T> core::any::Any for galadriel_dependence::RowSetReceipt where T: 'static + ?core::marker::Sized
+pub fn galadriel_dependence::RowSetReceipt::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for galadriel_dependence::RowSetReceipt where T: ?core::marker::Sized
+pub fn galadriel_dependence::RowSetReceipt::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for galadriel_dependence::RowSetReceipt where T: ?core::marker::Sized
+pub fn galadriel_dependence::RowSetReceipt::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for galadriel_dependence::RowSetReceipt where T: core::clone::Clone
+pub unsafe fn galadriel_dependence::RowSetReceipt::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for galadriel_dependence::RowSetReceipt
+pub fn galadriel_dependence::RowSetReceipt::from(T) -> T
+impl<T> typenum::type_operators::Same for galadriel_dependence::RowSetReceipt
+pub type galadriel_dependence::RowSetReceipt::Output = T
+pub const galadriel_dependence::DEPENDENCE_ASSESSMENT_REPORT_SCHEMA: &str
+pub const galadriel_dependence::MAX_DEPENDENCE_RESEARCH_SUITE_QUADRATIC_FIT_WORK: usize
+pub const galadriel_dependence::MAX_MI_WINDOW: usize
+pub const galadriel_dependence::MIN_DEPENDENCE_RESEARCH_MODALITIES: usize
+pub const galadriel_dependence::MI_CONSENSUS_REPORT_SCHEMA: &str
+pub const galadriel_dependence::MI_PAIR_POINT_FIT_UNITS: usize
+pub const galadriel_dependence::PID_RS_GIT_REPOSITORY: &str
+pub const galadriel_dependence::PID_RS_REVISION: &str
+pub const galadriel_dependence::PID_RS_VERSION: &str
+pub fn galadriel_dependence::analyze(&galadriel_dependence::DeclaredMiInput, &galadriel_dependence::MiConsensusConfig) -> galadriel_core::error::Result<galadriel_dependence::MiConsensusReport>
+pub fn galadriel_dependence::assess_with_dependence(&galadriel_core::identity::AssessmentScope, &[galadriel_core::observation::PidObservation], &galadriel_dependence::DependenceResearchSuite) -> galadriel_core::error::Result<galadriel_dependence::DependenceAssessmentReport>

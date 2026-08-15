@@ -107,6 +107,7 @@ AUDIT_DATE_SEMANTICS = (
     "precede any retained inspection or observation date at its declared precision."
 )
 NCP_STATUS_COMMIT = "1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
+PRISOMA_REINSPECTION_COMMIT = "efcad9943af818913702f11c47ed0c280a2a1f13"
 NCP_COMPACT_CONTRACT_HASH = "163acc57d8a62b66"
 NCP_COMPLETE_NORMATIVE_DIGEST = (
     "9cae331742d01e9b164e029aa06c644e6b1886176d0816a6ef883af138355c90"
@@ -257,7 +258,7 @@ PUBLICATION_SEQUENCE_MARKERS = (
     "wrong, follow the full withdrawal procedure below.",
 )
 RELEASE_RUNBOOK_CONTRACT_SHA256 = (
-    "40d7eb28ed80721a4cbf6e55c2b65813ee243a8ed8bc531c83689878f93958d1"
+    "1af7d1ee056e217535ccaa51b2935a3ed1673ec3fc3e64edc36e1e7651de5f6b"
 )
 RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256 = (
     "917a7308fd7c3c5adcd1bac4218425ee26226abe50762cf3bbd1d3b6f256f11f"
@@ -307,7 +308,7 @@ REQUIRED_REPOSITORY_INPUTS = {
     "pid-rs": (
         "https://github.com/sepahead/pid-rs",
         "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
-        "optional PID research dependency selected by Cargo.lock",
+        "optional pairwise-MI companion and offline PID dependency selected by Cargo.lock",
         "PINNED_COMPONENT",
     ),
     "NCP": (
@@ -701,7 +702,7 @@ FEATURE_ISOLATED_CLI_COMMANDS = (
         ),
     ),
     (
-        "cli-pid-feature-graph",
+        "cli-dependence-feature-graph",
         (
             "cargo",
             "check",
@@ -709,7 +710,7 @@ FEATURE_ISOLATED_CLI_COMMANDS = (
             "galadriel-cli",
             "--no-default-features",
             "--features",
-            "pid",
+            "dependence",
             "--locked",
         ),
     ),
@@ -751,7 +752,7 @@ FEATURE_ISOLATED_CLI_COMMANDS = (
         ),
     ),
     (
-        "cli-pid-feature-tests",
+        "cli-dependence-feature-tests",
         (
             "cargo",
             "test",
@@ -759,7 +760,7 @@ FEATURE_ISOLATED_CLI_COMMANDS = (
             "galadriel-cli",
             "--no-default-features",
             "--features",
-            "pid",
+            "dependence",
             "--locked",
         ),
     ),
@@ -2897,11 +2898,12 @@ def validate_normative_documents(
         "cusum_low_alarm",
         "last_timestamp_ms",
         "corroboration",
-        "redundancy",
-        "synergy",
-        "estimate_nats",
+        "strongest_pair_mi_nats",
+        "MiGraphDisposition",
+        "DependenceAssessmentReport",
+        "JustificationStudyProtocol",
+        "PidQuestionSpec",
         "FusedVerdict",
-        "PidVerdict",
     ):
         if field not in statistical:
             raise AuditError(f"statistical contract omits report field/verdict {field}")
@@ -3031,9 +3033,9 @@ def validate_ecosystem_cut(
                 f"ecosystem cut inspected_at predates observation {observation_id}"
             )
         observation_dates[observation_id] = observed_at
-    expected_ids = {f"ECO-{index:03d}" for index in range(1, 15)}
+    expected_ids = {f"ECO-{index:03d}" for index in range(1, 16)}
     if seen != expected_ids:
-        raise AuditError("ecosystem cut must contain exactly ECO-001 through ECO-014")
+        raise AuditError("ecosystem cut must contain exactly ECO-001 through ECO-015")
     ncp_status = next(
         observation for observation in observations if observation["id"] == "ECO-014"
     )
@@ -3084,6 +3086,29 @@ def validate_ecosystem_cut(
         not in ncp_status["status"]["contract_identity_note"]
     ):
         raise AuditError("ECO-014 does not distinguish status from contract identity")
+    prisoma_status = next(
+        observation for observation in observations if observation["id"] == "ECO-015"
+    )
+    expected_prisoma_status = {
+        "project": "Prisoma",
+        "relationship": "prospective_downstream_offline_consumer",
+        "ref": "refs/heads/main",
+        "object": PRISOMA_REINSPECTION_COMMIT,
+        "identity_kind": "mutable_head_reinspection",
+        "observed_at": "2026-08-14",
+        "timestamp_precision": "date",
+        "required_by_default": False,
+        "required_for": [],
+        "supersedes": "ECO-007",
+        "why": (
+            "Records the committed 2026-08-14 Prisoma head after its first-principles "
+            "provenance and estimand redesign. Galadriel still has no Prisoma "
+            "dependency, adapter, route, or runtime edge."
+        ),
+    }
+    for key, expected in expected_prisoma_status.items():
+        if prisoma_status[key] != expected:
+            raise AuditError(f"ECO-015 has an incorrect Prisoma reinspection field: {key}")
     return inspected_at, observation_dates
 
 

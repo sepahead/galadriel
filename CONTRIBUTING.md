@@ -56,7 +56,8 @@ No accepted recorded study establishes field performance, calibration, deployed 
   A downstream restrict-only policy requires separate admission.
   Preserve the `calibrated_posterior = false` semantics.
 - **Keep the default build small.** The default CLI build excludes optional integration dependencies.
-  The off-by-default `pid` feature adds `pid-core`.
+  The off-by-default `dependence` feature adds `pid-core` through
+  `galadriel-dependence`. It exposes a companion pairwise-MI report only.
   The off-by-default `ncp` feature adds `ncp-core`.
   The `ncp-live` feature also adds `ncp-zenoh`, Zenoh, and Tokio.
 

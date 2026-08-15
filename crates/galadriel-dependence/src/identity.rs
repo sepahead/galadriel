@@ -1,21 +1,22 @@
-//! Canonical identities for accepted PID configurations and research suites.
+//! Canonical identities for accepted dependence configurations and research suites.
 
 use std::fmt;
 
-use galadriel_core::AssessmentBinding;
+use galadriel_core::{AssessmentBinding, AssessmentScope, PidObservation};
+use serde::{Serialize, Serializer};
 use sha2::{Digest, Sha256};
 
 const _: () = assert!(
     usize::BITS <= u64::BITS,
-    "canonical PID identity encoding requires lossless usize-to-u64 conversion",
+    "canonical dependence identity encoding requires lossless usize-to-u64 conversion",
 );
 
-/// Whether an accepted PID configuration or suite came from a named profile.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PidResearchClassification {
-    /// Closed, versioned PID research profile.
+/// Whether an accepted dependence configuration or suite came from a named profile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum DependenceResearchClassification {
+    /// Closed, versioned exploratory research profile.
     NamedResearchProfile,
-    /// Accepted custom research values that are never relabeled as a named profile.
+    /// Accepted custom values that are never relabeled as a named profile.
     CustomAcceptedResearch,
 }
 
@@ -61,58 +62,70 @@ macro_rules! digest_type {
                 formatter.write_str(&self.to_hex())
             }
         }
+
+        impl Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                serializer.collect_str(self)
+            }
+        }
     };
 }
 
 digest_type!(
-    PidConfigDigest,
-    "A domain-separated SHA-256 digest of one complete accepted PID configuration."
+    MiConsensusConfigDigest,
+    "A domain-separated SHA-256 digest of one complete accepted MI-consensus configuration."
 );
 digest_type!(
-    PidResearchSuiteDigest,
-    "A domain-separated SHA-256 digest of one complete accepted PID research suite."
+    DependenceResearchSuiteDigest,
+    "A domain-separated SHA-256 digest of one complete accepted dependence research suite."
 );
 digest_type!(
-    PidAssessmentDigest,
-    "A domain-separated SHA-256 digest binding an exact release input to one complete PID research suite."
+    DependenceAssessmentDigest,
+    "A domain-separated SHA-256 digest binding an exact core release input to one complete dependence research suite."
+);
+digest_type!(
+    ProjectionAxisDigest,
+    "A domain-separated SHA-256 digest binding one producer-attested projection axis to its core assessment."
 );
 
-/// Opaque binding between an exact core release assessment and one complete PID
-/// research suite.
+/// Opaque binding between one exact core assessment and one dependence research suite.
 ///
-/// The nested core binding covers the assessment scope and every ordered
-/// observation. It also covers the complete [`galadriel_core::ReleaseSuite`].
-/// This layer also binds the PID research-suite identity. Equal component values
-/// cannot be relabeled under a different suite.
+/// The nested core binding covers the assessment scope, release suite, and every
+/// ordered observation. This layer adds the complete dependence-suite identity.
+/// It proves internal byte-level agreement, not producer authenticity or the truth
+/// of a declared population law.
 ///
 /// ```compile_fail
-/// use galadriel_pid::PidAssessmentBinding;
-/// let _ = PidAssessmentBinding {};
+/// use galadriel_dependence::DependenceAssessmentBinding;
+/// let _ = DependenceAssessmentBinding {};
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PidAssessmentBinding {
-    digest: PidAssessmentDigest,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct DependenceAssessmentBinding {
+    digest: DependenceAssessmentDigest,
     release_binding: AssessmentBinding,
-    suite_identity: PidResearchSuiteDigest,
+    suite_identity: DependenceResearchSuiteDigest,
 }
 
-impl PidAssessmentBinding {
+impl DependenceAssessmentBinding {
     pub(crate) fn new(
         release_binding: &AssessmentBinding,
-        suite_identity: PidResearchSuiteDigest,
+        suite_identity: DependenceResearchSuiteDigest,
     ) -> Self {
-        let mut identity = IdentityBuilder::new(b"galadriel-pid-assessment-binding-v1");
+        let mut identity = IdentityBuilder::new(b"galadriel-dependence-assessment-binding-v1");
         identity.bytes(b"release_assessment", release_binding.digest().as_bytes());
-        identity.bytes(b"pid_research_suite", suite_identity.as_bytes());
+        identity.bytes(b"dependence_research_suite", suite_identity.as_bytes());
         Self {
-            digest: PidAssessmentDigest::from_bytes(identity.finish()),
+            digest: DependenceAssessmentDigest::from_bytes(identity.finish()),
             release_binding: release_binding.clone(),
             suite_identity,
         }
     }
 
-    /// Canonical digest of the nested release binding and complete PID suite.
-    pub const fn digest(&self) -> PidAssessmentDigest {
+    /// Canonical digest of the nested release binding and dependence suite.
+    pub const fn digest(&self) -> DependenceAssessmentDigest {
         self.digest
     }
 
@@ -121,9 +134,29 @@ impl PidAssessmentBinding {
         &self.release_binding
     }
 
-    /// Complete named or custom PID research-suite identity.
-    pub const fn suite_identity(&self) -> PidResearchSuiteDigest {
+    /// Complete dependence research-suite identity.
+    pub const fn suite_identity(&self) -> DependenceResearchSuiteDigest {
         self.suite_identity
+    }
+
+    /// Verify the nested core input and the complete dependence-suite identity.
+    ///
+    /// A successful result proves internal digest agreement. It does not prove
+    /// the population-law declaration, producer authenticity, or physical truth.
+    pub fn verifies(
+        &self,
+        scope: &AssessmentScope,
+        stream: &[PidObservation],
+        suite: &crate::DependenceResearchSuite,
+    ) -> bool {
+        if self.suite_identity != suite.identity()
+            || !self
+                .release_binding
+                .verifies(scope, stream, suite.release_suite())
+        {
+            return false;
+        }
+        self == &Self::new(&self.release_binding, suite.identity())
     }
 }
 
@@ -133,7 +166,7 @@ pub(crate) struct IdentityBuilder(Sha256);
 impl IdentityBuilder {
     pub(crate) fn new(domain: &'static [u8]) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(b"galadriel-pid-config-identity\0");
+        hasher.update(b"galadriel-dependence-identity\0");
         hasher.update((domain.len() as u64).to_be_bytes());
         hasher.update(domain);
         Self(hasher)
@@ -194,5 +227,26 @@ mod tests {
         let other_domain = other_domain.finish();
         assert_eq!(negative, positive);
         assert_ne!(positive, other_domain);
+    }
+
+    #[test]
+    fn identity_preimage_encoding_has_an_independent_known_answer() {
+        let mut identity = IdentityBuilder::new(b"kat-v1");
+        identity.u8(b"u8", 0xa5);
+        identity.u64(b"u64", 0x0102_0304_0506_0708);
+        identity.usize(b"usize", 42);
+        identity.f64(b"f64", 1.5);
+        identity.bytes(b"bytes", b"\0abc");
+
+        // Independently reconstructed from the documented length-prefixed
+        // big-endian preimage, then SHA-256 hashed outside this implementation.
+        assert_eq!(
+            identity.finish(),
+            [
+                0x29, 0x44, 0x02, 0xbd, 0x01, 0xf6, 0xff, 0x5a, 0x60, 0xfb, 0xf4, 0x93, 0xdc, 0xbe,
+                0x75, 0x55, 0x10, 0x8f, 0xd3, 0x93, 0x1a, 0xac, 0x59, 0x53, 0x8e, 0x2e, 0x01, 0x2e,
+                0xea, 0xe7, 0xc2, 0xba,
+            ]
+        );
     }
 }

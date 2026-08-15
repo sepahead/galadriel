@@ -569,11 +569,11 @@ FROZEN_QUALIFICATION_COMMAND_NAMES = (
     "format",
     "feature-graph-contract",
     "cli-pure-feature-graph",
-    "cli-pid-feature-graph",
+    "cli-dependence-feature-graph",
     "cli-ncp-feature-graph",
     "cli-ncp-live-feature-graph",
     "cli-pure-feature-tests",
-    "cli-pid-feature-tests",
+    "cli-dependence-feature-tests",
     "cli-ncp-feature-tests",
     "cli-ncp-live-feature-tests",
     "clippy-all-targets-features",
@@ -583,7 +583,7 @@ FROZEN_QUALIFICATION_COMMAND_NAMES = (
     "pure-core-no-default-test",
     "pure-core-no-default-build",
     "core-release-tests",
-    "pid-release-tests",
+    "dependence-release-tests",
     "evaluation-benchmark-build",
     "current-stable-clippy",
     "current-stable-tests",
@@ -627,7 +627,7 @@ EXPECTED_RELEASE_CRATES = (
     "galadriel-eval",
     "galadriel-justify",
     "galadriel-ncp",
-    "galadriel-pid",
+    "galadriel-dependence",
     "galadriel-sim",
 )
 EXPECTED_GIT_PACKAGE_SOURCES = {
@@ -5762,7 +5762,7 @@ def verify_qualification(
         "galadriel-eval",
         "galadriel-justify",
         "galadriel-ncp",
-        "galadriel-pid",
+        "galadriel-dependence",
         "galadriel-sim",
     }
     packages = qualification.get("packages")

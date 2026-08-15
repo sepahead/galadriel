@@ -162,7 +162,8 @@ They do not carry complete producer and lifecycle provenance.
 They omit core session, epoch, stream, generation, and clock-domain identity.
 
 The command does not invent an `AssessmentScope` for this input.
-It labels terminal baseline, default, and optional PID output as diagnostic-only.
+It labels terminal baseline and default signed-correlation output as diagnostic-only.
+It does not run the optional pairwise-MI companion or an offline PID study.
 It does not produce a sealed accepted report or a lifecycle receipt.
 Users MUST NOT describe raw replay output as lifecycle-complete evidence.
 

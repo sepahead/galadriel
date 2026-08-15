@@ -369,9 +369,9 @@ It contains the exact 382-package host-filtered subset of the validated
 437-package graph.
 It contains exactly 707 license assignments.
 Its sorted package-identity set has this SHA-256 value:
-`5d4cc699506276347efb798c206893da68caa9c9e45f650c08b4a48ffbbab1ce`.
+`7c4d600e46b0dc1f1d50917acf65f8550bc4d9d568978d145eb0cae5b893b463`.
 Its canonical package-and-license content has this SHA-256 value:
-`0d74d13996da359c9aaffe01978b1bd5e58b1188ff63026ce7d4347da734a0e3`.
+`8a8a8b9c981f67c9e93159813c128bd6033ea11aa539555e9f7303c3de7d68a8`.
 The supply-chain CI job rebuilds this inventory from locked metadata.
 It verifies both exact digests.
 
@@ -401,7 +401,7 @@ integration without a signed or released tag or artifact. It **SHALL NOT** be
 described as one.
 
 The default build excludes pid-rs.
-The PID, evaluation, and justification paths require the immutable pid-rs revision
+The dependence, evaluation, and offline justification paths require the immutable pid-rs revision
 `1cd2424f7967e1752dcc8e53859e8fdad3566f51`.
 Its manifest declares `1.0.0`.
 This revision is an experimental component input.

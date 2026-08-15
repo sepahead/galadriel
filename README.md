@@ -50,7 +50,8 @@
 Galadriel checks whether several sensors that observe one track still agree.
 It combines per-channel Normalized Innovation Squared (NIS) evidence with signed cross-channel correlation.
 The correlation keeps its sign and uses a producer-attested projection.
-Optional PID diagnostics explore nonlinear dependence.
+An optional pairwise-MI companion explores nonlinear dependence without changing the
+authoritative verdict. Separate offline studies evaluate categorical and continuous PID.
 
 Here, "signed" identifies the correlation sign.
 "Attested" identifies a producer provenance claim.
@@ -68,10 +69,10 @@ flowchart LR
     G -->|yes| M[NIS / CUSUM]
     G -->|yes| C[signed correlation]
     G -->|no| X[abstain / terminal fault]
-    C -. optional .-> I[PID diagnostics]
+    C -. optional .-> I[pairwise MI companion]
     M --> F[conservative fusion]
     C --> F
-    I --> F
+    I --> D[descriptive report only]
     F --> V[nominal / anomaly evidence / insufficient]
 ```
 
@@ -109,7 +110,7 @@ A shared transport or historical fixture also does not prove such an integration
 
 | Project | Direction | Required or optional | Why connected | Explicit 0.9.0 boundary |
 | --- | --- | --- | --- | --- |
-| [pid-rs](https://github.com/sepahead/pid-rs) | Upstream algorithm library | The default CLI build does not use it. The PID, justification, and evaluation crates require its exact `pid-core` pin. The CLI `pid` feature also requires the pin. It is linked code, not a runtime service. | It supplies restricted-domain KSG mutual-information and PID primitives for additive research diagnostics. | Pin `1cd2424f7967e1752dcc8e53859e8fdad3566f51` declares 1.0.0. It transitively resolves `pid-runlog` 1.0.0 from the same revision. Galadriel claims no public v1 tag or published upstream 1.x artifact. |
+| [pid-rs](https://github.com/sepahead/pid-rs) | Upstream algorithm library | The default CLI build does not use it. `galadriel-dependence`, justification, and evaluation require its exact `pid-core` pin. The CLI `dependence` feature also requires the pin. It is linked code, not a runtime service. | Stable report-first KSG supports the opt-in in-process/library MI companion. Its executable integrations are the synthetic demo, evaluation, and benchmark; `replay`, `observe`, and NCP do not invoke it. Categorical Makkeh–Gutknecht–Wibral and related-but-distinct continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID support separate offline studies. | Pin `1cd2424f7967e1752dcc8e53859e8fdad3566f51` declares 1.0.0. It transitively resolves `pid-runlog` 1.0.0 from the same revision. Galadriel claims no public v1 tag or published upstream 1.x artifact. |
 | [NCP](https://github.com/sepahead/NCP) | Upstream wire and transport libraries | The default CLI build does not use it. `galadriel-ncp`, evaluation, and CLI `ncp` require `ncp-core`. CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` also pulls `ncp-zenoh`, Zenoh, and Tokio. | It supplies wire-0.8 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded offline JSONL, and operational receiver. | Both NCP crates pin `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`. This pin does not prove remote authorization, ACL enforcement, or wire-1.0 compatibility. |
 | [Crebain](https://github.com/sepahead/crebain) | External upstream producer relationship | There is no Cargo dependency. The demo, simulation, evaluation, and replay do not require Crebain. Live operation needs an authorized contract-conforming producer. The code identity does not have to be Crebain. | It supplies the inspected reference component for the observation and monitor sidecar contract. It also supplies the byte-identical retained registry fixture. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head. Galadriel claims no reciprocal final-candidate or deployment qualification. |
 | [Haldir](https://github.com/sepahead/haldir) | Prospective record-only consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It defines the intended future record-only boundary. It also defines a separately admitted restrict-only boundary. Local tests verify that the validator rejects transitions that grant or widen authority. | The integration phase has not started. There is no runtime evidence. |
@@ -133,6 +134,11 @@ It recorded NCP `10492c81ac671ef1909962a9f1fede33781b9933`.
 It recorded Crebain `0a58a5b8dd799884ddb06f1308b1748216fab322`.
 It recorded Haldir remote `main` at `0e94f61cfd5c78482198a765157571746a256181`.
 It recorded Prisoma `63cff105e0e40281376e6f827d7782e9b351961a`.
+
+A 2026-08-14 read-only Prisoma reinspection recorded committed remote `main`
+`efcad9943af818913702f11c47ed0c280a2a1f13`. It supersedes only the earlier
+mutable-head reference. The first-principles redesign still creates no Galadriel
+dependency, adapter, route, or runtime edge.
 
 A second read-only Haldir inspection on 2026-07-18 observed another remote `main` head.
 That head was `dd3d8a1c993721f89a1edb04dec5247761c694ad`.
@@ -288,6 +294,8 @@ The evidence is non-authoritative and record-only. It never widens `ALLOW`.
 ## What the core requires
 
 Galadriel consumes `PidObservation` records that contain NIS and degrees of freedom.
+That pre-release public type name is a historical compatibility name; the record is a
+fusion observation, not a PID tuple or PID estimate.
 Cross-sensor analysis also requires an optional `consistency_projection`.
 This projection contains a bounded signed vector.
 It also contains nonzero physical-frame, projection-context, and frozen-prior identifiers.
@@ -306,7 +314,7 @@ The scope contains these validated coordinates:
 
 The terminal sequence MUST equal the largest sequence in the input stream.
 The terminal timestamp MUST equal the largest timestamp at that sequence.
-`assess_default` and the optional PID `assess_stream` reject a mismatch.
+`assess_default` and the optional dependence `assess_with_dependence` entry point reject a mismatch.
 
 A direct caller declares the scope.
 The core validates its representation and terminal coordinates.
@@ -371,8 +379,9 @@ These conditions do not produce `AttributedInconsistency`.
 A finite degenerate projection column makes its pairwise estimand unavailable.
 The related correlation axis returns `InsufficientEvidence`.
 It withholds all channel corroboration values for that axis.
-The optional PID family also returns `InsufficientEvidence` before it adds
-observation noise. These conditions do not discard independent magnitude evidence.
+The optional MI companion abstains before estimation when a column or pair is not
+eligible. Galadriel adds no noise or tie-breaking transform. These conditions do not
+discard independent magnitude evidence.
 
 `galadriel_core::assess_default(&scope, &stream, &suite)` fuses magnitude and
 consistency evidence.
@@ -390,29 +399,29 @@ The binding does not require each observation to change an estimator or verdict.
 
 Unbound component helpers produce diagnostic tuples only. They cannot create an accepted report.
 
-### PID research layer
+### Dependence companion and offline PID studies
 
-The optional `pid` feature adds geometry-gated KSG mutual information and shared-exclusions PID atoms.
-MI/PID is sign-invariant and thus **additive**.
-It cannot repair missing geometry or create a consensus from a dyad.
-It cannot override contradictory signed correlation.
-Canonical synthetic studies show regimes where this evidence can be useful.
-They do not show that those regimes occur in Crebain output.
+The optional `dependence` feature adds a geometry-gated, report-first pairwise KSG-MI
+graph. Its threshold and strict-majority clique are project-defined descriptive
+heuristics. They have no null calibration or security-error theorem. The companion
+reports `NoSeparationAtConfiguredThreshold`, `SeparatedFromMajorityGraph`, or
+`Unavailable`; these are not `Nominal`, attack, or causal-mechanism labels.
 
-The path pins an immutable pid-rs revision.
-The `pid-core` manifest for this revision declares 1.0.0.
-A retained inspection on 2026-07-22 found no public v1 tag or released upstream 1.x artifact.
+The caller must declare the continuous population, observation, and sampling model.
+Galadriel checks that the declarations are present and bounded; it does not prove them.
+It requires a declared common coordinate gauge, applies the fixed identity transform,
+adds no noise, and abstains on exact ties or rejected geometry. Optional exhaustive
+stability enumerates every circular block start, reruns every pair and graph rule, and reports literal
+minima and maxima. It is not a confidence interval, p-value, or false-alarm guarantee.
 
-The path declares the restricted regular-continuous support model of the pinned revision.
-It records seeded Gaussian observation noise as an estimand-changing model choice.
-It classifies PID2 atoms as `experimental_restricted_domain`.
-Point gates use the pinned report-first KSG API.
-Bounded circular-resample confirmation remains an explicitly experimental raw-scalar pipeline.
+`assess_with_dependence` returns the exact unchanged authoritative `DefaultReport` plus
+companion MI reports and a binding over the exact scope, stream, and suite. MI never
+enters `FusedVerdict` or `ConsistencyEvidence`.
 
-Accepted PID reports add a `PidAssessmentBinding` over the core assessment binding.
-The binding also covers the complete PID research suite.
-It retains the nested core version 2 scope binding.
-See the [0.4→1.0 migration record](docs/PID_RS_1_0_MIGRATION.md).
+Real PID is confined to offline `galadriel-justify` questions with fixed source and
+target identities. The categorical Makkeh–Gutknecht–Wibral functional and the
+related-but-distinct continuous Ehrlich construction are not aliases. A local kNN-MI
+CUSUM heuristic is neither construction. See the [pid-rs migration record](docs/PID_RS_1_0_MIGRATION.md).
 
 ## Project status
 
@@ -440,7 +449,7 @@ Author and maintainer: **Sepehr Mahmoudian**.
 | [`galadriel-core`](crates/galadriel-core) | NIS/CUSUM, signed correlation, fused assessment | Local implementation tests |
 | [`galadriel-sim`](crates/galadriel-sim) | synthetic scenarios and injections | Synthetic only |
 | [`galadriel-cli`](crates/galadriel-cli) | `demo`, `replay`, and strict `observe` driver | Operator prototype. The live path has component tests. |
-| [`galadriel-pid`](crates/galadriel-pid) | KSG-MI / PID evidence | Optional research path |
+| [`galadriel-dependence`](crates/galadriel-dependence) | Geometry-gated pairwise KSG-MI companion | Optional descriptive research path; never fused |
 | [`galadriel-ncp`](crates/galadriel-ncp) | strict codecs, pinned registry, monitor tap, assembler, lifecycle gate, operational Zenoh receiver | Unit, golden, and in-process Zenoh tests. No external deployment evidence. |
 | [`galadriel-eval`](crates/galadriel-eval) | Monte Carlo evaluation and cost bench | Synthetic only |
 | [`galadriel-justify`](crates/galadriel-justify) | canonical forced-versus-justified studies | Synthetic/theoretical only |
@@ -452,7 +461,7 @@ Mutable test totals and benchmark values are not project-status claims.
 ## CLI features and workspace dependencies
 
 The table describes activation from the default-member CLI.
-A direct build of `galadriel-pid`, `galadriel-justify`, or `galadriel-eval` still resolves `pid-core`.
+A direct build of `galadriel-dependence`, `galadriel-justify`, or `galadriel-eval` still resolves `pid-core`.
 A direct build of `galadriel-ncp` or `galadriel-eval` resolves `ncp-core` without a CLI feature.
 A direct `galadriel-ncp` build with feature `zenoh` also resolves `ncp-zenoh`, Zenoh, and Tokio.
 Workspace-wide builds deliberately include those crates.
@@ -460,7 +469,7 @@ Workspace-wide builds deliberately include those crates.
 | Feature | Pulls | Adds |
 |---|---|---|
 | default | no sibling integration crates | core, simulator, CLI |
-| `pid` | Exact `pid-core` Git revision whose manifest declares 1.0.0. Its upstream default set is empty. `parallel` remains off. `experimental-pipelines` selects its continuous and mixed-dimension PID3 research surfaces. | Experimental KSG-MI/PID research layer. No upstream 1.x release claim. |
+| `dependence` | Exact `pid-core` Git revision whose manifest declares 1.0.0. Only its stable default surface is selected; `parallel` and research features remain off. | Descriptive report-first pairwise KSG-MI companion. It does not change the default verdict and makes no upstream 1.x release claim. |
 | `ncp` | `ncp-core` | Bounded JSONL ingest. NCP 0.8 key helpers. Strict observation and producer-monitor envelopes. The CLI `replay` subcommand. |
 | `ncp-live` | `ncp-zenoh`, exact `zenoh` 1.9 guard types, `tokio` | strict `observe` command plus bounded two-route receiver, deadlines, lifecycle gate, and health state |
 
@@ -789,16 +798,18 @@ It includes authenticated and anonymous downloads.
   required fail-closed behavior, and residual risks.
 - [`docs/API-SURFACE.md`](docs/API-SURFACE.md) — stable core and experimental surfaces.
 - [`docs/MIGRATION-0.9.md`](docs/MIGRATION-0.9.md) — source migration to typed 0.9
-  identity, lifecycle, result, and PID APIs.
+  identity, lifecycle, result, and dependence-companion APIs.
 - [`docs/STATE-MACHINE.md`](docs/STATE-MACHINE.md) — positioned lifecycle admission,
   explicit reset/timeout/rollover, and bounded hash-linked receipts.
 - [`docs/DEPENDENCY-POLICY.md`](docs/DEPENDENCY-POLICY.md) — immutable qualification
   pins, locked registry graph, and upstream release-claim boundary.
 - [`docs/MOTIVATION.md`](docs/MOTIVATION.md) — threat basis and scope.
 - [`docs/PAPER.md`](docs/PAPER.md) — research argument and current evidence boundary.
-- [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) — when MI/PID can add information.
+- [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) — when pairwise MI or a separately
+  specified PID study can add information.
 - [`docs/PID_RS_1_0_MIGRATION.md`](docs/PID_RS_1_0_MIGRATION.md) — exact pinned-source
-  PID API/scientific migration without an upstream 1.x release claim.
+  migration of the distinct MI and PID APIs and estimands, without an upstream
+  1.x release claim.
 - [`docs/EVALUATION.md`](docs/EVALUATION.md) — reproducible synthetic methodology.
 - [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) — frozen observation and
   lifecycle/liveness wire contract plus operational acceptance boundary.

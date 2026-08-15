@@ -20,17 +20,14 @@
 //! nonparametric dependence score** and may detect structure that Pearson correlation
 //! does not. It still relies on metric, neighbourhood, and tuning choices. The results
 //! are not a calibration, a field-performance guarantee, or proof that PID is necessary.
-//! The PID atoms reported below are diagnostic study outputs; Galadriel's current PID
-//! verdict is based on pairwise MI and therefore does not detect pure synergy by itself.
+//! The PID atoms reported below are offline diagnostic study outputs. Galadriel's
+//! optional in-process/library companion is a separate pairwise-MI graph. It is not PID and
+//! therefore cannot detect pure synergy by itself.
 
-use galadriel_core::{correlation::pearson, GaladrielError, Result};
-use pid_core::experimental::continuous::raw_scalars::ksg_mi;
+use galadriel_core::{correlation::pearson, GaladrielError};
 use pid_core::{
-    experimental::{
-        continuous::{pid2_isx_estimate, Pid2Config},
-        pipelines::Jitter,
-    },
-    stable::continuous::KsgConfig,
+    experimental::continuous::{pid2_isx_report, Pid2Config, Pid2Provenance, Pid2Report},
+    stable::continuous::{ksg_mi_report, KsgConfig, KsgProvenance},
     DiscreteMatOwned, MatOwned,
 };
 use rand::rngs::StdRng;
@@ -38,6 +35,1352 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
+use serde::Serialize;
+use thiserror::Error;
+
+/// Typed failure from the offline justification studies.
+///
+/// Galadriel contract/configuration failures and pid-core evaluator failures
+/// remain distinct, and the original typed error is retained as the source.
+#[derive(Debug, Error)]
+pub enum JustificationError {
+    #[error("Galadriel study contract failed: {0}")]
+    Galadriel(#[from] GaladrielError),
+    #[error("pid-core evaluator failed: {0}")]
+    PidCore(#[from] pid_core::PidError),
+}
+
+/// Result type for offline justification studies.
+pub type Result<T> = std::result::Result<T, JustificationError>;
+
+/// Exact pid-rs package version selected by the workspace manifest.
+pub const PID_RS_VERSION: &str = "1.0.0";
+/// Immutable pid-rs revision selected by the workspace manifest.
+pub const PID_RS_REVISION: &str = "1cd2424f7967e1752dcc8e53859e8fdad3566f51";
+/// Repository supplying the selected pid-core package.
+pub const PID_RS_GIT_REPOSITORY: &str = "https://github.com/sepahead/pid-rs";
+/// Versioned serialization schema of an offline PID estimand question.
+pub const PID_QUESTION_SCHEMA: &str = "galadriel.pid-question.v2";
+/// Versioned serialization schema of the categorical XOR study result.
+pub const CATEGORICAL_PID_STUDY_SCHEMA: &str = "galadriel.categorical-pid-study.v2";
+/// Versioned serialization schema of the continuous sign-parity study result.
+pub const CONTINUOUS_PID_STUDY_SCHEMA: &str = "galadriel.continuous-pid-study.v2";
+/// Versioned serialization schema of the comparator/composition layer around a PID question.
+pub const JUSTIFICATION_STUDY_PROTOCOL_SCHEMA: &str = "galadriel.justification-study-protocol.v2";
+
+const AUC_BOOTSTRAP_SEED_XOR: u64 = 0x5EED_B007;
+
+/// Exact root-seed relation for one serialized AUC interval row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct AucIntervalSeedRelation {
+    auc_field: &'static str,
+    root_seed_wrapping_add: u64,
+}
+
+impl AucIntervalSeedRelation {
+    pub const fn auc_field(self) -> &'static str {
+        self.auc_field
+    }
+
+    pub const fn root_seed_wrapping_add(self) -> u64 {
+        self.root_seed_wrapping_add
+    }
+}
+
+const CATEGORICAL_AUC_SEED_RELATIONS: [AucIntervalSeedRelation; 4] = [
+    AucIntervalSeedRelation {
+        auc_field: "corr_auc",
+        root_seed_wrapping_add: 1,
+    },
+    AucIntervalSeedRelation {
+        auc_field: "pairwise_mi_auc",
+        root_seed_wrapping_add: 2,
+    },
+    AucIntervalSeedRelation {
+        auc_field: "q_auc",
+        root_seed_wrapping_add: 3,
+    },
+    AucIntervalSeedRelation {
+        auc_field: "sxpid_syn_auc",
+        root_seed_wrapping_add: 4,
+    },
+];
+
+const CONTINUOUS_AUC_SEED_RELATIONS: [AucIntervalSeedRelation; 4] = [
+    AucIntervalSeedRelation {
+        auc_field: "corr_auc",
+        root_seed_wrapping_add: 11,
+    },
+    AucIntervalSeedRelation {
+        auc_field: "pairwise_mi_auc",
+        root_seed_wrapping_add: 12,
+    },
+    AucIntervalSeedRelation {
+        auc_field: "q_auc",
+        root_seed_wrapping_add: 13,
+    },
+    AucIntervalSeedRelation {
+        auc_field: "isx_syn_auc",
+        root_seed_wrapping_add: 14,
+    },
+];
+
+/// Typed identities for the non-PID comparator and composition rows in one study.
+///
+/// A [`PidQuestionSpec`] defines only the named PID functional/evaluator rows.
+/// This sibling record prevents Pearson, mutual-information, and the project-defined
+/// joint contrast `Q` from inheriting that PID identity by proximity in one JSON object.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct JustificationStudyProtocol {
+    schema: &'static str,
+    correlation_score_id: &'static str,
+    correlation_score_origin: &'static str,
+    pairwise_mi_score_id: &'static str,
+    pairwise_mi_score_origin: &'static str,
+    q_score_id: &'static str,
+    q_formula: &'static str,
+    q_score_origin: &'static str,
+    pid_question_scope: &'static str,
+    control_relation: &'static str,
+    sampling_unit: &'static str,
+    auc_interval_procedure_id: &'static str,
+    auc_interval_resamples: usize,
+    auc_interval_scope: &'static str,
+    multiplicity_relation: &'static str,
+    non_pid_aggregate_outputs: &'static [StudyAggregateOutputSpec],
+    rng_implementation: &'static str,
+    generation_stream_relation: &'static str,
+    generation_seed_xor: u64,
+    bootstrap_paired_index_algorithm: &'static str,
+    bootstrap_seed_xor: u64,
+    bootstrap_quantile_algorithm: &'static str,
+    auc_interval_seed_relations: &'static [AucIntervalSeedRelation],
+}
+
+impl JustificationStudyProtocol {
+    fn categorical_xor() -> Self {
+        Self {
+            schema: JUSTIFICATION_STUDY_PROTOCOL_SCHEMA,
+            correlation_score_id: "galadriel.comparator.max-absolute-pearson-pairwise.v1",
+            correlation_score_origin: "project-defined comparator composition of the standard Pearson product-moment statistic",
+            pairwise_mi_score_id: "galadriel.comparator.max-categorical-plugin-mi-pairwise.v1",
+            pairwise_mi_score_origin: "project-defined max composition of the two Shannon MI terms retained by the same pid-core discrete_sxpid2 result",
+            q_score_id: "galadriel.composition.joint-information-contrast-q.v1",
+            q_formula: "I(S1,S2;T) - max(I(S1;T), I(S2;T))",
+            q_score_origin: "project-defined composition of MI terms retained by the same pid-core discrete_sxpid2 result; Q is not a PID atom",
+            pid_question_scope: "PidQuestionSpec governs only pid_trials and sxpid_* fields; it does not identify Pearson, pairwise-MI, or Q as PID",
+            control_relation: "finite-sample without-replacement target permutation; exchangeable conditional on generated rows, not an independent-law sample",
+            sampling_unit: "one independently generated coupled trial plus its within-trial target-permutation control",
+            auc_interval_procedure_id: "galadriel.paired-trial-percentile-bootstrap-auc.v1",
+            auc_interval_resamples: N_BOOT,
+            auc_interval_scope: "separate 95% percentile interval for each AUC; not an interval for an AUC difference",
+            multiplicity_relation: "descriptive study rows; no familywise or false-discovery guarantee",
+            non_pid_aggregate_outputs: &CATEGORICAL_NON_PID_AGGREGATE_OUTPUTS,
+            rng_implementation: "rand 0.8 StdRng::seed_from_u64 plus rand_distr 0.4 APIs; exact resolved crate bytes and Galadriel source revision are not bound by this result and require a publication-bundle lock/source identity",
+            generation_stream_relation: "one StdRng stream seeded by root_seed XOR generation_seed_xor; rows and within-trial without-replacement target permutations are drawn sequentially in trial-index order",
+            generation_seed_xor: 0x5259_6E65,
+            bootstrap_paired_index_algorithm: "for each bootstrap replicate and output position, draw one uniform index from 0..trials and use that same index for coupled and permutation-control scores",
+            bootstrap_seed_xor: AUC_BOOTSTRAP_SEED_XOR,
+            bootstrap_quantile_algorithm: "sort AUC replicates by f64::total_cmp; select round(q*(B-1)) at q=0.025 and q=0.975",
+            auc_interval_seed_relations: &CATEGORICAL_AUC_SEED_RELATIONS,
+        }
+    }
+
+    fn continuous_sign_parity() -> Self {
+        Self {
+            schema: JUSTIFICATION_STUDY_PROTOCOL_SCHEMA,
+            correlation_score_id: "galadriel.comparator.max-absolute-pearson-pairwise.v1",
+            correlation_score_origin: "project-defined comparator composition of the standard Pearson product-moment statistic",
+            pairwise_mi_score_id: "galadriel.comparator.max-ksg-mi-pairwise.v1",
+            pairwise_mi_score_origin: "project-defined max composition of the two KSG MI reports retained inside the same pid-core PID2 report",
+            q_score_id: "galadriel.composition.joint-information-contrast-q.v1",
+            q_formula: "I(S1,S2;T) - max(I(S1;T), I(S2;T))",
+            q_score_origin: "project-defined composition of KSG MI terms retained inside the same pid-core PID2 report; Q is not a PID atom",
+            pid_question_scope: "PidQuestionSpec governs only pid_trials and isx_syn_* fields; it does not identify Pearson, pairwise-MI, or Q as PID",
+            control_relation: "finite-sample without-replacement target permutation; exchangeable conditional on generated rows, not an independent-law sample",
+            sampling_unit: "one independently generated coupled trial plus its within-trial target-permutation control",
+            auc_interval_procedure_id: "galadriel.paired-trial-percentile-bootstrap-auc.v1",
+            auc_interval_resamples: N_BOOT,
+            auc_interval_scope: "separate 95% percentile interval for each AUC; not an interval for an AUC difference",
+            multiplicity_relation: "descriptive study rows; no familywise or false-discovery guarantee",
+            non_pid_aggregate_outputs: &CONTINUOUS_NON_PID_AGGREGATE_OUTPUTS,
+            rng_implementation: "rand 0.8 StdRng::seed_from_u64 plus rand_distr 0.4 APIs; exact resolved crate bytes and Galadriel source revision are not bound by this result and require a publication-bundle lock/source identity",
+            generation_stream_relation: "one StdRng stream seeded by root_seed XOR generation_seed_xor; rows and within-trial without-replacement target permutations are drawn sequentially in trial-index order",
+            generation_seed_xor: 0x516E_9A21,
+            bootstrap_paired_index_algorithm: "for each bootstrap replicate and output position, draw one uniform index from 0..trials and use that same index for coupled and permutation-control scores",
+            bootstrap_seed_xor: AUC_BOOTSTRAP_SEED_XOR,
+            bootstrap_quantile_algorithm: "sort AUC replicates by f64::total_cmp; select round(q*(B-1)) at q=0.025 and q=0.975",
+            auc_interval_seed_relations: &CONTINUOUS_AUC_SEED_RELATIONS,
+        }
+    }
+
+    pub const fn schema(&self) -> &'static str {
+        self.schema
+    }
+    pub const fn correlation_score_id(&self) -> &'static str {
+        self.correlation_score_id
+    }
+    pub const fn correlation_score_origin(&self) -> &'static str {
+        self.correlation_score_origin
+    }
+    pub const fn pairwise_mi_score_id(&self) -> &'static str {
+        self.pairwise_mi_score_id
+    }
+    pub const fn pairwise_mi_score_origin(&self) -> &'static str {
+        self.pairwise_mi_score_origin
+    }
+    pub const fn q_score_id(&self) -> &'static str {
+        self.q_score_id
+    }
+    pub const fn q_formula(&self) -> &'static str {
+        self.q_formula
+    }
+    pub const fn q_score_origin(&self) -> &'static str {
+        self.q_score_origin
+    }
+    pub const fn pid_question_scope(&self) -> &'static str {
+        self.pid_question_scope
+    }
+    pub const fn control_relation(&self) -> &'static str {
+        self.control_relation
+    }
+    pub const fn sampling_unit(&self) -> &'static str {
+        self.sampling_unit
+    }
+    pub const fn auc_interval_procedure_id(&self) -> &'static str {
+        self.auc_interval_procedure_id
+    }
+    pub const fn auc_interval_resamples(&self) -> usize {
+        self.auc_interval_resamples
+    }
+    pub const fn auc_interval_scope(&self) -> &'static str {
+        self.auc_interval_scope
+    }
+    pub const fn multiplicity_relation(&self) -> &'static str {
+        self.multiplicity_relation
+    }
+    pub const fn non_pid_aggregate_outputs(&self) -> &'static [StudyAggregateOutputSpec] {
+        self.non_pid_aggregate_outputs
+    }
+    pub const fn rng_implementation(&self) -> &'static str {
+        self.rng_implementation
+    }
+    pub const fn generation_stream_relation(&self) -> &'static str {
+        self.generation_stream_relation
+    }
+    pub const fn generation_seed_xor(&self) -> u64 {
+        self.generation_seed_xor
+    }
+    pub const fn bootstrap_paired_index_algorithm(&self) -> &'static str {
+        self.bootstrap_paired_index_algorithm
+    }
+    pub const fn bootstrap_seed_xor(&self) -> u64 {
+        self.bootstrap_seed_xor
+    }
+    pub const fn bootstrap_quantile_algorithm(&self) -> &'static str {
+        self.bootstrap_quantile_algorithm
+    }
+    pub const fn auc_interval_seed_relations(&self) -> &'static [AucIntervalSeedRelation] {
+        self.auc_interval_seed_relations
+    }
+}
+
+/// Scientific role of one directed reference edge in a PID question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidReferenceRole {
+    /// Defines the functional evaluated by this route.
+    FunctionalDefinition,
+    /// Originally defines the Williams--Beer antichain redundancy lattice used by the route.
+    OriginalAntichainLatticeDefinition,
+    /// Gives the part-whole/formal-logic derivation used to interpret the lattice.
+    PartWholeLogicalDerivation,
+    /// Defines the paper-specific estimator used by the route.
+    EstimatorDefinition,
+    /// Defines a sample estimator composed by the route.
+    EstimatorImplementationBasis,
+    /// Related construction that this exact route explicitly does not evaluate.
+    RelatedConstructionNotEvaluated,
+}
+
+/// One immutable, role-distinct primary-literature edge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct PidReferenceEdge {
+    roles: &'static [PidReferenceRole],
+    reference_id: &'static str,
+    title: &'static str,
+    complete_team: &'static str,
+    locator: &'static str,
+}
+
+impl PidReferenceEdge {
+    pub const fn roles(self) -> &'static [PidReferenceRole] {
+        self.roles
+    }
+    pub const fn reference_id(self) -> &'static str {
+        self.reference_id
+    }
+    pub const fn title(self) -> &'static str {
+        self.title
+    }
+    pub const fn complete_team(self) -> &'static str {
+        self.complete_team
+    }
+    pub const fn locator(self) -> &'static str {
+        self.locator
+    }
+}
+
+const ROLE_FUNCTIONAL: [PidReferenceRole; 1] = [PidReferenceRole::FunctionalDefinition];
+const ROLE_PART_WHOLE: [PidReferenceRole; 1] = [PidReferenceRole::PartWholeLogicalDerivation];
+const ROLE_ESTIMATOR_BASIS: [PidReferenceRole; 1] =
+    [PidReferenceRole::EstimatorImplementationBasis];
+const ROLE_FUNCTIONAL_AND_ESTIMATOR: [PidReferenceRole; 2] = [
+    PidReferenceRole::FunctionalDefinition,
+    PidReferenceRole::EstimatorDefinition,
+];
+const ROLE_NOT_EVALUATED: [PidReferenceRole; 1] =
+    [PidReferenceRole::RelatedConstructionNotEvaluated];
+const ROLE_ORIGINAL_LATTICE_NOT_FUNCTIONAL: [PidReferenceRole; 2] = [
+    PidReferenceRole::OriginalAntichainLatticeDefinition,
+    PidReferenceRole::RelatedConstructionNotEvaluated,
+];
+
+const CATEGORICAL_REFERENCE_EDGES: [PidReferenceEdge; 4] = [
+    PidReferenceEdge {
+        roles: &ROLE_FUNCTIONAL,
+        reference_id: "makkeh-2021",
+        title: "Introducing a Differentiable Measure of Pointwise Shared Information",
+        complete_team: "Abdullah Makkeh; Aaron J. Gutknecht; Michael Wibral",
+        locator: "https://doi.org/10.1103/PhysRevE.103.032149",
+    },
+    PidReferenceEdge {
+        roles: &ROLE_ORIGINAL_LATTICE_NOT_FUNCTIONAL,
+        reference_id: "williams-beer-2010",
+        title: "Nonnegative Decomposition of Multivariate Information",
+        complete_team: "Paul L. Williams; Randall D. Beer",
+        locator: "https://arxiv.org/abs/1004.2515",
+    },
+    PidReferenceEdge {
+        roles: &ROLE_PART_WHOLE,
+        reference_id: "gutknecht-2021",
+        title: "Bits and Pieces: Understanding Information Decomposition from Part-Whole Relationships and Formal Logic",
+        complete_team: "Aaron J. Gutknecht; Michael Wibral; Abdullah Makkeh",
+        locator: "https://doi.org/10.1098/rspa.2021.0110",
+    },
+    PidReferenceEdge {
+        roles: &ROLE_NOT_EVALUATED,
+        reference_id: "schick-poland-2021",
+        title: "A Partial Information Decomposition for Discrete and Continuous Variables",
+        complete_team: "Kyle Schick-Poland; Abdullah Makkeh; Aaron J. Gutknecht; Patricia Wollstadt; Anja Sturm; Michael Wibral",
+        locator: "https://arxiv.org/abs/2106.12393",
+    },
+];
+
+const CONTINUOUS_REFERENCE_EDGES: [PidReferenceEdge; 4] = [
+    PidReferenceEdge {
+        roles: &ROLE_FUNCTIONAL_AND_ESTIMATOR,
+        reference_id: "ehrlich-2024",
+        title: "Partial Information Decomposition for Continuous Variables Based on Shared Exclusions: Analytical Formulation and Estimation",
+        complete_team: "David A. Ehrlich; Kyle Schick-Poland; Abdullah Makkeh; Felix Lanfermann; Patricia Wollstadt; Michael Wibral",
+        locator: "https://doi.org/10.1103/PhysRevE.110.014115",
+    },
+    PidReferenceEdge {
+        roles: &ROLE_ORIGINAL_LATTICE_NOT_FUNCTIONAL,
+        reference_id: "williams-beer-2010",
+        title: "Nonnegative Decomposition of Multivariate Information",
+        complete_team: "Paul L. Williams; Randall D. Beer",
+        locator: "https://arxiv.org/abs/1004.2515",
+    },
+    PidReferenceEdge {
+        roles: &ROLE_ESTIMATOR_BASIS,
+        reference_id: "kraskov-2004",
+        title: "Estimating Mutual Information",
+        complete_team: "Alexander Kraskov; Harald Stögbauer; Peter Grassberger",
+        locator: "https://doi.org/10.1103/PhysRevE.69.066138",
+    },
+    PidReferenceEdge {
+        roles: &ROLE_NOT_EVALUATED,
+        reference_id: "schick-poland-2021",
+        title: "A Partial Information Decomposition for Discrete and Continuous Variables",
+        complete_team: "Kyle Schick-Poland; Abdullah Makkeh; Aaron J. Gutknecht; Patricia Wollstadt; Anja Sturm; Michael Wibral",
+        locator: "https://arxiv.org/abs/2106.12393",
+    },
+];
+
+/// Paper-defined shared-exclusions functional named by an offline PID question.
+///
+/// These variants are related members of one research lineage. They are not
+/// aliases and their numeric outputs are not presumed interchangeable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidFunctionalIdentity {
+    /// Categorical pointwise shared exclusions of Makkeh, Gutknecht, and Wibral.
+    MakkehGutknechtWibralCategorical,
+    /// Purely continuous construction of Ehrlich, Schick-Poland, Makkeh,
+    /// Lanfermann, Wollstadt, and Wibral.
+    EhrlichSchickPolandMakkehLanfermannWollstadtWibralContinuous,
+}
+
+impl PidFunctionalIdentity {
+    /// Galadriel semantic identity for the paper-defined functional.
+    pub const fn semantic_id(self) -> &'static str {
+        match self {
+            Self::MakkehGutknechtWibralCategorical => {
+                "functional.shared-exclusions.mgw-categorical"
+            }
+            Self::EhrlichSchickPolandMakkehLanfermannWollstadtWibralContinuous => {
+                "functional.shared-exclusions.ehrlich-continuous"
+            }
+        }
+    }
+
+    /// Complete defining team used by the study report.
+    pub const fn defining_team(self) -> &'static str {
+        match self {
+            Self::MakkehGutknechtWibralCategorical => {
+                "Abdullah Makkeh; Aaron J. Gutknecht; Michael Wibral"
+            }
+            Self::EhrlichSchickPolandMakkehLanfermannWollstadtWibralContinuous => {
+                "David A. Ehrlich; Kyle Schick-Poland; Abdullah Makkeh; Felix Lanfermann; Patricia Wollstadt; Michael Wibral"
+            }
+        }
+    }
+
+    /// Role-distinct primary references and explicit non-alias boundary.
+    pub const fn reference_edges(self) -> &'static [PidReferenceEdge] {
+        match self {
+            Self::MakkehGutknechtWibralCategorical => &CATEGORICAL_REFERENCE_EDGES,
+            Self::EhrlichSchickPolandMakkehLanfermannWollstadtWibralContinuous => {
+                &CONTINUOUS_REFERENCE_EDGES
+            }
+        }
+    }
+}
+
+/// pid-rs sample-estimator route used by one fixed offline question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidStudyRoute {
+    /// Empirical categorical plug-in route through `discrete_sxpid2`.
+    EmpiricalCategoricalPlugin,
+    /// Continuous kNN PID2 route through the complete report-first evaluator.
+    ContinuousKnnPid2Report,
+}
+
+impl PidStudyRoute {
+    /// Semantic identity of the functional route used by this study record.
+    ///
+    /// The selected pid-rs revision predates its machine-readable method catalog,
+    /// so the exact compiled API route is recorded separately below.
+    pub const fn method_id(self) -> &'static str {
+        match self {
+            Self::EmpiricalCategoricalPlugin => "shared-exclusions.categorical",
+            Self::ContinuousKnnPid2Report => "pid.continuous-pid2",
+        }
+    }
+
+    /// Exact public pid-core entry point used by Galadriel.
+    pub const fn api_route(self) -> &'static str {
+        match self {
+            Self::EmpiricalCategoricalPlugin => "pid_core::stable::categorical::discrete_sxpid2",
+            Self::ContinuousKnnPid2Report => "pid_core::experimental::continuous::pid2_isx_report",
+        }
+    }
+
+    /// Cargo surface required by the exact evaluator route.
+    pub const fn feature_gate(self) -> &'static str {
+        match self {
+            Self::EmpiricalCategoricalPlugin => "none; stable categorical surface",
+            Self::ContinuousKnnPid2Report => "experimental-continuous",
+        }
+    }
+}
+
+/// Exact package dependency supplying one offline PID evaluation.
+///
+/// This is a local, mechanically checked dependency envelope. The selected
+/// pid-rs revision predates pid-core's richer software-identity API; callers
+/// must not reinterpret this smaller record as source, build, or binary
+/// identity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct PidDependencyIdentity {
+    package_name: &'static str,
+    package_version: &'static str,
+    git_repository: &'static str,
+    git_revision: &'static str,
+    workspace_selected_feature: &'static str,
+}
+
+impl PidDependencyIdentity {
+    const fn pinned() -> Self {
+        Self {
+            package_name: "pid-core",
+            package_version: PID_RS_VERSION,
+            git_repository: PID_RS_GIT_REPOSITORY,
+            git_revision: PID_RS_REVISION,
+            workspace_selected_feature: "experimental-continuous",
+        }
+    }
+
+    pub const fn package_name(self) -> &'static str {
+        self.package_name
+    }
+    pub const fn package_version(self) -> &'static str {
+        self.package_version
+    }
+    pub const fn git_repository(self) -> &'static str {
+        self.git_repository
+    }
+    pub const fn git_revision(self) -> &'static str {
+        self.git_revision
+    }
+    /// Cargo feature selected for pid-core by the containing justification crate.
+    ///
+    /// This is not necessarily required by every route in the crate: the
+    /// categorical evaluator itself is on pid-core's stable default surface.
+    pub const fn workspace_selected_feature(self) -> &'static str {
+        self.workspace_selected_feature
+    }
+}
+
+/// Input-law role of a fixed offline PID study.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidInputLawKind {
+    /// Equal-weight sampled categorical rows interpreted as an empirical PMF.
+    EmpiricalCategoricalRows,
+    /// Sample-estimator input from a declared continuous synthetic population.
+    ContinuousSyntheticRows,
+}
+
+impl PidInputLawKind {
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::EmpiricalCategoricalRows => "empirical-categorical-row-law",
+            Self::ContinuousSyntheticRows => "continuous-synthetic-sample-law",
+        }
+    }
+}
+
+/// Exact generative-law and finite-sample selection statement for one study arm.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct PidInputLawSpec {
+    semantic_id: &'static str,
+    source_joint_law: &'static str,
+    target_law: &'static str,
+    finite_sample_acceptance: &'static str,
+    numeric_representation: &'static str,
+}
+
+impl PidInputLawSpec {
+    pub const fn semantic_id(self) -> &'static str {
+        self.semantic_id
+    }
+    pub const fn source_joint_law(self) -> &'static str {
+        self.source_joint_law
+    }
+    pub const fn target_law(self) -> &'static str {
+        self.target_law
+    }
+    pub const fn finite_sample_acceptance(self) -> &'static str {
+        self.finite_sample_acceptance
+    }
+    pub const fn numeric_representation(self) -> &'static str {
+        self.numeric_representation
+    }
+}
+
+const CATEGORICAL_XOR_LAW: PidInputLawSpec = PidInputLawSpec {
+    semantic_id: "galadriel.law.categorical-xor-iid-fair-bits.v1",
+    source_joint_law: "A and B are mutually independent Bernoulli(1/2) variables; rows are generated independently before the finite-sample acceptance rule",
+    target_law: "T = A XOR B deterministically on each row",
+    finite_sample_acceptance: "draw n-row trials until A, B, and T each contain both binary values, accepting the first such trial; abort after 32 attempts; the retained finite sample is therefore conditioned on this nondegeneracy event",
+    numeric_representation: "A, B, and T are generated as exact u64 values 0 or 1; losslessly converted to binary64 0.0 or 1.0 only for Pearson and pid-core matrix input",
+};
+
+const CONTINUOUS_SIGN_PARITY_LAW: PidInputLawSpec = PidInputLawSpec {
+    semantic_id: "galadriel.law.continuous-sign-parity-standard-normal.v1",
+    source_joint_law: "A, B, and Z are mutually independent standard-normal variables; rows are generated independently",
+    target_law: "T = sign(A) * sign(B) * abs(Z) on each generated row",
+    finite_sample_acceptance: "retain the first n generated rows without data-dependent retry, filtering, or fitted preprocessing",
+    numeric_representation: "binary64 pseudorandom variates from rand 0.8 StdRng and rand_distr 0.4 Normal; the exact resolved stream requires external lock/source identity",
+};
+
+/// Information unit of one explicitly named PID result layer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidInformationUnits {
+    Bits,
+    Nats,
+}
+
+impl PidInformationUnits {
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Bits => "bits",
+            Self::Nats => "nats",
+        }
+    }
+}
+
+/// Construction used to obtain one named PID output coordinate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidQuantityConstruction {
+    /// Möbius inversion of the categorical MGW cumulative lattice quantities.
+    CategoricalMobiusInvertedAtom,
+    /// Direct Ehrlich shared-exclusions redundancy estimate in the retained PID2 report.
+    ContinuousEhrlichSharedExclusionsRedundancyEstimate,
+    /// Unique or synergistic two-source atom algebra composed from the Ehrlich
+    /// redundancy estimate and the retained MI constituents.
+    ContinuousPid2DerivedAtomFromRedundancyAndMutualInformation,
+}
+
+/// Signed component exposed at one PID output coordinate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidAtomComponent {
+    Net,
+    Informative,
+    Misinformative,
+}
+
+/// Aggregation law attached to one PID output coordinate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidAggregationScope {
+    /// Probability-weighted average over the empirical categorical PMF.
+    EmpiricalPmfAverage,
+    /// Continuous sample-estimator output; the trial-arm record determines
+    /// whether population-functional interpretation is licensed.
+    ContinuousSampleEstimatorOutput,
+}
+
+/// Exact two-source redundancy-lattice coordinate of one PID atom.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidLatticeCoordinate {
+    Redundancy,
+    UniqueSource1,
+    UniqueSource2,
+    Synergy,
+}
+
+impl PidLatticeCoordinate {
+    pub const fn semantic_id(self) -> &'static str {
+        match self {
+            Self::Redundancy => "two-source-antichain:{{S1},{S2}}",
+            Self::UniqueSource1 => "two-source-antichain:{{S1}}",
+            Self::UniqueSource2 => "two-source-antichain:{{S2}}",
+            Self::Synergy => "two-source-antichain:{{S1,S2}}",
+        }
+    }
+}
+
+/// Across-trial statistic represented by one serialized PID aggregate field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum StudyAggregateStatistic {
+    /// ROC-AUC separating coupled trials from their paired permutation controls.
+    CoupledVersusPermutationControlRocAuc,
+    /// Paired-trial percentile-bootstrap 95% interval for the corresponding ROC-AUC.
+    PairedTrialPercentileBootstrap95Interval,
+    /// Arithmetic mean over coupled-trial values.
+    CoupledTrialArithmeticMean,
+}
+
+/// Units of one serialized PID aggregate field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum StudyOutputUnits {
+    Bits,
+    Nats,
+    Dimensionless,
+}
+
+impl StudyOutputUnits {
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Bits => "bits",
+            Self::Nats => "nats",
+            Self::Dimensionless => "dimensionless",
+        }
+    }
+}
+
+/// Non-PID quantity represented by one sibling study aggregate field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum StudyQuantityIdentity {
+    MaxAbsolutePearsonPairwise,
+    MaxPairwiseMutualInformation,
+    JointInformationContrastQ,
+    JointMutualInformation,
+}
+
+/// Exact root-result field outside the PID functional allocation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct StudyAggregateOutputSpec {
+    serialized_field: &'static str,
+    quantity: StudyQuantityIdentity,
+    statistic: StudyAggregateStatistic,
+    units: StudyOutputUnits,
+}
+
+impl StudyAggregateOutputSpec {
+    pub const fn serialized_field(self) -> &'static str {
+        self.serialized_field
+    }
+    pub const fn quantity(self) -> StudyQuantityIdentity {
+        self.quantity
+    }
+    pub const fn statistic(self) -> StudyAggregateStatistic {
+        self.statistic
+    }
+    pub const fn units(self) -> StudyOutputUnits {
+        self.units
+    }
+}
+
+/// Interpretation of one retained paired PID evaluator arm.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum PidTrialArmRole {
+    CoupledQuestionLaw,
+    WithinTrialTargetPermutationControl,
+}
+
+/// Exact serialized trial field and the scientific interpretation it may carry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct PidTrialArmSpec {
+    serialized_field: &'static str,
+    role: PidTrialArmRole,
+    interpretation: &'static str,
+}
+
+impl PidTrialArmSpec {
+    pub const fn serialized_field(self) -> &'static str {
+        self.serialized_field
+    }
+    pub const fn role(self) -> PidTrialArmRole {
+        self.role
+    }
+    pub const fn interpretation(self) -> &'static str {
+        self.interpretation
+    }
+}
+
+/// Exact root-result field derived from one retained PID coordinate/component.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct PidAggregateOutputSpec {
+    serialized_field: &'static str,
+    coordinate: PidLatticeCoordinate,
+    component: PidAtomComponent,
+    statistic: StudyAggregateStatistic,
+    units: StudyOutputUnits,
+}
+
+impl PidAggregateOutputSpec {
+    pub const fn serialized_field(self) -> &'static str {
+        self.serialized_field
+    }
+    pub const fn coordinate(self) -> PidLatticeCoordinate {
+        self.coordinate
+    }
+    pub const fn component(self) -> PidAtomComponent {
+        self.component
+    }
+    pub const fn statistic(self) -> StudyAggregateStatistic {
+        self.statistic
+    }
+    pub const fn units(self) -> StudyOutputUnits {
+        self.units
+    }
+}
+
+/// One exact output family coordinate produced inside a retained PID trial report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct PidOutputCoordinateSpec {
+    quantity_id: &'static str,
+    lattice_coordinate: PidLatticeCoordinate,
+    construction: PidQuantityConstruction,
+    components: &'static [PidAtomComponent],
+    aggregation: PidAggregationScope,
+    evaluator_units: PidInformationUnits,
+}
+
+impl PidOutputCoordinateSpec {
+    pub const fn quantity_id(self) -> &'static str {
+        self.quantity_id
+    }
+    pub const fn lattice_coordinate(self) -> PidLatticeCoordinate {
+        self.lattice_coordinate
+    }
+    pub const fn construction(self) -> PidQuantityConstruction {
+        self.construction
+    }
+    pub const fn components(self) -> &'static [PidAtomComponent] {
+        self.components
+    }
+    pub const fn aggregation(self) -> PidAggregationScope {
+        self.aggregation
+    }
+    pub const fn evaluator_units(self) -> PidInformationUnits {
+        self.evaluator_units
+    }
+}
+
+const CATEGORICAL_COMPONENTS: [PidAtomComponent; 3] = [
+    PidAtomComponent::Net,
+    PidAtomComponent::Informative,
+    PidAtomComponent::Misinformative,
+];
+const CONTINUOUS_COMPONENTS: [PidAtomComponent; 1] = [PidAtomComponent::Net];
+
+const CATEGORICAL_OUTPUT_COORDINATES: [PidOutputCoordinateSpec; 4] = [
+    PidOutputCoordinateSpec {
+        quantity_id: "quantity.shared-exclusions.mgw-categorical.mobius-atom.redundancy",
+        lattice_coordinate: PidLatticeCoordinate::Redundancy,
+        construction: PidQuantityConstruction::CategoricalMobiusInvertedAtom,
+        components: &CATEGORICAL_COMPONENTS,
+        aggregation: PidAggregationScope::EmpiricalPmfAverage,
+        evaluator_units: PidInformationUnits::Nats,
+    },
+    PidOutputCoordinateSpec {
+        quantity_id: "quantity.shared-exclusions.mgw-categorical.mobius-atom.unique-source-1",
+        lattice_coordinate: PidLatticeCoordinate::UniqueSource1,
+        construction: PidQuantityConstruction::CategoricalMobiusInvertedAtom,
+        components: &CATEGORICAL_COMPONENTS,
+        aggregation: PidAggregationScope::EmpiricalPmfAverage,
+        evaluator_units: PidInformationUnits::Nats,
+    },
+    PidOutputCoordinateSpec {
+        quantity_id: "quantity.shared-exclusions.mgw-categorical.mobius-atom.unique-source-2",
+        lattice_coordinate: PidLatticeCoordinate::UniqueSource2,
+        construction: PidQuantityConstruction::CategoricalMobiusInvertedAtom,
+        components: &CATEGORICAL_COMPONENTS,
+        aggregation: PidAggregationScope::EmpiricalPmfAverage,
+        evaluator_units: PidInformationUnits::Nats,
+    },
+    PidOutputCoordinateSpec {
+        quantity_id: "quantity.shared-exclusions.mgw-categorical.mobius-atom.synergy",
+        lattice_coordinate: PidLatticeCoordinate::Synergy,
+        construction: PidQuantityConstruction::CategoricalMobiusInvertedAtom,
+        components: &CATEGORICAL_COMPONENTS,
+        aggregation: PidAggregationScope::EmpiricalPmfAverage,
+        evaluator_units: PidInformationUnits::Nats,
+    },
+];
+
+const CONTINUOUS_OUTPUT_COORDINATES: [PidOutputCoordinateSpec; 4] = [
+    PidOutputCoordinateSpec {
+        quantity_id: "quantity.shared-exclusions.ehrlich-continuous.pid2-atom.redundancy",
+        lattice_coordinate: PidLatticeCoordinate::Redundancy,
+        construction: PidQuantityConstruction::ContinuousEhrlichSharedExclusionsRedundancyEstimate,
+        components: &CONTINUOUS_COMPONENTS,
+        aggregation: PidAggregationScope::ContinuousSampleEstimatorOutput,
+        evaluator_units: PidInformationUnits::Nats,
+    },
+    PidOutputCoordinateSpec {
+        quantity_id: "quantity.shared-exclusions.ehrlich-continuous.pid2-atom.unique-source-1",
+        lattice_coordinate: PidLatticeCoordinate::UniqueSource1,
+        construction:
+            PidQuantityConstruction::ContinuousPid2DerivedAtomFromRedundancyAndMutualInformation,
+        components: &CONTINUOUS_COMPONENTS,
+        aggregation: PidAggregationScope::ContinuousSampleEstimatorOutput,
+        evaluator_units: PidInformationUnits::Nats,
+    },
+    PidOutputCoordinateSpec {
+        quantity_id: "quantity.shared-exclusions.ehrlich-continuous.pid2-atom.unique-source-2",
+        lattice_coordinate: PidLatticeCoordinate::UniqueSource2,
+        construction:
+            PidQuantityConstruction::ContinuousPid2DerivedAtomFromRedundancyAndMutualInformation,
+        components: &CONTINUOUS_COMPONENTS,
+        aggregation: PidAggregationScope::ContinuousSampleEstimatorOutput,
+        evaluator_units: PidInformationUnits::Nats,
+    },
+    PidOutputCoordinateSpec {
+        quantity_id: "quantity.shared-exclusions.ehrlich-continuous.pid2-atom.synergy",
+        lattice_coordinate: PidLatticeCoordinate::Synergy,
+        construction:
+            PidQuantityConstruction::ContinuousPid2DerivedAtomFromRedundancyAndMutualInformation,
+        components: &CONTINUOUS_COMPONENTS,
+        aggregation: PidAggregationScope::ContinuousSampleEstimatorOutput,
+        evaluator_units: PidInformationUnits::Nats,
+    },
+];
+
+const CATEGORICAL_AGGREGATE_OUTPUTS: [PidAggregateOutputSpec; 4] = [
+    PidAggregateOutputSpec {
+        serialized_field: "sxpid_syn_auc",
+        coordinate: PidLatticeCoordinate::Synergy,
+        component: PidAtomComponent::Net,
+        statistic: StudyAggregateStatistic::CoupledVersusPermutationControlRocAuc,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    PidAggregateOutputSpec {
+        serialized_field: "sxpid_syn_auc_ci",
+        coordinate: PidLatticeCoordinate::Synergy,
+        component: PidAtomComponent::Net,
+        statistic: StudyAggregateStatistic::PairedTrialPercentileBootstrap95Interval,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    PidAggregateOutputSpec {
+        serialized_field: "sxpid_syn_coupled_mean",
+        coordinate: PidLatticeCoordinate::Synergy,
+        component: PidAtomComponent::Net,
+        statistic: StudyAggregateStatistic::CoupledTrialArithmeticMean,
+        units: StudyOutputUnits::Bits,
+    },
+    PidAggregateOutputSpec {
+        serialized_field: "sxpid_red_coupled_mean",
+        coordinate: PidLatticeCoordinate::Redundancy,
+        component: PidAtomComponent::Net,
+        statistic: StudyAggregateStatistic::CoupledTrialArithmeticMean,
+        units: StudyOutputUnits::Bits,
+    },
+];
+
+const CONTINUOUS_AGGREGATE_OUTPUTS: [PidAggregateOutputSpec; 3] = [
+    PidAggregateOutputSpec {
+        serialized_field: "isx_syn_auc",
+        coordinate: PidLatticeCoordinate::Synergy,
+        component: PidAtomComponent::Net,
+        statistic: StudyAggregateStatistic::CoupledVersusPermutationControlRocAuc,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    PidAggregateOutputSpec {
+        serialized_field: "isx_syn_auc_ci",
+        coordinate: PidLatticeCoordinate::Synergy,
+        component: PidAtomComponent::Net,
+        statistic: StudyAggregateStatistic::PairedTrialPercentileBootstrap95Interval,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    PidAggregateOutputSpec {
+        serialized_field: "isx_syn_coupled_mean",
+        coordinate: PidLatticeCoordinate::Synergy,
+        component: PidAtomComponent::Net,
+        statistic: StudyAggregateStatistic::CoupledTrialArithmeticMean,
+        units: StudyOutputUnits::Nats,
+    },
+];
+
+const CATEGORICAL_NON_PID_AGGREGATE_OUTPUTS: [StudyAggregateOutputSpec; 7] = [
+    StudyAggregateOutputSpec {
+        serialized_field: "corr_auc",
+        quantity: StudyQuantityIdentity::MaxAbsolutePearsonPairwise,
+        statistic: StudyAggregateStatistic::CoupledVersusPermutationControlRocAuc,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "corr_auc_ci",
+        quantity: StudyQuantityIdentity::MaxAbsolutePearsonPairwise,
+        statistic: StudyAggregateStatistic::PairedTrialPercentileBootstrap95Interval,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "pairwise_mi_auc",
+        quantity: StudyQuantityIdentity::MaxPairwiseMutualInformation,
+        statistic: StudyAggregateStatistic::CoupledVersusPermutationControlRocAuc,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "pairwise_mi_auc_ci",
+        quantity: StudyQuantityIdentity::MaxPairwiseMutualInformation,
+        statistic: StudyAggregateStatistic::PairedTrialPercentileBootstrap95Interval,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "q_auc",
+        quantity: StudyQuantityIdentity::JointInformationContrastQ,
+        statistic: StudyAggregateStatistic::CoupledVersusPermutationControlRocAuc,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "q_auc_ci",
+        quantity: StudyQuantityIdentity::JointInformationContrastQ,
+        statistic: StudyAggregateStatistic::PairedTrialPercentileBootstrap95Interval,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "q_coupled_mean",
+        quantity: StudyQuantityIdentity::JointInformationContrastQ,
+        statistic: StudyAggregateStatistic::CoupledTrialArithmeticMean,
+        units: StudyOutputUnits::Bits,
+    },
+];
+
+const CONTINUOUS_NON_PID_AGGREGATE_OUTPUTS: [StudyAggregateOutputSpec; 7] = [
+    StudyAggregateOutputSpec {
+        serialized_field: "corr_auc",
+        quantity: StudyQuantityIdentity::MaxAbsolutePearsonPairwise,
+        statistic: StudyAggregateStatistic::CoupledVersusPermutationControlRocAuc,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "corr_auc_ci",
+        quantity: StudyQuantityIdentity::MaxAbsolutePearsonPairwise,
+        statistic: StudyAggregateStatistic::PairedTrialPercentileBootstrap95Interval,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "pairwise_mi_auc",
+        quantity: StudyQuantityIdentity::MaxPairwiseMutualInformation,
+        statistic: StudyAggregateStatistic::CoupledVersusPermutationControlRocAuc,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "pairwise_mi_auc_ci",
+        quantity: StudyQuantityIdentity::MaxPairwiseMutualInformation,
+        statistic: StudyAggregateStatistic::PairedTrialPercentileBootstrap95Interval,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "q_auc",
+        quantity: StudyQuantityIdentity::JointInformationContrastQ,
+        statistic: StudyAggregateStatistic::CoupledVersusPermutationControlRocAuc,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "q_auc_ci",
+        quantity: StudyQuantityIdentity::JointInformationContrastQ,
+        statistic: StudyAggregateStatistic::PairedTrialPercentileBootstrap95Interval,
+        units: StudyOutputUnits::Dimensionless,
+    },
+    StudyAggregateOutputSpec {
+        serialized_field: "joint_mi_coupled_mean",
+        quantity: StudyQuantityIdentity::JointMutualInformation,
+        statistic: StudyAggregateStatistic::CoupledTrialArithmeticMean,
+        units: StudyOutputUnits::Nats,
+    },
+];
+
+const CATEGORICAL_TRIAL_ARMS: [PidTrialArmSpec; 2] = [
+    PidTrialArmSpec {
+        serialized_field: "coupled",
+        role: PidTrialArmRole::CoupledQuestionLaw,
+        interpretation: "empirical-PMF MGW evaluation of the generated XOR row law",
+    },
+    PidTrialArmSpec {
+        serialized_field: "permutation_control",
+        role: PidTrialArmRole::WithinTrialTargetPermutationControl,
+        interpretation: "empirical-PMF MGW evaluation after within-trial target permutation; a descriptive randomization object, not an independent-law sample",
+    },
+];
+
+const CONTINUOUS_TRIAL_ARMS: [PidTrialArmSpec; 2] = [
+    PidTrialArmSpec {
+        serialized_field: "coupled",
+        role: PidTrialArmRole::CoupledQuestionLaw,
+        interpretation: "sample estimate of the named continuous functional under the declared generated i.i.d. coupled law",
+    },
+    PidTrialArmSpec {
+        serialized_field: "permutation_control",
+        role: PidTrialArmRole::WithinTrialTargetPermutationControl,
+        interpretation: "same evaluator applied after within-trial target permutation; an exchangeable descriptive randomization score, not an i.i.d. independent-law or population-functional estimate",
+    },
+];
+
+/// Sealed estimand and provenance record for one fixed offline PID question.
+///
+/// The dependency identity says which pinned pid-core package supplied the
+/// evaluator. It does not prove application validity, estimator assumptions,
+/// source authenticity, build identity, or numerical portability.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PidQuestionSpec {
+    schema: &'static str,
+    functional: PidFunctionalIdentity,
+    reference_edges: &'static [PidReferenceEdge],
+    route: PidStudyRoute,
+    law_kind: PidInputLawKind,
+    input_law: PidInputLawSpec,
+    source_count: usize,
+    ordered_sources: [&'static str; 2],
+    target: &'static str,
+    output_coordinates: &'static [PidOutputCoordinateSpec],
+    aggregate_outputs: &'static [PidAggregateOutputSpec],
+    trial_arms: &'static [PidTrialArmSpec],
+    route_configuration: &'static str,
+    transform_relation: &'static str,
+    row_relation: &'static str,
+    support_and_gauge: &'static str,
+    sign_convention: &'static str,
+    output_relation: &'static str,
+    evaluator_units: PidInformationUnits,
+    atom_aggregate_units: PidInformationUnits,
+    pid_core_dependency: PidDependencyIdentity,
+}
+
+impl PidQuestionSpec {
+    /// Fixed categorical XOR allocation question used by
+    /// [`run_categorical_xor_justification`].
+    pub fn categorical_xor() -> Self {
+        Self {
+            schema: PID_QUESTION_SCHEMA,
+            functional: PidFunctionalIdentity::MakkehGutknechtWibralCategorical,
+            reference_edges: &CATEGORICAL_REFERENCE_EDGES,
+            route: PidStudyRoute::EmpiricalCategoricalPlugin,
+            law_kind: PidInputLawKind::EmpiricalCategoricalRows,
+            input_law: CATEGORICAL_XOR_LAW,
+            source_count: 2,
+            ordered_sources: ["xor.source-a", "xor.source-b"],
+            target: "xor.target-a-xor-b",
+            output_coordinates: &CATEGORICAL_OUTPUT_COORDINATES,
+            aggregate_outputs: &CATEGORICAL_AGGREGATE_OUTPUTS,
+            trial_arms: &CATEGORICAL_TRIAL_ARMS,
+            route_configuration: "canonical pid-core discrete_sxpid2 empirical-PMF evaluator; no comparator or fallback functional",
+            transform_relation: "lossless-binary-0-or-1-encoding; no fitted transform",
+            row_relation: "same sampled rows for both sources and target; shuffled-target control is a separate descriptive permutation object",
+            support_and_gauge: "finite binary alphabets; empirical equal-weight plug-in PMF; no continuous source gauge",
+            sign_convention: "net = informative - misinformative at every retained MGW atom; negative net atoms are preserved",
+            output_relation: "pid-core evaluator and retained per-trial results remain in nats; aggregate/display atoms divide by ln(2) exactly once and are in bits",
+            evaluator_units: PidInformationUnits::Nats,
+            atom_aggregate_units: PidInformationUnits::Bits,
+            pid_core_dependency: PidDependencyIdentity::pinned(),
+        }
+    }
+
+    /// Fixed continuous sign-parity allocation question used by
+    /// [`run_continuous_sign_parity_justification`].
+    pub fn continuous_sign_parity() -> Self {
+        Self {
+            schema: PID_QUESTION_SCHEMA,
+            functional:
+                PidFunctionalIdentity::EhrlichSchickPolandMakkehLanfermannWollstadtWibralContinuous,
+            reference_edges: &CONTINUOUS_REFERENCE_EDGES,
+            route: PidStudyRoute::ContinuousKnnPid2Report,
+            law_kind: PidInputLawKind::ContinuousSyntheticRows,
+            input_law: CONTINUOUS_SIGN_PARITY_LAW,
+            source_count: 2,
+            ordered_sources: ["sign-parity.source-a", "sign-parity.source-b"],
+            target: "sign-parity.target-sign-a-times-sign-b-times-abs-z",
+            output_coordinates: &CONTINUOUS_OUTPUT_COORDINATES,
+            aggregate_outputs: &CONTINUOUS_AGGREGATE_OUTPUTS,
+            trial_arms: &CONTINUOUS_TRIAL_ARMS,
+            route_configuration: "Pid2Config::assume_regular_full_dimensional; exact realized estimator reports retained per trial; no fallback functional",
+            transform_relation: "identity coordinates; no fitted preprocessing, quantization, added noise, or tie-breaking transform",
+            row_relation: "same declared i.i.d. synthetic rows for both sources and target; shuffled-target control is a separate descriptive permutation object",
+            support_and_gauge: "declared full-dimensional continuous tuple; both source gauges fixed to standard-normal simulator coordinates; target retains its generated coordinate",
+            sign_convention: "signed PID2 atoms are retained without clamping; atom algebra uses the signed KSG MI constituents",
+            output_relation: "pid-core evaluator, retained per-trial reports, and aggregate/display atoms all remain in nats",
+            evaluator_units: PidInformationUnits::Nats,
+            atom_aggregate_units: PidInformationUnits::Nats,
+            pid_core_dependency: PidDependencyIdentity::pinned(),
+        }
+    }
+
+    pub const fn schema(&self) -> &'static str {
+        self.schema
+    }
+    pub const fn functional(&self) -> PidFunctionalIdentity {
+        self.functional
+    }
+    pub const fn reference_edges(&self) -> &'static [PidReferenceEdge] {
+        self.reference_edges
+    }
+    pub const fn route(&self) -> PidStudyRoute {
+        self.route
+    }
+    pub const fn law_kind(&self) -> PidInputLawKind {
+        self.law_kind
+    }
+    pub const fn input_law(&self) -> PidInputLawSpec {
+        self.input_law
+    }
+    pub const fn source_count(&self) -> usize {
+        self.source_count
+    }
+    pub const fn ordered_sources(&self) -> &[&'static str; 2] {
+        &self.ordered_sources
+    }
+    pub const fn target(&self) -> &'static str {
+        self.target
+    }
+    pub const fn output_coordinates(&self) -> &'static [PidOutputCoordinateSpec] {
+        self.output_coordinates
+    }
+    pub const fn aggregate_outputs(&self) -> &'static [PidAggregateOutputSpec] {
+        self.aggregate_outputs
+    }
+    pub const fn trial_arms(&self) -> &'static [PidTrialArmSpec] {
+        self.trial_arms
+    }
+    pub const fn route_configuration(&self) -> &'static str {
+        self.route_configuration
+    }
+    pub const fn transform_relation(&self) -> &'static str {
+        self.transform_relation
+    }
+    pub const fn row_relation(&self) -> &'static str {
+        self.row_relation
+    }
+    pub const fn support_and_gauge(&self) -> &'static str {
+        self.support_and_gauge
+    }
+    pub const fn sign_convention(&self) -> &'static str {
+        self.sign_convention
+    }
+    pub const fn output_relation(&self) -> &'static str {
+        self.output_relation
+    }
+    pub const fn evaluator_units(&self) -> PidInformationUnits {
+        self.evaluator_units
+    }
+    pub const fn atom_aggregate_units(&self) -> PidInformationUnits {
+        self.atom_aggregate_units
+    }
+    pub const fn pid_core_dependency(&self) -> PidDependencyIdentity {
+        self.pid_core_dependency
+    }
+}
+
+fn format_pid_question(question: &PidQuestionSpec) -> String {
+    let dependency = question.pid_core_dependency();
+    let mut output = format!(
+        "PID question: schema={} · functional={} · primary functional team={}\n\
+         route={} ({}) · route feature={} · evaluation=sample estimator · law={} · evaluator units={} · atom-aggregate units={}\n\
+         source count={} · ordered sources=[{}, {}] · target={}\n\
+         input law={} · sources={} · target law={}\n\
+         finite-sample acceptance={}\n\
+         numeric representation={}\n\
+         route configuration={}\n\
+         transform={}\n\
+         row relation={}\n\
+         support/gauge={}\n\
+         sign convention={}\n\
+         output relation={}\n\
+         pid-core package={} {} · workspace selected feature={}\n\
+         pid-rs repository={} · revision={}\n",
+        question.schema(),
+        question.functional().semantic_id(),
+        question.functional().defining_team(),
+        question.route().method_id(),
+        question.route().api_route(),
+        question.route().feature_gate(),
+        question.law_kind().name(),
+        question.evaluator_units().name(),
+        question.atom_aggregate_units().name(),
+        question.source_count(),
+        question.ordered_sources()[0],
+        question.ordered_sources()[1],
+        question.target(),
+        question.input_law().semantic_id(),
+        question.input_law().source_joint_law(),
+        question.input_law().target_law(),
+        question.input_law().finite_sample_acceptance(),
+        question.input_law().numeric_representation(),
+        question.route_configuration(),
+        question.transform_relation(),
+        question.row_relation(),
+        question.support_and_gauge(),
+        question.sign_convention(),
+        question.output_relation(),
+        dependency.package_name(),
+        dependency.package_version(),
+        dependency.workspace_selected_feature(),
+        dependency.git_repository(),
+        dependency.git_revision(),
+    );
+    output.push_str("reference edges:\n");
+    for edge in question.reference_edges() {
+        output.push_str(&format!(
+            "  {:?}: {} · {} · team={} · {}\n",
+            edge.roles(),
+            edge.reference_id(),
+            edge.title(),
+            edge.complete_team(),
+            edge.locator(),
+        ));
+    }
+    output.push_str("output coordinates:\n");
+    for coordinate in question.output_coordinates() {
+        output.push_str(&format!(
+            "  {} · lattice={} · construction={:?} · components={:?} · within-trial aggregation={:?} · units={}\n",
+            coordinate.quantity_id(),
+            coordinate.lattice_coordinate().semantic_id(),
+            coordinate.construction(),
+            coordinate.components(),
+            coordinate.aggregation(),
+            coordinate.evaluator_units().name(),
+        ));
+    }
+    output.push_str("serialized PID aggregate fields:\n");
+    for aggregate in question.aggregate_outputs() {
+        output.push_str(&format!(
+            "  {} <- lattice={} component={:?} statistic={:?} units={}\n",
+            aggregate.serialized_field(),
+            aggregate.coordinate().semantic_id(),
+            aggregate.component(),
+            aggregate.statistic(),
+            aggregate.units().name(),
+        ));
+    }
+    output.push_str("retained PID trial arms:\n");
+    for arm in question.trial_arms() {
+        output.push_str(&format!(
+            "  {} · role={:?} · {}\n",
+            arm.serialized_field(),
+            arm.role(),
+            arm.interpretation(),
+        ));
+    }
+    output
+}
+
+fn format_study_protocol(protocol: &JustificationStudyProtocol) -> String {
+    let mut output = format!(
+        "Comparator/composition protocol: schema={}\n\
+         correlation={} · pairwise MI={}\n\
+         Q={} · formula={} · Q is not a PID atom\n\
+         PID-question scope={}\n\
+         control relation={}\n\
+         sampling unit={}\n\
+         AUC interval={} · resamples={} · scope={}\n\
+         multiplicity relation={}\n\
+         RNG={}\n\
+         generation stream={} · generation seed XOR={:#x}\n\
+         paired-index bootstrap={}\n\
+         bootstrap seed XOR={:#x} · percentile selection={}\n",
+        protocol.schema(),
+        protocol.correlation_score_id(),
+        protocol.pairwise_mi_score_id(),
+        protocol.q_score_id(),
+        protocol.q_formula(),
+        protocol.pid_question_scope(),
+        protocol.control_relation(),
+        protocol.sampling_unit(),
+        protocol.auc_interval_procedure_id(),
+        protocol.auc_interval_resamples(),
+        protocol.auc_interval_scope(),
+        protocol.multiplicity_relation(),
+        protocol.rng_implementation(),
+        protocol.generation_stream_relation(),
+        protocol.generation_seed_xor(),
+        protocol.bootstrap_paired_index_algorithm(),
+        protocol.bootstrap_seed_xor(),
+        protocol.bootstrap_quantile_algorithm(),
+    );
+    output.push_str("serialized non-PID aggregate fields:\n");
+    for aggregate in protocol.non_pid_aggregate_outputs() {
+        output.push_str(&format!(
+            "  {} <- quantity={:?} statistic={:?} units={}\n",
+            aggregate.serialized_field(),
+            aggregate.quantity(),
+            aggregate.statistic(),
+            aggregate.units().name(),
+        ));
+    }
+    output.push_str("AUC interval seed relations:\n");
+    for relation in protocol.auc_interval_seed_relations() {
+        output.push_str(&format!(
+            "  {} interval seed = root_seed.wrapping_add({}) before XOR\n",
+            relation.auc_field(),
+            relation.root_seed_wrapping_add(),
+        ));
+    }
+    output
+}
 
 /// The cross-variable coupling under test.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,44 +1410,56 @@ impl Coupling {
 
 /// Absolute Pearson correlation with finite-input and equal-length validation.
 pub fn abs_pearson(x: &[f64], y: &[f64]) -> Result<f64> {
-    pearson(x, y).map(f64::abs)
+    pearson(x, y).map(f64::abs).map_err(Into::into)
 }
 
-/// KSG mutual information (nats) under this synthetic study's declared additive
-/// observation-noise model and regular full-dimensional Gaussian support.
-fn ksg(seed: u64, x: &[f64], y: &[f64]) -> Result<f64> {
+/// Report-first KSG mutual information in nats for one named synthetic row set.
+///
+/// The caller supplies the sampling-model description because the coupled,
+/// permutation-control, and onset-crossing windows are different statistical
+/// objects. Galadriel adds no noise. Exact ties therefore make the continuous
+/// estimator abstain instead of changing the estimand.
+fn ksg(evaluation_id: u64, x: &[f64], y: &[f64], sampling_model: &str) -> Result<f64> {
     if x.len() != y.len() || x.is_empty() {
         return Err(GaladrielError::InvalidChannels(format!(
             "KSG columns must be non-empty and equally sized ({} != {})",
             x.len(),
             y.len()
-        )));
+        ))
+        .into());
     }
     if !x.iter().chain(y).all(|value| value.is_finite()) {
-        return Err(GaladrielError::NonFinite("KSG input"));
+        return Err(GaladrielError::NonFinite("KSG input").into());
     }
 
-    // pid-core's Jitter restarts its deterministic RNG on every `apply`. Reusing one
-    // instance for both columns would therefore add the *same* noise to X and Y and
-    // manufacture dependence. Domain-separated seeds make the perturbations independent.
-    let build = |values: &[f64], domain: u64| {
-        let matrix = MatOwned::new(values.to_vec(), values.len(), 1).map_err(pid_error)?;
-        Jitter::new(1e-6, seed ^ domain)
-            .and_then(|jitter| jitter.apply(matrix.as_ref()))
-            .map_err(pid_error)
-    };
-    let a = build(x, 0x584A_4954_5445_5201)?;
-    let b = build(y, 0x594A_4954_5445_5202)?;
-    ksg_mi(
+    let a = MatOwned::new(x.to_vec(), x.len(), 1).map_err(pid_error)?;
+    let b = MatOwned::new(y.to_vec(), y.len(), 1).map_err(pid_error)?;
+    let split_id = format!("synthetic-evaluation-{evaluation_id:016x}");
+    let provenance = KsgProvenance::new(
+        "No fitted preprocessing; both scalar columns retain their registered simulator coordinates.",
+        "Direct binary64 pseudorandom representation of the declared continuous synthetic law; no deliberate quantization, added noise, or tie-breaking transform.",
+        None,
+    )
+    .and_then(|provenance| {
+        provenance.with_sampling_model_and_splits(
+            sampling_model,
+            None,
+            Some(&split_id),
+        )
+    })
+    .map_err(pid_error)?;
+    let report = ksg_mi_report(
         a.as_ref(),
         b.as_ref(),
         &KsgConfig::assume_regular_full_dimensional(),
+        &provenance,
     )
-    .map_err(pid_error)
+    .map_err(pid_error)?;
+    Ok(report.signed_estimate_nats)
 }
 
-fn pid_error(error: pid_core::PidError) -> GaladrielError {
-    GaladrielError::InvalidChannels(format!("PID estimator rejected study input: {error}"))
+fn pid_error(error: pid_core::PidError) -> JustificationError {
+    JustificationError::PidCore(error)
 }
 
 /// Mechanical minimum trials per inferential class/arm; this is not a power guarantee.
@@ -114,36 +1469,110 @@ pub const MIN_BOOTSTRAP_RESAMPLES: usize = 200;
 /// Maximum trials per inferential class/arm.
 pub const MAX_TRIALS: usize = 1_000;
 const MAX_SAMPLES: usize = 10_000;
-/// Upper bound on the approximate number of pair-distance comparisons in one study.
-const MAX_DISTANCE_COMPARISONS: usize = 1_000_000_000;
+/// Upper bound on exact constituent pair-distance evaluations in one study.
+const MAX_DISTANCE_COMPARISONS: u128 = 1_200_000_000;
 /// Upper bound on AUC score comparisons performed across all bootstrap CIs in one study.
 const MAX_BOOTSTRAP_AUC_COMPARISONS: usize = 500_000_000;
-/// Upper bound on aggregate pair-distance comparisons in the default CLI suite.
-const MAX_CLI_DISTANCE_COMPARISONS: usize = 2_000_000_000;
+/// Upper bound on exact constituent pair-distance evaluations in the default CLI suite.
+const MAX_CLI_DISTANCE_COMPARISONS: u128 = 3_000_000_000;
 /// Upper bound on aggregate AUC comparisons in the default CLI suite.
 const MAX_CLI_BOOTSTRAP_AUC_COMPARISONS: usize = 500_000_000;
 
 fn checked_product(label: &str, factors: &[usize]) -> Result<usize> {
-    factors.iter().try_fold(1usize, |work, &factor| {
-        work.checked_mul(factor).ok_or_else(|| {
-            GaladrielError::InvalidConfig(format!("{label} work estimate overflowed"))
+    factors
+        .iter()
+        .try_fold(1usize, |work, &factor| {
+            work.checked_mul(factor).ok_or_else(|| {
+                GaladrielError::InvalidConfig(format!("{label} work estimate overflowed"))
+            })
         })
-    })
+        .map_err(Into::into)
 }
 
 fn enforce_work(label: &str, work: usize, limit: usize) -> Result<()> {
     if work > limit {
         return Err(GaladrielError::InvalidConfig(format!(
             "{label} work estimate {work} exceeds limit {limit}; reduce trials, samples, or bootstrap count"
-        )));
+        ))
+        .into());
     }
     Ok(())
 }
 
-fn ksg_work(trials: usize, n: usize, estimator_equivalents: usize) -> Result<usize> {
-    checked_product(
+fn checked_distance_product(label: &str, factors: &[u128]) -> Result<u128> {
+    factors
+        .iter()
+        .try_fold(1u128, |work, &factor| {
+            work.checked_mul(factor).ok_or_else(|| {
+                GaladrielError::InvalidConfig(format!("{label} work estimate overflowed"))
+            })
+        })
+        .map_err(Into::into)
+}
+
+fn checked_distance_sum(label: &str, values: &[u128]) -> Result<u128> {
+    values
+        .iter()
+        .try_fold(0u128, |total, &value| {
+            total.checked_add(value).ok_or_else(|| {
+                GaladrielError::InvalidConfig(format!("{label} work estimate overflowed"))
+            })
+        })
+        .map_err(Into::into)
+}
+
+fn triangular_pairs(n: usize) -> Result<u128> {
+    let n = n as u128;
+    n.checked_mul(n.saturating_sub(1))
+        .and_then(|value| value.checked_div(2))
+        .ok_or_else(|| {
+            GaladrielError::InvalidConfig(
+                "pair-distance triangular work estimate overflowed".into(),
+            )
+        })
+        .map_err(Into::into)
+}
+
+/// One report-first KSG call evaluates four triangular pair sets: estimator,
+/// first marginal support, second marginal support, and joint-shell support.
+fn ksg_report_distance_work(n: usize) -> Result<u128> {
+    checked_distance_product("KSG report distance-comparison", &[triangular_pairs(n)?, 4])
+}
+
+/// One complete PID2 report evaluates three report-first KSG constituents and
+/// one Ehrlich shared-exclusions constituent: `3 * 4 + 1 = 13` triangular passes.
+///
+/// The pinned pid-rs aggregate preflight currently uses its cheaper x-blocks
+/// estimate for the joined-source constituent even though execution constructs
+/// and reports the full joined-source KSG route. Galadriel therefore composes the
+/// four executed constituent routes explicitly and tests this count against the
+/// resource estimates retained in an actual report.
+fn pid2_report_distance_work(n: usize) -> Result<u128> {
+    checked_distance_product(
+        "PID2 report distance-comparison",
+        &[triangular_pairs(n)?, 13],
+    )
+}
+
+fn ksg_work(trials: usize, n: usize, report_count: usize) -> Result<u128> {
+    checked_distance_product(
         "KSG distance-comparison",
-        &[trials, n, n, estimator_equivalents],
+        &[
+            trials as u128,
+            report_count as u128,
+            ksg_report_distance_work(n)?,
+        ],
+    )
+}
+
+fn pid2_work(trials: usize, n: usize, report_count: usize) -> Result<u128> {
+    checked_distance_product(
+        "PID2 distance-comparison",
+        &[
+            trials as u128,
+            report_count as u128,
+            pid2_report_distance_work(n)?,
+        ],
     )
 }
 
@@ -151,39 +1580,59 @@ fn bootstrap_work(class_len: usize, n_boot: usize, ci_count: usize) -> Result<us
     checked_product("AUC bootstrap", &[class_len, class_len, n_boot, ci_count])
 }
 
-fn sequential_distance_work(trials: usize) -> Result<usize> {
-    let arms = 3;
-    let window_work = checked_product(
+fn sequential_distance_work(trials: usize) -> Result<u128> {
+    let arms = 3u128;
+    let window_work = checked_distance_product(
         "sequential window-KSG",
         &[
-            trials,
+            trials as u128,
             arms,
-            SEQ_EVAL_LEN / SEQ_STRIDE,
-            SEQ_WINDOW,
-            SEQ_WINDOW,
+            (SEQ_EVAL_LEN / SEQ_STRIDE) as u128,
+            ksg_report_distance_work(SEQ_WINDOW)?,
         ],
     )?;
-    let local_per_stream = checked_sum(
+    let local_per_stream = checked_distance_sum(
         "sequential local-MI",
         &[
-            checked_product(
+            checked_distance_product(
                 "sequential reference local-MI",
-                &[SEQ_REF_LEN, SEQ_REF_LEN - 1],
+                &[SEQ_REF_LEN as u128, (SEQ_REF_LEN - 1) as u128],
             )?,
-            checked_product(
+            checked_distance_product(
                 "sequential evaluation local-MI",
-                &[SEQ_EVAL_LEN, SEQ_REF_LEN],
+                &[SEQ_EVAL_LEN as u128, SEQ_REF_LEN as u128],
             )?,
         ],
     )?;
-    let local_work = checked_product("sequential local-MI", &[trials, arms, local_per_stream])?;
-    checked_sum("sequential distance-comparison", &[window_work, local_work])
+    let local_work = checked_distance_product(
+        "sequential local-MI",
+        &[trials as u128, arms, local_per_stream],
+    )?;
+    checked_distance_sum("sequential distance-comparison", &[window_work, local_work])
 }
 
-fn validate_ksg_work(trials: usize, n: usize, estimator_equivalents: usize) -> Result<()> {
-    enforce_work(
+fn enforce_distance_work(label: &str, work: u128, limit: u128) -> Result<()> {
+    if work > limit {
+        return Err(GaladrielError::InvalidConfig(format!(
+            "{label} work estimate {work} exceeds limit {limit}; reduce trials or samples"
+        ))
+        .into());
+    }
+    Ok(())
+}
+
+fn validate_ksg_work(trials: usize, n: usize, report_count: usize) -> Result<()> {
+    enforce_distance_work(
         "KSG distance-comparison",
-        ksg_work(trials, n, estimator_equivalents)?,
+        ksg_work(trials, n, report_count)?,
+        MAX_DISTANCE_COMPARISONS,
+    )
+}
+
+fn validate_pid2_work(trials: usize, n: usize, report_count: usize) -> Result<()> {
+    enforce_distance_work(
+        "PID2 distance-comparison",
+        pid2_work(trials, n, report_count)?,
         MAX_DISTANCE_COMPARISONS,
     )
 }
@@ -197,7 +1646,7 @@ fn validate_bootstrap_work(class_len: usize, n_boot: usize, ci_count: usize) -> 
 }
 
 fn validate_sequential_work(trials: usize) -> Result<()> {
-    enforce_work(
+    enforce_distance_work(
         "sequential distance-comparison",
         sequential_distance_work(trials)?,
         MAX_DISTANCE_COMPARISONS,
@@ -208,29 +1657,35 @@ fn validate_study(trials: usize, n: usize, sigma: Option<f64>) -> Result<()> {
     if !(MIN_TRIALS..=MAX_TRIALS).contains(&trials) {
         return Err(GaladrielError::InvalidConfig(format!(
             "study trials must be in {MIN_TRIALS}..={MAX_TRIALS}"
-        )));
+        ))
+        .into());
     }
     if !(8..=MAX_SAMPLES).contains(&n) {
         return Err(GaladrielError::InvalidConfig(format!(
             "study samples must be in 8..={MAX_SAMPLES}"
-        )));
+        ))
+        .into());
     }
     if let Some(sigma) = sigma {
         if !sigma.is_finite() || sigma <= 0.0 || sigma > 1_000_000.0 {
             return Err(GaladrielError::InvalidConfig(
                 "study sigma must be finite and in (0, 1_000_000]".into(),
-            ));
+            )
+            .into());
         }
     }
     Ok(())
 }
 
 fn checked_sum(label: &str, values: &[usize]) -> Result<usize> {
-    values.iter().try_fold(0usize, |total, &value| {
-        total.checked_add(value).ok_or_else(|| {
-            GaladrielError::InvalidConfig(format!("{label} work estimate overflowed"))
+    values
+        .iter()
+        .try_fold(0usize, |total, &value| {
+            total.checked_add(value).ok_or_else(|| {
+                GaladrielError::InvalidConfig(format!("{label} work estimate overflowed"))
+            })
         })
-    })
+        .map_err(Into::into)
 }
 
 /// Validate the complete default command-line study suite before any simulation starts.
@@ -244,18 +1699,18 @@ pub fn preflight_default_suite(trials: usize) -> Result<()> {
     validate_study(synergy_trials, 600, None)?;
     validate_study(sequential_trials, SEQ_REF_LEN + SEQ_EVAL_LEN, Some(0.5))?;
 
-    let distance_total = checked_sum(
+    let distance_total = checked_distance_sum(
         "default CLI distance-comparison",
         &[
             ksg_work(trials, 400, 4)?,
-            ksg_work(synergy_trials, 600, 8)?,
-            checked_product(
+            pid2_work(synergy_trials, 600, 2)?,
+            checked_distance_product(
                 "default CLI sequential",
                 &[2, sequential_distance_work(sequential_trials)?],
             )?,
         ],
     )?;
-    enforce_work(
+    enforce_distance_work(
         "default CLI distance-comparison",
         distance_total,
         MAX_CLI_DISTANCE_COMPARISONS,
@@ -277,9 +1732,10 @@ pub fn preflight_default_suite(trials: usize) -> Result<()> {
 }
 
 /// Generate a coupled `(X, Y)` pair. The decoupled control (in [`run`]) is a
-/// permutation of `Y` — a **permutation null**: identical marginal, dependence
-/// destroyed — so the comparison isolates *dependence*, not any marginal-shape
-/// difference (which would otherwise hand correlation spurious power).
+/// permutation of `Y` — a **random-permutation control** with the identical finite
+/// marginal multiset. Conditional rows are exchangeable rather than independent;
+/// the comparison avoids a marginal-shape difference that would otherwise hand
+/// correlation spurious power.
 fn gen_coupled(
     coupling: Coupling,
     n: usize,
@@ -311,17 +1767,18 @@ fn gen_coupled(
 /// ROC-AUC via the Mann–Whitney identity (ties = ½), in `O(n log n)` time.
 pub fn auc(pos: &[f64], neg: &[f64]) -> Result<f64> {
     if pos.is_empty() || neg.is_empty() {
-        return Err(GaladrielError::InvalidChannels(
-            "AUC classes must both be non-empty".into(),
-        ));
+        return Err(
+            GaladrielError::InvalidChannels("AUC classes must both be non-empty".into()).into(),
+        );
     }
     if pos.len() > MAX_TRIALS || neg.len() > MAX_TRIALS {
         return Err(GaladrielError::InvalidChannels(format!(
             "AUC classes accept at most {MAX_TRIALS} observations each"
-        )));
+        ))
+        .into());
     }
     if !pos.iter().chain(neg).all(|value| value.is_finite()) {
-        return Err(GaladrielError::NonFinite("AUC score"));
+        return Err(GaladrielError::NonFinite("AUC score").into());
     }
     let capacity = pos.len().checked_add(neg.len()).ok_or_else(|| {
         GaladrielError::InvalidChannels("combined AUC class length overflows usize".into())
@@ -366,28 +1823,32 @@ pub fn auc_ci(pos: &[f64], neg: &[f64], n_boot: usize, seed: u64) -> Result<(f64
     if !(MIN_BOOTSTRAP_RESAMPLES..=100_000).contains(&n_boot) {
         return Err(GaladrielError::InvalidConfig(format!(
             "AUC bootstrap count must be in {MIN_BOOTSTRAP_RESAMPLES}..=100000"
-        )));
+        ))
+        .into());
     }
     if pos.len() != neg.len() {
         return Err(GaladrielError::InvalidChannels(
             "paired AUC bootstrap classes must have equal lengths".into(),
-        ));
+        )
+        .into());
     }
     if pos.len() > MAX_TRIALS {
         return Err(GaladrielError::InvalidChannels(format!(
             "paired AUC bootstrap accepts at most {MAX_TRIALS} trial pairs"
-        )));
+        ))
+        .into());
     }
     if pos.len() < MIN_TRIALS {
         return Err(GaladrielError::InvalidChannels(format!(
             "paired AUC bootstrap requires at least {MIN_TRIALS} trial pairs"
-        )));
+        ))
+        .into());
     }
     if !pos.iter().chain(neg).all(|value| value.is_finite()) {
-        return Err(GaladrielError::NonFinite("AUC score"));
+        return Err(GaladrielError::NonFinite("AUC score").into());
     }
     validate_bootstrap_work(pos.len(), n_boot, 1)?;
-    let mut rng = StdRng::seed_from_u64(seed ^ 0x5EED_B007);
+    let mut rng = StdRng::seed_from_u64(seed ^ AUC_BOOTSTRAP_SEED_XOR);
     let mut aucs = Vec::with_capacity(n_boot);
     let (mut rp, mut rn) = (vec![0.0; pos.len()], vec![0.0; neg.len()]);
     for _ in 0..n_boot {
@@ -456,14 +1917,26 @@ pub fn run(trials: usize, n: usize, sigma: f64, seed: u64) -> Result<Study> {
             for trial in 0..trials {
                 let (x, yc) = gen_coupled(coupling, n, sigma, &mut rng)?;
                 let mut yd = yc.clone();
-                yd.shuffle(&mut rng); // permutation null: same marginal, dependence gone
+                // Same finite marginal multiset; conditional rows are exchangeable,
+                // not an independently resampled population law.
+                yd.shuffle(&mut rng);
                 cp.push(abs_pearson(&x, &yc)?);
                 cn.push(abs_pearson(&x, &yd)?);
                 let trial_seed = seed
                     ^ (coupling as u64).wrapping_mul(0x9E37_79B9)
                     ^ (trial as u64).wrapping_mul(0xD1B5_4A32_D192_ED03);
-                mp.push(ksg(trial_seed ^ 0x00C0_A1ED, &x, &yc)?);
-                mn.push(ksg(trial_seed ^ 0xDEC0_A1ED, &x, &yd)?);
+                mp.push(ksg(
+                    trial_seed ^ 0x00C0_A1ED,
+                    &x,
+                    &yc,
+                    "Independent and identically distributed rows from one fixed synthetic coupled law.",
+                )?);
+                mn.push(ksg(
+                    trial_seed ^ 0xDEC0_A1ED,
+                    &x,
+                    &yd,
+                    "Finite-sample without-replacement permutation control. Rows are exchangeable but not independent after conditioning on the generated vectors. The KSG value is a descriptive randomization-control score, not an i.i.d. population estimate.",
+                )?);
             }
             Ok(CouplingResult {
                 coupling,
@@ -493,7 +1966,7 @@ pub fn format_report(s: &Study) -> String {
         s.trials, s.n, s.sigma, s.seed
     ));
     out.push_str(
-        "Detector ROC-AUC at separating a coupled pair from a decoupled (independent) one:\n\n",
+        "Detector ROC-AUC at separating a coupled pair from its random-permutation control:\n\n",
     );
     out.push_str(&format!(
         "{:<26} | {:>8} | {:>8} | {:>19} | {:>19}\n",
@@ -524,7 +1997,7 @@ pub fn format_report(s: &Study) -> String {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Study 2 — synergy: the case where PID is not merely better but *irreducible*.
+// Study 2 — joint dependence and a measure-relative categorical PID allocation.
 //
 // A, B are independent bits; the target T = A XOR B. In this system every pairwise
 // *population* marginal — (A,T), (B,T), (A,B) — is exactly the independent-uniform
@@ -546,89 +2019,229 @@ pub fn format_report(s: &Study) -> String {
 //    SxPID synergy atom. (Q ≥ Syn is itself only guaranteed when the unique atoms
 //    are non-negative, which SxPID does not promise in general.)
 //
-// 2. The **SxPID synergy atom itself** (Makkeh–Gutknecht–Wibral 2021), computed
+// 2. The **categorical SxPID synergy atom itself** (Makkeh–Gutknecht–Wibral 2021), computed
 //    by `pid_core::discrete_sxpid2` on the empirical distribution. This is a diagnostic
-//    estimator study: Galadriel's current PID verdict uses pairwise MI and does not turn
-//    a pure-synergy atom into an operational verdict.
+//    estimator study. Galadriel's optional in-process/library companion is a pairwise-MI graph,
+//    not PID, and cannot turn a pure-synergy atom into an operational verdict.
 // ─────────────────────────────────────────────────────────────────────────────
 
-use pid_core::stable::categorical::discrete_sxpid2;
-use std::collections::BTreeMap;
+use pid_core::stable::categorical::{discrete_sxpid2, DiscreteSxPid2Result};
 use std::f64::consts::LN_2;
 
-/// Plug-in Shannon entropy (bits) of a label sequence.
-fn entropy_bits(labels: &[u64]) -> f64 {
-    let n = labels.len() as f64;
-    if n == 0.0 {
-        return 0.0;
-    }
-    // Fixed-seed evidence also needs a fixed floating-point reduction order.
-    // Randomized HashMap iteration previously changed the last bits of entropy
-    // values and, through ties, the reported AUC across process launches.
-    let mut counts: BTreeMap<u64, usize> = BTreeMap::new();
-    for &l in labels {
-        *counts.entry(l).or_default() += 1;
-    }
-    -counts
-        .values()
-        .map(|&c| {
-            let p = c as f64 / n;
-            p * p.log2()
-        })
-        .sum::<f64>()
+fn categorical_report_scores(report: &DiscreteSxPid2Result) -> (f64, f64, f64, f64) {
+    let pairwise_mi = report.mi_s1_t.max(report.mi_s2_t) / LN_2;
+    (
+        pairwise_mi,
+        report.mi_s1s2_t / LN_2 - pairwise_mi,
+        report.syn.net / LN_2,
+        report.red.net / LN_2,
+    )
 }
 
-/// Combine two small-alphabet label vectors into one joint label vector.
-fn join(a: &[u64], b: &[u64]) -> Vec<u64> {
-    a.iter()
-        .zip(b)
-        .map(|(&x, &y)| x.wrapping_mul(1024).wrapping_add(y))
-        .collect()
+fn same_f64(left: f64, right: f64) -> bool {
+    left.to_bits() == right.to_bits()
 }
 
-/// Discrete plug-in mutual information (bits), clamped at 0.
-fn mi_bits(a: &[u64], b: &[u64]) -> f64 {
-    (entropy_bits(a) + entropy_bits(b) - entropy_bits(&join(a, b))).max(0.0)
+fn same_interval(left: (f64, f64), right: (f64, f64)) -> bool {
+    same_f64(left.0, right.0) && same_f64(left.1, right.1)
 }
 
 /// ROC-AUC of each detector at separating the coupled `T = A⊕B` from a decoupled `T`.
-#[derive(Debug, Clone)]
-pub struct SynergyResult {
+#[derive(Debug, Serialize)]
+pub struct CategoricalXorJustificationResult {
+    /// Versioned aggregate/result serialization schema.
+    schema: &'static str,
+    /// Complete typed categorical MGW question and pinned pid-core dependency identity.
+    pid_question: PidQuestionSpec,
+    /// Typed identities for every non-PID comparator/composition row.
+    study_protocol: JustificationStudyProtocol,
     /// Paired coupled/control trials.
-    pub trials: usize,
+    trials: usize,
     /// Samples per trial.
-    pub n: usize,
+    n: usize,
     /// Root random seed.
-    pub seed: u64,
+    seed: u64,
     /// Correlation detector AUC (`max |ρ(A,T)|, |ρ(B,T)|`).
-    pub corr_auc: f64,
+    corr_auc: f64,
     /// Bootstrap 95% CI for `corr_auc`.
-    pub corr_auc_ci: (f64, f64),
+    corr_auc_ci: (f64, f64),
     /// Pairwise-MI detector AUC (`max MI(A;T), MI(B;T)`).
-    pub pairwise_mi_auc: f64,
+    pairwise_mi_auc: f64,
     /// Bootstrap 95% CI for `pairwise_mi_auc`.
-    pub pairwise_mi_auc_ci: (f64, f64),
-    /// Joint/synergy detector AUC (`MI(A,B;T) − max marginal MI`).
-    pub synergy_auc: f64,
-    /// Bootstrap 95% CI for `synergy_auc`.
-    pub synergy_auc_ci: (f64, f64),
-    /// Mean synergy (bits) on the coupled class (≈ 1 for XOR).
-    pub synergy_coupled_mean: f64,
+    pairwise_mi_auc_ci: (f64, f64),
+    /// Project-defined joint contrast `Q` AUC; this is not a PID synergy atom.
+    q_auc: f64,
+    /// Bootstrap 95% CI for `q_auc`.
+    q_auc_ci: (f64, f64),
+    /// Mean joint contrast `Q` (bits) on the coupled class (≈ 1 for XOR).
+    q_coupled_mean: f64,
     /// Diagnostic SxPID synergy-atom score AUC (`i^sx` decomposition).
-    pub sxpid_syn_auc: f64,
+    sxpid_syn_auc: f64,
     /// Bootstrap 95% CI for `sxpid_syn_auc`.
-    pub sxpid_syn_auc_ci: (f64, f64),
+    sxpid_syn_auc_ci: (f64, f64),
     /// Mean SxPID synergy atom (bits) on the coupled class (≈ log₂(4/3) ≈ 0.415 for XOR).
-    pub sxpid_syn_coupled_mean: f64,
+    sxpid_syn_coupled_mean: f64,
     /// Mean SxPID redundancy atom (bits) on the coupled class (≈ log₂(2/3) ≈ −0.585 for
     /// XOR — negative, i.e. *misinformative* sharing; never clamped).
-    pub sxpid_red_coupled_mean: f64,
+    sxpid_red_coupled_mean: f64,
+    /// Every complete upstream categorical result used by the aggregate rows.
+    pid_trials: Vec<CategoricalPidTrialEvidence>,
 }
 
-/// SxPID synergy and redundancy atoms (bits) of a binary `(s1, s2, t)` triple, via the
+impl CategoricalXorJustificationResult {
+    pub const fn schema(&self) -> &'static str {
+        self.schema
+    }
+    /// Complete estimand and provenance record for the categorical PID rows.
+    pub const fn pid_question(&self) -> &PidQuestionSpec {
+        &self.pid_question
+    }
+    /// Identities and provenance of Pearson, pairwise MI, and `Q` rows.
+    pub const fn study_protocol(&self) -> &JustificationStudyProtocol {
+        &self.study_protocol
+    }
+    pub const fn trials(&self) -> usize {
+        self.trials
+    }
+    pub const fn samples_per_trial(&self) -> usize {
+        self.n
+    }
+    pub const fn seed(&self) -> u64 {
+        self.seed
+    }
+    pub const fn corr_auc(&self) -> f64 {
+        self.corr_auc
+    }
+    pub const fn corr_auc_ci(&self) -> (f64, f64) {
+        self.corr_auc_ci
+    }
+    pub const fn pairwise_mi_auc(&self) -> f64 {
+        self.pairwise_mi_auc
+    }
+    pub const fn pairwise_mi_auc_ci(&self) -> (f64, f64) {
+        self.pairwise_mi_auc_ci
+    }
+    pub const fn q_auc(&self) -> f64 {
+        self.q_auc
+    }
+    pub const fn q_auc_ci(&self) -> (f64, f64) {
+        self.q_auc_ci
+    }
+    pub const fn q_coupled_mean(&self) -> f64 {
+        self.q_coupled_mean
+    }
+    pub const fn sxpid_syn_auc(&self) -> f64 {
+        self.sxpid_syn_auc
+    }
+    pub const fn sxpid_syn_auc_ci(&self) -> (f64, f64) {
+        self.sxpid_syn_auc_ci
+    }
+    pub const fn sxpid_syn_coupled_mean(&self) -> f64 {
+        self.sxpid_syn_coupled_mean
+    }
+    pub const fn sxpid_red_coupled_mean(&self) -> f64 {
+        self.sxpid_red_coupled_mean
+    }
+    /// Complete produced categorical reports, one coupled/control pair per trial.
+    pub fn pid_trials(&self) -> &[CategoricalPidTrialEvidence] {
+        &self.pid_trials
+    }
+
+    /// Recompute every PID-report-derived aggregate and compare it bit-for-bit
+    /// with the sealed serialized summary.
+    ///
+    /// Pearson rows are outside the retained PID reports and are therefore not
+    /// covered by this verifier.
+    pub fn verifies_report_derived_aggregates(&self) -> Result<bool> {
+        if self.pid_trials.len() != self.trials
+            || self.pid_trials.iter().enumerate().any(|(index, trial)| {
+                trial.trial_index != index || trial.units != PidInformationUnits::Nats
+            })
+        {
+            return Ok(false);
+        }
+        let mut pairwise_coupled = Vec::with_capacity(self.trials);
+        let mut pairwise_control = Vec::with_capacity(self.trials);
+        let mut q_coupled = Vec::with_capacity(self.trials);
+        let mut q_control = Vec::with_capacity(self.trials);
+        let mut synergy_coupled = Vec::with_capacity(self.trials);
+        let mut synergy_control = Vec::with_capacity(self.trials);
+        let mut redundancy_coupled = Vec::with_capacity(self.trials);
+        for trial in &self.pid_trials {
+            let (pairwise_c, q_c, synergy_c, redundancy_c) =
+                categorical_report_scores(&trial.coupled);
+            let (pairwise_d, q_d, synergy_d, _) =
+                categorical_report_scores(&trial.permutation_control);
+            pairwise_coupled.push(pairwise_c);
+            pairwise_control.push(pairwise_d);
+            q_coupled.push(q_c);
+            q_control.push(q_d);
+            synergy_coupled.push(synergy_c);
+            synergy_control.push(synergy_d);
+            redundancy_coupled.push(redundancy_c);
+        }
+
+        Ok(same_f64(
+            self.pairwise_mi_auc,
+            auc(&pairwise_coupled, &pairwise_control)?,
+        ) && same_interval(
+            self.pairwise_mi_auc_ci,
+            auc_ci(
+                &pairwise_coupled,
+                &pairwise_control,
+                N_BOOT,
+                self.seed.wrapping_add(2),
+            )?,
+        ) && same_f64(self.q_auc, auc(&q_coupled, &q_control)?)
+            && same_interval(
+                self.q_auc_ci,
+                auc_ci(&q_coupled, &q_control, N_BOOT, self.seed.wrapping_add(3))?,
+            )
+            && same_f64(self.q_coupled_mean, mean(&q_coupled))
+            && same_f64(self.sxpid_syn_auc, auc(&synergy_coupled, &synergy_control)?)
+            && same_interval(
+                self.sxpid_syn_auc_ci,
+                auc_ci(
+                    &synergy_coupled,
+                    &synergy_control,
+                    N_BOOT,
+                    self.seed.wrapping_add(4),
+                )?,
+            )
+            && same_f64(self.sxpid_syn_coupled_mean, mean(&synergy_coupled))
+            && same_f64(self.sxpid_red_coupled_mean, mean(&redundancy_coupled)))
+    }
+}
+
+/// Complete categorical MGW outputs retained for one paired trial.
+#[derive(Debug, Serialize)]
+pub struct CategoricalPidTrialEvidence {
+    trial_index: usize,
+    /// Native units of both retained pid-core categorical results.
+    units: PidInformationUnits,
+    coupled: DiscreteSxPid2Result,
+    permutation_control: DiscreteSxPid2Result,
+}
+
+impl CategoricalPidTrialEvidence {
+    pub const fn trial_index(&self) -> usize {
+        self.trial_index
+    }
+    pub const fn units(&self) -> PidInformationUnits {
+        self.units
+    }
+    pub const fn coupled(&self) -> &DiscreteSxPid2Result {
+        &self.coupled
+    }
+    pub const fn permutation_control(&self) -> &DiscreteSxPid2Result {
+        &self.permutation_control
+    }
+}
+
+/// Complete categorical MGW result for a binary `(s1, s2, t)` triple, via the
 /// exact plug-in `discrete_sxpid2` on the empirical distribution (2 bins is lossless for
-/// 0/1 data). Returns `(syn, red)` in bits.
-fn sxpid_atoms_bits(s1: &[f64], s2: &[f64], t: &[f64]) -> Result<(f64, f64)> {
+/// 0/1 data). The returned pid-core result remains in its native nats.
+fn sxpid_result(s1: &[f64], s2: &[f64], t: &[f64]) -> Result<DiscreteSxPid2Result> {
     let n = s1.len();
     let col = |values: &[f64]| {
         let labels = values
@@ -638,14 +2251,14 @@ fn sxpid_atoms_bits(s1: &[f64], s2: &[f64], t: &[f64]) -> Result<(f64, f64)> {
                 1.0 => Ok(1),
                 _ => Err(GaladrielError::InvalidChannels(
                     "SxPID binary study received a non-binary value".into(),
-                )),
+                )
+                .into()),
             })
             .collect::<Result<Vec<_>>>()?;
         DiscreteMatOwned::new(labels, n, 1).map_err(pid_error)
     };
     let (a, b, tt) = (col(s1)?, col(s2)?, col(t)?);
-    let result = discrete_sxpid2(a.as_ref(), b.as_ref(), tt.as_ref()).map_err(pid_error)?;
-    Ok((result.syn.net / LN_2, result.red.net / LN_2))
+    discrete_sxpid2(a.as_ref(), b.as_ref(), tt.as_ref()).map_err(pid_error)
 }
 
 const MAX_BINARY_TRIAL_DRAWS: usize = 32;
@@ -668,22 +2281,30 @@ fn gen_xor_trial(n: usize, rng: &mut StdRng) -> Result<(Vec<u64>, Vec<u64>, Vec<
     }
     Err(GaladrielError::InvalidChannels(format!(
         "XOR trial inconclusive after {MAX_BINARY_TRIAL_DRAWS} degenerate Bernoulli draws"
-    )))
+    ))
+    .into())
 }
 
 /// Run the synergy study.
-pub fn run_synergy(trials: usize, n: usize, seed: u64) -> Result<SynergyResult> {
+pub fn run_categorical_xor_justification(
+    trials: usize,
+    n: usize,
+    seed: u64,
+) -> Result<CategoricalXorJustificationResult> {
     validate_study(trials, n, None)?;
     validate_bootstrap_work(trials, N_BOOT, 4)?;
     let mut rng = StdRng::seed_from_u64(seed ^ 0x5259_6E65);
     let (mut cc, mut cd) = (Vec::new(), Vec::new());
     let (mut pc, mut pd) = (Vec::new(), Vec::new());
-    let (mut sc, mut sd) = (Vec::new(), Vec::new());
+    let (mut qc, mut qd) = (Vec::new(), Vec::new());
     let (mut xc, mut xd, mut xr) = (Vec::new(), Vec::new(), Vec::new());
-    for _ in 0..trials {
+    let mut pid_trials = Vec::with_capacity(trials);
+    for trial_index in 0..trials {
         let (a, b, t) = gen_xor_trial(n, &mut rng)?;
         let mut td = t.clone();
-        td.shuffle(&mut rng); // permutation null: same T marginal, dependence gone
+        // Random-permutation control: same finite target multiset. Conditional on
+        // the generated vectors, rows are exchangeable rather than i.i.d.
+        td.shuffle(&mut rng);
 
         let f = |v: &[u64]| v.iter().map(|&x| x as f64).collect::<Vec<f64>>();
         let (af, bf, tf, tdf) = (f(&a), f(&b), f(&t), f(&td));
@@ -691,25 +2312,36 @@ pub fn run_synergy(trials: usize, n: usize, seed: u64) -> Result<SynergyResult> 
         cc.push(abs_pearson(&af, &tf)?.max(abs_pearson(&bf, &tf)?));
         cd.push(abs_pearson(&af, &tdf)?.max(abs_pearson(&bf, &tdf)?));
 
-        let pm_c = mi_bits(&a, &t).max(mi_bits(&b, &t));
-        let pm_d = mi_bits(&a, &td).max(mi_bits(&b, &td));
+        // Every information-derived comparator is composed from the exact same
+        // retained pid-core results as the MGW atoms. This removes a second local
+        // entropy implementation and makes provenance/coherence mechanical.
+        let coupled_pid = sxpid_result(&af, &bf, &tf)?;
+        let control_pid = sxpid_result(&af, &bf, &tdf)?;
+        let (pm_c, q_c, syn_c, red_c) = categorical_report_scores(&coupled_pid);
+        let (pm_d, q_d, syn_d, _) = categorical_report_scores(&control_pid);
         pc.push(pm_c);
         pd.push(pm_d);
 
-        let ab = join(&a, &b);
-        sc.push((mi_bits(&ab, &t) - pm_c).max(0.0));
-        sd.push((mi_bits(&ab, &td) - pm_d).max(0.0));
+        qc.push(q_c);
+        qd.push(q_d);
 
         // Diagnostic decomposition output: SxPID synergy atom as the study score
         // (and the coupled-class redundancy atom, to exhibit its negative/misinformative
         // value on XOR). Computed after the RNG draws so the rows above are unchanged.
-        let (syn_c, red_c) = sxpid_atoms_bits(&af, &bf, &tf)?;
-        let (syn_d, _) = sxpid_atoms_bits(&af, &bf, &tdf)?;
         xc.push(syn_c);
         xd.push(syn_d);
         xr.push(red_c);
+        pid_trials.push(CategoricalPidTrialEvidence {
+            trial_index,
+            units: PidInformationUnits::Nats,
+            coupled: coupled_pid,
+            permutation_control: control_pid,
+        });
     }
-    Ok(SynergyResult {
+    Ok(CategoricalXorJustificationResult {
+        schema: CATEGORICAL_PID_STUDY_SCHEMA,
+        pid_question: PidQuestionSpec::categorical_xor(),
+        study_protocol: JustificationStudyProtocol::categorical_xor(),
         trials,
         n,
         seed,
@@ -717,24 +2349,30 @@ pub fn run_synergy(trials: usize, n: usize, seed: u64) -> Result<SynergyResult> 
         corr_auc_ci: auc_ci(&cc, &cd, N_BOOT, seed.wrapping_add(1))?,
         pairwise_mi_auc: auc(&pc, &pd)?,
         pairwise_mi_auc_ci: auc_ci(&pc, &pd, N_BOOT, seed.wrapping_add(2))?,
-        synergy_auc: auc(&sc, &sd)?,
-        synergy_auc_ci: auc_ci(&sc, &sd, N_BOOT, seed.wrapping_add(3))?,
-        synergy_coupled_mean: mean(&sc),
+        q_auc: auc(&qc, &qd)?,
+        q_auc_ci: auc_ci(&qc, &qd, N_BOOT, seed.wrapping_add(3))?,
+        q_coupled_mean: mean(&qc),
         sxpid_syn_auc: auc(&xc, &xd)?,
         sxpid_syn_auc_ci: auc_ci(&xc, &xd, N_BOOT, seed.wrapping_add(4))?,
         sxpid_syn_coupled_mean: mean(&xc),
         sxpid_red_coupled_mean: mean(&xr),
+        pid_trials,
     })
 }
 
 /// Format the synergy study as a plain-text report.
-pub fn format_synergy(r: &SynergyResult) -> String {
+pub fn format_categorical_xor_justification(r: &CategoricalXorJustificationResult) -> String {
     let mut o = String::new();
     o.push_str(&format!(
         "\nSynergy: T = A XOR B vs shuffled T · {} paired trials · n={} · seed={}\n",
         r.trials, r.n, r.seed
     ));
-    o.push_str("Detector ROC-AUC at telling the coupled T = A(+)B from the decoupled one:\n\n");
+    o.push_str(&format_pid_question(r.pid_question()));
+    o.push_str(&format_study_protocol(r.study_protocol()));
+    o.push('\n');
+    o.push_str(
+        "Detector ROC-AUC at telling coupled T = A(+)B from its random-permutation control:\n\n",
+    );
     o.push_str(&format!(
         "{:<26} | {:>6} | {:>15}\n",
         "detector", "AUC", "[95% CI]"
@@ -750,11 +2388,7 @@ pub fn format_synergy(r: &SynergyResult) -> String {
     ));
     o.push_str(&format!(
         "{:<26} | {:>6.3} | [{:.3}, {:.3}]   (mean {:.3} bits)\n",
-        "synergy contrast Q (joint)",
-        r.synergy_auc,
-        r.synergy_auc_ci.0,
-        r.synergy_auc_ci.1,
-        r.synergy_coupled_mean
+        "joint contrast Q (not PID)", r.q_auc, r.q_auc_ci.0, r.q_auc_ci.1, r.q_coupled_mean
     ));
     o.push_str(&format!(
         "{:<26} | {:>6.3} | [{:.3}, {:.3}]   (mean {:.3} bits)\n",
@@ -776,7 +2410,7 @@ pub fn format_synergy(r: &SynergyResult) -> String {
         "\nPopulation context: every pairwise marginal of this XOR construction is\n\
          independent-uniform, while the triple is dependent. The AUC rows report the\n\
          finite-sample behavior observed in this run. Joint and SxPID scores here are\n\
-         diagnostic research outputs; the current pairwise-MI PID verdict does not detect\n\
+         diagnostic research outputs; the opt-in in-process pairwise-MI graph does not detect\n\
          pure synergy, and this study does not establish field performance. Degenerate\n\
          binary draws are redrawn, so very-small-n results are conditional on nonconstant\n\
          source and target columns. CIs use a paired trial percentile bootstrap.\n",
@@ -785,11 +2419,11 @@ pub fn format_synergy(r: &SynergyResult) -> String {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Study 2b — continuous synergy on the estimators exposed by pid-core.
+// Study 2b — continuous synergy under the Ehrlich et al. construction.
 //
-// Study 2's XOR is discrete and exact — but the shipped engine runs *continuous*
-// estimators (KSG MI; the Ehrlich et al. 2024 continuous `I^sx`). This study narrows
-// that gap with a continuous XOR analog, the **sign-parity coupling**:
+// Study 2's XOR uses the categorical Makkeh–Gutknecht–Wibral functional. The related
+// but distinct Ehrlich et al. 2024 continuous construction and kNN estimator need a
+// separate estimand and validation question. This study uses the continuous sign-parity
 //
 //     A, B ~ N(0,1) independent,  T = sign(A)·sign(B)·|Z|,  Z ~ N(0,1) independent.
 //
@@ -797,42 +2431,196 @@ pub fn format_synergy(r: &SynergyResult) -> String {
 // every A (the sign flip is a fair coin from B), so MI(A;T) = MI(B;T) = 0 and all
 // pairwise correlations are 0 — while jointly sign(T) = sign(A)·sign(B), so
 // MI(A,B;T) = ln 2 exactly (the parity bit; |T| ⊥ (A,B) carries nothing more).
-// A single `pid2_isx_estimate` call per triple yields the pairwise KSG MIs, the
-// joint KSG MI, the continuous `I^sx` redundancy — hence both the joint contrast
+// A complete `pid2_isx_report` per triple retains the pairwise KSG reports, joint
+// KSG report, gauges, assumptions, and the continuous `I^sx` redundancy. It yields
+// both the joint contrast
 // `Q = MI(A,B;T) − max(MI(A;T), MI(B;T))` and the continuous SxPID synergy atom
 // `Syn = MI(A,B;T) − MI(A;T) − MI(B;T) + Red`. These atoms remain diagnostic;
-// they are not inputs to the current pairwise-MI PID verdict.
+// they are not inputs to the opt-in in-process pairwise-MI graph or the default fusion verdict.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// ROC-AUCs of pairwise vs joint continuous detectors on the sign-parity coupling.
-#[derive(Debug, Clone)]
-pub struct ContinuousSynergyResult {
+#[derive(Debug, Serialize)]
+pub struct ContinuousSignParityJustificationResult {
+    /// Versioned aggregate/result serialization schema.
+    schema: &'static str,
+    /// Complete typed continuous Ehrlich question and pinned pid-core dependency identity.
+    pid_question: PidQuestionSpec,
+    /// Typed identities for every non-PID comparator/composition row.
+    study_protocol: JustificationStudyProtocol,
     /// Paired coupled/control trials.
-    pub trials: usize,
+    trials: usize,
     /// Samples per trial.
-    pub n: usize,
+    n: usize,
     /// Root random seed.
-    pub seed: u64,
+    seed: u64,
     /// Pairwise correlation detector AUC (`max(|ρ(A,T)|, |ρ(B,T)|)`).
-    pub corr_auc: f64,
+    corr_auc: f64,
     /// Bootstrap 95% CI for `corr_auc`.
-    pub corr_auc_ci: (f64, f64),
+    corr_auc_ci: (f64, f64),
     /// Pairwise KSG-MI detector AUC (`max(MI(A;T), MI(B;T))`).
-    pub pairwise_mi_auc: f64,
+    pairwise_mi_auc: f64,
     /// Bootstrap 95% CI for `pairwise_mi_auc`.
-    pub pairwise_mi_auc_ci: (f64, f64),
+    pairwise_mi_auc_ci: (f64, f64),
     /// Joint contrast `Q` detector AUC.
-    pub q_auc: f64,
+    q_auc: f64,
     /// Bootstrap 95% CI for `q_auc`.
-    pub q_auc_ci: (f64, f64),
+    q_auc_ci: (f64, f64),
     /// Continuous SxPID synergy-atom detector AUC.
-    pub isx_syn_auc: f64,
+    isx_syn_auc: f64,
     /// Bootstrap 95% CI for `isx_syn_auc`.
-    pub isx_syn_auc_ci: (f64, f64),
+    isx_syn_auc_ci: (f64, f64),
     /// Mean joint KSG MI (nats) on the coupled class (exact value: ln 2 ≈ 0.693).
-    pub joint_mi_coupled_mean: f64,
+    joint_mi_coupled_mean: f64,
     /// Mean continuous SxPID synergy atom (nats) on the coupled class.
-    pub isx_syn_coupled_mean: f64,
+    isx_syn_coupled_mean: f64,
+    /// Every complete upstream continuous PID2 report used by the aggregate rows.
+    pid_trials: Vec<ContinuousPid2TrialEvidence>,
+}
+
+impl ContinuousSignParityJustificationResult {
+    pub const fn schema(&self) -> &'static str {
+        self.schema
+    }
+    /// Complete estimand and provenance record for the continuous PID rows.
+    pub const fn pid_question(&self) -> &PidQuestionSpec {
+        &self.pid_question
+    }
+    /// Identities and provenance of Pearson, pairwise MI, and `Q` rows.
+    pub const fn study_protocol(&self) -> &JustificationStudyProtocol {
+        &self.study_protocol
+    }
+    pub const fn trials(&self) -> usize {
+        self.trials
+    }
+    pub const fn samples_per_trial(&self) -> usize {
+        self.n
+    }
+    pub const fn seed(&self) -> u64 {
+        self.seed
+    }
+    pub const fn corr_auc(&self) -> f64 {
+        self.corr_auc
+    }
+    pub const fn corr_auc_ci(&self) -> (f64, f64) {
+        self.corr_auc_ci
+    }
+    pub const fn pairwise_mi_auc(&self) -> f64 {
+        self.pairwise_mi_auc
+    }
+    pub const fn pairwise_mi_auc_ci(&self) -> (f64, f64) {
+        self.pairwise_mi_auc_ci
+    }
+    pub const fn q_auc(&self) -> f64 {
+        self.q_auc
+    }
+    pub const fn q_auc_ci(&self) -> (f64, f64) {
+        self.q_auc_ci
+    }
+    pub const fn isx_syn_auc(&self) -> f64 {
+        self.isx_syn_auc
+    }
+    pub const fn isx_syn_auc_ci(&self) -> (f64, f64) {
+        self.isx_syn_auc_ci
+    }
+    pub const fn joint_mi_coupled_mean(&self) -> f64 {
+        self.joint_mi_coupled_mean
+    }
+    pub const fn isx_syn_coupled_mean(&self) -> f64 {
+        self.isx_syn_coupled_mean
+    }
+    /// Complete produced continuous reports, one coupled/control pair per trial.
+    pub fn pid_trials(&self) -> &[ContinuousPid2TrialEvidence] {
+        &self.pid_trials
+    }
+
+    /// Recompute every PID2-report-derived aggregate and compare it bit-for-bit
+    /// with the sealed serialized summary.
+    ///
+    /// Pearson rows are outside the retained PID2 reports and are therefore not
+    /// covered by this verifier.
+    pub fn verifies_report_derived_aggregates(&self) -> Result<bool> {
+        if self.pid_trials.len() != self.trials
+            || self.pid_trials.iter().enumerate().any(|(index, trial)| {
+                trial.trial_index != index || trial.units != PidInformationUnits::Nats
+            })
+        {
+            return Ok(false);
+        }
+        let mut pairwise_coupled = Vec::with_capacity(self.trials);
+        let mut pairwise_control = Vec::with_capacity(self.trials);
+        let mut q_coupled = Vec::with_capacity(self.trials);
+        let mut q_control = Vec::with_capacity(self.trials);
+        let mut synergy_coupled = Vec::with_capacity(self.trials);
+        let mut synergy_control = Vec::with_capacity(self.trials);
+        let mut joint_coupled = Vec::with_capacity(self.trials);
+        for trial in &self.pid_trials {
+            let (pairwise_c, q_c, synergy_c, joint_c) = continuous_report_scores(&trial.coupled);
+            let (pairwise_d, q_d, synergy_d, _) =
+                continuous_report_scores(&trial.permutation_control);
+            pairwise_coupled.push(pairwise_c);
+            pairwise_control.push(pairwise_d);
+            q_coupled.push(q_c);
+            q_control.push(q_d);
+            synergy_coupled.push(synergy_c);
+            synergy_control.push(synergy_d);
+            joint_coupled.push(joint_c);
+        }
+
+        Ok(same_f64(
+            self.pairwise_mi_auc,
+            auc(&pairwise_coupled, &pairwise_control)?,
+        ) && same_interval(
+            self.pairwise_mi_auc_ci,
+            auc_ci(
+                &pairwise_coupled,
+                &pairwise_control,
+                N_BOOT,
+                self.seed.wrapping_add(12),
+            )?,
+        ) && same_f64(self.q_auc, auc(&q_coupled, &q_control)?)
+            && same_interval(
+                self.q_auc_ci,
+                auc_ci(&q_coupled, &q_control, N_BOOT, self.seed.wrapping_add(13))?,
+            )
+            && same_f64(self.isx_syn_auc, auc(&synergy_coupled, &synergy_control)?)
+            && same_interval(
+                self.isx_syn_auc_ci,
+                auc_ci(
+                    &synergy_coupled,
+                    &synergy_control,
+                    N_BOOT,
+                    self.seed.wrapping_add(14),
+                )?,
+            )
+            && same_f64(self.joint_mi_coupled_mean, mean(&joint_coupled))
+            && same_f64(self.isx_syn_coupled_mean, mean(&synergy_coupled)))
+    }
+}
+
+/// Complete Ehrlich PID2 outputs retained for one paired trial.
+#[derive(Debug, Serialize)]
+pub struct ContinuousPid2TrialEvidence {
+    trial_index: usize,
+    /// Native units of both retained pid-core continuous reports.
+    units: PidInformationUnits,
+    coupled: Pid2Report,
+    permutation_control: Pid2Report,
+}
+
+impl ContinuousPid2TrialEvidence {
+    pub const fn trial_index(&self) -> usize {
+        self.trial_index
+    }
+    pub const fn units(&self) -> PidInformationUnits {
+        self.units
+    }
+    pub const fn coupled(&self) -> &Pid2Report {
+        &self.coupled
+    }
+    pub const fn permutation_control(&self) -> &Pid2Report {
+        &self.permutation_control
+    }
 }
 
 struct ContinuousScores {
@@ -841,40 +2629,74 @@ struct ContinuousScores {
     synergy: f64,
     /// The estimator's direct joint-MI output, before any contrast clamping.
     joint_mi: f64,
+    report: Pid2Report,
 }
 
-/// Continuous scores of one `(A, B, T)` triple from one PID2 estimate call.
-fn continuous_synergy_scores(a: &[f64], b: &[f64], t: &[f64]) -> Result<ContinuousScores> {
+fn continuous_report_scores(report: &Pid2Report) -> (f64, f64, f64, f64) {
+    let terms = report.estimate_terms;
+    let pairwise_mi = terms.mi_s1_t.max(terms.mi_s2_t);
+    (
+        pairwise_mi,
+        terms.mi_s1s2_t - pairwise_mi,
+        report.atoms.synergy,
+        terms.mi_s1s2_t,
+    )
+}
+
+/// Continuous scores of one `(A, B, T)` triple from one complete Ehrlich PID2 report.
+fn continuous_synergy_scores(
+    a: &[f64],
+    b: &[f64],
+    t: &[f64],
+    evaluation_id: u64,
+    sampling_model: &str,
+) -> Result<ContinuousScores> {
     let n = a.len();
     let col = |values: &[f64]| MatOwned::new(values.to_vec(), n, 1).map_err(pid_error);
     let (am, bm, tm) = (col(a)?, col(b)?, col(t)?);
-    let est = pid2_isx_estimate(
+    let split_id = format!("continuous-sign-parity-{evaluation_id:016x}");
+    let provenance = Pid2Provenance::new(
+        "No preprocessing; source A retains its registered standard-normal simulator coordinate and gauge.",
+        "No preprocessing; source B retains its registered standard-normal simulator coordinate and gauge.",
+        "No preprocessing; target T retains its registered standard-normal simulator coordinate.",
+        "Direct binary64 pseudorandom representation of the declared continuous sign-parity law; no deliberate quantization, added noise, or tie-breaking transform.",
+    )
+    .and_then(|provenance| {
+        provenance.with_sampling_model_and_splits(
+            sampling_model,
+            None,
+            Some(&split_id),
+        )
+    })
+    .map_err(pid_error)?;
+    let report = pid2_isx_report(
         am.as_ref(),
         bm.as_ref(),
         tm.as_ref(),
         &Pid2Config::assume_regular_full_dimensional(),
+        &provenance,
     )
     .map_err(pid_error)?;
-    let pm = est.mi_s1_t.max(est.mi_s2_t);
-    let q = (est.mi_s1s2_t - pm).max(0.0);
-    let syn = est.mi_s1s2_t - est.mi_s1_t - est.mi_s2_t + est.redundancy_isx;
+    let (pairwise_mi, q, synergy, joint_mi) = continuous_report_scores(&report);
     Ok(ContinuousScores {
-        pairwise_mi: pm.max(0.0),
+        pairwise_mi,
         q,
-        synergy: syn,
-        joint_mi: est.mi_s1s2_t,
+        synergy,
+        joint_mi,
+        report,
     })
 }
 
 /// Run the continuous (sign-parity) synergy study.
-pub fn run_synergy_continuous(
+pub fn run_continuous_sign_parity_justification(
     trials: usize,
     n: usize,
     seed: u64,
-) -> Result<ContinuousSynergyResult> {
+) -> Result<ContinuousSignParityJustificationResult> {
     validate_study(trials, n, None)?;
-    // Two PID estimates per trial; each evaluates several pairwise/joint kNN spaces.
-    validate_ksg_work(trials, n, 8)?;
+    // Two complete PID2 reports per trial. Preflight composes the 13 triangular
+    // pair-distance passes actually executed by each report.
+    validate_pid2_work(trials, n, 2)?;
     validate_bootstrap_work(trials, N_BOOT, 4)?;
     let mut rng = StdRng::seed_from_u64(seed ^ 0x516E_9A21);
     let std_normal = Normal::new(0.0, 1.0).map_err(|error| {
@@ -885,7 +2707,8 @@ pub fn run_synergy_continuous(
     let (mut qc, mut qd) = (Vec::new(), Vec::new()); // joint contrast Q
     let (mut xc, mut xd) = (Vec::new(), Vec::new()); // continuous i^sx synergy atom
     let mut joint_mi = Vec::new();
-    for _ in 0..trials {
+    let mut pid_trials = Vec::with_capacity(trials);
+    for trial in 0..trials {
         let a: Vec<f64> = (0..n).map(|_| std_normal.sample(&mut rng)).collect();
         let b: Vec<f64> = (0..n).map(|_| std_normal.sample(&mut rng)).collect();
         let t: Vec<f64> = a
@@ -894,13 +2717,28 @@ pub fn run_synergy_continuous(
             .map(|(&x, &y)| x.signum() * y.signum() * std_normal.sample(&mut rng).abs())
             .collect();
         let mut td = t.clone();
-        td.shuffle(&mut rng); // permutation null: same T marginal, dependence gone
+        // Random-permutation control: same finite target multiset. Conditional on
+        // the generated vectors, rows are exchangeable rather than i.i.d.
+        td.shuffle(&mut rng);
 
         cc.push(abs_pearson(&a, &t)?.max(abs_pearson(&b, &t)?));
         cd.push(abs_pearson(&a, &td)?.max(abs_pearson(&b, &td)?));
 
-        let coupled = continuous_synergy_scores(&a, &b, &t)?;
-        let control = continuous_synergy_scores(&a, &b, &td)?;
+        let trial_id = seed ^ (trial as u64).wrapping_mul(0xD1B5_4A32_D192_ED03);
+        let coupled = continuous_synergy_scores(
+            &a,
+            &b,
+            &t,
+            trial_id ^ 0x00C0_A1ED,
+            "Independent and identically distributed rows from the fixed continuous sign-parity law.",
+        )?;
+        let control = continuous_synergy_scores(
+            &a,
+            &b,
+            &td,
+            trial_id ^ 0xDEC0_A1ED,
+            "Finite-sample without-replacement target permutation control. Rows are exchangeable but not independent after conditioning on the generated vectors. The PID2 atoms are descriptive randomization-control scores, not i.i.d. population estimates.",
+        )?;
         pc.push(coupled.pairwise_mi);
         pd.push(control.pairwise_mi);
         qc.push(coupled.q);
@@ -908,8 +2746,17 @@ pub fn run_synergy_continuous(
         xc.push(coupled.synergy);
         xd.push(control.synergy);
         joint_mi.push(coupled.joint_mi);
+        pid_trials.push(ContinuousPid2TrialEvidence {
+            trial_index: trial,
+            units: PidInformationUnits::Nats,
+            coupled: coupled.report,
+            permutation_control: control.report,
+        });
     }
-    Ok(ContinuousSynergyResult {
+    Ok(ContinuousSignParityJustificationResult {
+        schema: CONTINUOUS_PID_STUDY_SCHEMA,
+        pid_question: PidQuestionSpec::continuous_sign_parity(),
+        study_protocol: JustificationStudyProtocol::continuous_sign_parity(),
         trials,
         n,
         seed,
@@ -923,17 +2770,23 @@ pub fn run_synergy_continuous(
         isx_syn_auc_ci: auc_ci(&xc, &xd, N_BOOT, seed.wrapping_add(14))?,
         joint_mi_coupled_mean: mean(&joint_mi),
         isx_syn_coupled_mean: mean(&xc),
+        pid_trials,
     })
 }
 
 /// Format the continuous synergy study as a plain-text report.
-pub fn format_synergy_continuous(r: &ContinuousSynergyResult) -> String {
+pub fn format_continuous_sign_parity_justification(
+    r: &ContinuousSignParityJustificationResult,
+) -> String {
     let mut o = String::new();
     o.push_str(&format!(
         "\nContinuous synergy: T = sign(A)·sign(B)·|Z| vs shuffled T\n\
          {} paired trials · n={} · seed={} · pid-core continuous estimators (KSG + I^sx):\n\n",
         r.trials, r.n, r.seed,
     ));
+    o.push_str(&format_pid_question(r.pid_question()));
+    o.push_str(&format_study_protocol(r.study_protocol()));
+    o.push('\n');
     o.push_str(&format!(
         "{:<28} | {:>6} | {:>15}\n",
         "detector", "AUC", "[95% CI]"
@@ -959,21 +2812,22 @@ pub fn format_synergy_continuous(r: &ContinuousSynergyResult) -> String {
          continuous I^sx synergy atom on coupled: {:.3} nats. Pairwise marginals are\n\
          independent in the population construction; the table reports finite-sample\n\
          estimator behavior. These joint scores are diagnostic and are not used by the\n\
-         current pairwise-MI PID verdict. CIs use a paired trial percentile bootstrap.\n",
+         opt-in in-process pairwise-MI graph or default fusion verdict. CIs use a paired trial\n\
+         percentile bootstrap.\n",
         r.joint_mi_coupled_mean, r.isx_syn_coupled_mean
     ));
     o
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Study 3 — the pointwise escalation: sequential detection at a common FAR target.
+// Study 3 — pointwise comparison: sequential detection at a common FAR target.
 //
 // Studies 1–2 score *windows*; a streaming monitor pays their price in **latency**:
 // a trailing window must refill with post-onset frames before a broken coupling is
-// legible. Information-theoretic quantities can also be **pointwise** — they exist
-// per realization (Makkeh–Gutknecht–
-// Wibral 2021; the single-source node is the pointwise MI, by self-redundancy) —
-// so consistency can be scored *per frame* and fed to a sequential (CUSUM) test.
+// legible. Information-theoretic quantities can also be local to a realization. This
+// study's local score, however, is a project-defined two-variable kNN log-density-ratio
+// heuristic. It is neither the categorical Makkeh–Gutknecht–Wibral functional nor the
+// continuous Ehrlich PID estimator. It can be fed to a sequential CUSUM test.
 //
 // The local kNN term used here is a plug-in estimate inspired by
 // log[ p_coupled(x,y) / (p(x)·p(y)) ] — the **log-likelihood ratio** between the
@@ -986,7 +2840,7 @@ pub fn format_synergy_continuous(r: &ContinuousSynergyResult) -> String {
 // study asks it with five sequential detectors calibrated to one stream-level FAR target:
 //
 //   window |ρ̂|      — the runtime default's analog (trailing-window refit);
-//   window KSG MI    — the windowed escalation's analog;
+//   window KSG MI    — the windowed MI companion's analog;
 //   product CUSUM    — per-frame x·y (the naive cheap pointwise statistic);
 //   Gauss-LR CUSUM   — per-frame *parametric* Gaussian log-LR: the closed-form
 //                      pointwise MI i(x,y; ρ̂_cal) — "correlation, pointwise";
@@ -1036,8 +2890,8 @@ pub enum SeqDetector {
     /// CUSUM over the per-frame parametric Gaussian log-LR (pointwise Gaussian MI
     /// at the calibration ρ̂) — a cheap detector tailored to the Gaussian model.
     GaussLrCusum,
-    /// CUSUM over the per-frame nonparametric kNN local-MI term against the frozen
-    /// clean reference — the Wibral-pointwise detector.
+    /// CUSUM over a project-defined per-frame kNN local-MI score against the frozen
+    /// clean reference. This is not a shared-exclusions PID estimator.
     LocalMiCusum,
 }
 
@@ -1125,7 +2979,7 @@ fn pointwise_gaussian_mi(a: f64, b: f64, r: f64) -> f64 {
 
 /// KSG-style local MI term of query `(qx, qy)` against a frozen reference sample,
 /// Chebyshev metric, strict counting: `ψ(k) + ψ(N) − ψ(n_x+1) − ψ(n_y+1)`.
-fn local_mi_query(rx: &[f64], ry: &[f64], qx: f64, qy: f64, k: usize) -> f64 {
+fn local_mi_query(rx: &[f64], ry: &[f64], qx: f64, qy: f64, k: usize) -> Result<f64> {
     let n = rx.len();
     let mut joint: Vec<f64> = (0..n)
         .map(|j| (rx[j] - qx).abs().max((ry[j] - qy).abs()))
@@ -1134,7 +2988,10 @@ fn local_mi_query(rx: &[f64], ry: &[f64], qx: f64, qy: f64, k: usize) -> f64 {
     joint.select_nth_unstable_by(kth, |a, b| a.total_cmp(b));
     let eps = joint[kth];
     if eps <= 0.0 {
-        return 0.0; // duplicate guard; continuous data makes this measure-zero
+        return Err(GaladrielError::InvalidChannels(
+            "local-MI query has an ambiguous zero-radius kth-neighbor shell".into(),
+        )
+        .into());
     }
     let (mut nx, mut ny) = (0usize, 0usize);
     for j in 0..n {
@@ -1145,13 +3002,13 @@ fn local_mi_query(rx: &[f64], ry: &[f64], qx: f64, qy: f64, k: usize) -> f64 {
             ny += 1;
         }
     }
-    digamma(k as f64) + digamma(n as f64) - digamma((nx + 1) as f64) - digamma((ny + 1) as f64)
+    Ok(digamma(k as f64) + digamma(n as f64) - digamma((nx + 1) as f64) - digamma((ny + 1) as f64))
 }
 
 /// In-sample KSG local MI terms of the reference itself (self excluded) — used only
 /// to standardize the CUSUM increments; the same convention offsets appear in the
 /// clean calibration streams, so they cancel in the threshold.
-fn local_mi_ref_terms(rx: &[f64], ry: &[f64], k: usize) -> Vec<f64> {
+fn local_mi_ref_terms(rx: &[f64], ry: &[f64], k: usize) -> Result<Vec<f64>> {
     let n = rx.len();
     (0..n)
         .map(|i| {
@@ -1211,10 +3068,11 @@ fn seq_traces(seed: u64, xs: &[f64], ys: &[f64]) -> Result<DetectorTraces> {
     if xs.len() != required || ys.len() != required {
         return Err(GaladrielError::InvalidChannels(format!(
             "sequential traces require exactly {required} samples per channel"
-        )));
+        ))
+        .into());
     }
     if !xs.iter().chain(ys).all(|value| value.is_finite()) {
-        return Err(GaladrielError::NonFinite("sequential study input"));
+        return Err(GaladrielError::NonFinite("sequential study input").into());
     }
     let onset_abs = SEQ_REF_LEN;
     let (rx, ry) = (&xs[..SEQ_REF_LEN], &ys[..SEQ_REF_LEN]);
@@ -1242,7 +3100,7 @@ fn seq_traces(seed: u64, xs: &[f64], ys: &[f64]) -> Result<DetectorTraces> {
         .map(|(&a, &b)| pointwise_gaussian_mi(a, b, rho_cal))
         .collect();
     let (mg, sg) = stats(&glr_cal);
-    let lmi_cal = local_mi_ref_terms(&zx, &zy, SEQ_K);
+    let lmi_cal = local_mi_ref_terms(&zx, &zy, SEQ_K)?;
     let (ml, sl) = stats(&lmi_cal);
 
     // Windowed detectors (negated: larger = more anomalous), on the stride grid.
@@ -1255,26 +3113,32 @@ fn seq_traces(seed: u64, xs: &[f64], ys: &[f64]) -> Result<DetectorTraces> {
         wcorr.push((e - 1, -abs_pearson(wx, wy)?));
         wmi.push((
             e - 1,
-            -ksg(seed ^ (e as u64).wrapping_mul(0x9E37_79B9), wx, wy)?,
+            -ksg(
+                seed ^ (e as u64).wrapping_mul(0x9E37_79B9),
+                wx,
+                wy,
+                "Rows are independent within each synthetic regime. A trailing window that crosses the registered onset is not identically distributed. Its KSG value is a descriptive sequential detector score, not a stationary-law estimate.",
+            )?,
         ));
         e += SEQ_STRIDE;
     }
 
     // Pointwise CUSUMs (every frame): S = max(0, S + (μ_cal − stat)/σ_cal − κ).
-    let cusum = |stat: &dyn Fn(f64, f64) -> f64, m: f64, s: f64| -> Vec<(usize, f64)> {
-        let mut out = Vec::with_capacity(SEQ_EVAL_LEN);
-        let mut acc = 0.0f64;
-        for t in 0..SEQ_EVAL_LEN {
-            let (a, b) = ((xs[onset_abs + t] - mx) / sx, (ys[onset_abs + t] - my) / sy);
-            let z = (m - stat(a, b)) / s - SEQ_KAPPA;
-            acc = (acc + z).max(0.0);
-            out.push((t, acc));
-        }
-        out
-    };
-    let prod = cusum(&|a, b| a * b, mp, sp);
-    let glr = cusum(&|a, b| pointwise_gaussian_mi(a, b, rho_cal), mg, sg);
-    let lmi = cusum(&|a, b| local_mi_query(&zx, &zy, a, b, SEQ_K), ml, sl);
+    let cusum =
+        |stat: &dyn Fn(f64, f64) -> Result<f64>, m: f64, s: f64| -> Result<Vec<(usize, f64)>> {
+            let mut out = Vec::with_capacity(SEQ_EVAL_LEN);
+            let mut acc = 0.0f64;
+            for t in 0..SEQ_EVAL_LEN {
+                let (a, b) = ((xs[onset_abs + t] - mx) / sx, (ys[onset_abs + t] - my) / sy);
+                let z = (m - stat(a, b)?) / s - SEQ_KAPPA;
+                acc = (acc + z).max(0.0);
+                out.push((t, acc));
+            }
+            Ok(out)
+        };
+    let prod = cusum(&|a, b| Ok(a * b), mp, sp)?;
+    let glr = cusum(&|a, b| Ok(pointwise_gaussian_mi(a, b, rho_cal)), mg, sg)?;
+    let lmi = cusum(&|a, b| local_mi_query(&zx, &zy, a, b, SEQ_K), ml, sl)?;
 
     Ok(vec![
         (SeqDetector::WindowCorr, wcorr),
@@ -1312,7 +3176,8 @@ fn wilson95(successes: usize, total: usize) -> Result<(f64, f64)> {
     if total == 0 || successes > total {
         return Err(GaladrielError::InvalidChannels(
             "Wilson interval requires 0 <= successes <= a nonzero total".into(),
-        ));
+        )
+        .into());
     }
     const Z: f64 = 1.959_963_984_540_054;
     let n = total as f64;
@@ -1576,7 +3441,8 @@ pub fn run_autocorrelation_null(trials: usize, seed: u64) -> Result<Ar1NullStudy
         if effective_n <= 4.0 {
             return Err(GaladrielError::InvalidConfig(
                 "AR(1) effective sample size must exceed 4".into(),
-            ));
+            )
+            .into());
         }
         Ok((z / (effective_n - 3.0).sqrt()).tanh())
     };
@@ -1701,8 +3567,8 @@ mod tests {
 
     #[test]
     fn linear_coupling_correlation_matches_mi() {
-        // On linear-Gaussian coupling both detectors separate perfectly — so MI/PID
-        // adds no value over the cheap correlation test.
+        // On linear-Gaussian coupling both detectors separate perfectly — so MI
+        // adds no value over the cheap correlation test. No PID claim is involved.
         let s = run(120, 300, 0.5, 7).expect("valid study");
         let lin = result(&s, Coupling::Linear);
         assert!(lin.corr_auc > 0.9, "corr AUC {:.3}", lin.corr_auc);
@@ -1715,8 +3581,9 @@ mod tests {
 
     #[test]
     fn nonlinear_coupling_mi_beats_correlation() {
-        // The good reason for PID: on a nonlinear (correlation-preserving) coupling,
-        // correlation is at chance while MI still separates.
+        // The good reason to retain an MI companion: on a nonlinear
+        // (correlation-preserving) coupling, correlation is near chance while MI
+        // still separates. This result does not establish a PID claim.
         let s = run(120, 300, 0.5, 7).expect("valid study");
         let nl = result(&s, Coupling::Nonlinear);
         assert!(
@@ -1732,62 +3599,340 @@ mod tests {
     }
 
     #[test]
-    fn synergy_only_the_joint_measure_sees_xor() {
-        // The irreducible reason for PID: on T = A XOR B, correlation AND pairwise MI
-        // are both blind; only the joint/synergy measure separates coupled from decoupled.
-        let r = run_synergy(150, 600, 7).expect("valid synergy study");
+    fn joint_information_contrast_sees_xor_when_pairwise_measures_do_not() {
+        // On T = A XOR B, correlation and pairwise MI are both blind. The joint
+        // contrast separates coupled from decoupled without requiring a PID.
+        // The separate categorical MGW atoms answer the further, measure-relative
+        // allocation question tested below.
+        let r = run_categorical_xor_justification(150, 600, 7)
+            .expect("valid categorical XOR justification study");
+        assert_eq!(r.schema(), CATEGORICAL_PID_STUDY_SCHEMA);
+        assert_eq!(r.pid_trials().len(), r.trials());
+        let serialized = serde_json::to_value(&r).expect("categorical evidence must serialize");
+        assert_eq!(serialized["schema"], CATEGORICAL_PID_STUDY_SCHEMA);
+        assert_eq!(
+            serialized["pid_trials"].as_array().unwrap().len(),
+            r.trials()
+        );
+        assert_eq!(serialized["pid_question"]["evaluator_units"], "Nats");
+        assert_eq!(serialized["pid_question"]["atom_aggregate_units"], "Bits");
+        assert_eq!(serialized["pid_question"]["source_count"], 2);
+        assert_eq!(
+            serialized["pid_question"]["input_law"]["semantic_id"],
+            "galadriel.law.categorical-xor-iid-fair-bits.v1"
+        );
         assert!(
-            r.corr_auc < 0.65,
+            serialized["pid_question"]["input_law"]["finite_sample_acceptance"]
+                .as_str()
+                .unwrap()
+                .contains("conditioned")
+        );
+        assert_eq!(
+            serialized["pid_question"]["output_coordinates"]
+                .as_array()
+                .unwrap()
+                .len(),
+            4
+        );
+        assert_eq!(serialized["pid_trials"][0]["units"], "Nats");
+        assert_eq!(
+            serialized["study_protocol"]["q_score_id"],
+            "galadriel.composition.joint-information-contrast-q.v1"
+        );
+        assert_eq!(
+            serialized["study_protocol"]["auc_interval_resamples"],
+            N_BOOT
+        );
+        assert_eq!(
+            serialized["study_protocol"]["bootstrap_seed_xor"],
+            AUC_BOOTSTRAP_SEED_XOR
+        );
+        assert_eq!(
+            serialized["study_protocol"]["generation_seed_xor"],
+            0x5259_6E65_u64
+        );
+        assert_eq!(
+            serialized["study_protocol"]["auc_interval_seed_relations"][3]
+                ["root_seed_wrapping_add"],
+            4
+        );
+        assert_eq!(
+            serialized["pid_question"]["aggregate_outputs"][0]["units"],
+            "Dimensionless"
+        );
+        assert_eq!(
+            serialized["pid_question"]["trial_arms"][1]["role"],
+            "WithinTrialTargetPermutationControl"
+        );
+        assert_eq!(
+            serialized["study_protocol"]["non_pid_aggregate_outputs"][6]["serialized_field"],
+            "q_coupled_mean"
+        );
+        assert!(serialized.get("q_auc").is_some());
+        assert!(serialized.get("synergy_auc").is_none());
+        assert!(r
+            .verifies_report_derived_aggregates()
+            .expect("sealed categorical aggregate must verify"));
+        assert!(
+            r.corr_auc() < 0.65,
             "correlation should be blind: {:.3}",
-            r.corr_auc
+            r.corr_auc()
         );
         assert!(
-            r.pairwise_mi_auc < 0.75,
+            r.pairwise_mi_auc() < 0.75,
             "pairwise MI should be blind: {:.3}",
-            r.pairwise_mi_auc
+            r.pairwise_mi_auc()
         );
+        assert!(r.q_auc() > 0.9, "joint Q must separate: {:.3}", r.q_auc());
         assert!(
-            r.synergy_auc > 0.9,
-            "synergy must separate: {:.3}",
-            r.synergy_auc
-        );
-        assert!(
-            r.synergy_coupled_mean > 0.7,
-            "XOR synergy ~1 bit: {:.3}",
-            r.synergy_coupled_mean
+            r.q_coupled_mean() > 0.7,
+            "XOR joint Q ~1 bit: {:.3}",
+            r.q_coupled_mean()
         );
     }
 
     #[test]
-    fn discrete_synergy_report_is_exactly_reproducible() {
-        let first = run_synergy(20, 600, 7).expect("first fixed-seed synergy study");
-        let second = run_synergy(20, 600, 7).expect("second fixed-seed synergy study");
-        assert_eq!(format_synergy(&first), format_synergy(&second));
+    fn pid_question_specs_keep_categorical_and_continuous_functionals_distinct() {
+        let categorical = PidQuestionSpec::categorical_xor();
+        let continuous = PidQuestionSpec::continuous_sign_parity();
+
+        assert_ne!(categorical.functional(), continuous.functional());
+        assert_ne!(categorical.route(), continuous.route());
+        assert_ne!(categorical.law_kind(), continuous.law_kind());
+        assert_ne!(
+            categorical.input_law().semantic_id(),
+            continuous.input_law().semantic_id()
+        );
+        assert!(continuous
+            .input_law()
+            .target_law()
+            .contains("sign(A) * sign(B) * abs(Z)"));
+        assert_eq!(categorical.evaluator_units(), PidInformationUnits::Nats);
+        assert_eq!(
+            categorical.atom_aggregate_units(),
+            PidInformationUnits::Bits
+        );
+        assert_eq!(continuous.evaluator_units(), PidInformationUnits::Nats);
+        assert_eq!(continuous.atom_aggregate_units(), PidInformationUnits::Nats);
+        assert_eq!(categorical.source_count(), 2);
+        assert_eq!(continuous.source_count(), 2);
+        assert_eq!(categorical.output_coordinates().len(), 4);
+        assert_eq!(continuous.output_coordinates().len(), 4);
+        assert_eq!(
+            categorical.output_coordinates()[0].components(),
+            &CATEGORICAL_COMPONENTS
+        );
+        assert_eq!(
+            continuous.output_coordinates()[0].components(),
+            &CONTINUOUS_COMPONENTS
+        );
+        assert_eq!(
+            categorical.output_coordinates()[3].lattice_coordinate(),
+            PidLatticeCoordinate::Synergy
+        );
+        assert_eq!(
+            continuous.output_coordinates()[3].construction(),
+            PidQuantityConstruction::ContinuousPid2DerivedAtomFromRedundancyAndMutualInformation
+        );
+        assert_eq!(
+            continuous.output_coordinates()[0].construction(),
+            PidQuantityConstruction::ContinuousEhrlichSharedExclusionsRedundancyEstimate
+        );
+        assert_eq!(categorical.aggregate_outputs().len(), 4);
+        assert_eq!(continuous.aggregate_outputs().len(), 3);
+        assert_eq!(categorical.trial_arms().len(), 2);
+        assert_eq!(continuous.trial_arms().len(), 2);
+        assert_eq!(
+            continuous.trial_arms()[1].role(),
+            PidTrialArmRole::WithinTrialTargetPermutationControl
+        );
+        assert_eq!(
+            categorical.aggregate_outputs()[0].units(),
+            StudyOutputUnits::Dimensionless
+        );
+        assert_eq!(
+            categorical.aggregate_outputs()[2].coordinate(),
+            PidLatticeCoordinate::Synergy
+        );
+        assert_eq!(
+            categorical.aggregate_outputs()[3].coordinate(),
+            PidLatticeCoordinate::Redundancy
+        );
+        assert_eq!(
+            categorical.output_coordinates()[0]
+                .lattice_coordinate()
+                .semantic_id(),
+            "two-source-antichain:{{S1},{S2}}"
+        );
+        assert_eq!(
+            categorical.functional().defining_team(),
+            "Abdullah Makkeh; Aaron J. Gutknecht; Michael Wibral"
+        );
+        assert_eq!(
+            continuous.functional().defining_team(),
+            "David A. Ehrlich; Kyle Schick-Poland; Abdullah Makkeh; Felix Lanfermann; Patricia Wollstadt; Michael Wibral"
+        );
+        assert_eq!(categorical.schema(), PID_QUESTION_SCHEMA);
+        assert_eq!(categorical.functional().reference_edges().len(), 4);
+        assert_eq!(continuous.functional().reference_edges().len(), 4);
+        assert_eq!(
+            categorical.functional().reference_edges()[0].locator(),
+            "https://doi.org/10.1103/PhysRevE.103.032149"
+        );
+        assert_eq!(
+            categorical.functional().reference_edges()[1].locator(),
+            "https://arxiv.org/abs/1004.2515"
+        );
+        assert_eq!(
+            categorical.functional().reference_edges()[2].locator(),
+            "https://doi.org/10.1098/rspa.2021.0110"
+        );
+        assert_eq!(
+            continuous.functional().reference_edges()[0].locator(),
+            "https://doi.org/10.1103/PhysRevE.110.014115"
+        );
+        assert_eq!(
+            continuous.functional().reference_edges()[2].locator(),
+            "https://doi.org/10.1103/PhysRevE.69.066138"
+        );
+        assert!(categorical
+            .functional()
+            .reference_edges()
+            .iter()
+            .any(|edge| edge
+                .roles()
+                .contains(&PidReferenceRole::RelatedConstructionNotEvaluated)));
+        let categorical_json = serde_json::to_value(&categorical).unwrap();
+        let continuous_json = serde_json::to_value(&continuous).unwrap();
+        let categorical_refs = categorical_json["reference_edges"].as_array().unwrap();
+        let continuous_refs = continuous_json["reference_edges"].as_array().unwrap();
+        assert!(categorical_refs
+            .iter()
+            .any(|edge| { edge["locator"] == "https://doi.org/10.1098/rspa.2021.0110" }));
+        assert!(continuous_refs
+            .iter()
+            .any(|edge| { edge["locator"] == "https://doi.org/10.1103/PhysRevE.69.066138" }));
+        assert_eq!(
+            categorical_json["output_coordinates"][0]["components"],
+            serde_json::json!(["Net", "Informative", "Misinformative"])
+        );
+        assert_eq!(
+            continuous_json["output_coordinates"][0]["components"],
+            serde_json::json!(["Net"])
+        );
+        assert!(categorical_refs.iter().any(|edge| {
+            edge["roles"].as_array().is_some_and(|roles| {
+                roles
+                    .iter()
+                    .any(|role| role == "RelatedConstructionNotEvaluated")
+            }) && edge["locator"] == "https://arxiv.org/abs/2106.12393"
+        }));
+        assert!(continuous_refs.iter().any(|edge| {
+            edge["reference_id"] == "ehrlich-2024"
+                && edge["roles"].as_array().is_some_and(|roles| {
+                    roles.iter().any(|role| role == "FunctionalDefinition")
+                        && roles.iter().any(|role| role == "EstimatorDefinition")
+                })
+        }));
+        assert_eq!(
+            categorical.route().method_id(),
+            "shared-exclusions.categorical"
+        );
+        assert_eq!(continuous.route().method_id(), "pid.continuous-pid2");
+        assert_eq!(
+            continuous.route().api_route(),
+            "pid_core::experimental::continuous::pid2_isx_report"
+        );
+        assert_eq!(
+            categorical.route().api_route(),
+            "pid_core::stable::categorical::discrete_sxpid2"
+        );
+        assert_eq!(
+            categorical.route().feature_gate(),
+            "none; stable categorical surface"
+        );
+        assert_eq!(continuous.route().feature_gate(), "experimental-continuous");
+        assert_eq!(
+            categorical.output_relation(),
+            "pid-core evaluator and retained per-trial results remain in nats; aggregate/display atoms divide by ln(2) exactly once and are in bits"
+        );
+        assert_eq!(
+            continuous.output_relation(),
+            "pid-core evaluator, retained per-trial reports, and aggregate/display atoms all remain in nats"
+        );
+        assert_eq!(categorical.pid_core_dependency().package_name(), "pid-core");
+        assert_eq!(
+            categorical
+                .pid_core_dependency()
+                .workspace_selected_feature(),
+            "experimental-continuous"
+        );
+        assert_eq!(
+            categorical.pid_core_dependency().git_revision(),
+            PID_RS_REVISION
+        );
+    }
+
+    #[test]
+    fn discrete_synergy_report_is_reproducible_and_fixed_source_information_is_invariant() {
+        let first = run_categorical_xor_justification(20, 600, 7)
+            .expect("first fixed-seed categorical XOR study");
+        let second = run_categorical_xor_justification(20, 600, 7)
+            .expect("second fixed-seed categorical XOR study");
+        assert_eq!(
+            format_categorical_xor_justification(&first),
+            format_categorical_xor_justification(&second)
+        );
+
+        let mut response_specific_misinformation_observed = false;
+        for trial in first.pid_trials() {
+            let coupled = trial.coupled();
+            let control = trial.permutation_control();
+            for (coordinate, coupled_atom, control_atom) in [
+                ("redundancy", &coupled.red, &control.red),
+                ("unique-source-1", &coupled.unq1, &control.unq1),
+                ("unique-source-2", &coupled.unq2, &control.unq2),
+                ("synergy", &coupled.syn, &control.syn),
+            ] {
+                assert!(
+                    (coupled_atom.informative - control_atom.informative).abs() < 1e-12,
+                    "fixed source rows must preserve the MGW informative {coordinate} atom"
+                );
+                response_specific_misinformation_observed |=
+                    (coupled_atom.misinformative - control_atom.misinformative).abs() > 1e-9;
+            }
+        }
+        assert!(
+            response_specific_misinformation_observed,
+            "the target-permutation control must change at least one misinformative atom"
+        );
     }
 
     #[test]
     fn sxpid_synergy_atom_sees_xor_and_matches_closed_form() {
-        // The Wibral i^sx diagnostic decomposition: its synergy atom separates the
-        // XOR coupling (AUC ~1), and the coupled-class atoms match the closed form —
+        // The categorical Makkeh–Gutknecht–Wibral diagnostic decomposition: its
+        // synergy atom separates the XOR coupling (AUC ~1), and the coupled-class
+        // atoms match the closed form —
         // syn = log2(4/3) ≈ +0.415 bits, red = log2(2/3) ≈ −0.585 bits (negative:
         // misinformative sharing, a deliberate property of SxPID, never clamped).
-        let r = run_synergy(150, 600, 7).expect("valid synergy study");
+        let r = run_categorical_xor_justification(150, 600, 7)
+            .expect("valid categorical XOR justification study");
         assert!(
-            r.sxpid_syn_auc > 0.9,
+            r.sxpid_syn_auc() > 0.9,
             "SxPID synergy atom must separate: {:.3}",
-            r.sxpid_syn_auc
+            r.sxpid_syn_auc()
         );
         let syn_exact = (4.0_f64 / 3.0).log2();
         let red_exact = (2.0_f64 / 3.0).log2();
         assert!(
-            (r.sxpid_syn_coupled_mean - syn_exact).abs() < 0.05,
+            (r.sxpid_syn_coupled_mean() - syn_exact).abs() < 0.05,
             "XOR SxPID synergy ≈ {syn_exact:.3} bits, got {:.3}",
-            r.sxpid_syn_coupled_mean
+            r.sxpid_syn_coupled_mean()
         );
         assert!(
-            (r.sxpid_red_coupled_mean - red_exact).abs() < 0.05,
+            (r.sxpid_red_coupled_mean() - red_exact).abs() < 0.05,
             "XOR SxPID redundancy ≈ {red_exact:.3} bits (negative), got {:.3}",
-            r.sxpid_red_coupled_mean
+            r.sxpid_red_coupled_mean()
         );
     }
 
@@ -1796,24 +3941,70 @@ mod tests {
         // The continuous XOR analog on the pid-core estimators: pairwise KSG MI is
         // at chance (all pairwise marginals exactly independent), while the joint
         // contrast Q and the continuous I^sx synergy atom both separate.
-        let r = run_synergy_continuous(40, 600, 7).expect("valid continuous study");
-        assert!(
-            r.pairwise_mi_auc < 0.75,
-            "pairwise KSG MI should be ~chance: {:.3}",
-            r.pairwise_mi_auc
+        let r = run_continuous_sign_parity_justification(40, 600, 7)
+            .expect("valid continuous sign-parity justification study");
+        assert_eq!(r.schema(), CONTINUOUS_PID_STUDY_SCHEMA);
+        assert_eq!(r.pid_trials().len(), r.trials());
+        let serialized = serde_json::to_value(&r).expect("continuous evidence must serialize");
+        assert_eq!(serialized["schema"], CONTINUOUS_PID_STUDY_SCHEMA);
+        assert_eq!(
+            serialized["pid_trials"].as_array().unwrap().len(),
+            r.trials()
         );
-        assert!(r.q_auc > 0.9, "joint Q must separate: {:.3}", r.q_auc);
+        assert_eq!(serialized["pid_question"]["evaluator_units"], "Nats");
+        assert_eq!(serialized["pid_question"]["atom_aggregate_units"], "Nats");
+        assert_eq!(serialized["pid_trials"][0]["units"], "Nats");
+        assert_eq!(
+            serialized["study_protocol"]["generation_seed_xor"],
+            0x516E_9A21_u64
+        );
+        assert_eq!(
+            serialized["study_protocol"]["non_pid_aggregate_outputs"][6]["quantity"],
+            "JointMutualInformation"
+        );
+        assert!(r
+            .verifies_report_derived_aggregates()
+            .expect("sealed continuous aggregate must verify"));
         assert!(
-            r.isx_syn_auc > 0.85,
+            r.pairwise_mi_auc() < 0.75,
+            "pairwise KSG MI should be ~chance: {:.3}",
+            r.pairwise_mi_auc()
+        );
+        assert!(r.q_auc() > 0.9, "joint Q must separate: {:.3}", r.q_auc());
+        assert!(
+            r.isx_syn_auc() > 0.85,
             "continuous I^sx synergy atom must separate: {:.3}",
-            r.isx_syn_auc
+            r.isx_syn_auc()
         );
         // Joint KSG MI should approximate the exact ln 2 parity bit.
         assert!(
-            (r.joint_mi_coupled_mean - std::f64::consts::LN_2).abs() < 0.2,
+            (r.joint_mi_coupled_mean() - std::f64::consts::LN_2).abs() < 0.2,
             "joint MI ≈ ln2: {:.3}",
-            r.joint_mi_coupled_mean
+            r.joint_mi_coupled_mean()
         );
+    }
+
+    #[test]
+    fn pid_core_error_category_and_source_are_not_erased() {
+        let error = pid_error(pid_core::PidError::NumericalInstability {
+            context: "hostile-control",
+        });
+        assert!(matches!(
+            error,
+            JustificationError::PidCore(pid_core::PidError::NumericalInstability {
+                context: "hostile-control"
+            })
+        ));
+    }
+
+    #[test]
+    fn local_mi_zero_radius_shell_is_typed_failure_not_numeric_zero() {
+        let error = local_mi_query(&[0.0, 0.0, 1.0], &[0.0, 0.0, 1.0], 0.0, 0.0, 2)
+            .expect_err("duplicate kth-neighbor shell must abstain");
+        assert!(matches!(
+            error,
+            JustificationError::Galadriel(GaladrielError::InvalidChannels(_))
+        ));
     }
 
     #[test]
@@ -1882,7 +4073,7 @@ mod tests {
         assert!(run(MIN_TRIALS, 7, 0.5, 7).is_err());
         assert!(run(MIN_TRIALS, 300, f64::NAN, 7).is_err());
         assert!(run(MIN_TRIALS, MAX_SAMPLES, 0.5, 7).is_err());
-        assert!(run_synergy(MAX_TRIALS + 1, 600, 7).is_err());
+        assert!(run_categorical_xor_justification(MAX_TRIALS + 1, 600, 7).is_err());
         assert!(run_seq(Coupling::Linear, 0, 0.5, 7).is_err());
         assert!(auc_ci(&[1.0], &[0.0], 0, 7).is_err());
         let oversized = vec![0.0; MAX_TRIALS + 1];
@@ -1910,6 +4101,66 @@ mod tests {
         assert!(auc_ci(&large_pos, &large_neg, 100_000, 7).is_err());
         assert!(preflight_default_suite(300).is_ok());
         assert!(preflight_default_suite(MAX_TRIALS).is_err());
+    }
+
+    #[test]
+    fn distance_preflight_counts_the_constituent_routes_actually_executed() {
+        assert_eq!(ksg_report_distance_work(8).unwrap(), 4 * 28);
+        assert_eq!(pid2_report_distance_work(8).unwrap(), 13 * 28);
+        assert_eq!(pid2_work(250, 600, 2).unwrap(), 1_168_050_000);
+
+        let n = 64;
+        let mut rng = StdRng::seed_from_u64(0xD157_AACE);
+        let normal = Normal::new(0.0, 1.0).unwrap();
+        let a = (0..n).map(|_| normal.sample(&mut rng)).collect::<Vec<_>>();
+        let b = (0..n).map(|_| normal.sample(&mut rng)).collect::<Vec<_>>();
+        let t = a
+            .iter()
+            .zip(&b)
+            .map(|(&x, &y)| x + y + 0.2 * normal.sample(&mut rng))
+            .collect::<Vec<_>>();
+        let am = MatOwned::new(a, n, 1).unwrap();
+        let bm = MatOwned::new(b, n, 1).unwrap();
+        let tm = MatOwned::new(t, n, 1).unwrap();
+        let provenance = Pid2Provenance::new(
+            "Fixed source-A test gauge.",
+            "Fixed source-B test gauge.",
+            "No target preprocessing.",
+            "Binary64 synthetic test observations without added noise.",
+        )
+        .and_then(|value| {
+            value.with_sampling_model_and_splits(
+                "Independent synthetic rows for a resource-accounting hostile control.",
+                None,
+                Some("resource-accounting-evaluation"),
+            )
+        })
+        .unwrap();
+        let report = pid2_isx_report(
+            am.as_ref(),
+            bm.as_ref(),
+            tm.as_ref(),
+            &Pid2Config::assume_regular_full_dimensional(),
+            &provenance,
+        )
+        .unwrap();
+        let executed_constituents = [
+            report.mi_s1_t_report.resource_estimate.pairwise_distances,
+            report.mi_s2_t_report.resource_estimate.pairwise_distances,
+            report.mi_s1s2_t_report.resource_estimate.pairwise_distances,
+            report
+                .redundancy_isx_report
+                .resource_estimate
+                .pairwise_distances,
+        ]
+        .into_iter()
+        .try_fold(0u128, u128::checked_add)
+        .unwrap();
+        assert_eq!(executed_constituents, pid2_report_distance_work(n).unwrap());
+        assert!(
+            report.resource_estimate.pairwise_distances < executed_constituents,
+            "the pinned aggregate must not be mistaken for the executed constituent sum"
+        );
     }
 
     #[test]
@@ -1959,14 +4210,22 @@ mod tests {
             assert!(has_both_binary_values(&b));
             assert!(has_both_binary_values(&t));
         }
-        assert!(run_synergy(MIN_TRIALS, 8, 7).is_ok());
+        assert!(run_categorical_xor_justification(MIN_TRIALS, 8, 7).is_ok());
     }
 
     #[test]
-    fn domain_separated_jitter_does_not_create_constant_channel_dependence() {
+    fn constant_continuous_columns_abstain_without_added_noise() {
         let constant = vec![1.0; 512];
-        let mi = ksg(7, &constant, &constant).expect("finite columns");
-        assert!(mi < 0.2, "independent jitter should not fabricate MI: {mi}");
+        let result = ksg(
+            7,
+            &constant,
+            &constant,
+            "Caller-declared constant-row negative control; this law is atomic and outside the continuous KSG support contract.",
+        );
+        assert!(
+            result.is_err(),
+            "constant columns must abstain, not be noised"
+        );
     }
 
     #[test]

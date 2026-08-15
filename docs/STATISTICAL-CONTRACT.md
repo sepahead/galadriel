@@ -242,89 +242,130 @@ The binding does not authenticate those labels or prove physical provenance.
 are unbound. It rejects mixed bindings. It does not return a sealed
 `DefaultReport`.
 
-## Optional PID research report
+## Optional dependence companion and offline PID boundary
 
-PID is not part of the stable core surface or a deployment claim. When compiled,
-pairwise `estimate_nats` is the upstream report-first KSG mutual-information point
-estimate. It applies to the declared regular, full-dimensional, continuous support
-contract. `n_samples` and `k` are the actual estimator inputs.
+The optional in-process/library companion is not PID. Its current executable
+integrations are the synthetic demo, evaluation harness, and benchmark; raw
+`replay`, `observe`, and NCP ingestion do not invoke it. It evaluates one symmetric complete
+graph of report-first pairwise KSG-MI estimates. Each `PairKsgEvidence` retains the
+typed support contract, method and scientific status, estimand identity,
+assumption ledger, warnings, provenance, preprocessing and sampling descriptions,
+resource estimate, exact upstream revision, sample count, `k`, and nats units.
 
-The attached interpretation **SHALL NOT** be dropped when a scalar is retained.
-It includes this information:
+The caller supplies `ContinuousLawDeclaration` text for the population law,
+binary64 observation model, and sampling model. Construction validates only that
+the text is nonempty and bounded. It does not prove those declarations. Galadriel
+requires a declared common coordinate gauge and applies the fixed identity
+transform to every edge. It adds no stochastic observation transform. Exact ties,
+a degenerate column, rejected geometry, or any unavailable
+pair withhold a complete graph estimate.
 
-- typed support
-- method and scientific status
-- assumption ledger
-- warnings
-- provenance hashes
-- preprocessing, observation, and sampling descriptions
-- resource estimate
+For each channel, `strongest_pair_mi_nats` is the maximum incident edge in the
+complete estimated graph. The configured global reference is the maximum over all
+edges. The threshold is
+`max(mi_floor_nats, separation_ratio * global_reference)`. A retained separation
+requires one unique strict-majority clique and a strict minority whose every edge
+to that clique lies below the threshold.
 
-For each channel, `corroboration` is its best admissible pairwise MI estimate in
-nats.
+`MiGraphDisposition` has these descriptive meanings:
 
-`redundancy` and `synergy` are experimental shared-exclusions PID2 atoms in nats.
+- `NoSeparationAtConfiguredThreshold`: all requested channels belong to the one
+  retained threshold graph.
+- `SeparatedFromMajorityGraph`: the named strict minority lies outside the unique
+  strict-majority clique.
+- `Unavailable`: rows, geometry, pair evidence, reference strength, clique
+  uniqueness, or deletion stability did not support either description.
 
-`gate_ok` and `gate_note` record estimator admissibility.
+Resource rejection is not scientific instability. A point graph distinguishes
+`PairResourceRejected` from ordinary unavailable pair evidence. A deletion replay
+that crosses a resource boundary yields
+`ResourceRejectedDuringExhaustiveDeletion`; it is not relabeled
+`UnstableUnderExhaustiveDeletion` and no stability claim is made.
 
-`ci` is the circular delete-block interval for the worst candidate-to-consensus
-confirmation margin.
+None means nominal security, attack, causal mechanism, or calibrated hypothesis
+rejection. The threshold has no null distribution or false-alarm theorem.
 
-The configured clique and confirmation procedure alone can admit `decoupled`.
+`ExhaustiveCircularDeleteBlock` enumerates every circular block start. Each
+deletion reruns retained-row validation, geometry, every pair report, the global
+reference, threshold, clique, and attribution. A retained separation must be
+identical on every replay. `DeleteBlockStabilityEnvelope` contains literal margin
+minima and maxima over that finite perturbation set. It is not a confidence
+interval, p-value, bootstrap, family-alpha procedure, or coverage statement.
 
-`PidVerdict` has three meanings.
+`RowSetReceipt` hashes exact modality order, row order, binary64 values, caller
+episode label, and origin. The report separately binds and verifies the complete
+MI configuration identity. Verification proves byte agreement only.
+It does not prove episode membership, independence, or population support.
+`DeclaredMiInput` retains only the newest `MAX_MI_WINDOW` rows per channel
+before scanning values. This bounds direct-constructor validation and cloning by
+the same public row ceiling the analyzer can use.
 
-`Nominal` means all requested channels are admitted.
+The core-bound route additionally retains the producer projection frame and
+context, axis identity, full extracted suffix length, modality order, and the
+exact ordered sequence/minimum-timestamp/maximum-timestamp triple for every row
+selected by the MI tail. `ProjectionAxisReceipt` binds that material to the core
+assessment and dependence-suite identity. The inner `RowSetReceipt` still binds
+the exact numeric columns. Neither receipt authenticates the producer or assigns
+physical meaning to an axis.
 
-`Decoupled` means a strict minority is confirmed outside.
+`MiEstimatorEvidence` serializes the functional, estimator, exact DOI, upstream
+report route, graph composition and rule, tail rule, fixed-preprocessing and
+no-noise relation, geometry protocol, warning policy, information units, and
+exact pid-rs repository, version, and revision. Its `accepted_config` contains
+every accepted custom or named graph parameter and all work/input ceilings. Its
+`ksg_evaluator_config` contains the fixed `k`, metric, tie rule, negative-value
+policy, support declaration, boundary, geometry model, exact-backend policy, and
+estimand/estimator revisions. This material remains present when no pair succeeds.
+Each successful pair additionally retains the complete immutable upstream KSG
+report. These records are self-describing provenance, not a compatibility,
+validity, or calibration certificate.
 
-`InsufficientEvidence` means no defensible attribution is available.
+`DependenceResearchSuite` composes the release suite and one MI configuration
+after checked multi-axis work preflight. `DependenceAssessmentReport` retains the
+exact unchanged `DefaultReport` plus companion axes. Its binding covers scope,
+stream, and suite. MI has no path into `FusedVerdict` or `ConsistencyEvidence`.
 
-PID atoms are diagnostics. They are not a posterior or a standalone causal
-verdict.
+Categorical Makkeh–Gutknecht–Wibral shared-exclusions PID and the related but
+distinct continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction
+are offline `galadriel-justify` study
+functionals. Each question must fix source identities and order, an external
+target, functional and estimator identity, law, units, transformations, gauges,
+row relation, and software identity. A hand-built local kNN-MI CUSUM is a
+project-defined heuristic, not either PID construction.
 
-A finite degenerate PID column makes the requested PID family unavailable. The
-PID report returns `InsufficientEvidence` before observation noise is added. A
-non-finite column remains invalid input and returns an error.
+The unit contract has two layers. Native pid-core evaluators and retained trial
+reports are in nats. Categorical aggregate/display atom fields convert those
+values once to bits; continuous aggregates remain in nats. Every serialized
+trial envelope carries its native unit, so a bit-valued aggregate question cannot
+silently relabel raw upstream nats.
 
-PID work requires an explicit accepted `PidResearchSuite`. It contains a PID-free
-`ReleaseSuite` and one underived `PidConfig`. Construction checks the worst-case
-three-axis quadratic-fit product before it reads observations. The system checks
-the actual axis family and divides it exactly once before estimator use.
+`PidQuestionSpec` governs only named PID fields and retained PID trials. Its
+version 2 schema serializes the exact generated law and finite-sample acceptance
+rule; the complete two-source output family as typed quantity IDs, lattice
+coordinates, direct-versus-derived atom constructions, component sets,
+within-trial aggregation laws, and native units; each root PID aggregate field's
+coordinate/component/statistic/unit; and the distinct interpretation of the
+coupled-law and within-trial target-permutation arms. The continuous permutation
+arm is an exchangeable descriptive randomization score, not an i.i.d.
+independent-law or population-functional estimate. Functional identity alone is
+not treated as one scalar identity.
+`JustificationStudyProtocol` separately identifies Pearson, pairwise MI, and the
+project-defined `Q = I(S1,S2;T) - max(I(S1;T), I(S2;T))` composition. `Q` is not a
+PID atom. The protocol maps every non-PID root field to a quantity, statistic,
+and unit. It also binds the paired-trial sampling unit, paired-index percentile
+bootstrap identity, generator and bootstrap seed relations, order-statistic rule,
+resample count, interval scope, and lack of a multiplicity guarantee. The exact
+resolved RNG dependency bytes and Galadriel source tree remain external
+publication-bundle requirements. Categorical MI and `Q` are mechanically derived from each retained
+pid-core result. Sealed aggregate results expose a bitwise coherence verifier;
+typed `JustificationError` retains the original Galadriel or pid-core error source.
 
-`PidConfigDigest` includes all accepted scalar values. It includes the confirmation
-variant and applicable payload. It also includes named or custom classification,
-axis-family derivation, fixed resource ceilings, and exact upstream semantics and
-revision. Each `PidReport` carries that identity through sealed estimator
-evidence.
-
-These types are sealed output values:
-
-- `PidEstimatorEvidence`
-- `ChannelPid`
-- `PidReport`
-- `AxisPidReport`
-- `FusedReport`
-
-PID fusion checks one accepted research suite against the baseline and all
-correlation and PID axes. Mixed identities are errors. Duplicate, non-contiguous,
-or out-of-range axes are also errors, not evidence.
-
-The fused PID report contains suite identity and classification. It retains the
-magnitude, signed-correlation, and PID axes. It adds `PidAssessmentBinding`, which
-binds the core assessment to the complete PID research suite.
-
-The PID binding contains the exact core version 2 binding.
-`FusedReport::assessment_scope` returns the scope from that nested binding.
-The optional `assess_stream` entry point requires the same scope that enters core
-preparation.
-
-Sign-invariant PID cannot erase positive signed-correlation evidence. A PID
-nominal result cannot repair unavailable signed-correlation evidence. Complete
-and conflict-free signed attribution can remain advisory evidence when optional
-PID axes are insufficient. The report retains the incomplete PID evidence.
-Positive PID evidence beside unavailable signed-correlation evidence produces
-`UnclassifiedAnomaly`. It does not produce `AttributedInconsistency`.
+`PidQuestionSpec` makes those two implemented study questions nominally
+distinct and records their complete defining teams and exact primary references.
+Its `PidDependencyIdentity` is only a mechanically checked package/version/Git
+pin/feature envelope because the selected pid-rs revision predates pid-rs's
+richer software-identity surface. It must not be represented as source, build,
+binary, or attestation identity.
 
 ## Repeated use and missingness
 
@@ -338,7 +379,7 @@ false-alert guarantee:
 
 - `nis_alpha`
 - `family_alpha`
-- bootstrap intervals
+- deterministic deletion envelopes or bootstrap intervals
 - synthetic rates
 - a single assessment
 

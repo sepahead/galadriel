@@ -22,7 +22,7 @@ path = "src/main.rs"
 [dependencies]
 galadriel-core = { workspace = true }
 galadriel-sim = { workspace = true }
-galadriel-pid = { workspace = true, optional = true }
+galadriel-dependence = { workspace = true, optional = true }
 galadriel-ncp = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true, features = ["rt-multi-thread", "signal", "time"] }
 serde = { workspace = true, optional = true }
@@ -32,10 +32,9 @@ anyhow = { workspace = true }
 
 [features]
 default = []
-# This feature selects the cross-sensor partial information decomposition (PID)
-# engine and pid-core.
-# Demonstration command: `cargo run --features pid -- demo`.
-pid = ["dep:galadriel-pid"]
+# This feature selects the optional pairwise-MI dependence companion and pid-core.
+# Demonstration command: `cargo run --features dependence -- demo`.
+dependence = ["dep:galadriel-dependence"]
 # This feature selects Neuro-Cybernetic Protocol (NCP) sidecar ingestion and ncp-core.
 # It adds `replay <jsonl>`.
 ncp = ["dep:galadriel-ncp"]

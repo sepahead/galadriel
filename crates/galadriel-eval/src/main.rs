@@ -8,7 +8,8 @@ use galadriel_eval::{
     adaptive_adversary, attacker_gain, collusion_study, decoupling_sweep, format_adaptive,
     format_attacker_gain, format_ci, format_collusion, format_latency, format_maneuver,
     format_report, format_sweep, maneuver_far, measure_latency, run, stealthy_ci_study,
-    validate_report_suite, EvalConfig, EvaluationResearchProfile, MIN_INFERENCE_TRIALS,
+    validate_report_suite, EvalConfig, EvaluationResearchProfile, ADAPTIVE_TARGET_FAR,
+    DETECTION_TOLERANCE, MANEUVER_DURATION_FRAMES, MANEUVER_MAGNITUDE_SIGMA, MIN_INFERENCE_TRIALS,
 };
 
 const MAX_TRIALS: usize = 1_000;
@@ -61,6 +62,7 @@ fn run_main() -> Result<(), String> {
         .map_err(|error| error.to_string())?;
     let cfg = suite.eval();
     print_synthetic_banner(cfg.base_seed());
+    println!("suite configuration SHA-256: {}", suite.canonical_digest());
 
     let results = run(cfg).map_err(|error| error.to_string())?;
     print!("{}", format_report(&results));
@@ -72,13 +74,13 @@ fn run_main() -> Result<(), String> {
         .map_err(|error| error.to_string())?;
     print!("{}", format_latency(&latency, lat_trials, step));
 
-    // Bootstrap 95% CIs on the stealthy-spoof AUCs + the paired corr−PID difference.
+    // Bootstrap 95% CIs on the stealthy-spoof AUCs + the paired corr−MI difference.
     let (rows, diff) =
         stealthy_ci_study(cfg, suite.bootstrap_resamples()).map_err(|error| error.to_string())?;
     println!();
     print!("{}", format_ci(&rows, diff, n_boot));
 
-    // Decoupling-strength sweep: the detection boundary (does PID hold on longer than
+    // Decoupling-strength sweep: the detection boundary (does MI hold on longer than
     // correlation as the spoof weakens? — on linear-Gaussian data it should not).
     println!();
     let sweep = decoupling_sweep(cfg, suite.decouplings(), suite.bootstrap_resamples())
@@ -93,12 +95,12 @@ fn run_main() -> Result<(), String> {
     // Adaptive threshold-hugging adversary at a target 5% clean upper-tail quantile;
     // the independently seeded holdout arm reports the observed FAR.
     println!();
-    let adaptive =
-        adaptive_adversary(cfg, suite.decouplings(), 0.05).map_err(|error| error.to_string())?;
-    print!("{}", format_adaptive(&adaptive, 0.5));
+    let adaptive = adaptive_adversary(cfg, suite.decouplings(), ADAPTIVE_TARGET_FAR)
+        .map_err(|error| error.to_string())?;
+    print!("{}", format_adaptive(&adaptive, DETECTION_TOLERANCE));
 
     // Non-stationary FAR: a benign maneuver, swept over per-channel lag.
-    let (mag, dur) = (12.0, 90);
+    let (mag, dur) = (MANEUVER_MAGNITUDE_SIGMA, MANEUVER_DURATION_FRAMES);
     println!();
     let maneuver =
         maneuver_far(cfg, suite.lag_steps(), mag, dur).map_err(|error| error.to_string())?;
@@ -107,7 +109,7 @@ fn run_main() -> Result<(), String> {
     // Attacker success: the undetected fused-innovation bias vs decoupling.
     println!();
     let gain = attacker_gain(cfg, suite.decouplings()).map_err(|error| error.to_string())?;
-    print!("{}", format_attacker_gain(&gain, 0.5));
+    print!("{}", format_attacker_gain(&gain, DETECTION_TOLERANCE));
     Ok(())
 }
 

@@ -4,9 +4,10 @@
 //! Usage: `galadriel-justify [trials]` (default 300 trials per class).
 
 use galadriel_justify::{
-    format_autocorrelation_null, format_report, format_seq, format_synergy,
-    format_synergy_continuous, preflight_default_suite, run, run_autocorrelation_null, run_seq,
-    run_synergy, run_synergy_continuous, Coupling, MAX_TRIALS, MIN_TRIALS,
+    format_autocorrelation_null, format_categorical_xor_justification,
+    format_continuous_sign_parity_justification, format_report, format_seq,
+    preflight_default_suite, run, run_autocorrelation_null, run_categorical_xor_justification,
+    run_continuous_sign_parity_justification, run_seq, Coupling, MAX_TRIALS, MIN_TRIALS,
 };
 
 /// Root seed shared by every study invocation below and printed in the banner, so the
@@ -52,12 +53,15 @@ fn run_main() -> Result<(), String> {
     print_synthetic_banner(STUDY_SEED);
     let study = run(trials, 400, 0.5, STUDY_SEED).map_err(|error| error.to_string())?;
     print!("{}", format_report(&study));
-    let synergy =
-        run_synergy(trials.min(250), 600, STUDY_SEED).map_err(|error| error.to_string())?;
-    print!("{}", format_synergy(&synergy));
-    let continuous = run_synergy_continuous(trials.min(250), 600, STUDY_SEED)
+    let synergy = run_categorical_xor_justification(trials.min(250), 600, STUDY_SEED)
         .map_err(|error| error.to_string())?;
-    print!("{}", format_synergy_continuous(&continuous));
+    print!("{}", format_categorical_xor_justification(&synergy));
+    let continuous = run_continuous_sign_parity_justification(trials.min(250), 600, STUDY_SEED)
+        .map_err(|error| error.to_string())?;
+    print!(
+        "{}",
+        format_continuous_sign_parity_justification(&continuous)
+    );
     for coupling in Coupling::ALL {
         let sequential = run_seq(coupling, trials.min(100), 0.5, STUDY_SEED)
             .map_err(|error| error.to_string())?;

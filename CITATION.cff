@@ -17,7 +17,7 @@ abstract: >-
   Galadriel is fail-closed Rust research software for cross-sensor statistical
   consistency monitoring. It uses normalized innovation squared (NIS), cumulative sum
   (CUSUM), and signed common-projection correlation. It also offers an optional
-  partial information decomposition (PID) diagnostic.
+  pairwise mutual-information companion and separate partial information decomposition (PID) studies.
 keywords:
   - sensor fusion
   - anomaly detection

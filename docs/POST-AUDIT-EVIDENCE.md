@@ -285,6 +285,7 @@ The simulator produces controlled synthetic stress tests.
 They do not represent a deployed residual population.
 The configured per-assessment family alpha is not a stream-level false-alert guarantee.
 
-The runner intentionally excludes Partial Information Decomposition (PID).
-This repository revision exposes PID as a terminal whole-replay experiment.
-Adding a streaming cadence creates evidence for behavior that the product does not implement.
+The runner intentionally excludes the opt-in pairwise-MI companion and every
+offline PID study. It evaluates streaming NIS and signed correlation only.
+Neither `replay` nor `observe` invokes MI or PID in this revision. Adding either
+to this evidence artifact would evaluate behavior that the runner does not implement.

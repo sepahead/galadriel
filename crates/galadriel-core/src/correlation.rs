@@ -1,16 +1,17 @@
 //! The cheap, pure cross-sensor consistency check: signed pairwise **Pearson correlation**.
 //!
 //! This is galadriel's **default** cross-channel detector. The controlled synthetic
-//! studies described in `docs/JUSTIFICATION.md` compare it with the optional MI/PID
+//! studies described in `docs/JUSTIFICATION.md` compare it with the optional MI
 //! engine under explicitly generated linear and nonlinear dependence. Those studies
 //! do not establish equivalence, operational accuracy, or coverage of a deployed
 //! residual distribution. Correlation remains the default because it is inexpensive,
-//! signed, and interpretable; MI/PID is an opt-in research diagnostic.
+//! signed, and interpretable; pairwise MI is an opt-in companion and PID is offline.
 //!
-//! Like the PID engine, it builds pairwise evidence and requires a unique positive
-//! strict-majority consensus before attributing an outsider. The statistics and
-//! confirmation procedures differ, so their scores are comparable only within the
-//! explicitly documented evaluation protocol (see `galadriel-eval`).
+//! It builds pairwise evidence and requires a unique positive strict-majority
+//! consensus before attributing an outsider. The optional pairwise-MI companion
+//! has a similar graph shape but different statistics and semantics. Project-defined
+//! ranking scores are comparable only within the explicitly documented evaluation
+//! protocol (see `galadriel-eval`); signed `rho` and MI in nats are not interchangeable.
 
 use std::{cmp::Ordering, error::Error, fmt};
 
@@ -552,7 +553,7 @@ impl CorrChannel {
     }
 }
 
-/// The correlation verdict (same shape as the PID engine's).
+/// The signed-correlation verdict.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "verdict", content = "channels", rename_all = "snake_case")]
 pub enum CorrVerdict {

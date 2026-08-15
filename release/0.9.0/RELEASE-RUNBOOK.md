@@ -270,11 +270,11 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 "$release_python" -B -E -s -S repo_work/check_feature_graph.py
 cargo check -p galadriel-cli --no-default-features --locked
-cargo check -p galadriel-cli --no-default-features --features pid --locked
+cargo check -p galadriel-cli --no-default-features --features dependence --locked
 cargo check -p galadriel-cli --no-default-features --features ncp --locked
 cargo check -p galadriel-cli --no-default-features --features ncp-live --locked
 cargo test -p galadriel-cli --no-default-features --locked
-cargo test -p galadriel-cli --no-default-features --features pid --locked
+cargo test -p galadriel-cli --no-default-features --features dependence --locked
 cargo test -p galadriel-cli --no-default-features --features ncp --locked
 cargo test -p galadriel-cli --no-default-features --features ncp-live --locked
 cargo test --workspace --all-features --locked

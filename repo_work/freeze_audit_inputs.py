@@ -76,7 +76,7 @@ RELEASE_INPUTS = (
     "release/0.9.0/reviews/REVIEW-COMMENTS.md",
     "release/0.9.0/api/galadriel-core.baseline.txt",
     "release/0.9.0/api/galadriel-core.0.9.0.txt",
-    "release/0.9.0/api/galadriel-pid.0.9.0.txt",
+    "release/0.9.0/api/galadriel-dependence.0.9.0.txt",
     "release/0.9.0/evidence/galadriel-core-api.diff",
     "evidence/galadriel-0.9-candidate.json",
     "crates/galadriel-ncp/tests/fixtures/crebain_clean_capture.jsonl",

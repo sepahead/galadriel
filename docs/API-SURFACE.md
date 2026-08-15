@@ -29,7 +29,7 @@ A breaking change **SHALL** also change the minor version.
 - `galadriel-sim`
 - `galadriel-eval`
 - `galadriel-justify`
-- `galadriel-pid`
+- `galadriel-dependence`
 - `galadriel-ncp`
 
 Their feature names and wire adapters are also experimental or supporting
@@ -41,7 +41,7 @@ An accepted identity contains 1 through 64 ASCII bytes.
 This rule is part of the supporting wire behavior for schema version 1.0.
 
 **GLD-090-API-003:** Default features **SHALL** remain empty.
-The optional `pid`, `ncp`, and `ncp-live` features **SHALL NOT** enter the pure
+The optional `dependence`, `ncp`, and `ncp-live` features **SHALL NOT** enter the pure
 default dependency graph.
 `galadriel-core --no-default-features` **SHALL** continue to build at the pinned
 minimum supported Rust version (MSRV).
@@ -156,9 +156,11 @@ pub fn verifies(
 ) -> bool;
 ```
 
-The optional `galadriel-pid::assess_stream` entry point also requires
-`&AssessmentScope`. Its experimental `FusedReport::assessment_scope` getter
-returns the scope from the nested core binding.
+The optional `galadriel_dependence::assess_with_dependence` entry point also
+requires `&AssessmentScope`. Its experimental
+`DependenceAssessmentReport::assessment_scope` getter returns the scope from the
+nested core binding. `authoritative_verdict` is exactly the unchanged core
+verdict; no MI disposition enters it.
 
 The scope labels provenance. It does not authenticate the caller or producer.
 The accepted core entry points validate the terminal sequence and terminal-frame
@@ -168,14 +170,53 @@ The pre-change snapshot is
 `release/0.9.0/api/galadriel-core.baseline.txt`. The accepted 0.9.0 snapshot is
 `release/0.9.0/api/galadriel-core.0.9.0.txt`.
 
-The optional PID adapter has this audit-only snapshot:
-`release/0.9.0/api/galadriel-pid.0.9.0.txt`. This snapshot shows that accepted PID
-configs and sealed reports expose no public fields. It does not make this
-experimental crate part of the stable surface.
+The optional dependence adapter has this audit-only snapshot:
+`release/0.9.0/api/galadriel-dependence.0.9.0.txt`. This snapshot shows that
+accepted MI configurations and sealed companion reports expose no public fields.
+It does not make this experimental crate part of the stable surface.
+
+The companion's versioned JSON snapshot retains `MiAcceptedConfigEvidence` for
+every named or custom graph value and `MiKsgEvaluatorConfigEvidence` for the
+fixed KSG evaluator contract. It also retains complete immutable upstream KSG
+reports, canonical hexadecimal digests, and a `ProjectionAxisReceipt` for each
+produced axis. That receipt binds
+the producer projection frame/context, axis and modality order, extracted suffix
+length, and every selected row's sequence and timestamp bounds. The inner
+`RowSetReceipt` separately binds the exact binary64 columns. The current types
+implement serialization for evidence export; they do not promise a stable
+deserialization or wire-input schema.
+
+Offline `galadriel-justify` exposes `PidFunctionalIdentity`, role-typed
+`PidReferenceEdge` values, `PidStudyRoute`, `PidQuestionSpec`,
+`PidDependencyIdentity`, `PidInputLawSpec`, `PidOutputCoordinateSpec`,
+`PidAggregateOutputSpec`, `PidTrialArmSpec`, `StudyAggregateOutputSpec`,
+`JustificationStudyProtocol`, and typed `JustificationError`. The version 2
+question/study schemas distinguish the categorical
+Makkeh–Gutknecht–Wibral functional from the related continuous
+Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction and bind the exact
+sample-evaluator route. They name the original Williams–Beer antichain lattice,
+the later Gutknecht–Wibral–Makkeh part-whole derivation, and functionals that are
+not evaluated rather than conflating those roles. Each question serializes its
+exact generated law and finite-sample conditioning, every lattice coordinate and
+component, the direct-versus-derived construction, within-trial aggregation,
+root aggregate-field mapping, and coupled-versus-permutation-control arm role.
+AUC/interval fields are dimensionless and cannot inherit atom units. Each retained
+upstream trial explicitly remains in nats. The sibling study protocol maps every
+non-PID root field and binds its paired-index bootstrap, seed domains, percentile
+selection, interval scope, and lack of a multiplicity guarantee. The result does
+not bind the exact resolved RNG crate bytes or Galadriel source tree; those remain
+publication-bundle requirements. The dependency envelope is deliberately smaller than a
+software-identity or attestation object. Categorical and continuous aggregate
+result fields are private; getters expose them and a coherence method recomputes
+every upstream-report-derived aggregate. Pearson remains outside that verifier
+because the result does not retain its exact input rows.
 
 The preceding public version was 0.1.0.
 That version was explicitly a research prototype.
 Version 0.9.0 can therefore remove an accidental surface.
+`GaladrielError` is now non-exhaustive and includes a distinct `InternalFault`
+category; impossible dependency-adapter failures no longer masquerade as caller
+configuration rejection.
 New 0.9.x releases use the accepted snapshot as their compatibility baseline.
 Serialization schemas have separate versions.
 A public Rust type does not make its serialization schema stable.

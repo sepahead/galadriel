@@ -57,7 +57,7 @@ The claim scan includes tracked Markdown, Markdown configuration, reStructuredTe
 
 The feature-graph gate reads `.ncp-consumer` one time through a bounded regular-file descriptor.
 The descriptor does not follow links or block.
-The gate binds the exact PID, NCP, Zenoh, and Tokio feature sets.
+The gate binds the exact dependence, pid-rs, NCP, Zenoh, and Tokio feature sets.
 These feature sets apply to each profile where those dependencies affect security.
 
 For qualification bundles, `audit_tracked_files.py --out` can point outside the checkout.
@@ -590,7 +590,7 @@ It refuses these conditions:
 - stale audit
 - source drift after the run
 
-It regenerates the complete core and PID Rust API inventories with exactly `cargo-public-api 0.52.0`.
+It regenerates the complete core and dependence Rust API inventories with exactly `cargo-public-api 0.52.0`.
 It rejects byte-level drift from the retained snapshots.
 The author operates and records each run.
 The run supplies evidence.

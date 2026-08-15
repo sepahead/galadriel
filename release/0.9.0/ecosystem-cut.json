@@ -2,7 +2,7 @@
   "schema": "galadriel.ecosystem-inspection-cut.v1",
   "release": "0.9.0",
   "author": "Sepehr Mahmoudian",
-  "inspected_at": "2026-08-03",
+  "inspected_at": "2026-08-14",
   "timestamp_precision": "date",
   "scope": "Read-only external identity and local relationship-absence record; only Cargo revisions are release pins.",
   "observations": [
@@ -16,9 +16,9 @@
       "observed_at": "2026-07-18",
       "timestamp_precision": "date",
       "required_by_default": false,
-      "required_for": ["pid feature", "galadriel-pid", "galadriel-eval", "galadriel-justify"],
+      "required_for": ["dependence feature", "galadriel-dependence", "galadriel-eval", "galadriel-justify"],
       "supersedes": null,
-      "why": "Provides the optional PID implementation and run-log types at one exact revision."
+      "why": "Provides stable report-first KSG for the optional dependence companion, categorical MGW and continuous Ehrlich PID for offline justification studies, and run-log types at one exact revision."
     },
     {
       "id": "ECO-002",
@@ -218,6 +218,20 @@
         "role_blueprint": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
       },
       "why": "Records the 2026-08-03 NCP release-status cut. It is not Galadriel's wire-0.8 dependency pin, a native-1.0 migration, or an external role receipt."
+    },
+    {
+      "id": "ECO-015",
+      "project": "Prisoma",
+      "relationship": "prospective_downstream_offline_consumer",
+      "ref": "refs/heads/main",
+      "object": "efcad9943af818913702f11c47ed0c280a2a1f13",
+      "identity_kind": "mutable_head_reinspection",
+      "observed_at": "2026-08-14",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": "ECO-007",
+      "why": "Records the committed 2026-08-14 Prisoma head after its first-principles provenance and estimand redesign. Galadriel still has no Prisoma dependency, adapter, route, or runtime edge."
     }
   ],
   "limitations": [

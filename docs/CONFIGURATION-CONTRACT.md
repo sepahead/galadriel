@@ -18,7 +18,7 @@
 Status: normative implemented contract for Galadriel 0.9.0.
 The accepted boundaries cover these surfaces:
 
-- core and PID
+- core and dependence companion
 - simulation
 - evaluation and evidence
 - NCP registry and assembler
@@ -152,12 +152,12 @@ boundaries MAY add context after they preserve the typed source.
 digest of the complete accepted configuration.
 
 The digest preimage **SHALL** include research or release classification,
-confirmation mode, resource ceilings, and axis-family derivation. Human-readable
+stability mode, resource ceilings, and axis-family derivation. Human-readable
 `Debug` output is not a canonical identity.
 
 These accepted boundaries expose canonical identities:
 
-- core and PID
+- core, dependence companion, and offline PID studies
 - simulator and evaluator
 - evidence runner
 - assembler and registry policy
@@ -184,36 +184,35 @@ Such a choice **SHALL** use a closed enum or capability type. Each variant carri
 only its applicable parameters. Match statements **SHALL** be exhaustive. The
 decoder **SHALL** reject unknown serialized variants.
 
-**GLD-090-CAP-002 (PID confirmation):** `PidConfig` **SHALL NOT** contain a
-bootstrap-mode Boolean. A closed value represents confirmation:
+**GLD-090-CAP-002 (dependence stability):** `MiConsensusConfig` **SHALL NOT**
+contain a bootstrap-mode Boolean. A closed value represents deterministic
+sensitivity analysis:
 
 ```rust,ignore
-pub enum PidConfirmationParams {
+pub enum DependenceStabilityParams {
     PointEstimateOnly,
-    CircularDeleteBlock {
-        resamples: usize,
-        block_size: usize,
-        family_alpha: f64,
-    },
+    ExhaustiveCircularDeleteBlock { block_size: usize },
 }
 ```
 
 The accepted form **SHALL** have private payload fields or validated payload
-newtypes. The point-estimate variant **SHALL NOT** contain `resamples`,
-`block_size`, or confirmation `family_alpha`.
+newtypes. The point-estimate variant **SHALL NOT** contain `block_size` or a
+dormant resampling payload. The exhaustive variant enumerates every circular
+start; it has no random resample count, confidence level, or family alpha.
 Ignored or contradictory combinations cannot be represented.
 
-The point-estimate variant **SHALL** remain explicitly research only. Its reports
-**SHALL** identify the attribution as unconfirmed.
+The point-estimate variant **SHALL** remain explicitly research only. Neither
+variant may label its result a confidence interval, p-value, or calibrated alarm.
 
 **GLD-090-CAP-003 (research capability separation):** The standalone release
 suite **SHALL** contain NIS, CUSUM, and signed-correlation configurations. It
-**SHALL NOT** contain an optional PID Boolean.
+**SHALL NOT** contain an optional dependence Boolean.
 
 The Cargo feature exposes research APIs. It does not select them. A caller
-**SHALL** construct an explicit `PidResearchProfile` or research-suite value
-before PID work. This value **SHALL NOT** be interchangeable with the release
-suite.
+**SHALL** construct an explicit `MiConsensusResearchProfile` or
+`DependenceResearchSuite` before MI work. This value **SHALL NOT** be
+interchangeable with the release suite. PID studies remain separate offline
+questions and do not reuse this symmetric graph configuration.
 
 **GLD-090-CAP-004 (security and override choices):** Named enums or capabilities
 **SHALL** represent these choices:
@@ -259,14 +258,14 @@ runtime boundary.
 |---|---|---|
 | `DetectorConfig` | release statistical component | Private accepted fields. `DetectorParams` crosses `try_new` or `TryFrom`. The type has read-only getters, named profile resolution, aggregate state budgets, and a canonical identity. |
 | `CorrConfig` | release statistical component | Private accepted fields and typed construction. `try_for_axis_family(axis_count)` returns a new identity-bound configuration without mutation. |
-| `PidConfig` | optional research statistical component | Private accepted fields and explicit research profiles. It uses closed `PidConfirmation` and fallible family derivation. It has no mode Boolean or dormant confirmation payload. |
+| `MiConsensusConfig` | optional research statistical component | Private accepted fields, an explicit `ContinuousLawDeclaration`, closed `DependenceStability`, fixed estimator/composition identity, and checked work. It has no mode Boolean or dormant resampling payload. |
 | `Cusum` and `NisWindow` construction | validated detector subcomponents and state | Private fields and fallible construction. Release use derives values from accepted detector configuration. Direct public construction remains component-research use. CUSUM construction is `O(1)`. Window reservation is `O(capacity)`. Each window has a fixed 272-byte exact-sum cache. |
-| upstream PID estimator configs (`IntrinsicDimConfig`, `DistanceConcentrationConfig`, `KsgConfig`, `Pid2Config`, `Jitter`) | pinned foreign research subcomponents | Derive one exact documented set from accepted PID research configuration. An upstream `Default` **MUST NOT** silently change a named profile. Include upstream semantics and revision in profile identity. |
-| `ReleaseSuite` | release composition | Distinct PID-free accepted type. It contains detector, correlation, canonical nonempty modalities, and axis-family policy. Construction checks readiness, retained state, and work. |
-| `PidResearchSuite` | research composition | Distinct accepted type with a release suite and explicit PID research configuration. Construction checks maximum three-axis confirmation work before analysis. |
+| upstream MI estimator configs (`IntrinsicDimConfig`, `DistanceConcentrationConfig`, `KsgConfig`) | pinned foreign research subcomponents | Derive one exact documented set from accepted MI-consensus configuration. An upstream `Default` **MUST NOT** silently change a named profile. Include upstream semantics and revision in profile identity. Galadriel adds no jitter or observation noise. |
+| `ReleaseSuite` | release composition | Distinct dependence-free accepted type. It contains detector, correlation, canonical nonempty modalities, and axis-family policy. Construction checks readiness, retained state, and work. |
+| `DependenceResearchSuite` | research composition | Distinct accepted type with a release suite and explicit MI-consensus configuration. Construction checks maximum three-axis work before analysis. Its report retains the unchanged default verdict. |
 | `AssessmentScope` | accepted assessment provenance | Private immutable fields. Construction requires one validated `ProducerId` and one exact `StreamPosition`. Strict decoding rejects unknown fields and revalidates nested values. The value does not authenticate its labels. |
 | `ScenarioConfig` | research generator | Mutable `ScenarioParams` converts once to immutable `ScenarioConfig`. Accessors borrow accepted values. Construction validates modalities, identities, terminal coordinates, variances, observation count, and canonical digest. `assessment_scope(stream_id)` derives one deterministic synthetic scope for a nonempty scenario. It rejects an empty scenario because no terminal frame exists. |
-| `EvalConfig` or `EvalSuiteConfig` | research evaluation | Mutable parameters convert to immutable accepted values. Named profiles and aggregate suite construction check grids, latency prefixes, observations, bootstrap comparisons, and PID work. |
+| `EvalConfig` or `EvalSuiteConfig` | research evaluation | Mutable parameters convert to immutable accepted values. Named profiles and aggregate suite construction check grids, latency prefixes, observations, bootstrap comparisons, and MI work. |
 | evidence runner DTOs and `ValidatedEvidenceConfig` | evidence and research input | Strict file DTOs convert once to an immutable accepted value. It contains a `ReleaseSuite`, bounded vectors, a hash-verified fixture, work estimates, and canonical digest. It binds trial, summary, and manifest schema v3. It also binds acceptance profile v3 and the SplitMix64 bootstrap profile. The runner does not retain the DTO. |
 | `AssemblerLimits` | operational runtime resource and deadline policy | Private fields, `AssemblerParams`, and `AssemblerProfile::BoundedV0_9`. It has read-only getters, hard and aggregate bounds, deadline order, clock checks, and canonical identity. |
 | `RegistryOpportunityPolicy` | deployment-pinned capability | Private accepted fields and typed construction with wire maxima. `RegistryVerifier` alone produces this validated policy. |
@@ -300,12 +299,12 @@ It does not authenticate a writer or represent a deployed producer.
 The required profile taxonomy is closed for 0.9.0:
 
 - `ReleaseProfile::StandaloneAdvisoryV0_9` selects shipped NIS, CUSUM, and
-  signed-correlation behavior for an explicit modality set. PID is absent. The
+  signed-correlation behavior for an explicit modality set. Dependence research is absent. The
   word `Release` means reproducible source-release behavior only. The profile is
   uncalibrated. Deployment qualification remains `NOT_CLAIMED`.
-- `PidResearchProfile::CircularDeleteBlockV0_9` selects the current seeded
-  observation-noise model and circular delete-block confirmation.
-- `PidResearchProfile::PointEstimateOnlyV0_9` is a separate unconfirmed research
+- `MiConsensusResearchProfile::ExhaustiveCircularDeleteBlockV0_9` selects
+  no-noise report-first KSG plus deterministic exhaustive deletion stability.
+- `MiConsensusResearchProfile::PointEstimateOnlyV0_9` is a separate descriptive research
   profile. It is not an override on the release profile.
 - `ScenarioResearchProfile::SyntheticV0_9` selects bounded simulator defaults.
 - `EvaluationResearchProfile::SyntheticV0_9` independently selects bounded
@@ -343,23 +342,36 @@ The required profile taxonomy is closed for 0.9.0:
 
 These values do not make calibrated field-performance claims.
 
-`CircularDeleteBlockV0_9` identifies these exact parameters:
+`ExhaustiveCircularDeleteBlockV0_9` identifies these exact parameters:
 
 - window `128`
 - minimum samples `64`
-- observation-noise standard deviation `1e-4`
-- seed `1`
 - geometry `k=5`
-- `id_max=10`
+- intrinsic-dimension mean interval `[1.5, 3.0]`
+- intrinsic-dimension local-estimate median minimum `1.30`
 - `cv_min=0.01`
 - `nn_ratio_max=0.999`
-- `decouple_ratio=0.4`
-- `mi_floor=0.03`
-- confirmation
-  `CircularDeleteBlock { resamples: 100, block_size: 8, family_alpha: 0.10 }`
+- `separation_ratio=0.4`
+- `mi_floor_nats=0.03`
+- stability `ExhaustiveCircularDeleteBlock { block_size: 8 }`
+- no observation noise, stochastic transform, resample count, or family alpha
 
 The point-estimate profile shares only applicable parameters. It has no dormant
-confirmation payload.
+deletion-stability payload.
+
+Every MI report serializes an accepted-configuration snapshot containing these
+values, the derived required-row count, work estimate and ceiling, modality and
+input-tail ceilings, and per-pair fit units. It separately serializes the fixed
+KSG evaluator contract. A custom report therefore does not require source access
+to discover which accepted numbers and evaluator settings its digest represents.
+
+Every edge is a two-coordinate scalar joint. The intrinsic-dimension screen uses
+the complete pid-rs report, retains all local estimates and quantiles, and checks
+both the aggregate mean and local-estimate median. The boundaries are
+project-defined conservative abstention rules exercised against fixed Gaussian,
+smooth one-dimensional, and heterogeneous near-manifold controls. Passing cannot
+prove a full-dimensional population law, estimator consistency, or application
+validity.
 
 ## Validation and cost contract
 
@@ -375,15 +387,14 @@ confirmation payload.
   check before matrix allocation or pair evaluation.
 - The active six-modality limit bounds exhaustive clique enumeration. A larger
   modality domain needs a new work review.
-- `PidConfig` construction takes `O(1)` time and `O(1)` memory.
-  Its estimate includes all required pair, atom, and confirmation-edge scans.
+- `MiConsensusConfig` construction takes `O(1)` time and `O(1)` memory.
+  Its estimate includes all required pair, geometry, and exhaustive-deletion graph scans.
   It **MUST NOT** exceed
   `200_000_000` quadratic scan-equivalent fit units.
-- The confirmation variant constructor checks confirmation diversity,
-  delete-block remainder, tail-rank resolution, and `resamples <= window`.
-- Multi-axis derivation divides family budgets once and validates the result. It
-  creates one immutable derived config for the axis loop. Axis count and the
-  derived value form part of configuration identity.
+- The exhaustive variant constructor checks the delete-block remainder and
+  enumerability. It evaluates every circular start, not a sample of starts.
+- Multi-axis composition checks the complete worst-case fit work once. Axis count
+  and the accepted maximum form part of suite identity.
 - Release-suite and lifecycle composition require an underived base
   `CorrConfig`. Composition derives the axis family exactly once during each
   assessment. It rejects a previously derived config before it allocates state.
@@ -402,7 +413,7 @@ confirmation payload.
   trial, prefix, pair, estimator, and output product.
 - Existing suite ceilings are upper limits, not targets. They are `100_000_000`
   generated observations, `100_000_000` latency-prefix visits, and
-  `300_000_000_000` PID quadratic fit units.
+  `4_000_000_000_000` MI quadratic fit units.
 - A maneuver-lag grid contains `1..=10,000` unique values.
 - Magnitude is finite and positive, with a finite square.
 - Evaluation duration is at least two frames.
@@ -466,15 +477,15 @@ It does not authenticate sensor truth or establish field calibration.
 
 | Audited legacy choice | Implemented 0.9 disposition |
 |---|---|
-| `PidConfig.bootstrap` | Removed. `PidConfirmation::{PointEstimateOnly, CircularDeleteBlock(..)}` contains only applicable validated settings. |
-| PID `joint_margin_interval(..., select_maximum)` | Replaced by exhaustive `JointBoundExtremum::{Minimum, Maximum}`. |
+| MI bootstrap/confirmation mode | Removed. `DependenceStability::{PointEstimateOnly, ExhaustiveCircularDeleteBlock(..)}` contains only applicable validated settings. |
+| deletion interval or confidence selector | Removed. `DeleteBlockStabilityEnvelope` reports literal minima and maxima across every circular deletion and makes no interval claim. |
 | secure credential `require_private_mode` | Replaced by `CredentialMaterialKind::{TrustAnchor, PublicCertificate, PrivateKey}`. |
 | evidence CLI dirty override | Parsed once into `PublicationSourcePolicy::{RequireClean, PermitDirtyWithAudit}` and recorded in the manifest. |
 | registry pin flag | Replaced by `DeploymentRegistry` and opaque `PinnedDeploymentRegistry`. Only the pinned type implements `RegistryVerifier`. |
 | live and monitor-live bus ownership flag | Replaced by `BusOwnership::{Owned, HostOwned}` and ownership-specific construction and cleanup. |
 | monitor identity selector | Replaced by `IdentityRole::{Session, Producer}`. |
-| release versus optional PID | Separated into `ReleaseSuite` and `PidResearchSuite`. A Cargo feature exposes APIs but selects no research execution. |
-| correlation and PID family budget per axis | Implemented as a named fallible derivation that returns a new immutable identity. |
+| release versus optional dependence | Separated into `ReleaseSuite` and `DependenceResearchSuite`. A Cargo feature exposes APIs but selects no research execution. |
+| correlation family budget versus MI work | Correlation derives its family budget. MI has no alpha; dependence composition checks bounded multi-axis work. |
 | `color` presentation flag | Can remain Boolean. It is an inherently binary display predicate without scientific or security data. |
 | report and state facts | `ready`, `elevated`, `decoupled`, `degraded`, `dirty`, and ownership cleanup facts are not configuration. They can remain Boolean under result and state contracts. |
 | Zenoh fields that require literal true or false | Can remain foreign-protocol Booleans at decode. Galadriel exposes only the validated secure-profile capability internally. |
@@ -550,7 +561,8 @@ The 0.9 implementation closes these source-level defects:
 - They have read-only accessors, fixed and aggregate checks, and canonical
   identities.
 - Named profiles use the same validation path as custom input.
-- Correlation and PID axis-family adjustment creates a new accepted identity.
+- Correlation axis-family derivation and dependence-suite composition create new
+  accepted identities.
 - Simulation, evaluation, and evidence code retains accepted values, not raw DTOs.
 - Assembler, JSONL, live, monitor-live, and operational-live policies have named
   bounded profiles and typed errors.
@@ -580,8 +592,8 @@ replace these gates.
 - Test every named profile. Prove exact getter values and stable profile identity.
 - Do not establish validity with public `validate` on a freely constructed
   accepted type.
-- Test aggregate detector and lifecycle state, correlation pair-samples, PID fit
-  units, and confirmation tail ranks.
+- Test aggregate detector and lifecycle state, correlation pair-samples, MI fit
+  units, and exhaustive-deletion work.
 - Test scenario observations and timestamps, evaluation grids and prefixes, JSONL
   limits, queue relationships, and registry opportunity limits.
 - Test duration and clock-anchor arithmetic.
@@ -591,8 +603,8 @@ replace these gates.
   aggregate or cross-field check.
 - Prove that rejection occurs before allocation, state change, subscription,
   estimator use, or evidence-file creation.
-- Prove bit-for-bit equality with approved vectors for unchanged release and
-  confirmed-PID semantics.
+- Prove bit-for-bit equality with approved vectors for unchanged accepted-release
+  semantics and separately versioned dependence evidence.
 
 ### Compile-fail and API tests
 
@@ -600,11 +612,11 @@ Use an external-crate harness, such as `trybuild`. Prove that callers cannot:
 
 - construct an accepted configuration with a struct literal
 - change a field or get mutable field access after construction
-- pass raw parameters or builders to `Mirror`, correlation, PID, lifecycle,
+- pass raw parameters or builders to `Mirror`, correlation, dependence, lifecycle,
   JSONL, or live runtime entry points
-- configure PID with a Boolean
-- give confirmation-only values to the point-estimate variant
-- pass a PID research suite where a release suite is required
+- configure dependence stability with a Boolean
+- give exhaustive-deletion-only values to the point-estimate variant
+- pass a dependence research suite where a release suite is required
 - create a validated registry, security, or dirty-tree capability
 
 The positive external fixture **MUST** build every supported accepted configuration
@@ -617,7 +629,7 @@ through its documented profile or builder path.
 - no `bootstrap: bool`
 - no accidental acceptance of raw parameters
 
-The retained scan **MUST** cover `galadriel-core` and `galadriel-pid`.
+The retained scan **MUST** cover `galadriel-core` and `galadriel-dependence`.
 These crates are the two retained library API profiles for version 0.9.0.
 All-feature workspace checks cover the other experimental library surfaces.
 Separate fuzz-workspace checks cover its binary targets and dependency graph.
@@ -685,8 +697,9 @@ They do not authenticate a file.
 Profile digests identify configuration, not trust.
 Trust requires signed artifacts and authenticated epochs.
 
-Research PID behavior depends on the exact pinned upstream implementation and its
-restricted domain. A change to these items needs a new aggregate analysis and
+Research MI behavior depends on the exact pinned upstream implementation and its
+declared regular-continuous domain. Offline PID behavior additionally depends on
+the named categorical MGW or continuous Ehrlich functional. A change to these items needs a new aggregate analysis and
 compatibility review:
 
 - modality domain

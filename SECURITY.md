@@ -37,7 +37,8 @@ This behavior does not authorize a control action.
 
 - Galadriel tests **statistical consistency**, not truth.
   A moment-matched spoof can pass the NIS baseline.
-  Signed correlation and optional MI/PID can identify evidence of some dependence changes.
+  Signed correlation and the optional pairwise-MI companion can identify evidence
+  of some dependence changes. Offline PID studies are not runtime security evidence.
   Coordinated consistency-preserving attacks remain outside the threat boundary.
 - Cross-channel evidence is valid only for one track and an exact sequence alignment.
   It also requires a common coordinate frame and a common frozen pre-update prior.

@@ -72,18 +72,20 @@ The other scope values are validated caller declarations.
 The scope and assessment binding do not authenticate a producer.
 
 Raw JSONL replay MUST remain unbound and diagnostic-only.
-It MUST NOT create a `DefaultReport` or PID `FusedReport`.
+It MUST NOT create a `DefaultReport` or `DependenceAssessmentReport`.
 The NCP lifecycle path MUST derive scope from the admitted producer and exact position.
 Each evaluated report MUST match its lifecycle receipt.
 
-PID evidence is an optional research diagnostic.
-PID evidence MUST NOT repair a failed core prerequisite.
-PID evidence MUST NOT override signed-correlation evidence.
-PID evidence MUST NOT create authority.
+Runtime dependence evidence is an optional pairwise-MI companion, not PID.
+It MUST retain the exact unchanged core verdict and MUST NOT enter fusion.
+It MUST NOT add noise, conceal unavailable pair evidence, or label deterministic
+deletion extrema as confidence intervals. Offline PID studies MUST keep
+categorical MGW and continuous Ehrlich functionals distinct and name fixed
+sources and a target. Neither path can create authority.
 
 The default build must remain pure and small.
-The default CLI MUST NOT resolve PID or NCP integration crates.
-The `pid`, `ncp`, and `ncp-live` features MUST remain off by default.
+The default CLI MUST NOT resolve dependence or NCP integration crates.
+The `dependence`, `ncp`, and `ncp-live` features MUST remain off by default.
 The `ncp-live` feature can add Zenoh and Tokio only through its declared graph.
 Its direct JSON serialization edges must remain in that audited graph.
 All Rust targets MUST remain free of unsafe code.
@@ -101,7 +103,7 @@ Galadriel uses NCP wire 0.8.
 Do not infer NCP wire 1.0 compatibility.
 
 The default build does not require pid-rs or NCP.
-PID, evaluation, and justification paths require the exact pid-rs pin.
+Dependence, evaluation, and offline justification paths require the exact pid-rs pin.
 NCP paths require the exact NCP pin.
 Crebain is an optional reference producer.
 Galadriel has no Cargo dependency on Crebain.

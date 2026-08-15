@@ -55,9 +55,9 @@ PROFILES = (
         "release/0.9.0/api/galadriel-core.0.9.0.txt",
     ),
     ApiProfile(
-        "galadriel-pid",
-        "crates/galadriel-pid/Cargo.toml",
-        "release/0.9.0/api/galadriel-pid.0.9.0.txt",
+        "galadriel-dependence",
+        "crates/galadriel-dependence/Cargo.toml",
+        "release/0.9.0/api/galadriel-dependence.0.9.0.txt",
     ),
 )
 

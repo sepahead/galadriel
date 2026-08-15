@@ -35,7 +35,7 @@ from check_feature_graph import (
     MAX_FEATURE_GRAPH_STDOUT_BYTES,
     MAX_NCP_CONSUMER_BYTES,
     NCP_RESOLVED_FEATURES,
-    PID_RESOLVED_FEATURES,
+    PID_STABLE_RESOLVED_FEATURES,
     PROFILES,
     TOKIO_RESOLVED_FEATURES,
     ZENOH_RESOLVED_FEATURES,
@@ -2535,7 +2535,7 @@ class ReviewToolsTest(unittest.TestCase):
         }
         validate_workspace_manifest(workspace_manifest)
         workspace_manifest["workspace"]["default-members"].append(
-            "crates/galadriel-pid"
+            "crates/galadriel-dependence"
         )
         with self.assertRaisesRegex(ReviewError, "default-members differ"):
             validate_workspace_manifest(workspace_manifest)
@@ -2557,14 +2557,14 @@ class ReviewToolsTest(unittest.TestCase):
                 with self.assertRaises(ReviewError):
                     parse_ncp_consumer_descriptor(attack)
 
-        profile = next(profile for profile in PROFILES if profile.name == "pid")
+        profile = next(profile for profile in PROFILES if profile.name == "dependence")
         graph = {
-            "galadriel-pid": frozenset(),
-            "pid-core": PID_RESOLVED_FEATURES,
+            "galadriel-dependence": frozenset(),
+            "pid-core": PID_STABLE_RESOLVED_FEATURES,
             "pid-runlog": frozenset(),
         }
         validate_profile_graph(profile, graph)
-        graph["pid-core"] = PID_RESOLVED_FEATURES | {"parallel"}
+        graph["pid-core"] = PID_STABLE_RESOLVED_FEATURES | {"parallel"}
         with self.assertRaisesRegex(ReviewError, "resolved pid-core features"):
             validate_profile_graph(profile, graph)
 
@@ -2579,9 +2579,10 @@ class ReviewToolsTest(unittest.TestCase):
                 attacked_profile = next(
                     profile for profile in PROFILES if profile.name == profile_name
                 )
+                exact_features = dict(attacked_profile.exact_features)
                 attacked_graph = {
                     package: {
-                        "pid-core": PID_RESOLVED_FEATURES,
+                        "pid-core": exact_features.get("pid-core", frozenset()),
                         "ncp-core": NCP_RESOLVED_FEATURES,
                         "ncp-zenoh": NCP_RESOLVED_FEATURES,
                         "zenoh": ZENOH_RESOLVED_FEATURES,
@@ -2598,7 +2599,7 @@ class ReviewToolsTest(unittest.TestCase):
             ("justify-member", "pid-core"),
         )
         exact_feature_sets = {
-            "pid-core": PID_RESOLVED_FEATURES,
+            "pid-core": PID_STABLE_RESOLVED_FEATURES,
             "ncp-core": NCP_RESOLVED_FEATURES,
             "ncp-zenoh": NCP_RESOLVED_FEATURES,
             "zenoh": ZENOH_RESOLVED_FEATURES,
@@ -2609,8 +2610,11 @@ class ReviewToolsTest(unittest.TestCase):
                 member_profile = next(
                     profile for profile in PROFILES if profile.name == profile_name
                 )
+                expected_features = dict(member_profile.exact_features)
                 member_graph = {
-                    package: exact_feature_sets.get(package, frozenset())
+                    package: expected_features.get(
+                        package, exact_feature_sets.get(package, frozenset())
+                    )
                     for package in member_profile.required
                 }
                 validate_profile_graph(member_profile, member_graph)
@@ -2822,7 +2826,7 @@ class ReviewToolsTest(unittest.TestCase):
         base = {
             "features": {
                 "default": [],
-                "pid": ["dep:galadriel-pid"],
+                "dependence": ["dep:galadriel-dependence"],
                 "ncp": ["dep:galadriel-ncp"],
                 "ncp-live": [
                     "ncp",
@@ -2864,7 +2868,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(cut["author"], "Sepehr Mahmoudian")
         self.assertEqual(
             (cut["inspected_at"], cut["timestamp_precision"]),
-            ("2026-08-03", "date"),
+            ("2026-08-14", "date"),
         )
         observations = cut["observations"]
         expected_observations = [
@@ -2879,13 +2883,13 @@ class ReviewToolsTest(unittest.TestCase):
                 "timestamp_precision": "date",
                 "required_by_default": False,
                 "required_for": [
-                    "pid feature",
-                    "galadriel-pid",
+                    "dependence feature",
+                    "galadriel-dependence",
                     "galadriel-eval",
                     "galadriel-justify",
                 ],
                 "supersedes": None,
-                "why": "Provides the optional PID implementation and run-log types at one exact revision.",
+                "why": "Provides stable report-first KSG for the optional dependence companion, categorical MGW and continuous Ehrlich PID for offline justification studies, and run-log types at one exact revision.",
             },
             {
                 "id": "ECO-002",
@@ -3095,6 +3099,20 @@ class ReviewToolsTest(unittest.TestCase):
                 },
                 "why": "Records the 2026-08-03 NCP release-status cut. It is not Galadriel's wire-0.8 dependency pin, a native-1.0 migration, or an external role receipt.",
             },
+            {
+                "id": "ECO-015",
+                "project": "Prisoma",
+                "relationship": "prospective_downstream_offline_consumer",
+                "ref": "refs/heads/main",
+                "object": "efcad9943af818913702f11c47ed0c280a2a1f13",
+                "identity_kind": "mutable_head_reinspection",
+                "observed_at": "2026-08-14",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": "ECO-007",
+                "why": "Records the committed 2026-08-14 Prisoma head after its first-principles provenance and estimand redesign. Galadriel still has no Prisoma dependency, adapter, route, or runtime edge.",
+            },
         ]
         self.assertEqual(observations, expected_observations)
         self.assertEqual(
@@ -3109,7 +3127,7 @@ class ReviewToolsTest(unittest.TestCase):
         )
         self.assertEqual(
             [row["id"] for row in observations],
-            [f"ECO-{index:03d}" for index in range(1, 15)],
+            [f"ECO-{index:03d}" for index in range(1, 16)],
         )
         self.assertEqual(
             [row["project"] for row in observations],
@@ -3128,6 +3146,7 @@ class ReviewToolsTest(unittest.TestCase):
                 "Haldir",
                 "Paper2Brain",
                 "NCP",
+                "Prisoma",
             ],
         )
         self.assertTrue(
@@ -3151,11 +3170,17 @@ class ReviewToolsTest(unittest.TestCase):
                 "ECO-006": "ECO-005",
                 "ECO-011": "ECO-006",
                 "ECO-012": "ECO-011",
+                "ECO-015": "ECO-007",
             },
         )
         self.assertEqual(
             observations[0]["required_for"],
-            ["pid feature", "galadriel-pid", "galadriel-eval", "galadriel-justify"],
+            [
+                "dependence feature",
+                "galadriel-dependence",
+                "galadriel-eval",
+                "galadriel-justify",
+            ],
         )
         self.assertEqual(
             observations[1]["required_for"],
@@ -3182,6 +3207,10 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(
             observations[13]["identity_kind"],
             "immutable_upstream_status_snapshot",
+        )
+        self.assertEqual(
+            observations[14]["identity_kind"],
+            "mutable_head_reinspection",
         )
         self.assertEqual(
             max(row["observed_at"] for row in observations),

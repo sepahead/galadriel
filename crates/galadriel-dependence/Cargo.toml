@@ -1,5 +1,5 @@
 [package]
-name = "galadriel-pid"
+name = "galadriel-dependence"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Optional geometry-bound mutual-information and partial-information-decomposition research diagnostics."
+description = "Optional geometry-gated pairwise mutual-information consensus research."
 publish = false
 
 [lints]
@@ -20,6 +20,7 @@ galadriel-core = { workspace = true }
 # pid-core uses the exact public revision whose manifest declares version 1.0.0.
 # This repository does not claim a public v1 tag or published 1.x artifact.
 pid-core = { workspace = true }
+serde = { workspace = true, features = ["rc"] }
 sha2 = { workspace = true }
 
 [dev-dependencies]

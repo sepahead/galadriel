@@ -2,11 +2,11 @@
 //! Command-line tools for Galadriel's Mirror.
 //!
 //! `galadriel demo` runs four synthetic scenarios through the pure default
-//! detector. The `pid` feature adds the optional PID research view.
+//! detector. The `dependence` feature adds an exploratory pairwise-MI companion.
 //!
 //! `galadriel replay` reads transport-free JSONL. The input lacks a complete
 //! lifecycle scope. All replay results are unbound diagnostics. Replay cannot
-//! create an accepted [`galadriel_core::DefaultReport`] or PID fused report.
+//! create an accepted [`galadriel_core::DefaultReport`] or dependence report.
 //!
 //! `galadriel observe` requires the `ncp-live` feature. It runs the bounded
 //! two-route receiver. Each lifecycle frame produces one receipt-linked JSON line
@@ -38,9 +38,6 @@ use std::io::Read as _;
 
 const MIN_DEMO_FRAMES: usize = 128;
 const MAX_DEMO_FRAMES: usize = 10_000;
-#[cfg(all(feature = "ncp", feature = "pid"))]
-const MAX_REPLAY_PID_TRACKS: usize = 8;
-
 fn attack_start_frame(frames: usize, divisor: usize) -> anyhow::Result<u64> {
     let quotient = frames
         .checked_div(divisor)
@@ -79,10 +76,6 @@ enum Cmd {
         /// Maximum number of per-track reports to print. All tracks are still analyzed.
         #[arg(long, default_value_t = 100)]
         max_report_tracks: usize,
-        /// Maximum tracks receiving diagnostic-only terminal PID analysis. Zero disables it.
-        #[cfg(feature = "pid")]
-        #[arg(long, default_value_t = 4)]
-        max_pid_tracks: usize,
     },
     /// Observe one exact producer epoch over the secure two-route Zenoh profile.
     #[cfg(feature = "ncp-live")]
@@ -112,12 +105,7 @@ fn main() -> anyhow::Result<()> {
         Cmd::Replay {
             path,
             max_report_tracks,
-            #[cfg(feature = "pid")]
-            max_pid_tracks,
         } => {
-            #[cfg(feature = "pid")]
-            run_replay(&path, max_report_tracks, max_pid_tracks)?;
-            #[cfg(not(feature = "pid"))]
             run_replay(&path, max_report_tracks)?;
         }
         #[cfg(feature = "ncp-live")]
@@ -1299,13 +1287,13 @@ fn run_demo(frames: usize, seed: u64) -> anyhow::Result<()> {
     // This scene needs correlated honest channels.
     run_stealthy_default_demo(frames, seed, color)?;
 
-    #[cfg(feature = "pid")]
-    run_pid_demo(frames, seed, color)?;
-    #[cfg(not(feature = "pid"))]
+    #[cfg(feature = "dependence")]
+    run_dependence_demo(frames, seed, color)?;
+    #[cfg(not(feature = "dependence"))]
     println!(
         "\n  {}",
         dim(
-            "build with `--features pid` to add nonlinear pairwise-MI diagnostics (PID atoms are report-only)",
+            "build with `--features dependence` to add the exploratory pairwise-MI companion",
             color
         )
     );
@@ -1314,7 +1302,7 @@ fn run_demo(frames: usize, seed: u64) -> anyhow::Result<()> {
     println!(
         "  {}",
         dim(
-            "advisory only · calibrated_posterior=false · optional PID diagnostics do not replace signed correlation",
+            "advisory only · calibrated_posterior=false · optional MI evidence cannot alter the default verdict",
             color
         )
     );
@@ -1514,6 +1502,42 @@ enum ChannelEvidenceLabel {
     Insufficient,
 }
 
+#[cfg(feature = "dependence")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MiCompanionLabel {
+    Separated,
+    InMajorityGraph,
+    Unavailable,
+}
+
+#[cfg(feature = "dependence")]
+fn mi_companion_tag(label: MiCompanionLabel, color: bool) -> String {
+    match label {
+        MiCompanionLabel::Separated => red("● SEPARATED", color),
+        MiCompanionLabel::InMajorityGraph => dim("○ in majority graph", color),
+        MiCompanionLabel::Unavailable => dim("● UNAVAILABLE", color),
+    }
+}
+
+#[cfg(feature = "dependence")]
+const fn mi_companion_label(
+    graph_unavailable: bool,
+    strongest_pair_mi_nats: Option<f64>,
+    separated_from_majority_graph: bool,
+) -> MiCompanionLabel {
+    if graph_unavailable {
+        return MiCompanionLabel::Unavailable;
+    }
+    if strongest_pair_mi_nats.is_none() {
+        return MiCompanionLabel::Unavailable;
+    }
+    if separated_from_majority_graph {
+        MiCompanionLabel::Separated
+    } else {
+        MiCompanionLabel::InMajorityGraph
+    }
+}
+
 fn channel_evidence_label(
     decoupled: bool,
     assessable: bool,
@@ -1534,11 +1558,6 @@ fn channel_evidence_tag(label: ChannelEvidenceLabel, color: bool) -> String {
         ChannelEvidenceLabel::Corroborates => green("● corroborates", color),
         ChannelEvidenceLabel::Insufficient => dim("● INSUFFICIENT", color),
     }
-}
-
-#[cfg(feature = "pid")]
-fn pid_channel_is_assessable(gate_ok: bool, corroboration: Option<f64>) -> bool {
-    gate_ok && corroboration.is_some()
 }
 
 /// The pure stealthy-spoof scene: on a moment-matched spoof the magnitude baseline is
@@ -1861,26 +1880,6 @@ fn replay_track_is_verbose(track_index: usize, max_report_tracks: usize) -> bool
     track_index < max_report_tracks
 }
 
-#[cfg(all(feature = "ncp", feature = "pid"))]
-fn replay_track_uses_pid(track_index: usize, max_pid_tracks: usize) -> bool {
-    track_index < max_pid_tracks
-}
-
-#[cfg(all(feature = "ncp", feature = "pid"))]
-fn replay_has_required_pid_modalities(modality_count: usize) -> bool {
-    modality_count >= galadriel_pid::MIN_PID_RESEARCH_MODALITIES
-}
-
-#[cfg(all(feature = "ncp", feature = "pid"))]
-fn replay_generation_observation_range(
-    frame_ranges: &[Range<usize>],
-    generation_start_frame: usize,
-) -> Option<Range<usize>> {
-    let first = frame_ranges.get(generation_start_frame)?;
-    let last = frame_ranges.last()?;
-    (first.start <= last.end).then_some(first.start..last.end)
-}
-
 #[cfg(feature = "ncp")]
 fn contiguous_ranges_by_key<T, K: PartialEq>(
     items: &[T],
@@ -1955,68 +1954,14 @@ fn omitted_track_count(total: usize, included: usize) -> Option<NonZeroUsize> {
     NonZeroUsize::new(total.saturating_sub(included))
 }
 
-/// Run an unbound PID replay diagnostic.
-///
-/// Raw JSONL has no producer, session, epoch, generation, or clock-domain
-/// labels. This helper does not mint an accepted whole-stream report.
-#[cfg(all(feature = "ncp", feature = "pid"))]
-fn replay_pid_diagnostic(
-    stream: &[PidObservation],
-    baseline: &galadriel_core::MirrorReport,
-    suite: &galadriel_pid::PidResearchSuite,
-) -> anyhow::Result<(FusedVerdict, String, Vec<galadriel_pid::AxisPidReport>)> {
-    use galadriel_pid::{analyze, fuse_axes_diagnostics, AxisPidReport};
-
-    let release_suite = suite.release_suite();
-    let detector = release_suite.detector();
-    let projection = galadriel_core::consistency_channels_with_temporal_limits(
-        stream,
-        release_suite.expected_modalities(),
-        detector.max_seq_gap(),
-        detector.max_timestamp_skew_ms(),
-        detector.max_inter_sample_gap_ms(),
-    )?;
-    let Some(projection) = projection else {
-        let (verdict, note) = fuse_axes_diagnostics(suite, baseline, &[], &[])?;
-        return Ok((verdict, note, Vec::new()));
-    };
-    let axis_count = projection.axes.len();
-    let correlation_config = release_suite
-        .correlation()
-        .try_for_axis_family(axis_count)?;
-    let pid_config = suite.pid_config().try_for_axis_family(axis_count)?;
-    let correlations = projection
-        .axes
-        .iter()
-        .enumerate()
-        .map(|(axis, channels)| {
-            galadriel_core::correlation::analyze(channels, &correlation_config)
-                .and_then(|report| galadriel_core::AxisCorrelationReport::try_new(axis, report))
-        })
-        .collect::<galadriel_core::Result<Vec<_>>>()?;
-    let pids = projection
-        .axes
-        .iter()
-        .enumerate()
-        .map(|(axis, channels)| {
-            analyze(channels, &pid_config).and_then(|report| AxisPidReport::try_new(axis, report))
-        })
-        .collect::<galadriel_core::Result<Vec<_>>>()?;
-    let (verdict, note) = fuse_axes_diagnostics(suite, baseline, &correlations, &pids)?;
-    Ok((verdict, note, pids))
-}
-
 /// Replay a JSONL capture as unbound diagnostic evidence.
 ///
-/// The optional PID feature adds an unbound PID diagnostic. This path cannot
+/// This path never runs the dependence companion because raw JSONL has no
+/// population-law declaration or complete lifecycle scope. It cannot
 /// create an accepted whole-stream report because the input has no complete
 /// [`galadriel_core::AssessmentScope`].
 #[cfg(feature = "ncp")]
-fn run_replay(
-    path: &str,
-    max_report_tracks: usize,
-    #[cfg(feature = "pid")] max_pid_tracks: usize,
-) -> anyhow::Result<()> {
+fn run_replay(path: &str, max_report_tracks: usize) -> anyhow::Result<()> {
     use galadriel_core::{
         combine, combine_correlation_axes, consistency_channels_with_temporal_limits, correlation,
         AxisCorrelationReport, ConsistencyEvidence, CorrConfig,
@@ -2028,11 +1973,6 @@ fn run_replay(
         (1..=detector_cfg.max_tracks()).contains(&max_report_tracks),
         "max-report-tracks must be in 1..={}",
         detector_cfg.max_tracks()
-    );
-    #[cfg(feature = "pid")]
-    anyhow::ensure!(
-        max_pid_tracks <= MAX_REPLAY_PID_TRACKS,
-        "max-pid-tracks must be in 0..={MAX_REPLAY_PID_TRACKS}"
     );
     let mut obs = galadriel_ncp::read_jsonl(path)?;
     if obs.is_empty() {
@@ -2242,58 +2182,6 @@ fn run_replay(
         } else {
             suppressed.record(&baseline_history, &default_history);
         }
-
-        #[cfg(feature = "pid")]
-        if replay_track_uses_pid(track_index, max_pid_tracks) {
-            use galadriel_pid::PidResearchSuite;
-
-            if !replay_has_required_pid_modalities(mods.len()) {
-                if verbose {
-                    println!(
-                        "│  PID      · track {track_id}: {}  {}",
-                        dim("diagnostic-only terminal INSUFFICIENT-EVIDENCE", color),
-                        dim(
-                            "fewer than the PID research minimum modalities; estimator not started",
-                            color,
-                        )
-                    );
-                }
-            } else {
-                let pid_suite = PidResearchSuite::circular_delete_block_v0_9(&mods)?;
-                let terminal_generation =
-                    replay_generation_observation_range(&frame_ranges, generation_start_frame)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "track {track_id} has no terminal generation for PID assessment"
-                            )
-                        })?;
-                let report =
-                    replay_pid_diagnostic(&track_obs[terminal_generation], &baseline, &pid_suite);
-                if verbose {
-                    match report {
-                        Ok((verdict, note, pids)) => {
-                            println!(
-                                "│  PID      · track {track_id}: diagnostic-only terminal fused {verdict:?}  {}",
-                                dim(&note, color)
-                            );
-                            for axis in pids {
-                                println!(
-                                    "│             axis {} {:?}  {}",
-                                    axis.axis(),
-                                    axis.report().verdict(),
-                                    dim(axis.report().note(), color)
-                                );
-                            }
-                        }
-                        Err(error) => println!(
-                            "│  PID      · track {track_id}: {}  {}",
-                            dim("diagnostic-only terminal INSUFFICIENT-EVIDENCE", color),
-                            dim(&format!("estimator input rejected: {error}"), color)
-                        ),
-                    }
-                }
-            }
-        }
     }
 
     if let Some(omitted) = omitted_track_count(track_count, max_report_tracks) {
@@ -2318,13 +2206,6 @@ fn run_replay(
             dim(&suppressed.default_history.summary(), color)
         );
     }
-    #[cfg(feature = "pid")]
-    if let Some(omitted) = omitted_track_count(track_count, max_pid_tracks) {
-        println!(
-            "│  PID terminal analysis skipped for {} track(s); bounded by --max-pid-tracks={max_pid_tracks}",
-            omitted.get()
-        );
-    }
     println!(
         "│  {}",
         dim(
@@ -2336,12 +2217,14 @@ fn run_replay(
     Ok(())
 }
 
-/// The `pid` feature demo: on a moment-matched stealthy spoof the magnitude
-/// baseline is blind (NIS stays in-covariance) while the pairwise-MI engine is
-/// evaluated on the same synthetic decoupling.
-#[cfg(feature = "pid")]
-fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
-    use galadriel_pid::{assess_stream, PidResearchSuite, PidVerdict};
+/// The `dependence` feature demo keeps pairwise-MI evidence beside the unchanged
+/// core verdict for one explicitly declared synthetic Gaussian law.
+#[cfg(feature = "dependence")]
+fn run_dependence_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
+    use galadriel_dependence::{
+        assess_with_dependence, ContinuousLawDeclaration, DependenceResearchSuite,
+        MiGraphDisposition,
+    };
     use galadriel_sim::scenario::{generate_spoofed, StealthySpoof};
 
     let mods = vec![Modality::Visual, Modality::Radar, Modality::Acoustic];
@@ -2358,40 +2241,76 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
         &cfg,
         StealthySpoof {
             target: Modality::Acoustic,
-            start_frame: attack_start_frame(frames, 3)?,
+            // This companion declares one fixed i.i.d. law. Start the spoof at
+            // the episode boundary so no retained row crosses a change point.
+            start_frame: 0,
         },
     )?;
-    let scope = cfg.assessment_scope("demo-pid")?;
-
-    // Compare the KSG-MI escalation on every attested projection axis. Agreement
-    // is an observed finite-sample result, not an equivalence guarantee.
-    let pid_suite = PidResearchSuite::circular_delete_block_v0_9(&mods)?;
-    let report = assess_stream(&scope, &stream, &pid_suite)?;
+    let scope = cfg.assessment_scope("demo-dependence")?;
+    let law = ContinuousLawDeclaration::try_iid(
+        "This simulator declares nonsingular jointly Gaussian bivariate populations with finite mutual information for every requested projection pair.",
+        "Binary64 sample representation of pseudorandom draws intended from the declared continuous law; no deliberate quantization, added noise, or tie-breaking transform; exact ties abstain.",
+        "Rows are independent draws within this one fixed-parameter synthetic scenario episode.",
+        "All simulator projection coordinates use the same fixed physical innovation unit and identity gauge; no sample-fitted rescaling is applied.",
+    )?;
+    let suite = DependenceResearchSuite::exhaustive_circular_delete_block_v0_9(&mods, law)?;
+    let report = assess_with_dependence(&scope, &stream, &suite)?;
 
     println!();
     println!(
         "{}",
         cyan(
-            "┌─ …SAME STEALTHY SPOOF through the KSG-MI escalation (feature `pid`)",
+            "┌─ FIXED-LAW STEALTHY SPOOF with an MI companion (feature `dependence`)",
             color
         )
     );
-    for axis in report.pids() {
-        let axis_insufficient = matches!(axis.report().verdict(), PidVerdict::InsufficientEvidence);
+    for axis in report.mi_axes() {
+        let unavailable = matches!(
+            axis.report().disposition(),
+            MiGraphDisposition::Unavailable(_)
+        );
+        let threshold = axis
+            .report()
+            .threshold_nats()
+            .map_or_else(|| "none".to_owned(), |value| format!("{value:.6} nats"));
+        let stability = axis.report().stability().map_or_else(
+            || "none".to_owned(),
+            |envelope| {
+                format!(
+                    "{} exhaustive deletions, block {}",
+                    envelope.deletions_evaluated(),
+                    envelope.block_size(),
+                )
+            },
+        );
+        println!(
+            "│  axis {} graph={:?} · threshold={} · stability={}",
+            axis.axis(),
+            axis.report().disposition(),
+            threshold,
+            stability,
+        );
+        println!(
+            "│    schema={} · config={} · rows={} · projection={}",
+            axis.report().schema(),
+            axis.report().estimator().config_identity().to_hex(),
+            axis.report().row_set().sha256_hex(),
+            axis.projection_receipt().digest().to_hex(),
+        );
         for c in axis.report().channels() {
-            let tag = channel_evidence_tag(
-                channel_evidence_label(
-                    c.is_decoupled(),
-                    pid_channel_is_assessable(c.gate_ok(), c.corroboration()),
-                    axis_insufficient,
+            let tag = mi_companion_tag(
+                mi_companion_label(
+                    unavailable,
+                    c.strongest_pair_mi_nats(),
+                    c.is_separated_from_majority_graph(),
                 ),
                 color,
             );
             let mi = c
-                .corroboration()
+                .strongest_pair_mi_nats()
                 .map_or_else(|| "  —  ".to_string(), |v| format!("{v:>5.3}"));
             println!(
-                "│  axis {} {:<15} KSG-MI corroboration={}  {}",
+                "│  axis {} {:<15} strongest pair KSG-MI={} nats  {}",
                 axis.axis(),
                 c.modality().label(),
                 mi,
@@ -2399,8 +2318,8 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
             );
         }
     }
-    let fused = fused_verdict_str(report.verdict());
-    let pv = match report.verdict() {
+    let fused = fused_verdict_str(report.authoritative_verdict());
+    let pv = match report.authoritative_verdict() {
         FusedVerdict::Nominal => green(&fused, color),
         FusedVerdict::InsufficientEvidence => dim(&fused, color),
         FusedVerdict::AttributedInconsistency { .. }
@@ -2408,11 +2327,11 @@ fn run_pid_demo(frames: usize, seed: u64, color: bool) -> anyhow::Result<()> {
         | FusedVerdict::UnclassifiedAnomaly { .. } => red(&fused, color),
     };
     println!(
-        "└▷ multi-axis fused PID: {}   {}   {}",
+        "└▷ authoritative default: {}   {}   {}",
         pv,
         dim(report.note(), color),
         dim(
-            "(synthetic linear-Gaussian comparison; PID atoms are diagnostic only)",
+            "(synthetic linear-Gaussian comparison; MI is uncalibrated companion evidence, not PID)",
             color
         )
     );
@@ -2517,9 +2436,6 @@ mod replay_history_tests {
         ));
         let _ = std::fs::remove_file(&path);
         let path = path.to_string_lossy();
-        #[cfg(feature = "pid")]
-        let result = run_replay(&path, 1, 0);
-        #[cfg(not(feature = "pid"))]
         let result = run_replay(&path, 1);
 
         assert!(result.is_err(), "an absent capture must fail before replay");
@@ -2538,9 +2454,6 @@ mod replay_history_tests {
         ];
         galadriel_ncp::write_jsonl(&path, &observations).unwrap();
         let path_text = path.to_string_lossy();
-        #[cfg(feature = "pid")]
-        let result = run_replay(&path_text, 1, 0);
-        #[cfg(not(feature = "pid"))]
         let result = run_replay(&path_text, 1);
         std::fs::remove_file(path).unwrap();
 
@@ -2549,23 +2462,6 @@ mod replay_history_tests {
             error.contains("track 7 ingest at sequence 2"),
             "unexpected replay error: {error}"
         );
-    }
-
-    #[cfg(feature = "pid")]
-    #[test]
-    fn terminal_pid_range_excludes_retired_generations() {
-        let frame_ranges = [0..2, 2..5, 5..6, 6..10];
-
-        assert_eq!(
-            replay_generation_observation_range(&frame_ranges, 2),
-            Some(5..10)
-        );
-        assert_eq!(
-            replay_generation_observation_range(&frame_ranges, 0),
-            Some(0..10)
-        );
-        assert_eq!(replay_generation_observation_range(&frame_ranges, 4), None);
-        assert_eq!(replay_generation_observation_range(&[], 0), None);
     }
 
     #[test]
@@ -2609,23 +2505,6 @@ mod replay_history_tests {
     fn report_visibility_covers_both_sides_of_the_limit() {
         assert!(replay_track_is_verbose(0, 1));
         assert!(!replay_track_is_verbose(1, 1));
-    }
-
-    #[cfg(feature = "pid")]
-    #[test]
-    fn pid_selection_covers_the_exact_limit_and_is_independent_of_visibility() {
-        assert!(replay_track_uses_pid(0, 1));
-        assert!(!replay_track_uses_pid(1, 1));
-        assert_eq!(
-            (replay_track_is_verbose(1, 1), replay_track_uses_pid(1, 4)),
-            (false, true)
-        );
-        assert!(!replay_has_required_pid_modalities(
-            galadriel_pid::MIN_PID_RESEARCH_MODALITIES - 1
-        ));
-        assert!(replay_has_required_pid_modalities(
-            galadriel_pid::MIN_PID_RESEARCH_MODALITIES
-        ));
     }
 
     #[test]
@@ -2982,23 +2861,49 @@ mod verdict_label_tests {
         );
     }
 
+    #[cfg(feature = "dependence")]
+    #[test]
+    fn mi_companion_labels_do_not_reuse_operational_correlation_terms() {
+        assert_eq!(
+            mi_companion_tag(MiCompanionLabel::Separated, false),
+            "● SEPARATED"
+        );
+        assert_eq!(
+            mi_companion_tag(MiCompanionLabel::InMajorityGraph, false),
+            "○ in majority graph"
+        );
+        assert_eq!(
+            mi_companion_tag(MiCompanionLabel::Unavailable, false),
+            "● UNAVAILABLE"
+        );
+    }
+
+    #[cfg(feature = "dependence")]
+    #[test]
+    fn mi_companion_classification_fails_closed_for_each_missing_evidence_layer() {
+        assert_eq!(
+            mi_companion_label(true, Some(0.25), true),
+            MiCompanionLabel::Unavailable
+        );
+        assert_eq!(
+            mi_companion_label(false, None, true),
+            MiCompanionLabel::Unavailable
+        );
+        assert_eq!(
+            mi_companion_label(false, Some(0.25), true),
+            MiCompanionLabel::Separated
+        );
+        assert_eq!(
+            mi_companion_label(false, Some(0.25), false),
+            MiCompanionLabel::InMajorityGraph
+        );
+    }
+
     #[test]
     fn insufficient_channel_tag_has_the_expected_plain_text() {
         assert_eq!(
             channel_evidence_tag(ChannelEvidenceLabel::Insufficient, false),
             "● INSUFFICIENT"
         );
-    }
-
-    #[cfg(feature = "pid")]
-    #[test]
-    fn pid_channel_with_a_failed_gate_is_not_assessable() {
-        assert!(!pid_channel_is_assessable(false, Some(0.5)));
-    }
-
-    #[cfg(feature = "pid")]
-    #[test]
-    fn pid_channel_with_a_passing_gate_and_score_is_assessable() {
-        assert!(pid_channel_is_assessable(true, Some(0.5)));
     }
 }

@@ -220,7 +220,7 @@ observations, misses, and a producer heartbeat.
 Historical and default Crebain captures omit the attested common projection.
 The unbound correlation diagnostic therefore returns `InsufficientEvidence`.
 Raw replay also omits a complete assessment scope.
-It cannot construct an accepted core or PID fused report.
+It cannot construct an accepted core or dependence companion report.
 The fixture supports bounded parsing and basic NIS baseline checks.
 
 The captures contain only successful updates after association and a chi-square
@@ -350,8 +350,9 @@ record.
 It **MUST** derive `StateUnusable` and policy eligibility independently.
 It **MUST NOT** accept these conclusions as producer assertions.
 
-Prisoma `63cff105e0e40281376e6f827d7782e9b351961a` has no version 0.9.0 runtime
-edge.
+Prisoma discovery object `63cff105e0e40281376e6f827d7782e9b351961a`
+and the 2026-08-14 committed reinspection
+`efcad9943af818913702f11c47ed0c280a2a1f13` have no version 0.9.0 runtime edge.
 It is a prospective immutable offline consumer.
 Its optional observer accepts only exact base-plane keys.
 It rejects named sensor subkeys.

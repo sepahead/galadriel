@@ -90,9 +90,12 @@ It must supply one common frozen-prior identifier for each sequence.
 It must also supply explicit lifecycle and missingness information.
 
 The central result in `PAPER.md` section 4 selects a dependence statistic at this layer.
-The default uses a low-cost correlation check.
-Mutual information or Partial Information Decomposition (MI/PID) is an escalation.
-Recorded evidence must show that signed correlation does not represent the registered coupling.
+The accepted default uses a low-cost signed-correlation check.
+An opt-in in-process pairwise-MI graph is a non-fused research companion.
+Named PID functionals appear only in offline fixed-target studies.
+Recorded evidence must show that signed correlation does not represent the registered
+coupling before the MI companion is scientifically relevant; a PID study also needs
+an atom-allocation question and an explicit target.
 
 One attack can affect several layers.
 For example, a GNSS spoof is an L0 RF event.
@@ -181,7 +184,8 @@ Galadriel discloses the same structural limit in `PAPER.md` section 2 and `EVALU
 
 **Relation to Galadriel.** Galadriel applies residual consistency and outlier attribution to heterogeneous modalities.
 It replaces a shared geometry matrix with a registered statistical-dependence contract.
-It uses signed correlation and optional additive MI/PID.
+It uses signed correlation. Its optional pairwise-MI companion cannot alter the
+accepted verdict, and its PID studies are offline.
 Galadriel is not a strict RAIM superset.
 RAIM has model-specific integrity semantics that the Galadriel advisory prototype does not have.
 
@@ -302,9 +306,18 @@ Safety-critical certification is difficult.
 Attribution and interpretation are typically weak.
 
 **Relation to Galadriel.** This method overlaps the nonlinear-dependence question in `PAPER.md` section 5.
-The current Galadriel runtime verdict uses geometry-gated pairwise KSG-MI.
-Its PID atoms are diagnostic.
-They do not implement a pure-synergy classifier.
+The accepted Galadriel verdict uses NIS and signed correlation.
+The geometry-gated pairwise KSG-MI graph is an opt-in library companion, with
+synthetic demo, evaluation, and benchmark integrations only.
+Categorical MGW and continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral
+PID atoms appear only in offline studies. They do not implement an operational
+pure-synergy classifier.
+The [general measure-theoretic construction](https://arxiv.org/abs/2106.12393)
+of Schick-Poland et al., the [bivariate infomorphic objective](https://pmc.ncbi.nlm.nih.gov/articles/PMC11912414/)
+of Makkeh et al., and the [three-input ICLR 2025 objective](https://openreview.net/forum?id=CLE09ESvul)
+of Schneider et al. are separate research objects. Galadriel
+implements none of them. In particular, a weighted sum of named PID atoms is a
+downstream learning objective, not another PID estimator or an MI-graph fallback.
 Galadriel does not need training data.
 This fact does not imply broader capacity or field validity than a trained model.
 
@@ -340,7 +353,7 @@ An external attacker is an unauthenticated injector.
 | Cryptographic authentication or OSNMA, section 2.2 | L0/L1 | Per signal or node | External forgery | **Prevent** impersonation | Key infrastructure | Key management |
 | RAIM, section 2.3 | L1 | GNSS, one modality | Faulty or spoofed satellite | Detect and exclude | Known geometry and measurement model | Compute only |
 | Innovation NIS/CUSUM, section 2.4 | L2 | Per channel | Magnitude fault | Detect | Filter innovations available | Negligible |
-| **Cross-sensor consistency and Galadriel, section 2.5** | **L2** | **N heterogeneous channels** | **Minority channel that breaks agreement** | **Report inconsistency and attribution evidence, advisory** | **Comparable innovations. Unique strict majority.** | **Low for correlation. Higher for PID and benchmark-dependent.** |
+| **Cross-sensor consistency and Galadriel, section 2.5** | **L2** | **N heterogeneous channels** | **Minority channel that breaks agreement** | **Report inconsistency and attribution evidence, advisory** | **Comparable innovations. Unique strict majority.** | **Low for accepted correlation. Higher and benchmark-dependent for the optional MI companion.** |
 | Resilient state estimation, section 2.6 | L3 | N modeled channels | At most p corrupted sensors | **Recover state**, provable | Known LTI model and redundancy bound | Optimization compute |
 | Byzantine-robust fusion, section 2.7 | L3 | N channels | Corrupted minority | **Tolerate** by masking | Honest majority | Negligible |
 | Learning-based, section 2.8 | L2/L4 | N channels | Learned-normal anomaly | Detect statistically | Representative training data | Training and inference |
@@ -520,11 +533,13 @@ Galadriel directly competes with these methods:
 
 - **Other cross-sensor consistency detectors in section 2.5.** They use the same family and layer.
   Galadriel uses signed correlation by default.
-  It uses additive MI/PID only for a registered nonlinear estimand with supporting evidence.
+  Its pairwise-MI graph is a non-fused companion for a registered nonlinear
+  estimand with supporting evidence. PID is a separate offline fixed-target study.
   It also supplies per-channel attribution.
   It does not need training data, but it still needs producer assumptions.
 - **Learning-based anomaly detectors in section 2.8.** They overlap in the nonlinear regime.
-  Galadriel supplies training-free pairwise-MI evidence and diagnostic PID atoms.
+  Galadriel supplies training-free, non-fused pairwise-MI evidence and separate
+  offline PID study artifacts.
   This difference does not establish a field-performance advantage.
 - **Classical single-modality RAIM in section 2.3.** RAIM is a conceptual ancestor.
   Galadriel explores a multi-modality residual-consistency principle.

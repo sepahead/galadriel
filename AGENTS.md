@@ -48,7 +48,7 @@ Read the documents that own the changed surface.
 | --- | --- |
 | Core types, detector logic, fusion, or configuration | `docs/CORE-CONTRACT.md`, `docs/CONFIGURATION-CONTRACT.md`, `docs/STATE-MACHINE.md`, and `docs/STATISTICAL-CONTRACT.md` |
 | Claims, public API, or release scope | `docs/CLAIMS.md`, `docs/API-SURFACE.md`, and `release/0.9.0/README.md` |
-| PID research code | `docs/PID_RS_1_0_MIGRATION.md`, `docs/EVALUATION.md`, and `docs/JUSTIFICATION.md` |
+| Dependence companion or PID study code | `docs/PID_RS_1_0_MIGRATION.md`, `docs/EVALUATION.md`, and `docs/JUSTIFICATION.md` |
 | NCP, JSONL, Zenoh, producer, or live receiver code | `docs/PRODUCER-CONTRACT.md`, `docs/SECURE-DEPLOYMENT.md`, and `docs/ECOSYSTEM-CONNECTIONS.md` |
 | Advisory or downstream behavior | `docs/ADVISORY-BOUNDARY.md` and `docs/ECOSYSTEM-CONNECTIONS.md` |
 | Evidence, qualification, tags, assets, or publication | `docs/DEPENDENCY-POLICY.md`, `release/0.9.0/RELEASE-RUNBOOK.md`, and `repo_work/README.md` |
@@ -150,18 +150,20 @@ The other scope values are validated caller declarations.
 The scope and assessment binding do not authenticate a producer.
 
 Raw JSONL replay MUST remain unbound and diagnostic-only.
-It MUST NOT create a `DefaultReport` or PID `FusedReport`.
+It MUST NOT create a `DefaultReport` or `DependenceAssessmentReport`.
 The NCP lifecycle path MUST derive scope from the admitted producer and exact position.
 Each evaluated report MUST match its lifecycle receipt.
 
-PID evidence is an optional research diagnostic.
-PID evidence MUST NOT repair a failed core prerequisite.
-PID evidence MUST NOT override signed-correlation evidence.
-PID evidence MUST NOT create authority.
+Runtime dependence evidence is an optional pairwise-MI companion, not PID.
+It MUST retain the exact unchanged core verdict and MUST NOT enter fusion.
+It MUST NOT add noise, conceal unavailable pair evidence, or label deterministic
+deletion extrema as confidence intervals. Offline PID studies MUST keep
+categorical MGW and continuous Ehrlich functionals distinct and name fixed
+sources and a target. Neither path can create authority.
 
 The default build must remain pure and small.
-The default CLI MUST NOT resolve PID or NCP integration crates.
-The `pid`, `ncp`, and `ncp-live` features MUST remain off by default.
+The default CLI MUST NOT resolve dependence or NCP integration crates.
+The `dependence`, `ncp`, and `ncp-live` features MUST remain off by default.
 The `ncp-live` feature can add Zenoh and Tokio only through its declared graph.
 Its direct JSON serialization edges must remain in that audited graph.
 All Rust targets MUST remain free of unsafe code.
@@ -175,7 +177,7 @@ Use `required`, `optional`, and `absent` only for the named mode.
 
 | Project | Version 0.9.0 relationship |
 | --- | --- |
-| pid-rs | It is optional in the default build. Its exact pin is required for PID, evaluation, and justification paths. |
+| pid-rs | It is optional in the default build. Its exact pin is required for the dependence companion, evaluation, and offline justification paths. |
 | NCP | It is optional in the default build. Its exact NCP wire 0.8 pin is required for NCP paths. |
 | Crebain | It is an optional reference producer. Galadriel has no Cargo dependency on Crebain. |
 | Haldir | It has no version 0.9.0 runtime edge. It is a prospective record-only consumer. |

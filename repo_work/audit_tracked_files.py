@@ -150,7 +150,7 @@ def criticality(path: str) -> tuple[bool, bool, bool, bool]:
             "crates/galadriel-core/",
             "crates/galadriel-sim/",
             "crates/galadriel-eval/",
-            "crates/galadriel-pid/",
+            "crates/galadriel-dependence/",
             "crates/galadriel-justify/",
             "evidence/",
         )

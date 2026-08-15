@@ -5,7 +5,7 @@
 # The default build is pure and small.
 # It includes galadriel-core, galadriel-sim, and galadriel-cli.
 # The default-member command-line interface (CLI) build has three additive features.
-# The `pid` feature selects pid-core.
+# The `dependence` feature selects the optional pairwise-MI research companion and pid-core.
 # The `ncp` feature selects ncp-core.
 # The `ncp-live` feature selects ncp-zenoh, Zenoh, Tokio, and CLI JSON output support.
 # The direct `galadriel-ncp` `zenoh` feature selects the same live stack.
@@ -16,14 +16,13 @@ members = [
     "crates/galadriel-core",
     "crates/galadriel-sim",
     "crates/galadriel-cli",
-    "crates/galadriel-pid",
+    "crates/galadriel-dependence",
     "crates/galadriel-ncp",
     "crates/galadriel-eval",
     "crates/galadriel-justify",
 ]
-# The default build excludes galadriel-pid and its heavier pid-core dependency.
-# Select galadriel-pid with `-p galadriel-pid` or `--workspace`.
-# The CLI `pid` feature also selects galadriel-pid.
+# The default build excludes galadriel-dependence and its pid-core dependency.
+# Select it with `-p galadriel-dependence` or the CLI `dependence` feature.
 default-members = [
     "crates/galadriel-core",
     "crates/galadriel-sim",
@@ -59,16 +58,17 @@ tokio = { version = "1", default-features = false, features = ["sync"] }
 zenoh = { version = "=1.9.0", default-features = false }
 galadriel-core = { version = "0.9.0", path = "crates/galadriel-core" }
 galadriel-sim = { version = "0.9.0", path = "crates/galadriel-sim" }
-galadriel-pid = { version = "0.9.0", path = "crates/galadriel-pid" }
+galadriel-dependence = { version = "0.9.0", path = "crates/galadriel-dependence" }
 galadriel-ncp = { version = "0.9.0", path = "crates/galadriel-ncp" }
 # Public sibling ecosystem crates use immutable commits.
-# pid-rs declares version 1.0.0 on main.
-# It has no public v1 tag or published artifact.
-# The selected revision includes the version declaration and same-day corrections.
+# The selected immutable pid-rs revision declares version 1.0.0; mutable pid-rs
+# main can differ. That revision has no public v1 tag or published artifact.
+# It includes the version declaration and same-day corrections.
 # It also includes the same-day continuous integration changes.
-# Galadriel selects the experimental continuous pipeline for its advisory
-# partial information decomposition (PID) path.
-pid-core = { version = "1.0.0", git = "https://github.com/sepahead/pid-rs", rev = "1cd2424f7967e1752dcc8e53859e8fdad3566f51", features = ["experimental-pipelines"] }
+# The workspace declaration selects no pid-core research feature. The dependence
+# companion needs only stable report-first KSG. The separate justify crate opts
+# into the continuous research surface for its explicit offline Ehrlich studies.
+pid-core = { version = "1.0.0", git = "https://github.com/sepahead/pid-rs", rev = "1cd2424f7967e1752dcc8e53859e8fdad3566f51" }
 ncp-core = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 ncp-zenoh = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 

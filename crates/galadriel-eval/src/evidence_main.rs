@@ -3,8 +3,8 @@
 //!
 //! This binary evaluates the streaming normalized innovation squared (NIS) baseline.
 //! It also evaluates the default signed-correlation fusion path.
-//! Partial information decomposition (PID) remains a separate terminal research study.
-//! This runner does not create a PID assessment cadence.
+//! Pairwise-MI consensus remains a separate opt-in in-process study; it is not PID.
+//! This runner does not create an MI assessment cadence.
 
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::env;
@@ -3325,7 +3325,7 @@ fn build_summary(
                 .into(),
             "Alert episodes use the configured nominal_only reset policy. Abstention preserves an active episode. Only a nominal assessment clears it."
                 .into(),
-            "The default runner evaluates streaming normalized innovation squared (NIS) and signed correlation only. Partial information decomposition (PID) has no product streaming cadence in this revision."
+            "The default runner evaluates streaming normalized innovation squared (NIS) and signed correlation only. The opt-in pairwise-MI companion and offline PID studies are excluded."
                 .into(),
             "Independent missingness can cross an accepted continuity limit. Each such event creates a recorded whole-detector generation boundary. Post-reset warm-up remains abstention. The runner does not recode it as nominal."
                 .into(),
@@ -3572,7 +3572,7 @@ fn build_manifest(input: ManifestBuild<'_>) -> AppResult<EvidenceManifest> {
             "streaming normalized innovation squared (NIS) baseline".into(),
             "streaming default signed-correlation fusion over producer-attested projections"
                 .into(),
-            "partial information decomposition (PID) excluded because this revision has only a terminal replay assessment".into(),
+            "opt-in pairwise-MI companion and offline PID studies excluded; this runner evaluates streaming NIS and signed correlation only".into(),
         ],
         trial_records: records.len(),
         synthetic_tracks,

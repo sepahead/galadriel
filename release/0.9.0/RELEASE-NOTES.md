@@ -31,7 +31,9 @@ Intended channel: review-gated GitHub research source release
 Version 0.9.0 provides the author-reviewed, machine-assisted research source for Galadriel's Mirror through the stated channel.
 It provides a fail-closed implementation for cross-sensor statistical consistency monitoring in Rust.
 The default core contains pure domain logic.
-Partial information decomposition (PID) and Neuro-Cybernetic Protocol (NCP) integrations need explicit activation.
+The non-fused pairwise-MI companion and Neuro-Cybernetic Protocol (NCP)
+integrations need explicit activation. PID is confined to the offline
+`galadriel-justify` study crate.
 
 ## What is included
 
@@ -53,9 +55,9 @@ Partial information decomposition (PID) and Neuro-Cybernetic Protocol (NCP) inte
 - The verdict-independent authority-effect validator permits only record-only or
   monotonically restrict-only transitions.
 - The legacy untyped authority constructor remains record-only.
-- Optional PID analysis abstains before it adds observation noise to a degenerate column.
+- Optional pairwise-MI analysis abstains on a degenerate column and never adds observation noise.
 - Raw JSONL replay is unbound and diagnostic-only.
-- Raw replay cannot create a sealed core or PID whole-stream report.
+- Raw replay cannot create a sealed core report or any MI/PID report.
 - Offline and optional live sidecar ingestion enforce common-projection and frozen-prior boundaries.
 - They also enforce configuration, session, producer, lifecycle, and replay boundaries.
 - Runtime Zenoh configurations must contain one strict JSON object.
@@ -75,7 +77,20 @@ Partial information decomposition (PID) and Neuro-Cybernetic Protocol (NCP) inte
 - Receipt verification rejects bounded detector-impossible assessment shapes.
 - Receipt verification does not authenticate or durably retain the record.
 - These source changes are incompatible with earlier development snapshots.
-- Optional PID diagnostics use pid-rs revision `1cd2424f7967e1752dcc8e53859e8fdad3566f51`.
+- The optional pairwise-MI companion and offline PID studies use pid-rs revision
+  `1cd2424f7967e1752dcc8e53859e8fdad3566f51` through distinct APIs.
+- Every MI graph snapshot records all accepted graph parameters, the fixed KSG
+  evaluator contract, exact row/projection receipts, and distinct scientific,
+  resource, numerical, and deletion-stability unavailability categories.
+- Offline PID questions retain role-typed primary references and complete upstream
+  trial reports. Pearson, pairwise MI, project-defined `Q`, categorical MGW, and
+  continuous Ehrlich outputs have separate identities; sealed aggregates can
+  verify every upstream-report-derived summary bit-for-bit. Version 2 offline
+  schemas bind exact generated laws and finite-sample selection, original-lattice
+  versus functional/estimator roles, output coordinates/components, coupled versus
+  within-trial permutation arms, root-field statistics/units, and the exact paired
+  bootstrap seed/quantile protocol. They explicitly do not bind the Galadriel
+  source tree or resolved RNG bytes; a publication bundle must do that.
 - Optional NCP wire 0.8 integration uses revision `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
 - The `ncp-live` feature also activates the pinned Zenoh adapter and Tokio.
 - Direct `galadriel-ncp` feature `zenoh` activates the same live stack.
@@ -83,7 +98,8 @@ Partial information decomposition (PID) and Neuro-Cybernetic Protocol (NCP) inte
 ### Release assurance
 
 - Release tools check the feature graph, public API, and security profile.
-- Continuous integration executes tests for the default, PID, NCP, and NCP-live CLI feature profiles.
+- Continuous integration executes tests for the default, dependence, NCP, and
+  NCP-live CLI feature profiles.
 - The deep workflow checks the complete fuzz workspace and its tracked semantic seed canaries.
 - It builds all three fuzz runners once with the pinned nightly toolchain, `--locked`, and `--offline`.
 - The deep workflow executes each native runner for 5,000 deterministic cases.
@@ -205,10 +221,10 @@ It does not prove deployment qualification, production support, archival preserv
 pid-rs is optional in the default command-line interface (CLI) build.
 These paths require pid-rs:
 
-- `galadriel-pid`
+- `galadriel-dependence`
 - `galadriel-eval`
 - `galadriel-justify`
-- the CLI `pid` feature
+- the CLI `dependence` feature
 
 ### NCP
 

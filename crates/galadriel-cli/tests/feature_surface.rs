@@ -47,12 +47,9 @@ fn command_surface_matches_the_selected_feature_profile() {
 
 #[cfg(feature = "ncp")]
 #[test]
-fn replay_options_match_the_pid_feature_profile() {
+fn replay_never_exposes_unbound_dependence_options() {
     let help = successful_stdout(&["replay", "--help"]);
     assert!(help.contains("--max-report-tracks"));
-
-    #[cfg(feature = "pid")]
-    assert!(help.contains("--max-pid-tracks"));
-    #[cfg(not(feature = "pid"))]
     assert!(!help.contains("--max-pid-tracks"));
+    assert!(!help.contains("--max-dependence-tracks"));
 }

@@ -24,7 +24,9 @@ The selected data population and target must define that estimand.
 Galadriel is a pre-1.0 research implementation of this selection discipline.
 Its default combines per-channel Normalized Innovation Squared (NIS) and cumulative sum (CUSUM) magnitude evidence.
 It adds signed, family-wise-significant cross-channel correlation and unique strict-majority consensus.
-An optional path adds sign-invariant Kraskov–Stögbauer–Grassberger mutual information (KSG-MI) and shared-exclusions PID evidence.
+An optional companion adds sign-invariant Kraskov–Stögbauer–Grassberger mutual
+information (KSG-MI) as a descriptive pairwise graph. It does not change fusion.
+Separate offline studies evaluate categorical and continuous shared-exclusions PID.
 Invalid input returns an error.
 Missing or geometrically insufficient evidence remains inconclusive.
 
@@ -39,7 +41,7 @@ They mix native coordinate frames, use sequential priors, and censor rejected me
 The bundled fixture supports bounded parsing and basic NIS baseline checks.
 Its unbound correlation diagnostic returns `InsufficientEvidence`.
 Raw replay has no complete assessment scope.
-It cannot construct an accepted core or PID fused report.
+It cannot construct an accepted core or dependence companion report.
 A retained historical opt-in Crebain revision implemented the required producer shape.
 That shape used frozen-prior Cartesian projections and complete lifecycle information.
 It does not qualify a current reciprocal integration.
@@ -115,7 +117,7 @@ These conditions are in scope:
 - a per-channel magnitude shift
 - a common-mode magnitude inflation
 - a minority dependence change that breaks a valid positive consensus
-- synthetic nonlinear or synergistic regimes for optional MI/PID research
+- synthetic nonlinear regimes for optional MI and fixed-target synergistic regimes for offline PID research
 
 These conditions are out of scope:
 
@@ -218,7 +220,7 @@ The system does not select an `AttributedInconsistency` result from these cases.
 
 Accepted default reports use `galadriel-assessment-binding-v2`.
 The binding covers the complete scope, release suite, and ordered observations.
-Optional PID reports nest that core binding and add the PID research-suite identity.
+Optional dependence reports nest that core binding and add the dependence-suite identity.
 This binding supports internal recomputation.
 It does not authenticate the producer.
 
@@ -227,7 +229,7 @@ Each evaluated report uses the same producer and position as its receipt.
 The receipt verifier checks bounded detector-shape and cross-field coherence.
 It does not authenticate, sign, or durably retain a receipt.
 
-### 4.3 Optional MI/PID evidence
+### 4.3 Optional MI companion and offline PID evidence
 
 For jointly Gaussian scalar variables [CoverThomas2006],
 
@@ -236,23 +238,33 @@ I(X;Y)=-\tfrac{1}{2}\log(1-\rho^2).
 \]
 
 MI and correlation magnitude have the same population ranking in this model.
-KSG [Kraskov2004] applies only when accepted data contains dependence that signed linear correlation cannot represent.
-The system must validate its geometry, sample size, observation-noise model, and bootstrap configuration.
-The configuration declares an additive observation-noise model.
+KSG [Kraskov2004] applies only when accepted data contains dependence that signed
+linear correlation cannot represent. The caller declares the continuous
+population, binary64 observation, and sampling models. Galadriel validates
+sample geometry and size, requires a declared common coordinate gauge and applies the fixed identity transform,
+and adds no noise. Exact ties abstain.
 
 [Gao2018] characterizes the estimator's finite-sample and dimension-dependent bias.
 The system does not replace estimator failure with an optimistic point estimate.
 
-Partial information decomposition [WilliamsBeer2010] can describe redundant, unique, and synergistic information.
-Galadriel uses its shared-exclusions form [Makkeh2021, Ehrlich2024].
-The study must document the source and target construction.
-Its atoms are advisory and can be negative.
+Partial information decomposition [WilliamsBeer2010] can describe redundant,
+unique, and synergistic information. The categorical
+Makkeh–Gutknecht–Wibral functional [Makkeh2021] and the related but distinct
+continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction and
+estimator [Ehrlich2024] are not one
+"shared-exclusions form." Galadriel evaluates them in separate offline studies.
+The study must document fixed source identities and order, an external target,
+functional and evaluator, law, transforms, gauges, row relation, units, and
+software identity. Its atoms are associative decomposition terms and can be negative.
 They are not probabilities or calibrated attack confidence.
 
-MI/PID is sign-invariant and additive.
-It cannot override contradictory signed geometry.
-It cannot repair a missing modality.
-It cannot create majority attribution from a dyad.
+The opt-in in-process/library MI graph is symmetric, target-free, and
+project-defined; it is not PID. Its only executable integrations in 0.9 are the
+synthetic demo, evaluation, and benchmark; `replay`, `observe`, and NCP never
+invoke it. Its threshold has no null calibration. Exhaustive deletion reports literal
+sensitivity extrema, not a bootstrap confidence interval. Neither the MI graph
+nor offline PID can override contradictory signed geometry, repair a missing
+modality, or create majority attribution from a dyad.
 
 ### 4.4 Fusion
 
@@ -261,21 +273,26 @@ An unavailable consistency result cannot change a magnitude-nominal window into 
 Insufficient peer geometry does not erase positive anomaly evidence.
 `Result` APIs separate invalid computation from a valid but inconclusive report.
 
-## 5. Why MI/PID can still be justified
+## 5. Why MI or a separate PID study can still be justified
 
 Three canonical cases motivate research beyond correlation:
 
 1. **Nonlinear dependence.** One variable can constrain another while linear covariance is zero.
 2. **Adversarial structure.** An attacker can target a known second-order statistic while leaving detectable higher-order dependence.
-3. **Irreducible synergy.** A source pair can jointly constrain a target while each source remains uninformative. XOR and sign-parity constructions have this property.
+3. **Joint-only dependence.** A source pair can jointly constrain a target while
+   each source remains uninformative. XOR and sign-parity constructions have this
+   property. A joint statistic such as `Q` detects the relation; a named PID is
+   needed only when the measure-relative atom allocation is itself the question.
 
 These constructions show possibility, not prevalence.
 A synthetic separation shows that an estimator can observe the constructed model.
 It does not show the same source and target relation in a deployed fusion system.
 
-Pointwise local information can also support sequential change detection [Page1954, Moustakides1986].
-That direction requires a registered clean reference and stream-level false-alarm calibration.
-It is not the current runtime streaming mode.
+Local information can also support sequential change detection [Page1954,
+Moustakides1986]. The repository's current kNN local-MI CUSUM is a
+project-defined two-variable heuristic, not the categorical MGW or continuous
+Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID construction. It requires a registered clean reference and
+stream-level false-alarm calibration. It is not the current runtime streaming mode.
 
 ## 6. Evaluation discipline
 
@@ -284,8 +301,10 @@ The project removed exact pre-audit values after the correctness audit.
 Do not cite them as current results.
 
 The audit changed sequence alignment and signed consensus.
-It changed family-wise thresholds, validation, and PID observation-noise modeling.
-It also changed bootstrap handling and fusion semantics.
+It changed family-wise thresholds and validation. The current correction removes
+runtime PID labels, added observation noise, sampled deletion confirmation, and
+MI fusion. It replaces them with a no-noise report-first MI companion and
+deterministic exhaustive deletion sensitivity.
 
 A regenerated report must disclose:
 
@@ -293,7 +312,11 @@ A regenerated report must disclose:
 - trial and seed policy
 - separate error and inconclusive rates
 - paired uncertainty for detector differences
-- pre-onset false alarms for time-to-detect measurements
+- pre-onset accepted alarms for detector-latency measurements, and separately
+  named pre-onset MI separation events for the uncalibrated companion
+- the fact that post-onset MI latency is oracle-segmented at the known simulated
+  onset and is therefore a posthoc sensitivity statistic, not an online latency
+  comparable to the accepted alarm columns
 - multiplicity for parameter-grid claims
 - synthetic status in each result summary
 
@@ -311,6 +334,9 @@ See [`EVALUATION.md`](EVALUATION.md).
   An ambiguous topology remains inconclusive.
 - **Selection bias.**
   Association and gating can hide attacks as missing data.
+  The synthetic MI study therefore labels its AUC as selection-conditional,
+  reports correlation on the same joint-complete trials, and gives worst/best
+  MI-AUC bounds over arbitrary rankings of missing scores.
 - **Temporal calibration.**
   The Fisher-z correlation significance floor assumes independent and identically distributed bivariate-normal residual pairs.
   Same-sign within-window autocorrelation reduces the effective sample size for two independent residual series.
@@ -394,7 +420,9 @@ See [`EVALUATION.md`](EVALUATION.md).
 The central selection rule survives the audit.
 Do not pay for an information-theoretic estimator when a simpler statistic observes the registered estimand.
 Use signed correlation for a valid positive linear consensus.
-Add MI/PID only when recorded evidence shows a nonlinear or synergistic question.
+Add an MI companion only when recorded evidence shows a nonlinear bivariate
+question. Add PID only when a fixed source-target question is genuinely
+redundant, unique, or synergistic.
 Remain inconclusive when geometry or evidence is absent.
 
 Galadriel implements and tests that discipline as a research prototype.

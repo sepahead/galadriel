@@ -21,37 +21,65 @@ The prior pin used pid-core 0.4.0 at `ad489f5bf5e15c164c599d069a6bee0f338c0e48`.
 The pid-rs project supplies Partial Information Decomposition (PID) APIs.
 It also supplies Kraskov–Stögbauer–Grassberger (KSG) estimators.
 
-This change is an explicit scientific and API migration.
-It is not only a dependency update.
+This is an explicit scientific and API migration, not only a dependency update.
+The original 0.4-to-1.0 reproduction below remains historical evidence. The
+current 2026-08-14 architecture supersedes its former runtime PID composition:
 
 - The minimum supported Rust version (MSRV) moves from Rust 1.88 to 1.89.
-- Continuous PID APIs are off by default and explicitly experimental in pid-rs 1.0.
-- KSG defaults now fail closed until the caller declares a support contract.
-- Galadriel's point gate uses the report-first KSG API.
-  It requires the returned `conditional_continuous` and `restricted_domain` classification.
-- The pid-rs 1.0 `NegativeHandling::Allow` default preserves finite signed-negative KSG estimates.
-  Galadriel accepts them as low-dependence evidence.
-  It rejects only non-finite estimator output.
-- Circular delete-block replicates use the raw scalar API under the same declared support contract.
-  This choice bounds edge-by-resample work.
-  The replicates are an experimental pipeline.
-  They do not silently inherit the point-report status.
-  Resource preflight conservatively counts four quadratic scan units for each raw KSG confirmation edge.
-  It does not count one estimator call as one scan.
-- Continuous shared-exclusions PID2 atoms remain advisory.
-  They have the `experimental_restricted_domain` label.
-- The seeded Gaussian perturbation is an observation-noise model that changes the estimand.
-  It is not a general tie repair.
-- The accepted `galadriel_pid::assess_stream` entry point now requires an
-  `AssessmentScope` before the stream and research suite.
+- `galadriel-dependence` uses only pid-rs's stable report-first KSG surface. It
+  does not enable continuous PID, mixed-dimensional PID3, or pipeline features.
+- Every MI configuration requires caller-declared population, observation, and
+  sampling models. Galadriel validates the declaration representation but does
+  not prove it.
+- The caller declares a common coordinate gauge. Galadriel applies the fixed
+  identity transform and adds no jitter or Gaussian noise. Exact ties abstain.
+- Every edge retains the complete upstream KSG report, including support,
+  estimand, assumptions, warnings, provenance, resource estimate, units, and
+  exact revision.
+- Every graph report also serializes all accepted graph parameters and the fixed
+  KSG evaluator configuration, so an unavailable graph remains self-describing.
+- Resource rejection at the point fit or during a deletion replay remains a
+  distinct typed outcome; it is not relabeled scientific instability.
+- The opt-in in-process/library graph is a project-defined symmetric pairwise-MI
+  composition. It is not PID and has no target. Its event never changes the
+  default fused verdict. In 0.9 only the synthetic demo, evaluation, and benchmark
+  execute it; `replay`, `observe`, and NCP do not.
+- Exhaustive circular deletion reruns retained-row validation, geometry, all pair reports,
+  global threshold, clique, and attribution for every start. Its margin envelope
+  is deterministic sensitivity evidence, not a bootstrap confidence interval.
+- `galadriel-justify` separately enables `experimental-continuous` for complete
+  Ehrlich PID2 reports. It also uses stable categorical Makkeh–Gutknecht–Wibral
+  SxPID. These are distinct functionals and fixed offline questions.
 - The scope binds producer, session, epoch, stream, state generation, terminal
-  sequence, terminal timestamp, and clock domain.
-- The terminal coordinates **MUST** match the stream before PID work starts.
-- Each `PidReport` carries the exact pid-rs version and revision.
-  It also carries estimators, scientific classifications, support declaration, noise model, scale, seed, and geometry `k`.
-- Each successful point-gate pair retains typed method and scientific status.
-  It retains the estimand, assumption ledger, warnings, provenance hashes, support contract, and resource estimate.
-  These values come from the upstream report-first API.
+  sequence, terminal timestamp, and clock domain before companion work starts.
+- `DependenceAssessmentBinding` nests the exact core version-2 binding and the
+  complete dependence-suite identity. It authenticates neither the caller nor
+  the scientific declarations.
+
+### Concrete upstream resource-composition handoff
+
+The selected pid-rs revision has one narrower defect that Galadriel does not
+paper over. `pid2_report_resource_estimate` preflights the joined-source MI term
+through the cheaper internal x-blocks estimator (one triangular pair pass), but
+`pid2_isx_report` executes an explicit joined-source `ksg_mi_report` whose
+estimator and three support diagnostics retain four triangular passes. The
+aggregate therefore accounts for 10 triangular passes while the four executed
+constituent reports account for 13.
+
+For `n=600`, the difference is `3 * 600 * 599 / 2 = 539,100` pair-distance
+evaluations per PID2 report. A 250-trial coupled/control study executes 500
+reports, so trusting the aggregate would omit 269,550,000 evaluations.
+Galadriel now composes the three executed report-first KSG constituents plus the
+Ehrlich shared-exclusions constituent with checked `u128` arithmetic and locks
+that count against an actual report's four retained constituent resource
+estimates. It deliberately does not treat the smaller aggregate as the executed
+work receipt.
+
+The pid-rs handoff is specific: make the report preflight and execution use the
+same joined-source route, add checked `ResourceEstimate` composition, and retain
+a hostile control equating the aggregate with the sum of the reports that are
+actually executed. This belongs alongside Prisoma's complete extension brief;
+it is not a request for another PID functional or comparator.
 
 ## Fixed-seed reproduction
 
@@ -93,12 +121,14 @@ Its SHA-256 is `070d7b61ae773c9fb5d73cab9ba23c642d17110adaf63556e285748cbb20f479
 The complete standard-output streams now have the same hash.
 That hash is `495293442347f13710d6d928e12fdc8c8faf3f1d29bb8d19f06131f5a402fca7`.
 
+Current source verification uses:
+
 ```text
-cargo +1.96.0 test --locked -p galadriel-pid -p galadriel-justify
+cargo +1.96.0 test --locked -p galadriel-dependence -p galadriel-justify
 cargo +1.96.0 run --locked --release -p galadriel-justify -- 20
 ```
 
-The table reports mutual information (MI) and area under the receiver operating characteristic curve (AUC).
+The historical comparison table reports mutual information (MI) and area under the receiver operating characteristic curve (AUC).
 The comparison uses seed 7 and 20 paired trials.
 It uses `n=400` for the pairwise study and `n=600` for the synergy studies.
 It uses the fixed sequential and autocorrelation settings of the command-line interface (CLI).
@@ -131,20 +161,15 @@ The pid-rs 1.0 `NegativeHandling::Allow` setting preserves finite signed-negativ
 Galadriel treats these values as valid low-dependence evidence.
 It does not treat them as estimator failure.
 
-Tests lock both sides of the point and confirmation boundary.
-Bootstrap cannot create an attribution that is absent from the point gate.
-The fixed-seed synthetic decoupling cases retain their positive separation.
-The default bootstrap configuration confirms at least one separation with a negative upper confidence endpoint.
+Current tests lock the point-graph and exhaustive-deletion boundary. A retained
+separation must recur under every deletion start; otherwise the graph disposition
+is `Unavailable`. No resample, alpha, or interval field exists.
 
-A separate test covers positive PID evidence beside an insufficient PID axis.
-The result becomes `UnclassifiedAnomaly` when no complete signed result independently establishes the same attribution.
-Matching partial PID evidence cannot erase a complete signed default when all signed-correlation axes independently agree.
-
-The accepted PID report carries one `PidAssessmentBinding`.
-This binding nests the core `galadriel-assessment-binding-v2` identity.
-The nested identity covers the exact scope, release suite, and ordered stream.
-The PID binding also covers the complete PID research suite.
-`FusedReport::assessment_scope` returns the scope from the nested core binding.
+The accepted companion report carries one `DependenceAssessmentBinding`. This
+binding nests the core `galadriel-assessment-binding-v2` identity, which covers
+the exact scope, release suite, and ordered stream. The outer binding also covers
+the complete dependence research suite. The report retains the exact unchanged
+`DefaultReport`; no MI event can create, erase, or relabel its verdict.
 
 The scope is caller-declared provenance at the direct library boundary.
 It does not authenticate the caller or prove producer authorship.
@@ -158,9 +183,23 @@ It does not prove these properties of Crebain residuals:
 - regular full-dimensional support
 - approximate independence and identical distribution
 - adequate sampling
-- insensitivity to observation-noise scale
+- robustness to declared observation representation and preprocessing choices
 - calibration for the selected windows
 
-PID remains opt-in, sign-invariant, and advisory.
-It cannot widen authority.
-A representative calibration and locked-holdout campaign remains necessary before an operational policy can consume PID evidence.
+The MI companion remains opt-in, symmetric, descriptive, and non-authoritative.
+It cannot widen authority. Its row receipt proves byte identity, not episode
+truth, population support, or independence. A representative streaming
+qualification and locked holdout remain necessary before any operational policy
+can consume its event.
+
+PID remains offline. Each study must fix the source tuple and external target and
+must name the categorical MGW or continuous Ehrlich functional, evaluator,
+gauges, law, transform relation, row relation, units, and software identity.
+Galadriel's version 2 question records additionally bind the exact generated law
+and finite-sample selection, the original Williams–Beer lattice separately from
+the evaluated functional, every output coordinate/component/construction, the
+coupled and within-trial permutation arm roles, and exact root-field statistics
+and units. The sibling protocol binds the paired bootstrap seed/quantile rules but
+does not replace a source/tree/toolchain publication identity.
+Negative shared-exclusions atoms remain meaningful signed associative terms; they
+must not be clamped or labeled causal mechanisms.

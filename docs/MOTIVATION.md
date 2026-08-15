@@ -48,7 +48,7 @@ It also states where Galadriel can and cannot help.
 > Gating also censors misses.
 > The fixture's unbound correlation diagnostic returns `InsufficientEvidence`.
 > Raw replay has no complete assessment scope.
-> It cannot construct an accepted core or PID fused report.
+> It cannot construct an accepted core or dependence companion report.
 > The retained historical opt-in producer fixture does not qualify a current
 > reciprocal integration.
 > No accepted recorded study exists.
@@ -175,28 +175,34 @@ Two characteristics distinguish Galadriel from a general consistency check.
 
 ### 4.1 It maps method choice to attack classes
 
-The paper gives one central result.
-Information-theoretic consistency adds no population information over covariance
-for a registered linear-Gaussian cross-channel model.
-The information-theoretic methods are mutual information and Partial Information
-Decomposition (MI/PID).
+The paper gives one central method-selection result.
+For a registered bivariate linear-Gaussian cross-channel law, pairwise mutual
+information is determined by the magnitude of correlation. It adds no population
+ranking beyond `|rho|` and discards the sign that the accepted detector uses.
+This statement is about pairwise MI. It is not a claim that every PID functional
+collapses to correlation.
 
-MI or PID becomes a research candidate for a documented nonlinear, joint, or
-adversarially structured estimand.
+The opt-in pairwise-MI companion becomes a research candidate for a documented
+nonlinear dependence estimand. A named PID becomes a separate offline research
+candidate only when allocation among redundancy, uniqueness, and synergy is the
+question.
 Recorded evidence is necessary to determine whether either regime applies.
 
-- **An ideal linear-Gaussian tracker model** makes MI a monotone transform of correlation.
-  In that model, MI/PID adds no population discrimination.
+- **An ideal bivariate linear-Gaussian tracker model** makes pairwise MI a monotone
+  transform of `|rho|`.
+  In that model, pairwise MI adds no population discrimination over correlation
+  magnitude and removes operationally relevant sign.
   Correlation is the applicable and less expensive statistic.
   It remains unknown whether recorded counter-UAS innovations fit that model.
   Recorded Crebain data has not established this property.
 - **Learned-perception MSF attacks** operate on a nonlinear neural fusion stack.
   Examples include `MSF-ADV` and the frustum attack.
-  This regime motivates the optional MI and PID research.
+  This regime motivates optional pairwise-MI research and, for a separately
+  specified source-target question, offline PID research.
   A joint-information measure could, in principle, detect structure that a
   correlation check on the same feature misses.
 
-Two limits prevent a claim that this escalation defeats those attacks.
+Two limits prevent a claim that either research path defeats those attacks.
 First, Galadriel consumes an attested projection of kinematic residuals.
 It does not consume the neural fusion feature.
 This distinction identifies a possible research target, not a Galadriel result.
@@ -205,15 +211,18 @@ Second, the frustum attack demonstrates an attack class that preserves semantic
 cross-sensor consistency.
 It does not establish that the attack preserves every Galadriel estimand.
 An attack that preserves the evaluated Galadriel statistics can defeat both
-correlation and MI/PID evidence.
-Escalation can help only when nonlinear or synergistic coupling leaves a
-dependence signature in the evaluated projection.
+correlation and pairwise-MI evidence. A PID study cannot repair an absent or
+mis-specified target.
+The MI companion can help only when nonlinear coupling leaves a dependence
+signature in the evaluated projection.
 A statistics-matching FDI remains the shared blind spot of the detector family.
 The paper leaves neural-fusion mapping for future work.
 
-The disciplined recommendation therefore uses signed correlation by default.
-Use PID only as additive and sign-invariant evidence.
-Accepted geometry and a nonlinear estimand **MUST** justify that use.
+The disciplined recommendation therefore uses signed correlation as the only
+accepted cross-sensor consistency path. Pairwise MI remains a non-fused, opt-in
+library companion. PID remains an offline fixed-target study and cannot alter an
+accepted Galadriel verdict. Explicit law, geometry, target, gauge, and row-set
+receipts **MUST** justify the applicable study.
 
 ### 4.2 It states its scope
 
@@ -247,8 +256,10 @@ The project uses these established methods:
   The method uses a Möbius inversion on the redundancy lattice.
   See [*Phys. Rev. E* **103**, 032149](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032149).
 
-D. A. Ehrlich et al. define the continuous-variable formulation.
-They also define the k-nearest-neighbor estimator that Galadriel uses.
+D. A. Ehrlich, K. Schick-Poland, A. Makkeh, F. Lanfermann, P. Wollstadt, and M. Wibral
+define a related but distinct practical continuous construction and its
+k-nearest-neighbor estimator. Only the offline `galadriel-justify` study uses
+that PID estimator. The accepted runtime and the pairwise-MI companion do not.
 See
 [“Partial information decomposition for continuous variables based on shared exclusions,” *Phys. Rev. E* **110**, 014115 (2024)](https://arxiv.org/abs/2311.06373).
 Gutknecht, Wibral, and Makkeh define the part-whole and formal-logic
@@ -256,11 +267,31 @@ foundation.
 
 See [*Proc. R. Soc. A* **477**:20210110 (2021)](https://arxiv.org/abs/2008.09535).
 
-For jointly Gaussian data, covariance fixes the complete decomposition.
-A zero-mean Gaussian distribution is completely parameterized by its covariance.
-Each PID functional of that distribution is therefore a function of the
-correlations.
-This statement includes the reported `I^sx`.
+K. Schick-Poland, A. Makkeh, A. J. Gutknecht, P. Wollstadt, A. Sturm, and
+M. Wibral give a separate general measure-theoretic construction for arbitrary
+numbers and types of source and target variables. That construction is not the
+same object as the later practical continuous functional and kNN estimator in
+Ehrlich et al., and Galadriel does not claim to implement the general
+construction. See [arXiv:2106.12393](https://arxiv.org/abs/2106.12393).
+
+Infomorphic learning is another downstream layer, not another PID definition.
+The bivariate framework of Makkeh, Graetz, Schneider, Ehrlich, Priesemann, and
+Wibral composes named PID atoms into parameterized local learning goals. The
+three-input ICLR 2025 work of Schneider, Neuhaus, Ehrlich, Makkeh, Ecker,
+Priesemann, and Wibral extends the objective vocabulary to a trivariate PID.
+Neither paper turns an estimator, declared-law evaluator, or Galadriel's MI
+graph into a PID functional. Galadriel implements no infomorphic learning
+objective. See [PNAS 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC11912414/)
+and [ICLR 2025](https://openreview.net/forum?id=CLE09ESvul).
+
+For a fully specified joint Gaussian law in fixed coordinates, the mean and
+covariance determine the probability law. A selected PID functional is therefore
+evaluable from that law only after its relative source scale or gauge and every
+preprocessing transform are also fixed. Correlations alone discard source scale.
+They suffice for the reported continuous shared-exclusions study only under its
+exact frozen standardization and gauge contract. This qualification is
+constitutive for the Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction,
+not a finite-sample implementation detail.
 
 Barrett proved a more specific measure-collapsing result.
 For jointly Gaussian sources and a univariate target, some PID measures reduce
@@ -276,11 +307,11 @@ Venkatesh and Schamberg confirm that reduction for scalar targets.
 They show that it does not extend to multivariate targets.
 See [ISIT 2022](https://arxiv.org/abs/2105.00769).
 
-The reported `I^sx` is outside Barrett's class.
+The reported continuous shared-exclusions construction is outside Barrett's class.
 It reads the complete joint distribution and permits negative atoms.
-For Gaussian data, its redundancy is a different covariance function than
+For the fixed Gaussian law, preprocessing, and source gauge used by the offline
+study, its redundancy is a different covariance-law functional than
 minimum mutual information (MMI).
-It is still determined by covariance.
 This fact alone does not establish finite-sample estimator equivalence.
 
 Three sources characterize finite-sample KSG behavior.

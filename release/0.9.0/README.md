@@ -32,6 +32,14 @@ It does not supply new evidence.
 [`VERSION-ADAPTATION.md`](VERSION-ADAPTATION.md) maps the 1.0 design target to version 0.9.0.
 This adaptation does not weaken a technical, safety, or evidence obligation.
 
+The immutable handoff projection calls T055 through T059 the "Optional PID
+adapter" and names `crates/galadriel-pid/**`. Those strings are historical source
+vocabulary, not the current package or scientific identity. In this candidate they
+map to `galadriel-dependence`: a target-free pairwise-MI companion that cannot
+alter the accepted verdict. Real PID is confined to fixed-target offline studies.
+The projection bytes remain unchanged so the repository does not rewrite the
+handoff record after the fact.
+
 **GLD-090-AUD-001:** The release **SHALL** generate a canonical audit manifest.
 The manifest **SHALL** cover each qualification input in these groups:
 
@@ -396,7 +404,7 @@ It compares each raw file with the applicable tagged Git blob.
 It also checks schema `$id` URLs for these schemas:
 
 - local convergence
-- PID envelope
+- historically named PID observation envelope
 - monitor envelope
 
 The verifier compares schema bytes with their tagged Git blobs.

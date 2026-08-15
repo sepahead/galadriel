@@ -21,6 +21,11 @@ path = "src/main.rs"
 
 [dependencies]
 galadriel-core = { workspace = true }
-pid-core = { workspace = true }
+pid-core = { workspace = true, features = ["experimental-continuous"] }
 rand = { workspace = true }
 rand_distr = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

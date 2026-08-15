@@ -4,6 +4,7 @@ use thiserror::Error;
 
 /// Errors surfaced by the core detector.
 #[derive(Debug, Error, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum GaladrielError {
     /// A window held fewer samples than the configured minimum. The detector
     /// fails closed to [`crate::Verdict::InsufficientEvidence`] rather than
@@ -30,6 +31,17 @@ pub enum GaladrielError {
     /// A configuration value was out of range.
     #[error("invalid configuration: {0}")]
     InvalidConfig(String),
+
+    /// An internal dependency/adapter invariant failed after accepted configuration.
+    ///
+    /// This is distinct from malformed input, scientific abstention, resource
+    /// rejection, and configuration rejection. The component and typed category
+    /// remain explicit even when the dependency type cannot cross the core crate.
+    #[error("internal fault in {component}: {detail}")]
+    InternalFault {
+        component: &'static str,
+        detail: String,
+    },
 
     /// Baseline detector configuration construction or preflight failed.
     #[error("invalid detector configuration: {0}")]

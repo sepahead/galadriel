@@ -2,12 +2,11 @@
 //! into one evidence-neutral advisory verdict.
 //!
 //! The fusion logic is **source-agnostic** ([`combine`]): it takes the baseline's
-//! per-channel elevation and *any* consistency detector's decoupled-channel set —
-//! the cheap [`crate::correlation`] detector by default, or the `pid` engine as an
-//! escalation — and produces one [`FusedVerdict`]. This crate wires the **pure
-//! default** ([`assess_default`], NIS ⊕ correlation, no heavy dependency); the `pid`
-//! crate reuses [`combine`] for its MI-based escalation, so both speak the same
-//! advisory verdict.
+//! per-channel elevation and a consistency detector's decoupled-channel set, then
+//! produces one [`FusedVerdict`]. This crate wires the **pure default**
+//! ([`assess_default`], NIS plus signed correlation, no heavy dependency).
+//! The optional pairwise-MI companion is deliberately outside accepted fusion and
+//! cannot change this verdict.
 //!
 //! | | correlation intact | consistency decoupling |
 //! |---|---|---|
@@ -45,7 +44,7 @@ pub enum MagnitudeEvidence {
     Insufficient,
 }
 
-/// The unified verdict, shared by the correlation default and the PID escalation.
+/// The unified verdict of the accepted NIS and signed-correlation default.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "verdict", rename_all = "snake_case")]
 pub enum FusedVerdict {
@@ -663,7 +662,7 @@ pub fn combine_correlation_axes(
     Ok((verdict, note))
 }
 
-/// Sealed preparation shared by the default and PID whole-stream assessors.
+/// Sealed preparation for the default whole-stream assessor.
 ///
 /// Construction validates the single-track stream and its exact lifecycle scope.
 /// It derives one canonical binding from the scope, every exact observation, and

@@ -7,14 +7,14 @@
 //!   the regime the magnitude baseline is exercised on.
 //! - **Corroborated** (`rho > 0`): every channel observes a shared latent target
 //!   deviation plus independent noise, so channels are correlated (`corr = rho`)
-//!   *and* each still has `NIS ~ χ²(3)`. This is the regime the cross-sensor PID
-//!   engine needs — there is genuine redundancy for a spoof to break.
+//!   *and* each still has `NIS ~ χ²(3)`. This is the regime the signed-correlation
+//!   detector and optional pairwise-MI companion use to study broken agreement.
 //!
 //! [`generate_spoofed`] injects a **moment-matched stealthy spoof**: from
 //! `start_frame` the target channel tracks an *independent phantom* latent of the
 //! same variance. Its per-frame NIS is unchanged (so the magnitude baseline is
 //! blind), but it has **decoupled** from the consensus of the others — exactly the
-//! attack the PID engine exists to catch.
+//! attack the cross-sensor consistency detector is designed to expose.
 //!
 //! Every generated observation also carries a three-axis `ConsistencyProjection`.
 //! Modalities at one frame share frame/context IDs and one unique frozen-prior ID,

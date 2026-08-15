@@ -39,7 +39,7 @@ that every Galadriel build needs the project.
 
 | Project | Direction | Status | Purpose |
 |---|---|---|---|
-| `pid-rs` | Upstream Rust library | Absent from the default CLI build. Its pinned `pid-core` crate is required by `galadriel-pid`, `galadriel-justify`, the evaluation member, and the CLI `pid` feature. `pid-core` resolves `pid-runlog` from the same revision. This connection is linked code, not a runtime service. | Supplies restricted-domain KSG mutual-information and PID primitives for additive research diagnostics. |
+| `pid-rs` | Upstream Rust library | Absent from the default CLI build. Its pinned `pid-core` crate is required by `galadriel-dependence`, `galadriel-justify`, the evaluation member, and the CLI `dependence` feature. `pid-core` resolves `pid-runlog` from the same revision. This connection is linked code, not a runtime service. | Supplies stable report-first KSG for the opt-in in-process/library MI companion and separate categorical MGW and continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID primitives for offline studies. |
 | NCP | Upstream Rust libraries and wire or transport contract | Absent from the default CLI build. `ncp-core` is required by `galadriel-ncp`, the evaluation member, and the CLI `ncp` feature. CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` also requires `ncp-zenoh`, Zenoh, and Tokio. | Supplies wire-0.8 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded JSONL path, and receiver. |
 | Crebain | External upstream producer relationship | No Cargo dependency. It is not required for demos, simulation, evaluation, or offline replay. Live use needs an authorized conforming producer. That producer does not have to be Crebain. | Serves as the inspected reference producer for observation and monitor sidecars and the retained registry fixture. |
 | Haldir | Prospective downstream record-only consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither required nor an enabled option. | Shows how a future consumer can record advisory evidence. Any later policy effect requires independent admission and **MUST** remain restrict-only. |
@@ -52,7 +52,7 @@ Galadriel is the center node and has no self-edge.
 The active dependency and input graph is:
 
 ```text
-pid-rs -> Galadriel                  PID, evaluation, and justification paths
+pid-rs -> Galadriel                  dependence, evaluation, and offline justification paths
 NCP -> Galadriel                     NCP paths
 authorized conforming producer -> Galadriel   live use
 ```
@@ -68,12 +68,12 @@ The default `cargo build` selects `galadriel-core`, `galadriel-sim`, and the
 feature-empty CLI workspace member. It also selects their ordinary registry
 dependencies.
 
-`cargo test --workspace --all-features` tests the optional PID and NCP surfaces.
+`cargo test --workspace --all-features` tests the optional dependence, PID-study, and NCP surfaces.
 This command resolves their immutable library pins.
 A default end-user build does not resolve these pins.
 
 The release feature-graph gate also selects `galadriel-eval` and
-`galadriel-justify` directly. This selection proves their documented NCP and PID
+`galadriel-justify` directly. This selection proves their documented NCP and pid-rs
 dependency edges. It does not infer them from the CLI graph.
 
 ## Retained audit-input cut
@@ -86,7 +86,7 @@ It does not claim that each object was the mutable peer head on that date.
 |---|---|---|
 | Crebain | `4c311900ade5668200a48d56fb191be1916b884a` | Historical compatibility fixture. `ECO-004` records a later mutable-head observation. |
 | Haldir | `5f7d183625a982741c51958e2d10bc12bb628ca0` | Retained T000 exact-commit snapshot. `ECO-005` starts the later mutable-head observation chain. |
-| Prisoma | `0968128062f30da5c04f3f31c23f6ce8e0d95d36` | Retained frozen-baseline inventory. `ECO-007` records the later mutable-head observation. |
+| Prisoma | `0968128062f30da5c04f3f31c23f6ce8e0d95d36` | Retained frozen-baseline inventory. `ECO-007` starts the later mutable-head observation chain; `ECO-015` is its current reinspection. |
 | Paper2Brain | `9845c31bc5bae4746120858037b27f9c9ed2f445` | Retained application inventory. `ECO-013` records the later mutable-head observation. |
 
 The dated observations do not replace these retained inputs.
@@ -106,7 +106,8 @@ were observed on 2026-07-18.
 | Haldir later reinspection | remote `main` `dd3d8a1c993721f89a1edb04dec5247761c694ad` | Later 2026-07-18 observation of the same mutable branch. It replaces only the discovery-head reference, not frozen evidence. |
 | Haldir 2026-07-22 retained reinspection | remote `main` `c0e4b3d156500684329a92bcb16e0609894fd738` | A retained descendant observation. Its CH-T001 activation adds repository inventory and release evidence. It records no runtime or external-conformance change. |
 | Haldir 2026-07-23 reinspection | remote `main` `590ba767b32a27d9dd61a2462968306c1052434e` | A retained descendant observation. Its intervening changes affect audit, evidence, and release tooling only. It records no runtime or external-conformance change. |
-| Prisoma | `63cff105e0e40281376e6f827d7782e9b351961a` | Downstream design and status inspection only. No runtime edge exists. |
+| Prisoma discovery observation | `63cff105e0e40281376e6f827d7782e9b351961a` | Downstream design and status inspection only. No runtime edge exists. |
+| Prisoma 2026-08-14 reinspection | remote `main` `efcad9943af818913702f11c47ed0c280a2a1f13` | Committed first-principles provenance/estimand redesign. It supersedes only the mutable-head reference and adds no dependency, adapter, route, or runtime edge. |
 | Paper2Brain | remote `main` `24e74b781a5bf8af069f69cbc2d0c42d89008211` | Mutable application inventory inspected on 2026-07-23. No Galadriel dependency, API, process, route, adapter, or runtime edge exists. |
 
 The local source inventory records three more non-edges.
@@ -142,34 +143,39 @@ Each newer Haldir observation replaces only the preceding mutable-head reference
 It does not rewrite an earlier observation. It also does not rewrite Haldir frozen
 audit material, Galadriel frozen evidence, or any historical object.
 
+The Prisoma reinspection likewise supersedes only `ECO-007` as the current
+mutable-head reference. It does not rewrite the earlier observation or the
+retained frozen-baseline input.
+
 ## pid-rs connection
 
-The default build does not include pid-rs. PID research crates require it.
+The default build does not include pid-rs. Dependence and offline PID-study crates require it.
 Galadriel pins `pid-core` to
-`1cd2424f7967e1752dcc8e53859e8fdad3566f51`. It enables the
-`experimental-pipelines` feature.
-
-That feature enables `experimental-continuous` and
-`research-mixed-dimension-pid3`. The upstream default feature set is empty.
-Galadriel does not enable `parallel`.
+`1cd2424f7967e1752dcc8e53859e8fdad3566f51`. `galadriel-dependence`
+and `galadriel-eval` select only the stable default surface.
+`galadriel-justify` alone enables `experimental-continuous` for its explicit
+offline Ehrlich PID2 study. No Galadriel path enables `experimental-pipelines`,
+mixed-dimensional PID3, or `parallel`.
 
 `pid-core` has an unconditional `pid-runlog` dependency.
 These graphs also resolve `pid-runlog` 1.0.0 from the same immutable revision.
 A build requires this pin in these cases:
 
-- `galadriel-pid`
+- `galadriel-dependence`
 - `galadriel-justify`
 - `galadriel-eval`
-- CLI `pid` feature
+- CLI `dependence` feature
 
 The connection does not require another process, network connection, or sibling
 checkout at runtime.
 
-The connection computes geometry-gated mutual information.
-It also computes shared-exclusion PID atoms.
-This evidence is additive research evidence.
-It cannot repair unavailable core evidence.
-It cannot create consensus or override contradictory signed correlation.
+The opt-in in-process/library connection computes geometry-gated report-first
+pairwise MI and retains it outside the authoritative verdict. Its executable
+integrations are the synthetic demo, evaluation, and benchmark; `replay`,
+`observe`, and NCP do not invoke it. Offline justification separately
+computes categorical MGW and continuous Ehrlich PID atoms for fixed source-target
+questions. These functionals are not aliases or fallbacks. Neither path can
+repair unavailable core evidence or override contradictory signed correlation.
 
 The pinned manifest declares version 1.0.0. Galadriel does not claim an upstream
 v1 tag or published 1.x artifact.

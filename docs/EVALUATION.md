@@ -45,10 +45,11 @@ It can answer these questions:
    inflation?
 2. Does signed cross-channel correlation detect a synthetic decoupling that
    preserves per-channel magnitude?
-3. Does MI or PID add information in a nonlinear or synergistic synthetic
-   construction?
+3. Does a pairwise-MI score add information in a nonlinear bivariate construction,
+   and does a separately specified PID functional expose a synergistic construction?
 4. How do window length, attack onset, decoupling strength, collusion,
-   threshold-hugging, and benign lag affect synthetic detection and latency?
+   threshold-hugging, and benign lag affect accepted alarms and the separately
+   labeled MI separation event?
 5. What is the relative compute cost on the benchmark machine?
 
 The harness cannot determine whether a deployed external producer satisfies
@@ -92,8 +93,9 @@ The synthetic attack families are:
   operating point
 - benign lag or maneuver proxies, which measure false alarms from timing or model
   mismatch
-- canonical nonlinear and synergistic couplings, which test whether MI or PID
-  adds information beyond signed linear correlation
+- canonical nonlinear and synergistic couplings, which separately test a
+  bivariate MI score and fixed-source/fixed-target PID functionals beyond signed
+  linear correlation
 
 The simulator creates these controlled constructions.
 They are not recordings of real attacks.
@@ -140,41 +142,52 @@ It also fails closed when positive evidence occurs with an insufficient axis.
 The accepted report binds the complete synthetic scope, suite, and ordered
 stream through assessment binding version 2.
 
-### 3.3 Optional PID evidence
+### 3.3 Optional dependence companion
 
-The PID path uses geometry-gated KSG mutual information.
-It also uses shared-exclusions atoms.
-MI is sign-invariant.
-It therefore supplies additive evidence.
-It does not replace the signed-consensus gate.
+The opt-in in-process/library companion uses a complete geometry-gated graph of
+report-first pairwise KSG-MI estimates. Its current executable integrations are
+the synthetic demo, evaluation harness, and benchmark; `replay`, `observe`, and
+the NCP path do not invoke it. It is not PID: the graph is symmetric and has no
+external target. Its global threshold and strict-majority clique are
+project-defined descriptive rules without null calibration.
 
-PID cannot change missing geometry or degeneracy into a nominal or attributed
-result.
-It cannot change an ambiguous clique or unassessable channel into such a
-result.
-Bootstrap and geometry configurations **MUST** be valid.
-Otherwise, the call fails or remains inconclusive.
+The caller declares the continuous population, binary64 observation, and
+sampling models. Galadriel checks their bounded representation but does not
+prove them. It requires a declared common coordinate gauge, applies the fixed identity transform, and adds no
+noise. A degenerate column, exact ties, rejected geometry, missing pair evidence,
+ambiguous clique, weak reference, or unstable deletion replay produces an
+explicit unavailable state.
+
+Exhaustive circular deletion evaluates every start and reruns retained-row validation,
+geometry, all edges, threshold, clique, and attribution. Its min/max margin
+envelope is not a bootstrap interval or p-value. The companion event never
+changes the authoritative core verdict.
 
 The pinned pid-rs revision is
-`1cd2424f7967e1752dcc8e53859e8fdad3566f51`.
-Its manifest declares version 1.0.0.
-The point gate explicitly declares regular full-dimensional continuous support.
-It records a `conditional_continuous/restricted_domain` status.
-The project claims no released upstream 1.x artifact.
-PID2 atoms remain `experimental_restricted_domain`.
+`1cd2424f7967e1752dcc8e53859e8fdad3566f51`. Its manifest declares version
+1.0.0. The dependence crate uses only its stable report-first KSG surface. The
+project claims no released upstream 1.x artifact.
 
-The configured seeded Gaussian perturbation is an observation-noise model.
-This model changes the estimand.
-It is not a general tie repair.
-Each PID report carries the scale and seed.
-The circular delete-block confirmation uses the same support declaration.
-It remains an experimental raw-scalar pipeline.
+Every graph report carries the complete accepted named/custom graph parameters
+and a separate fixed KSG evaluator snapshot, even if the graph is unavailable.
+Resource rejection during a point fit or deletion replay is typed separately
+from scientific pair unavailability and deletion instability.
+
+Real PID appears only in offline justification studies. The categorical
+Makkeh–Gutknecht–Wibral functional and the continuous
+Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction are distinct and
+require fixed source and target identities. Neither is a fallback for an
+unavailable MI graph.
 
 ### 3.4 Standalone component experiments
 
 The harness pre-registers standalone component experiments to attested
 consistency-projection axis 0.
-These experiments include correlation rates, PID rates, AUC, and sweeps.
+These experiments include correlation rates, descriptive MI-graph event rates,
+complete-pair MI scores, selection-conditional AUC, and sweeps. Every MI AUC
+discloses its attack/clean retained counts, the correlation AUC on the identical
+joint-complete subset, and worst/best AUC bounds over arbitrary rankings of
+missing scores. PID studies are reported separately.
 They also include adaptive, maneuver, collusion, and latency studies.
 
 The experiments isolate comparable scalar estimands.
@@ -216,7 +229,7 @@ Each checked window **MUST** fit.
 The study also enforces two work limits with checked arithmetic.
 It requires `trials * lag_count <= 50,000`.
 It requires `trials * frames * 3 * lag_count <= 100,000,000`.
-The study checks these limits before PID-work preflight.
+The study checks these limits before MI-work preflight.
 These limits bound workload and require complete exposure.
 They do not show that the proxy represents field maneuvers.
 
@@ -227,11 +240,22 @@ It **MUST** also identify the trial count, window, operating point, and exact
 commit.
 Report at least:
 
-- alarm-ranked AUC, where discrete alarms rank above non-alarms and then use the continuous score
-- a paired bootstrap interval for detector AUC differences
-- detection and false-alarm proportions with binomial intervals
-- detection time only for trials without a pre-onset alarm
-- reachability, which is the fraction of trials with a post-onset alarm
+- alarm/event-ranked AUC: core alarms rank above non-alarms; the descriptive MI
+  graph separation event ranks above no separation; each then uses its separately
+  available continuous score. MI AUC is explicitly selection-conditional, not a
+  fixed-denominator classifier AUC
+- retained counts, correlation on the identical MI-complete subset, and sharp
+  worst/best MI-AUC bounds that make no missing-at-random assumption
+- a paired bootstrap interval for detector AUC differences on identical complete cases
+- accepted detection and false-alarm proportions with binomial intervals;
+  describe MI only as separation/no-separation/unavailable event proportions
+- accepted-alarm time only for trials without a pre-onset alarm; report MI only
+  as an oracle-onset-segmented posthoc separation-event latency, including its
+  71-frame first-eligibility delay before probe-step rounding. The MI rows reset
+  at the known simulated onset, so this is not an online latency and is not
+  directly comparable to the alarm columns
+- reachability, which is the fraction of trials with a post-onset accepted alarm
+  or separately named MI separation event
 - separate inconclusive and error rates, without counting them as correct
 - throughput with hardware, toolchain, build profile, and benchmark configuration
 
@@ -261,11 +285,10 @@ A regenerated synthetic report is useful only when all these conditions hold:
    A ready pair cannot hide a failed third channel.
 5. The system never pools track identifiers into one dependence estimate.
 6. The system does not treat signed-correlation sign flips as corroboration.
-7. The system marks constant channels as insufficient before observation noise
-   can create dependence.
-   Noise streams do not restart identically for each column.
-8. The system does not replace bootstrap failures or invalid resample counts with
-   optimistic point estimates.
+7. The system marks constant channels as unavailable and never adds noise to
+   create an estimable continuous law.
+8. The system does not replace a failed exhaustive deletion replay with an
+   optimistic point-graph attribution.
 9. Reports disclose multiplicity for multiple parameter scans.
 10. Results distinguish detector failure from producer censoring or missingness.
 11. Full fused reports analyze each active projection axis.
@@ -353,7 +376,7 @@ The system never substitutes its mixed native frames or sequential priors.
 The fixture supports bounded parsing and basic NIS baseline checks.
 The unbound correlation diagnostic returns `InsufficientEvidence`.
 Raw replay has no complete assessment scope.
-It cannot construct an accepted core or PID fused report.
+It cannot construct an accepted core or dependence companion report.
 
 A valid recorded study **MUST** separate:
 
@@ -391,12 +414,13 @@ cargo bench --locked -p galadriel-eval --bench detectors
 The CLI completes preflight before it prints a partial report.
 Preflight checks generated-observation work, bootstrap rank work, and
 latency-prefix visits.
-It also checks a conservative quadratic PID estimator budget.
+It also checks a conservative quadratic MI estimator budget.
 
-The PID budget includes geometry and KSG fits.
-It also includes atom diagnostics and confirmation resamples.
-It includes all fused projection axes and each scheduled latency probe.
-This set includes the complete capture frame.
+The MI budget includes geometry, report-first KSG fits, and every exhaustive
+deletion start. Evaluation studies pre-register projection axis 0, so their
+preflight budgets that axis at each scheduled latency probe, including the
+complete capture frame. The separate library-level `DependenceResearchSuite`
+preflights every producer-supplied projection axis.
 
 Do not copy numeric output into project claims until the complete audited
 workspace passes.

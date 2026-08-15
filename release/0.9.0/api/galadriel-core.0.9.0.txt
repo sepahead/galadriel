@@ -2895,13 +2895,16 @@ pub type galadriel_core::domain::TrackId::Output = T
 pub const galadriel_core::domain::JSON_SAFE_INTEGER_MAX: u64
 pub const galadriel_core::domain::MAX_IDENTIFIER_BYTES: usize
 pub mod galadriel_core::error
-pub enum galadriel_core::error::GaladrielError
+#[non_exhaustive] pub enum galadriel_core::error::GaladrielError
 pub galadriel_core::error::GaladrielError::AuthorityViolation(&'static str)
 pub galadriel_core::error::GaladrielError::CorrelationConfig(galadriel_core::correlation::CorrConfigError)
 pub galadriel_core::error::GaladrielError::DetectorConfig(galadriel_core::config::DetectorConfigError)
 pub galadriel_core::error::GaladrielError::InsufficientSamples
 pub galadriel_core::error::GaladrielError::InsufficientSamples::have: usize
 pub galadriel_core::error::GaladrielError::InsufficientSamples::need: usize
+pub galadriel_core::error::GaladrielError::InternalFault
+pub galadriel_core::error::GaladrielError::InternalFault::component: &'static str
+pub galadriel_core::error::GaladrielError::InternalFault::detail: alloc::string::String
 pub galadriel_core::error::GaladrielError::InvalidChannels(alloc::string::String)
 pub galadriel_core::error::GaladrielError::InvalidConfig(alloc::string::String)
 pub galadriel_core::error::GaladrielError::InvalidObservation(alloc::string::String)
@@ -5392,13 +5395,16 @@ impl<T> core::convert::From<T> for galadriel_core::fusion::FusedVerdict
 pub fn galadriel_core::fusion::FusedVerdict::from(T) -> T
 impl<T> typenum::type_operators::Same for galadriel_core::fusion::FusedVerdict
 pub type galadriel_core::fusion::FusedVerdict::Output = T
-pub enum galadriel_core::GaladrielError
+#[non_exhaustive] pub enum galadriel_core::GaladrielError
 pub galadriel_core::GaladrielError::AuthorityViolation(&'static str)
 pub galadriel_core::GaladrielError::CorrelationConfig(galadriel_core::correlation::CorrConfigError)
 pub galadriel_core::GaladrielError::DetectorConfig(galadriel_core::config::DetectorConfigError)
 pub galadriel_core::GaladrielError::InsufficientSamples
 pub galadriel_core::GaladrielError::InsufficientSamples::have: usize
 pub galadriel_core::GaladrielError::InsufficientSamples::need: usize
+pub galadriel_core::GaladrielError::InternalFault
+pub galadriel_core::GaladrielError::InternalFault::component: &'static str
+pub galadriel_core::GaladrielError::InternalFault::detail: alloc::string::String
 pub galadriel_core::GaladrielError::InvalidChannels(alloc::string::String)
 pub galadriel_core::GaladrielError::InvalidConfig(alloc::string::String)
 pub galadriel_core::GaladrielError::InvalidObservation(alloc::string::String)
@@ -6575,11 +6581,19 @@ pub type galadriel_core::ConfigDigest::Output = T
 pub struct galadriel_core::ConsistencyChannels
 pub galadriel_core::ConsistencyChannels::axes: alloc::vec::Vec<alloc::vec::Vec<(galadriel_core::observation::Modality, alloc::vec::Vec<f64>)>>
 pub galadriel_core::ConsistencyChannels::context_id: galadriel_core::domain::ProjectionContextId
+pub galadriel_core::ConsistencyChannels::first_sequence: galadriel_core::domain::Sequence
+pub galadriel_core::ConsistencyChannels::first_timestamp_ms: galadriel_core::domain::TimestampMillis
 pub galadriel_core::ConsistencyChannels::frame_id: galadriel_core::domain::ProjectionFrameId
+pub galadriel_core::ConsistencyChannels::last_sequence: galadriel_core::domain::Sequence
+pub galadriel_core::ConsistencyChannels::last_timestamp_ms: galadriel_core::domain::TimestampMillis
+pub galadriel_core::ConsistencyChannels::row_sequences: alloc::vec::Vec<galadriel_core::domain::Sequence>
+pub galadriel_core::ConsistencyChannels::row_timestamp_bounds: alloc::vec::Vec<(galadriel_core::domain::TimestampMillis, galadriel_core::domain::TimestampMillis)>
 impl core::clone::Clone for galadriel_core::ConsistencyChannels
 pub fn galadriel_core::ConsistencyChannels::clone(&self) -> galadriel_core::ConsistencyChannels
 impl core::fmt::Debug for galadriel_core::ConsistencyChannels
 pub fn galadriel_core::ConsistencyChannels::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl serde_core::ser::Serialize for galadriel_core::ConsistencyChannels
+pub fn galadriel_core::ConsistencyChannels::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
 impl core::marker::Freeze for galadriel_core::ConsistencyChannels
 impl core::marker::Send for galadriel_core::ConsistencyChannels
 impl core::marker::Sync for galadriel_core::ConsistencyChannels

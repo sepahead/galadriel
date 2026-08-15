@@ -164,6 +164,9 @@ report **SHALL** carry an opaque `AssessmentBinding`. The binding covers the
 complete `AssessmentScope` and canonical release-suite identity. It also covers
 every field of every ordered `PidObservation`.
 
+`PidObservation` is a retained historical compatibility name. The type contains
+fusion-observation inputs, not a PID source-target tuple or PID estimate.
+
 The input includes optional native research data and the complete consistency
 projection. Every bound magnitude and correlation component **SHALL** carry the
 same binding.
@@ -184,10 +187,11 @@ The binding identifies the submitted input. Different bindings can carry equal
 detector verdicts. The binding does not require each observation to change an
 estimator or verdict.
 
-The optional PID layer adds `PidAssessmentBinding`. It hashes the core release
-binding with the complete `PidResearchSuite` identity. A sealed PID `FusedReport`
-requires one expected nested binding. Its baseline, signed-correlation axes, and
-PID axes **MUST** share that binding.
+The optional dependence layer adds `DependenceAssessmentBinding`. It binds the
+exact core assessment binding to the complete `DependenceResearchSuite` identity.
+`DependenceAssessmentReport` **MUST** retain the exact authoritative
+`DefaultReport`; its MI axes are companion evidence only and **MUST NOT** modify
+`FusedVerdict` or `ConsistencyEvidence`.
 
 These digests establish exact input and configuration identity. They do not
 establish authentication, calibration, or physical truth.

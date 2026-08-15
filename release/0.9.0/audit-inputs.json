@@ -10,7 +10,7 @@
     "source_preparation_state": "UNPUBLISHED_CANDIDATE",
     "candidate_release_date": null
   },
-  "audit_date": "2026-08-10",
+  "audit_date": "2026-08-15",
   "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "url": "https://github.com/sepahead/galadriel",
@@ -22,7 +22,7 @@
       "name": "pid-rs",
       "url": "https://github.com/sepahead/pid-rs",
       "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
-      "role": "optional PID research dependency selected by Cargo.lock",
+      "role": "optional pairwise-MI companion and offline PID dependency selected by Cargo.lock",
       "qualification": "PINNED_COMPONENT"
     },
     {

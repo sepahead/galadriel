@@ -57,11 +57,11 @@ fn fixed_seed_demo_exercises_the_real_cli_and_semantic_scenarios() {
 
     const STEALTH_HEADING: &str =
         "┌─ SYNTHETIC MOMENT-MATCHED SPOOF — correlation response under the modeled assumptions";
-    #[cfg(feature = "pid")]
+    #[cfg(feature = "dependence")]
     const STEALTH_END: &str =
-        "┌─ …SAME STEALTHY SPOOF through the KSG-MI escalation (feature `pid`)";
-    #[cfg(not(feature = "pid"))]
-    const STEALTH_END: &str = "build with `--features pid`";
+        "┌─ FIXED-LAW STEALTHY SPOOF with an MI companion (feature `dependence`)";
+    #[cfg(not(feature = "dependence"))]
+    const STEALTH_END: &str = "build with `--features dependence`";
 
     let stealth_default = section_between(&stdout, STEALTH_HEADING, STEALTH_END);
     assert!(stealth_default
@@ -69,15 +69,17 @@ fn fixed_seed_demo_exercises_the_real_cli_and_semantic_scenarios() {
     assert!(stealth_default.contains("correlation default:   VERDICT: ATTRIBUTED-INCONSISTENCY"));
     assert!(stealth_default.contains("[acoustic]"));
 
-    #[cfg(feature = "pid")]
+    #[cfg(feature = "dependence")]
     {
-        let pid = section_between(&stdout, STEALTH_END, "advisory only");
-        assert!(pid.contains("multi-axis fused PID: VERDICT: ATTRIBUTED-INCONSISTENCY"));
-        assert!(pid.contains("[acoustic]"));
+        let dependence = section_between(&stdout, STEALTH_END, "advisory only");
+        assert!(dependence.contains("authoritative default: VERDICT: ATTRIBUTED-INCONSISTENCY"));
+        assert!(dependence.contains("strongest pair KSG-MI="));
+        assert!(dependence.contains("● SEPARATED"));
+        assert!(dependence.contains("uncalibrated companion evidence, not PID"));
     }
 
     assert!(stdout.contains(
-        "advisory only · calibrated_posterior=false · optional PID diagnostics do not replace signed correlation"
+        "advisory only · calibrated_posterior=false · optional MI evidence cannot alter the default verdict"
     ));
-    assert!(!stdout.contains("PID (feature `pid`) escalates where correlation cannot"));
+    assert!(!stdout.contains("multi-axis fused PID"));
 }

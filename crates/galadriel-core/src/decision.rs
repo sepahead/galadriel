@@ -450,6 +450,7 @@ impl MirrorIngestError {
                     }
                     crate::GaladrielError::NonFinite(_) => FailureCode::NonFiniteInput,
                     crate::GaladrielError::TrackLimit { .. } => FailureCode::TrackCapacity,
+                    crate::GaladrielError::InternalFault { .. } => FailureCode::InvariantViolation,
                     crate::GaladrielError::InsufficientSamples { .. }
                     | crate::GaladrielError::InvalidObservation(_)
                     | crate::GaladrielError::InvalidChannels(_)
