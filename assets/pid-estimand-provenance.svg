@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120" role="img" aria-labelledby="title desc" xml:lang="en">
+  <title id="title">Galadriel offline PID estimand and provenance graph</title>
+  <desc id="desc">The graph begins with a versioned PID question that fixes ordered sources, an external target, the input law, finite-sample acceptance, transforms, row relation, support or gauge, units, functional, evaluator, atom coordinates, reference roles, and the exact pid-rs dependency pin. It then separates two implemented offline routes. The categorical route evaluates the Makkeh-Gutknecht-Wibral shared-exclusions functional with discrete sxpid2, on the Williams-Beer antichain lattice and with the Gutknecht-Wibral-Makkeh part-whole interpretation. Each signed atom equals its informative part minus its misinformative part. Holding the complete source rows fixed while permuting only the target preserves every informative atom but may change misinformative and net atoms. Retained categorical reports use nats, while named aggregate atoms convert once to bits. The continuous route evaluates the related but distinct Ehrlich-Schick-Poland-Makkeh-Lanfermann-Wollstadt-Wibral functional and estimator, with KSG mutual-information constituents, on a declared full-dimensional continuous law and fixed source gauge; all outputs remain nats. Its two-source atoms are redundancy R sub sx, unique one equals I of source one and target minus redundancy, unique two equals I of source two and target minus redundancy, and synergy equals joint-source mutual information minus both marginal mutual informations plus redundancy. The Schick-Poland general construction and the Williams-Beer I-min functional are reference boundaries, not evaluated fallbacks. A bottom firewall distinguishes both PID routes from Galadriel's project-defined Q, which is joint-source mutual information minus the larger marginal mutual information and is not a PID synergy atom; it also separates PID from the target-free pairwise mutual-information graph, BROJA, and other unevaluated measures.</desc>
+  <defs>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #102a43; }
+      .title { font-size: 34px; font-weight: 700; }
+      .subtitle { font-size: 19px; fill: #486581; }
+      .section { font-size: 17px; font-weight: 700; letter-spacing: 1.2px; }
+      .node-title { font-size: 21px; font-weight: 700; }
+      .body { font-size: 17px; }
+      .small { font-size: 15px; fill: #486581; }
+      .equation { font-family: Menlo, Consolas, "Liberation Mono", monospace; font-size: 16px; }
+      .firewall { font-size: 16px; }
+      .lane { fill: #fbfcfe; stroke: #d9e2ec; stroke-width: 2; rx: 18; }
+      .node { stroke-width: 2.2; rx: 14; }
+      .question { fill: #f5f7fa; stroke: #526d82; }
+      .categorical { fill: #f1ecfb; stroke: #6f42c1; }
+      .continuous { fill: #e9f2fb; stroke: #1769aa; }
+      .reference { fill: #ffffff; stroke: #9fb3c8; }
+      .warning { fill: #fff0ef; stroke: #b42318; }
+      .arrow-purple { fill: none; stroke: #6f42c1; stroke-width: 3; }
+      .arrow-blue { fill: none; stroke: #1769aa; stroke-width: 3; }
+      .arrowhead-purple { fill: #6f42c1; }
+      .arrowhead-blue { fill: #1769aa; }
+      .divider { stroke: #bcccdc; stroke-width: 1.8; }
+      .bullet-purple { fill: #6f42c1; }
+      .bullet-blue { fill: #1769aa; }
+      .bullet-red { fill: #b42318; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1120" fill="#ffffff"/>
+  <text x="58" y="58" class="title">Offline PID estimands: two related constructions, never one generic “Wibral PID”</text>
+  <text x="58" y="91" class="subtitle">A functional, estimator, lattice coordinate, law, gauge, units, and software pin jointly define the result.</text>
+
+  <rect x="55" y="125" width="1490" height="175" rx="14" class="node question"/>
+  <text x="82" y="160" class="node-title">PidQuestionSpec v2 seals one scientific question before evaluation</text>
+  <text x="82" y="195" class="equation">E_PID := (ordered S₁,S₂ ; external T ; generated law ; acceptance rule ; transform ; row relation ;</text>
+  <text x="82" y="225" class="equation">          support/gauge ; native units ; aggregate units ; functional ; evaluator ; quantity IDs ;</text>
+  <text x="82" y="255" class="equation">          coordinates ; components ; aggregation ; role-typed references ; exact pid-rs package, version, Git pin, and features)</text>
+  <text x="82" y="284" class="small">Trial arms are typed separately: coupled-law evaluation versus within-trial target permutation. Functional identity alone is not a scalar identity.</text>
+
+  <path d="M800 300 V330 H400 V355" class="arrow-purple"/>
+  <path d="M393 343 L400 355 L407 343 Z" class="arrowhead-purple"/>
+  <path d="M800 330 H1200 V355" class="arrow-blue"/>
+  <path d="M1193 343 L1200 355 L1207 343 Z" class="arrowhead-blue"/>
+
+  <rect x="45" y="340" width="740" height="565" rx="18" class="lane"/>
+  <text x="70" y="376" class="section" fill="#5d31a6">A · CATEGORICAL MAKKEH–GUTKNECHT–WIBRAL SHARED EXCLUSIONS</text>
+
+  <rect x="70" y="405" width="690" height="105" rx="14" class="node categorical"/>
+  <text x="92" y="439" class="node-title">Paper-defined pointwise functional · empirical evaluator</text>
+  <text x="92" y="471" class="equation">route = pid_core::stable::categorical::discrete_sxpid2</text>
+  <text x="92" y="499" class="small">Finite categorical law · exact count map · retained evaluator outputs use nats</text>
+
+  <rect x="70" y="535" width="690" height="165" rx="14" class="node reference"/>
+  <text x="92" y="569" class="node-title">Role-typed provenance edges</text>
+  <circle cx="102" cy="596" r="5" class="bullet-purple"/>
+  <text x="120" y="602" class="body">Functional — Makkeh, Gutknecht &amp; Wibral (2021), PRE 103, 032149</text>
+  <circle cx="102" cy="626" r="5" class="bullet-purple"/>
+  <text x="120" y="632" class="body">Original antichain lattice — Williams &amp; Beer (2010); I_min not evaluated</text>
+  <circle cx="102" cy="656" r="5" class="bullet-purple"/>
+  <text x="120" y="662" class="body">Part-whole derivation — Gutknecht, Wibral &amp; Makkeh (2021)</text>
+  <circle cx="102" cy="686" r="5" class="bullet-red"/>
+  <text x="120" y="692" class="small">Schick-Poland et al. general construction — related; not evaluated by this route</text>
+
+  <rect x="70" y="725" width="690" height="170" rx="14" class="node categorical"/>
+  <text x="92" y="759" class="node-title">Typed atoms and fixed-source hostile control</text>
+  <text x="92" y="788" class="equation">A_net(a) = A_info(a) − A_misinfo(a),  a ∈ {Red,U₁,U₂,Syn}</text>
+  <text x="92" y="816" class="equation">source rows fixed; T permuted</text>
+  <text x="92" y="842" class="equation">⇒ A_info,coupled(a) = A_info,control(a), for every atom a</text>
+  <text x="92" y="868" class="small">Misinformative and net parts may change. Signed atoms are never clamped.</text>
+  <text x="92" y="888" class="small">Trial reports: nats. Aggregate atom fields: bits after one division by ln(2).</text>
+
+  <rect x="815" y="340" width="740" height="565" rx="18" class="lane"/>
+  <text x="840" y="376" class="section" fill="#14568a">B · CONTINUOUS EHRLICH SHARED-EXCLUSIONS PID2</text>
+
+  <rect x="840" y="405" width="690" height="105" rx="14" class="node continuous"/>
+  <text x="862" y="439" class="node-title">Distinct paper-defined functional and estimator</text>
+  <text x="862" y="471" class="equation">route = pid_core::experimental::continuous::pid2_isx_report</text>
+  <text x="862" y="499" class="small">Declared full-dimensional law · fixed source gauge · no added noise · nats</text>
+
+  <rect x="840" y="535" width="690" height="165" rx="14" class="node reference"/>
+  <text x="862" y="569" class="node-title">Role-typed provenance edges</text>
+  <circle cx="872" cy="596" r="5" class="bullet-blue"/>
+  <text x="890" y="602" class="body">Functional + estimator — Ehrlich et al. (2024), PRE 110, 014115</text>
+  <circle cx="872" cy="626" r="5" class="bullet-blue"/>
+  <text x="890" y="632" class="body">MI estimator basis — Kraskov, Stögbauer &amp; Grassberger (2004)</text>
+  <circle cx="872" cy="656" r="5" class="bullet-blue"/>
+  <text x="890" y="662" class="body">Original antichain lattice — Williams &amp; Beer (2010); I_min not evaluated</text>
+  <circle cx="872" cy="686" r="5" class="bullet-red"/>
+  <text x="890" y="692" class="small">Schick-Poland et al. general construction — related; not evaluated by this route</text>
+
+  <rect x="840" y="725" width="690" height="170" rx="14" class="node continuous"/>
+  <text x="862" y="759" class="node-title">PID2 atom construction and control interpretation</text>
+  <text x="862" y="790" class="equation">Red = R_sx   ;   U₁ = I(S₁;T) − Red   ;   U₂ = I(S₂;T) − Red</text>
+  <text x="862" y="819" class="equation">Syn = I(S₁,S₂;T) − I(S₁;T) − I(S₂;T) + Red</text>
+  <text x="862" y="849" class="small">Coupled arm: population-functional estimate under the declared law.</text>
+  <text x="862" y="873" class="small">Permutation arm: exchangeable descriptive score; not an i.i.d. independent-law estimate.</text>
+
+  <rect x="45" y="935" width="1510" height="135" rx="14" class="node warning"/>
+  <text x="70" y="970" class="node-title">Claim firewall — nearby quantities are not interchangeable</text>
+  <circle cx="80" cy="995" r="5" class="bullet-red"/>
+  <text x="98" y="1001" class="equation">Q := I(S₁,S₂;T) − max{I(S₁;T), I(S₂;T)}</text>
+  <text x="98" y="1023" class="firewall">is project-defined; Q is not a PID synergy atom.</text>
+  <circle cx="80" cy="1044" r="5" class="bullet-red"/>
+  <text x="98" y="1050" class="firewall">The target-free KSG-MI graph is not PID or fusion evidence.</text>
+  <circle cx="835" cy="1003" r="5" class="bullet-red"/>
+  <text x="853" y="1009" class="firewall">Categorical and continuous routes are distinct; atoms are estimand-relative.</text>
+  <circle cx="835" cy="1037" r="5" class="bullet-red"/>
+  <text x="853" y="1043" class="firewall">BROJA, I_min, and Schick-Poland are not fallback routes.</text>
+
+  <text x="800" y="1102" class="small" text-anchor="middle">The diagram states provenance and estimand identity. It does not claim field calibration, causal interpretation, or scientific novelty.</text>
+</svg>

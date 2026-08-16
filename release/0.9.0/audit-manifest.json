@@ -125,12 +125,12 @@
       "size_bytes": 25821
     },
     {
-      "git_blob_id": "f482a9b8c09f66bf8849de8eeea6d643a51ae899",
+      "git_blob_id": "0a2b5420ccce731a5c3fd8763060a7599fd0eceb",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "fed64ee1817e9ee20ad61aacef9be8075ed4783ceba6bd89562e3443c21de5cf",
-      "size_bytes": 59092
+      "sha256": "07916a31658885f8a3639398970b0191b96118cc40d91446e185d423bdf2e18c",
+      "size_bytes": 59684
     },
     {
       "git_blob_id": "93e56077732b34820e2594e8f61d5579b5f9849d",
@@ -205,12 +205,12 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "4a8f3c0886b4231dd6a11ba6bbc6faf5ea7d1af6",
+      "git_blob_id": "0a2ac1786794c1275e4ff19cb77d7991d59b4cd3",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5613c6b905d644da7dbf9406576c929e7fd79f63f18b333987be2f50bb0b8366",
-      "size_bytes": 51396
+      "sha256": "ca7a590322b6c54fadb69bb4792c9e9f6dba6bfd5f2daae811e2e6a822fcb27d",
+      "size_bytes": 52745
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -237,12 +237,44 @@
       "size_bytes": 1260
     },
     {
+      "git_blob_id": "a9eac2d1a781e261ea9e76e5bf71873e5a43d031",
+      "git_mode": "100644",
+      "path": "assets/detector-evidence.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "e5b63bfa89612beae9bc56e840a7f1c1932701184c7dcc512b612b75b9a9af52",
+      "size_bytes": 10519
+    },
+    {
       "git_blob_id": "935eb9b4b11a8f70c79d17525e7a73cf7f058563",
       "git_mode": "100644",
       "path": "assets/galadriel-logo.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "95a2916ead48458219335694c48f5a7904a515c91731f35e08496fcad4af2b98",
       "size_bytes": 7120
+    },
+    {
+      "git_blob_id": "f6fb678e0f0c4d1c9a4d8c53aa35de09b98ae6e8",
+      "git_mode": "100644",
+      "path": "assets/lifecycle-receipts.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "82793c3650de0bf6afa6849bd73dca9617d96f74adebe6f9cbd57c487bb7d7c8",
+      "size_bytes": 9848
+    },
+    {
+      "git_blob_id": "ee42bb8982b264ef8be13000d1b25c4fb207dcfb",
+      "git_mode": "100644",
+      "path": "assets/pid-estimand-provenance.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "1d5b7b3497b242e2409a5fe9418700c0d0acaf72085250a6dc084b11163a050b",
+      "size_bytes": 10360
+    },
+    {
+      "git_blob_id": "b0ce67860f3b597cb96241fd1910bc347a293a88",
+      "git_mode": "100644",
+      "path": "assets/system-boundary.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "fb480cabfd95362df6bfb9bcc48516e6b9284206c7c7dd89d2fc14ffe5195633",
+      "size_bytes": 12050
     },
     {
       "git_blob_id": "c8b06120e872993601d7d38855da811c5bf56464",
@@ -917,12 +949,12 @@
       "size_bytes": 20209
     },
     {
-      "git_blob_id": "32d905a018eb83d60fd15eaedee54d7bbbae8997",
+      "git_blob_id": "e722ac249ad0ae9341c1c9afa80afa22ce4d774f",
       "git_mode": "100644",
       "path": "docs/JUSTIFICATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "74b9ad3fd8005cbf38ea2d9f62eb8095348068a4f04ea01f41969d99aac097d2",
-      "size_bytes": 15396
+      "sha256": "329bf63307d03d99b0da37556b2be8e64ab00b32f2207a7fd04d282a02514b3d",
+      "size_bytes": 18713
     },
     {
       "git_blob_id": "c57f2a5219d6618ca3511a2ef37939fbae633e5d",
@@ -941,12 +973,12 @@
       "size_bytes": 18177
     },
     {
-      "git_blob_id": "bf908316137cecd23c7587209a36eef3672b6cdc",
+      "git_blob_id": "8c1e7d00aa8f7a258a12ea79594ff0fd599da057",
       "git_mode": "100644",
       "path": "docs/PAPER.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "82fd32194c4fb4b2f54530c97333e6c2c2275c8ee5abd66d8a090b142f017a19",
-      "size_bytes": 24468
+      "sha256": "8b6bc512afb2744da040529719247189334890ac755c8149e2311b94e4258baa",
+      "size_bytes": 27954
     },
     {
       "git_blob_id": "35550f5dd8430e14cabd0bbd74a8f0f823f53348",
@@ -989,20 +1021,20 @@
       "size_bytes": 18181
     },
     {
-      "git_blob_id": "f5c215bff841601a9273fe7e18a3cae2395e5df6",
+      "git_blob_id": "f6f2d4bbb77ce3bfe098ec3ea688f333484b1080",
       "git_mode": "100644",
       "path": "docs/STATE-MACHINE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "6f2c7c780118421ccb47dc26d33d45d8ac59f21caf9fa3768cbeccaa38a4a788",
-      "size_bytes": 16380
+      "sha256": "287453a4ad2131b8604a7c0fc9f0e4532085be9c3d1a2e3944cf64a9a962c77d",
+      "size_bytes": 17401
     },
     {
-      "git_blob_id": "1c424e01b4eecf4928c91ed30460ca65b9355e3c",
+      "git_blob_id": "166d8f3e3ce41d59896e3f111f3544423d027f79",
       "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "66acea3896fdd104d1d1bb26f549edf4a1a4eaa2e5d6ed51f933a8e592f0618d",
-      "size_bytes": 19699
+      "sha256": "5327b971efa708906333b822c3214d32e2dc1975c03bdf03ba7c339fad894769",
+      "size_bytes": 20542
     },
     {
       "git_blob_id": "f1e8e3055b9387656c4907065ff9be8f02b102fe",
@@ -1998,6 +2030,18 @@
     },
     {
       "kind": "external_reference",
+      "line": 108,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/pid-rs"
+    },
+    {
+      "kind": "external_reference",
+      "line": 109,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/NCP"
+    },
+    {
+      "kind": "external_reference",
       "line": 10,
       "path": "README.md",
       "url": "https://github.com/sepahead/galadriel/actions/workflows/ci.yml"
@@ -2010,31 +2054,19 @@
     },
     {
       "kind": "external_reference",
-      "line": 113,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/pid-rs"
-    },
-    {
-      "kind": "external_reference",
-      "line": 114,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/NCP"
-    },
-    {
-      "kind": "external_reference",
-      "line": 115,
+      "line": 110,
       "path": "README.md",
       "url": "https://github.com/sepahead/crebain"
     },
     {
       "kind": "external_reference",
-      "line": 116,
+      "line": 111,
       "path": "README.md",
       "url": "https://github.com/sepahead/haldir"
     },
     {
       "kind": "external_reference",
-      "line": 117,
+      "line": 112,
       "path": "README.md",
       "url": "https://github.com/sepahead/prisoma"
     },
@@ -2070,31 +2102,31 @@
     },
     {
       "kind": "external_reference",
-      "line": 176,
+      "line": 171,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
     },
     {
       "kind": "external_reference",
-      "line": 184,
+      "line": 179,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
     },
     {
       "kind": "external_reference",
-      "line": 189,
+      "line": 184,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
     {
       "kind": "external_reference",
-      "line": 647,
+      "line": 657,
       "path": "README.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 833,
+      "line": 843,
       "path": "README.md",
       "url": "https://github.com/sepahead"
     },
@@ -2181,6 +2213,42 @@
       "line": 297,
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
+    },
+    {
+      "kind": "paper",
+      "line": 46,
+      "path": "docs/JUSTIFICATION.md",
+      "url": "https://doi.org/10.1103/PhysRevE.103.032149"
+    },
+    {
+      "kind": "external_reference",
+      "line": 49,
+      "path": "docs/JUSTIFICATION.md",
+      "url": "https://arxiv.org/abs/1004.2515"
+    },
+    {
+      "kind": "paper",
+      "line": 56,
+      "path": "docs/JUSTIFICATION.md",
+      "url": "https://doi.org/10.1098/rspa.2021.0110"
+    },
+    {
+      "kind": "paper",
+      "line": 62,
+      "path": "docs/JUSTIFICATION.md",
+      "url": "https://doi.org/10.1103/PhysRevE.110.014115"
+    },
+    {
+      "kind": "paper",
+      "line": 66,
+      "path": "docs/JUSTIFICATION.md",
+      "url": "https://doi.org/10.1103/PhysRevE.69.066138"
+    },
+    {
+      "kind": "external_reference",
+      "line": 71,
+      "path": "docs/JUSTIFICATION.md",
+      "url": "https://arxiv.org/abs/2106.12393"
     },
     {
       "kind": "external_reference",
@@ -2418,31 +2486,43 @@
     },
     {
       "kind": "external_reference",
-      "line": 450,
+      "line": 495,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2311.06373"
     },
     {
       "kind": "external_reference",
-      "line": 451,
+      "line": 496,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1604.03006"
     },
     {
+      "kind": "paper",
+      "line": 497,
+      "path": "docs/PAPER.md",
+      "url": "https://doi.org/10.1098/rspa.2021.0110"
+    },
+    {
       "kind": "external_reference",
-      "line": 452,
+      "line": 498,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2106.07098"
     },
     {
       "kind": "external_reference",
-      "line": 454,
+      "line": 500,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2002.03356"
     },
     {
       "kind": "external_reference",
-      "line": 457,
+      "line": 503,
+      "path": "docs/PAPER.md",
+      "url": "https://arxiv.org/abs/2106.12393"
+    },
+    {
+      "kind": "external_reference",
+      "line": 504,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
@@ -2738,12 +2818,12 @@
       "size_bytes": 4414
     },
     {
-      "git_blob_id": "1c424e01b4eecf4928c91ed30460ca65b9355e3c",
+      "git_blob_id": "166d8f3e3ce41d59896e3f111f3544423d027f79",
       "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "66acea3896fdd104d1d1bb26f549edf4a1a4eaa2e5d6ed51f933a8e592f0618d",
-      "size_bytes": 19699
+      "sha256": "5327b971efa708906333b822c3214d32e2dc1975c03bdf03ba7c339fad894769",
+      "size_bytes": 20542
     },
     {
       "git_blob_id": "f1e8e3055b9387656c4907065ff9be8f02b102fe",

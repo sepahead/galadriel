@@ -19,6 +19,57 @@ Galadriel pins pid-rs revision
 >
 > It does not show that recorded Crebain residuals occupy a PID-justified regime.
 
+[![Two distinct offline PID questions, role-typed literature edges, atom equations, and non-fallback boundaries](../assets/pid-estimand-provenance.svg)](../assets/pid-estimand-provenance.svg)
+
+**Offline PID estimand and provenance graph.** `PidQuestionSpec` seals one source
+order, target, and law before evaluation. The categorical lane evaluates the
+Makkeh–Gutknecht–Wibral pointwise shared-exclusions functional on a finite law.
+It retains reports in nats and converts only named aggregate atom fields to
+bits. The continuous lane evaluates the related but distinct Ehrlich functional
+and estimator on a declared full-dimensional law, fixed source gauge, and no
+added noise; its Kraskov–Stögbauer–Grassberger (KSG) constituents and PID2 atoms
+remain in nats. The categorical fixed-source hostile control preserves each
+informative atom while allowing misinformative and net atoms to change. The
+continuous permutation arm is an exchangeable descriptive score, not an
+independent-law population estimate.
+The bottom firewall separates both PID routes from project-defined `Q`, the
+target-free MI graph, BROJA, `I_min`, and every unevaluated fallback.
+
+[Open the PID estimand figure at full size.](../assets/pid-estimand-provenance.svg)
+
+The figure abbreviates author lists to preserve legibility. These are the exact
+reference roles:
+
+- **Categorical functional definition:** Abdullah Makkeh, Aaron J. Gutknecht,
+  and Michael Wibral, “Introducing a differentiable measure of pointwise shared
+  information,” *Physical Review E* 103, 032149 (2021),
+  [doi:10.1103/PhysRevE.103.032149](https://doi.org/10.1103/PhysRevE.103.032149).
+- **Original antichain lattice:** Paul L. Williams and Randall D. Beer,
+  “Nonnegative Decomposition of Multivariate Information” (2010),
+  [arXiv:1004.2515](https://arxiv.org/abs/1004.2515). Galadriel uses the
+  two-source lattice coordinates; it does not evaluate the Williams–Beer `I_min`
+  functional.
+- **Part-whole and formal-logic derivation:** Aaron J. Gutknecht, Michael Wibral,
+  and Abdullah Makkeh, “Bits and Pieces: Understanding Information Decomposition
+  from Part-whole Relationships and Formal Logic,” *Proceedings of the Royal
+  Society A* 477, 20210110 (2021),
+  [doi:10.1098/rspa.2021.0110](https://doi.org/10.1098/rspa.2021.0110).
+- **Continuous functional and estimator:** David A. Ehrlich, Kyle Schick-Poland,
+  Abdullah Makkeh, Felix Lanfermann, Patricia Wollstadt, and Michael Wibral,
+  “Partial Information Decomposition for Continuous Variables based on Shared
+  Exclusions: Analytical Formulation and Estimation,” *Physical Review E* 110,
+  014115 (2024),
+  [doi:10.1103/PhysRevE.110.014115](https://doi.org/10.1103/PhysRevE.110.014115).
+- **Mutual-information estimator basis:** Alexander Kraskov, Harald Stögbauer,
+  and Peter Grassberger, “Estimating mutual information,” *Physical Review E*
+  69, 066138 (2004),
+  [doi:10.1103/PhysRevE.69.066138](https://doi.org/10.1103/PhysRevE.69.066138).
+- **Related general construction, not evaluated by either route:** Kyle
+  Schick-Poland, Abdullah Makkeh, Aaron J. Gutknecht, Patricia Wollstadt, Anja
+  Sturm, and Michael Wibral, “A partial information decomposition for discrete
+  and continuous variables” (2021),
+  [arXiv:2106.12393](https://arxiv.org/abs/2106.12393).
+
 ## 1. For linear-Gaussian dependence, covariance determines population mutual information
 
 For jointly Gaussian scalar variables,

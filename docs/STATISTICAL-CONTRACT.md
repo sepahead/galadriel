@@ -16,6 +16,19 @@ This document is normative for reports from Galadriel 0.9.0. An estimand is the
 exact population quantity or decision function. This term does not imply that a
 deployment satisfies the identification assumptions.
 
+[![Detector quantities summarized as a three-column decision graph](../assets/detector-evidence.svg)](../assets/detector-evidence.svg)
+
+**Orientation figure — non-normative.** The left column follows the magnitude
+route from NIS through the declared chi-square window reference and two-sided
+CUSUM. The middle column follows the signed-consistency route from every Pearson
+pair through the family-adjusted Fisher threshold and unique strict-majority
+clique. The right column summarizes fusion and input binding. This figure is a
+map of the contract. The numbered requirements and source definitions below
+control if any wording or layout is less precise. Invalid input and unavailable
+evidence remain different states, and neither MI nor PID enters core fusion.
+
+[Open the orientation figure at full size.](../assets/detector-evidence.svg)
+
 ## General contract
 
 **GLD-090-STAT-001:** Every reported scalar **SHALL** use the definition in this

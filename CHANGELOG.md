@@ -51,6 +51,14 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Changed
 
+- Add four static, self-contained, accessible, cross-renderer vector contract
+  maps for system evidence flow, detector equations and fusion, lifecycle
+  receipts, and offline PID estimand provenance. Replace the README flow sketch
+  with the exact authority-boundary graph and add complete descriptions in the
+  statistical, lifecycle, paper, and justification documents. Explicit SVG
+  geometry preserves arrow direction and rounded boundaries across librsvg and
+  macOS rendering. The figures keep pairwise MI outside fusion and keep
+  categorical MGW and continuous Ehrlich PID distinct.
 - Replace the PID-named runtime research crate and CLI feature with
   `galadriel-dependence` and `dependence`. Preserve the frozen NCP route, schema,
   `PidObservation`, and historical capture names as compatibility identifiers.

@@ -29,6 +29,21 @@ This contract does not make these claims:
 Compatibility entry points have explicit labels. They do not add fields to the
 frozen sidecar v1 wire format.
 
+[![Typed lifecycle admission, transition algebra, terminal latch, and bounded receipts](../assets/lifecycle-receipts.svg)](../assets/lifecycle-receipts.svg)
+
+**Lifecycle and receipt map.** A complete cross-route frame creates one typed
+position and immutable assessment scope. A new lane initializes only at generation
+zero. An active lane accepts an exact successor, an exact generation-advancing
+reset, or an unseen epoch rollover with zero sequence and generation. Rejection
+or fault latches the lane and clears statistical history. Each encodable
+transition appends a domain-separated receipt that binds its predecessor and
+typed inputs. A failure before receipt construction has no lifecycle receipt.
+The 65,536-receipt memory bound, 16,384-byte strict JSON decode limit, eviction
+anchor, and nonclaims are part of the figure. The chain is internal provenance;
+it is not authentication, a signature, a durable journal, or physical truth.
+
+[Open the lifecycle figure at full size.](../assets/lifecycle-receipts.svg)
+
 ## 1. Typed position and logical lanes
 
 **GLD-090-STM-001 — explicit coordinates.** Accepted lifecycle admission **SHALL**

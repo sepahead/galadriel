@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc" xml:lang="en">
+  <title id="title">Galadriel detector mathematics and decision algebra</title>
+  <desc id="desc">A three-column diagram. The first column defines normalized innovation energy q sub i as y sub i transpose times S sub i inverse times y sub i. It compares the window sum Q sub n with a chi-squared reference having n times d degrees of freedom, and applies upper and lower cumulative sums H sub i equals max of zero and H sub i minus one plus x sub i minus mu minus k, and L sub i equals max of zero and L sub i minus one plus mu minus x sub i minus k. The second column estimates every signed Pearson correlation. Its usable-edge threshold is the maximum of the configured correlation floor, gamma times the strongest pair correlation, and the family-adjusted one-sided Fisher threshold. Attribution requires one unique largest clique K with cardinality greater than half the channel count; bridges, ties, conflicts, or an undefined pair remain insufficient. The Fisher reference assumes the declared independent and identically distributed bivariate-normal row model; Galadriel does not prove that declaration. The third column shows the deterministic conservative fusion rules and the SHA-256 assessment binding over the complete scope, release suite, and ordered observations. Invalid representation returns an error. An unavailable estimand produces insufficient evidence. Pairwise mutual information and partial information decomposition do not enter this fusion.</desc>
+  <defs>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #102a43; }
+      .title { font-size: 34px; font-weight: 700; }
+      .subtitle { font-size: 19px; fill: #486581; }
+      .section { font-size: 17px; font-weight: 700; letter-spacing: 1.3px; }
+      .node-title { font-size: 21px; font-weight: 700; }
+      .body { font-size: 17px; }
+      .small { font-size: 15px; fill: #486581; }
+      .equation { font-family: Menlo, Consolas, "Liberation Mono", monospace; font-size: 16px; }
+      .lane { fill: #fbfcfe; stroke: #d9e2ec; stroke-width: 2; rx: 18; }
+      .node { stroke-width: 2.2; rx: 14; }
+      .input { fill: #e9f2fb; stroke: #1769aa; }
+      .magnitude { fill: #fff2df; stroke: #b75d00; }
+      .consistency { fill: #e5f6f5; stroke: #007c83; }
+      .fusion { fill: #e9f2fb; stroke: #1769aa; }
+      .warning { fill: #fff0ef; stroke: #b42318; }
+      .arrow { fill: none; stroke: #243b53; stroke-width: 3; }
+      .arrowhead { fill: #243b53; }
+      .divider { stroke: #bcccdc; stroke-width: 1.8; }
+      .dot-orange { fill: #b75d00; }
+      .dot-teal { fill: #007c83; }
+      .dot-blue { fill: #1769aa; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1040" fill="#ffffff"/>
+  <text x="58" y="58" class="title">Detector mathematics and conservative decision algebra</text>
+  <text x="58" y="91" class="subtitle">The two core detector estimands remain distinct until one deterministic fusion step.</text>
+
+  <rect x="55" y="125" width="1490" height="110" rx="14" class="node input"/>
+  <text x="82" y="160" class="node-title">Admitted aligned rows</text>
+  <text x="82" y="193" class="body">One track · equal fusion sequence · one producer-declared physical frame and projection context · one frozen pre-update prior</text>
+  <text x="82" y="219" class="small">Representation and bounds are checked. Physical model adequacy, association correctness, and population assumptions are declared, not proved.</text>
+
+  <rect x="45" y="270" width="480" height="650" rx="18" class="lane"/>
+  <text x="70" y="306" class="section" fill="#8a4700">A · PER-CHANNEL MAGNITUDE</text>
+
+  <rect x="70" y="335" width="430" height="125" rx="14" class="node magnitude"/>
+  <text x="92" y="369" class="node-title">1. Normalize innovation energy</text>
+  <text x="92" y="404" class="equation">qᵢ = yᵢᵀ Sᵢ⁻¹ yᵢ</text>
+  <text x="92" y="434" class="body">Declared null reference: qᵢ ~ χ²(d)</text>
+  <text x="92" y="452" class="small">Requires a declared model and uncensored samples.</text>
+
+  <path d="M285 460 V490" class="arrow"/>
+  <path d="M278 478 L285 490 L292 478 Z" class="arrowhead"/>
+
+  <rect x="70" y="490" width="430" height="220" rx="14" class="node magnitude"/>
+  <text x="92" y="524" class="node-title">2. NIS window + two-sided CUSUM</text>
+  <text x="92" y="554" class="equation">Q_n = Σ_i q_i</text>
+  <text x="92" y="580" class="equation">Q_n ~ χ²(nd), only under the stated sum law</text>
+  <text x="92" y="606" class="equation">p_R=Pr[χ²(nd)≥Q_n]   ;   α_ch=α_NIS/C</text>
+  <text x="92" y="632" class="equation">x_i = q_i / √(2d)   ;   μ = d / √(2d)</text>
+  <text x="92" y="658" class="equation">H_i = max(0, H_(i−1) + x_i − μ − k)</text>
+  <text x="92" y="684" class="equation">L_i = max(0, L_(i−1) + μ − x_i − k)</text>
+  <text x="92" y="704" class="small">Elevated iff p_R &lt; α_ch. Either CUSUM arm alarms at h.</text>
+
+  <path d="M285 710 V740" class="arrow"/>
+  <path d="M278 728 L285 740 L292 728 Z" class="arrowhead"/>
+
+  <rect x="70" y="735" width="430" height="165" rx="14" class="node magnitude"/>
+  <text x="92" y="769" class="node-title">3. Readiness + magnitude verdict</text>
+  <text x="92" y="801" class="equation">ready = (n ≥ n_min) ∧ fresh</text>
+  <text x="92" y="827" class="equation">        ∧ (last_seq = assessment_seq)</text>
+  <text x="92" y="855" class="body">Priority: unclassified; insufficient; nominal;</text>
+  <text x="92" y="881" class="body">broad degradation; attributed inconsistency.</text>
+  <text x="92" y="894" class="small">Attribution locates evidence; cause stays unclassified.</text>
+
+  <rect x="560" y="270" width="480" height="650" rx="18" class="lane"/>
+  <text x="585" y="306" class="section" fill="#00656b">B · SIGNED CROSS-CHANNEL CONSISTENCY</text>
+
+  <rect x="585" y="335" width="430" height="125" rx="14" class="node consistency"/>
+  <text x="607" y="369" class="node-title">1. Estimate every signed pair</text>
+  <text x="607" y="402" class="equation">ρ_ab = cov(a,b) / (s_a s_b)</text>
+  <text x="607" y="434" class="body">Finite, non-degenerate columns; one common gauge</text>
+  <text x="607" y="454" class="small">Any undefined required pair withholds the estimand.</text>
+
+  <path d="M800 460 V490" class="arrow"/>
+  <path d="M793 478 L800 490 L807 478 Z" class="arrowhead"/>
+
+  <rect x="585" y="490" width="430" height="190" rx="14" class="node consistency"/>
+  <text x="607" y="524" class="node-title">2. Build one usable edge threshold</text>
+  <text x="607" y="552" class="equation">m = C(C−1)/2</text>
+  <text x="607" y="578" class="equation">α_pair = α_axis / m</text>
+  <text x="607" y="604" class="equation">z_F = Φ⁻¹(1−α_pair) / √(n−3)</text>
+  <text x="607" y="630" class="equation">τ_F = tanh(z_F)   ;   ρ_max = max_(a&lt;b) ρ_ab</text>
+  <text x="607" y="656" class="equation">τ = max(ρ_floor, γ ρ_max, τ_F)</text>
+  <text x="607" y="675" class="small">A positive edge exists exactly when ρ_ab ≥ τ.</text>
+
+  <path d="M800 680 V710" class="arrow"/>
+  <path d="M793 698 L800 710 L807 698 Z" class="arrowhead"/>
+
+  <rect x="585" y="710" width="430" height="180" rx="14" class="node consistency"/>
+  <text x="607" y="744" class="node-title">3. Admit one unique consensus</text>
+  <text x="607" y="774" class="equation">|K| &gt; C/2</text>
+  <text x="607" y="800" class="equation">K is the unique largest clique.</text>
+  <text x="607" y="829" class="body">Nominal: K contains every requested channel.</text>
+  <text x="607" y="855" class="body">Decoupled: every outsider edge into K is below τ.</text>
+  <text x="607" y="881" class="small">Ties, bridges, conflicts, or invalid inputs → insufficient.</text>
+
+  <rect x="1075" y="270" width="480" height="650" rx="18" class="lane"/>
+  <text x="1100" y="306" class="section" fill="#14568a">C · SEALED FUSION AND PROVENANCE</text>
+
+  <rect x="1100" y="335" width="430" height="330" rx="14" class="node fusion"/>
+  <text x="1122" y="369" class="node-title">Deterministic fusion of A and B</text>
+  <circle cx="1130" cy="402" r="6" class="dot-blue"/>
+  <text x="1150" y="408" class="body">Unclassified or conflicting evidence</text>
+  <text x="1150" y="431" class="small">→ UnclassifiedAnomaly</text>
+  <circle cx="1130" cy="462" r="6" class="dot-blue"/>
+  <text x="1150" y="468" class="body">Both estimands unavailable</text>
+  <text x="1150" y="491" class="small">→ InsufficientEvidence</text>
+  <circle cx="1130" cy="522" r="6" class="dot-blue"/>
+  <text x="1150" y="528" class="body">Coherent positive consistency separation</text>
+  <text x="1150" y="551" class="small">→ AttributedInconsistency (typed magnitude)</text>
+  <circle cx="1130" cy="582" r="6" class="dot-blue"/>
+  <text x="1150" y="588" class="body">Nominal magnitude + insufficient consistency</text>
+  <text x="1150" y="611" class="small">→ InsufficientEvidence; it never becomes nominal.</text>
+  <circle cx="1130" cy="640" r="6" class="dot-blue"/>
+  <text x="1150" y="646" class="body">Otherwise preserve the magnitude verdict.</text>
+
+  <path d="M1315 665 V695" class="arrow"/>
+  <path d="M1308 683 L1315 695 L1322 683 Z" class="arrowhead"/>
+
+  <rect x="1100" y="695" width="430" height="195" rx="14" class="node fusion"/>
+  <text x="1122" y="729" class="node-title">Immutable assessment binding</text>
+  <text x="1122" y="755" class="equation">B := SHA-256 over domain-separated</text>
+  <text x="1122" y="779" class="equation">     canonical bytes of scope + suite</text>
+  <text x="1122" y="803" class="equation">     + ordered observations</text>
+  <text x="1122" y="831" class="body">Scope: producer, session, epoch, stream,</text>
+  <text x="1122" y="855" class="body">generation, terminal sequence/time, and clock.</text>
+  <text x="1122" y="881" class="small">Byte equality ≠ authentication or calibration.</text>
+
+  <path d="M285 235 V255 H475 V335" class="arrow"/>
+  <path d="M468 323 L475 335 L482 323 Z" class="arrowhead"/>
+  <path d="M800 235 V255 H990 V335" class="arrow"/>
+  <path d="M983 323 L990 335 L997 323 Z" class="arrowhead"/>
+
+  <rect x="55" y="950" width="1490" height="60" rx="14" class="node warning"/>
+  <text x="80" y="986" class="body"><tspan font-weight="700">Fail-closed boundary:</tspan> invalid representation returns an error; an unavailable estimand returns InsufficientEvidence; MI and PID never enter this fusion.</text>
+</svg>

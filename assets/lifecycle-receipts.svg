@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc" xml:lang="en">
+  <title id="title">Galadriel typed lifecycle admission and receipt chain</title>
+  <desc id="desc">The diagram starts with a cross-route completeness gate and an explicit stream position. A new logical lane initializes at generation zero. Its active state accepts only exact same-generation successors. A continuity change requires an exact generation-advancing reset, while a new unseen epoch requires sequence and generation zero. Both operations clear statistical suffixes and return to the active lane. Duplicate, replay, gap, time regression, generation, missing-reset, structural, assessment, or receipt failures create a rejected or faulted terminal state that latches. Every encodable transition appends a domain-separated hash-linked receipt that binds the previous digest, typed producer and position, transition, optional frame digest, and optional assessment digest. A failure that occurs before receipt construction has no lifecycle receipt. Retained receipts are bounded in memory and internally verifiable, but are neither authenticated nor durable.</desc>
+  <defs>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #102a43; }
+      .title { font-size: 34px; font-weight: 700; }
+      .subtitle { font-size: 19px; fill: #486581; }
+      .section { font-size: 17px; font-weight: 700; letter-spacing: 1.3px; fill: #486581; }
+      .node-title { font-size: 21px; font-weight: 700; }
+      .body { font-size: 17px; }
+      .small { font-size: 15px; fill: #486581; }
+      .equation { font-family: Menlo, Consolas, "Liberation Mono", monospace; font-size: 16px; }
+      .lane { fill: #fbfcfe; stroke: #d9e2ec; stroke-width: 2; rx: 18; }
+      .node { stroke-width: 2.2; rx: 14; }
+      .input { fill: #e9f2fb; stroke: #1769aa; }
+      .active { fill: #e5f6f5; stroke: #007c83; }
+      .reset { fill: #fff2df; stroke: #b75d00; }
+      .rollover { fill: #f1ecfb; stroke: #6f42c1; }
+      .failure { fill: #fff0ef; stroke: #b42318; }
+      .receipt { fill: #f5f7fa; stroke: #829ab1; }
+      .arrow { fill: none; stroke: #243b53; stroke-width: 3; }
+      .arrow-red { fill: none; stroke: #b42318; stroke-width: 3; }
+      .arrowhead { fill: #243b53; }
+      .arrowhead-red { fill: #b42318; }
+      .divider { stroke: #bcccdc; stroke-width: 1.8; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1040" fill="#ffffff"/>
+  <text x="58" y="58" class="title">Typed lifecycle admission and bounded hash-linked receipts</text>
+  <text x="58" y="91" class="subtitle">Continuity is explicit. Missing control never becomes an implicit fresh statistical sample.</text>
+
+  <rect x="45" y="125" width="1510" height="155" rx="18" class="lane"/>
+  <text x="70" y="158" class="section">A · CROSS-ROUTE COMPLETENESS AND TYPED POSITION</text>
+  <rect x="70" y="175" width="420" height="95" rx="14" class="node input"/>
+  <text x="92" y="207" class="node-title">Assembler admits a complete frame</text>
+  <text x="92" y="235" class="small">Route, producer, session, order, counts, registry,</text>
+  <text x="92" y="258" class="small">prior identity, replay, and deadline checks</text>
+
+  <path d="M490 223 H545" class="arrow"/>
+  <path d="M533 216 L545 223 L533 230 Z" class="arrowhead"/>
+
+  <rect x="545" y="175" width="520" height="95" rx="14" class="node input"/>
+  <text x="567" y="203" class="equation">lane key = (producer, core session, stream)</text>
+  <text x="567" y="229" class="equation">position = (session, epoch, stream, generation,</text>
+  <text x="567" y="255" class="equation">            sequence, timestamp, clock domain)</text>
+
+  <path d="M1065 223 H1120" class="arrow"/>
+  <path d="M1108 216 L1120 223 L1108 230 Z" class="arrowhead"/>
+
+  <rect x="1120" y="175" width="405" height="95" rx="14" class="node input"/>
+  <text x="1142" y="207" class="node-title">Immutable AssessmentScope</text>
+  <text x="1142" y="235" class="small">Same producer and exact terminal position</text>
+  <text x="1142" y="258" class="small">in every evaluated report</text>
+
+  <rect x="45" y="310" width="1510" height="400" rx="18" class="lane"/>
+  <text x="70" y="343" class="section">B · ACCEPTED TRANSITION ALGEBRA</text>
+
+  <rect x="75" y="405" width="185" height="105" rx="14" class="node receipt"/>
+  <text x="97" y="440" class="node-title">Unseen lane</text>
+  <text x="97" y="471" class="body">No retained position</text>
+  <text x="97" y="497" class="small">No statistical history</text>
+
+  <path d="M260 457 H320" class="arrow"/>
+  <path d="M308 450 L320 457 L308 464 Z" class="arrowhead"/>
+
+  <rect x="320" y="390" width="245" height="135" rx="14" class="node input"/>
+  <text x="342" y="424" class="node-title">Initialized</text>
+  <text x="342" y="456" class="equation">generation = 0</text>
+  <text x="342" y="484" class="body">Initial sequence may be &gt; 0.</text>
+  <text x="342" y="511" class="small">Creates the lane and first receipt.</text>
+
+  <path d="M565 457 H625" class="arrow"/>
+  <path d="M613 450 L625 457 L613 464 Z" class="arrowhead"/>
+
+  <rect x="625" y="385" width="300" height="145" rx="14" class="node active"/>
+  <text x="647" y="419" class="node-title">Active logical lane</text>
+  <text x="647" y="451" class="body">Exact successor → Advanced</text>
+  <text x="647" y="479" class="equation">same epoch, same generation</text>
+  <text x="647" y="505" class="equation">next sequence ; newer time</text>
+  <path d="M690 385 C690 345 860 345 860 385" class="arrow"/>
+  <path d="M853 373 L860 385 L867 373 Z" class="arrowhead"/>
+  <text x="775" y="362" class="small" text-anchor="middle">ordinary successor loop</text>
+
+  <rect x="1005" y="365" width="285" height="145" rx="14" class="node reset"/>
+  <text x="1062" y="399" class="node-title">Reset</text>
+  <text x="1062" y="431" class="equation">generation + 1</text>
+  <text x="1062" y="457" class="equation">next seq ; newer time</text>
+  <text x="1062" y="483" class="small">Clear suffixes; closed reason.</text>
+  <text x="1062" y="505" class="small">Receipt; return active.</text>
+
+  <path d="M925 420 H1005" class="arrow"/>
+  <path d="M993 413 L1005 420 L993 427 Z" class="arrowhead"/>
+  <text x="965" y="405" class="small" text-anchor="middle">continuity change</text>
+
+  <rect x="1005" y="535" width="285" height="145" rx="14" class="node rollover"/>
+  <text x="1062" y="569" class="node-title">EpochRolledOver</text>
+  <text x="1062" y="597" class="equation">unseen epoch</text>
+  <text x="1062" y="623" class="equation">g = 0 ; sequence = 0</text>
+  <text x="1062" y="651" class="small">Retain used epochs + receipts.</text>
+  <text x="1062" y="673" class="small">Clear histories; return to active.</text>
+
+  <path d="M925 495 H970 V607 H1005" class="arrow"/>
+  <path d="M993 600 L1005 607 L993 614 Z" class="arrowhead"/>
+  <text x="975" y="585" class="small">new epoch</text>
+
+  <rect x="1320" y="380" width="205" height="290" rx="14" class="node failure"/>
+  <text x="1342" y="424" class="node-title">Terminal latch</text>
+  <text x="1342" y="457" class="body">Rejected</text>
+  <text x="1342" y="481" class="small">duplicate · replay · gap</text>
+  <text x="1342" y="503" class="small">time · generation · reset</text>
+  <line x1="1342" y1="523" x2="1503" y2="523" class="divider"/>
+  <text x="1342" y="553" class="body">Faulted</text>
+  <text x="1342" y="577" class="small">structure · assessment</text>
+  <text x="1342" y="599" class="small">receipt construction</text>
+  <text x="1342" y="630" class="small">Clear histories.</text>
+  <text x="1342" y="652" class="small">New detector + epoch.</text>
+
+  <path d="M925 522 H1320" class="arrow-red"/>
+  <path d="M1308 515 L1320 522 L1308 529 Z" class="arrowhead-red"/>
+
+  <rect x="45" y="740" width="1510" height="245" rx="18" class="lane"/>
+  <text x="70" y="773" class="section">C · RECEIPT CHAIN AND CLAIM BOUNDARY</text>
+
+  <rect x="70" y="810" width="420" height="135" rx="14" class="node receipt"/>
+  <text x="92" y="844" class="node-title">Domain-separated hash link</text>
+  <text x="92" y="878" class="equation">R_j := SHA-256(canonical receipt fields)</text>
+  <text x="92" y="906" class="equation">receipt_j.previous = R_(j−1)</text>
+  <text x="92" y="933" class="small">verifies() recomputes; follows() checks adjacency.</text>
+
+  <path d="M490 877 H545" class="arrow"/>
+  <path d="M533 870 L545 877 L533 884 Z" class="arrowhead"/>
+
+  <rect x="545" y="795" width="465" height="165" rx="14" class="node receipt"/>
+  <text x="567" y="829" class="node-title">Each receipt binds</text>
+  <text x="567" y="861" class="body">Index · prior digest · producer · full position</text>
+  <text x="567" y="889" class="body">Closed transition · optional assembled-frame digest</text>
+  <text x="567" y="917" class="body">Optional suite-plus-assessment disposition digest</text>
+  <text x="567" y="945" class="small">Strict JSON decode limit: 16,384 bytes, inclusive</text>
+
+  <path d="M1010 877 H1065" class="arrow"/>
+  <path d="M1053 870 L1065 877 L1053 884 Z" class="arrowhead"/>
+
+  <rect x="1065" y="795" width="460" height="165" rx="14" class="node failure"/>
+  <text x="1087" y="829" class="node-title">Bounded evidence, not a journal</text>
+  <text x="1087" y="861" class="body">65,536 in-memory receipts; then evict oldest</text>
+  <text x="1087" y="889" class="body">and advance the public anchor + eviction count.</text>
+  <text x="1087" y="921" class="small">No writer authentication, signature, MAC, or durability</text>
+  <text x="1087" y="945" class="small">No crash consistency or released NCP 1.0 control plane</text>
+
+  <text x="800" y="1019" class="small" text-anchor="middle">Internal digest consistency is necessary evidence provenance; it is not external authorization or physical truth.</text>
+</svg>

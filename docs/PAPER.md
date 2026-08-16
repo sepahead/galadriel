@@ -47,6 +47,18 @@ That shape used frozen-prior Cartesian projections and complete lifecycle inform
 It does not qualify a current reciprocal integration.
 No accepted recorded study exists.
 
+[![Implemented Galadriel evidence flow and explicit non-edges](../assets/system-boundary.svg)](../assets/system-boundary.svg)
+
+**Figure 1 — Implemented evidence flow and explicit non-edges.** The solid upper
+route is the only accepted operational detector path. Both sidecars must pass one
+assembly and lifecycle gate before magnitude and signed-consistency evidence can
+reach fusion. The dashed MI companion starts from admitted common-projection data,
+but its three descriptive outcomes cannot change the fused verdict. The lower
+dashed route is a separate offline PID study. Its categorical and continuous
+functionals are distinct, and the authority barrier has no return or command edge.
+
+[Open Figure 1 at full size.](../assets/system-boundary.svg)
+
 ## 1. Problem statement
 
 A tracker receives measurements from several modalities.
@@ -173,6 +185,21 @@ It cannot create an accepted whole-stream report.
 
 ## 4. Method
 
+[![Detector equations, consensus graph, fusion precedence, and assessment binding](../assets/detector-evidence.svg)](../assets/detector-evidence.svg)
+
+**Figure 2 — Detector equations and decision algebra.** One admitted aligned row
+set feeds two distinct core estimands. The magnitude route evaluates NIS, its
+declared chi-square window reference, and two-sided CUSUM. The consistency route
+evaluates every signed Pearson pair, a family-adjusted Fisher threshold, and one
+unique strict-majority clique. The final column shows the fail-closed fusion
+precedence and the domain-separated assessment binding. An invalid representation
+is an error; an unavailable estimand is insufficient evidence. The Fisher
+reference is conditional on the declared independent and identically distributed
+bivariate-normal row model; the implementation does not prove that declaration.
+MI and PID do not enter this algebra.
+
+[Open Figure 2 at full size.](../assets/detector-evidence.svg)
+
 ### 4.1 Magnitude evidence
 
 The streaming `Mirror` owns bounded state for each track and modality.
@@ -257,6 +284,24 @@ The study must document fixed source identities and order, an external target,
 functional and evaluator, law, transforms, gauges, row relation, units, and
 software identity. Its atoms are associative decomposition terms and can be negative.
 They are not probabilities or calibrated attack confidence.
+
+[![Two distinct offline shared-exclusions PID estimands and their provenance graph](../assets/pid-estimand-provenance.svg)](../assets/pid-estimand-provenance.svg)
+
+**Figure 3 — Two related shared-exclusions constructions, not one generic
+“Wibral PID.”** The sealed question fixes ordered sources, one external target,
+the law, finite-sample acceptance, row relation, gauge, units, functional,
+evaluator, atom coordinates, reference roles, and exact pid-rs pin. The left lane
+is categorical Makkeh–Gutknecht–Wibral shared exclusions [Makkeh2021] on the
+original Williams–Beer antichain lattice [WilliamsBeer2010], with the later
+Gutknecht–Wibral–Makkeh part-whole derivation [Gutknecht2021] recorded separately.
+The right lane is the related but distinct continuous Ehrlich functional and
+estimator [Ehrlich2024], with KSG mutual-information constituents [Kraskov2004].
+The Schick-Poland general construction [SchickPoland2021] and the Williams–Beer
+`I_min` functional are not fallback evaluations. The bottom firewall also
+separates both PID routes from the project-defined joint contrast `Q`, target-free
+pairwise MI, and BROJA.
+
+[Open Figure 3 at full size.](../assets/pid-estimand-provenance.svg)
 
 The opt-in in-process/library MI graph is symmetric, target-free, and
 project-defined; it is not PID. Its only executable integrations in 0.9 are the
@@ -449,9 +494,11 @@ Do not convert it into an operational detection or false-alarm rate.
 - **[CoverThomas2006]** T. M. Cover, J. A. Thomas. *Elements of Information Theory,* 2nd ed. Wiley, 2006.
 - **[Ehrlich2024]** D. A. Ehrlich et al. "Partial information decomposition for continuous variables based on shared exclusions." *Phys. Rev. E* 110, 014115, 2024. [arXiv:2311.06373](https://arxiv.org/abs/2311.06373).
 - **[Gao2018]** W. Gao, S. Oh, P. Viswanath. "Demystifying Fixed k-Nearest Neighbor Information Estimators." *IEEE Transactions on Information Theory* 64(8), 2018. [arXiv:1604.03006](https://arxiv.org/abs/1604.03006).
+- **[Gutknecht2021]** A. J. Gutknecht, M. Wibral, A. Makkeh. "Bits and Pieces: Understanding Information Decomposition from Part-whole Relationships and Formal Logic." *Proceedings of the Royal Society A* 477, 20210110, 2021. [doi:10.1098/rspa.2021.0110](https://doi.org/10.1098/rspa.2021.0110).
 - **[Hallyburton2022]** R. S. Hallyburton et al. "Security Analysis of Camera-LiDAR Fusion Against Black-Box Attacks on Autonomous Vehicles." *USENIX Security,* 2022. [arXiv:2106.07098](https://arxiv.org/abs/2106.07098).
 - **[Kraskov2004]** A. Kraskov, H. Stögbauer, P. Grassberger. "Estimating mutual information." *Phys. Rev. E* 69, 066138, 2004.
 - **[Makkeh2021]** A. Makkeh, A. J. Gutknecht, M. Wibral. "Introducing a differentiable measure of pointwise shared information." *Phys. Rev. E* 103, 032149, 2021. [arXiv:2002.03356](https://arxiv.org/abs/2002.03356).
 - **[Moustakides1986]** G. V. Moustakides. "Optimal Stopping Times for Detecting Changes in Distributions." *Annals of Statistics* 14(4), 1986.
 - **[Page1954]** E. S. Page. "Continuous inspection schemes." *Biometrika* 41(1/2), 1954.
+- **[SchickPoland2021]** K. Schick-Poland, A. Makkeh, A. J. Gutknecht, P. Wollstadt, A. Sturm, M. Wibral. "A partial information decomposition for discrete and continuous variables." [arXiv:2106.12393](https://arxiv.org/abs/2106.12393), 2021.
 - **[WilliamsBeer2010]** P. L. Williams, R. D. Beer. "Nonnegative Decomposition of Multivariate Information." [arXiv:1004.2515](https://arxiv.org/abs/1004.2515), 2010.

@@ -51,30 +51,25 @@ Galadriel checks whether several sensors that observe one track still agree.
 It combines per-channel Normalized Innovation Squared (NIS) evidence with signed cross-channel correlation.
 The correlation keeps its sign and uses a producer-attested projection.
 An optional pairwise-MI companion explores nonlinear dependence without changing the
-authoritative verdict. Separate offline studies evaluate categorical and continuous PID.
+accepted core verdict. Separate offline studies evaluate categorical and continuous PID.
 
 Here, "signed" identifies the correlation sign.
 "Attested" identifies a producer provenance claim.
 Neither term identifies a cryptographic signature.
 
-```mermaid
-flowchart LR
-    P[conforming producer frozen prior] --> O[accepted observations]
-    P --> L[misses / outcomes / summaries / heartbeat]
-    O --> R[exact observation route]
-    L --> T[exact monitor route]
-    R --> A[bounded cross-route assembler]
-    T --> A
-    A --> G{lifecycle complete?}
-    G -->|yes| M[NIS / CUSUM]
-    G -->|yes| C[signed correlation]
-    G -->|no| X[abstain / terminal fault]
-    C -. optional .-> I[pairwise MI companion]
-    M --> F[conservative fusion]
-    C --> F
-    I --> D[descriptive report only]
-    F --> V[nominal / anomaly evidence / insufficient]
-```
+[![Galadriel operational evidence flow, descriptive research routes, and authority firewall](assets/system-boundary.svg)](assets/system-boundary.svg)
+
+**Evidence flow and authority boundary.** The upper solid route is the implemented
+operational path. Observation and monitor sidecars must pass the bounded assembler
+and typed lifecycle gate. The per-channel magnitude lane and the signed-consistency
+lane then feed conservative fusion. The dashed pairwise KSG-MI branch starts from
+the same admitted common projection. It produces a companion report and never
+enters fusion. The lower dashed route starts from one fixed source-target question
+and keeps categorical Makkeh–Gutknecht–Wibral PID separate from continuous Ehrlich
+PID2. The red barrier is a one-way non-edge: no result grants, refreshes, restores,
+or commands authority. `Nominal` is evidence, never permission.
+
+[Open the full-size evidence-flow figure.](assets/system-boundary.svg)
 
 ## Run the source demo
 
@@ -345,6 +340,21 @@ Galadriel claims no current reciprocal producer qualification.
 The consumer never infers a successful lifecycle stage from a missing record.
 
 ## Detector layers
+
+[![Three-column derivation of magnitude evidence, signed-correlation consensus, and conservative fusion](assets/detector-evidence.svg)](assets/detector-evidence.svg)
+
+**Detector mathematics and decision algebra.** Column A derives per-channel
+magnitude evidence from NIS, the declared chi-square window law, and two-sided
+CUSUM. Column B derives one signed-correlation graph, applies the family-adjusted
+Fisher threshold, and admits only one unique strict-majority positive clique.
+The Fisher reference is conditional on the declared independent and identically
+distributed bivariate-normal row model; Galadriel does not prove that declaration.
+Column C applies the deterministic fusion precedence and binds the result to the
+complete scope, release suite, and ordered observations. Invalid representation
+returns `Err(...)`. An unavailable estimand returns `InsufficientEvidence`.
+Pairwise MI and PID are absent from this fusion.
+
+[Open the full-size detector figure.](assets/detector-evidence.svg)
 
 ### NIS/CUSUM magnitude layer
 
