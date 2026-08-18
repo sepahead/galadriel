@@ -1021,12 +1021,12 @@
       "size_bytes": 24474
     },
     {
-      "git_blob_id": "6a79d488738baeeca3d8e25b6a500066771afb8d",
+      "git_blob_id": "269223a26ab681a1184020eae7d64e5bedda6383",
       "git_mode": "100644",
       "path": "docs/METHOD-SELECTION-DECISIONS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "4d43fd948f086674de6dd31e2dea055221836097f16348d705b447a21e159b30",
-      "size_bytes": 48174
+      "sha256": "8cbe0cfef6d5e2f922fab362d036b2b11a360479dea69d47d95b5f116269c385",
+      "size_bytes": 48690
     },
     {
       "git_blob_id": "3e11e04be1794c54b4f8b141530476eea1351796",

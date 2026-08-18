@@ -9,13 +9,13 @@ field-calibration report.
 
 | Publication field | Bound value |
 |---|---|
-| Record state | **Proposed. Human acceptance and publication review remain open.** |
-| Evidence cut | 2026-08-18. Galadriel PR 47 candidate head `883b36aec0c97fb09602cc138e7d165a80daad0a`, tree `fe94613eb8934a6d578d2c54b985a3ac1f1fdf04`. This proposed record is a later working-copy addition and is not evidence that the bound candidate contained it. |
+| Record state | **Review-candidate decision record. Owner merge and release decisions remain open.** |
+| Evidence cut | 2026-08-18. The functional and profile source cut is Galadriel commit `883b36aec0c97fb09602cc138e7d165a80daad0a`, tree `fe94613eb8934a6d578d2c54b985a3ac1f1fdf04`. This record is included in later signed PR #47 review commits. Its own bytes do not embed a containing commit hash because that would create a self-reference. Git and the PR bind the exact containing commit and tree. |
 | Evaluator cut | `pid-core` 0.9.0 at `bc3aa80fb6025e709c2906a08bce25a4fac40578`, as selected by `ECO-018`. |
-| Downstream cut | Haldir signed review commit `c19f9011e4919a5bc67fab5f90d6c8eefed4455b`, as recorded by [`ECO-019`](ECOSYSTEM-CONNECTIONS.md#haldir-connection). It is not merged Haldir `main` or an implemented adapter. |
+| Downstream cut | The Galadriel release-bound cut remains Haldir signed review commit `c19f9011e4919a5bc67fab5f90d6c8eefed4455b`, as recorded by [`ECO-019`](ECOSYSTEM-CONNECTIONS.md#haldir-connection). Later signed Haldir review commit `7286ec7934c08bf260b3d0f34dbb7b79f2a338c2` adds decision rationale without adding a PID runtime edge. That descendant is supplementary review evidence, not a silent rewrite of `ECO-019`, merged Haldir `main`, or an implemented adapter. |
 | Decision owner | Galadriel project owner. A method or profile change requires an owner-approved successor record and profile identity. |
 | Review state | Code-contract red team completed. Independent qualified statistical and PID review is still required. |
-| Acceptance gate | Commit this record with its classifier tests, regenerate living audit artifacts, and obtain green exact-head CI and required deep-quality evidence. Until then, crosslinks identify a proposal rather than an accepted release decision. |
+| Acceptance gate | Preserve this record with its classifier tests in a signed review commit, regenerate living audit artifacts after every tracked-byte change, and obtain green exact-head CI and required deep-quality evidence. Those checks qualify candidate bytes. They do not replace the owner's merge or release decision or independent qualified scientific review. |
 
 The governing rule is question first:
 
