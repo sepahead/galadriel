@@ -88,6 +88,11 @@ Before `1.0`, minor releases can contain breaking changes.
 - Make the optional runtime path a report-first pairwise KSG-MI companion. Require
   explicit law and episode declarations, coherent same-row preprocessing, no
   added noise, complete pair evidence, exact row receipts, and checked work.
+- Replace the ambient-default-equivalent pair-distance allowance in each KSG
+  report budget with the exact 523,264-distance maximum for the admitted
+  512-row scalar window. Add a worst-case preflight and one-below-limit control
+  so the explicit single-thread policy cannot collapse to pid-core's host-bound
+  default on a one-CPU runner.
 - Keep categorical Makkeh–Gutknecht–Wibral and continuous Ehrlich PID as distinct
   offline justification studies with fixed source and target questions. Bind each
   question to role-typed primary-literature edges, including the categorical

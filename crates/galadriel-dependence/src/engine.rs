@@ -32,7 +32,11 @@ const MAX_MODALITIES: usize = Modality::ALL.len();
 const KSG_NEIGHBORS: usize = 3;
 const KSG_REPORT_ROUTE_ID: &str = "pid-core/stable::continuous::ksg_mi_report_with_budget";
 const KSG_RESOURCE_MAX_BYTES: u64 = 1 << 30;
-const KSG_RESOURCE_MAX_PAIRWISE_DISTANCES: u64 = 50_000_000;
+// The conservative upstream preflight counts one KSG neighbor term plus marginal-x, marginal-y,
+// and joint support-shell terms at the largest admitted scalar window. This is a per-report
+// pairwise-distance-unit ceiling, not an aggregate graph ceiling or a count of realized backends.
+const KSG_RESOURCE_MAX_PAIRWISE_DISTANCES: u64 =
+    4 * (MAX_MI_WINDOW as u64) * ((MAX_MI_WINDOW - 1) as u64) / 2;
 const KSG_RESOURCE_MAX_OPERATIONS_HINT: u128 = 10_000_000_000;
 const KSG_RESOURCE_MAX_THREADS: usize = 1;
 const KSG_ESTIMAND_REVISION: &str = "ksg1-product-small-ball-v1";
@@ -2574,6 +2578,67 @@ mod tests {
             config.source_profile(),
             Some(MiConsensusResearchProfile::ExhaustiveCircularDeleteBlockV0_9)
         );
+    }
+
+    #[test]
+    fn ksg_budget_binds_the_exact_maximum_window_preflight() {
+        let budget = ksg_resource_budget().unwrap();
+        assert_eq!(budget.max_bytes, KSG_RESOURCE_MAX_BYTES);
+        assert_eq!(
+            budget.max_pairwise_distances,
+            KSG_RESOURCE_MAX_PAIRWISE_DISTANCES
+        );
+        assert_eq!(budget.max_operations_hint, KSG_RESOURCE_MAX_OPERATIONS_HINT);
+        assert_eq!(budget.max_threads, KSG_RESOURCE_MAX_THREADS);
+        assert_ne!(
+            budget.max_pairwise_distances,
+            ResourceBudget::default().max_pairwise_distances,
+            "the Galadriel ceiling must not collapse to pid-core's ambient default"
+        );
+
+        let values = (0..MAX_MI_WINDOW)
+            .map(|index| index as f64)
+            .collect::<Vec<_>>();
+        let first = column_matrix(&values).unwrap();
+        let second = column_matrix(&values).unwrap();
+        let provenance = KsgProvenance::new(
+            "Galadriel maximum-window resource preflight fixture",
+            "deterministic finite binary64 test coordinates; no estimator execution",
+            None,
+        )
+        .unwrap();
+        let estimate = ksg_report_resource_estimate(
+            first.as_ref(),
+            second.as_ref(),
+            &provenance,
+            budget.max_threads,
+        )
+        .unwrap();
+        assert_eq!(
+            estimate.pairwise_distances,
+            u128::from(KSG_RESOURCE_MAX_PAIRWISE_DISTANCES)
+        );
+        budget
+            .check("Galadriel maximum-window KSG report", estimate)
+            .unwrap();
+
+        let one_below = ResourceBudget::new(
+            budget.max_bytes,
+            budget.max_pairwise_distances - 1,
+            budget.max_operations_hint,
+            budget.max_threads,
+        )
+        .unwrap();
+        assert!(matches!(
+            one_below.check("Galadriel maximum-window KSG report", estimate),
+            Err(PidError::ResourceLimitExceeded {
+                resource: "pairwise_distances",
+                requested,
+                limit,
+                ..
+            }) if requested == u128::from(KSG_RESOURCE_MAX_PAIRWISE_DISTANCES)
+                && limit == u128::from(KSG_RESOURCE_MAX_PAIRWISE_DISTANCES - 1)
+        ));
     }
 
     #[test]
