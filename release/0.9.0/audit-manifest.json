@@ -1837,12 +1837,12 @@
       "size_bytes": 16136
     },
     {
-      "git_blob_id": "aa39e24099458a9322b2018154711cce8839ad8a",
+      "git_blob_id": "13333dbb5f7a413b7972ca78b12dfc4167362c5a",
       "git_mode": "100644",
       "path": "repo_work/tests/test_crebain_mgw_schema.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "125f52c80dafb61ec8ae9afd7045646e5be6f4c75cb931f0e0228f3229f427f4",
-      "size_bytes": 14646
+      "sha256": "89b85af4c36348f03560354e8ce0bf01b2b58578d224907550c746d5bb9a5fd6",
+      "size_bytes": 14971
     },
     {
       "git_blob_id": "36232419447fcc7f82b23d9d0efe161cc7cacc60",
