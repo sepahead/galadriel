@@ -24,11 +24,17 @@
 //! optional in-process/library companion is a separate pairwise-MI graph. It is not PID and
 //! therefore cannot detect pure synergy by itself.
 
+pub mod crebain_mgw;
+
 use galadriel_core::{correlation::pearson, GaladrielError};
 use pid_core::{
-    experimental::continuous::{pid2_isx_report, Pid2Config, Pid2Provenance, Pid2Report},
-    stable::continuous::{ksg_mi_report, KsgConfig, KsgProvenance},
-    DiscreteMatOwned, MatOwned,
+    experimental::continuous::{
+        pid2_isx_report_with_budget, Pid2Config, Pid2Provenance, Pid2Report,
+    },
+    software_identity,
+    stable::continuous::{ksg_mi_report_with_budget, KsgConfig, KsgProvenance},
+    DiscreteMatOwned, MatOwned, ResourceBudget, SoftwareIdentity, SourceIdentity, WorkingTreeScope,
+    WorkingTreeState,
 };
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
@@ -48,25 +54,32 @@ pub enum JustificationError {
     Galadriel(#[from] GaladrielError),
     #[error("pid-core evaluator failed: {0}")]
     PidCore(#[from] pid_core::PidError),
+    #[error("pid-core execution identity contract failed: {0}")]
+    PidCoreIdentity(String),
 }
 
 /// Result type for offline justification studies.
 pub type Result<T> = std::result::Result<T, JustificationError>;
 
 /// Exact pid-rs package version selected by the workspace manifest.
-pub const PID_RS_VERSION: &str = "1.0.0";
+pub const PID_RS_VERSION: &str = "0.9.0";
 /// Immutable pid-rs revision selected by the workspace manifest.
-pub const PID_RS_REVISION: &str = "1cd2424f7967e1752dcc8e53859e8fdad3566f51";
+pub const PID_RS_REVISION: &str = "bc3aa80fb6025e709c2906a08bce25a4fac40578";
 /// Repository supplying the selected pid-core package.
 pub const PID_RS_GIT_REPOSITORY: &str = "https://github.com/sepahead/pid-rs";
 /// Versioned serialization schema of an offline PID estimand question.
-pub const PID_QUESTION_SCHEMA: &str = "galadriel.pid-question.v2";
+pub const PID_QUESTION_SCHEMA: &str = "galadriel.pid-question.v3";
 /// Versioned serialization schema of the categorical XOR study result.
-pub const CATEGORICAL_PID_STUDY_SCHEMA: &str = "galadriel.categorical-pid-study.v2";
+pub const CATEGORICAL_PID_STUDY_SCHEMA: &str = "galadriel.categorical-pid-study.v3";
 /// Versioned serialization schema of the continuous sign-parity study result.
-pub const CONTINUOUS_PID_STUDY_SCHEMA: &str = "galadriel.continuous-pid-study.v2";
+pub const CONTINUOUS_PID_STUDY_SCHEMA: &str = "galadriel.continuous-pid-study.v3";
 /// Versioned serialization schema of the comparator/composition layer around a PID question.
 pub const JUSTIFICATION_STUDY_PROTOCOL_SCHEMA: &str = "galadriel.justification-study-protocol.v2";
+
+const PID_STUDY_RESOURCE_MAX_BYTES: u64 = 1 << 30;
+const PID_STUDY_RESOURCE_MAX_PAIRWISE_DISTANCES: u64 = 1_200_000_000;
+const PID_STUDY_RESOURCE_MAX_OPERATIONS_HINT: u128 = 10_000_000_000;
+const PID_STUDY_RESOURCE_MAX_THREADS: usize = 1;
 
 const AUC_BOOTSTRAP_SEED_XOR: u64 = 0x5EED_B007;
 
@@ -462,7 +475,7 @@ impl PidFunctionalIdentity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub enum PidStudyRoute {
-    /// Empirical categorical plug-in route through `discrete_sxpid2`.
+    /// Empirical categorical plug-in route through `discrete_sxpid2_with_budget`.
     EmpiricalCategoricalPlugin,
     /// Continuous kNN PID2 route through the complete report-first evaluator.
     ContinuousKnnPid2Report,
@@ -471,8 +484,8 @@ pub enum PidStudyRoute {
 impl PidStudyRoute {
     /// Semantic identity of the functional route used by this study record.
     ///
-    /// The selected pid-rs revision predates its machine-readable method catalog,
-    /// so the exact compiled API route is recorded separately below.
+    /// The selected pid-rs revision carries a machine-readable method catalog.
+    /// The exact compiled API route remains a separate execution coordinate.
     pub const fn method_id(self) -> &'static str {
         match self {
             Self::EmpiricalCategoricalPlugin => "shared-exclusions.categorical",
@@ -483,8 +496,12 @@ impl PidStudyRoute {
     /// Exact public pid-core entry point used by Galadriel.
     pub const fn api_route(self) -> &'static str {
         match self {
-            Self::EmpiricalCategoricalPlugin => "pid_core::stable::categorical::discrete_sxpid2",
-            Self::ContinuousKnnPid2Report => "pid_core::experimental::continuous::pid2_isx_report",
+            Self::EmpiricalCategoricalPlugin => {
+                "pid_core::stable::categorical::discrete_sxpid2_with_budget"
+            }
+            Self::ContinuousKnnPid2Report => {
+                "pid_core::experimental::continuous::pid2_isx_report_with_budget"
+            }
         }
     }
 
@@ -499,10 +516,10 @@ impl PidStudyRoute {
 
 /// Exact package dependency supplying one offline PID evaluation.
 ///
-/// This is a local, mechanically checked dependency envelope. The selected
-/// pid-rs revision predates pid-core's richer software-identity API; callers
-/// must not reinterpret this smaller record as source, build, or binary
-/// identity.
+/// This is a local, mechanically checked dependency-selection envelope. The fixed
+/// question retains this selection, while each produced study separately retains and
+/// reconciles pid-core's build-context-dependent [`SoftwareIdentity`]. Neither is a binary
+/// attestation or a proof of estimator applicability.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct PidDependencyIdentity {
     package_name: &'static str,
@@ -541,6 +558,130 @@ impl PidDependencyIdentity {
     /// categorical evaluator itself is on pid-core's stable default surface.
     pub const fn workspace_selected_feature(self) -> &'static str {
         self.workspace_selected_feature
+    }
+}
+
+/// Build-context-dependent identity of the pid-core instance that executed one study.
+///
+/// Keeping this receipt at the produced-study layer prevents source/build context from changing
+/// the equality or serialization identity of the scientific question itself.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PidExecutionIdentity {
+    dependency_selection: PidDependencyIdentity,
+    software_identity: SoftwareIdentity,
+    package_and_version_matched: bool,
+    workspace_git_revision_matched: bool,
+    pid_core_package_subtree_clean: bool,
+    boundary: &'static str,
+}
+
+impl PidExecutionIdentity {
+    /// Immutable dependency selection that the executing package must match.
+    pub const fn dependency_selection(&self) -> PidDependencyIdentity {
+        self.dependency_selection
+    }
+
+    /// Build-context identity reported by the selected pid-core package.
+    pub const fn software_identity(&self) -> &SoftwareIdentity {
+        &self.software_identity
+    }
+
+    /// Whether the reported package name and version match the selected dependency.
+    pub const fn package_and_version_matched(&self) -> bool {
+        self.package_and_version_matched
+    }
+
+    /// Whether pid-core reported the selected WorkspaceGit commit and package-path scope.
+    pub const fn workspace_git_revision_matched(&self) -> bool {
+        self.workspace_git_revision_matched
+    }
+
+    /// Whether pid-core reported a clean package subtree under its declared narrow scope.
+    pub const fn pid_core_package_subtree_clean(&self) -> bool {
+        self.pid_core_package_subtree_clean
+    }
+
+    /// Explicit limits on what this execution-identity receipt establishes.
+    pub const fn boundary(&self) -> &'static str {
+        self.boundary
+    }
+}
+
+fn pid_execution_identity() -> Result<PidExecutionIdentity> {
+    let dependency_selection = PidDependencyIdentity::pinned();
+    let software_identity = software_identity();
+    let package_and_version_matched = software_identity.package_name()
+        == dependency_selection.package_name()
+        && software_identity.package_version() == dependency_selection.package_version();
+    let (workspace_git_revision_matched, pid_core_package_subtree_clean) =
+        match *software_identity.source() {
+            SourceIdentity::WorkspaceGit {
+                commit_sha1,
+                working_tree_scope,
+                working_tree,
+                ..
+            } => (
+                commit_sha1 == dependency_selection.git_revision()
+                    && working_tree_scope == WorkingTreeScope::PidCorePackagePath,
+                working_tree == WorkingTreeState::Clean,
+            ),
+            _ => (false, false),
+        };
+    if !package_and_version_matched
+        || !workspace_git_revision_matched
+        || !pid_core_package_subtree_clean
+    {
+        return Err(JustificationError::PidCoreIdentity(format!(
+            "selected {} {} at {} but compiled identity reported package={} version={} source={:?}",
+            dependency_selection.package_name(),
+            dependency_selection.package_version(),
+            dependency_selection.git_revision(),
+            software_identity.package_name(),
+            software_identity.package_version(),
+            software_identity.source(),
+        )));
+    }
+    Ok(PidExecutionIdentity {
+        dependency_selection,
+        software_identity,
+        package_and_version_matched: true,
+        workspace_git_revision_matched: true,
+        pid_core_package_subtree_clean: true,
+        boundary: "binds the executing pid-core package/version and package-subtree WorkspaceGit source state to Galadriel's selected immutable revision. This is not whole-repository cleanliness, binary attestation, scientific validity, or numerical portability",
+    })
+}
+
+/// Explicit per-call pid-core resource policy retained by an offline study result.
+///
+/// Galadriel separately checks aggregate quadratic work before starting a study.
+/// This receipt binds each evaluator call to a deterministic single-thread ceiling.
+/// It is not an aggregate peak-memory or wall-clock guarantee.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct PidStudyResourceContract {
+    budget: ResourceBudget,
+    scope: &'static str,
+}
+
+impl PidStudyResourceContract {
+    fn fixed() -> Result<Self> {
+        Ok(Self {
+            budget: ResourceBudget::new(
+                PID_STUDY_RESOURCE_MAX_BYTES,
+                PID_STUDY_RESOURCE_MAX_PAIRWISE_DISTANCES,
+                PID_STUDY_RESOURCE_MAX_OPERATIONS_HINT,
+                PID_STUDY_RESOURCE_MAX_THREADS,
+            )
+            .map_err(pid_error)?,
+            scope: "per evaluator call. Aggregate study work is checked separately. This is not an end-to-end memory, time, or allocation-success guarantee",
+        })
+    }
+
+    pub const fn budget(self) -> ResourceBudget {
+        self.budget
+    }
+
+    pub const fn scope(self) -> &'static str {
+        self.scope
     }
 }
 
@@ -1129,7 +1270,7 @@ impl PidQuestionSpec {
             output_coordinates: &CATEGORICAL_OUTPUT_COORDINATES,
             aggregate_outputs: &CATEGORICAL_AGGREGATE_OUTPUTS,
             trial_arms: &CATEGORICAL_TRIAL_ARMS,
-            route_configuration: "canonical pid-core discrete_sxpid2 empirical-PMF evaluator; no comparator or fallback functional",
+            route_configuration: "canonical pid-core discrete_sxpid2_with_budget empirical-PMF evaluator under the retained single-thread per-call budget. No comparator or fallback functional is used",
             transform_relation: "lossless-binary-0-or-1-encoding; no fitted transform",
             row_relation: "same sampled rows for both sources and target; shuffled-target control is a separate descriptive permutation object",
             support_and_gauge: "finite binary alphabets; empirical equal-weight plug-in PMF; no continuous source gauge",
@@ -1158,7 +1299,7 @@ impl PidQuestionSpec {
             output_coordinates: &CONTINUOUS_OUTPUT_COORDINATES,
             aggregate_outputs: &CONTINUOUS_AGGREGATE_OUTPUTS,
             trial_arms: &CONTINUOUS_TRIAL_ARMS,
-            route_configuration: "Pid2Config::assume_regular_full_dimensional; exact realized estimator reports retained per trial; no fallback functional",
+            route_configuration: "Pid2Config::assume_regular_full_dimensional through pid2_isx_report_with_budget under the retained single-thread per-call budget. Exact realized estimator reports are retained per trial. No fallback functional is used",
             transform_relation: "identity coordinates; no fitted preprocessing, quantization, added noise, or tie-breaking transform",
             row_relation: "same declared i.i.d. synthetic rows for both sources and target; shuffled-target control is a separate descriptive permutation object",
             support_and_gauge: "declared full-dimensional continuous tuple; both source gauges fixed to standard-normal simulator coordinates; target retains its generated coordinate",
@@ -1448,11 +1589,12 @@ fn ksg(evaluation_id: u64, x: &[f64], y: &[f64], sampling_model: &str) -> Result
         )
     })
     .map_err(pid_error)?;
-    let report = ksg_mi_report(
+    let report = ksg_mi_report_with_budget(
         a.as_ref(),
         b.as_ref(),
         &KsgConfig::assume_regular_full_dimensional(),
         &provenance,
+        PidStudyResourceContract::fixed()?.budget(),
     )
     .map_err(pid_error)?;
     Ok(report.signed_estimate_nats)
@@ -2020,12 +2162,12 @@ pub fn format_report(s: &Study) -> String {
 //    are non-negative, which SxPID does not promise in general.)
 //
 // 2. The **categorical SxPID synergy atom itself** (Makkeh–Gutknecht–Wibral 2021), computed
-//    by `pid_core::discrete_sxpid2` on the empirical distribution. This is a diagnostic
+//    by `pid_core::discrete_sxpid2_with_budget` on the empirical distribution. This is a diagnostic
 //    estimator study. Galadriel's optional in-process/library companion is a pairwise-MI graph,
 //    not PID, and cannot turn a pure-synergy atom into an operational verdict.
 // ─────────────────────────────────────────────────────────────────────────────
 
-use pid_core::stable::categorical::{discrete_sxpid2, DiscreteSxPid2Result};
+use pid_core::stable::categorical::{discrete_sxpid2_with_budget, DiscreteSxPid2Result};
 use std::f64::consts::LN_2;
 
 fn categorical_report_scores(report: &DiscreteSxPid2Result) -> (f64, f64, f64, f64) {
@@ -2033,8 +2175,8 @@ fn categorical_report_scores(report: &DiscreteSxPid2Result) -> (f64, f64, f64, f
     (
         pairwise_mi,
         report.mi_s1s2_t / LN_2 - pairwise_mi,
-        report.syn.net / LN_2,
-        report.red.net / LN_2,
+        report.syn.net_nats() / LN_2,
+        report.red.net_nats() / LN_2,
     )
 }
 
@@ -2051,8 +2193,12 @@ fn same_interval(left: (f64, f64), right: (f64, f64)) -> bool {
 pub struct CategoricalXorJustificationResult {
     /// Versioned aggregate/result serialization schema.
     schema: &'static str,
-    /// Complete typed categorical MGW question and pinned pid-core dependency identity.
+    /// Complete typed categorical MGW question and fixed dependency selection.
     pid_question: PidQuestionSpec,
+    /// Reconciled build/source identity of the pid-core package that executed this study.
+    pid_execution_identity: PidExecutionIdentity,
+    /// Explicit single-call resource ceiling used by every pid-core evaluation.
+    pid_resource_contract: PidStudyResourceContract,
     /// Typed identities for every non-PID comparator/composition row.
     study_protocol: JustificationStudyProtocol,
     /// Paired coupled/control trials.
@@ -2095,6 +2241,14 @@ impl CategoricalXorJustificationResult {
     /// Complete estimand and provenance record for the categorical PID rows.
     pub const fn pid_question(&self) -> &PidQuestionSpec {
         &self.pid_question
+    }
+    /// Build-context receipt kept separate from the fixed scientific question.
+    pub const fn pid_execution_identity(&self) -> &PidExecutionIdentity {
+        &self.pid_execution_identity
+    }
+    /// Per-call evaluator ceiling, separate from aggregate study preflight.
+    pub const fn pid_resource_contract(&self) -> PidStudyResourceContract {
+        self.pid_resource_contract
     }
     /// Identities and provenance of Pearson, pairwise MI, and `Q` rows.
     pub const fn study_protocol(&self) -> &JustificationStudyProtocol {
@@ -2239,9 +2393,14 @@ impl CategoricalPidTrialEvidence {
 }
 
 /// Complete categorical MGW result for a binary `(s1, s2, t)` triple, via the
-/// exact plug-in `discrete_sxpid2` on the empirical distribution (2 bins is lossless for
+/// exact plug-in `discrete_sxpid2_with_budget` on the empirical distribution (2 bins is lossless for
 /// 0/1 data). The returned pid-core result remains in its native nats.
-fn sxpid_result(s1: &[f64], s2: &[f64], t: &[f64]) -> Result<DiscreteSxPid2Result> {
+fn sxpid_result(
+    s1: &[f64],
+    s2: &[f64],
+    t: &[f64],
+    budget: ResourceBudget,
+) -> Result<DiscreteSxPid2Result> {
     let n = s1.len();
     let col = |values: &[f64]| {
         let labels = values
@@ -2258,7 +2417,7 @@ fn sxpid_result(s1: &[f64], s2: &[f64], t: &[f64]) -> Result<DiscreteSxPid2Resul
         DiscreteMatOwned::new(labels, n, 1).map_err(pid_error)
     };
     let (a, b, tt) = (col(s1)?, col(s2)?, col(t)?);
-    discrete_sxpid2(a.as_ref(), b.as_ref(), tt.as_ref()).map_err(pid_error)
+    discrete_sxpid2_with_budget(a.as_ref(), b.as_ref(), tt.as_ref(), budget).map_err(pid_error)
 }
 
 const MAX_BINARY_TRIAL_DRAWS: usize = 32;
@@ -2293,6 +2452,8 @@ pub fn run_categorical_xor_justification(
 ) -> Result<CategoricalXorJustificationResult> {
     validate_study(trials, n, None)?;
     validate_bootstrap_work(trials, N_BOOT, 4)?;
+    let pid_execution_identity = pid_execution_identity()?;
+    let pid_resource_contract = PidStudyResourceContract::fixed()?;
     let mut rng = StdRng::seed_from_u64(seed ^ 0x5259_6E65);
     let (mut cc, mut cd) = (Vec::new(), Vec::new());
     let (mut pc, mut pd) = (Vec::new(), Vec::new());
@@ -2315,8 +2476,8 @@ pub fn run_categorical_xor_justification(
         // Every information-derived comparator is composed from the exact same
         // retained pid-core results as the MGW atoms. This removes a second local
         // entropy implementation and makes provenance/coherence mechanical.
-        let coupled_pid = sxpid_result(&af, &bf, &tf)?;
-        let control_pid = sxpid_result(&af, &bf, &tdf)?;
+        let coupled_pid = sxpid_result(&af, &bf, &tf, pid_resource_contract.budget())?;
+        let control_pid = sxpid_result(&af, &bf, &tdf, pid_resource_contract.budget())?;
         let (pm_c, q_c, syn_c, red_c) = categorical_report_scores(&coupled_pid);
         let (pm_d, q_d, syn_d, _) = categorical_report_scores(&control_pid);
         pc.push(pm_c);
@@ -2341,6 +2502,8 @@ pub fn run_categorical_xor_justification(
     Ok(CategoricalXorJustificationResult {
         schema: CATEGORICAL_PID_STUDY_SCHEMA,
         pid_question: PidQuestionSpec::categorical_xor(),
+        pid_execution_identity,
+        pid_resource_contract,
         study_protocol: JustificationStudyProtocol::categorical_xor(),
         trials,
         n,
@@ -2431,7 +2594,7 @@ pub fn format_categorical_xor_justification(r: &CategoricalXorJustificationResul
 // every A (the sign flip is a fair coin from B), so MI(A;T) = MI(B;T) = 0 and all
 // pairwise correlations are 0 — while jointly sign(T) = sign(A)·sign(B), so
 // MI(A,B;T) = ln 2 exactly (the parity bit; |T| ⊥ (A,B) carries nothing more).
-// A complete `pid2_isx_report` per triple retains the pairwise KSG reports, joint
+// A complete `pid2_isx_report_with_budget` per triple retains the pairwise KSG reports, joint
 // KSG report, gauges, assumptions, and the continuous `I^sx` redundancy. It yields
 // both the joint contrast
 // `Q = MI(A,B;T) − max(MI(A;T), MI(B;T))` and the continuous SxPID synergy atom
@@ -2444,8 +2607,12 @@ pub fn format_categorical_xor_justification(r: &CategoricalXorJustificationResul
 pub struct ContinuousSignParityJustificationResult {
     /// Versioned aggregate/result serialization schema.
     schema: &'static str,
-    /// Complete typed continuous Ehrlich question and pinned pid-core dependency identity.
+    /// Complete typed continuous Ehrlich question and fixed dependency selection.
     pid_question: PidQuestionSpec,
+    /// Reconciled build/source identity of the pid-core package that executed this study.
+    pid_execution_identity: PidExecutionIdentity,
+    /// Explicit single-call resource ceiling used by every pid-core evaluation.
+    pid_resource_contract: PidStudyResourceContract,
     /// Typed identities for every non-PID comparator/composition row.
     study_protocol: JustificationStudyProtocol,
     /// Paired coupled/control trials.
@@ -2485,6 +2652,14 @@ impl ContinuousSignParityJustificationResult {
     /// Complete estimand and provenance record for the continuous PID rows.
     pub const fn pid_question(&self) -> &PidQuestionSpec {
         &self.pid_question
+    }
+    /// Build-context receipt kept separate from the fixed scientific question.
+    pub const fn pid_execution_identity(&self) -> &PidExecutionIdentity {
+        &self.pid_execution_identity
+    }
+    /// Per-call evaluator ceiling, separate from aggregate study preflight.
+    pub const fn pid_resource_contract(&self) -> PidStudyResourceContract {
+        self.pid_resource_contract
     }
     /// Identities and provenance of Pearson, pairwise MI, and `Q` rows.
     pub const fn study_protocol(&self) -> &JustificationStudyProtocol {
@@ -2650,6 +2825,7 @@ fn continuous_synergy_scores(
     t: &[f64],
     evaluation_id: u64,
     sampling_model: &str,
+    budget: ResourceBudget,
 ) -> Result<ContinuousScores> {
     let n = a.len();
     let col = |values: &[f64]| MatOwned::new(values.to_vec(), n, 1).map_err(pid_error);
@@ -2669,12 +2845,13 @@ fn continuous_synergy_scores(
         )
     })
     .map_err(pid_error)?;
-    let report = pid2_isx_report(
+    let report = pid2_isx_report_with_budget(
         am.as_ref(),
         bm.as_ref(),
         tm.as_ref(),
         &Pid2Config::assume_regular_full_dimensional(),
         &provenance,
+        budget,
     )
     .map_err(pid_error)?;
     let (pairwise_mi, q, synergy, joint_mi) = continuous_report_scores(&report);
@@ -2698,6 +2875,8 @@ pub fn run_continuous_sign_parity_justification(
     // pair-distance passes actually executed by each report.
     validate_pid2_work(trials, n, 2)?;
     validate_bootstrap_work(trials, N_BOOT, 4)?;
+    let pid_execution_identity = pid_execution_identity()?;
+    let pid_resource_contract = PidStudyResourceContract::fixed()?;
     let mut rng = StdRng::seed_from_u64(seed ^ 0x516E_9A21);
     let std_normal = Normal::new(0.0, 1.0).map_err(|error| {
         GaladrielError::InvalidConfig(format!("invalid standard normal: {error}"))
@@ -2731,6 +2910,7 @@ pub fn run_continuous_sign_parity_justification(
             &t,
             trial_id ^ 0x00C0_A1ED,
             "Independent and identically distributed rows from the fixed continuous sign-parity law.",
+            pid_resource_contract.budget(),
         )?;
         let control = continuous_synergy_scores(
             &a,
@@ -2738,6 +2918,7 @@ pub fn run_continuous_sign_parity_justification(
             &td,
             trial_id ^ 0xDEC0_A1ED,
             "Finite-sample without-replacement target permutation control. Rows are exchangeable but not independent after conditioning on the generated vectors. The PID2 atoms are descriptive randomization-control scores, not i.i.d. population estimates.",
+            pid_resource_contract.budget(),
         )?;
         pc.push(coupled.pairwise_mi);
         pd.push(control.pairwise_mi);
@@ -2756,6 +2937,8 @@ pub fn run_continuous_sign_parity_justification(
     Ok(ContinuousSignParityJustificationResult {
         schema: CONTINUOUS_PID_STUDY_SCHEMA,
         pid_question: PidQuestionSpec::continuous_sign_parity(),
+        pid_execution_identity,
+        pid_resource_contract,
         study_protocol: JustificationStudyProtocol::continuous_sign_parity(),
         trials,
         n,
@@ -3617,6 +3800,40 @@ mod tests {
         assert_eq!(serialized["pid_question"]["evaluator_units"], "Nats");
         assert_eq!(serialized["pid_question"]["atom_aggregate_units"], "Bits");
         assert_eq!(serialized["pid_question"]["source_count"], 2);
+        assert!(serialized["pid_question"]
+            .get("pid_core_software_identity")
+            .is_none());
+        assert_eq!(
+            serialized["pid_execution_identity"]["dependency_selection"]["git_revision"],
+            PID_RS_REVISION
+        );
+        assert_eq!(
+            serialized["pid_execution_identity"]["software_identity"]["package_name"],
+            "pid-core"
+        );
+        assert_eq!(
+            serialized["pid_execution_identity"]["software_identity"]["package_version"],
+            PID_RS_VERSION
+        );
+        assert_eq!(
+            serialized["pid_execution_identity"]["software_identity"]["attestation"],
+            "none"
+        );
+        assert_eq!(
+            serialized["pid_resource_contract"]["budget"]["max_threads"],
+            PID_STUDY_RESOURCE_MAX_THREADS
+        );
+        assert_eq!(
+            serialized["pid_resource_contract"]["budget"]["max_bytes"],
+            PID_STUDY_RESOURCE_MAX_BYTES
+        );
+        assert_eq!(
+            serialized["pid_resource_contract"]["budget"]["max_pairwise_distances"],
+            PID_STUDY_RESOURCE_MAX_PAIRWISE_DISTANCES
+        );
+        assert!(r.pid_execution_identity().package_and_version_matched());
+        assert!(r.pid_execution_identity().workspace_git_revision_matched());
+        assert!(r.pid_execution_identity().pid_core_package_subtree_clean());
         assert_eq!(
             serialized["pid_question"]["input_law"]["semantic_id"],
             "galadriel.law.categorical-xor-iid-fair-bits.v1"
@@ -3695,6 +3912,18 @@ mod tests {
     fn pid_question_specs_keep_categorical_and_continuous_functionals_distinct() {
         let categorical = PidQuestionSpec::categorical_xor();
         let continuous = PidQuestionSpec::continuous_sign_parity();
+        let resource_contract = PidStudyResourceContract::fixed().unwrap();
+        assert_eq!(
+            resource_contract.budget(),
+            ResourceBudget::new(
+                PID_STUDY_RESOURCE_MAX_BYTES,
+                PID_STUDY_RESOURCE_MAX_PAIRWISE_DISTANCES,
+                PID_STUDY_RESOURCE_MAX_OPERATIONS_HINT,
+                PID_STUDY_RESOURCE_MAX_THREADS,
+            )
+            .unwrap()
+        );
+        assert!(resource_contract.scope().contains("per evaluator call"));
 
         assert_ne!(categorical.functional(), continuous.functional());
         assert_ne!(categorical.route(), continuous.route());
@@ -3841,11 +4070,11 @@ mod tests {
         assert_eq!(continuous.route().method_id(), "pid.continuous-pid2");
         assert_eq!(
             continuous.route().api_route(),
-            "pid_core::experimental::continuous::pid2_isx_report"
+            "pid_core::experimental::continuous::pid2_isx_report_with_budget"
         );
         assert_eq!(
             categorical.route().api_route(),
-            "pid_core::stable::categorical::discrete_sxpid2"
+            "pid_core::stable::categorical::discrete_sxpid2_with_budget"
         );
         assert_eq!(
             categorical.route().feature_gate(),
@@ -3871,6 +4100,12 @@ mod tests {
             categorical.pid_core_dependency().git_revision(),
             PID_RS_REVISION
         );
+        assert!(categorical_json
+            .as_object()
+            .is_some_and(|object| !object.contains_key("pid_core_software_identity")));
+        assert!(continuous_json
+            .as_object()
+            .is_some_and(|object| !object.contains_key("pid_core_software_identity")));
     }
 
     #[test]
@@ -3895,11 +4130,13 @@ mod tests {
                 ("synergy", &coupled.syn, &control.syn),
             ] {
                 assert!(
-                    (coupled_atom.informative - control_atom.informative).abs() < 1e-12,
+                    (coupled_atom.informative_nats() - control_atom.informative_nats()).abs()
+                        < 1e-12,
                     "fixed source rows must preserve the MGW informative {coordinate} atom"
                 );
                 response_specific_misinformation_observed |=
-                    (coupled_atom.misinformative - control_atom.misinformative).abs() > 1e-9;
+                    (coupled_atom.misinformative_nats() - control_atom.misinformative_nats()).abs()
+                        > 1e-9;
             }
         }
         assert!(
@@ -3954,6 +4191,25 @@ mod tests {
         assert_eq!(serialized["pid_question"]["evaluator_units"], "Nats");
         assert_eq!(serialized["pid_question"]["atom_aggregate_units"], "Nats");
         assert_eq!(serialized["pid_trials"][0]["units"], "Nats");
+        assert_eq!(
+            serialized["pid_execution_identity"]["dependency_selection"]["git_revision"],
+            PID_RS_REVISION
+        );
+        assert!(r.pid_execution_identity().package_and_version_matched());
+        assert!(r.pid_execution_identity().workspace_git_revision_matched());
+        assert!(r.pid_execution_identity().pid_core_package_subtree_clean());
+        assert_eq!(
+            serialized["pid_resource_contract"]["budget"]["max_threads"],
+            PID_STUDY_RESOURCE_MAX_THREADS
+        );
+        assert_eq!(
+            serialized["pid_resource_contract"]["budget"]["max_operations_hint"],
+            serde_json::json!(PID_STUDY_RESOURCE_MAX_OPERATIONS_HINT)
+        );
+        assert!(r.pid_trials().iter().all(|trial| {
+            trial.coupled().resource_budget == r.pid_resource_contract().budget()
+                && trial.permutation_control().resource_budget == r.pid_resource_contract().budget()
+        }));
         assert_eq!(
             serialized["study_protocol"]["generation_seed_xor"],
             0x516E_9A21_u64
@@ -4136,14 +4392,17 @@ mod tests {
             )
         })
         .unwrap();
-        let report = pid2_isx_report(
+        let resource_contract = PidStudyResourceContract::fixed().unwrap();
+        let report = pid2_isx_report_with_budget(
             am.as_ref(),
             bm.as_ref(),
             tm.as_ref(),
             &Pid2Config::assume_regular_full_dimensional(),
             &provenance,
+            resource_contract.budget(),
         )
         .unwrap();
+        assert_eq!(report.resource_budget, resource_contract.budget());
         let executed_constituents = [
             report.mi_s1_t_report.resource_estimate.pairwise_distances,
             report.mi_s2_t_report.resource_estimate.pairwise_distances,

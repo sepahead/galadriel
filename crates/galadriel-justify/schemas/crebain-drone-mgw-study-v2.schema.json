@@ -1,0 +1,1869 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+  "title": "Galadriel CREBAIN drone categorical-MGW study v2",
+  "description": "Closed wire contract for the build-identified output of galadriel-crebain-mgw --format json. This schema describes a deterministic categorical conformance study, not a statistical-inference result or an authorization record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "machine_schema",
+    "scientific_status",
+    "authority_boundary",
+    "fixture_identity",
+    "evaluator_adaptation",
+    "producer_source_errata",
+    "pid_core_software_identity",
+    "pid_core_source_reconciliation",
+    "fixture_validation",
+    "primary_question",
+    "exploratory_question",
+    "method_eligibility",
+    "estimand_graph",
+    "resource_receipt",
+    "atom_interpretation",
+    "pid2",
+    "pid3",
+    "algebra_checks",
+    "interpretation_guard"
+  ],
+  "properties": {
+    "schema": {
+      "const": "galadriel.crebain-drone-mgw-study.v2"
+    },
+    "machine_schema": {
+      "$ref": "#/$defs/MachineSchemaReceipt"
+    },
+    "scientific_status": {
+      "const": "deterministic categorical conformance law, not statistical inference"
+    },
+    "authority_boundary": {
+      "$ref": "#/$defs/AuthorityBoundary"
+    },
+    "fixture_identity": {
+      "$ref": "#/$defs/FixtureIdentity"
+    },
+    "evaluator_adaptation": {
+      "$ref": "#/$defs/EvaluatorAdaptation"
+    },
+    "producer_source_errata": {
+      "$ref": "#/$defs/ProducerSourceErrata"
+    },
+    "pid_core_software_identity": {
+      "$ref": "#/$defs/SoftwareIdentity"
+    },
+    "pid_core_source_reconciliation": {
+      "$ref": "#/$defs/SourceReconciliation"
+    },
+    "fixture_validation": {
+      "$ref": "#/$defs/FixtureValidation"
+    },
+    "primary_question": {
+      "$ref": "#/$defs/PrimaryQuestion"
+    },
+    "exploratory_question": {
+      "$ref": "#/$defs/ExploratoryQuestion"
+    },
+    "method_eligibility": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/MethodEligibility"
+      }
+    },
+    "estimand_graph": {
+      "$ref": "#/$defs/EstimandGraph"
+    },
+    "resource_receipt": {
+      "$ref": "#/$defs/ResourceReceipt"
+    },
+    "atom_interpretation": {
+      "$ref": "#/$defs/AtomInterpretationReceipt"
+    },
+    "pid2": {
+      "$ref": "#/$defs/Pid2Result"
+    },
+    "pid3": {
+      "$ref": "#/$defs/Pid3Result"
+    },
+    "algebra_checks": {
+      "$ref": "#/$defs/AlgebraChecks"
+    },
+    "interpretation_guard": {
+      "$ref": "#/$defs/Text"
+    }
+  },
+  "$defs": {
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "GitSha1": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "Count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "PositiveCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "Probability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "Nats": {
+      "type": "number",
+      "minimum": -100,
+      "maximum": 100
+    },
+    "ErrorNats": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 0.000001
+    },
+    "BitVector": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "integer",
+        "enum": [0, 1]
+      }
+    },
+    "AuthorityBoundary": {
+      "const": "record-only advisory research evidence. For fixed admitted authority inputs, Haldir authorization, trusted-state policy, and plant-command outputs are identical across PID record states. Audit records may vary. No operator-behavior noninterference is claimed"
+    },
+    "MachineSchemaReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identifier",
+        "dialect",
+        "canonical_id",
+        "repository_path",
+        "sha256",
+        "bytes",
+        "closed_world_required",
+        "validation_checker",
+        "scope"
+      ],
+      "properties": {
+        "identifier": {
+          "const": "galadriel.crebain-drone-mgw-study.v2"
+        },
+        "dialect": {
+          "const": "https://json-schema.org/draft/2020-12/schema"
+        },
+        "canonical_id": {
+          "const": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+        },
+        "repository_path": {
+          "const": "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "closed_world_required": {
+          "const": true
+        },
+        "validation_checker": {
+          "const": "repo_work/check_crebain_mgw_schema.py"
+        },
+        "scope": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "FixtureIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer_repository",
+        "producer_revision",
+        "producer_path",
+        "fixture_sha256",
+        "fixture_bytes",
+        "analysis_manifest_sha256",
+        "pid_core_repository",
+        "producer_registered_pid_core_revision",
+        "actual_pid_core_version",
+        "actual_pid_core_revision",
+        "mutation_policy"
+      ],
+      "properties": {
+        "producer_repository": {
+          "const": "https://github.com/sepahead/crebain"
+        },
+        "producer_revision": {
+          "const": "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d"
+        },
+        "producer_path": {
+          "const": "src-tauri/tests/fixtures/crebain_drone_mgw_v1.json"
+        },
+        "fixture_sha256": {
+          "const": "82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda"
+        },
+        "fixture_bytes": {
+          "const": 64218
+        },
+        "analysis_manifest_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "pid_core_repository": {
+          "const": "https://github.com/sepahead/pid-rs"
+        },
+        "producer_registered_pid_core_revision": {
+          "const": "1cd2424f7967e1752dcc8e53859e8fdad3566f51"
+        },
+        "actual_pid_core_version": {
+          "const": "0.9.0"
+        },
+        "actual_pid_core_revision": {
+          "const": "bc3aa80fb6025e709c2906a08bce25a4fac40578"
+        },
+        "mutation_policy": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "EvaluatorAdaptation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer_registered_revision",
+        "actual_evaluator_revision",
+        "revision_relation",
+        "api_change_review",
+        "estimand_preservation",
+        "schema_consequence",
+        "verification_scope"
+      ],
+      "properties": {
+        "producer_registered_revision": {
+          "const": "1cd2424f7967e1752dcc8e53859e8fdad3566f51"
+        },
+        "actual_evaluator_revision": {
+          "const": "bc3aa80fb6025e709c2906a08bce25a4fac40578"
+        },
+        "revision_relation": {
+          "$ref": "#/$defs/Text"
+        },
+        "api_change_review": {
+          "$ref": "#/$defs/Text"
+        },
+        "estimand_preservation": {
+          "$ref": "#/$defs/Text"
+        },
+        "schema_consequence": {
+          "$ref": "#/$defs/Text"
+        },
+        "verification_scope": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "ProducerSourceErratum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_surface",
+        "json_pointer",
+        "frozen_literal",
+        "inspected_source_revision",
+        "inspected_source_locator",
+        "corrected_statement",
+        "scientific_or_operational_impact",
+        "disposition"
+      ],
+      "properties": {
+        "source_surface": {
+          "enum": ["analysis_manifest", "fixture_rows"]
+        },
+        "json_pointer": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 512,
+          "pattern": "^/"
+        },
+        "frozen_literal": {
+          "$ref": "#/$defs/Text"
+        },
+        "inspected_source_revision": {
+          "$ref": "#/$defs/Text"
+        },
+        "inspected_source_locator": {
+          "$ref": "#/$defs/Text"
+        },
+        "corrected_statement": {
+          "$ref": "#/$defs/Text"
+        },
+        "scientific_or_operational_impact": {
+          "$ref": "#/$defs/Text"
+        },
+        "disposition": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "ProducerSourceErrata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture_bytes_retained_unchanged",
+        "entries",
+        "every_frozen_literal_matched_before_correction",
+        "policy"
+      ],
+      "properties": {
+        "fixture_bytes_retained_unchanged": {
+          "const": true
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ProducerSourceErratum"
+          }
+        },
+        "every_frozen_literal_matched_before_correction": {
+          "const": true
+        },
+        "policy": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "PublicApiSignatureIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["epoch", "revision", "scope", "status"],
+      "properties": {
+        "epoch": {
+          "const": 0
+        },
+        "revision": {
+          "const": 3
+        },
+        "scope": {
+          "const": "proposed_release_scope_profiles"
+        },
+        "status": {
+          "const": "pre_1_0_review"
+        }
+      }
+    },
+    "WorkspaceGitSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "commit_sha1", "working_tree_scope", "working_tree"],
+      "properties": {
+        "kind": {
+          "const": "workspace_git"
+        },
+        "commit_sha1": {
+          "const": "bc3aa80fb6025e709c2906a08bce25a4fac40578"
+        },
+        "working_tree_scope": {
+          "const": "crates/pid-core"
+        },
+        "working_tree": {
+          "const": "clean"
+        }
+      }
+    },
+    "BuildIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rustc_version",
+        "target_triple",
+        "profile",
+        "opt_level",
+        "debug_information",
+        "enabled_features"
+      ],
+      "properties": {
+        "rustc_version": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 256,
+          "pattern": "^rustc "
+        },
+        "target_triple": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "opt_level": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16,
+          "pattern": "^[A-Za-z0-9]+$"
+        },
+        "debug_information": {
+          "type": "boolean"
+        },
+        "enabled_features": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        }
+      }
+    },
+    "ReferenceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "repository_path",
+        "schema",
+        "schema_revision",
+        "digest_scope",
+        "canonical_json_sha256",
+        "role"
+      ],
+      "properties": {
+        "kind": {
+          "enum": ["method_catalog", "proposed_release_scope"]
+        },
+        "repository_path": {
+          "enum": ["method-catalog.json", "release-scope-1.0.json"]
+        },
+        "schema": {
+          "enum": ["pid-rs/method-catalog", "pid-rs/release-scope"]
+        },
+        "schema_revision": {
+          "const": 1
+        },
+        "digest_scope": {
+          "const": "sha256_of_canonical_file_bytes"
+        },
+        "canonical_json_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "role": {
+          "const": "forensic_reference_only"
+        }
+      }
+    },
+    "SoftwareIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity_format",
+        "package_name",
+        "package_version",
+        "public_rust_api_signature_identity",
+        "source",
+        "build",
+        "reference_artifacts",
+        "attestation"
+      ],
+      "properties": {
+        "identity_format": {
+          "const": 1
+        },
+        "package_name": {
+          "const": "pid-core"
+        },
+        "package_version": {
+          "const": "0.9.0"
+        },
+        "public_rust_api_signature_identity": {
+          "$ref": "#/$defs/PublicApiSignatureIdentity"
+        },
+        "source": {
+          "$ref": "#/$defs/WorkspaceGitSource"
+        },
+        "build": {
+          "$ref": "#/$defs/BuildIdentity"
+        },
+        "reference_artifacts": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ReferenceArtifact"
+          }
+        },
+        "attestation": {
+          "const": "none"
+        }
+      }
+    },
+    "SourceReconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_revision",
+        "observed_source",
+        "pid_core_package_subtree_clean_revision_matched",
+        "policy"
+      ],
+      "properties": {
+        "expected_revision": {
+          "const": "bc3aa80fb6025e709c2906a08bce25a4fac40578"
+        },
+        "observed_source": {
+          "$ref": "#/$defs/WorkspaceGitSource"
+        },
+        "pid_core_package_subtree_clean_revision_matched": {
+          "const": true
+        },
+        "policy": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "FixtureValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "row_count",
+        "unique_episode_count",
+        "cell_counts",
+        "row_window_timestamps_matched",
+        "bounded_fusion_summary_receipts",
+        "synthetic_source_rows_reconstructed",
+        "latent_truth_target_rows_reconstructed",
+        "row_order_digest_algorithm",
+        "row_order_sha256",
+        "inference_claim"
+      ],
+      "properties": {
+        "row_count": {
+          "const": 64
+        },
+        "unique_episode_count": {
+          "const": 64
+        },
+        "cell_counts": {
+          "const": [8, 8, 8, 8, 8, 8, 8, 8]
+        },
+        "row_window_timestamps_matched": {
+          "const": 64
+        },
+        "bounded_fusion_summary_receipts": {
+          "const": 64
+        },
+        "synthetic_source_rows_reconstructed": {
+          "const": 64
+        },
+        "latent_truth_target_rows_reconstructed": {
+          "const": 64
+        },
+        "row_order_digest_algorithm": {
+          "$ref": "#/$defs/Text"
+        },
+        "row_order_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "inference_claim": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "ReferenceEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_id", "role", "complete_team", "title", "locator", "boundary"],
+      "properties": {
+        "reference_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "role": {
+          "enum": [
+            "categorical_shared_exclusions_functional",
+            "part_whole_logical_derivation",
+            "original_antichain_lattice",
+            "comparator_functional_only",
+            "estimator_implementation_basis_only",
+            "continuous_functional_only",
+            "general_construction_not_evaluated",
+            "estimator_definition",
+            "diagnostic_definition",
+            "objective_composition",
+            "axiomatic_caveat"
+          ]
+        },
+        "complete_team": {
+          "$ref": "#/$defs/Text"
+        },
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 512,
+          "pattern": "^https://"
+        },
+        "boundary": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "ReferenceEdges": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/ReferenceEdge"
+      }
+    },
+    "PrimaryQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question_id",
+        "galadriel_functional_alias",
+        "upstream_method_catalog_id",
+        "reference_edges",
+        "axiomatic_caveat_edges",
+        "evaluator_route",
+        "ordered_sources",
+        "target",
+        "target_origin",
+        "law",
+        "output_coordinates",
+        "units",
+        "status",
+        "authority_boundary"
+      ],
+      "properties": {
+        "question_id": {
+          "const": "crebain-drone-horizontal-incursion-mgw-pid2-v2"
+        },
+        "galadriel_functional_alias": {
+          "const": "functional.shared-exclusions.mgw-categorical"
+        },
+        "upstream_method_catalog_id": {
+          "const": "shared-exclusions.categorical"
+        },
+        "reference_edges": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ReferenceEdge"
+          }
+        },
+        "axiomatic_caveat_edges": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ReferenceEdge"
+          }
+        },
+        "evaluator_route": {
+          "const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"
+        },
+        "ordered_sources": {
+          "const": ["visual_north_plane_crossed", "radar_east_plane_crossed"]
+        },
+        "target": {
+          "const": "horizontal_incursion"
+        },
+        "target_origin": {
+          "$ref": "#/$defs/Text"
+        },
+        "law": {
+          "$ref": "#/$defs/Text"
+        },
+        "output_coordinates": {
+          "$ref": "#/$defs/Text"
+        },
+        "units": {
+          "const": "nats"
+        },
+        "status": {
+          "$ref": "#/$defs/Text"
+        },
+        "authority_boundary": {
+          "$ref": "#/$defs/AuthorityBoundary"
+        }
+      }
+    },
+    "ExploratoryQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question_id",
+        "galadriel_functional_alias",
+        "upstream_method_catalog_id",
+        "reference_edges",
+        "axiomatic_caveat_edges",
+        "evaluator_route",
+        "ordered_sources",
+        "target",
+        "target_origin",
+        "law",
+        "output_coordinates",
+        "units",
+        "status",
+        "authority_boundary"
+      ],
+      "properties": {
+        "question_id": {
+          "const": "crebain-drone-volumetric-incursion-mgw-pid3-v2"
+        },
+        "galadriel_functional_alias": {
+          "const": "functional.shared-exclusions.mgw-categorical"
+        },
+        "upstream_method_catalog_id": {
+          "const": "shared-exclusions.categorical"
+        },
+        "reference_edges": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ReferenceEdge"
+          }
+        },
+        "axiomatic_caveat_edges": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ReferenceEdge"
+          }
+        },
+        "evaluator_route": {
+          "const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+        },
+        "ordered_sources": {
+          "const": [
+            "visual_north_plane_crossed",
+            "radar_east_plane_crossed",
+            "acoustic_up_plane_crossed"
+          ]
+        },
+        "target": {
+          "const": "volumetric_incursion"
+        },
+        "target_origin": {
+          "$ref": "#/$defs/Text"
+        },
+        "law": {
+          "$ref": "#/$defs/Text"
+        },
+        "output_coordinates": {
+          "$ref": "#/$defs/Text"
+        },
+        "units": {
+          "const": "nats"
+        },
+        "status": {
+          "$ref": "#/$defs/Text"
+        },
+        "authority_boundary": {
+          "$ref": "#/$defs/AuthorityBoundary"
+        }
+      }
+    },
+    "MethodEligibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_id",
+        "object",
+        "object_kind",
+        "study_role",
+        "execution",
+        "estimand_or_output",
+        "assumptions_or_reason",
+        "evaluator_route",
+        "reference_edges",
+        "fallback_policy"
+      ],
+      "properties": {
+        "object_id": {
+          "enum": [
+            "shared-exclusions.categorical",
+            "pid-core/categorical-raw-row-plugin-mgw-pid2",
+            "pid-core/categorical-raw-row-plugin-mgw-pid3",
+            "pid.imin",
+            "pid.broja-two-source-external",
+            "pid.general-schick-poland-2021",
+            "shared-exclusions.continuous-ehrlich-functional",
+            "shared-exclusions.continuous-ehrlich-knn-estimator",
+            "mutual-information.ksg1-report",
+            "co-information.discrete",
+            "o-information.discrete",
+            "galadriel.normalized-innovation-squared",
+            "galadriel.two-sided-cusum",
+            "galadriel.signed-pearson-correlation",
+            "infomorphic-objective.pnas-bivariate-2025",
+            "infomorphic-objective.iclr-three-input-2025"
+          ]
+        },
+        "object": {
+          "$ref": "#/$defs/Text"
+        },
+        "object_kind": {
+          "enum": ["functional", "evaluator", "estimator", "diagnostic", "objective_composition"]
+        },
+        "study_role": {
+          "enum": [
+            "primary",
+            "exploratory",
+            "comparator",
+            "reference_boundary",
+            "separate_operational_diagnostic",
+            "downstream_only"
+          ]
+        },
+        "execution": {
+          "enum": ["produced", "not_requested", "inapplicable", "not_evaluated"]
+        },
+        "estimand_or_output": {
+          "$ref": "#/$defs/Text"
+        },
+        "assumptions_or_reason": {
+          "$ref": "#/$defs/Text"
+        },
+        "evaluator_route": {
+          "enum": [
+            null,
+            "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+            "pid_core::stable::categorical::discrete_sxpid3_with_budget",
+            "galadriel-core default detector"
+          ]
+        },
+        "reference_edges": {
+          "$ref": "#/$defs/ReferenceEdges"
+        },
+        "fallback_policy": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "GraphNodeId": {
+      "enum": [
+        "producer.crebain-fixture",
+        "law.and2",
+        "law.and3",
+        "pmf.horizontal",
+        "pmf.volumetric",
+        "functional.shared-exclusions.mgw-categorical",
+        "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+        "pid_core::stable::categorical::discrete_sxpid3_with_budget",
+        "output.pid2-pointwise",
+        "output.pid2-averaged",
+        "output.pid3-pointwise",
+        "output.pid3-averaged",
+        "receipt.validation",
+        "view.advisory-only"
+      ]
+    },
+    "GraphNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_id", "kind", "label", "boundary"],
+      "properties": {
+        "node_id": {
+          "$ref": "#/$defs/GraphNodeId"
+        },
+        "kind": {
+          "enum": [
+            "producer_fixture",
+            "declared_law",
+            "empirical_pmf",
+            "functional",
+            "evaluator",
+            "pointwise_output",
+            "averaged_output",
+            "validation_receipt",
+            "advisory_view"
+          ]
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "boundary": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "GraphEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "kind", "boundary"],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/GraphNodeId"
+        },
+        "to": {
+          "$ref": "#/$defs/GraphNodeId"
+        },
+        "kind": {
+          "enum": [
+            "declares",
+            "encoded_as",
+            "implemented_by",
+            "evaluated_by",
+            "emits",
+            "aggregates_into",
+            "checked_by",
+            "exposed_as"
+          ]
+        },
+        "boundary": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "EstimandGraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "graph_id",
+        "galadriel_functional_alias",
+        "upstream_method_catalog_id",
+        "pid2_evaluator_route",
+        "pid3_evaluator_route",
+        "nodes",
+        "edges",
+        "all_edge_endpoints_resolved",
+        "declared_topological_order_validated",
+        "question_method_and_graph_identities_reconciled",
+        "operational_authority_node_or_edge_kind_absent",
+        "boundary"
+      ],
+      "properties": {
+        "graph_id": {
+          "const": "galadriel.crebain-mgw-estimand-graph.v1"
+        },
+        "galadriel_functional_alias": {
+          "const": "functional.shared-exclusions.mgw-categorical"
+        },
+        "upstream_method_catalog_id": {
+          "const": "shared-exclusions.categorical"
+        },
+        "pid2_evaluator_route": {
+          "const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"
+        },
+        "pid3_evaluator_route": {
+          "const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/GraphNode"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "minItems": 20,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/GraphEdge"
+          }
+        },
+        "all_edge_endpoints_resolved": {
+          "const": true
+        },
+        "declared_topological_order_validated": {
+          "const": true
+        },
+        "question_method_and_graph_identities_reconciled": {
+          "const": true
+        },
+        "operational_authority_node_or_edge_kind_absent": {
+          "const": true
+        },
+        "boundary": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "ResourceBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_bytes", "max_pairwise_distances", "max_operations_hint", "max_threads"],
+      "properties": {
+        "max_bytes": {
+          "const": 67108864
+        },
+        "max_pairwise_distances": {
+          "const": 1
+        },
+        "max_operations_hint": {
+          "const": 100000000
+        },
+        "max_threads": {
+          "const": 1
+        }
+      }
+    },
+    "ResourceEstimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimated_bytes", "pairwise_distances", "operations_hint"],
+      "properties": {
+        "estimated_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "pairwise_distances": {
+          "const": 0
+        },
+        "operations_hint": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000000
+        }
+      }
+    },
+    "ResourceCall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "call_id",
+        "route",
+        "source_count",
+        "row_count",
+        "pointwise_included",
+        "estimate",
+        "preflight_passed"
+      ],
+      "properties": {
+        "call_id": {
+          "enum": [
+            "primary-horizontal-pid2",
+            "exploratory-volumetric-pid3",
+            "fixed-source-target-rotation-pid2",
+            "fixed-source-target-rotation-pid3",
+            "changed-source-premise-control-pid2",
+            "named-source-wiring-control-pid2",
+            "named-source-wiring-control-pid3-source-zero",
+            "named-source-wiring-control-pid3-source-one",
+            "named-source-wiring-control-pid3-source-two"
+          ]
+        },
+        "route": {
+          "enum": [
+            "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+            "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+          ]
+        },
+        "source_count": {
+          "type": "integer",
+          "enum": [2, 3]
+        },
+        "row_count": {
+          "type": "integer",
+          "enum": [4, 8, 64]
+        },
+        "pointwise_included": {
+          "const": true
+        },
+        "estimate": {
+          "$ref": "#/$defs/ResourceEstimate"
+        },
+        "preflight_passed": {
+          "const": true
+        }
+      }
+    },
+    "ResourceReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["budget", "calls", "policy"],
+      "properties": {
+        "budget": {
+          "$ref": "#/$defs/ResourceBudget"
+        },
+        "calls": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ResourceCall"
+          }
+        },
+        "policy": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "UnsupportedInference": {
+      "enum": [
+        "intentional_deception",
+        "causal_effect",
+        "fault_attribution",
+        "per_source_responsibility",
+        "measure_independent_decomposition",
+        "unbiased_population_estimate"
+      ]
+    },
+    "AveragedInterpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_revision",
+        "aggregation_scope",
+        "context_requirement",
+        "decomposition_measure",
+        "coordinate_semantics",
+        "evidential_scope",
+        "guard_origin",
+        "not_established_by_atom_alone"
+      ],
+      "properties": {
+        "contract_revision": {
+          "const": 1
+        },
+        "aggregation_scope": {
+          "const": "empirical_pmf_average"
+        },
+        "context_requirement": {
+          "const": "containing_result_for_coordinate_and_realization_context"
+        },
+        "decomposition_measure": {
+          "const": "shared_exclusions_sxpid"
+        },
+        "coordinate_semantics": {
+          "const": "source_collection_antichain_mobius_contribution"
+        },
+        "evidential_scope": {
+          "const": "statistical_information_under_supplied_distribution"
+        },
+        "guard_origin": {
+          "const": "project_defined"
+        },
+        "not_established_by_atom_alone": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/UnsupportedInference"
+          }
+        }
+      }
+    },
+    "PointwiseInterpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_revision",
+        "aggregation_scope",
+        "context_requirement",
+        "decomposition_measure",
+        "coordinate_semantics",
+        "evidential_scope",
+        "guard_origin",
+        "not_established_by_atom_alone"
+      ],
+      "properties": {
+        "contract_revision": {
+          "const": 1
+        },
+        "aggregation_scope": {
+          "const": "pointwise_distinct_joint_realization"
+        },
+        "context_requirement": {
+          "const": "containing_result_for_coordinate_and_realization_context"
+        },
+        "decomposition_measure": {
+          "const": "shared_exclusions_sxpid"
+        },
+        "coordinate_semantics": {
+          "const": "source_collection_antichain_mobius_contribution"
+        },
+        "evidential_scope": {
+          "const": "statistical_information_under_supplied_distribution"
+        },
+        "guard_origin": {
+          "const": "project_defined"
+        },
+        "not_established_by_atom_alone": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/UnsupportedInference"
+          }
+        }
+      }
+    },
+    "AveragedAtom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["informative_nats", "misinformative_nats", "net_nats", "interpretation"],
+      "properties": {
+        "informative_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "misinformative_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "net_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "interpretation": {
+          "$ref": "#/$defs/AveragedInterpretation"
+        }
+      }
+    },
+    "PointwiseAtom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["informative_nats", "misinformative_nats", "net_nats", "interpretation"],
+      "properties": {
+        "informative_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "misinformative_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "net_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "interpretation": {
+          "$ref": "#/$defs/PointwiseInterpretation"
+        }
+      }
+    },
+    "PidInput2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["encoding", "observed_cardinalities"],
+      "properties": {
+        "encoding": {
+          "const": "Categorical"
+        },
+        "observed_cardinalities": {
+          "const": [2, 2, 2]
+        }
+      }
+    },
+    "PidInput3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["encoding", "observed_cardinalities"],
+      "properties": {
+        "encoding": {
+          "const": "Categorical"
+        },
+        "observed_cardinalities": {
+          "const": [2, 2, 2, 2]
+        }
+      }
+    },
+    "EmpiricalPmf2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_count",
+        "observed_joint_states",
+        "singleton_joint_states",
+        "low_count_joint_states",
+        "minimum_observed_count",
+        "maximum_observed_count",
+        "observed_coverage_indicator",
+        "population_caveat"
+      ],
+      "properties": {
+        "sample_count": {
+          "const": 64
+        },
+        "observed_joint_states": {
+          "const": 4
+        },
+        "singleton_joint_states": {
+          "const": 0
+        },
+        "low_count_joint_states": {
+          "const": 0
+        },
+        "minimum_observed_count": {
+          "const": 16
+        },
+        "maximum_observed_count": {
+          "const": 16
+        },
+        "observed_coverage_indicator": {
+          "$ref": "#/$defs/Probability"
+        },
+        "population_caveat": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "EmpiricalPmf3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_count",
+        "observed_joint_states",
+        "singleton_joint_states",
+        "low_count_joint_states",
+        "minimum_observed_count",
+        "maximum_observed_count",
+        "observed_coverage_indicator",
+        "population_caveat"
+      ],
+      "properties": {
+        "sample_count": {
+          "const": 64
+        },
+        "observed_joint_states": {
+          "const": 8
+        },
+        "singleton_joint_states": {
+          "const": 0
+        },
+        "low_count_joint_states": {
+          "const": 0
+        },
+        "minimum_observed_count": {
+          "const": 8
+        },
+        "maximum_observed_count": {
+          "const": 8
+        },
+        "observed_coverage_indicator": {
+          "$ref": "#/$defs/Probability"
+        },
+        "population_caveat": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "Pid2Pointwise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "s1",
+        "s2",
+        "t",
+        "empirical_count",
+        "empirical_probability",
+        "unq1",
+        "unq2",
+        "syn",
+        "red"
+      ],
+      "properties": {
+        "s1": {
+          "$ref": "#/$defs/BitVector"
+        },
+        "s2": {
+          "$ref": "#/$defs/BitVector"
+        },
+        "t": {
+          "$ref": "#/$defs/BitVector"
+        },
+        "empirical_count": {
+          "const": 16
+        },
+        "empirical_probability": {
+          "$ref": "#/$defs/Probability"
+        },
+        "unq1": {
+          "$ref": "#/$defs/PointwiseAtom"
+        },
+        "unq2": {
+          "$ref": "#/$defs/PointwiseAtom"
+        },
+        "syn": {
+          "$ref": "#/$defs/PointwiseAtom"
+        },
+        "red": {
+          "$ref": "#/$defs/PointwiseAtom"
+        }
+      }
+    },
+    "Pid2Result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pointwise",
+        "pointwise_included",
+        "unq1",
+        "unq2",
+        "syn",
+        "red",
+        "mi_s1_t",
+        "mi_s2_t",
+        "mi_s1s2_t",
+        "input",
+        "empirical_pmf"
+      ],
+      "properties": {
+        "pointwise": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Pid2Pointwise"
+          }
+        },
+        "pointwise_included": {
+          "const": true
+        },
+        "unq1": {
+          "$ref": "#/$defs/AveragedAtom"
+        },
+        "unq2": {
+          "$ref": "#/$defs/AveragedAtom"
+        },
+        "syn": {
+          "$ref": "#/$defs/AveragedAtom"
+        },
+        "red": {
+          "$ref": "#/$defs/AveragedAtom"
+        },
+        "mi_s1_t": {
+          "$ref": "#/$defs/Nats"
+        },
+        "mi_s2_t": {
+          "$ref": "#/$defs/Nats"
+        },
+        "mi_s1s2_t": {
+          "$ref": "#/$defs/Nats"
+        },
+        "input": {
+          "$ref": "#/$defs/PidInput2"
+        },
+        "empirical_pmf": {
+          "$ref": "#/$defs/EmpiricalPmf2"
+        }
+      }
+    },
+    "Pid3Pointwise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["s0", "s1", "s2", "t", "empirical_count", "empirical_probability", "atoms"],
+      "properties": {
+        "s0": {
+          "$ref": "#/$defs/BitVector"
+        },
+        "s1": {
+          "$ref": "#/$defs/BitVector"
+        },
+        "s2": {
+          "$ref": "#/$defs/BitVector"
+        },
+        "t": {
+          "$ref": "#/$defs/BitVector"
+        },
+        "empirical_count": {
+          "const": 8
+        },
+        "empirical_probability": {
+          "$ref": "#/$defs/Probability"
+        },
+        "atoms": {
+          "type": "array",
+          "minItems": 18,
+          "maxItems": 18,
+          "items": {
+            "$ref": "#/$defs/PointwiseAtom"
+          }
+        }
+      }
+    },
+    "Pid3Result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pointwise_included",
+        "antichains",
+        "atoms",
+        "mi_s0_t",
+        "mi_s1_t",
+        "mi_s2_t",
+        "mi_s0s1s2_t",
+        "subset_mis",
+        "input",
+        "empirical_pmf",
+        "pointwise"
+      ],
+      "properties": {
+        "pointwise_included": {
+          "const": true
+        },
+        "antichains": {
+          "const": [
+            [1],
+            [2],
+            [4],
+            [3],
+            [5],
+            [6],
+            [7],
+            [1, 2],
+            [1, 4],
+            [1, 6],
+            [2, 4],
+            [2, 5],
+            [3, 4],
+            [3, 5],
+            [3, 6],
+            [5, 6],
+            [1, 2, 4],
+            [3, 5, 6]
+          ]
+        },
+        "atoms": {
+          "type": "array",
+          "minItems": 18,
+          "maxItems": 18,
+          "items": {
+            "$ref": "#/$defs/AveragedAtom"
+          }
+        },
+        "mi_s0_t": {
+          "$ref": "#/$defs/Nats"
+        },
+        "mi_s1_t": {
+          "$ref": "#/$defs/Nats"
+        },
+        "mi_s2_t": {
+          "$ref": "#/$defs/Nats"
+        },
+        "mi_s0s1s2_t": {
+          "$ref": "#/$defs/Nats"
+        },
+        "subset_mis": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "$ref": "#/$defs/Nats"
+          }
+        },
+        "input": {
+          "$ref": "#/$defs/PidInput3"
+        },
+        "empirical_pmf": {
+          "$ref": "#/$defs/EmpiricalPmf3"
+        },
+        "pointwise": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Pid3Pointwise"
+          }
+        }
+      }
+    },
+    "AtomInterpretationReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "upstream_functional_catalog_id",
+        "upstream_interpretation_catalog_id",
+        "averaged",
+        "pointwise",
+        "pid2_pointwise_realizations",
+        "pid3_pointwise_realizations",
+        "pid3_canonical_antichains",
+        "pointwise_support_mass_and_averaging_matched",
+        "canonical_pointwise_realization_order_matched",
+        "pointwise_to_averaged_max_abs_error_nats",
+        "every_retained_atom_interpretation_matched",
+        "axiomatic_caveat_edges",
+        "axiomatic_boundary",
+        "galadriel_owned_additional_limits"
+      ],
+      "properties": {
+        "upstream_functional_catalog_id": {
+          "const": "shared-exclusions.categorical"
+        },
+        "upstream_interpretation_catalog_id": {
+          "const": "software.sxpid-interpretation-contract"
+        },
+        "averaged": {
+          "$ref": "#/$defs/AveragedInterpretation"
+        },
+        "pointwise": {
+          "$ref": "#/$defs/PointwiseInterpretation"
+        },
+        "pid2_pointwise_realizations": {
+          "const": 4
+        },
+        "pid3_pointwise_realizations": {
+          "const": 8
+        },
+        "pid3_canonical_antichains": {
+          "const": 18
+        },
+        "pointwise_support_mass_and_averaging_matched": {
+          "const": true
+        },
+        "canonical_pointwise_realization_order_matched": {
+          "const": true
+        },
+        "pointwise_to_averaged_max_abs_error_nats": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.000000000001
+        },
+        "every_retained_atom_interpretation_matched": {
+          "const": true
+        },
+        "axiomatic_caveat_edges": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ReferenceEdge"
+          }
+        },
+        "axiomatic_boundary": {
+          "$ref": "#/$defs/Text"
+        },
+        "galadriel_owned_additional_limits": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        }
+      }
+    },
+    "Pid2ClosedForm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "law",
+        "redundancy_informative_formula",
+        "redundancy_misinformative_formula",
+        "unique_informative_formula",
+        "unique_misinformative_formula",
+        "synergy_informative_formula",
+        "synergy_misinformative_formula",
+        "joint_information_formula",
+        "maximum_component_abs_error_nats",
+        "atom_sum_abs_error_nats",
+        "all_passed"
+      ],
+      "properties": {
+        "law": {
+          "const": "V and R are independent Bernoulli(1/2); T = V AND R"
+        },
+        "redundancy_informative_formula": {
+          "const": "ln(4/3)"
+        },
+        "redundancy_misinformative_formula": {
+          "const": "(1/2) ln(3/2)"
+        },
+        "unique_informative_formula": {
+          "const": "ln(3/2)"
+        },
+        "unique_misinformative_formula": {
+          "const": "(1/4) ln(3)"
+        },
+        "synergy_informative_formula": {
+          "const": "ln(4/3)"
+        },
+        "synergy_misinformative_formula": {
+          "const": "(1/4) ln(4/3)"
+        },
+        "joint_information_formula": {
+          "const": "h(1/4)"
+        },
+        "maximum_component_abs_error_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "atom_sum_abs_error_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "all_passed": {
+          "const": true
+        }
+      }
+    },
+    "FixedSourceSensitivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pid2_rotated_target_changed_rows",
+        "pid3_rotated_target_changed_rows",
+        "pid2_misinformative_max_abs_delta_nats",
+        "pid2_net_max_abs_delta_nats",
+        "pid3_misinformative_max_abs_delta_nats",
+        "pid3_net_max_abs_delta_nats",
+        "changed_source_informative_max_abs_delta_nats",
+        "rotated_pid3_minimum_net_nats",
+        "rotated_pid3_minimum_net_antichain",
+        "asymmetric_wiring_unique_one_nats",
+        "asymmetric_wiring_unique_two_nats",
+        "asymmetric_pid2_pointwise_named_field_max_abs_error_nats",
+        "asymmetric_pid3_source_and_atom_position_max_abs_error_nats",
+        "all_passed",
+        "boundary"
+      ],
+      "properties": {
+        "pid2_rotated_target_changed_rows": {
+          "const": 2
+        },
+        "pid3_rotated_target_changed_rows": {
+          "const": 2
+        },
+        "pid2_misinformative_max_abs_delta_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "pid2_net_max_abs_delta_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "pid3_misinformative_max_abs_delta_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "pid3_net_max_abs_delta_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "changed_source_informative_max_abs_delta_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "rotated_pid3_minimum_net_nats": {
+          "type": "number",
+          "minimum": -100,
+          "maximum": 0
+        },
+        "rotated_pid3_minimum_net_antichain": {
+          "const": [4]
+        },
+        "asymmetric_wiring_unique_one_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "asymmetric_wiring_unique_two_nats": {
+          "$ref": "#/$defs/Nats"
+        },
+        "asymmetric_pid2_pointwise_named_field_max_abs_error_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "asymmetric_pid3_source_and_atom_position_max_abs_error_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "all_passed": {
+          "const": true
+        },
+        "boundary": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "AlgebraChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pid2_self_redundancy_max_abs_error_nats",
+        "pid2_joint_reconstruction_abs_error_nats",
+        "pid3_downset_reconstruction_max_abs_error_nats",
+        "pid3_singleton_and_joint_identity_max_abs_error_nats",
+        "pid2_fixed_source_informative_max_abs_delta_nats",
+        "pid3_fixed_source_informative_max_abs_delta_nats",
+        "pid2_closed_form",
+        "pid3_and_law_mi_max_abs_error_nats",
+        "fixed_source_sensitivity",
+        "tolerance_nats",
+        "all_passed",
+        "caution"
+      ],
+      "properties": {
+        "pid2_self_redundancy_max_abs_error_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "pid2_joint_reconstruction_abs_error_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "pid3_downset_reconstruction_max_abs_error_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "pid3_singleton_and_joint_identity_max_abs_error_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "pid2_fixed_source_informative_max_abs_delta_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "pid3_fixed_source_informative_max_abs_delta_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "pid2_closed_form": {
+          "$ref": "#/$defs/Pid2ClosedForm"
+        },
+        "pid3_and_law_mi_max_abs_error_nats": {
+          "$ref": "#/$defs/ErrorNats"
+        },
+        "fixed_source_sensitivity": {
+          "$ref": "#/$defs/FixedSourceSensitivity"
+        },
+        "tolerance_nats": {
+          "const": 0.000000000001
+        },
+        "all_passed": {
+          "const": true
+        },
+        "caution": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    }
+  }
+}

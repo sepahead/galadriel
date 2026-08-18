@@ -1540,7 +1540,6 @@ pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_boundar
 pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_contract(&self) -> &'static str
 pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_density_regular(&self) -> bool
 pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_finite_information(&self) -> bool
-pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_intrinsic_dimension(&self) -> core::option::Option<usize>
 pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::tie_epsilon(&self) -> f64
 impl core::clone::Clone for galadriel_dependence::MiKsgEvaluatorConfigEvidence
 pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::clone(&self) -> galadriel_dependence::MiKsgEvaluatorConfigEvidence

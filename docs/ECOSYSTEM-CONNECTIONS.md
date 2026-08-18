@@ -39,14 +39,14 @@ that every Galadriel build needs the project.
 
 | Project | Direction | Status | Purpose |
 |---|---|---|---|
-| `pid-rs` | Upstream Rust library | Absent from the default CLI build. Its pinned `pid-core` crate is required by `galadriel-dependence`, `galadriel-justify`, the evaluation member, and the CLI `dependence` feature. `pid-core` resolves `pid-runlog` from the same revision. This connection is linked code, not a runtime service. | Supplies stable report-first KSG for the opt-in in-process/library MI companion and separate categorical MGW and continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID primitives for offline studies. |
+| `pid-rs` | Upstream Rust library | Absent from the default CLI build. Its pinned `pid-core` crate is required by `galadriel-dependence`, `galadriel-justify`, the evaluation member, and the CLI `dependence` feature. No resolved Galadriel feature profile contains `pid-runlog`. This connection is linked code, not a runtime service. | Supplies stable budgeted report-first KSG for the opt-in in-process/library MI companion and separate categorical MGW and continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID primitives for offline studies. |
 | NCP | Upstream Rust libraries and wire or transport contract | Absent from the default CLI build. `ncp-core` is required by `galadriel-ncp`, the evaluation member, and the CLI `ncp` feature. CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` also requires `ncp-zenoh`, Zenoh, and Tokio. | Supplies wire-0.8 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded JSONL path, and receiver. |
-| Crebain | External upstream producer relationship | No Cargo dependency. It is not required for demos, simulation, evaluation, or offline replay. Live use needs an authorized conforming producer. That producer does not have to be Crebain. | Serves as the inspected reference producer for observation and monitor sidecars and the retained registry fixture. |
-| Haldir | Prospective downstream record-only consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither required nor an enabled option. | Shows how a future consumer can record advisory evidence. Any later policy effect requires independent admission and **MUST** remain restrict-only. |
+| Crebain | External upstream producer and offline-fixture relationship | No Cargo dependency. It is not required for default demos, simulation, evaluation, replay, or live operation. Live use needs an authorized conforming producer. That producer need not be Crebain. `galadriel-justify` separately embeds one exact fixture as data. | Supplies a bounded 64-row, physically parameterized synthetic encoding of canonical AND2/AND3 laws. The target is generated from latent ENU truth without consulting sensor projections, fusion, Galadriel, or PID. It is external to fusion/PID, not producer-independent field truth. |
+| Haldir | Prospective downstream record-only consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither required nor an enabled option. | A future record may append advisory evidence only. Authorization and plant-command outputs must be identical with and without that record. Galadriel evidence cannot grant, revoke, restrict, or exercise authority. |
 | Prisoma | Prospective downstream immutable offline consumer | No dependency, adapter, route, or runtime edge in 0.9.0. It is neither required nor an enabled option. | Shows a possible immutable covariate or comparator import. Shared NCP or PID dependencies do not establish compatibility or independence. |
 | Engram and Paper2Brain | External application names and realm context | No dependency, API, process, adapter, route, or runtime edge. `engram/ncp` is an example realm string, not an application binding. | Separates the realm example from NCP, which is the linked wire and transport interface. The dated Paper2Brain observation records provenance only. |
 | ROS / ROS 2 | External robotics middleware | No dependency, message binding, topic, service, action, bridge, node, bag importer, or runtime edge. | Records that a future robotics adapter is a new and separately qualified interface. Sensor terms do not imply this interface. |
-| External authority or controller | Explicit non-edge | No command, control, credential, lease, watchdog, or authority path. It is neither required nor enabled. | Preserves advisory-only behavior. A separate future consumer can record evidence. Any policy effect requires independent admission and **MUST** remain restrict-only. |
+| External authority or controller | Explicit non-edge | No command, control, credential, lease, watchdog, or authority path. It is neither required nor enabled. | Preserves advisory-only behavior. A separate future consumer may record evidence, but this release authorizes no evidence-dependent policy effect. |
 
 Galadriel is the center node and has no self-edge.
 The active dependency and input graph is:
@@ -55,6 +55,7 @@ The active dependency and input graph is:
 pid-rs -> Galadriel                  dependence, evaluation, and offline justification paths
 NCP -> Galadriel                     NCP paths
 authorized conforming producer -> Galadriel   live use
+CREBAIN exact fixture -> Galadriel            offline categorical MGW study only
 ```
 
 Haldir is a prospective record-only consumer with no version 0.9.0 runtime edge.
@@ -84,13 +85,16 @@ It does not claim that each object was the mutable peer head on that date.
 
 | Repository | Retained audit-input object | Relation to the dated inspection cut |
 |---|---|---|
-| Crebain | `4c311900ade5668200a48d56fb191be1916b884a` | Historical compatibility fixture. `ECO-004` records a later mutable-head observation. |
+| Crebain | `4c311900ade5668200a48d56fb191be1916b884a` | Historical compatibility fixture. `ECO-004` records the later mutable-head observation. `ECO-016` binds the separate immutable drone-fixture source. |
 | Haldir | `5f7d183625a982741c51958e2d10bc12bb628ca0` | Retained T000 exact-commit snapshot. `ECO-005` starts the later mutable-head observation chain. |
-| Prisoma | `0968128062f30da5c04f3f31c23f6ce8e0d95d36` | Retained frozen-baseline inventory. `ECO-007` starts the later mutable-head observation chain; `ECO-015` is its current reinspection. |
+| Prisoma | `0968128062f30da5c04f3f31c23f6ce8e0d95d36` | Retained frozen-baseline inventory. `ECO-007` starts the later mutable-head observation chain. `ECO-017` is its current reinspection. |
 | Paper2Brain | `9845c31bc5bae4746120858037b27f9c9ed2f445` | Retained application inventory. `ECO-013` records the later mutable-head observation. |
 
 The dated observations do not replace these retained inputs.
 The retained inputs do not create a dependency, adapter, route, or runtime edge.
+`ECO-018` supersedes the active pid-rs dependency selection recorded by
+`ECO-001`. It does not rewrite that historical observation or the producer's
+immutable CREBAIN preregistration.
 
 ## Exact inspection cut
 
@@ -99,15 +103,19 @@ were observed on 2026-07-18.
 
 | Repository | Inspected object | Meaning for Galadriel 0.9.0 |
 |---|---|---|
-| pid-rs | `1cd2424f7967e1752dcc8e53859e8fdad3566f51` | Immutable `pid-core` library pin. Its manifest declares 1.0.0. No public v1 tag or published 1.x artifact is claimed. |
+| pid-rs historical selection | `1cd2424f7967e1752dcc8e53859e8fdad3566f51` | Superseded dependency observation retained because the immutable CREBAIN producer preregistration and historical 0.4-to-1.0 migration name this evaluator. It is not the current Cargo selection. |
+| pid-rs selected dependency | `bc3aa80fb6025e709c2906a08bce25a4fac40578` | Clean, remote-reachable immutable `pid-core` 0.9.0 selection recorded by `ECO-018`. No resolved Galadriel profile includes `pid-runlog`. |
 | NCP | `10492c81ac671ef1909962a9f1fede33781b9933` | Mutable upstream head inspected for topology. It is not the dependency pin. |
 | Crebain | `0a58a5b8dd799884ddb06f1308b1748216fab322` | Mutable producer head inspected for component alignment. It is not a reciprocal Galadriel pin. |
+| CREBAIN exact fixture source | immutable commit `6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d` | Clean remote commit that generated the embedded 64-row drone fixture. It adds an offline data edge only. |
 | Haldir discovery observation | remote `main` `0e94f61cfd5c78482198a765157571746a256181` | Mutable downstream design and status observation. No dependency, adapter, route, or runtime edge was found. |
 | Haldir later reinspection | remote `main` `dd3d8a1c993721f89a1edb04dec5247761c694ad` | Later 2026-07-18 observation of the same mutable branch. It replaces only the discovery-head reference, not frozen evidence. |
 | Haldir 2026-07-22 retained reinspection | remote `main` `c0e4b3d156500684329a92bcb16e0609894fd738` | A retained descendant observation. Its CH-T001 activation adds repository inventory and release evidence. It records no runtime or external-conformance change. |
 | Haldir 2026-07-23 reinspection | remote `main` `590ba767b32a27d9dd61a2462968306c1052434e` | A retained descendant observation. Its intervening changes affect audit, evidence, and release tooling only. It records no runtime or external-conformance change. |
+| Haldir 2026-08-18 record-only review | signed review commit `c19f9011e4919a5bc67fab5f90d6c8eefed4455b` | Defines fixed-input authorization and plant-command noninterference plus a prospective record-only audit seam. It is not merged `main`, an implemented adapter, or runtime qualification. |
 | Prisoma discovery observation | `63cff105e0e40281376e6f827d7782e9b351961a` | Downstream design and status inspection only. No runtime edge exists. |
 | Prisoma 2026-08-14 reinspection | remote `main` `efcad9943af818913702f11c47ed0c280a2a1f13` | Committed first-principles provenance/estimand redesign. It supersedes only the mutable-head reference and adds no dependency, adapter, route, or runtime edge. |
+| Prisoma 2026-08-17 reinspection | remote `main` `85f55c99564d1899f2e34c8412c41aaa9fc8f6c3` | Clean committed PID method-selection/publication contract and bounded pid-rs handoff. It supersedes only the preceding mutable-head reference and adds no dependency, adapter, route, or runtime edge. |
 | Paper2Brain | remote `main` `24e74b781a5bf8af069f69cbc2d0c42d89008211` | Mutable application inventory inspected on 2026-07-23. No Galadriel dependency, API, process, route, adapter, or runtime edge exists. |
 
 The local source inventory records three more non-edges.
@@ -118,7 +126,7 @@ External authority also has no code or runtime edge.
 The Paper2Brain object is inspection provenance.
 It is not a repository dependency pin.
 
-The release inspection cut retains all four Haldir observations.
+The release inspection cut retains all five Haldir observations.
 Commit
 `0e94f61cfd5c78482198a765157571746a256181` is an ancestor of
 `dd3d8a1c993721f89a1edb04dec5247761c694ad`.
@@ -126,6 +134,8 @@ That commit is an ancestor of
 `c0e4b3d156500684329a92bcb16e0609894fd738`.
 That commit is an ancestor of
 `590ba767b32a27d9dd61a2462968306c1052434e`.
+That commit is an ancestor of signed review commit
+`c19f9011e4919a5bc67fab5f90d6c8eefed4455b`.
 
 The first interval activates current-head qualification.
 It also starts CH-T001 repository-inventory work.
@@ -134,6 +144,8 @@ Its retained downstream-conformance disposition records no runtime-surface or
 external-conformance change.
 The third interval updates retained evidence and release tooling only.
 It adds no runtime surface or external-conformance claim.
+The final interval adds a design-only record path and a formal noninterference
+contract. It adds no runtime route, policy input, or command edge.
 
 Branch movement does not create a Galadriel dependency or integration. External
 heads can change after this cut. Galadriel binds only tracked release inputs and
@@ -143,22 +155,28 @@ Each newer Haldir observation replaces only the preceding mutable-head reference
 It does not rewrite an earlier observation. It also does not rewrite Haldir frozen
 audit material, Galadriel frozen evidence, or any historical object.
 
-The Prisoma reinspection likewise supersedes only `ECO-007` as the current
-mutable-head reference. It does not rewrite the earlier observation or the
-retained frozen-baseline input.
+The two Prisoma reinspections form `ECO-007 → ECO-015 → ECO-017`. Only the last
+is the current mutable-head reference. They do not rewrite an earlier observation
+or the retained frozen-baseline input. `ECO-016` separately supersedes the
+mutable CREBAIN head in `ECO-004` with the exact immutable source of the embedded
+fixture. That commit identity does not turn the data edge into a runtime edge.
+`ECO-018` separately supersedes only the active pid-rs selection in `ECO-001`.
+It preserves the older object as historical preregistration and migration
+provenance.
+`ECO-019` supersedes only the mutable Haldir reference in `ECO-012`. It records
+a signed review-branch object, not merged `main` or an implemented route.
 
 ## pid-rs connection
 
 The default build does not include pid-rs. Dependence and offline PID-study crates require it.
-Galadriel pins `pid-core` to
-`1cd2424f7967e1752dcc8e53859e8fdad3566f51`. `galadriel-dependence`
+Galadriel selects `pid-core` 0.9.0 at
+`bc3aa80fb6025e709c2906a08bce25a4fac40578`. `galadriel-dependence`
 and `galadriel-eval` select only the stable default surface.
 `galadriel-justify` alone enables `experimental-continuous` for its explicit
 offline Ehrlich PID2 study. No Galadriel path enables `experimental-pipelines`,
 mixed-dimensional PID3, or `parallel`.
 
-`pid-core` has an unconditional `pid-runlog` dependency.
-These graphs also resolve `pid-runlog` 1.0.0 from the same immutable revision.
+No resolved Galadriel feature profile contains `pid-runlog`.
 A build requires this pin in these cases:
 
 - `galadriel-dependence`
@@ -170,15 +188,19 @@ The connection does not require another process, network connection, or sibling
 checkout at runtime.
 
 The opt-in in-process/library connection computes geometry-gated report-first
-pairwise MI and retains it outside the authoritative verdict. Its executable
+pairwise MI through `ksg_mi_report_with_budget` and retains it outside the
+authoritative verdict. Its retained preflight and executed report use the same
+explicit single-thread resource budget. Galadriel's graph work ceiling is a
+separate aggregate bound. Its executable
 integrations are the synthetic demo, evaluation, and benchmark; `replay`,
 `observe`, and NCP do not invoke it. Offline justification separately
 computes categorical MGW and continuous Ehrlich PID atoms for fixed source-target
 questions. These functionals are not aliases or fallbacks. Neither path can
 repair unavailable core evidence or override contradictory signed correlation.
 
-The pinned manifest declares version 1.0.0. Galadriel does not claim an upstream
-v1 tag or published 1.x artifact.
+The selected manifest declares `pid-core` version 0.9.0. Revision `1cd2424f…`
+survives only in the immutable producer preregistration and historical migration
+frame. Galadriel does not execute it as a second dependency.
 [`PID_RS_1_0_MIGRATION.md`](PID_RS_1_0_MIGRATION.md) defines the exact API
 adaptation and remaining restricted-domain assumptions.
 
@@ -355,18 +377,52 @@ All Galadriel cross-repository release claims therefore remain `NOT_CLAIMED` or
 pending in the Galadriel release ledger.
 This state does not satisfy an NCP role gate.
 
+### Bounded offline drone-fixture edge
+
+A separate 2026-08-17 observation binds CREBAIN commit
+`6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d` as the producer of
+`src-tauri/tests/fixtures/crebain_drone_mgw_v1.json`. The exact file is 64,218
+bytes with SHA-256
+`82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda`.
+Its analysis-manifest SHA-256 is
+`4b0381beee855e7d624066ab04cfdc07920c6182951315b65ba48d99c1e86f90`.
+Galadriel embeds those bytes in `galadriel-justify`, checks each declared source
+symbol against its named pre-fusion coordinate, reconstructs each target from
+the retained latent ENU row, and evaluates categorical MGW PID2/PID3 through the
+selected budgeted pid-core routes. The producer generated the targets without
+reading source-symbol fields, projections, fusion output, Galadriel, or PID.
+This is target separation from the evaluated stack, not producer-independent
+field truth.
+
+The compact fixture retains a row timestamp, three pre-fusion sensor objects,
+and a six-field legacy fusion summary: prior identifier, input count, expected
+count, projection count, truncation, and degradation. It does not retain three
+independent sensor timestamps, complete projection receipts, a full fusion
+output, or sufficient hidden state to prove state isolation. Repeated cells
+therefore support bounded-summary fresh-instance reproducibility and custody,
+not 64 independent flight samples.
+
+This creates only `CREBAIN fixture → Galadriel offline study`. It adds no Cargo,
+wire, process, replay, NCP, fusion, or control edge. CREBAIN does not consume the
+result. The fixture establishes one deterministic categorical conformance law,
+not reciprocal deployment qualification, continuous-PID eligibility, recorded
+flight performance, or a Haldir authority path. See
+[`CREBAIN-DRONE-MGW-STUDY.md`](CREBAIN-DRONE-MGW-STUDY.md).
+
 ## Haldir connection
 
 Haldir is a prospective record-only consumer. It is not part of a Galadriel build
 or runtime mode.
 
-The four Haldir objects retained in the inspection cut directly pin NCP 0.8.
-They contain no Galadriel dependency, import, deployed route, subscriber,
-publisher, or adapter.
+The first four Haldir objects retained in the inspection cut directly pin NCP
+0.8. The fifth is the signed record-only design review. None contains a
+Galadriel dependency, deployed route, subscriber, publisher, or adapter.
 The descendants add and activate qualification, inventory, and release evidence.
 They do not change this boundary.
 
 The 2026-07-23 mutable observation changes no runtime or conformance surface.
+The 2026-08-18 review commit formalizes noninterference without implementing a
+consumer.
 
 The Haldir frozen audit cut records Galadriel
 `94e2f8cc01f352d2bf899b7f656997f143a2588f` as an input. This record is not
@@ -374,12 +430,16 @@ independently verified compatibility. The Galadriel integration phase has not
 started.
 
 A future Haldir adapter can receive only bounded advisory evidence.
-It **MUST** first record raw output without policy effect.
-It **MUST** independently admit a future restrict-only profile.
+It **MUST** record output without policy effect: authorization and plant-command
+outputs **MUST** remain identical when the record is present, absent, malformed,
+or unavailable. This record path cannot grant, revoke, restrict, or exercise
+authority. Any policy-effect proposal is a different, separately admitted
+contract and is not a continuation of this interface.
 
-`StateUnusable` and policy eligibility are Haldir-owned conclusions over
-independently authenticated evidence.
-Haldir **MUST NOT** accept them as Galadriel fields.
+`StateUnusable` and policy eligibility would be Haldir-owned conclusions only
+under a different, separately admitted future policy contract. The record-only
+path **MUST NOT** derive them from Galadriel evidence, and Haldir **MUST NOT**
+accept them as Galadriel fields.
 No verdict can create or widen authority.
 This rule applies to `Nominal`.
 
@@ -444,8 +504,8 @@ Galadriel owns no command credential or control route. It cannot issue, widen,
 refresh, or restore authority, leases, limits, TTLs, capabilities, or watchdog
 state.
 
-A future consumer **MUST** start in record-only mode.
-The consumer **MUST** independently admit each future restrict-only effect.
+A future consumer **MUST** remain record-only under this contract.
+Adding or removing its record **MUST NOT** alter authorization or plant commands.
 `Nominal` is evidence, never permission.
 The command path **MUST** remain available without Galadriel.
 Its governance **MUST** remain independent of Galadriel.

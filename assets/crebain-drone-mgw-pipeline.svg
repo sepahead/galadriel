@@ -1,0 +1,218 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1920" viewBox="0 0 1800 1920" role="img" aria-labelledby="title desc" xml:lang="en">
+  <title id="title">CREBAIN synthetic drone fixture to Galadriel categorical MGW evidence</title>
+  <desc id="desc">Publication diagram of Galadriel's exact CREBAIN categorical study. One physically parameterized synthetic producer program creates latent east, north, and up coordinates, ordered pre-fusion visual, radar, and acoustic observations, and two categorical targets. Target derivation reads the latent truth, but does not read serialized source fields, sensor projections, fusion output, Galadriel verdicts, or PID results. This is data-flow separation, not producer independence or a claim that target derivation precedes sensor projection in time. The retained fixture proves row-level prior and observation timestamps. Stronger cross-modality synchronization provenance comes from the pinned producer source. Each of 64 rows uses a fresh fusion engine and retains only a bounded six-field fusion summary. The projection_count receipt field proves three admitted observations. The common_projection_prior_id field proves that at least one projection is present and every present projection uses prior 2. Neither field proves that all three observations carried a non-None consistency projection. Eight repeats of each source cell test fresh-instance bounded-summary reproducibility, not full-state isolation or inferential precision. The empirical laws are uniform independent binary visual, radar, and acoustic sources with horizontal target equal to visual AND radar and volumetric target equal to visual AND radar AND acoustic. The immutable producer preregistration names pid-rs revision 1cd2424f and unbudgeted discrete sxpid routes. Galadriel adapts that fixed estimand to clean pid-core 0.9.0 revision bc3aa80 and the explicit with-budget routes. The paper-defined categorical MGW functional remains distinct from those evaluators. PID2 is primary and PID3 is exploratory. The study retains pointwise and averaged outputs. Its dependency-disjoint 80-digit Decimal route compares only the 66 averaged informative, misinformative, and signed net atom components. It does not compare pointwise output. The separate 108-coordinate averaged cumulative-plus-atom PID3 assurance program remains open. Exact identities, asymmetric source-position canaries, nine per-call resource preflights, algebra checks, and interpretation guards lead only to record-only advisory evidence. For fixed admitted authority inputs, Haldir authorization, trusted-state policy, and plant-command outputs are identical across PID record states. Audit records may vary, and no operator-behavior noninterference is claimed.</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, "IBM Plex Sans", Arial, Helvetica, sans-serif; fill: #102a43; }
+      .title { font-size: 42px; font-weight: 750; letter-spacing: -0.5px; }
+      .subtitle { font-size: 23px; fill: #486581; }
+      .section { font-size: 19px; font-weight: 750; letter-spacing: 1.7px; fill: #334e68; }
+      .node-title { font-size: 25px; font-weight: 750; }
+      .body { font-size: 21px; }
+      .small { font-size: 18px; fill: #486581; }
+      .tiny { font-size: 16px; fill: #627d98; }
+      .equation { font-family: "IBM Plex Mono", Menlo, Consolas, monospace; font-size: 20px; }
+      .mono-small { font-family: "IBM Plex Mono", Menlo, Consolas, monospace; font-size: 17px; }
+      .lane { fill: #fbfcfe; stroke: #d9e2ec; stroke-width: 2.2; }
+      .physical { fill: #edf7ff; stroke: #1769aa; stroke-width: 2.4; }
+      .truth { fill: #eefaf7; stroke: #087f5b; stroke-width: 2.4; }
+      .contract { fill: #f5f8fb; stroke: #526d82; stroke-width: 2.2; }
+      .functional { fill: #fff8e6; stroke: #a15c00; stroke-width: 2.4; }
+      .pid { fill: #f4efff; stroke: #6f42c1; stroke-width: 2.4; }
+      .check { fill: #fffaf0; stroke: #b7791f; stroke-width: 2.2; }
+      .advisory { fill: #eef7ff; stroke: #1769aa; stroke-width: 2.4; }
+      .firewall { fill: #fff0ef; stroke: #b42318; stroke-width: 2.8; }
+      .arrow { fill: none; stroke: #526d82; stroke-width: 3.2; marker-end: url(#arrow); }
+      .arrow-green { fill: none; stroke: #087f5b; stroke-width: 3.2; marker-end: url(#arrow-green); }
+      .arrow-purple { fill: none; stroke: #6f42c1; stroke-width: 3.2; marker-end: url(#arrow-purple); }
+      .dashed { fill: none; stroke: #526d82; stroke-width: 2.7; stroke-dasharray: 9 7; marker-end: url(#arrow); }
+      .nonedge { fill: none; stroke: #b42318; stroke-width: 3; stroke-dasharray: 10 8; }
+      .divider { stroke: #bcccdc; stroke-width: 1.6; }
+      .badge { font-size: 15px; font-weight: 750; fill: #ffffff; letter-spacing: 0.5px; }
+      .badge-dark { font-size: 15px; font-weight: 750; fill: #334e68; letter-spacing: 0.4px; }
+    </style>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L11,5.5 L0,11 z" fill="#526d82"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L11,5.5 L0,11 z" fill="#087f5b"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L11,5.5 L0,11 z" fill="#6f42c1"/>
+    </marker>
+  </defs>
+
+  <rect width="1800" height="1920" fill="#ffffff"/>
+  <text x="55" y="58" class="title">A fixed estimand from synthetic drone geometry—not from a fused verdict</text>
+  <text x="55" y="96" class="subtitle">Every solid arrow is a typed data-flow edge. Red barriers mark deliberately absent decision and authority edges.</text>
+
+  <rect x="40" y="125" width="1720" height="475" rx="22" class="lane"/>
+  <text x="68" y="159" class="section">1 · PHYSICALLY PARAMETERIZED SYNTHETIC LAW</text>
+
+  <rect x="70" y="185" width="390" height="345" rx="16" class="truth"/>
+  <rect x="92" y="204" width="186" height="28" rx="14" fill="#087f5b"/>
+  <text x="185" y="223" text-anchor="middle" class="badge">PRODUCER PROGRAM</text>
+  <text x="92" y="270" class="node-title">Latent map-frame truth</text>
+  <text x="92" y="308" class="equation">p = (E, N, U) in map_enu</text>
+  <text x="92" y="340" class="body">Planes: E ≤ 50 m · N ≤ 1 m</text>
+  <text x="92" y="368" class="body">U ≤ 1 m</text>
+  <line x1="92" y1="386" x2="438" y2="386" class="divider"/>
+  <text x="92" y="414" class="small">All 8 binary source cells are generated.</text>
+  <text x="92" y="440" class="small">Each cell has 8 fresh-engine episodes.</text>
+  <text x="92" y="475" class="tiny">One producer creates both branches.</text>
+  <text x="92" y="499" class="tiny">The target is not producer-independent.</text>
+
+  <path d="M460 325 H512" class="arrow-green"/>
+  <path d="M460 325 H484 V176 H1200 V208" class="arrow-green"/>
+  <text x="805" y="169" text-anchor="middle" class="tiny">latent-truth branch</text>
+
+  <rect x="520" y="185" width="585" height="345" rx="16" class="physical"/>
+  <rect x="542" y="204" width="186" height="28" rx="14" fill="#1769aa"/>
+  <text x="635" y="223" text-anchor="middle" class="badge">ORDERED SOURCES</text>
+  <text x="542" y="270" class="node-title">Pre-fusion sensor symbols</text>
+  <text x="542" y="309" class="equation">V = 1[N_visual ≤ 1 m]</text>
+  <text x="542" y="343" class="equation">R = 1[E_radar ≤ 50 m]</text>
+  <text x="542" y="377" class="equation">A = 1[U_acoustic ≤ 1 m]</text>
+  <line x1="542" y1="400" x2="1083" y2="400" class="divider"/>
+  <text x="542" y="432" class="body">Source order is fixed: S = (V, R, A).</text>
+  <text x="542" y="463" class="small">No fused verdict or target-derived feature enters S.</text>
+  <text x="542" y="491" class="small">Asymmetric PID2 and PID3 canaries protect positions.</text>
+
+  <line x1="1132" y1="198" x2="1132" y2="518" class="nonedge"/>
+  <rect x="1113" y="326" width="38" height="38" rx="19" fill="#fff0ef" stroke="#b42318" stroke-width="2"/>
+  <path d="M1122 335 L1142 355 M1142 335 L1122 355" stroke="#b42318" stroke-width="3"/>
+  <text x="1132" y="548" text-anchor="middle" class="tiny" fill="#b42318">NO SERIALIZED SOURCE-FIELD READ</text>
+
+  <rect x="1170" y="185" width="560" height="345" rx="16" class="truth"/>
+  <rect x="1192" y="204" width="186" height="28" rx="14" fill="#087f5b"/>
+  <text x="1285" y="223" text-anchor="middle" class="badge">NAMED TARGETS</text>
+  <text x="1192" y="270" class="node-title">Targets from the latent ENU branch</text>
+  <text x="1192" y="309" class="equation">T_H = 1[E ≤ 50 ∧ N ≤ 1] = V ∧ R</text>
+  <text x="1192" y="343" class="equation">T_V = T_H · 1[U ≤ 1] = V ∧ R ∧ A</text>
+  <line x1="1192" y1="367" x2="1708" y2="367" class="divider"/>
+  <text x="1192" y="399" class="small">Derivation reads latent truth only.</text>
+  <text x="1192" y="427" class="small">It does not read projections, fusion, verdicts, or PID.</text>
+  <text x="1192" y="466" class="tiny">This is data-flow independence. It is not a claim that</text>
+  <text x="1192" y="490" class="tiny">target derivation occurs before sensor projection in time.</text>
+
+  <path d="M812 530 V620" class="arrow"/>
+  <path d="M1450 530 V620" class="arrow"/>
+
+  <rect x="40" y="625" width="1720" height="330" rx="22" class="lane"/>
+  <text x="68" y="659" class="section">2 · ROW, SYNCHRONIZATION, AND CUSTODY CONTRACT</text>
+
+  <rect x="70" y="685" width="510" height="225" rx="16" class="contract"/>
+  <text x="92" y="721" class="node-title">One row = one fresh engine episode</text>
+  <text x="92" y="756" class="equation">prior timestamp = 1000 ms</text>
+  <text x="92" y="784" class="equation">row timestamp = 1100 ms</text>
+  <text x="92" y="815" class="body">64 unique episode IDs · 8 cells × 8 repeats</text>
+  <text x="92" y="846" class="small">Fixture proof: one row-level window timestamp.</text>
+  <text x="92" y="875" class="small">Producer-source proof: modality synchronization.</text>
+  <text x="92" y="900" class="tiny">The row does not independently retain per-modality times.</text>
+
+  <path d="M580 798 H615" class="arrow"/>
+
+  <rect x="625" y="685" width="530" height="225" rx="16" class="contract"/>
+  <text x="647" y="721" class="node-title">Bounded six-field fusion summary</text>
+  <text x="647" y="751" class="mono-small">common_projection_prior_id · degraded</text>
+  <text x="647" y="776" class="mono-small">input_count · projection_count</text>
+  <text x="647" y="801" class="mono-small">truncated · v1_expected_count</text>
+  <line x1="647" y1="808" x2="1133" y2="808" class="divider"/>
+  <text x="647" y="828" class="small">Three admitted observations are proven.</text>
+  <text x="647" y="847" class="tiny">At least one projection is present.</text>
+  <text x="647" y="866" class="tiny">Every present projection uses prior 2.</text>
+  <text x="647" y="885" class="tiny">Not proven: all three projections are non-None.</text>
+  <text x="647" y="904" class="tiny">Fresh-instance equality covers this summary only.</text>
+
+  <path d="M1155 798 H1190" class="arrow"/>
+
+  <rect x="1200" y="685" width="530" height="225" rx="16" class="contract"/>
+  <text x="1222" y="721" class="node-title">Exact bytes and empirical PMF</text>
+  <text x="1222" y="758" class="body">CREBAIN 6ef60fab… · 64,218 bytes</text>
+  <text x="1222" y="790" class="mono-small">fixture SHA-256  82a83741…ebda</text>
+  <text x="1222" y="821" class="mono-small">manifest SHA-256 4b0381be…f90</text>
+  <text x="1222" y="859" class="small">Uniform independent V, R, A ∼ Bernoulli(½).</text>
+  <text x="1222" y="888" class="tiny">Repeated mass defines the PMF. It adds no inferential precision.</text>
+
+  <path d="M900 955 V985" class="arrow-purple"/>
+
+  <rect x="40" y="985" width="1720" height="455" rx="22" class="lane"/>
+  <text x="68" y="1019" class="section">3 · PAPER FUNCTIONAL, REVIEWED EVALUATOR ADAPTATION, AND OUTPUTS</text>
+
+  <rect x="70" y="1045" width="405" height="340" rx="16" class="functional"/>
+  <rect x="92" y="1065" width="156" height="28" rx="14" fill="#a15c00"/>
+  <text x="170" y="1084" text-anchor="middle" class="badge">FUNCTIONAL</text>
+  <text x="92" y="1126" class="node-title">Categorical MGW</text>
+  <text x="92" y="1155" class="node-title">shared-exclusions functional</text>
+  <text x="92" y="1195" class="body">Paper-defined pointwise cumulatives</text>
+  <text x="92" y="1225" class="body">and Möbius atoms on a categorical law.</text>
+  <text x="92" y="1267" class="equation">Π_α = Π⁺_α − Π⁻_α</text>
+  <text x="92" y="1306" class="small">Natural-log units · signed values retained</text>
+  <text x="92" y="1336" class="small">Measure-relative · associational · non-causal</text>
+  <text x="92" y="1370" class="tiny">The functional does not define the route or budget.</text>
+
+  <path d="M475 1215 H515" class="arrow-purple"/>
+
+  <rect x="525" y="1045" width="585" height="340" rx="16" class="pid"/>
+  <rect x="547" y="1065" width="230" height="28" rx="14" fill="#6f42c1"/>
+  <text x="662" y="1084" text-anchor="middle" class="badge">EVALUATOR ADAPTATION</text>
+  <text x="547" y="1131" class="node-title">Fixed preregistration → selected build</text>
+  <text x="547" y="1165" class="small">Producer preregistration</text>
+  <text x="547" y="1193" class="mono-small">1cd2424f7967e1752dcc8e53859e8fdad3566f51</text>
+  <text x="547" y="1219" class="mono-small">routes = discrete_sxpid{2,3}</text>
+  <text x="547" y="1250" class="small">Galadriel selection: pid-core 0.9.0</text>
+  <text x="547" y="1278" class="mono-small">bc3aa80fb6025e709c2906a08bce25a4fac40578</text>
+  <text x="547" y="1309" class="mono-small">routes = discrete_sxpid{2,3}_with_budget</text>
+  <text x="547" y="1345" class="tiny">Same PMF, order, targets, lattice, units, sign, and pointwise inclusion.</text>
+  <text x="547" y="1370" class="tiny">Nine executed calls each retain an explicit resource preflight.</text>
+
+  <path d="M1110 1215 H1150" class="arrow-purple"/>
+
+  <rect x="1160" y="1045" width="570" height="340" rx="16" class="pid"/>
+  <rect x="1182" y="1065" width="116" height="28" rx="14" fill="#6f42c1"/>
+  <text x="1240" y="1084" text-anchor="middle" class="badge">OUTPUTS</text>
+  <text x="1182" y="1131" class="node-title">Two fixed source–target questions</text>
+  <text x="1182" y="1170" class="body">PID2 primary: 4 averaged atoms + pointwise rows</text>
+  <text x="1182" y="1201" class="body">PID3 exploratory: 18 averaged atoms + pointwise rows</text>
+  <text x="1182" y="1242" class="equation">3 × (4 + 18) = 66 averaged components</text>
+  <text x="1182" y="1281" class="small">Informative, misinformative, and signed net.</text>
+  <text x="1182" y="1320" class="small">Open PID3 assurance: 108 averaged</text>
+  <text x="1182" y="1347" class="small">cumulative-plus-atom coordinates.</text>
+  <text x="1182" y="1374" class="tiny">This exact fixture does not close that separate program.</text>
+
+  <path d="M900 1440 V1470" class="arrow"/>
+
+  <rect x="40" y="1470" width="1720" height="255" rx="22" class="check"/>
+  <text x="68" y="1504" class="section">4 · BOUNDED CORROBORATION AND HOSTILE CONTROLS</text>
+
+  <rect x="70" y="1530" width="510" height="155" rx="14" fill="#ffffff" stroke="#d6b36a" stroke-width="1.8"/>
+  <text x="92" y="1564" class="node-title">Finite-law and algebra checks</text>
+  <text x="92" y="1600" class="small">AND2 closed forms · seven PID3 subset identities</text>
+  <text x="92" y="1630" class="small">Pointwise → averaged weighting · negative atoms retained</text>
+  <text x="92" y="1660" class="tiny">Tolerance 10⁻¹² nats. A pass is not a general theorem.</text>
+
+  <rect x="645" y="1530" width="510" height="155" rx="14" fill="#ffffff" stroke="#d6b36a" stroke-width="1.8"/>
+  <text x="667" y="1564" class="node-title">Identity and source-order controls</text>
+  <text x="667" y="1600" class="small">Exact bytes · nominal interpretation · support keys</text>
+  <text x="667" y="1630" class="small">Asymmetric PID2/PID3 source-position canaries</text>
+  <text x="667" y="1660" class="tiny">Target rotations isolate informative-invariance premises.</text>
+
+  <rect x="1220" y="1530" width="510" height="155" rx="14" fill="#ffffff" stroke="#d6b36a" stroke-width="1.8"/>
+  <text x="1242" y="1564" class="node-title">Dependency-disjoint numerical route</text>
+  <text x="1242" y="1600" class="small">80-digit event-union and Möbius calculation</text>
+  <text x="1242" y="1630" class="small">Compares 66/66 averaged components only</text>
+  <text x="1242" y="1660" class="tiny">It does not independently recompute pointwise coordinates.</text>
+
+  <path d="M900 1725 V1754" class="arrow"/>
+
+  <rect x="40" y="1754" width="1720" height="106" rx="18" class="advisory"/>
+  <text x="68" y="1790" class="node-title">Record-only Galadriel research evidence</text>
+  <text x="68" y="1824" class="body">A future Haldir record may reference an exact artifact. Version 0.9.0 has no Haldir adapter or runtime edge.</text>
+  <rect x="1358" y="1776" width="350" height="54" rx="14" class="firewall"/>
+  <text x="1533" y="1799" text-anchor="middle" class="badge-dark" fill="#b42318">NO DECISION EDGE</text>
+  <text x="1533" y="1821" text-anchor="middle" class="tiny" fill="#b42318">no FusedVerdict · no Haldir policy</text>
+
+  <line x1="900" y1="1860" x2="900" y2="1883" class="nonedge"/>
+  <path d="M872 1868 L928 1882 M928 1868 L872 1882" class="nonedge"/>
+  <text x="900" y="1902" text-anchor="middle" class="tiny" fill="#b42318">Fixed authority input ⇒ identical authorization, trusted-state policy, and plant-command outputs. Audit record may vary.</text>
+</svg>

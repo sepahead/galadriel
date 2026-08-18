@@ -30,6 +30,11 @@ from common import (  # noqa: E402
     canonical_json,
 )
 from finalize_release import (  # noqa: E402
+    CREBAIN_CANDIDATE_BOUNDARY,
+    CREBAIN_CANDIDATE_RECEIPT_SCHEMA,
+    CREBAIN_DECIMAL_ORACLE_SHA256,
+    CREBAIN_MACHINE_SCHEMA_BYTES,
+    CREBAIN_MACHINE_SCHEMA_SHA256,
     EMPTY_SHA256,
     EXPECTED_ADVISORY_WARNINGS,
     EXPECTED_DEVELOPER_GIT_IDENTITIES,
@@ -53,6 +58,7 @@ from finalize_release import (  # noqa: E402
     read_qualification_log_header,
     validate_advisory_database,
     validate_cargo_metadata_bindings,
+    validate_crebain_candidate_receipt,
     validate_command_receipt_trailer,
     validate_candidate_evidence_validation_record,
     validate_finalizer_candidate_evidence,
@@ -140,6 +146,58 @@ COMMIT = "a" * 40
 TREE = "b" * 40
 
 
+def crebain_candidate_receipt() -> bytes:
+    """Return one canonical passing candidate-gate stdout fixture."""
+
+    document = {
+        "schema": CREBAIN_CANDIDATE_RECEIPT_SCHEMA,
+        "rust_output_sha256": "c" * 64,
+        "rust_output_bytes": 253_502,
+        "machine_schema_sha256": CREBAIN_MACHINE_SCHEMA_SHA256,
+        "machine_schema_bytes": CREBAIN_MACHINE_SCHEMA_BYTES,
+        "decimal_oracle_sha256": CREBAIN_DECIMAL_ORACLE_SHA256,
+        "averaged_atom_components_compared": 66,
+        "subset_mutual_informations_compared": 10,
+        "pointwise_decimal_components_compared": 0,
+        "maximum_abs_error_nats": "1.96486887552982119960425290562084565907426063E-16",
+        "tolerance_nats": "3E-16",
+        "schema_all_passed": True,
+        "decimal_all_passed": True,
+        "boundary": CREBAIN_CANDIDATE_BOUNDARY,
+    }
+    return (
+        json.dumps(document, allow_nan=False, sort_keys=True, separators=(",", ":"))
+        + "\n"
+    ).encode("utf-8")
+
+
+class CrebainCandidateReceiptTest(unittest.TestCase):
+    def test_accepts_exact_candidate_receipt(self) -> None:
+        document = validate_crebain_candidate_receipt(crebain_candidate_receipt())
+        self.assertEqual(document["averaged_atom_components_compared"], 66)
+
+    def test_rejects_weakened_or_noncanonical_candidate_receipt(self) -> None:
+        document = json.loads(crebain_candidate_receipt())
+        for field, value, marker in (
+            ("decimal_all_passed", False, "contract drifted"),
+            ("maximum_abs_error_nats", "4E-16", "exceeds"),
+            ("machine_schema_sha256", "d" * 64, "contract drifted"),
+        ):
+            with self.subTest(field=field):
+                mutated = copy.deepcopy(document)
+                mutated[field] = value
+                encoded = (
+                    json.dumps(mutated, sort_keys=True, separators=(",", ":"))
+                    + "\n"
+                ).encode("utf-8")
+                with self.assertRaisesRegex(ReviewError, marker):
+                    validate_crebain_candidate_receipt(encoded)
+        with self.assertRaisesRegex(ReviewError, "not canonical"):
+            validate_crebain_candidate_receipt(
+                json.dumps(document, indent=2, sort_keys=True).encode("utf-8")
+            )
+
+
 def pinned_pkg_config_path() -> Path:
     """Return the exact pkgconf executable path used by qualification."""
 
@@ -198,7 +256,7 @@ def vulnerability_report() -> dict[str, object]:
             "last-commit": None,
             "last-updated": None,
         },
-        "lockfile": {"dependency-count": 437},
+        "lockfile": {"dependency-count": 436},
         "settings": {
             "target_arch": [],
             "target_os": [],

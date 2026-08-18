@@ -271,6 +271,15 @@ population, binary64 observation, and sampling models. Galadriel validates
 sample geometry and size, requires a declared common coordinate gauge and applies the fixed identity transform,
 and adds no noise. Exact ties abstain.
 
+The executable companion uses pid-core's report-first
+`ksg_mi_report_with_budget` at clean remote revision
+`bc3aa80fb6025e709c2906a08bce25a4fac40578`. The retained
+preflight and executed report share one explicit single-thread `ResourceBudget`.
+The Galadriel graph ceiling is a separate aggregate bound. No resolved
+Galadriel feature profile includes `pid-runlog`. The older `1cd2424f…` object is
+retained only by the immutable CREBAIN producer preregistration and historical
+migration record.
+
 [Gao2018] characterizes the estimator's finite-sample and dimension-dependent bias.
 The system does not replace estimator failure with an optimistic point estimate.
 
@@ -280,15 +289,17 @@ Makkeh–Gutknecht–Wibral functional [Makkeh2021] and the related but distinct
 continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction and
 estimator [Ehrlich2024] are not one
 "shared-exclusions form." Galadriel evaluates them in separate offline studies.
-The study must document fixed source identities and order, an external target,
+The study must document fixed source identities and order, a target fixed before
+result inspection and separated from any accepted fused verdict,
 functional and evaluator, law, transforms, gauges, row relation, units, and
-software identity. Its atoms are associative decomposition terms and can be negative.
+software identity. Its atoms are associational, statistical decomposition terms and can be negative.
 They are not probabilities or calibrated attack confidence.
 
 [![Two distinct offline shared-exclusions PID estimands and their provenance graph](../assets/pid-estimand-provenance.svg)](../assets/pid-estimand-provenance.svg)
 
 **Figure 3 — Two related shared-exclusions constructions, not one generic
-“Wibral PID.”** The sealed question fixes ordered sources, one external target,
+“Wibral PID.”** The sealed question fixes ordered sources, one preregistered
+target that is separated from the accepted fused verdict,
 the law, finite-sample acceptance, row relation, gauge, units, functional,
 evaluator, atom coordinates, reference roles, and exact pid-rs pin. The left lane
 is categorical Makkeh–Gutknecht–Wibral shared exclusions [Makkeh2021] on the
@@ -302,6 +313,43 @@ separates both PID routes from the project-defined joint contrast `Q`, target-fr
 pairwise MI, and BROJA.
 
 [Open Figure 3 at full size.](../assets/pid-estimand-provenance.svg)
+
+[![Exact CREBAIN drone row, categorical MGW questions, algebra checks, and authority firewall](../assets/crebain-drone-mgw-pipeline.svg)](../assets/crebain-drone-mgw-pipeline.svg)
+
+**Figure 4 — A grounded exact-law PID case without a runtime claim.** CREBAIN
+commit `6ef60fab…` generates a physically parameterized synthetic encoding of
+all eight ordered visual/radar/acoustic source cells. The resulting law is
+exactly `T_H = V AND R` and `T_V = V AND R AND A`. The producer computes the
+targets from latent ENU truth without reading source-symbol fields, sensor
+projections, fusion output, Galadriel, or PID. This makes the targets external
+to fusion/PID, not producer-independent field truth. Galadriel checks each
+declared source against its named pre-fusion coordinate, reconstructs the target
+from retained latent truth, and evaluates categorical MGW PID2/PID3 through
+budgeted pid-core 0.9.0 revision `bc3aa80f…`.
+
+Each row retains one episode identifier, one observation timestamp, three
+pre-fusion sensor objects, and a six-field legacy fusion summary—not separate
+sensor timestamps, complete projection receipts, a full fusion replay, or the
+hidden state needed to prove state isolation. The eight repeats per cell test
+bounded-summary fresh-instance reproducibility and custody rather than
+inferential precision.
+All PID2 identities and all seven PID3 down-set identities hold. A
+dependency-disjoint, separately implemented 80-digit Decimal
+event-union/Möbius calculation agrees with all 66 **averaged** atom components
+and ten subset mutual informations to `1.97e-16` nats. It does not recompute the
+retained pointwise atoms and is not independent human or organizational
+replication. The complete
+standard-library oracle is retained in
+`repo_work/check_crebain_mgw_decimal_oracle.py`. PID2 is the primary finite-law
+result. PID3 remains exploratory and does not close the separate 108-coordinate
+assurance program. The emitted JSON is also checked against a closed Draft
+2020-12 v2 schema and exact schema-byte receipt. The red barrier makes the
+non-edge to fusion explicit: a future Haldir record must leave authorization and
+plant-command outputs unchanged, so PID cannot grant, revoke, restrict, or
+exercise authority.
+
+[Open Figure 4 and the complete equations, tables, method matrix, and evidence
+ladder.](CREBAIN-DRONE-MGW-STUDY.md)
 
 The opt-in in-process/library MI graph is symmetric, target-free, and
 project-defined; it is not PID. Its only executable integrations in 0.9 are the
@@ -479,6 +527,7 @@ A current reciprocal producer qualification and an accepted recorded field study
 ```bash
 cargo run --locked -p galadriel-eval --bin galadriel-eval --release -- 200
 cargo run --locked -p galadriel-justify --release
+cargo run --locked -p galadriel-justify --release --bin galadriel-crebain-mgw
 cargo bench --locked -p galadriel-eval --bench detectors
 cargo test --workspace --all-features --locked
 ```

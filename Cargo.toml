@@ -61,14 +61,13 @@ galadriel-sim = { version = "0.9.0", path = "crates/galadriel-sim" }
 galadriel-dependence = { version = "0.9.0", path = "crates/galadriel-dependence" }
 galadriel-ncp = { version = "0.9.0", path = "crates/galadriel-ncp" }
 # Public sibling ecosystem crates use immutable commits.
-# The selected immutable pid-rs revision declares version 1.0.0; mutable pid-rs
-# main can differ. That revision has no public v1 tag or published artifact.
-# It includes the version declaration and same-day corrections.
-# It also includes the same-day continuous integration changes.
+# The selected immutable pid-rs revision is clean and reachable from remote main
+# and declares version 0.9.0. It is source-pinned, not inferred from a tag or
+# crates.io publication; mutable pid-rs worktrees can differ.
 # The workspace declaration selects no pid-core research feature. The dependence
 # companion needs only stable report-first KSG. The separate justify crate opts
 # into the continuous research surface for its explicit offline Ehrlich studies.
-pid-core = { version = "1.0.0", git = "https://github.com/sepahead/pid-rs", rev = "1cd2424f7967e1752dcc8e53859e8fdad3566f51" }
+pid-core = { version = "0.9.0", git = "https://github.com/sepahead/pid-rs", rev = "bc3aa80fb6025e709c2906a08bce25a4fac40578" }
 ncp-core = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 ncp-zenoh = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 

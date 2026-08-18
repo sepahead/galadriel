@@ -10,7 +10,7 @@
     "source_preparation_state": "UNPUBLISHED_CANDIDATE",
     "candidate_release_date": null
   },
-  "audit_date": "2026-08-15",
+  "audit_date": "2026-08-18",
   "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "url": "https://github.com/sepahead/galadriel",
@@ -21,7 +21,7 @@
     {
       "name": "pid-rs",
       "url": "https://github.com/sepahead/pid-rs",
-      "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "commit": "bc3aa80fb6025e709c2906a08bce25a4fac40578",
       "role": "optional pairwise-MI companion and offline PID dependency selected by Cargo.lock",
       "qualification": "PINNED_COMPONENT"
     },
@@ -37,6 +37,13 @@
       "url": "https://github.com/sepahead/crebain",
       "commit": "4c311900ade5668200a48d56fb191be1916b884a",
       "role": "retained historical reference-producer fixture for contract review with no Cargo or runtime dependency",
+      "qualification": "RECIPROCAL_FIXTURE"
+    },
+    {
+      "name": "CREBAIN fixture source",
+      "url": "https://github.com/sepahead/crebain",
+      "commit": "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d",
+      "role": "immutable source commit that generated the bundled offline categorical fixture. It has no Cargo, runtime, feedback, or authority edge",
       "qualification": "RECIPROCAL_FIXTURE"
     },
     {
@@ -288,6 +295,7 @@
       "purpose": "test and interoperability input fixtures",
       "patterns": [
         "crates/*/tests/fixtures/*",
+        "crates/*/fixtures/*",
         "deploy/reference/*",
         "deploy/secure-client-endpoint-corpus.json"
       ]
@@ -326,6 +334,7 @@
         "release/0.9.0/audit-inputs.json",
         "release/0.9.0/requirements-ledger.json",
         "release/0.9.0/claims.json",
+        "release/0.9.0/clm-018-assurance.json",
         "release/0.9.0/task-dispositions.json",
         "release/0.9.0/audit/*",
         "release/0.9.0/reviews/*"

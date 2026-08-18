@@ -159,7 +159,15 @@ It MUST retain the exact unchanged core verdict and MUST NOT enter fusion.
 It MUST NOT add noise, conceal unavailable pair evidence, or label deterministic
 deletion extrema as confidence intervals. Offline PID studies MUST keep
 categorical MGW and continuous Ehrlich functionals distinct and name fixed
-sources and a target. Neither path can create authority.
+sources and a target selected before result inspection. Neither a source nor the
+target may be derived from an accepted fused verdict. Neither path can create
+authority.
+
+Every KSG point fit MUST use the selected pid-core report-first
+`ksg_mi_report_with_budget` route. The retained preflight and executed report
+MUST use the same explicit single-thread `ResourceBudget`. The Galadriel graph
+work ceiling remains a separate aggregate bound. No resolved Galadriel feature
+profile includes `pid-runlog`.
 
 The default build must remain pure and small.
 The default CLI MUST NOT resolve dependence or NCP integration crates.
@@ -186,15 +194,23 @@ Use `required`, `optional`, and `absent` only for the named mode.
 | ROS and ROS 2 | They have no binding, topic, service, action, bridge, node, or bag import. |
 | External authority | Galadriel has no command, control, credential, lease, watchdog, or authority path. |
 
-The exact pid-rs revision is `1cd2424f7967e1752dcc8e53859e8fdad3566f51`.
+The selected pid-rs revision is
+`bc3aa80fb6025e709c2906a08bce25a4fac40578`, whose `pid-core` manifest declares
+version `0.9.0`. The older revision
+`1cd2424f7967e1752dcc8e53859e8fdad3566f51` is retained only inside the
+immutable CREBAIN producer preregistration and historical migration record. It
+is not the current Cargo selection.
 The exact NCP revision is `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
 Galadriel uses NCP wire 0.8.
 Do not infer NCP wire 1.0 compatibility.
 
 Live use needs an authorized producer that conforms to the producer contract.
 That producer does not have to be Crebain.
-If Haldir gains a policy effect, that effect requires separate admission.
-Such an effect MUST remain restrict-only.
+The only contemplated Haldir relationship in this release is record-only:
+recording Galadriel evidence MUST leave authorization and plant-command outputs
+unchanged. No Galadriel PID, MI, NIS, CUSUM, or correlation value may grant,
+revoke, restrict, or exercise Haldir authority. A future policy-effect design is
+a new, separately admitted contract and is not implied by this record path.
 Shared PID or NCP code does not prove Prisoma compatibility.
 It does not prove independent replication.
 
@@ -361,7 +377,7 @@ A sandboxed process can request work from an existing external service.
 The process scan cannot attribute that external service work.
 
 The license inventory scope is `CARGO_DENY_HOST_FILTERED_GRAPH`.
-It contains exactly 382 host-filtered packages from the validated 437-package Cargo graph.
+It contains exactly 381 host-filtered packages from the validated 436-package Cargo graph.
 It is not a complete all-target license inventory.
 
 Use `CPython 3.14.6` for canonical release-asset construction, verification, and reconstruction.

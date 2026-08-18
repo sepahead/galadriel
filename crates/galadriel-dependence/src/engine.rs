@@ -13,10 +13,10 @@ use pid_core::{
         IntrinsicDimConfig, IntrinsicDimensionReport,
     },
     stable::continuous::{
-        ksg_mi_report, ksg_report_resource_estimate, AssumptionLedgerEntry, AssumptionState,
-        BoundaryModel, EstimandIdentity, InformationUnit, KsgConfig, KsgGeometryModel,
-        KsgMethodStatus, KsgMiReport, KsgProvenance, KsgReportWarning, NegativeHandling,
-        ScientificStatus, SupportContract, WarningCode,
+        ksg_mi_report_with_budget, ksg_report_resource_estimate, AssumptionLedgerEntry,
+        AssumptionState, BoundaryModel, EstimandIdentity, InformationUnit, KsgConfig,
+        KsgGeometryModel, KsgMethodStatus, KsgMiReport, KsgNeighborBackend, KsgProvenance,
+        KsgReportWarning, NegativeHandling, ScientificStatus, SupportContract, WarningCode,
     },
     MatOwned, Metric, PidError, ResourceBudget, ResourceEstimate,
 };
@@ -30,9 +30,13 @@ const MAX_EPISODE_LABEL_BYTES: usize = 512;
 const MAX_QUADRATIC_FIT_WORK: usize = 200_000_000;
 const MAX_MODALITIES: usize = Modality::ALL.len();
 const KSG_NEIGHBORS: usize = 3;
-const KSG_REPORT_ROUTE_ID: &str = "pid-core/stable::continuous::ksg_mi_report";
+const KSG_REPORT_ROUTE_ID: &str = "pid-core/stable::continuous::ksg_mi_report_with_budget";
+const KSG_RESOURCE_MAX_BYTES: u64 = 1 << 30;
+const KSG_RESOURCE_MAX_PAIRWISE_DISTANCES: u64 = 50_000_000;
+const KSG_RESOURCE_MAX_OPERATIONS_HINT: u128 = 10_000_000_000;
+const KSG_RESOURCE_MAX_THREADS: usize = 1;
 const KSG_ESTIMAND_REVISION: &str = "ksg1-product-small-ball-v1";
-const KSG_ESTIMATOR_REVISION: &str = "strict-unique-shell-report-v3";
+const KSG_ESTIMATOR_REVISION: &str = "strict-unique-shell-integer-harmonic-report-v4";
 const KSG_ESTIMAND_FAMILY: &str = "kraskov-stoegbauer-grassberger-mutual-information";
 const KSG_ESTIMAND_METRIC: &str = "chebyshev-max-product";
 const MI_FUNCTIONAL_ID: &str = "mutual-information/shannon";
@@ -55,14 +59,14 @@ const UPSTREAM_WARNING_POLICY_ID: &str =
 pub const MI_PAIR_POINT_FIT_UNITS: usize = 6;
 
 /// Exact upstream dependency identity used by this research adapter.
-pub const PID_RS_VERSION: &str = "1.0.0";
+pub const PID_RS_VERSION: &str = "0.9.0";
 /// Immutable pid-rs revision selected by the workspace manifest.
-pub const PID_RS_REVISION: &str = "1cd2424f7967e1752dcc8e53859e8fdad3566f51";
+pub const PID_RS_REVISION: &str = "bc3aa80fb6025e709c2906a08bce25a4fac40578";
 /// Repository supplying the selected pid-core package.
 pub const PID_RS_GIT_REPOSITORY: &str = "https://github.com/sepahead/pid-rs";
 
 /// Versioned serialization schema of a standalone MI graph report.
-pub const MI_CONSENSUS_REPORT_SCHEMA: &str = "galadriel.mi-consensus-report.v1";
+pub const MI_CONSENSUS_REPORT_SCHEMA: &str = "galadriel.mi-consensus-report.v2";
 
 /// Maximum scalar analysis window. Exhaustive delete-block configurations are
 /// usually admitted only at smaller windows by the aggregate work ceiling.
@@ -781,7 +785,6 @@ impl MiConsensusConfig {
         identity.f64(b"tie_epsilon", 0.0);
         identity.bytes(b"negative_handling", b"allow");
         identity.bytes(b"support_contract", b"assume_regular_full_dimensional");
-        identity.u8(b"support_intrinsic_dimension", 0);
         identity.bytes(b"support_boundary", b"unknown");
         identity.u8(b"support_density_regular", 1);
         identity.u8(b"support_finite_information", 1);
@@ -952,7 +955,6 @@ pub struct MiKsgEvaluatorConfigEvidence {
     tie_epsilon: f64,
     negative_handling: &'static str,
     support_contract: &'static str,
-    support_intrinsic_dimension: Option<usize>,
     support_boundary: &'static str,
     support_density_regular: bool,
     support_finite_information: bool,
@@ -970,7 +972,6 @@ impl MiKsgEvaluatorConfigEvidence {
             tie_epsilon: 0.0,
             negative_handling: "allow",
             support_contract: "assume_regular_full_dimensional",
-            support_intrinsic_dimension: None,
             support_boundary: "unknown",
             support_density_regular: true,
             support_finite_information: true,
@@ -995,9 +996,6 @@ impl MiKsgEvaluatorConfigEvidence {
     }
     pub const fn support_contract(&self) -> &'static str {
         self.support_contract
-    }
-    pub const fn support_intrinsic_dimension(&self) -> Option<usize> {
-        self.support_intrinsic_dimension
     }
     pub const fn support_boundary(&self) -> &'static str {
         self.support_boundary
@@ -2128,17 +2126,25 @@ struct UpstreamKsgContractChecks {
     negative_handling: bool,
     support_contract: bool,
     geometry_model: bool,
-    no_backend_fallback: bool,
+    exact_neighbor_backend: bool,
     definition_revision: bool,
     estimator_revision: bool,
     estimand_family: bool,
     information_units: bool,
     estimand_metric: bool,
     no_source_gauge: bool,
+    resource_budget: bool,
+    resource_estimate: bool,
 }
 
 impl UpstreamKsgContractChecks {
-    fn from_report(report: &KsgMiReport, expected: &KsgConfig, sample_count: usize) -> Self {
+    fn from_report(
+        report: &KsgMiReport,
+        expected: &KsgConfig,
+        sample_count: usize,
+        expected_budget: ResourceBudget,
+        expected_estimate: ResourceEstimate,
+    ) -> Self {
         Self {
             method_status: report.method_status == KsgMethodStatus::RestrictedDomain,
             scientific_status: report.scientific_status == ScientificStatus::ConditionalContinuous,
@@ -2149,13 +2155,21 @@ impl UpstreamKsgContractChecks {
             negative_handling: report.negative_handling == expected.negative_handling,
             support_contract: report.support_contract == expected.support_contract,
             geometry_model: report.geometry_model == KsgGeometryModel::AmbientChebyshev,
-            no_backend_fallback: !report.backend_fallback_occurred,
+            // pid-core 0.9 selects one of two exact implementations before estimation and
+            // never silently falls back after selection. Reject a future unrecognized backend
+            // until this adapter has reviewed its numerical and resource contract.
+            exact_neighbor_backend: matches!(
+                report.neighbor_backend,
+                KsgNeighborBackend::BruteForce | KsgNeighborBackend::ExactChebyshevKdTree
+            ),
             definition_revision: report.estimand.definition_revision == KSG_ESTIMAND_REVISION,
             estimator_revision: report.estimand.estimator_revision == KSG_ESTIMATOR_REVISION,
             estimand_family: report.estimand.family == KSG_ESTIMAND_FAMILY,
             information_units: report.estimand.units == InformationUnit::Nats,
             estimand_metric: report.estimand.metric == KSG_ESTIMAND_METRIC,
             no_source_gauge: report.estimand.source_gauge.is_none(),
+            resource_budget: report.resource_budget == expected_budget,
+            resource_estimate: report.resource_estimate == expected_estimate,
         }
     }
 
@@ -2169,13 +2183,15 @@ impl UpstreamKsgContractChecks {
             && self.negative_handling
             && self.support_contract
             && self.geometry_model
-            && self.no_backend_fallback
+            && self.exact_neighbor_backend
             && self.definition_revision
             && self.estimator_revision
             && self.estimand_family
             && self.information_units
             && self.estimand_metric
             && self.no_source_gauge
+            && self.resource_budget
+            && self.resource_estimate
     }
 }
 
@@ -2248,27 +2264,34 @@ fn pair_mi_inner(
         )
     })
     .map_err(classify_pid_error)?;
-    // Preflight the exact report route before estimator execution. The pinned
-    // upstream type does not yet provide public checked composition; Galadriel
-    // therefore retains the exact per-report estimate and separately enforces its
-    // own checked aggregate scan ceiling at configuration construction.
-    ksg_report_resource_estimate(
+    // Execute the report under the same explicit single-thread resource policy used by the
+    // retained preflight. Galadriel separately enforces its own aggregate pair-scan ceiling at
+    // configuration construction. This per-report budget is not an aggregate peak-memory claim.
+    let resource_budget = ksg_resource_budget().map_err(classify_pid_error)?;
+    let expected_resource_estimate = ksg_report_resource_estimate(
         first_matrix.as_ref(),
         second_matrix.as_ref(),
         &provenance,
-        1,
+        resource_budget.max_threads,
     )
     .map_err(classify_pid_error)?;
-    let report = ksg_mi_report(
+    let report = ksg_mi_report_with_budget(
         first_matrix.as_ref(),
         second_matrix.as_ref(),
         &ksg_config(),
         &provenance,
+        resource_budget,
     )
     .map_err(classify_pid_error)?;
     let expected_config = ksg_config();
-    if !UpstreamKsgContractChecks::from_report(&report, &expected_config, first.len())
-        .all_satisfied()
+    if !UpstreamKsgContractChecks::from_report(
+        &report,
+        &expected_config,
+        first.len(),
+        resource_budget,
+        expected_resource_estimate,
+    )
+    .all_satisfied()
     {
         return Err(PairFitFailure::AdapterInvariant(PidError::InvalidConfig {
             context: "galadriel-dependence",
@@ -2329,6 +2352,15 @@ fn classify_pid_error(error: PidError) -> PairFitFailure {
     }
 }
 
+fn ksg_resource_budget() -> Result<ResourceBudget, PidError> {
+    ResourceBudget::new(
+        KSG_RESOURCE_MAX_BYTES,
+        KSG_RESOURCE_MAX_PAIRWISE_DISTANCES,
+        KSG_RESOURCE_MAX_OPERATIONS_HINT,
+        KSG_RESOURCE_MAX_THREADS,
+    )
+}
+
 fn ksg_config() -> KsgConfig {
     KsgConfig::default()
         .with_k(KSG_NEIGHBORS)
@@ -2336,11 +2368,6 @@ fn ksg_config() -> KsgConfig {
         .with_tie_epsilon(0.0)
         .with_negative_handling(NegativeHandling::Allow)
         .with_support_contract(SupportContract::AssumeRegularFullDimensional {
-            // One call contains 1-D marginals and a 2-D joint law, so the
-            // upstream single optional dimension field cannot represent every
-            // required fixed dimension without ambiguity. The caller declaration
-            // and Galadriel's explicit joint diagnostic remain in the report.
-            intrinsic_dimension: None,
             boundary: BoundaryModel::Unknown,
             density_regular: true,
             finite_information: true,
@@ -2810,7 +2837,6 @@ mod tests {
             ksg["support_contract"].as_str(),
             Some("assume_regular_full_dimensional")
         );
-        assert!(ksg["support_intrinsic_dimension"].is_null());
         assert_eq!(ksg["support_boundary"].as_str(), Some("unknown"));
         assert_eq!(ksg["support_density_regular"].as_bool(), Some(true));
         assert_eq!(ksg["support_finite_information"].as_bool(), Some(true));
@@ -2931,7 +2957,6 @@ mod tests {
         assert_eq!(ksg.tie_epsilon().to_bits(), 0.0_f64.to_bits());
         assert_eq!(ksg.negative_handling(), "allow");
         assert_eq!(ksg.support_contract(), "assume_regular_full_dimensional");
-        assert_eq!(ksg.support_intrinsic_dimension(), None);
         assert_eq!(ksg.support_boundary(), "unknown");
         assert!(ksg.support_density_regular());
         assert!(ksg.support_finite_information());
@@ -3501,8 +3526,33 @@ mod tests {
             assert_eq!(evidence.estimator_id(), MI_ESTIMATOR_ID);
             assert_eq!(evidence.units(), "nats");
             let upstream = evidence.upstream_report();
-            let checks =
-                UpstreamKsgContractChecks::from_report(upstream, &ksg_config(), config.window());
+            let expected_budget = ksg_resource_budget().expect("fixed resource budget");
+            let first_values = analyzed_channels
+                .iter()
+                .find(|(modality, _)| *modality == expected_first)
+                .map(|(_, values)| values.as_slice())
+                .expect("first pair column");
+            let second_values = analyzed_channels
+                .iter()
+                .find(|(modality, _)| *modality == expected_second)
+                .map(|(_, values)| values.as_slice())
+                .expect("second pair column");
+            let first_matrix = column_matrix(first_values).expect("first pair matrix");
+            let second_matrix = column_matrix(second_values).expect("second pair matrix");
+            let expected_estimate = ksg_report_resource_estimate(
+                first_matrix.as_ref(),
+                second_matrix.as_ref(),
+                &upstream.provenance,
+                expected_budget.max_threads,
+            )
+            .expect("independent report preflight");
+            let checks = UpstreamKsgContractChecks::from_report(
+                upstream,
+                &ksg_config(),
+                config.window(),
+                expected_budget,
+                expected_estimate,
+            );
             assert!(checks.all_satisfied());
             if expected_first == Modality::Visual && expected_second == Modality::Radar {
                 macro_rules! reject_missing_coordinate {
@@ -3521,13 +3571,15 @@ mod tests {
                 reject_missing_coordinate!(negative_handling);
                 reject_missing_coordinate!(support_contract);
                 reject_missing_coordinate!(geometry_model);
-                reject_missing_coordinate!(no_backend_fallback);
+                reject_missing_coordinate!(exact_neighbor_backend);
                 reject_missing_coordinate!(definition_revision);
                 reject_missing_coordinate!(estimator_revision);
                 reject_missing_coordinate!(estimand_family);
                 reject_missing_coordinate!(information_units);
                 reject_missing_coordinate!(estimand_metric);
                 reject_missing_coordinate!(no_source_gauge);
+                reject_missing_coordinate!(resource_budget);
+                reject_missing_coordinate!(resource_estimate);
             }
             assert_eq!(
                 evidence.signed_estimate_nats().to_bits(),

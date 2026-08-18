@@ -48,7 +48,8 @@
 | WebPKI | Web Public Key Infrastructure |
 
 Galadriel checks whether several sensors that observe one track still agree.
-It combines per-channel Normalized Innovation Squared (NIS) evidence with signed cross-channel correlation.
+It combines per-channel Normalized Innovation Squared (NIS) and two-sided CUSUM
+evidence with signed cross-channel correlation.
 The correlation keeps its sign and uses a producer-attested projection.
 An optional pairwise-MI companion explores nonlinear dependence without changing the
 accepted core verdict. Separate offline studies evaluate categorical and continuous PID.
@@ -66,10 +67,94 @@ lane then feed conservative fusion. The dashed pairwise KSG-MI branch starts fro
 the same admitted common projection. It produces a companion report and never
 enters fusion. The lower dashed route starts from one fixed source-target question
 and keeps categorical Makkeh–Gutknecht–Wibral PID separate from continuous Ehrlich
-PID2. The red barrier is a one-way non-edge: no result grants, refreshes, restores,
-or commands authority. `Nominal` is evidence, never permission.
+PID2. The red barrier is a one-way non-edge: no research result changes a fused
+verdict, authorization decision, or plant command. `Nominal` is evidence, never
+permission.
 
 [Open the full-size evidence-flow figure.](assets/system-boundary.svg)
+
+### Grounded offline categorical PID fixture
+
+CREBAIN supplies one byte-bound, physically parameterized **synthetic** drone
+fixture for a narrow offline question. Its information-theoretic content is the
+canonical uniform logic-gate law
+
+\[
+V,R,A\overset{\mathrm{ind}}{\sim}\operatorname{Bernoulli}(1/2),\qquad
+T_H=V\land R,\qquad T_V=V\land R\land A.
+\]
+
+Visual, radar, and acoustic symbols are reconstructed from ordered pre-fusion
+measurements. After constructing sensor-observation objects and source symbols,
+the producer derives targets from preregistered latent ENU coordinates and then
+runs fusion. Target derivation reads neither serialized source fields, sensor
+projections, fusion output, a Galadriel verdict, nor a PID result. The targets are
+therefore dataflow-independent of those objects and external to fusion, Galadriel,
+and PID—not temporally prior to sensor-object construction or producer-independent
+field truth. The 64 rows are eight fresh-engine repetitions
+of each three-bit cell. They preserve the same finite probability law and test
+only bounded-summary fresh-instance reproducibility. They are not 64 independent
+flights and do not retain a complete fusion replay.
+
+A typed, append-only errata receipt preserves the fixture bytes while correcting
+three producer-source interpretations: the frozen target-origin timing/externality
+wording, omission of two-sided CUSUM as an operational object distinct from NIS
+and signed correlation, and the legacy fusion-summary fields. In particular,
+`projection_count=3` is an admitted-observation count, not proof of three present
+projections. `common_projection_prior_id=2` proves at least one projection and
+prior-two agreement only among projections that are present. These corrections do
+not change the categorical law or any PID value.
+
+[![Synthetic latent ENU targets, ordered pre-fusion sources, exact fixture custody, categorical MGW PID2 and PID3, algebra checks, and the Haldir record-only firewall](assets/crebain-drone-mgw-pipeline.svg)](assets/crebain-drone-mgw-pipeline.svg)
+
+**Grounded categorical MGW pipeline.** Galadriel verifies the exact CREBAIN
+fixture and manifest digests, reconstructs every source and target from the
+declared synthetic geometry, and calls only pid-core 0.9.0 at clean read-only
+revision `bc3aa80fb6025e709c2906a08bce25a4fac40578`, through
+`discrete_sxpid2_with_budget` and `discrete_sxpid3_with_budget`. This is a
+reviewed post-preregistration evaluator adaptation: CREBAIN's immutable manifest
+still binds revision `1cd2424f7967e1752dcc8e53859e8fdad3566f51` and the earlier
+unbudgeted route names. The categorical MGW functional, empirical laws, source
+order, targets, units, and signed outputs are unchanged.
+
+The horizontal PID2 result is primary. The 18-atom volumetric PID3 result is
+exploratory and does not close pid-rs's separate open 108-coordinate assurance
+program (18 antichains × cumulative/atom × informative/misinformative/net).
+All values are nats. Negative net atoms remain valid and are never clamped. A
+separate 80-digit event-union/Möbius calculation recomputes the 66 **averaged
+atom** components—4 PID2 plus 18 PID3 atoms, each with three components—and ten
+subset mutual informations. This is a dependency-disjoint implementation in the
+same repository, not an independent human or organizational replication. The
+current canonical oracle SHA-256 is
+`5aa7a1d92d4aaad9c056ede8a75bdc40abc1fa76634b02bba20aac5cc3913c19`.
+The largest observed Rust/Decimal difference is below `1.97e-16` nats.
+Pointwise results are retained and internally reconstructed, but are not
+separately recomputed by the Decimal route. This exact-law result makes no
+drone-performance claim and has no effect on fusion, verdicts, or Haldir.
+Its 16-row eligibility matrix keeps the MGW functional, pid-core evaluators,
+`I_min`, two-source BROJA, Schick-Poland, continuous Ehrlich, KSG,
+co-/O-information, NIS, two-sided CUSUM, signed correlation, and the two
+infomorphic objective families distinct. Inapplicability or failure never selects
+another row as a fallback.
+
+[Read the equations, complete tables, method comparison, twenty-lens audit, and
+research to-do list.](docs/CREBAIN-DRONE-MGW-STUDY.md)
+
+The JSON output is governed by a closed Draft 2020-12
+[machine schema](crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json)
+with `additionalProperties: false`, explicit required fields, enums, and fixed
+cardinalities at every object boundary. A standard-library checker rejects
+duplicate keys, non-finite or oversized numbers, unknown schema keywords,
+unresolved references, open nested objects, and schema-receipt mismatches. The
+schema fixes the wire contract. Rust custody/algebra checks and the Decimal route
+remain separate semantic and numerical obligations.
+
+Deep quality also carries a bounded exact-head mutation gate for the seven
+CREBAIN contract functions. Its frozen selected set contains 149 transformations.
+The required outcome is 146 caught mutants, three exact compile-unviable
+function-return substitutions, and no missed, timed-out, or surviving mutant.
+The local repair reference has that outcome. The final candidate must reproduce
+it under cargo-mutants 27.1.0 and Rust 1.89.0 before publication.
 
 ## Run the source demo
 
@@ -105,14 +190,14 @@ A shared transport or historical fixture also does not prove such an integration
 
 | Project | Direction | Required or optional | Why connected | Explicit 0.9.0 boundary |
 | --- | --- | --- | --- | --- |
-| [pid-rs](https://github.com/sepahead/pid-rs) | Upstream algorithm library | The default CLI build does not use it. `galadriel-dependence`, justification, and evaluation require its exact `pid-core` pin. The CLI `dependence` feature also requires the pin. It is linked code, not a runtime service. | Stable report-first KSG supports the opt-in in-process/library MI companion. Its executable integrations are the synthetic demo, evaluation, and benchmark; `replay`, `observe`, and NCP do not invoke it. Categorical Makkeh–Gutknecht–Wibral and related-but-distinct continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID support separate offline studies. | Pin `1cd2424f7967e1752dcc8e53859e8fdad3566f51` declares 1.0.0. It transitively resolves `pid-runlog` 1.0.0 from the same revision. Galadriel claims no public v1 tag or published upstream 1.x artifact. |
+| [pid-rs](https://github.com/sepahead/pid-rs) | Upstream algorithm library | The default CLI build does not use it. `galadriel-dependence`, justification, and evaluation require its exact `pid-core` pin. The CLI `dependence` feature also requires the pin. It is linked code, not a runtime service. No resolved Galadriel feature profile includes `pid-runlog`. | Stable report-first KSG supports the opt-in in-process/library MI companion. Its executable integrations are the synthetic demo, evaluation, and benchmark. `replay`, `observe`, and NCP do not invoke it. Categorical Makkeh–Gutknecht–Wibral and related-but-distinct continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID support separate offline studies. | The selected clean, remote-reachable pin is pid-core 0.9.0 at `bc3aa80fb6025e709c2906a08bce25a4fac40578`. CREBAIN's immutable preregistration separately records `1cd2424f7967e1752dcc8e53859e8fdad3566f51`. Galadriel records the post-preregistration API adaptation rather than rewriting that history. |
 | [NCP](https://github.com/sepahead/NCP) | Upstream wire and transport libraries | The default CLI build does not use it. `galadriel-ncp`, evaluation, and CLI `ncp` require `ncp-core`. CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` also pulls `ncp-zenoh`, Zenoh, and Tokio. | It supplies wire-0.8 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded offline JSONL, and operational receiver. | Both NCP crates pin `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`. This pin does not prove remote authorization, ACL enforcement, or wire-1.0 compatibility. |
-| [Crebain](https://github.com/sepahead/crebain) | External upstream producer relationship | There is no Cargo dependency. The demo, simulation, evaluation, and replay do not require Crebain. Live operation needs an authorized contract-conforming producer. The code identity does not have to be Crebain. | It supplies the inspected reference component for the observation and monitor sidecar contract. It also supplies the byte-identical retained registry fixture. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head. Galadriel claims no reciprocal final-candidate or deployment qualification. |
-| [Haldir](https://github.com/sepahead/haldir) | Prospective record-only consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It defines the intended future record-only boundary. It also defines a separately admitted restrict-only boundary. Local tests verify that the validator rejects transitions that grant or widen authority. | The integration phase has not started. There is no runtime evidence. |
+| [Crebain](https://github.com/sepahead/crebain) | External upstream producer and offline-fixture relationship | There is no Cargo dependency. The default demo, simulation, evaluation, replay, and live path do not require Crebain. Live operation needs an authorized contract-conforming producer. That producer need not be Crebain. `galadriel-justify` separately embeds one exact CREBAIN drone fixture as data. | It supplies the inspected reference component for the observation/monitor sidecar contract and a 64-row synthetic canonical AND2/AND3 law under drone-labeled coordinates. Galadriel validates its bounded six-field, three-observation summaries before offline MGW PID2/PID3 evaluation. The legacy fields do not prove three present projections. | Fixture producer commit `6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d`, SHA-256 `82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda`. This proves one bounded offline conformance law, not full fusion replay, state isolation, reciprocal deployment qualification, field validity, drone performance, or a runtime feedback edge. |
+| [Haldir](https://github.com/sepahead/haldir) | Prospective record-only consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | A future adapter may retain a versioned advisory reference for audit only. For fixed admitted authority input, authorization, trusted-state policy, and plant-command outputs must be identical across PID record states. Audit records may vary. This software-path claim does not assert operator-behavior noninterference. | The integration phase has not started. There is no runtime evidence. |
 | [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator and covariate consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It documents a possible future immutable offline covariate import. The inspected historical wire-0.8 surface keeps Galadriel sidecars outside its base `SensorFrame` routes. | The inspected relationship records intention or adjacency only. Shared NCP and PID dependencies do not imply schema compatibility or independent-implementation replication. |
 | Engram and Paper2Brain | External application names and realm context | There is no dependency, API, process, route, adapter, or runtime edge. The literal `engram/ncp` is a configurable example realm. It is not an application integration. | It makes the example deployment namespace concrete. NCP remains the actual library, key, and transport interface. | A 2026-07-23 read-only Paper2Brain observation records provenance only. Galadriel claims no integration, compatibility, or deployment qualification. |
 | ROS / ROS 2 | External robotics middleware | Version 0.9.0 has no dependency, message binding, topic, service, action, bridge, node, or runtime edge. | It identifies an ecosystem boundary that a future adapter MUST define and qualify explicitly. | Galadriel claims no ROS compatibility, bag import, or live bridge. |
-| External authority or controller | Prospective downstream policy and control boundary | There is no command, control, lease, watchdog, credential, or authority path. | A future consumer can record advisory evidence. It can apply only a separately admitted restrict-only policy. | Galadriel cannot grant, widen, refresh, or restore authority. `Nominal` is never permission. |
+| External authority or controller | Prospective downstream policy and control boundary | There is no command, control, lease, watchdog, credential, or authority path. | A future consumer may record advisory evidence. Any policy or control logic is a separately admitted system and must not be smuggled through Galadriel's PID record path. | Galadriel cannot grant, deny, restrict, widen, refresh, restore, or exercise authority. `Nominal` is never permission. |
 
 Galadriel is the sole center of this relationship view and has no self-edge.
 The declared directed graph includes `pid-rs → Galadriel` and `NCP → Galadriel`.
@@ -130,10 +215,18 @@ It recorded Crebain `0a58a5b8dd799884ddb06f1308b1748216fab322`.
 It recorded Haldir remote `main` at `0e94f61cfd5c78482198a765157571746a256181`.
 It recorded Prisoma `63cff105e0e40281376e6f827d7782e9b351961a`.
 
-A 2026-08-14 read-only Prisoma reinspection recorded committed remote `main`
-`efcad9943af818913702f11c47ed0c280a2a1f13`. It supersedes only the earlier
-mutable-head reference. The first-principles redesign still creates no Galadriel
-dependency, adapter, route, or runtime edge.
+A 2026-08-14 read-only Prisoma reinspection first recorded committed remote
+`main` `efcad9943af818913702f11c47ed0c280a2a1f13`. A 2026-08-17
+reinspection then recorded clean remote `main`
+`85f55c99564d1899f2e34c8412c41aaa9fc8f6c3`, containing its PID
+method-selection/publication contract and bounded pid-rs handoff. It supersedes
+only that preceding mutable-head reference. Neither redesign creates a
+Galadriel dependency, adapter, route, or runtime edge.
+
+The same cut binds immutable CREBAIN fixture-source commit
+`6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d`. That exact data-producing
+commit supersedes only the earlier mutable producer-head reference. It is not a
+Cargo dependency, reciprocal qualification, or live edge.
 
 A second read-only Haldir inspection on 2026-07-18 observed another remote `main` head.
 That head was `dd3d8a1c993721f89a1edb04dec5247761c694ad`.
@@ -154,6 +247,12 @@ This object descends from the retained inspection-cut object.
 The intervening changes affect audit, evidence, and release tooling only.
 They do not create a Haldir runtime edge or external-conformance change.
 The refreshed inspection cut retains this mutable provenance.
+
+A 2026-08-18 observation binds signed Haldir review commit
+`c19f9011e4919a5bc67fab5f90d6c8eefed4455b` on
+`review/galadriel-pid-record-only-clean`. It defines fixed-input authorization and
+plant-command noninterference plus a prospective record-only audit seam. It is
+not merged Haldir `main`, an implemented route, or runtime qualification.
 
 A 2026-07-23 read-only observation found Paper2Brain remote `main` at
 `24e74b781a5bf8af069f69cbc2d0c42d89008211`.
@@ -280,8 +379,8 @@ Complete this work before operational use.
 > Control name resolution or use an external exact-certificate or SPKI pinning layer.
 > See the [deployment security runbook](docs/SECURE-DEPLOYMENT.md#tls-server-authentication-limitation).
 
-[`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) specifies how a prospective downstream authorization gate can consume Galadriel evidence.
-The evidence is non-authoritative and record-only. It never widens `ALLOW`.
+[`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) specifies the boundary for a prospective downstream record consumer.
+The PID evidence path is non-authoritative and record-only: it changes neither an authorization result nor a plant command.
 
 [`docs/PAPER.md`](docs/PAPER.md) documents the research background.
 [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) and [`docs/EVALUATION.md`](docs/EVALUATION.md) document the study design.
@@ -431,7 +530,8 @@ enters `FusedVerdict` or `ConsistencyEvidence`.
 Real PID is confined to offline `galadriel-justify` questions with fixed source and
 target identities. The categorical Makkeh–Gutknecht–Wibral functional and the
 related-but-distinct continuous Ehrlich construction are not aliases. A local kNN-MI
-CUSUM heuristic is neither construction. See the [pid-rs migration record](docs/PID_RS_1_0_MIGRATION.md).
+CUSUM heuristic is neither construction. See the [pid-rs dependency adaptation
+record](docs/PID_RS_1_0_MIGRATION.md).
 
 ## Project status
 
@@ -479,7 +579,7 @@ Workspace-wide builds deliberately include those crates.
 | Feature | Pulls | Adds |
 |---|---|---|
 | default | no sibling integration crates | core, simulator, CLI |
-| `dependence` | Exact `pid-core` Git revision whose manifest declares 1.0.0. Only its stable default surface is selected; `parallel` and research features remain off. | Descriptive report-first pairwise KSG-MI companion. It does not change the default verdict and makes no upstream 1.x release claim. |
+| `dependence` | Exact `pid-core` 0.9.0 Git revision `bc3aa80…`. Only its stable default surface is selected. `parallel` and research features remain off. | Descriptive report-first pairwise KSG-MI companion. It does not change the default verdict or imply a pid-rs 1.x release. |
 | `ncp` | `ncp-core` | Bounded JSONL ingest. NCP 0.8 key helpers. Strict observation and producer-monitor envelopes. The CLI `replay` subcommand. |
 | `ncp-live` | `ncp-zenoh`, exact `zenoh` 1.9 guard types, `tokio` | strict `observe` command plus bounded two-route receiver, deadlines, lifecycle gate, and health state |
 
@@ -497,8 +597,9 @@ The pinned `ncp-core` manifest also declares opt-in `schema` and `ts` aliases.
 The retained offline, live, and evaluation dependency graphs select neither alias.
 
 Exact Git revisions pin the public `pid-rs` repository and NCP's `ncp-core` and `ncp-zenoh` crates.
-The pid-rs revision declares 1.0.0.
-The retained 2026-07-22 inspection found no public v1 tag.
+The selected pid-rs revision declares `pid-core` 0.9.0. The historical
+`1cd2424…`/1.0.0 observation survives only in explicitly labeled migration and
+CREBAIN preregistration evidence and is not the current dependency.
 The NCP revision corresponds to public tag `v0.8.0`.
 A fresh clone needs no sibling checkout, private repository token, or global Git credential rewrite.
 
@@ -765,7 +866,7 @@ A passing qualification tier MUST retain 15 two-run comparisons.
 They cover one source archive, seven unpublished package archives, and seven SBOM documents.
 Semantic checks bind source and package members to the candidate tree.
 They also close SBOM fields against the validated `Cargo.lock` graph.
-The license inventory is the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset of that 437-package graph.
+The license inventory is the exact 381-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset of that 436-package graph.
 See [`docs/DEPENDENCY-POLICY.md`](docs/DEPENDENCY-POLICY.md) for the exact checks.
 
 These checks are author-operated on the recorded host.
@@ -817,9 +918,9 @@ It includes authenticated and anonymous downloads.
 - [`docs/PAPER.md`](docs/PAPER.md) — research argument and current evidence boundary.
 - [`docs/JUSTIFICATION.md`](docs/JUSTIFICATION.md) — when pairwise MI or a separately
   specified PID study can add information.
-- [`docs/PID_RS_1_0_MIGRATION.md`](docs/PID_RS_1_0_MIGRATION.md) — exact pinned-source
-  migration of the distinct MI and PID APIs and estimands, without an upstream
-  1.x release claim.
+- [`docs/PID_RS_1_0_MIGRATION.md`](docs/PID_RS_1_0_MIGRATION.md) — retained
+  preregistration history and exact pinned-source adaptation of the distinct MI
+  and PID APIs and estimands.
 - [`docs/EVALUATION.md`](docs/EVALUATION.md) — reproducible synthetic methodology.
 - [`docs/PRODUCER-CONTRACT.md`](docs/PRODUCER-CONTRACT.md) — frozen observation and
   lifecycle/liveness wire contract plus operational acceptance boundary.

@@ -61,15 +61,15 @@ MAX_ARCHIVE_PATH_BYTES = 1024
 MAX_ARCHIVE_PATH_DEPTH = 64
 MAX_LICENSE_LINES = 20_000
 CARGO_DENY_HOST_FILTERED_SCOPE = "CARGO_DENY_HOST_FILTERED_GRAPH"
-EXPECTED_HOST_FILTERED_LICENSE_PACKAGES = 382
-EXPECTED_HOST_FILTERED_LICENSE_ASSIGNMENTS = 707
+EXPECTED_HOST_FILTERED_LICENSE_PACKAGES = 381
+EXPECTED_HOST_FILTERED_LICENSE_ASSIGNMENTS = 705
 EXPECTED_HOST_FILTERED_LICENSE_PACKAGE_IDS_SHA256 = (
-    "7c4d600e46b0dc1f1d50917acf65f8550bc4d9d568978d145eb0cae5b893b463"
+    "272dc6ab496ff2c0c9a43991c01b8b2d5a9ce1004afcc15adbea6c25908ab280"
 )
 EXPECTED_HOST_FILTERED_LICENSE_SEMANTIC_SHA256 = (
-    "8a8a8b9c981f67c9e93159813c128bd6033ea11aa539555e9f7303c3de7d68a8"
+    "bcc6f05fe91eaecf62f74db821453b6d35d01fbf7fe94245e7c74ecc9ed24822"
 )
-EXPECTED_LICENSE_ACCEPTED_HELP_COUNT = 375
+EXPECTED_LICENSE_ACCEPTED_HELP_COUNT = 374
 EXPECTED_LICENSE_SKIPPED_NOTE_COUNT = 7
 
 METADATA_ROOT_FIELDS = {
@@ -82,6 +82,7 @@ METADATA_ROOT_FIELDS = {
     "workspace_members",
     "workspace_root",
 }
+METADATA_ROOT_OPTIONAL_FIELDS = {"build_directory"}
 METADATA_PACKAGE_FIELDS = {
     "authors",
     "categories",
@@ -108,6 +109,7 @@ METADATA_PACKAGE_FIELDS = {
     "targets",
     "version",
 }
+METADATA_PACKAGE_OPTIONAL_FIELDS = {"hints"}
 METADATA_DEPENDENCY_FIELDS = {
     "features",
     "kind",
@@ -828,7 +830,15 @@ def _target_components(value: Any, context: str) -> tuple[CargoTargetComponent, 
 
 def _validate_package_structure(value: Any, index: int) -> dict[str, Any]:
     context = f"Cargo metadata package {index}"
-    package = _require_exact_fields(value, METADATA_PACKAGE_FIELDS, context)
+    if (
+        not isinstance(value, dict)
+        or not METADATA_PACKAGE_FIELDS.issubset(value)
+        or not set(value).issubset(
+            METADATA_PACKAGE_FIELDS | METADATA_PACKAGE_OPTIONAL_FIELDS
+        )
+    ):
+        raise ReviewError(f"{context} has another field set")
+    package = value
     for field in ("name", "version", "id", "edition", "manifest_path"):
         _require_string(package[field], f"{context} {field}")
     for field in (
@@ -853,6 +863,12 @@ def _validate_package_structure(value: Any, index: int) -> dict[str, Any]:
         _require_string_list(package[field], f"{context} {field}", unique=True)
     if package["metadata"] is not None and not isinstance(package["metadata"], dict):
         raise ReviewError(f"{context} metadata is not an object or null")
+    if "hints" in package:
+        hints = _require_exact_fields(
+            package["hints"], {"mostly-unused"}, f"{context} hints"
+        )
+        if type(hints["mostly-unused"]) is not bool:
+            raise ReviewError(f"{context} mostly-unused hint is not Boolean")
     if package["publish"] is not None:
         _require_string_list(
             package["publish"], f"{context} publish registries", unique=True
@@ -1024,9 +1040,15 @@ def validate_cargo_metadata(
     metadata_value = _load_json_bytes(
         metadata_bytes, MAX_METADATA_BYTES, "Cargo metadata"
     )
-    metadata = _require_exact_fields(
-        metadata_value, METADATA_ROOT_FIELDS, "Cargo metadata"
-    )
+    if (
+        not isinstance(metadata_value, dict)
+        or not METADATA_ROOT_FIELDS.issubset(metadata_value)
+        or not set(metadata_value).issubset(
+            METADATA_ROOT_FIELDS | METADATA_ROOT_OPTIONAL_FIELDS
+        )
+    ):
+        raise ReviewError("Cargo metadata has another field set")
+    metadata = metadata_value
     if type(metadata["version"]) is not int or metadata["version"] != 1:
         raise ReviewError("Cargo metadata does not use format version 1")
     if metadata["metadata"] is not None:
@@ -1037,6 +1059,14 @@ def validate_cargo_metadata(
     target_directory = str(
         _absolute_posix_path(metadata["target_directory"], "Cargo target directory")
     )
+    if "build_directory" in metadata:
+        build_directory = str(
+            _absolute_posix_path(
+                metadata["build_directory"], "Cargo build directory"
+            )
+        )
+        if build_directory != target_directory:
+            raise ReviewError("Cargo build and target directories differ")
     package_values = metadata["packages"]
     if (
         not isinstance(package_values, list)

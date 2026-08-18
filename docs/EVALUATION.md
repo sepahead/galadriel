@@ -163,10 +163,13 @@ geometry, all edges, threshold, clique, and attribution. Its min/max margin
 envelope is not a bootstrap interval or p-value. The companion event never
 changes the authoritative core verdict.
 
-The pinned pid-rs revision is
-`1cd2424f7967e1752dcc8e53859e8fdad3566f51`. Its manifest declares version
-1.0.0. The dependence crate uses only its stable report-first KSG surface. The
-project claims no released upstream 1.x artifact.
+The selected pid-rs revision is
+`bc3aa80fb6025e709c2906a08bce25a4fac40578`. Its `pid-core` manifest declares
+version `0.9.0`. The dependence crate uses only its stable report-first KSG
+surface and calls `ksg_mi_report_with_budget` with the same explicit
+single-thread budget used for its retained preflight. No resolved Galadriel
+feature profile contains `pid-runlog`. Revision `1cd2424f…` remains only in the
+immutable CREBAIN producer preregistration and historical migration evidence.
 
 Every graph report carries the complete accepted named/custom graph parameters
 and a separate fixed KSG evaluator snapshot, even if the graph is unavailable.
@@ -178,6 +181,42 @@ Makkeh–Gutknecht–Wibral functional and the continuous
 Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction are distinct and
 require fixed source and target identities. Neither is a fallback for an
 unavailable MI graph.
+
+#### 3.3.1 Exact CREBAIN categorical conformance law
+
+The standalone `galadriel-crebain-mgw` binary evaluates one exact embedded,
+physically parameterized synthetic CREBAIN fixture outside the main evaluation
+harness. It encodes the canonical laws `T_H = V AND R` and
+`T_V = V AND R AND A`, with all eight ordered visual/radar/acoustic source cells
+repeated eight times. The producer computes each target from latent ENU truth
+without reading the source-symbol fields, sensor projections, fusion result,
+Galadriel verdict, or PID output. Thus the target is external to fusion and PID,
+not producer-independent field truth.
+
+Each row retains one unique episode identifier, a row-level prior/observation
+time rule, three pre-fusion sensor objects, and only a six-field legacy fusion
+summary: prior identifier, input count, expected count, projection count,
+truncation, and degradation. It does not retain per-sensor timestamps, a full
+fusion output, or enough state to prove state isolation. The repeats test
+bounded-summary fresh-instance reproducibility and exact software custody. They
+are not 64 independent experimental units.
+
+The evaluator verifies fixture/manifest SHA-256 values and reconstructs the
+declared source symbols and latent-truth targets before calling categorical
+`discrete_sxpid2_with_budget` and `discrete_sxpid3_with_budget` under an explicit
+resource budget. Closed-form AND-law mutual information, PID2 reconstruction,
+seven PID3 down-set identities, fixed-source informative invariance, pointwise
+support/averaging checks, and a dependency-disjoint, separately implemented
+80-digit Decimal route provide bounded controls. That comparison covers the 66
+**averaged** signed atom components and ten subset mutual informations. It does
+not recompute the retained pointwise atoms and is not independent human or
+organizational replication. KSG and continuous Ehrlich PID explicitly
+abstain on this repeated atomic law. The emitted v2 JSON is checked against the
+closed Draft 2020-12 schema in
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json` by
+`repo_work/check_crebain_mgw_schema.py`. The complete methodology and results
+are in
+[`CREBAIN-DRONE-MGW-STUDY.md`](CREBAIN-DRONE-MGW-STUDY.md).
 
 ### 3.4 Standalone component experiments
 

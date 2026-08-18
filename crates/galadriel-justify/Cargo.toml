@@ -10,6 +10,7 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "Synthetic comparison of signed correlation, mutual information, and partial information decomposition."
+default-run = "galadriel-justify"
 publish = false
 
 [lints]
@@ -19,13 +20,18 @@ workspace = true
 name = "galadriel-justify"
 path = "src/main.rs"
 
+[[bin]]
+name = "galadriel-crebain-mgw"
+path = "src/crebain_mgw_main.rs"
+
 [dependencies]
 galadriel-core = { workspace = true }
 pid-core = { workspace = true, features = ["experimental-continuous"] }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }

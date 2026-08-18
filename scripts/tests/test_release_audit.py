@@ -544,8 +544,8 @@ class ReleaseAuditTests(unittest.TestCase):
             ),
             (
                 release_audit.ROOT / "docs" / "CLAIMS.md",
+                "Dated read-only ecosystem inspections through 2026-08-18 do not change a claim",
                 "Dated read-only ecosystem inspections through 2026-08-03 do not change a claim",
-                "Dated read-only ecosystem inspections through 2026-07-23 do not change a claim",
             ),
             (
                 release_audit.RELEASE / "README.md",
@@ -1267,6 +1267,249 @@ class ReleaseAuditTests(unittest.TestCase):
             self.assertIn(boundary, claim["limitations"])
         self.assertNotIn("/main", claim["limitations"])
 
+    def test_clm_018_is_exact_append_only_twenty_lens_assurance(self) -> None:
+        claims = release_audit.validate_claims()
+        claim = next(item for item in claims if item["id"] == "CLM-018")
+        assurance = release_audit.validate_clm_018_assurance(claim)
+
+        self.assertEqual(claim["tier"], "IMPLEMENTED")
+        self.assertEqual(tuple(claim["evidence"]), release_audit.CLM_018_EVIDENCE)
+        self.assertIn("synthetic categorical conformance", claim["claim"])
+        self.assertNotIn("validates one exact physical row contract", claim["claim"])
+        self.assertIn(
+            "bounded-summary fresh-instance reproducibility", claim["limitations"]
+        )
+        self.assertEqual(
+            [lens["id"] for lens in assurance["lenses"]],
+            [f"L{index:02d}" for index in range(1, 21)],
+        )
+        self.assertEqual(len(assurance["required_gates"]), 5)
+        self.assertIn(
+            "does not assert or rely on commit ancestry",
+            assurance["identities"]["evaluator_adaptation"],
+        )
+        self.assertEqual(
+            assurance["closure"]["candidate_gate_status"],
+            "REQUIRED_NOT_PRETENDED_COMPLETE_BY_THIS_SOURCE_ARTIFACT",
+        )
+
+    def test_clm_018_assurance_mutations_fail_closed(self) -> None:
+        claim = next(
+            item
+            for item in release_audit.load_json(release_audit.CLAIMS)["claims"]
+            if item["id"] == "CLM-018"
+        )
+        with self.assertRaisesRegex(release_audit.AuditError, "retain CLM-018"):
+            release_audit.validate_clm_018_assurance(None)
+
+        for field in ("claim", "scope", "limitations"):
+            weakened_claim = copy.deepcopy(claim)
+            weakened_claim[field] += " weakened"
+            with (
+                self.subTest(claim_field=field),
+                self.assertRaisesRegex(
+                    release_audit.AuditError, "exact bounded synthetic claim contract"
+                ),
+            ):
+                release_audit.validate_clm_018_assurance(weakened_claim)
+        missing_evidence = copy.deepcopy(claim)
+        missing_evidence["evidence"].remove(
+            "repo_work/check_crebain_mgw_decimal_oracle.py"
+        )
+        with self.assertRaisesRegex(
+            release_audit.AuditError, "exact bounded synthetic claim contract"
+        ):
+            release_audit.validate_clm_018_assurance(missing_evidence)
+
+        current = release_audit.load_json(release_audit.CLM_018_ASSURANCE)
+        original_load = release_audit.load_json
+        hostile_cases: list[tuple[str, dict[str, object], str]] = []
+
+        missing_lens = copy.deepcopy(current)
+        missing_lens["lenses"].pop()
+        hostile_cases.append(("missing lens", missing_lens, "L01 through L20"))
+
+        scalar_lens = copy.deepcopy(current)
+        scalar_lens["lenses"][0] = 1
+        hostile_cases.append(("scalar lens", scalar_lens, "L01 through L20"))
+
+        weakened_lens = copy.deepcopy(current)
+        weakened_lens["lenses"][0]["control_or_claim_removal"] = "generic review"
+        hostile_cases.append(("weakened lens", weakened_lens, "lens control is weakened"))
+
+        missing_gate = copy.deepcopy(current)
+        missing_gate["required_gates"].pop()
+        hostile_cases.append(("missing gate", missing_gate, "all five ordered gates"))
+
+        changed_history = copy.deepcopy(current)
+        changed_history["governance"]["historical_projection"][0]["sha256"] = "0" * 64
+        hostile_cases.append(
+            ("changed history", changed_history, "historical artifact contract differs")
+        )
+
+        missing_erratum = copy.deepcopy(current)
+        missing_erratum["producer_source_errata"].pop()
+        hostile_cases.append(
+            ("missing erratum", missing_erratum, "three ordered source errata")
+        )
+
+        weakened_inference_boundary = copy.deepcopy(current)
+        weakened_inference_boundary["claim_contract"]["forbidden_inferences"].pop()
+        hostile_cases.append(
+            (
+                "weakened forbidden inference",
+                weakened_inference_boundary,
+                "forbidden-inference boundary",
+            )
+        )
+
+        missing_evidence_class = copy.deepcopy(current)
+        missing_evidence_class["lenses"][16]["evidence"].remove(
+            "crates/galadriel-justify/src/crebain_mgw_main.rs"
+        )
+        hostile_cases.append(
+            (
+                "missing evidence class",
+                missing_evidence_class,
+                "does not cover every claim evidence class",
+            )
+        )
+
+        false_candidate_closure = copy.deepcopy(current)
+        false_candidate_closure["closure"]["candidate_gate_status"] = "COMPLETE"
+        hostile_cases.append(
+            ("false candidate closure", false_candidate_closure, "closure is weakened")
+        )
+
+        for label, document, error_pattern in hostile_cases:
+            with self.subTest(assurance_mutation=label):
+
+                def load_hostile_assurance(path: Path, *args: object) -> object:
+                    if path == release_audit.CLM_018_ASSURANCE:
+                        return document
+                    return original_load(path, *args)
+
+                with (
+                    patch.object(
+                        release_audit,
+                        "load_json",
+                        side_effect=load_hostile_assurance,
+                    ),
+                    self.assertRaisesRegex(release_audit.AuditError, error_pattern),
+                ):
+                    release_audit.validate_clm_018_assurance(claim)
+
+        workflow_path = release_audit.ROOT / ".github/workflows/ci.yml"
+        workflow = workflow_path.read_text(encoding="utf-8")
+        real_read_text = Path.read_text
+
+        def weaken_actual_binary_gate(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            if path == workflow_path:
+                return workflow.replace(
+                    "repo_work.tests.test_crebain_mgw_candidate",
+                    "repo_work.tests.removed_candidate_gate",
+                    1,
+                )
+            return real_read_text(path, *args, **kwargs)
+
+        with (
+            patch.object(
+                Path,
+                "read_text",
+                autospec=True,
+                side_effect=weaken_actual_binary_gate,
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError, "workflow omits gate marker"
+            ),
+        ):
+            release_audit.validate_clm_018_assurance(claim)
+
+        qualifier_path = release_audit.ROOT / "repo_work/qualify_candidate.py"
+        qualifier = qualifier_path.read_text(encoding="utf-8")
+
+        def weaken_qualification_command(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            if path == qualifier_path:
+                return qualifier.replace(
+                    '"crebain-mgw-candidate-contract"',
+                    '"removed-crebain-candidate-contract"',
+                    1,
+                )
+            return real_read_text(path, *args, **kwargs)
+
+        with (
+            patch.object(
+                Path,
+                "read_text",
+                autospec=True,
+                side_effect=weaken_qualification_command,
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError, "qualifier must retain one exact"
+            ),
+        ):
+            release_audit.validate_clm_018_assurance(claim)
+
+        candidate_gate_path = (
+            release_audit.ROOT / "repo_work/check_crebain_mgw_candidate.py"
+        )
+        candidate_gate = candidate_gate_path.read_text(encoding="utf-8")
+
+        def weaken_candidate_wrapper(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            if path == candidate_gate_path:
+                return candidate_gate.replace('"--offline"', '"--frozen"', 1)
+            return real_read_text(path, *args, **kwargs)
+
+        with (
+            patch.object(
+                Path,
+                "read_text",
+                autospec=True,
+                side_effect=weaken_candidate_wrapper,
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError, "candidate wrapper omits exact marker"
+            ),
+        ):
+            release_audit.validate_clm_018_assurance(claim)
+
+        release_readme_path = release_audit.RELEASE / "README.md"
+        release_readme = release_readme_path.read_text(encoding="utf-8")
+
+        def weaken_clm_release_contract(
+            path: Path,
+            *args: object,
+            **kwargs: object,
+        ) -> str:
+            if path == release_readme_path:
+                return release_readme.replace("GLD-090-CLM-018", "REMOVED-CLM-018", 1)
+            return real_read_text(path, *args, **kwargs)
+
+        with (
+            patch.object(
+                Path,
+                "read_text",
+                autospec=True,
+                side_effect=weaken_clm_release_contract,
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError, "release contract omits exact marker"
+            ),
+        ):
+            release_audit.validate_clm_018_assurance(claim)
+
     def test_release_body_uses_absolute_tag_publication_targets(self) -> None:
         inputs = release_audit.load_json(release_audit.INPUTS)
         release_audit.validate_project_metadata(inputs)
@@ -1627,6 +1870,26 @@ class ReleaseAuditTests(unittest.TestCase):
             self.assertRaisesRegex(
                 release_audit.AuditError,
                 "incorrect NCP release-status snapshot",
+            ),
+        ):
+            release_audit.validate_ecosystem_cut()
+
+        wrong_haldir_review = copy.deepcopy(current)
+        eco_019 = next(
+            item
+            for item in wrong_haldir_review["observations"]
+            if item["id"] == "ECO-019"
+        )
+        eco_019["ref"] = "refs/heads/main"
+        with (
+            patch.object(
+                release_audit,
+                "load_json",
+                side_effect=load_cut(wrong_haldir_review),
+            ),
+            self.assertRaisesRegex(
+                release_audit.AuditError,
+                "ECO-019 has an incorrect Haldir review field: ref",
             ),
         ):
             release_audit.validate_ecosystem_cut()

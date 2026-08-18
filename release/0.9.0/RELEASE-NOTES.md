@@ -54,6 +54,8 @@ integrations need explicit activation. PID is confined to the offline
 - Authority snapshots use typed physical-limit units, lease-clock semantics, and policy identity.
 - The verdict-independent authority-effect validator permits only record-only or
   monotonically restrict-only transitions.
+- That generic validator does not authorize an evidence-dependent PID/Haldir
+  route. The only Haldir relationship described by this release is record-only.
 - The legacy untyped authority constructor remains record-only.
 - Optional pairwise-MI analysis abstains on a degenerate column and never adds observation noise.
 - Raw JSONL replay is unbound and diagnostic-only.
@@ -77,8 +79,14 @@ integrations need explicit activation. PID is confined to the offline
 - Receipt verification rejects bounded detector-impossible assessment shapes.
 - Receipt verification does not authenticate or durably retain the record.
 - These source changes are incompatible with earlier development snapshots.
-- The optional pairwise-MI companion and offline PID studies use pid-rs revision
-  `1cd2424f7967e1752dcc8e53859e8fdad3566f51` through distinct APIs.
+- The optional pairwise-MI companion and offline PID studies select `pid-core`
+  0.9.0 at clean remote pid-rs revision
+  `bc3aa80fb6025e709c2906a08bce25a4fac40578` through distinct APIs. Revision
+  `1cd2424f7967e1752dcc8e53859e8fdad3566f51` remains only in the immutable
+  CREBAIN producer preregistration and historical migration evidence.
+- Every KSG point fit uses `ksg_mi_report_with_budget`. The retained preflight
+  and execution share one explicit single-thread resource budget. No resolved
+  Galadriel feature profile contains `pid-runlog`.
 - Every MI graph snapshot records all accepted graph parameters, the fixed KSG
   evaluator contract, exact row/projection receipts, and distinct scientific,
   resource, numerical, and deletion-stability unavailability categories.
@@ -94,6 +102,43 @@ integrations need explicit activation. PID is confined to the offline
 - Optional NCP wire 0.8 integration uses revision `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
 - The `ncp-live` feature also activates the pinned Zenoh adapter and Tokio.
 - Direct `galadriel-ncp` feature `zenoh` activates the same live stack.
+
+### Exact CREBAIN categorical conformance study
+
+- `galadriel-crebain-mgw` evaluates a byte-bound 64-row, physically
+  parameterized synthetic encoding of the canonical laws `T_H = V AND R` and
+  `T_V = V AND R AND A`.
+- The producer derives targets from latent ENU truth without reading source
+  fields, sensor projections, fusion output, Galadriel, or PID. This establishes
+  dataflow separation from fusion/PID, not producer-independent field truth.
+- Each row retains a unique episode identifier, one row-level observation
+  timestamp, three pre-fusion sensor objects, and a six-field legacy fusion
+  summary. It does not retain separate sensor timestamps, complete
+  three-projection receipts, a full fusion output, or hidden state sufficient to
+  prove state isolation.
+- The immutable producer fixture and preregistration bytes remain unchanged.
+  The v2 result carries typed, append-only source errata for target execution
+  order, row-level synchronization, and `projection_count` semantics.
+- Eight repeats per cell test bounded-summary fresh-instance reproducibility and
+  exact custody. They are not 64 independent inferential units and support no
+  p-value, confidence interval, flight-performance, or deployment claim.
+- The primary PID2 and exploratory PID3 calls use the explicit budgeted
+  categorical MGW routes. PID3 does not close pid-rs's separate 108-coordinate
+  assurance program.
+- The dependency-disjoint, separately implemented 80-digit Decimal route checks
+  66 averaged signed atom components and ten subset mutual informations. It does
+  not recompute the retained pointwise atoms and is not independent human or
+  organizational replication.
+- The complete JSON output is checked against the closed Draft 2020-12
+  `galadriel.crebain-drone-mgw-study.v2` schema at
+  `crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json` and
+  its exact schema-byte receipt by `repo_work/check_crebain_mgw_schema.py`.
+- NIS, two-sided CUSUM, signed correlation, KSG MI, categorical MGW, continuous
+  Ehrlich PID, comparators, invariants, and downstream objectives remain
+  distinct objects. The exact fixture evaluates only categorical MGW.
+- The result is record-only advisory evidence. It cannot enter fusion, and a
+  future Haldir record must leave authorization and plant-command outputs
+  unchanged. PID cannot grant, revoke, restrict, or exercise authority.
 
 ### Release assurance
 
@@ -115,11 +160,20 @@ integrations need explicit activation. PID is confined to the offline
 - Candidate construction stages the requirements ledger, signed pair, and audit manifest in that order.
 - Release-input drift aborts that transaction and requires a new signed pair.
 - Release tools also check supply-chain policy, fuzz results, mutations, source inventory, and signed inputs.
-- Focused mutation evidence covers the acceptance-estimation functions that the broad gate excludes.
+- Focused mutation evidence covers only the acceptance-estimation functions and
+  source spans named by its exact receipts. It does not imply whole-repository
+  mutation coverage.
 - Mutation evidence retains seven outcome files, five run receipts, and one `git.diff`.
 - Four receipts bind the broad shards.
 - One receipt binds the three focused outcomes.
 - All four broad shards and all three focused outcomes are exact-candidate gates.
+- A separate exact-head deep-quality job bounds the CREBAIN contract at 149
+  selected mutants: 146 caught, three exact compiler-unviable return
+  substitutions, and zero missed or timed out. It uploads a candidate-bound
+  receipt outside the established signed version 5 mutation set. Finalization
+  does not yet ingest that extra receipt, so publication must separately retain
+  and verify the successful exact-head hosted artifact. No claim is made that the
+  version 5 signed set covers CREBAIN.
 - The observational mutation-baseline job is residual evidence, not a successful gate.
 - Exact mutation commands use environment schema `galadriel.mutation-environment.v2`.
 - They require the Linux process file system (`procfs`), process file descriptors, and serialized child-subreaper ownership.
@@ -199,8 +253,8 @@ integrations need explicit activation. PID is confined to the offline
 - Qualification and closure tools retain exact-candidate evidence.
 - Supply-chain reports bind each command to its correct output stream.
 - The pinned `cargo-deny` license summary uses standard error and requires empty standard output.
-- The license inventory covers the 382-package host-filtered graph.
-- It is not a complete all-target inventory of the 437-package Cargo graph.
+- The license inventory covers the 381-package host-filtered graph.
+- It is not a complete all-target inventory of the 436-package Cargo graph.
 - `cargo-audit` JSON uses standard output and retains standard error as diagnostics.
 - Finalization verifies each declared stream contract and its diagnostics.
 - Exploratory sweeps report both directions and empty partitions.
@@ -278,8 +332,18 @@ That object descends from the 2026-07-22 observation.
 Its intervening changes affect audit, evidence, and release tooling only.
 It creates no runtime or conformance edge.
 
+The 2026-08-18 inspection also binds signed Haldir review commit
+`c19f9011e4919a5bc67fab5f90d6c8eefed4455b` on
+`review/galadriel-pid-record-only-clean`. That review defines the record-only
+noninterference contract. It is not merged Haldir `main`, an implemented
+adapter, or runtime qualification.
+
 Future use must start in a record-only mode.
-It must have separate admission and remain restrict-only.
+Under this release boundary it must remain record-only: adding, removing, or
+changing the evidence record cannot change authorization or plant commands.
+Galadriel evidence cannot grant, revoke, restrict, or exercise Haldir authority.
+Any policy-effect proposal is a separate contract requiring new admission and
+is not implied by this relationship.
 
 ### Prisoma
 
@@ -319,7 +383,7 @@ The publication procedure checks all six after that push and before release publ
 
 [`ecosystem-cut.json`](https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/ecosystem-cut.json) records the exact objects.
 It separates the immutable 2026-08-03 NCP release-status snapshot from Galadriel's wire-0.8 dependency pin.
-It also records the four dated Haldir observations and the dated Paper2Brain observation.
+It also records five dated Haldir observations and the dated Paper2Brain observation.
 Mutable inspected heads record provenance only.
 They are not release pins or reciprocal acceptance.
 

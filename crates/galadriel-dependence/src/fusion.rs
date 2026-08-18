@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// Versioned serialization schema of the complete companion assessment snapshot.
-pub const DEPENDENCE_ASSESSMENT_REPORT_SCHEMA: &str = "galadriel.dependence-assessment-report.v1";
+pub const DEPENDENCE_ASSESSMENT_REPORT_SCHEMA: &str = "galadriel.dependence-assessment-report.v2";
 
 /// Whether core preparation supplied a common projection family for the MI companion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -235,7 +235,7 @@ impl DependenceAssessmentReport {
         self.schema
     }
 
-    /// Authoritative default NIS-plus-signed-correlation assessment.
+    /// Authoritative default NIS/CUSUM-magnitude plus signed-correlation assessment.
     pub const fn default_report(&self) -> &DefaultReport {
         &self.default
     }
@@ -520,6 +520,10 @@ mod tests {
             .all(|axis| axis.assessment_binding() == observed.assessment_binding()));
         assert!(observed.note().contains("cannot alter"));
         assert_eq!(observed.schema(), DEPENDENCE_ASSESSMENT_REPORT_SCHEMA);
+        assert_eq!(
+            observed.schema(),
+            "galadriel.dependence-assessment-report.v2"
+        );
         let serialized = serde_json::to_value(&observed)
             .expect("complete companion assessment must serialize as one evidence snapshot");
         assert_eq!(

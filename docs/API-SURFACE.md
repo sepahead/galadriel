@@ -186,11 +186,18 @@ length, and every selected row's sequence and timestamp bounds. The inner
 implement serialization for evidence export; they do not promise a stable
 deserialization or wire-input schema.
 
+The selected implementation is `pid-core` 0.9.0 at
+`bc3aa80fb6025e709c2906a08bce25a4fac40578`. Each point fit calls
+`ksg_mi_report_with_budget`. Its preflight and execution use the same explicit
+single-thread `ResourceBudget`. No resolved Galadriel feature profile includes
+`pid-runlog`. The older `1cd2424f…` selection appears only in the immutable
+CREBAIN producer preregistration and historical migration record.
+
 Offline `galadriel-justify` exposes `PidFunctionalIdentity`, role-typed
 `PidReferenceEdge` values, `PidStudyRoute`, `PidQuestionSpec`,
 `PidDependencyIdentity`, `PidInputLawSpec`, `PidOutputCoordinateSpec`,
 `PidAggregateOutputSpec`, `PidTrialArmSpec`, `StudyAggregateOutputSpec`,
-`JustificationStudyProtocol`, and typed `JustificationError`. The version 2
+`JustificationStudyProtocol`, and typed `JustificationError`. The version 3
 question/study schemas distinguish the categorical
 Makkeh–Gutknecht–Wibral functional from the related continuous
 Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction and bind the exact
@@ -205,11 +212,48 @@ upstream trial explicitly remains in nats. The sibling study protocol maps every
 non-PID root field and binds its paired-index bootstrap, seed domains, percentile
 selection, interval scope, and lack of a multiplicity guarantee. The result does
 not bind the exact resolved RNG crate bytes or Galadriel source tree; those remain
-publication-bundle requirements. The dependency envelope is deliberately smaller than a
-software-identity or attestation object. Categorical and continuous aggregate
-result fields are private; getters expose them and a coherence method recomputes
+publication-bundle requirements. The fixed question's dependency-selection
+envelope is deliberately smaller than a build identity. Each produced study
+separately retains `PidExecutionIdentity`, reconciles pid-core's
+`SoftwareIdentity` to the exact package/version/revision, and requires a clean
+`pid-core` package subtree at the selected WorkspaceGit commit. This remains
+smaller than whole-repository cleanliness or binary attestation. Each study also
+retains `PidStudyResourceContract`: every pid-core evaluation uses the same
+explicit one-thread per-call `ResourceBudget`, while the separate aggregate
+study preflight remains the bound on composed quadratic work. Neither receipt is
+an end-to-end peak-memory, allocation-success, or wall-clock guarantee. Categorical and
+continuous aggregate result fields are private. Getters expose them and a
+coherence method recomputes
 every upstream-report-derived aggregate. Pearson remains outside that verifier
 because the result does not retain its exact input rows.
+
+The same audit-only crate now exposes `crebain_mgw` and the standalone
+`galadriel-crebain-mgw` binary. Its sealed `CrebainMgwQuestionSpec`,
+`FixtureIdentity`, `FixtureValidation`, `MethodEligibility`, `AlgebraChecks`, and
+`CrebainDroneMgwStudy` types describe one exact embedded categorical AND2/AND3
+law. The binary accepts no external data path. It emits complete JSON by default
+or a Markdown rendering with `--format markdown`. This is not a stable input/wire
+schema, a runtime adapter, or part of `galadriel-core`. The output schema is
+versioned independently as `galadriel.crebain-drone-mgw-study.v2`. Its closed
+Draft 2020-12 document is
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json`. The
+study embeds its exact digest/byte receipt, and
+`repo_work/check_crebain_mgw_schema.py` validates both shape and byte binding.
+Public accessors do not authorize callers to construct, deserialize, or
+reinterpret a result. Only the byte-bound validation/evaluation path can produce
+one. The dependency-disjoint, separately implemented 80-digit Decimal route
+checks the 66 averaged atom components and ten mutual informations, not the
+retained pointwise atoms. This is not independent human or organizational
+replication. The study is record-only research evidence: it cannot affect
+fusion or Haldir
+authorization or plant-command outputs.
+
+The fixture-facing API treats `fusion_receipt` as a six-field legacy summary
+(prior identifier, input/expected/projection counts, truncation, and
+degradation). It does not expose that object as three complete projection
+receipts, a full fusion replay, or proof of state isolation. The target receipt
+states that latent-truth generation is dataflow-separated from projection,
+fusion, verdict, and PID. It does not claim producer-independent field truth.
 
 The preceding public version was 0.1.0.
 That version was explicitly a research prototype.

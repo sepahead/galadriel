@@ -1,0 +1,416 @@
+{
+  "schema": "galadriel.clm-018-assurance-extension.v1",
+  "release": "0.9.0",
+  "claim_id": "CLM-018",
+  "governance": {
+    "extension_kind": "append_only_claim_assurance",
+    "historical_task_count": 116,
+    "historical_task_range": "T000 through T115",
+    "historical_projection": [
+      {
+        "path": "release/0.9.0/tasks.json",
+        "sha256": "8278951155e7477e59a113e566bb2056a1705ba9fbce7899b4786ada16cec5ca",
+        "role": "immutable 116-task source projection"
+      },
+      {
+        "path": "release/0.9.0/task-closure-plan.json",
+        "sha256": "23ef2f6085521863b9c575ee0b898e4ec87962ec15f205a729d9ec651972a085",
+        "role": "derived closure obligations for the historical projection"
+      },
+      {
+        "path": "release/0.9.0/task-dispositions.json",
+        "sha256": "ea36cbbdbed8dfc4aae7a0034dfe91f223de24c7771f837530bff4ddee920639",
+        "role": "candidate-bound disposition interface for the historical projection"
+      }
+    ],
+    "policy": "CLM-018 was added after the immutable 116-task handoff projection. This artifact extends claim assurance append-only. It does not insert a task, rewrite a historical task, manufacture a historical disposition, or represent post-commit candidate evidence as complete."
+  },
+  "claim_contract": {
+    "tier": "IMPLEMENTED",
+    "subject": "physically parameterized synthetic categorical conformance law",
+    "law": "an equal-weight empirical categorical law over all eight ordered visual/radar/acoustic source cells, repeated eight times per cell",
+    "targets": "horizontal_incursion = visual AND radar; volumetric_incursion = visual AND radar AND acoustic",
+    "target_boundary": "the producer derives each synthetic target from its latent ENU cell after constructing sensor objects and source symbols but before fusion. Target derivation reads neither serialized source fields, projections, fusion output, Galadriel verdicts, nor PID results",
+    "reproducibility_claim": "the 64 retained rows establish bounded-summary fresh-instance reproducibility for the generated fixture and no stronger state-isolation or statistical-independence claim",
+    "pid_scope": "categorical shared-exclusions MGW PID2 is the primary deterministic conformance decomposition. Categorical shared-exclusions MGW PID3 is exploratory and does not close pid-rs's separate 108-coordinate assurance program",
+    "numerical_scope": "all 66 averaged informative, misinformative, and signed-net atom components, ten subset mutual informations, lattice identities, and one negative signed-atom theorem control are checked. The candidate wrapper receipts exact Rust output SHA-256 and byte size. Retained pointwise atoms are internally reconstructed but are not independently recomputed by the Decimal route",
+    "authority_boundary": "the study is offline advisory research evidence. For fixed admitted authority input, Haldir authorization, trusted-state policy, and plant-command outputs are identical across PID record states. Audit records may vary. No operator-behavior noninterference is claimed",
+    "forbidden_inferences": [
+      "physical or recorded-flight validation",
+      "complete producer state isolation",
+      "64 independent experimental units",
+      "continuous-PID validity",
+      "closure of the separate 108-coordinate assurance program",
+      "causal or attack-classification validity",
+      "field, deployment, safety, latency, or availability performance",
+      "sensor-truth authentication or a calibrated posterior",
+      "command, policy, authorization, or control authority",
+      "independent human review or independent clean-room reproduction"
+    ]
+  },
+  "identities": {
+    "producer_repository": "https://github.com/sepahead/crebain",
+    "producer_revision": "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d",
+    "fixture_path": "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+    "fixture_sha256": "82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda",
+    "producer_preregistered_pid_revision": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+    "actual_pid_core_revision": "bc3aa80fb6025e709c2906a08bce25a4fac40578",
+    "evaluator_adaptation": "the producer preregistration remains immutable while Galadriel explicitly adapts to the clean remote pid-core 0.9.0 revision using budgeted categorical routes. This assurance does not assert or rely on commit ancestry and instead gates exact identities, estimand preservation, resources, and output identities",
+    "schema_path": "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+    "schema_id": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+    "schema_sha256": "f2b316988b85e228eb949b1ef5b41db4b1b521c94cd9c83213a3fc665bcb1f7f",
+    "schema_bytes": 50024
+  },
+  "producer_source_errata": [
+    {
+      "id": "ERR-TARGET-ORIGIN",
+      "json_pointer": "/analysis_manifest/target_origin",
+      "corrected_boundary": "target construction occurs after sensor objects and source symbols are constructed, not before sensor construction. The target calculation remains dataflow-independent of serialized source fields, projections, fusion, verdicts, and PID"
+    },
+    {
+      "id": "ERR-OPERATIONAL-METHODS",
+      "json_pointer": "/analysis_manifest/method_exclusions/nis_and_correlation",
+      "corrected_boundary": "the operational magnitude lane contains NIS and two-sided CUSUM, while signed Pearson correlation is a distinct directional association diagnostic. None is a PID atom or evaluated by this fixture"
+    },
+    {
+      "id": "ERR-PROJECTION-COUNT",
+      "json_pointer": "/rows/*/fusion_receipt/{projection_count,common_projection_prior_id}",
+      "corrected_boundary": "projection_count=3 records three admitted observations, not three present projections. The prior field establishes at least one present projection and prior-two agreement only among projections that are present"
+    }
+  ],
+  "required_gates": [
+    {
+      "id": "GATE-CLM018-001",
+      "kind": "rust_contract_and_metamorphic_tests",
+      "command": "cargo test --locked -p galadriel-justify crebain_mgw",
+      "evidence": [
+        "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+        "crates/galadriel-justify/src/crebain_mgw.rs"
+      ],
+      "supports": "row reconstruction, exact law, resource preflight, signed atom structure, lattice reconstruction, analytic PID2 equations, source/target/order canaries, negative atoms, source identity, and producer-source errata",
+      "boundary": "component tests do not substitute for the actual-binary schema and Rust-to-Decimal gates"
+    },
+    {
+      "id": "GATE-CLM018-002",
+      "kind": "closed_world_formal_schema_tests",
+      "command": "python3 -B -E -s -S -m unittest -v repo_work.tests.test_crebain_mgw_schema",
+      "evidence": [
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+        "repo_work/check_crebain_mgw_schema.py",
+        "repo_work/tests/test_crebain_mgw_schema.py"
+      ],
+      "supports": "Draft 2020-12 closed-world shape, required coordinates, fixed cardinalities, bounded parsing, duplicate/non-finite rejection, and byte-bound machine-schema receipt",
+      "boundary": "schema validity does not establish semantic, algebraic, numerical, causal, or deployment validity"
+    },
+    {
+      "id": "GATE-CLM018-003",
+      "kind": "separate_decimal_oracle_tests",
+      "command": "python3 -B -E -s -S -m unittest -v repo_work.tests.test_crebain_mgw_decimal_oracle",
+      "evidence": [
+        "repo_work/check_crebain_mgw_decimal_oracle.py",
+        "repo_work/tests/test_crebain_mgw_decimal_oracle.py"
+      ],
+      "supports": "80-digit Decimal finite-law implementation, fixed oracle-coordinate digest, hostile comparison controls, and signed negative-atom acceptance",
+      "boundary": "the Decimal oracle is law-specific software corroboration, not independent experimental evidence"
+    },
+    {
+      "id": "GATE-CLM018-004",
+      "kind": "actual_binary_candidate_wrapper_test",
+      "command": "python3 -B -E -s -S -m unittest -v repo_work.tests.test_crebain_mgw_candidate",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "crates/galadriel-justify/src/crebain_mgw_main.rs",
+        "repo_work/check_crebain_mgw_candidate.py",
+        "repo_work/check_crebain_mgw_decimal_oracle.py",
+        "repo_work/check_crebain_mgw_schema.py",
+        "repo_work/qualify_candidate.py",
+        "repo_work/tests/test_crebain_mgw_candidate.py"
+      ],
+      "supports": "an end-to-end test executes the actual offline Rust binary, validates the exact closed-world schema and semantic identities, compares the same bytes with the separately implemented Decimal route, and checks the receipt fields",
+      "boundary": "the end-to-end wrapper test is distinct from the candidate execution receipt and does not retain the raw study document"
+    },
+    {
+      "id": "GATE-CLM018-005",
+      "kind": "candidate_bound_actual_rust_schema_decimal_receipt",
+      "command": "python3 -B -E -s -S repo_work/check_crebain_mgw_candidate.py",
+      "evidence": [
+        "repo_work/check_crebain_mgw_candidate.py",
+        "repo_work/check_crebain_mgw_decimal_oracle.py",
+        "repo_work/check_crebain_mgw_schema.py",
+        "repo_work/finalize_release.py",
+        "repo_work/qualify_candidate.py",
+        "repo_work/tests/test_finalize_qualification.py"
+      ],
+      "supports": "the exact candidate qualifier executes the offline wrapper and retains its canonical JSON receipt with Rust byte identity, schema identity, Decimal-oracle identity, comparison counts, maximum error, tolerance, and separate pass states",
+      "boundary": "the qualification log binds the receipt to the candidate. The wrapper does not publish the raw study JSON, independently reproduce pointwise atoms, establish field validity, or provide human replication"
+    }
+  ],
+  "lenses": [
+    {
+      "id": "L01",
+      "title": "Claims and scope",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "Calling a physically parameterized synthetic fixture physical validation, or presenting a component implementation as field or deployment qualification, would outrun the evidence.",
+      "control_or_claim_removal": "CLM-018 says synthetic categorical conformance, remains IMPLEMENTED, and enumerates forbidden physical, statistical, field, deployment, authority, and independent-review inferences.",
+      "evidence": [
+        "release/0.9.0/claims.json",
+        "docs/CREBAIN-DRONE-MGW-STUDY.md"
+      ],
+      "remaining_risk": "Readers may still generalize the drone vocabulary beyond the exact finite fixture. Publication must retain the limitations adjacent to the result."
+    },
+    {
+      "id": "L02",
+      "title": "First-principles semantics",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "Sources, target, row, ordering, units, or the relation between latent ENU coordinates and categorical symbols could be left implicit.",
+      "control_or_claim_removal": "The fixture and typed question freeze ordered visual/radar/acoustic symbols, synchronized row windows, Boolean AND targets, natural-log units, the empirical law, and the pre-fusion dataflow boundary.",
+      "evidence": [
+        "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+        "crates/galadriel-justify/src/crebain_mgw.rs"
+      ],
+      "remaining_risk": "This law is intentionally simple and cannot model unrepresented sensor noise, dropout, conflict, attack, or flight dynamics."
+    },
+    {
+      "id": "L03",
+      "title": "Mathematics and statistics",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "Repeated deterministic cells could be mistaken for an independent sample, negative atoms could be clamped, or MGW, I_min, KSG, continuous Ehrlich, BROJA, co-information, O-information, NIS, CUSUM, and correlation could be conflated.",
+      "control_or_claim_removal": "The analysis declares an exact categorical empirical law with no confidence interval or p-value, preserves signed atoms, checks analytic PID2 identities and lattice reconstruction, and keeps each method in a distinct eligibility row with explicit abstentions.",
+      "evidence": [
+        "crates/galadriel-justify/src/crebain_mgw.rs",
+        "repo_work/check_crebain_mgw_decimal_oracle.py",
+        "docs/CREBAIN-DRONE-MGW-STUDY.md"
+      ],
+      "remaining_risk": "A finite-law numerical agreement does not establish estimator behavior on noisy, mixed, continuous, singular, or dependent operational data."
+    },
+    {
+      "id": "L04",
+      "title": "Type and state integrity",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "A swapped source, altered target, missing coordinate, non-finite number, stale source identity, or unbudgeted evaluator route could serialize a superficially plausible result.",
+      "control_or_claim_removal": "Typed questions, exact source order, predicate-isolating mutations, finite-input checks, fixed coordinate cardinalities, source reconciliation, and explicit resource receipts fail closed.",
+      "evidence": [
+        "crates/galadriel-justify/src/crebain_mgw.rs",
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+      ],
+      "remaining_risk": "The retained fixture cannot demonstrate validity for source types or state combinations outside this closed categorical contract."
+    },
+    {
+      "id": "L05",
+      "title": "Time, ordering, and replay",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "Rows could mix windows, duplicate episode IDs, reorder source cells, or imply per-modality timing that the compact artifact does not retain.",
+      "control_or_claim_removal": "The fixture validates one prior and observation timestamp rule, unique episode IDs, deterministic row ordering and digest, and a bounded row-window claim without asserting retained per-modality timestamps.",
+      "evidence": [
+        "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+        "crates/galadriel-justify/src/crebain_mgw.rs"
+      ],
+      "remaining_risk": "The compact fixture is not a full producer replay and cannot expose hidden per-modality timing or lifecycle state."
+    },
+    {
+      "id": "L06",
+      "title": "Identity and provenance",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "The immutable producer preregistration, current evaluator revision, fixture bytes, schema bytes, and candidate build identity could be collapsed into one misleading version claim.",
+      "control_or_claim_removal": "Separate identities bind the CREBAIN source commit, fixture digest, historical preregistered pid-rs revision, actual clean pid-core revision, evaluator adaptation, software identity, and schema digest.",
+      "evidence": [
+        "release/0.9.0/audit-inputs.json",
+        "release/0.9.0/ecosystem-cut.json",
+        "crates/galadriel-justify/src/crebain_mgw.rs"
+      ],
+      "remaining_risk": "The final candidate output still needs a candidate-bound retained receipt. Source identity is not authenticity, scientific validity, or binary reproducibility."
+    },
+    {
+      "id": "L07",
+      "title": "Authentication and cryptography",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "A digest could be treated as producer authentication, or JSON normalization could detach an output from the bytes actually checked.",
+      "control_or_claim_removal": "The release uses SHA-256 only for byte identity and custody, validates strict JSON and duplicate keys, and makes no cryptographic producer-authentication claim for the fixture.",
+      "evidence": [
+        "repo_work/check_crebain_mgw_schema.py",
+        "release/0.9.0/audit-inputs.json"
+      ],
+      "remaining_risk": "Repository and release signing establish separate source-publication provenance only after their own candidate workflow. They do not authenticate physical sensor truth."
+    },
+    {
+      "id": "L08",
+      "title": "Authority and safety",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "A downstream consumer could convert a favorable or unfavorable PID pattern into permission, denial, restriction, restoration, or a plant command.",
+      "control_or_claim_removal": "The study output is record-only advisory evidence, the estimand graph has no authority edge, and CLM-018 explicitly forbids every grant, deny, restrict, restore, refresh, widen, revoke, and exercise interpretation.",
+      "evidence": [
+        "docs/ADVISORY-BOUNDARY.md",
+        "crates/galadriel-justify/src/crebain_mgw.rs",
+        "docs/CREBAIN-DRONE-MGW-STUDY.md"
+      ],
+      "remaining_risk": "A future external consumer can violate this contract. Such a consumer requires separate admission, review, and evidence."
+    },
+    {
+      "id": "L09",
+      "title": "Hostile inputs and parsers",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "Duplicate keys, unknown fields, non-finite or oversized numbers, wrong cardinalities, malformed nesting, source swaps, or one-predicate mutations could evade a nominal happy-path test.",
+      "control_or_claim_removal": "The schema checker is bounded and closed-world, its hostile suite isolates schema predicates, and Rust tests isolate scientific, identity, resource, order, target, and signed-component predicates.",
+      "evidence": [
+        "repo_work/check_crebain_mgw_schema.py",
+        "repo_work/tests/test_crebain_mgw_schema.py",
+        "crates/galadriel-justify/src/crebain_mgw.rs"
+      ],
+      "remaining_risk": "Candidate qualification must run the retained hostile suites. Static source review alone is not execution evidence."
+    },
+    {
+      "id": "L10",
+      "title": "Resource and denial-of-service bounds",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "A categorical route or JSON checker could allocate or compute before proving that dimensions, bytes, operations, and coordinates are bounded.",
+      "control_or_claim_removal": "The fixed 64-row law uses explicit pid-core resource estimates and budgets for all nine calls. The schema checker bounds bytes, depth, numbers, arrays, and reference evaluation.",
+      "evidence": [
+        "crates/galadriel-justify/src/crebain_mgw.rs",
+        "repo_work/check_crebain_mgw_schema.py"
+      ],
+      "remaining_risk": "These bounds cover this fixture and checker, not arbitrary larger studies or long-duration service availability."
+    },
+    {
+      "id": "L11",
+      "title": "Concurrency and lifecycle",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "Eight rows per cell could be advertised as proof that all hidden fusion state is isolated across initialization, cleanup, concurrency, restart, or crash boundaries.",
+      "control_or_claim_removal": "The claim is narrowed to reproducibility of the retained bounded summary from producer-declared fresh instances. It explicitly denies complete state-isolation evidence.",
+      "evidence": [
+        "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+        "docs/CREBAIN-DRONE-MGW-STUDY.md"
+      ],
+      "remaining_risk": "No complete state snapshot, concurrent producer campaign, crash-recovery trace, or long-running lifecycle evidence is retained."
+    },
+    {
+      "id": "L12",
+      "title": "Determinism and reproducibility",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "A result could be regenerated from mutable peer state, an unrecorded evaluator, a normalized fixture, or a different source order.",
+      "control_or_claim_removal": "The source commits, fixture and schema digests, exact commands, source order, finite law, output schema, Decimal coordinate digest, and candidate gate are explicit and deterministic.",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "repo_work/check_crebain_mgw_decimal_oracle.py",
+        "docs/CREBAIN-DRONE-MGW-STUDY.md"
+      ],
+      "remaining_risk": "Organizationally independent clean-room reproduction and cross-platform bit identity are not claimed."
+    },
+    {
+      "id": "L13",
+      "title": "API, FFI, and SemVer",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "A producer preregistered against an older pid-rs route could silently consume renamed, unbudgeted, experimental, or semantically different APIs.",
+      "control_or_claim_removal": "The adaptation separates revisions, names stable budgeted categorical routes, checks package/source identity, freezes the estimand, and treats API review as a gate rather than inferred SemVer compatibility.",
+      "evidence": [
+        "crates/galadriel-justify/src/crebain_mgw.rs",
+        "docs/PID_RS_1_0_MIGRATION.md"
+      ],
+      "remaining_risk": "Future pid-rs revisions require a new explicit adaptation and must not inherit this assurance by version string alone."
+    },
+    {
+      "id": "L14",
+      "title": "Schema, wire, and language parity",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "Rust serialization, prose tables, Python checking, and the declared public schema could accept different fields, atom orders, cardinalities, or semantics.",
+      "control_or_claim_removal": "The actual Rust JSON carries an exact schema receipt, the external Python checker validates the public Draft 2020-12 schema bytes, and the Decimal route checks named and ordered coordinates from that same output.",
+      "evidence": [
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+        "repo_work/check_crebain_mgw_schema.py",
+        "repo_work/check_crebain_mgw_decimal_oracle.py"
+      ],
+      "remaining_risk": "No third-party implementation or additional language binding is claimed to share these semantics."
+    },
+    {
+      "id": "L15",
+      "title": "Configuration and deployment",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "A user could treat canonical fixture thresholds, resources, source order, or method selection as a deployment-ready default profile.",
+      "control_or_claim_removal": "All geometry, thresholds, resources, source order, and method eligibility are fixed study inputs. CLM-018 makes no deployment, ROS, network, credential, rollback, or operational acceptance claim.",
+      "evidence": [
+        "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+        "release/0.9.0/claims.json"
+      ],
+      "remaining_risk": "Real deployment requires separately preregistered targets, calibration, episode-level splitting, transport security, operational limits, and acceptance evidence."
+    },
+    {
+      "id": "L16",
+      "title": "Observability and forensics",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "A compact pass flag could hide the law, source identity, abstentions, resource use, method distinctions, negative coordinates, or errata.",
+      "control_or_claim_removal": "The study emits typed fixture, schema, evaluator, errata, estimand-graph, method-eligibility, resource, atom-interpretation, algebra, and software-identity receipts with complete signed averaged coordinates.",
+      "evidence": [
+        "crates/galadriel-justify/src/crebain_mgw.rs",
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+      ],
+      "remaining_risk": "The fixture deliberately omits full producer execution state and full fusion output, so forensic conclusions remain bounded to retained fields."
+    },
+    {
+      "id": "L17",
+      "title": "Verification and evidence quality",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "One implementation could agree with itself, a schema pass could be mistaken for numerical validity, or a synthetic law could be called external validation.",
+      "control_or_claim_removal": "Distinct gates cover Rust contracts, formal schema behavior, an 80-digit Decimal implementation that does not call pid-rs, actual-binary schema validation, and actual Rust-to-Decimal comparison. Each gate states its own boundary.",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "crates/galadriel-justify/src/crebain_mgw_main.rs",
+        "repo_work/check_crebain_mgw_candidate.py",
+        "repo_work/check_crebain_mgw_decimal_oracle.py",
+        "repo_work/check_crebain_mgw_schema.py",
+        "repo_work/finalize_release.py",
+        "repo_work/qualify_candidate.py",
+        "repo_work/tests/test_crebain_mgw_candidate.py",
+        "repo_work/tests/test_finalize_qualification.py"
+      ],
+      "remaining_risk": "The evidence is author-operated and repository-controlled. Independent human review, independent code, and representative field data remain absent."
+    },
+    {
+      "id": "L18",
+      "title": "Ecosystem composition",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "The fixture could be misconstrued as a live CREBAIN feedback edge, pid-rs authority, a Haldir decision route, or a Prisoma/ROS integration.",
+      "control_or_claim_removal": "The ecosystem cut distinguishes immutable CREBAIN fixture source, optional pid-core evaluator dependency, offline Galadriel evidence, prospective record-only Haldir use, and absent Prisoma, ROS, command, and authority edges.",
+      "evidence": [
+        "release/0.9.0/ecosystem-cut.json",
+        "docs/ECOSYSTEM-CONNECTIONS.md",
+        "docs/ADVISORY-BOUNDARY.md"
+      ],
+      "remaining_risk": "Peer repositories can evolve. Only immutable pins and an exact candidate cut support this release claim."
+    },
+    {
+      "id": "L19",
+      "title": "Human factors and governance",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "Dense PID terminology, legacy fixture labels, or a rushed release could obscure method non-equivalence, negative atoms, limitations, or the lack of independent review.",
+      "control_or_claim_removal": "Publication prose, equations, method matrix, typed errata, explicit limitations, exact commands, and this append-only assurance extension keep the bounded claim reviewable without rewriting historical tasks.",
+      "evidence": [
+        "docs/CREBAIN-DRONE-MGW-STUDY.md",
+        "release/0.9.0/reviews/REVIEW-METHOD.md",
+        "release/0.9.0/clm-018-assurance.json"
+      ],
+      "remaining_risk": "Qualified independent human PID, statistical, security, and release review remains NOT RUN and must not be implied by machine-assisted review."
+    },
+    {
+      "id": "L20",
+      "title": "Counterfactual and unusual cases",
+      "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
+      "defect_or_counterexample": "A future patch could remove one target predicate, swap asymmetric source positions, clamp a negative atom, change one schema constraint, forge a clean-version label, or weaken CLM-018 while leaving nominal output plausible.",
+      "control_or_claim_removal": "Predicate-isolating Rust and Python tests, asymmetric source/atom canaries, rotated targets, a fixed negative PID3 control, schema receipt binding, exact identity checks, and release-audit hostile claim mutations fail closed.",
+      "evidence": [
+        "crates/galadriel-justify/src/crebain_mgw.rs",
+        "repo_work/tests/test_crebain_mgw_decimal_oracle.py",
+        "repo_work/tests/test_crebain_mgw_schema.py",
+        "scripts/tests/test_release_audit.py"
+      ],
+      "remaining_risk": "Mutation coverage is bounded and cannot prove absence of every coupled defect. Exact-candidate execution and independent review remain necessary."
+    }
+  ],
+  "closure": {
+    "lens_count": 20,
+    "disposition": "CLOSED_FOR_BOUNDED_IMPLEMENTED_SYNTHETIC_CONFORMANCE_CLAIM",
+    "candidate_gate_status": "REQUIRED_NOT_PRETENDED_COMPLETE_BY_THIS_SOURCE_ARTIFACT",
+    "deployment_qualification": "NOT_CLAIMED",
+    "independent_human_review": "NOT_RUN",
+    "independent_clean_room_reproduction": "NOT_RUN",
+    "residual_risk": "The exact candidate must still run and retain every required gate. This finite synthetic conformance result cannot answer whether PID estimates are reliable, useful, calibrated, causal, or operationally beneficial on representative multi-sensor flight episodes."
+  }
+}
