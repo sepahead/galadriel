@@ -31,10 +31,11 @@ class CrebainMgwSchemaTest(unittest.TestCase):
             [
                 "rustup",
                 "run",
-                "1.89",
+                "1.89.0",
                 "cargo",
                 "run",
                 "--locked",
+                "--offline",
                 "-q",
                 "-p",
                 "galadriel-justify",
@@ -45,11 +46,17 @@ class CrebainMgwSchemaTest(unittest.TestCase):
                 "json",
             ],
             cwd=ROOT,
-            check=True,
+            check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=240,
         )
+        if completed.returncode != 0:
+            diagnostic = completed.stderr.decode("utf-8", "replace")[:4096]
+            raise RuntimeError(
+                "exact Rust schema fixture command failed with exit status "
+                f"{completed.returncode}: {diagnostic}"
+            )
         cls.actual_bytes = completed.stdout
         with tempfile.NamedTemporaryFile(suffix=".json") as output:
             output.write(cls.actual_bytes)
