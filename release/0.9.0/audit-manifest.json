@@ -125,12 +125,12 @@
       "size_bytes": 26798
     },
     {
-      "git_blob_id": "f2ad171f25324c8e1d8c7c6677951107587bb14f",
+      "git_blob_id": "60af8b57a35f7005507c9af4e3c8ac6e44328d67",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f27d5f460ffdfcc3ec88f213eff40a466951c323b7fc3f10f1e0a396bdc71ea4",
-      "size_bytes": 62054
+      "sha256": "51c65179266d0e79e54144d80bab7887a59e88ad3d3aa5b759f94a2a2ad87fc4",
+      "size_bytes": 62376
     },
     {
       "git_blob_id": "93e56077732b34820e2594e8f61d5579b5f9849d",
@@ -205,12 +205,12 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "14ccb1cd770151495d3faba1d5c5eda2d18e94df",
+      "git_blob_id": "56044734b6475a8feba2de8afe83fbeb0cb1afd4",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "cc2bc29d269cd8e54ac503bcd4b6cd554d8f02b03b79b114625c10b14ee8131c",
-      "size_bytes": 59808
+      "sha256": "786a42f06c0111fa130be13b798582365f7cbf31749133fde46d98ce6f85825c",
+      "size_bytes": 61071
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -237,28 +237,28 @@
       "size_bytes": 1260
     },
     {
-      "git_blob_id": "ec173b6e5b51a0f94ed0846375b88a5d2c9877e0",
+      "git_blob_id": "4c12cc8bbe392c37909959849c583a14c0c648e1",
       "git_mode": "100644",
       "path": "assets/crebain-drone-mgw-pipeline.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "4a42b7d7273587aabe8082f75021656e68dfb23cf3cbd9e05bd6dd5728ff885e",
-      "size_bytes": 17700
+      "sha256": "df134fd67d86c51f6139857fcd96b845b89a3a726063914b2baa6615cefa5e2b",
+      "size_bytes": 18693
     },
     {
-      "git_blob_id": "11e287f73ac42b287ab57448b76d2de4a8225032",
+      "git_blob_id": "f8766f7cc13da5f15eb89d9ed53d1d21cbef659a",
       "git_mode": "100644",
       "path": "assets/crebain-mgw-method-map.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "59ba89b82da1528623b9d425f42b06963891c374c49b078ec18ac7dbc9c6048a",
-      "size_bytes": 25022
+      "sha256": "78b9b98b80a92940958e82be54d13a4e8bf4c9544b60a0e995883a3fcef6fa0b",
+      "size_bytes": 25727
     },
     {
-      "git_blob_id": "a9eac2d1a781e261ea9e76e5bf71873e5a43d031",
+      "git_blob_id": "0161f0d603f16e1a07cfc1a5c9e01a032efa68a5",
       "git_mode": "100644",
       "path": "assets/detector-evidence.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e5b63bfa89612beae9bc56e840a7f1c1932701184c7dcc512b612b75b9a9af52",
-      "size_bytes": 10519
+      "sha256": "1fe521436ae28bf1dfa03bf41179299f914007a3a1698fd8bf5ec5a16515fc8f",
+      "size_bytes": 10716
     },
     {
       "git_blob_id": "935eb9b4b11a8f70c79d17525e7a73cf7f058563",
@@ -277,6 +277,14 @@
       "size_bytes": 9848
     },
     {
+      "git_blob_id": "5c78afb33cfda601457c0d0eac12e1298b128f39",
+      "git_mode": "100644",
+      "path": "assets/method-selection-decision-map.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "17ebecb012f66b85ead18ba31d7834e0bae9080866280b9294373331b3f77bbc",
+      "size_bytes": 25112
+    },
+    {
       "git_blob_id": "e42d85a7e86a90ccd65b4195a758e9aca54277f9",
       "git_mode": "100644",
       "path": "assets/pid-estimand-provenance.svg",
@@ -285,12 +293,12 @@
       "size_bytes": 10410
     },
     {
-      "git_blob_id": "b19abd3bcdd0108859813e1954d237e8c0dacb19",
+      "git_blob_id": "c3b6a46563a0bcbe10c300f3a3d4c2ae2ed1bc84",
       "git_mode": "100644",
       "path": "assets/system-boundary.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "bbddcfedfe6593a86e914cf400efc62d0f275f326c9a2955f6d8c6e3528c5b4a",
-      "size_bytes": 12081
+      "sha256": "5448ffb7e804701aeb5e0abdb5b0c3bcdc976cd1df04f4238fc1fb75b787108c",
+      "size_bytes": 12142
     },
     {
       "git_blob_id": "c8b06120e872993601d7d38855da811c5bf56464",
@@ -421,12 +429,12 @@
       "size_bytes": 12033
     },
     {
-      "git_blob_id": "d70be433288b693c92778e5890f5d6b3074a7b30",
+      "git_blob_id": "40f057b31621a4a3e5bf53e8faac03e61e299205",
       "git_mode": "100644",
       "path": "crates/galadriel-core/src/decision.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "403d391611786fe69e9555a550fffe93cbf6d766badd0a5dcd874fc0dd2dabf4",
-      "size_bytes": 64168
+      "sha256": "a4a4941bf26d374ba39e19c043a553c3bd6214b7cb950c53a4ddd022554817e0",
+      "size_bytes": 65159
     },
     {
       "git_blob_id": "341833d0ed114a6b348a5eb50a10b23578f018d6",
@@ -613,12 +621,12 @@
       "size_bytes": 50024
     },
     {
-      "git_blob_id": "c0830e7a464fdefac2387ac3ffd5ccfce27148f0",
+      "git_blob_id": "1b0635b8757a371b8667f17e1e6adb1adeff862d",
       "git_mode": "100644",
       "path": "crates/galadriel-justify/src/crebain_mgw.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "3d2262ac705a8cd9b8e0c5f6e947f74ffb2c5d13f513237dbd1edab4eff7c102",
-      "size_bytes": 175185
+      "sha256": "669681f06676da55839523ddace76210e790df29ba2664f863eebf71e0e5c6e3",
+      "size_bytes": 175948
     },
     {
       "git_blob_id": "755aa9f9e38716cd1ad085a97960a702a33fd23d",
@@ -973,12 +981,12 @@
       "size_bytes": 7805
     },
     {
-      "git_blob_id": "c095a2f5a4c1d195ef4b41037ea97c808e7a2cd3",
+      "git_blob_id": "6b0e9e4e2123fc6701011bb1587b085922e3e4b8",
       "git_mode": "100644",
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a5258383626e84e1a9d76bd2d20f87b8b3ec18a55a2499c0bc51e7d48aea074d",
-      "size_bytes": 49498
+      "sha256": "97bb93ceffb3bba0cca2a8e225e1d71a7871de68f93e09403fb8b0d89b1b05cc",
+      "size_bytes": 52757
     },
     {
       "git_blob_id": "323dcedec36b78d5c4494931b276b87aed650283",
@@ -989,28 +997,36 @@
       "size_bytes": 27609
     },
     {
-      "git_blob_id": "a26f3270eac643cfc0ac244a4663665b570f5782",
+      "git_blob_id": "03795c46c100da7f4eacc364554c40475680f8b5",
       "git_mode": "100644",
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "12da6a11c965e5b606cf3a4b7300e999c9340bf3c271c21e2039c640b141c9ad",
-      "size_bytes": 28964
+      "sha256": "e6ef1e9f24f8fe5fb75019cd864a3761c3697a3bf2f18f4287eac55e3a28944d",
+      "size_bytes": 28971
     },
     {
-      "git_blob_id": "14dfbd7e63537e69e5bc03402cf0be38599ad001",
+      "git_blob_id": "d0c4f07589868b1eafa9c2c438d8dd63bba83d89",
       "git_mode": "100644",
       "path": "docs/EVALUATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "34dea4b1bf11e116950b023a73137b32c08616ee33a008dd606ae910625d74e8",
-      "size_bytes": 22702
+      "sha256": "8f4bad0773df31da342d2eab470ce943575b13c27033c4b02451cbe428a824db",
+      "size_bytes": 22942
     },
     {
-      "git_blob_id": "96b6e727f24a97155a59c6f87939199393d661b5",
+      "git_blob_id": "bfc3ceee19d1fe9ec21a7c5a8538237a73c6b83c",
       "git_mode": "100644",
       "path": "docs/JUSTIFICATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "92bc7c5d62b3ee54db0e70c105768026a24bd7d34baa2ac42a589e2d3773491c",
-      "size_bytes": 23974
+      "sha256": "24546c64a80cc263a04427b508117e830ee46a892aed911ce2925dff2375721f",
+      "size_bytes": 24474
+    },
+    {
+      "git_blob_id": "6a79d488738baeeca3d8e25b6a500066771afb8d",
+      "git_mode": "100644",
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "4d43fd948f086674de6dd31e2dea055221836097f16348d705b447a21e159b30",
+      "size_bytes": 48174
     },
     {
       "git_blob_id": "3e11e04be1794c54b4f8b141530476eea1351796",
@@ -1029,20 +1045,20 @@
       "size_bytes": 18177
     },
     {
-      "git_blob_id": "d6eae955db75833a28bd66d994b78e94c0a2ba7e",
+      "git_blob_id": "03056341771a005fd2cd0a7c5441d099722722fd",
       "git_mode": "100644",
       "path": "docs/PAPER.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "fbcf4e2772bf9680745e42a88fda3364b54d70d35f88e3691fa1a226afbb7ac5",
-      "size_bytes": 31028
+      "sha256": "a6f74f92a2443b880b736801f0a8edc2cc7e01bcab48339ce54c1d093b303660",
+      "size_bytes": 31795
     },
     {
-      "git_blob_id": "01911d8ca0bf2bbb1d51fabef2bb9d1154fbfdc9",
+      "git_blob_id": "5e38f81a34abcff592dae0ec3692206ba4192a91",
       "git_mode": "100644",
       "path": "docs/PID_RS_1_0_MIGRATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "99076fc09aaeeedf9c6392cedf536d77b36d7657353afc62d09f7fa5475dc908",
-      "size_bytes": 16648
+      "sha256": "757171b9fc90e46c2e7ff96dac6c269ca8bd7b0e57ce3d3fb13dd004e79c9fb4",
+      "size_bytes": 16709
     },
     {
       "git_blob_id": "e942ecfcc76e22be7b2af77702a7a58bb7ddd3e1",
@@ -1085,12 +1101,12 @@
       "size_bytes": 17401
     },
     {
-      "git_blob_id": "a0f6c8838904b798c36062e84e288f3493f59db9",
+      "git_blob_id": "2367c04714edbc255b3fb3d872f0e98f3a1571b6",
       "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "dc11faf7e4bf57a5d5d3989c5c759a460955c5173a06168cf820df2e48b5ef56",
-      "size_bytes": 24940
+      "sha256": "971cb25a58812f4a3aa6aa205c1c2ef86ede427d60eae79e7864dba46fb70705",
+      "size_bytes": 25814
     },
     {
       "git_blob_id": "148ec21d2b24e3c45a13b238b450e9eb3ab4cd9e",
@@ -1317,20 +1333,20 @@
       "size_bytes": 32297
     },
     {
-      "git_blob_id": "6be1499979dcf98d96b2240b6f1dbb77a64d8c01",
+      "git_blob_id": "3fccf46f5167d8a0d49fee9ac17448da9c873517",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "1b6fb2e0e81eae10c87f6b8f6baddd11c54b67da216d809bde47d4f5f4c2c665",
-      "size_bytes": 26352
+      "sha256": "056494c7c28ab7a60a58cc5fbd362525efd2d536af94b884cc520a4edc74db84",
+      "size_bytes": 26413
     },
     {
-      "git_blob_id": "876a6df4682401ffa4f44dcb9e3b55431091d1f5",
+      "git_blob_id": "0dbbe4e9968fd79969bd5c6cfc3fd4b9305bbd10",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "518b544d19dd455d486b960d5f5157f4c0c571644cd1333851ba1c487dd8d6c2",
-      "size_bytes": 26717
+      "sha256": "72da36a71a3c927f0a4abf648515be889f0425a9bb708724ea2fc88f64da2349",
+      "size_bytes": 26780
     },
     {
       "git_blob_id": "191e3623ee9251c0e9ca580c7f2d009de46bcf46",
@@ -1429,12 +1445,12 @@
       "size_bytes": 13246
     },
     {
-      "git_blob_id": "3b6711c40931b72f1b980a5f6c75a3fd346f6700",
+      "git_blob_id": "93affd4f60ed810ac8e27808d25a2496a27a40b1",
       "git_mode": "100644",
       "path": "release/0.9.0/clm-018-assurance.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "f8f48632d8cda34a3a16dcb2a380ebf593ce9aec330bd5cb00c94bdf00b03f73",
-      "size_bytes": 28903
+      "sha256": "dedfb838e130ae8f7efd3799e55b73f70bae9652c7bb71cd1486ce70ff59b551",
+      "size_bytes": 29026
     },
     {
       "git_blob_id": "286f9ffd4ff8a40633d9871e6e15a0d1474d2cac",
@@ -1605,12 +1621,12 @@
       "size_bytes": 48465
     },
     {
-      "git_blob_id": "fe589c24e463fe969c8953a0ae23bd7f6d09925c",
+      "git_blob_id": "67574e1e708dbd9773bee455541210115061ad0c",
       "git_mode": "100644",
       "path": "repo_work/audit_tracked_files.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "cda7d7ae44235b4a0e2eceb081abf73e23b0d8ad5092370c74cadd0887abd250",
-      "size_bytes": 17438
+      "sha256": "38411842d2f5d7fdfc7847c8eb6c1513cc8b847fe83f2940d8a3dc6ee0702cb4",
+      "size_bytes": 17530
     },
     {
       "git_blob_id": "f57cd123b20d8045e3573cebe2da53fa98ef140c",
@@ -1709,12 +1725,12 @@
       "size_bytes": 260399
     },
     {
-      "git_blob_id": "5bd04bb2ad152565904cedcb74a22c1a75a58008",
+      "git_blob_id": "1299b1e646c96136bdf3bc3cd108e3538d1d4a1c",
       "git_mode": "100644",
       "path": "repo_work/freeze_audit_inputs.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "392bf18f0947768dd56a4670466183914428473d7972d6b3f524aa078ddabee3",
-      "size_bytes": 99936
+      "sha256": "e43162dd4847d45b295a16e75209208c7965fb9b28d51c36e6800842ab4aa615",
+      "size_bytes": 99978
     },
     {
       "git_blob_id": "4c8582c0e2deffede2839fd91da23784a60a67a9",
@@ -1917,12 +1933,12 @@
       "size_bytes": 12774
     },
     {
-      "git_blob_id": "0591f30da7c036347460900280e088c958253682",
+      "git_blob_id": "52b333cf12af47126fc5876b96dd0e243b7d8b4c",
       "git_mode": "100644",
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "c4bba32134f52b5a6747822198bba8058a84c3996c98219bbb6eb5c7c1f64211",
-      "size_bytes": 226801
+      "sha256": "04ed35df2ed9b8575a4fa7caeb6b9358fc1d4fef19b30e12e1504c2cfb7ed39c",
+      "size_bytes": 227441
     },
     {
       "git_blob_id": "6ddc9e9c9536ebfff98a52ff712a7888e9fa7b2d",
@@ -1957,12 +1973,12 @@
       "size_bytes": 212
     },
     {
-      "git_blob_id": "522e1b09b3de266e84a58940e26064c95d5fbf7a",
+      "git_blob_id": "fee644b1fde7a9c34b7201085cbe4bbaeca84053",
       "git_mode": "100755",
       "path": "scripts/release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0094dd9efd700bc92e6eed09ffc5b3e7b61a99bc44d9d0bb1a36f164f8ac12f7",
-      "size_bytes": 177168
+      "sha256": "2fe7926a0f3edabb8aaddd2207c586656b4c1786fcf98a531c2f4fbe7986a18f",
+      "size_bytes": 177215
     },
     {
       "git_blob_id": "e962e5f5bde6281fcd36c55095ae4c2904e77f8b",
@@ -2225,61 +2241,61 @@
     },
     {
       "kind": "external_reference",
-      "line": 193,
+      "line": 197,
       "path": "README.md",
       "url": "https://github.com/sepahead/pid-rs"
     },
     {
       "kind": "external_reference",
-      "line": 194,
+      "line": 198,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP"
     },
     {
       "kind": "external_reference",
-      "line": 195,
+      "line": 199,
       "path": "README.md",
       "url": "https://github.com/sepahead/crebain"
     },
     {
       "kind": "external_reference",
-      "line": 196,
+      "line": 200,
       "path": "README.md",
       "url": "https://github.com/sepahead/haldir"
     },
     {
       "kind": "external_reference",
-      "line": 197,
+      "line": 201,
       "path": "README.md",
       "url": "https://github.com/sepahead/prisoma"
     },
     {
       "kind": "external_reference",
-      "line": 270,
+      "line": 274,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
     },
     {
       "kind": "external_reference",
-      "line": 278,
+      "line": 282,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
     },
     {
       "kind": "external_reference",
-      "line": 283,
+      "line": 287,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
     {
       "kind": "external_reference",
-      "line": 758,
+      "line": 773,
       "path": "README.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 944,
+      "line": 960,
       "path": "README.md",
       "url": "https://github.com/sepahead"
     },
@@ -2327,115 +2343,115 @@
     },
     {
       "kind": "paper",
-      "line": 229,
+      "line": 257,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.87.012130"
     },
     {
       "kind": "paper",
-      "line": 232,
+      "line": 260,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1109/ISIT.2014.6875230"
     },
     {
       "kind": "paper",
-      "line": 235,
+      "line": 263,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/8rzp-w5z1"
     },
     {
       "kind": "paper",
-      "line": 497,
+      "line": 546,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1093/biomet/41.1-2.100"
     },
     {
       "kind": "paper",
-      "line": 705,
+      "line": 754,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.103.032149"
     },
     {
       "kind": "paper",
-      "line": 709,
+      "line": 758,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1098/rspa.2021.0110"
     },
     {
       "kind": "external_reference",
-      "line": 712,
+      "line": 761,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
     {
       "kind": "paper",
-      "line": 715,
+      "line": 764,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.87.012130"
     },
     {
       "kind": "paper",
-      "line": 719,
+      "line": 768,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1109/ISIT.2014.6875230"
     },
     {
       "kind": "paper",
-      "line": 723,
+      "line": 772,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/8rzp-w5z1"
     },
     {
       "kind": "paper",
-      "line": 728,
+      "line": 777,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.110.014115"
     },
     {
       "kind": "external_reference",
-      "line": 732,
+      "line": 781,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://arxiv.org/abs/2106.12393"
     },
     {
       "kind": "paper",
-      "line": 735,
+      "line": 784,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.69.066138"
     },
     {
       "kind": "paper",
-      "line": 738,
+      "line": 787,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.3390/e16042161"
     },
     {
       "kind": "paper",
-      "line": 741,
+      "line": 790,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1007/BF02289159"
     },
     {
       "kind": "paper",
-      "line": 746,
+      "line": 795,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.100.032305"
     },
     {
       "kind": "paper",
-      "line": 748,
+      "line": 797,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1093/biomet/41.1-2.100"
     },
     {
       "kind": "paper",
-      "line": 753,
+      "line": 802,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1073/pnas.2408125122"
     },
     {
       "kind": "external_reference",
-      "line": 758,
+      "line": 807,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://openreview.net/forum?id=CLE09ESvul"
     },
@@ -2516,6 +2532,108 @@
       "line": 73,
       "path": "docs/JUSTIFICATION.md",
       "url": "https://arxiv.org/abs/2106.12393"
+    },
+    {
+      "kind": "paper",
+      "line": 580,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1098/rspl.1895.0041"
+    },
+    {
+      "kind": "external_reference",
+      "line": 583,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "http://hdl.handle.net/2440/15169"
+    },
+    {
+      "kind": "paper",
+      "line": 584,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1093/biomet/41.1-2.100"
+    },
+    {
+      "kind": "paper",
+      "line": 586,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1080/00401706.1959.10489860"
+    },
+    {
+      "kind": "paper",
+      "line": 588,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1214/aoms/1177731118"
+    },
+    {
+      "kind": "paper",
+      "line": 591,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1109/TAC.1976.1101146"
+    },
+    {
+      "kind": "paper",
+      "line": 597,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1080/01621459.1967.10482935"
+    },
+    {
+      "kind": "paper",
+      "line": 599,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.2307/4615733"
+    },
+    {
+      "kind": "paper",
+      "line": 602,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1093/biomet/75.4.800"
+    },
+    {
+      "kind": "paper",
+      "line": 603,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1103/PhysRevE.69.066138"
+    },
+    {
+      "kind": "paper",
+      "line": 606,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1007/11564089_7"
+    },
+    {
+      "kind": "paper",
+      "line": 609,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1214/009053607000000505"
+    },
+    {
+      "kind": "external_reference",
+      "line": 612,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://arxiv.org/abs/1004.2515"
+    },
+    {
+      "kind": "paper",
+      "line": 614,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.3390/e16042161"
+    },
+    {
+      "kind": "paper",
+      "line": 616,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1103/PhysRevE.103.032149"
+    },
+    {
+      "kind": "external_reference",
+      "line": 619,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://arxiv.org/abs/2106.12393"
+    },
+    {
+      "kind": "paper",
+      "line": 623,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1103/PhysRevE.110.014115"
     },
     {
       "kind": "external_reference",
@@ -2753,43 +2871,43 @@
     },
     {
       "kind": "external_reference",
-      "line": 544,
+      "line": 556,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2311.06373"
     },
     {
       "kind": "external_reference",
-      "line": 545,
+      "line": 557,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1604.03006"
     },
     {
       "kind": "paper",
-      "line": 546,
+      "line": 558,
       "path": "docs/PAPER.md",
       "url": "https://doi.org/10.1098/rspa.2021.0110"
     },
     {
       "kind": "external_reference",
-      "line": 547,
+      "line": 559,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2106.07098"
     },
     {
       "kind": "external_reference",
-      "line": 549,
+      "line": 561,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2002.03356"
     },
     {
       "kind": "external_reference",
-      "line": 552,
+      "line": 564,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2106.12393"
     },
     {
       "kind": "external_reference",
-      "line": 553,
+      "line": 565,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
@@ -3055,12 +3173,12 @@
   ],
   "normative_documents": [
     {
-      "git_blob_id": "6be1499979dcf98d96b2240b6f1dbb77a64d8c01",
+      "git_blob_id": "3fccf46f5167d8a0d49fee9ac17448da9c873517",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "1b6fb2e0e81eae10c87f6b8f6baddd11c54b67da216d809bde47d4f5f4c2c665",
-      "size_bytes": 26352
+      "sha256": "056494c7c28ab7a60a58cc5fbd362525efd2d536af94b884cc520a4edc74db84",
+      "size_bytes": 26413
     },
     {
       "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
@@ -3079,12 +3197,12 @@
       "size_bytes": 5009
     },
     {
-      "git_blob_id": "a0f6c8838904b798c36062e84e288f3493f59db9",
+      "git_blob_id": "2367c04714edbc255b3fb3d872f0e98f3a1571b6",
       "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "dc11faf7e4bf57a5d5d3989c5c759a460955c5173a06168cf820df2e48b5ef56",
-      "size_bytes": 24940
+      "sha256": "971cb25a58812f4a3aa6aa205c1c2ef86ede427d60eae79e7864dba46fb70705",
+      "size_bytes": 25814
     },
     {
       "git_blob_id": "148ec21d2b24e3c45a13b238b450e9eb3ab4cd9e",

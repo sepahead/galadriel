@@ -27,6 +27,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from audit_tracked_files import criticality
 from check_feature_graph import (
     EXPECTED_DEFAULT_MEMBERS,
     EXPECTED_UPSTREAM_MANIFESTS,
@@ -1731,6 +1732,22 @@ class ReviewToolsTest(unittest.TestCase):
         exact_name = "FROZEN-AUDIT-INPUTS-0.9.0.json"
         self.assertGreaterEqual(instructions.count(exact_name), 8)
         self.assertNotIn('"$freeze_dir/FROZEN-AUDIT-INPUTS.json"', instructions)
+
+    def test_method_selection_decision_has_release_review_classification(self) -> None:
+        relative = "docs/METHOD-SELECTION-DECISIONS.md"
+        self.assertIn(relative, freeze.RELEASE_INPUTS)
+
+        decision = (TOOLS.parent / relative).read_text(encoding="utf-8")
+        self.assertRegex(
+            decision,
+            r"(?m)^## GLD-MSD-008: .*authority boundary$",
+        )
+
+        public, security, science, authority = criticality(relative)
+        self.assertTrue(public)
+        self.assertFalse(security)
+        self.assertTrue(science)
+        self.assertTrue(authority)
 
     def test_release_input_manifest_requires_exact_index_bytes(self) -> None:
         def make_repository(name: str) -> Path:

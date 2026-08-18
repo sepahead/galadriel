@@ -93,8 +93,9 @@ The assurance extension separates the immutable producer fixture source, the
 producer's historical pid-rs preregistration, the actual clean pid-core evaluator
 revision, and the candidate build identity. It retains the producer fixture bytes
 and records three append-only corrections: target construction occurs after sensor
-objects and source symbols are built. NIS, two-sided CUSUM, and signed Pearson
-correlation are distinct non-PID operational diagnostics. The legacy
+objects and source symbols are built. NIS, the two-arm CUSUM with an inert lower
+arm on the fusion core's `dof=3` route, and signed Pearson correlation are distinct
+non-PID operational diagnostics. The legacy
 `projection_count=3` field counts admitted observations rather than proving three
 present projections.
 

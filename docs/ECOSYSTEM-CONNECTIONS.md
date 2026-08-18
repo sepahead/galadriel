@@ -189,7 +189,7 @@ checkout at runtime.
 
 The opt-in in-process/library connection computes geometry-gated report-first
 pairwise MI through `ksg_mi_report_with_budget` and retains it outside the
-authoritative verdict. Its retained preflight and executed report use the same
+accepted default core report. Its retained preflight and executed report use the same
 explicit single-thread resource budget. Galadriel's graph work ceiling is a
 separate aggregate bound. Its executable
 integrations are the synthetic demo, evaluation, and benchmark; `replay`,

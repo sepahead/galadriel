@@ -133,7 +133,8 @@ integrations need explicit activation. PID is confined to the offline
   `galadriel.crebain-drone-mgw-study.v2` schema at
   `crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json` and
   its exact schema-byte receipt by `repo_work/check_crebain_mgw_schema.py`.
-- NIS, two-sided CUSUM, signed correlation, KSG MI, categorical MGW, continuous
+- NIS, the two-arm CUSUM with an inert lower arm on the fusion core's `dof=3` route,
+  signed correlation, KSG MI, categorical MGW, continuous
   Ehrlich PID, comparators, invariants, and downstream objectives remain
   distinct objects. The exact fixture evaluates only categorical MGW.
 - The result is record-only advisory evidence. It cannot enter fusion, and a

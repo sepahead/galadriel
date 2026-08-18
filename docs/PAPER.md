@@ -23,7 +23,8 @@ The selected data population and target must define that estimand.
 
 Galadriel is a pre-1.0 research implementation of this selection discipline.
 Its default combines per-channel Normalized Innovation Squared (NIS) and cumulative sum (CUSUM) magnitude evidence.
-It adds signed, family-wise-significant cross-channel correlation and unique strict-majority consensus.
+It adds signed, family-wise-significant cross-channel correlation and unique
+largest strict-majority consensus.
 An optional companion adds sign-invariant Kraskov–Stögbauer–Grassberger mutual
 information (KSG-MI) as a descriptive pairwise graph. It does not change fusion.
 Separate offline studies evaluate categorical and continuous shared-exclusions PID.
@@ -185,13 +186,20 @@ It cannot create an accepted whole-stream report.
 
 ## 4. Method
 
+The method choices below are outputs of a question-first decision process, not a
+universal ranking. The proposed decision record gives the complete rationale,
+alternatives, numeric-profile status, failure behavior, and 20-lens reopen criteria:
+[`METHOD-SELECTION-DECISIONS.md`](METHOD-SELECTION-DECISIONS.md). Sections 4.1
+through 4.4 state the selected execution path.
+
 [![Detector equations, consensus graph, fusion precedence, and assessment binding](../assets/detector-evidence.svg)](../assets/detector-evidence.svg)
 
 **Figure 2 — Detector equations and decision algebra.** One admitted aligned row
-set feeds two distinct core estimands. The magnitude route evaluates NIS, its
-declared chi-square window reference, and two-sided CUSUM. The consistency route
+set feeds two distinct core estimands. The magnitude route evaluates right-tail
+NIS and a two-arm CUSUM whose lower arm is inert on the fusion core's `dof=3`
+route. Other admitted degrees of freedom retain the general two-arm recurrence. The consistency route
 evaluates every signed Pearson pair, a family-adjusted Fisher threshold, and one
-unique strict-majority clique. The final column shows the fail-closed fusion
+unique largest clique whose size is a strict majority. The final column shows the fail-closed fusion
 precedence and the domain-separated assessment binding. An invalid representation
 is an error; an unavailable estimand is insufficient evidence. The Fisher
 reference is conditional on the declared independent and identically distributed
@@ -228,15 +236,19 @@ Legacy native innovations do not enter this path.
 The default uses **signed** Pearson correlation.
 Candidate positive edges must pass a configured floor.
 They must also pass a family-wise Fisher-transform significance threshold.
-Attribution requires one unique positive-consensus clique with more than half of the channels.
+Attribution requires one unique largest positive-consensus clique with more than
+half of the requested channels.
 
 This rule prevents three earlier failure modes:
 
 - a negative or sign-flipped channel that appears corroborated through `|rho|`
-- a best-peer dyad that creates an apparent consensus
+- a best-peer pair that is not the unique largest strict-majority clique
 - a convenient pair that hides a failed third channel
 
-A missing unique strict majority produces `InsufficientEvidence`.
+A missing unique largest strict majority produces `InsufficientEvidence`. A dyad
+is the complete graph when two channels are requested. A 2-of-3 clique can support
+minority attribution when it is unique and unbridged. A dyad is not a strict
+majority when four or more channels are requested.
 
 The fused entry points analyze each active projection axis.
 The correlation family budget is split across axes and channel pairs.

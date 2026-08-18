@@ -283,8 +283,9 @@ does not replace a source/tree/toolchain publication identity.
 Negative shared-exclusions atoms remain meaningful signed associational terms. They
 must not be clamped or labeled causal mechanisms.
 
-NIS, two-sided CUSUM, signed correlation, KSG MI, and PID remain distinct
-objects with separate assumptions and outputs. The exact CREBAIN fixture
+NIS, the two-arm CUSUM with an inert lower arm on the fusion core's `dof=3` route,
+signed correlation, KSG MI, and PID remain distinct objects with separate
+assumptions and outputs. The exact CREBAIN fixture
 evaluates only categorical MGW. It does not emit lifecycle-qualified NIS, CUSUM,
 or correlation evidence. PID is record-only with respect to Haldir: adding or
 removing its record must leave authorization and plant-command outputs

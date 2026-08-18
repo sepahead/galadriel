@@ -48,7 +48,7 @@ PID cannot affect a verdict, authorization decision, or plant command.
 ## 1. The problem before the method
 
 Galadriel's operational question is whether admitted sensors remain consistent.
-Normalized innovation squared (NIS), two-sided CUSUM, lifecycle evidence, and
+Normalized innovation squared (NIS), the selected two-arm CUSUM, lifecycle evidence, and
 signed correlation are designed for that question. PID answers a different
 question:
 
@@ -78,12 +78,40 @@ parallel questions. The `OR` badges are a choice of estimand, not an escalation
 or fallback chain. The middle chart shows the exact categorical MGW PID2
 components. The lower matrix states applicability for this fixture, not a
 universal method ranking, and gives `I_min`, BROJA, co-/O-information, NIS,
-two-sided CUSUM, and signed correlation separate rows. None of those objects is
-evaluated by this fixture. KSG and the continuous Ehrlich construction
-abstain because these rows form an atomic categorical law. Infomorphic objectives
+the two-arm CUSUM, and signed correlation separate rows. None of those objects is
+evaluated by this fixture. KSG and the continuous Ehrlich construction are
+ineligible and are not executed because these rows form an atomic categorical
+law. Infomorphic objectives
 retain their own downstream meaning.
 
 [Open the method figure at full size.](../assets/crebain-mgw-method-map.svg)
+
+### Why this conformance law was selected
+
+The first executable bridge needs a law whose custody, source order, target map,
+and algebra can be checked without statistical ambiguity. The uniform binary
+AND2/AND3 law meets that need. All eight ordered source cells are present. Its
+target maps are closed. Its mutual informations have compact analytic forms. Its
+PID contains nontrivial redundant, unique, and synergistic coordinates.
+
+XOR would make joint-only structure especially visible in its pairwise Shannon
+terms, but its MGW atom pattern is different rather than generally narrower. It
+already exists as a separate Galadriel justification fixture and is not the
+producer-declared drone-target map. COPY is retained as an axiomatic counterexample rather
+than used as the drone-target map. Balanced OR is isomorphic to balanced AND
+under bit complementation. A stochastic or noisy law would be more realistic,
+but it would mix estimator uncertainty with the first custody and adapter check.
+The exact-law fixture is therefore the analytic conformance rung. It is not the grounding
+rung.
+
+The 1 m, 50 m, and 1 m thresholds are immutable producer coordinates. They form
+two explicit latent cells on each axis and make source reconstruction testable.
+They are not proposed operational sensor tolerances. Eight repeats per cell keep
+the producer's fresh-engine bounded-summary evidence and create hostile ordering
+controls. They add no independent units and no information-theoretic precision.
+
+The complete selection record, alternatives, and reopen conditions are in
+[`METHOD-SELECTION-DECISIONS.md`](METHOD-SELECTION-DECISIONS.md).
 
 ## 2. Frozen synthetic row contract
 
@@ -157,7 +185,7 @@ impact. A mismatch fails closed.
 | Frozen surface | Frozen literal or field | Reviewed correction | Consequence |
 |---|---|---|---|
 | Analysis manifest `/target_origin` | “externally generated fixture truth in canonical ENU before sensor projection and before fusion” | CREBAIN revision `6ef60f…`, `src-tauri/src/sensor_fusion.rs:7618-7649`, constructs sensor objects and source symbols before deriving the target. Target derivation still reads neither serialized source fields, projections, fusion, verdict, nor PID. | Corrects temporal and producer-independence wording. The categorical law and numbers do not change. |
-| Analysis manifest `/method_exclusions/nis_and_correlation` | “separate operational association diagnostics” | Galadriel's magnitude lane has two distinct objects—NIS and two-sided CUSUM—while signed Pearson correlation is a third, directional association object. None is evaluated here. | Restores the omitted CUSUM object. No PID result changes. |
+| Analysis manifest `/method_exclusions/nis_and_correlation` | “separate operational association diagnostics” | Galadriel's magnitude lane has two distinct objects: NIS and a two-arm CUSUM. On the fusion core's `dof=3` route, the CUSUM lower arm is inert. Other admitted degrees of freedom retain the general recurrence. Signed Pearson correlation is a third, directional association object. None is evaluated here. | Restores the omitted CUSUM object. No PID result changes. |
 | Every row's `fusion_receipt` | `projection_count=3`, `common_projection_prior_id=2` | CREBAIN revision `6ef60f…`, `src-tauri/src/sensor_fusion.rs:7664-7707`, derives the legacy count from admitted observations. The prior field proves at least one projection and prior-two agreement only among projections that are present. | Narrows custody to a bounded three-observation summary. It does not prove three projections or full fusion replay. |
 
 This is append-only provenance, not permission to reinterpret arbitrary frozen
@@ -236,6 +264,27 @@ assumed to coexist on the Williams–Beer lattice.
 consistency limits and descriptor collisions in multivariate PID. This AND-law
 fixture neither adjudicates those choices nor converts successful PID3 computation
 into a general multivariate assurance result.
+
+### Why MGW was selected for this registered allocation
+
+The question asks for pointwise and averaged target-information allocation over
+named ordered categorical sources. MGW shared exclusions directly defines that
+object on a finite atomic law. It retains informative, misinformative, and signed
+net coordinates and requires no fitted quantizer or continuous-support model.
+
+This is a functional selection, not a claim that MGW is uniquely correct.
+`I_min` is a different Williams–Beer redundancy functional. BROJA defines a
+different two-source optimization object and does not supply this PID3 lattice.
+Co-information and O-information are role-distinct diagnostics that require an
+exact variable tuple and sign convention. The project-defined joint contrast
+`Q` can detect joint-only structure but is not a PID atom allocation. Silent
+fallback to any of these alternatives would change the registered question. The
+selected evaluator therefore returns an error and aborts the study on failure.
+It does not substitute another functional or emit a numeric sentinel.
+
+The continuous Ehrlich route is also rejected for this fixture because repeated
+binary rows have atomic support. Adding noise would change the estimand. Fitting
+a quantizer would add a transform to data that is already categorical.
 
 ## 4. Exact questions
 
@@ -494,7 +543,7 @@ one row never selects another row.
 | Co-information | invariant/diagnostic | not requested | signed interaction under a declared sign convention | not a PID atom |
 | O-information | system-level diagnostic | not requested | balance of redundancy- and synergy-dominated high-order dependence | not a redundancy-lattice allocation |
 | NIS | operational diagnostic | not evaluated | per-channel innovation magnitude under a separate covariance/lifecycle contract | this fixture contains no lifecycle-qualified NIS report |
-| Two-sided CUSUM | operational sequential diagnostic | not evaluated | Persistent upper- or lower-direction shift evidence derived in Galadriel's magnitude lane. [Page (1954)](https://doi.org/10.1093/biomet/41.1-2.100) supplies the sequential-change foundation. | Galadriel's two-sided composition/lifecycle contract is project-defined and distinct from NIS, correlation, MI, and PID. This fixture contains no CUSUM state or alarm report. |
+| Two-arm CUSUM | operational sequential diagnostic | not evaluated | Persistent sequential evidence derived in Galadriel's magnitude lane. On the fusion core's `dof=3` route only the upper arm can move. Other admitted degrees of freedom retain the general recurrence. [Page (1954)](https://doi.org/10.1093/biomet/41.1-2.100) supplies the sequential-change foundation. | Galadriel's two-arm composition/lifecycle contract is project-defined and distinct from NIS, correlation, MI, and PID. This fixture contains no CUSUM state or alarm report. |
 | Signed Pearson correlation | operational association diagnostic | not evaluated | Direction-sensitive linear consistency under a separate lifecycle contract. | This fixture contains no qualified correlation report. PID cannot override it. |
 | PNAS bivariate infomorphic objective | downstream objective composition | not evaluated | two-input learning objective composed from named PID atoms | an objective does not define a PID functional or evaluator |
 | ICLR three-input-class objective | downstream objective composition | not evaluated | role-distinct three-input-class local-objective design | not evidence for this fixture and not the PNAS object |
@@ -503,7 +552,7 @@ The BROJA contribution elsewhere in the thesis need not be discarded. A
 model-family Blackwell/garbling argument and its resulting closed-form comparator
 can remain a distinct analytical result. It must not be generalized into a claim
 that BROJA equals minimum-mutual-information PID outside the proved family, and it
-must not be used as an MGW fallback. Likewise, NIS, two-sided CUSUM, and signed
+must not be used as an MGW fallback. Likewise, NIS, the selected two-arm CUSUM, and signed
 correlation remain three distinct Galadriel operational objects. This exact-law
 PID run evaluates none of them and cannot strengthen or weaken their verdict.
 
@@ -512,7 +561,7 @@ PID run evaluates none of them and cannot strengthen or weaken their verdict.
 ### Galadriel
 
 PID gives Galadriel a defensible offline answer to a target-allocation question
-that NIS, two-sided CUSUM, signed correlation, and pairwise MI do not answer. It
+that NIS, the selected two-arm CUSUM, signed correlation, and pairwise MI do not answer. It
 also supplies a strong exact-law hostile control for source/target lineage and
 lattice algebra.
 It does not strengthen an operational verdict merely by being more complex.
@@ -644,7 +693,7 @@ fixed source gauge, and supported estimator regime.
 - [x] State explicitly that pointwise outputs are retained and internally reconstructed but not separately Decimal-recomputed.
 - [x] Preserve the averaged-output calculation as a standard-library oracle with canonical SHA-256 `5aa7a1d92d4aaad9c056ede8a75bdc40abc1fa76634b02bba20aac5cc3913c19`.
 - [x] Encode the functional, evaluator, PMF, pointwise/averaged outputs, validation receipts, and advisory sink as distinct typed graph objects.
-- [x] Publish a 16-row eligibility matrix that separates every functional, evaluator, estimator, diagnostic—including NIS, two-sided CUSUM, and signed correlation—and downstream objective. Define no fallback route.
+- [x] Publish a 16-row eligibility matrix that separates every functional, evaluator, estimator, diagnostic, including NIS, the selected two-arm CUSUM, and signed correlation, from every downstream objective. Define no fallback route.
 - [x] Add exact JSON and publication-oriented Markdown output with BrokenPipe-safe CLI behavior.
 - [x] Add accessible, renderer-verified system and method SVGs.
 - [x] Add a cargo-mutants 27.1.0/Rust 1.89 exact-head gate for the seven CREBAIN contract functions. Bind the 149-mutant normalized multiset, 146 caught results, and three exact compile-unviable substitutions.
@@ -675,7 +724,7 @@ fixed source gauge, and supported estimator regime.
 - [ ] Split calibration/train, validation, and evaluation at episode level. Never split frames from one episode across arms.
 - [ ] Use episode-level permutation/bootstrap schedules that cannot splice missions. Publish effective episode counts and missingness.
 - [ ] Record every method as produced, unavailable, inapplicable, resource-rejected, or error—never silently drop failures.
-- [ ] Compare NIS, two-sided CUSUM, signed correlation, categorical MGW, optional `I_min`, optional two-source BROJA, KSG, continuous Ehrlich, and co-/O-information only in separately eligible columns.
+- [ ] Compare NIS, the selected two-arm CUSUM, signed correlation, categorical MGW, optional `I_min`, optional two-source BROJA, KSG, continuous Ehrlich, and co-/O-information only in separately eligible columns.
 - [ ] Advance through stochastic simulation, SITL, HIL, immutable replay, and field studies as distinct claim tiers.
 - [ ] Test compute budgets, deadlines, restarts, corrupt inputs, missing modalities, and adversarial timing on target hardware.
 - [ ] Obtain qualified human PID review and an independent reproduction before treating novel PID interpretation as defense-critical.

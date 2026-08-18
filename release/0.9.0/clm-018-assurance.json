@@ -70,7 +70,7 @@
     {
       "id": "ERR-OPERATIONAL-METHODS",
       "json_pointer": "/analysis_manifest/method_exclusions/nis_and_correlation",
-      "corrected_boundary": "the operational magnitude lane contains NIS and two-sided CUSUM, while signed Pearson correlation is a distinct directional association diagnostic. None is a PID atom or evaluated by this fixture"
+      "corrected_boundary": "the operational magnitude lane contains NIS and a two-arm CUSUM. On the fusion core's dof=3 route, the CUSUM lower arm is inert. Other admitted degrees of freedom retain the general recurrence. Signed Pearson correlation is a distinct directional association diagnostic. None is a PID atom or evaluated by this fixture"
     },
     {
       "id": "ERR-PROJECTION-COUNT",

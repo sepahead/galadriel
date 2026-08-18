@@ -51,10 +51,14 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Changed
 
-- Add six static, self-contained, accessible, cross-renderer vector contract
+- Add seven static, self-contained, accessible, cross-renderer vector contract
   maps for system evidence flow, detector equations and fusion, lifecycle
   receipts, offline PID estimand provenance, the exact CREBAIN drone-to-MGW
-  pipeline, and question-first method eligibility. Replace the README flow
+  pipeline, question-first method eligibility, and method-profile decisions.
+  Add a reviewed decision record that binds each selected method and numerical
+  profile to its question, assumptions, alternatives, evidence ceiling, and
+  reopen condition. Expose the selected CUSUM's dimension-dependent lower arm
+  and test the exact `dof=3` inert and `dof=4` active cases. Replace the README flow
   sketch with the exact authority-boundary graph and add complete descriptions
   in the statistical, lifecycle, paper, and justification documents. Explicit
   SVG geometry preserves arrow direction and rounded boundaries across librsvg

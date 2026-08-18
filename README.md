@@ -48,8 +48,10 @@
 | WebPKI | Web Public Key Infrastructure |
 
 Galadriel checks whether several sensors that observe one track still agree.
-It combines per-channel Normalized Innovation Squared (NIS) and two-sided CUSUM
-evidence with signed cross-channel correlation.
+It combines per-channel right-tail Normalized Innovation Squared (NIS), a
+two-arm CUSUM, and signed cross-channel correlation. The lower CUSUM arm is
+inert on fusion-core rows with `dof=3`. The validated interface also admits
+other degrees of freedom and retains the general two-arm recurrence.
 The correlation keeps its sign and uses a producer-attested projection.
 An optional pairwise-MI companion explores nonlinear dependence without changing the
 accepted core verdict. Separate offline studies evaluate categorical and continuous PID.
@@ -97,9 +99,11 @@ only bounded-summary fresh-instance reproducibility. They are not 64 independent
 flights and do not retain a complete fusion replay.
 
 A typed, append-only errata receipt preserves the fixture bytes while correcting
-three producer-source interpretations: the frozen target-origin timing/externality
-wording, omission of two-sided CUSUM as an operational object distinct from NIS
-and signed correlation, and the legacy fusion-summary fields. In particular,
+three producer-source interpretations: the frozen target-origin timing and
+externality wording, omission of the two-arm CUSUM as an operational object
+distinct from NIS and signed correlation, and the legacy fusion-summary fields.
+On the fusion core's `dof=3` route, the CUSUM lower arm is inert. Other admitted
+degrees of freedom retain the general two-arm recurrence. In particular,
 `projection_count=3` is an admitted-observation count, not proof of three present
 projections. `common_projection_prior_id=2` proves at least one projection and
 prior-two agreement only among projections that are present. These corrections do
@@ -133,7 +137,7 @@ separately recomputed by the Decimal route. This exact-law result makes no
 drone-performance claim and has no effect on fusion, verdicts, or Haldir.
 Its 16-row eligibility matrix keeps the MGW functional, pid-core evaluators,
 `I_min`, two-source BROJA, Schick-Poland, continuous Ehrlich, KSG,
-co-/O-information, NIS, two-sided CUSUM, signed correlation, and the two
+co-/O-information, NIS, the selected two-arm CUSUM, signed correlation, and the two
 infomorphic objective families distinct. Inapplicability or failure never selects
 another row as a fallback.
 
@@ -440,12 +444,19 @@ The consumer never infers a successful lifecycle stage from a missing record.
 
 ## Detector layers
 
+The overview below states what executes. The proposed
+[method and profile decision record](docs/METHOD-SELECTION-DECISIONS.md) explains
+why each object was selected, which alternatives were rejected or deferred, why
+the numeric profiles remain uncalibrated, and which evidence can reopen a choice.
+
 [![Three-column derivation of magnitude evidence, signed-correlation consensus, and conservative fusion](assets/detector-evidence.svg)](assets/detector-evidence.svg)
 
 **Detector mathematics and decision algebra.** Column A derives per-channel
-magnitude evidence from NIS, the declared chi-square window law, and two-sided
-CUSUM. Column B derives one signed-correlation graph, applies the family-adjusted
-Fisher threshold, and admits only one unique strict-majority positive clique.
+magnitude evidence from right-tail NIS and a two-arm CUSUM whose lower arm is
+inert on the fusion core's `dof=3` route. The general validated interface keeps
+both recurrences. Column B derives one signed-correlation graph, applies the family-adjusted
+Fisher threshold, and admits only one unique largest positive clique whose size
+is a strict majority.
 The Fisher reference is conditional on the declared independent and identically
 distributed bivariate-normal row model; Galadriel does not prove that declaration.
 Column C applies the deterministic fusion precedence and binds the result to the
@@ -457,8 +468,10 @@ Pairwise MI and PID are absent from this fusion.
 
 ### NIS/CUSUM magnitude layer
 
-For each track and modality, the detector compares a sliding NIS window with its chi-square reference.
-It monitors the window for sustained shifts.
+For each track and modality, the detector compares a sliding NIS window with its
+right-tail chi-square reference. The effective upper CUSUM arm monitors sustained
+inflation. The retained lower field does not supply suppression sensitivity at
+the fusion core's `dof=3` operating point. It can move for admitted `dof>=4`.
 Per-assessment channel tests control the family-wise significance budget.
 A report is `Nominal` only when every configured channel is fresh, ready, and consistent.
 
@@ -474,9 +487,11 @@ A report is `Nominal` only when every configured channel is fresh, ready, and co
 ### Signed-correlation consistency layer
 
 The default consistency layer uses signed Pearson correlation and family-wise significance.
-It requires one unique strict-majority positive-consensus clique.
+It requires one unique largest positive-consensus clique whose size is a strict majority.
 The layer does not accept negative correlation as corroboration.
-A dyad cannot support outlier attribution.
+A dyad is the complete graph when two channels are requested. It can support
+minority attribution only in the exact 2-of-3 case. It is not a strict majority
+when four or more channels are requested.
 A tied clique or a collection without coherent positive consensus also cannot support it.
 
 The detector assesses every producer-declared projection axis.
@@ -523,7 +538,7 @@ adds no noise, and abstains on exact ties or rejected geometry. Optional exhaust
 stability enumerates every circular block start, reruns every pair and graph rule, and reports literal
 minima and maxima. It is not a confidence interval, p-value, or false-alarm guarantee.
 
-`assess_with_dependence` returns the exact unchanged authoritative `DefaultReport` plus
+`assess_with_dependence` returns the exact unchanged accepted `DefaultReport` plus
 companion MI reports and a binding over the exact scope, stream, and suite. MI never
 enters `FusedVerdict` or `ConsistencyEvidence`.
 
@@ -929,6 +944,7 @@ It includes authenticated and anonymous downloads.
 - [`docs/POST-AUDIT-EVIDENCE.md`](docs/POST-AUDIT-EVIDENCE.md) — one-command,
   checksummed streaming evidence artifact.
 - [`docs/RELATED-WORK.md`](docs/RELATED-WORK.md) — alternative and complementary methods.
+- [`docs/METHOD-SELECTION-DECISIONS.md`](docs/METHOD-SELECTION-DECISIONS.md) — selected methods, exact profile rationale, alternatives, evidence ceilings, and reopen conditions.
 - [`docs/ADVISORY-BOUNDARY.md`](docs/ADVISORY-BOUNDARY.md) — non-authoritative downstream
   use that does not widen authority, and prohibited control connections.
 - [`docs/ECOSYSTEM-CONNECTIONS.md`](docs/ECOSYSTEM-CONNECTIONS.md) — dated exact-cut

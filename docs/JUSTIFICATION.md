@@ -105,14 +105,15 @@ routes `discrete_sxpid2_with_budget` and `discrete_sxpid3_with_budget`:
 
 The PID2 question is primary. PID3 is exploratory and does not close pid-rs's
 separate 108-coordinate assurance program. KSG and continuous Ehrlich PID
-abstain because the fixture is a repeated atomic categorical law. `I_min` and
+are ineligible and are not executed because the fixture is a repeated atomic categorical law. `I_min` and
 BROJA remain different, unrequested comparators rather than fallbacks.
 
 [![Question-first selection, exact PID2 informative/misinformative/net components, interpretation firewall, and method eligibility](../assets/crebain-mgw-method-map.svg)](../assets/crebain-mgw-method-map.svg)
 
 **What PID adds—and does not add.** NIS answers a per-channel innovation-
-magnitude question. Two-sided CUSUM asks whether that magnitude shifts upward or
-downward over time. Signed correlation asks a directional linear cross-channel
+magnitude question. The generic CUSUM component retains upper and lower fields,
+and the lower arm is inert on the fusion core's `dof=3` route. It can move for
+other admitted degrees of freedom. Signed correlation asks a directional linear cross-channel
 consistency question. These are distinct operational diagnostics, none evaluated
 by this fixture. KSG can answer an eligible pairwise continuous-dependence
 question. Categorical MGW answers how a fixed,
@@ -362,6 +363,11 @@ It is not a documentation fix.
 
 ## 6. Operational decision rule
 
+The proposed rationale, rejected alternatives, provisional profile choices, and
+twenty-lens reopen checklist are in
+[`METHOD-SELECTION-DECISIONS.md`](METHOD-SELECTION-DECISIONS.md). This section is
+the compact operational ordering. It does not replace that decision record.
+
 Use the least complex statistic that observes the registered estimand:
 
 1. Use Normalized Innovation Squared (NIS) and CUSUM to assess per-channel
@@ -369,7 +375,7 @@ Use the least complex statistic that observes the registered estimand:
 2. Use signed correlation when comparable residuals have an expected positive
    linear consensus.
 3. Add the MI companion only when recorded evidence shows meaningful nonlinear
-   dependence that signed correlation misses. Keep it outside the authoritative verdict
+   dependence that signed correlation misses. Keep it outside the accepted default report
    until a frozen representative streaming study qualifies incremental value.
 4. Add PID only for a documented joint target and ordered source question. Name
    the categorical MGW or continuous Ehrlich functional, evaluator, law,
@@ -381,7 +387,8 @@ The symmetric MI graph and offline PID atoms cannot:
 
 - repair mixed coordinate frames or sequentially changing priors
 - create evidence for a missing, degenerate, non-finite, or short modality series
-- create an honest majority from two channels
+- infer a minority when only two channels are requested. A 2-of-3 clique can be
+  the unique largest strict majority under the declared graph rule.
 - resolve tied or contradictory consensus geometry
 - change unavailable geometry or an unstable exhaustive deletion into an
   optimistic graph event

@@ -24,7 +24,7 @@ It also states what the current evidence does not establish.
 > The evaluation harness uses synthetic data.
 > The project removed numeric tables from the pre-audit detector.
 > The implementation now validates inputs and joins channels by exact sequence.
-> It uses signed correlation with a unique strict-majority consensus.
+> It uses signed correlation with a unique largest strict-majority consensus.
 > It controls each assessment family and fails closed.
 >
 > The retained `post-audit-v1` streaming artifact gives exact results.
@@ -122,10 +122,12 @@ The correlation assessment requires:
 - finite channels of equal length
 - a defined pairwise estimand for each verdict-eligible pair
 - a family-wise-significant positive relation
-- one unique strict-majority positive-consensus clique
+- one unique largest positive-consensus clique whose size is a strict majority
 
-Negative correlation is not corroboration.
-A dyad cannot support minority attribution.
+Negative correlation is not corroboration. A dyad is the complete graph when two
+channels are requested. A 2-of-3 clique can support minority attribution when it
+is the unique largest unbridged clique. A dyad is not a strict majority when four
+or more channels are requested.
 A degenerate column produces `InsufficientEvidence` for its axis.
 It also makes the correlation evaluation score unavailable.
 A missing or nonunique coherent majority also produces `InsufficientEvidence`.
@@ -161,7 +163,7 @@ explicit unavailable state.
 Exhaustive circular deletion evaluates every start and reruns retained-row validation,
 geometry, all edges, threshold, clique, and attribution. Its min/max margin
 envelope is not a bootstrap interval or p-value. The companion event never
-changes the authoritative core verdict.
+changes the accepted default core report.
 
 The selected pid-rs revision is
 `bc3aa80fb6025e709c2906a08bce25a4fac40578`. Its `pid-core` manifest declares
@@ -210,8 +212,8 @@ support/averaging checks, and a dependency-disjoint, separately implemented
 80-digit Decimal route provide bounded controls. That comparison covers the 66
 **averaged** signed atom components and ten subset mutual informations. It does
 not recompute the retained pointwise atoms and is not independent human or
-organizational replication. KSG and continuous Ehrlich PID explicitly
-abstain on this repeated atomic law. The emitted v2 JSON is checked against the
+organizational replication. KSG and continuous Ehrlich PID are ineligible and
+are not executed on this repeated atomic law. The emitted v2 JSON is checked against the
 closed Draft 2020-12 schema in
 `crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json` by
 `repo_work/check_crebain_mgw_schema.py`. The complete methodology and results

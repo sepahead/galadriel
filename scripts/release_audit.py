@@ -3193,7 +3193,7 @@ def validate_clm_018_assurance(
         ),
         "ERR-OPERATIONAL-METHODS": (
             "/analysis_manifest/method_exclusions/nis_and_correlation",
-            "NIS and two-sided CUSUM",
+            "NIS and a two-arm CUSUM",
         ),
         "ERR-PROJECTION-COUNT": (
             "/rows/*/fusion_receipt/{projection_count,common_projection_prior_id}",
@@ -3227,7 +3227,7 @@ def validate_clm_018_assurance(
     )
     for marker in (
         "after the producer constructs sensor observation objects and source symbols",
-        "two-sided CUSUM evidence",
+        "two-arm CUSUM. On the fusion core's dof=3 route, the lower arm is inert",
         "producer assigns projection_count from pid_observations.len()",
     ):
         if marker not in source_text:

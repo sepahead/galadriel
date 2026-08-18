@@ -19,10 +19,10 @@ deployment satisfies the identification assumptions.
 [![Detector quantities summarized as a three-column decision graph](../assets/detector-evidence.svg)](../assets/detector-evidence.svg)
 
 **Orientation figure — non-normative.** The left column follows the magnitude
-route from NIS through the declared chi-square window reference and two-sided
+route from NIS through the declared chi-square window reference and a two-arm
 CUSUM. The middle column follows the signed-consistency route from every Pearson
-pair through the family-adjusted Fisher threshold and unique strict-majority
-clique. The right column summarizes fusion and input binding. This figure is a
+pair through the family-adjusted Fisher threshold and the unique largest clique
+whose size is a strict majority. The right column summarizes fusion and input binding. This figure is a
 map of the contract. The numbered requirements and source definitions below
 control if any wording or layout is less precise. Invalid input and unavailable
 evidence remain different states, and neither MI nor PID enters core fusion.
@@ -95,6 +95,17 @@ lo=max(0, lo+μ-x-k)
 
 The configured slack is `k`. An arm alarms when its accumulator is greater than
 or equal to threshold `h`. A component reset sets both arms to zero.
+
+The selected 0.9 configuration fixes `k=3/sqrt(6)`. It does not fix `dof`.
+Validated observations admit `dof` from 1 through 255. On the fusion core's
+`dof=3` route, `mu=d/sqrt(2d)=k`, and the lower recurrence reduces to
+`lo=max(0,lo-x)`. Since admitted NIS gives `x>=0` and the arm starts at zero, the
+lower arm remains zero on that route. The same is true for `dof` 1 and 2 because
+`mu<=k`. For `dof>=4`, `mu>k`, so a sufficiently small `x` can increase the
+lower arm. The selected object is therefore genuinely two-arm over its complete
+admitted domain. The fusion-core `dof=3` route has effective upper-shift
+sensitivity only. Any claim about lower-shift performance requires a
+dimension-specific calibration study and a qualified producer law.
 
 Ordinary threshold alarms describe the current arms. They can decay and are not
 separately latched. An exact arm update can exceed `f64::MAX`. In that case, the
@@ -180,11 +191,12 @@ A verdict requires all these conditions:
 - sufficient samples
 - finite columns with a defined pairwise estimand
 - a usable threshold
-- exactly one all-pairs positive clique that contains a strict majority
+- one unique largest all-pairs positive clique that contains a strict majority
 
 An outsider can have a threshold-clearing bridge to that clique. This condition
-makes attribution ambiguous. `Nominal` means that the unique clique contains all
-requested channels. `Decoupled` identifies each unbridged outsider. All other
+makes attribution ambiguous. Smaller subcliques do not count as tied largest
+explanations. `Nominal` means that the unique largest clique contains all requested
+channels. `Decoupled` identifies each unbridged outsider. All other
 admissible but unidentifiable states are `InsufficientEvidence`. `note` is
 explanatory only.
 
@@ -283,7 +295,7 @@ For each channel, `strongest_pair_mi_nats` is the maximum incident edge in the
 complete estimated graph. The configured global reference is the maximum over all
 edges. The threshold is
 `max(mi_floor_nats, separation_ratio * global_reference)`. A retained separation
-requires one unique strict-majority clique and a strict minority whose every edge
+requires one unique largest strict-majority clique and a strict minority whose every edge
 to that clique lies below the threshold.
 
 `MiGraphDisposition` has these descriptive meanings:
@@ -446,7 +458,7 @@ exact byte receipt through `repo_work/check_crebain_mgw_schema.py`.
 
 KSG and continuous Ehrlich PID are inapplicable to this repeated atomic law.
 `I_min` and BROJA are distinct unrequested comparators, never fallbacks.
-Co-information/O-information, NIS, two-sided CUSUM, signed correlation, and
+Co-information/O-information, NIS, the selected two-arm CUSUM, signed correlation, and
 infomorphic objectives remain separate quantities. None of those operational
 diagnostics is evaluated by this fixture. No field in this study can enter
 `FusedVerdict`, `ConsistencyEvidence`, or an authority decision. A future Haldir

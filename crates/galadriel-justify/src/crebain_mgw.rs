@@ -406,7 +406,7 @@ const CUSUM_REFERENCE_EDGES: [ReferenceEdge; 1] = [ReferenceEdge {
     complete_team: "E. S. Page",
     title: "Continuous inspection schemes",
     locator: "https://doi.org/10.1093/biomet/41.1-2.100",
-    boundary: "sequential change-detection foundation only. Galadriel's two-sided magnitude composition and lifecycle contract are project-defined and are not PID",
+    boundary: "sequential change-detection foundation only. Galadriel's two-arm magnitude composition and lifecycle contract are project-defined and are not PID. On the fusion core's dof=3 route, the lower arm is inert. Other admitted degrees of freedom retain the general recurrence",
 }];
 
 const PNAS_INFOMORPHIC_REFERENCE_EDGES: [ReferenceEdge; 1] = [ReferenceEdge {
@@ -660,12 +660,12 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
     },
     MethodEligibility {
         object_id: "galadriel.two-sided-cusum",
-        object: "two-sided CUSUM",
+        object: "two-arm CUSUM (fusion-core dof=3 lower arm inert)",
         object_kind: MethodObjectKind::Diagnostic,
         study_role: StudyRole::SeparateOperationalDiagnostic,
         execution: ExecutionDisposition::NotEvaluated,
-        estimand_or_output: "sequential high- and low-direction innovation-magnitude change alarms under a separately qualified state and lifecycle contract",
-        assumptions_or_reason: "the exact drone fixture contains no lifecycle-qualified CUSUM state or alarm report. Galadriel's operational composition does not make this object PID evidence",
+        estimand_or_output: "sequential innovation-magnitude accumulator under a separately qualified state and lifecycle contract. On the fusion core's dof=3 route, only the upper arm can move. Other admitted degrees of freedom retain the general recurrence",
+        assumptions_or_reason: "the exact drone fixture contains no lifecycle-qualified CUSUM state or alarm report. The stable object ID names the generic two-sided type. The configuration does not fix degrees of freedom. Galadriel's operational composition does not make this object PID evidence",
         evaluator_route: Some("galadriel-core default detector"),
         reference_edges: &CUSUM_REFERENCE_EDGES,
         fallback_policy: "no CUSUM state or alarm is inferred from the PID fixture",
@@ -1161,7 +1161,7 @@ const PRODUCER_SOURCE_ERRATA: [ProducerSourceErratum; 3] = [
         frozen_literal: PREREGISTERED_OPERATIONAL_METHOD_LITERAL,
         inspected_source_revision: "Galadriel 0.9.0 candidate source",
         inspected_source_locator: "crates/galadriel-core/src/decision.rs:31-36,80-83",
-        corrected_statement: "Galadriel's separate operational magnitude lane uses normalized innovation squared plus two-sided CUSUM evidence, while signed Pearson correlation is a distinct directional association diagnostic. None of these objects is evaluated by this fixture",
+        corrected_statement: "Galadriel's separate operational magnitude lane uses normalized innovation squared plus a two-arm CUSUM. On the fusion core's dof=3 route, the lower arm is inert. Other admitted degrees of freedom retain the general recurrence. Signed Pearson correlation is a distinct directional association diagnostic. None of these objects is evaluated by this fixture",
         scientific_or_operational_impact: "adds the omitted CUSUM object and separates operational availability from evidence produced here. No PID estimand, evaluator call, or result changes",
         disposition: "consumer-side append-only erratum. Immutable producer fixture and preregistration bytes are retained",
     },
@@ -3105,7 +3105,7 @@ pub fn format_crebain_drone_mgw_markdown(study: &CrebainDroneMgwStudy) -> String
 
     output.push_str("## Interpretation boundary\n\n");
     output.push_str(study.interpretation_guard);
-    output.push_str(" KSG and continuous Ehrlich PID abstain on this repeated atomic categorical law. I_min and BROJA are distinct, unrequested comparators—not fallbacks. NIS, two-sided CUSUM, and signed correlation remain distinct operational objects and are not evaluated here.\n");
+    output.push_str(" KSG and continuous Ehrlich PID are ineligible and are not executed on this repeated atomic categorical law. I_min and BROJA are distinct, unrequested comparators—not fallbacks. NIS, the two-arm CUSUM, and signed correlation remain distinct operational objects and are not evaluated here. On the fusion core's dof=3 route, the CUSUM lower arm is inert. Other admitted degrees of freedom retain the general recurrence.\n");
     output
 }
 
@@ -3756,6 +3756,8 @@ mod tests {
             .expect("CUSUM row");
         assert_eq!(cusum.object_kind, MethodObjectKind::Diagnostic);
         assert_eq!(cusum.execution, ExecutionDisposition::NotEvaluated);
+        assert!(cusum.object.contains("lower arm inert"));
+        assert!(cusum.estimand_or_output.contains("only the upper arm"));
         assert_ne!(cusum.object_id, nis.object_id);
         let objective_rows = study
             .method_eligibility

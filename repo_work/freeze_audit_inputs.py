@@ -90,6 +90,7 @@ RELEASE_INPUTS = (
     "docs/CREBAIN-DRONE-MGW-STUDY.md",
     "docs/DEPENDENCY-POLICY.md",
     "docs/ECOSYSTEM-CONNECTIONS.md",
+    "docs/METHOD-SELECTION-DECISIONS.md",
     "docs/PRODUCER-CONTRACT.md",
     "docs/RELATED-WORK.md",
     "docs/SECURE-DEPLOYMENT.md",

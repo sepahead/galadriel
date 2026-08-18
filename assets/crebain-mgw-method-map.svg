@@ -1,29 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="2640" viewBox="0 0 1800 2640" role="img" aria-labelledby="title desc" xml:lang="en">
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="2640" viewBox="0 0 1800 2640" role="img" aria-labelledby="title desc" xml:lang="en" focusable="false">
   <title id="title">Question-first method selection for the CREBAIN categorical MGW study</title>
-  <desc id="desc">Publication diagram that separates four question-first lanes and sixteen typed method objects. Normalized innovation squared assesses per-channel innovation magnitude. Two-sided CUSUM is a separate operational diagnostic for sequential high- and low-direction innovation-magnitude change alarms. Signed Pearson correlation assesses directional linear agreement. None of these three operational diagnostics is evaluated by this fixture. KSG estimates general pairwise continuous dependence, including nonlinear dependence, when its declared support and row assumptions hold. Mutual information is direction-free with respect to correlation sign. KSG is not a PID. KSG is inapplicable to this repeated atomic categorical fixture. Categorical Makkeh-Gutknecht-Wibral shared-exclusions PID is produced because the study fixes ordered categorical sources, a named latent-truth target, and the complete empirical PMF. The primary PID2 chart uses a zero to 0.45 nat scale. This domain contains the largest value of 0.405465 nats. The chart shows informative, misinformative, and signed net components for redundancy, unique visual, unique radar, and synergy. The full eligibility matrix keeps the paper-defined categorical MGW functional separate from pid-core's budgeted PID2 and PID3 evaluators. It also keeps Williams-Beer I-min, two-source-only BROJA, the Schick-Poland general construction, the continuous Ehrlich functional, the Ehrlich nearest-neighbor estimator, pairwise KSG mutual information, co-information, O-information, normalized innovation squared, two-sided CUSUM, signed correlation, and the PNAS and ICLR infomorphic objective compositions separate. Only the MGW functional and its two selected pid-core evaluators produce output here. PID3 remains exploratory. It does not close the separate 108-coordinate averaged cumulative-plus-atom assurance program. The dependency-disjoint Decimal route compares 66 averaged atom components only. Asymmetric PID2 and PID3 canaries protect source order. All output remains record-only advisory evidence with no edge to FusedVerdict or Haldir policy.</desc>
+  <desc id="desc">Publication diagram that separates four question-first lanes and sixteen typed method objects. Normalized innovation squared assesses per-channel innovation magnitude. A two-arm CUSUM is a separate operational diagnostic. Its lower arm is inert on the fusion core's degrees-of-freedom-three route. Other admitted degrees of freedom retain the general recurrence. Signed Pearson correlation assesses directional linear agreement. None of these three operational diagnostics is evaluated by this fixture. KSG estimates general pairwise continuous dependence, including nonlinear dependence, when its declared support and row assumptions hold. Mutual information is direction-free with respect to correlation sign. KSG is not a PID. KSG is inapplicable to this repeated atomic categorical fixture. Categorical Makkeh-Gutknecht-Wibral shared-exclusions PID is produced because the study fixes ordered categorical sources, a named latent-truth target, and the complete empirical PMF. The primary PID2 chart uses a zero to 0.45 nat scale. This domain contains the largest value of 0.405465 nats. The chart shows informative, misinformative, and signed net components for redundancy, unique visual, unique radar, and synergy. The full eligibility matrix keeps the paper-defined categorical MGW functional separate from pid-core's budgeted PID2 and PID3 evaluators. It also keeps Williams-Beer I-min, two-source-only BROJA, the Schick-Poland general construction, the continuous Ehrlich functional, the Ehrlich nearest-neighbor estimator, pairwise KSG mutual information, co-information, O-information, normalized innovation squared, the two-arm CUSUM, signed correlation, and the PNAS and ICLR infomorphic objective compositions separate. Only the MGW functional and its two selected pid-core evaluators produce output here. PID3 remains exploratory. It does not close the separate 108-coordinate averaged cumulative-plus-atom assurance program. The dependency-disjoint Decimal route compares 66 averaged atom components only. Asymmetric PID2 and PID3 canaries protect source order. All output remains record-only advisory evidence with no edge to FusedVerdict or Haldir policy.</desc>
   <defs>
     <style>
-      text { font-family: Inter, "IBM Plex Sans", Arial, Helvetica, sans-serif; fill: #102a43; }
-      .title { font-size: 42px; font-weight: 750; letter-spacing: -0.5px; }
-      .subtitle { font-size: 23px; fill: #486581; }
-      .section { font-size: 19px; font-weight: 750; letter-spacing: 1.7px; fill: #334e68; }
-      .node-title { font-size: 25px; font-weight: 750; }
-      .body { font-size: 21px; }
-      .small { font-size: 18px; fill: #486581; }
-      .tiny { font-size: 16px; fill: #627d98; }
-      .table-main { font-size: 19px; }
-      .table-small { font-size: 17px; fill: #486581; }
-      .equation { font-family: "IBM Plex Mono", Menlo, Consolas, monospace; font-size: 20px; }
-      .lane { fill: #fbfcfe; stroke: #d9e2ec; stroke-width: 2.2; }
+      text { font-family: "Source Sans 3", "Source Sans Pro", Inter, "IBM Plex Sans", Arial, Helvetica, sans-serif; }
+      .title { font-size: 42px; font-weight: 700; letter-spacing: -0.5px; fill: #1F3F60; }
+      .subtitle { font-size: 23px; fill: #3F596F; }
+      .section { font-size: 19px; font-weight: 700; letter-spacing: 1.7px; fill: #1F3F60; }
+      .node-title { font-size: 25px; font-weight: 700; fill: #2C3E50; }
+      .body { font-size: 21px; fill: #2C3E50; }
+      .small { font-size: 18px; fill: #3F596F; }
+      .tiny { font-size: 16px; fill: #3F596F; }
+      .table-main { font-size: 19px; fill: #2C3E50; }
+      .table-small { font-size: 17px; fill: #3F596F; }
+      .equation { font-family: "IBM Plex Mono", Menlo, Consolas, monospace; font-size: 20px; fill: #2C3E50; }
+      .lane { fill: #FCFBF7; stroke: #D2E0E2; stroke-width: 2.2; }
       .operational { fill: #edf7ff; stroke: #1769aa; stroke-width: 2.4; }
       .direction { fill: #eef4ff; stroke: #345995; stroke-width: 2.4; }
       .dependence { fill: #eefaf7; stroke: #087f5b; stroke-width: 2.4; }
       .pid { fill: #f4efff; stroke: #6f42c1; stroke-width: 2.4; }
       .warning { fill: #fff8f2; stroke: #c05621; stroke-width: 2.2; }
       .firewall { fill: #fff0ef; stroke: #b42318; stroke-width: 2.7; }
-      .row-a { fill: #ffffff; }
-      .row-b { fill: #f5f8fb; }
-      .grid { stroke: #d9e2ec; stroke-width: 1.2; }
+      .row-a { fill: #FFFEFB; }
+      .row-b { fill: #F3F6F4; }
+      .grid { stroke: #D2E0E2; stroke-width: 1.2; }
       .axis { stroke: #9fb3c8; stroke-width: 1.5; }
       .info { fill: #6f42c1; }
       .misinfo { fill: #e59f00; }
@@ -33,14 +33,21 @@
       .inapplicable { fill: #fff0ef; stroke: #b42318; }
       .separate { fill: #eef2f6; stroke: #627d98; }
       .not-evaluated { fill: #fff8e6; stroke: #a15c00; }
-      .badge { font-size: 14px; font-weight: 750; letter-spacing: 0.35px; }
-      .badge-light { font-size: 15px; font-weight: 750; fill: #ffffff; letter-spacing: 0.45px; }
+      .badge { font-size: 14px; font-weight: 700; letter-spacing: 0.35px; fill: #2C3E50; }
+      .badge-light { font-size: 15px; font-weight: 700; fill: #ffffff; letter-spacing: 0.45px; }
+      .danger-text { fill: #B42318; }
+      .title-rule { stroke: #916400; stroke-width: 1.6; }
+      .title-rule-accent { stroke: #1F3F60; stroke-width: 3; }
+      .registration-diamond { fill: #F7F3E9; stroke: #916400; stroke-width: 1.8; }
     </style>
   </defs>
 
-  <rect width="1800" height="2640" fill="#ffffff"/>
+  <rect width="1800" height="2640" fill="#F7F3E9"/>
   <text x="55" y="58" class="title">Choose the scientific object from the question—not from a method hierarchy</text>
   <text x="55" y="96" class="subtitle">The four lanes are parallel. An unavailable object never triggers a fallback into a different estimand.</text>
+  <line x1="55" y1="112" x2="1745" y2="112" class="title-rule" aria-hidden="true"/>
+  <line x1="55" y1="116" x2="255" y2="116" class="title-rule-accent" aria-hidden="true"/>
+  <path d="M1745 106 L1751 112 L1745 118 L1739 112 Z" class="registration-diamond" aria-hidden="true"/>
 
   <rect x="40" y="125" width="1720" height="570" rx="22" class="lane"/>
   <text x="68" y="159" class="section">1 · QUESTION-FIRST SELECTOR · NO ESCALATION ARROWS</text>
@@ -50,7 +57,7 @@
   <text x="235" y="223" text-anchor="middle" class="badge-light">TWO OBJECTS · NOT EVALUATED</text>
   <text x="92" y="271" class="node-title">Which innovation-magnitude question is registered?</text>
   <text x="92" y="309" class="body">NIS: per-observation innovation magnitude.</text>
-  <text x="92" y="339" class="body">Two-sided CUSUM: high- and low-direction change alarms.</text>
+  <text x="92" y="339" class="body">Two-arm CUSUM: fusion-core dof=3 lower arm is inert.</text>
   <text x="92" y="374" class="tiny">Separate diagnostics. Neither is evaluated by this fixture.</text>
 
   <rect x="920" y="185" width="810" height="205" rx="16" class="direction"/>
@@ -155,7 +162,7 @@
   <text x="68" y="1389" class="section">3 · SIXTEEN DISTINCT OBJECTS IN THE TYPED ELIGIBILITY MATRIX</text>
   <text x="68" y="1423" class="small">Status applies only to this exact fixture. Functional, evaluator, estimator, diagnostic, and objective identities never transfer by proximity.</text>
 
-  <rect x="70" y="1450" width="1660" height="58" fill="#e9eef4"/>
+  <rect x="70" y="1450" width="1660" height="58" fill="#E7EEF0"/>
   <text x="90" y="1486" class="body" font-weight="700">Object</text>
   <text x="475" y="1486" class="body" font-weight="700">Kind</text>
   <text x="690" y="1486" class="body" font-weight="700">Disposition</text>
@@ -254,10 +261,10 @@
   <text x="930" y="2194" class="table-small">No lifecycle-qualified NIS report is produced here.</text>
 
   <rect x="70" y="2204" width="1660" height="58" class="row-a"/>
-  <text x="90" y="2239" class="table-main">Two-sided CUSUM</text>
+  <text x="90" y="2239" class="table-main">Two-arm CUSUM</text>
   <text x="475" y="2239" class="table-main">Diagnostic</text>
   <rect x="690" y="2219" width="174" height="28" rx="14" class="not-evaluated"/><text x="777" y="2238" text-anchor="middle" class="badge">NOT EVALUATED</text>
-  <text x="930" y="2230" class="table-main">Sequential high- and low-direction innovation-magnitude alarms.</text>
+  <text x="930" y="2230" class="table-main">Sequential accumulator. Fusion-core dof=3 lower arm is inert.</text>
   <text x="930" y="2252" class="table-small">Distinct from NIS. No lifecycle-qualified state or alarm is produced here.</text>
 
   <rect x="70" y="2262" width="1660" height="58" class="row-b"/>
@@ -306,6 +313,6 @@
   <text x="70" y="2527" class="tiny">Full author teams, titles, locators, and role boundaries are serialized in the study. Citation adjacency never authorizes method substitution.</text>
 
   <rect x="40" y="2558" width="1720" height="65" rx="17" class="firewall"/>
-  <text x="68" y="2585" class="node-title" fill="#b42318">RECORD-ONLY AUTHORITY BOUNDARY</text>
-  <text x="68" y="2611" class="small" fill="#8a1c13">No PID value enters FusedVerdict or a Haldir decision. Galadriel 0.9.0 has no Haldir adapter, runtime edge, or policy effect.</text>
+  <text x="68" y="2585" class="node-title danger-text">RECORD-ONLY AUTHORITY BOUNDARY</text>
+  <text x="68" y="2611" class="small danger-text">No PID value enters FusedVerdict or a Haldir decision. Galadriel 0.9.0 has no Haldir adapter, runtime edge, or policy effect.</text>
 </svg>
