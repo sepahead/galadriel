@@ -29,6 +29,7 @@
     "tier": "IMPLEMENTED",
     "subject": "physically parameterized synthetic categorical conformance law",
     "law": "an equal-weight empirical categorical law over all eight ordered visual/radar/acoustic source cells, repeated eight times per cell",
+    "estimation_boundary": "raw rows are converted to an empirical PMF sample estimate of the paper functional. Exact cell balance makes that empirical PMF coincide with the declared canonical law for this fixture only; the route is not a declared-law evaluator and supports no population inference",
     "targets": "horizontal_incursion = visual AND radar; volumetric_incursion = visual AND radar AND acoustic",
     "target_boundary": "the producer derives each synthetic target from its latent ENU cell after constructing sensor objects and source symbols but before fusion. Target derivation reads neither serialized source fields, projections, fusion output, Galadriel verdicts, nor PID results",
     "reproducibility_claim": "the 64 retained rows establish bounded-summary fresh-instance reproducibility for the generated fixture and no stronger state-isolation or statistical-independence claim",
@@ -55,11 +56,16 @@
     "fixture_sha256": "82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda",
     "producer_preregistered_pid_revision": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
     "actual_pid_core_revision": "bc3aa80fb6025e709c2906a08bce25a4fac40578",
-    "evaluator_adaptation": "the producer preregistration remains immutable while Galadriel explicitly adapts to the clean remote pid-core 0.9.0 revision using budgeted categorical routes. This assurance does not assert or rely on commit ancestry and instead gates exact identities, estimand preservation, resources, and output identities",
-    "schema_path": "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
-    "schema_id": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
-    "schema_sha256": "f2b316988b85e228eb949b1ef5b41db4b1b521c94cd9c83213a3fc665bcb1f7f",
-    "schema_bytes": 50024
+    "paper_functional_id": "functional.shared-exclusions.mgw-categorical",
+    "sample_estimator_route_id": "route.shared-exclusions.mgw-empirical-pmf",
+    "upstream_implementation_method_catalog_id": "shared-exclusions.categorical",
+    "pid2_implementation_entry_point": "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+    "pid3_implementation_entry_point": "pid_core::stable::categorical::discrete_sxpid3_with_budget",
+    "sample_estimator_implementation_adaptation": "the producer preregistration remains immutable while Galadriel explicitly adapts the raw-row empirical-PMF sample-estimator route to the clean remote pid-core 0.9.0 implementation method and budgeted entry points. This assurance does not assert or rely on commit ancestry and instead gates distinct functional, sample-estimator, implementation, resource, and output identities",
+    "schema_path": "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
+    "schema_id": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
+    "schema_sha256": "075e8905a1972772a413e6b3a0928303aec4f1c547ddbd0c281226433fb86b88",
+    "schema_bytes": 61857
   },
   "producer_source_errata": [
     {
@@ -95,7 +101,7 @@
       "kind": "closed_world_formal_schema_tests",
       "command": "python3 -B -E -s -S -m unittest -v repo_work.tests.test_crebain_mgw_schema",
       "evidence": [
-        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
         "repo_work/check_crebain_mgw_schema.py",
         "repo_work/tests/test_crebain_mgw_schema.py"
       ],
@@ -187,11 +193,11 @@
       "id": "L04",
       "title": "Type and state integrity",
       "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
-      "defect_or_counterexample": "A swapped source, altered target, missing coordinate, non-finite number, stale source identity, or unbudgeted evaluator route could serialize a superficially plausible result.",
+      "defect_or_counterexample": "A swapped source, altered target, missing coordinate, non-finite number, stale source identity, crossed functional/sample-estimator role, or unbudgeted implementation entry point could serialize a superficially plausible result.",
       "control_or_claim_removal": "Typed questions, exact source order, predicate-isolating mutations, finite-input checks, fixed coordinate cardinalities, source reconciliation, and explicit resource receipts fail closed.",
       "evidence": [
         "crates/galadriel-justify/src/crebain_mgw.rs",
-        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json"
       ],
       "remaining_risk": "The retained fixture cannot demonstrate validity for source types or state combinations outside this closed categorical contract."
     },
@@ -211,8 +217,8 @@
       "id": "L06",
       "title": "Identity and provenance",
       "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
-      "defect_or_counterexample": "The immutable producer preregistration, current evaluator revision, fixture bytes, schema bytes, and candidate build identity could be collapsed into one misleading version claim.",
-      "control_or_claim_removal": "Separate identities bind the CREBAIN source commit, fixture digest, historical preregistered pid-rs revision, actual clean pid-core revision, evaluator adaptation, software identity, and schema digest.",
+      "defect_or_counterexample": "The immutable producer preregistration, paper functional, sample-estimator route, current implementation revision, fixture bytes, schema bytes, and candidate build identity could be collapsed into one misleading version claim.",
+      "control_or_claim_removal": "Separate identities bind the CREBAIN source commit, fixture digest, historical preregistered pid-rs revision, paper functional, sample-estimator route, actual clean pid-core implementation revision and entry points, software identity, and schema digest.",
       "evidence": [
         "release/0.9.0/audit-inputs.json",
         "release/0.9.0/ecosystem-cut.json",
@@ -286,7 +292,7 @@
       "id": "L12",
       "title": "Determinism and reproducibility",
       "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
-      "defect_or_counterexample": "A result could be regenerated from mutable peer state, an unrecorded evaluator, a normalized fixture, or a different source order.",
+      "defect_or_counterexample": "A result could be regenerated from mutable peer state, an unrecorded sample-estimator implementation, a normalized fixture, or a different source order.",
       "control_or_claim_removal": "The source commits, fixture and schema digests, exact commands, source order, finite law, output schema, Decimal coordinate digest, and candidate gate are explicit and deterministic.",
       "evidence": [
         ".github/workflows/ci.yml",
@@ -314,7 +320,7 @@
       "defect_or_counterexample": "Rust serialization, prose tables, Python checking, and the declared public schema could accept different fields, atom orders, cardinalities, or semantics.",
       "control_or_claim_removal": "The actual Rust JSON carries an exact schema receipt, the external Python checker validates the public Draft 2020-12 schema bytes, and the Decimal route checks named and ordered coordinates from that same output.",
       "evidence": [
-        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
         "repo_work/check_crebain_mgw_schema.py",
         "repo_work/check_crebain_mgw_decimal_oracle.py"
       ],
@@ -337,10 +343,10 @@
       "title": "Observability and forensics",
       "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
       "defect_or_counterexample": "A compact pass flag could hide the law, source identity, abstentions, resource use, method distinctions, negative coordinates, or errata.",
-      "control_or_claim_removal": "The study emits typed fixture, schema, evaluator, errata, estimand-graph, method-eligibility, resource, atom-interpretation, algebra, and software-identity receipts with complete signed averaged coordinates.",
+      "control_or_claim_removal": "The study emits typed fixture, schema, sample-estimator implementation, errata, estimand-graph, method-eligibility, resource, atom-interpretation, algebra, and software-identity receipts with complete signed averaged coordinates.",
       "evidence": [
         "crates/galadriel-justify/src/crebain_mgw.rs",
-        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json"
       ],
       "remaining_risk": "The fixture deliberately omits full producer execution state and full fusion output, so forensic conclusions remain bounded to retained fields."
     },
@@ -368,7 +374,7 @@
       "title": "Ecosystem composition",
       "disposition": "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM",
       "defect_or_counterexample": "The fixture could be misconstrued as a live CREBAIN feedback edge, pid-rs authority, a Haldir decision route, or a Prisoma/ROS integration.",
-      "control_or_claim_removal": "The ecosystem cut distinguishes immutable CREBAIN fixture source, optional pid-core evaluator dependency, offline Galadriel evidence, prospective record-only Haldir use, and absent Prisoma, ROS, command, and authority edges.",
+      "control_or_claim_removal": "The ecosystem cut distinguishes immutable CREBAIN fixture source, optional pid-core sample-estimator implementation dependency, offline Galadriel evidence, prospective record-only Haldir use, and absent Prisoma, ROS, command, and authority edges.",
       "evidence": [
         "release/0.9.0/ecosystem-cut.json",
         "docs/ECOSYSTEM-CONNECTIONS.md",

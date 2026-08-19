@@ -90,8 +90,8 @@ or deployment performance, or control authority. The eight repeats per source
 cell establish only bounded-summary fresh-instance reproducibility.
 
 The assurance extension separates the immutable producer fixture source, the
-producer's historical pid-rs preregistration, the actual clean pid-core evaluator
-revision, and the candidate build identity. It retains the producer fixture bytes
+producer's historical pid-rs preregistration, the actual clean pid-core
+implementation revision, and the candidate build identity. It retains the producer fixture bytes
 and records three append-only corrections: target construction occurs after sensor
 objects and source symbols are built. NIS, the two-arm CUSUM with an inert lower
 arm on the fusion core's `dof=3` route, and signed Pearson correlation are distinct

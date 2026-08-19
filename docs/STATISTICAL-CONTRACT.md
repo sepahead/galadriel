@@ -278,9 +278,13 @@ assumption ledger, warnings, provenance, preprocessing and sampling descriptions
 resource estimate, exact upstream revision, sample count, `k`, and nats units.
 The selected dependency is `pid-core` 0.9.0 at
 `bc3aa80fb6025e709c2906a08bce25a4fac40578`. Every point fit uses
-`ksg_mi_report_with_budget`. Its retained preflight and execution use the same
-explicit single-thread `ResourceBudget`. Galadriel's graph work ceiling is a
-separate aggregate bound. No resolved Galadriel feature profile includes
+`ksg_mi_report_with_budget`. One explicit single-thread `ResourceBudget` is
+constructed before geometry and passed unchanged to the intrinsic-dimension
+report, distance-concentration report, KSG preflight, and KSG execution. Nested
+evidence retains the exact budget identity and `max_threads=1`. The concentration
+ratio is `mean nearest-neighbor distance / mean unordered-pairwise distance`;
+the denominator is the mean across all unordered pairs, not a maximum. Galadriel's graph work
+ceiling is a separate aggregate bound. No resolved Galadriel feature profile includes
 `pid-runlog`.
 
 The caller supplies `ContinuousLawDeclaration` text for the population law,
@@ -365,7 +369,7 @@ functional and estimator identity, law, units, transformations, gauges,
 row relation, and software identity. A hand-built local kNN-MI CUSUM is a
 project-defined heuristic, not either PID construction.
 
-The unit contract has two layers. Native pid-core evaluators and retained trial
+The unit contract has two layers. Native pid-core estimator implementations and retained trial
 reports are in nats. Categorical aggregate/display atom fields convert those
 values once to bits; continuous aggregates remain in nats. Every serialized
 trial envelope carries its native unit, so a bit-valued aggregate question cannot
@@ -436,12 +440,20 @@ p(V,R,A)=1/8,\qquad T_H=VR,\qquad T_V=VRA.
 \]
 
 The eight repeats per cell test bounded-summary fresh-instance reproducibility
-and exact custody. The evaluator MUST record no p-value, confidence interval,
+and exact custody. The study MUST record no p-value, confidence interval,
 resampling result, or claim of 64 independent experimental units. The primary
-route is `discrete_sxpid2_with_budget` over `(V,R;T_H)`. The
-`discrete_sxpid3_with_budget` route over `(V,R,A;T_V)` is exploratory. Both use
+entry point is `pid_core::stable::categorical::discrete_sxpid2_with_budget` over
+`(V,R;T_H)`. The
+`pid_core::stable::categorical::discrete_sxpid3_with_budget` entry point over
+`(V,R,A;T_V)` is exploratory. Both expose raw-row empirical-PMF sample-estimator
+route `route.shared-exclusions.mgw-empirical-pmf`, implemented by catalog method
+`shared-exclusions.categorical`, for paper functional
+`functional.shared-exclusions.mgw-categorical`. Raw rows form a plug-in empirical
+PMF estimate; this is not a declared-law evaluator. Exact balance makes the
+fixture empirical PMF coincide with the declared canonical law but does not
+support population inference. Both use
 the same explicit resource-budget policy, and the aggregate receipt accounts
-for all nine evaluator calls. The result MUST retain
+for all nine sample-estimator/control calls. The result MUST retain
 every pointwise/averaged informative, misinformative, and signed net field in
 nats. It MUST check both PID2 self-redundancy identities, PID2 joint
 reconstruction, all seven PID3 down-set identities, exact analytic AND-law
@@ -452,9 +464,11 @@ The dependency-disjoint, separately implemented 80-digit Decimal route compares
 the 66 averaged atom components and ten subset mutual informations. It does not
 recompute pointwise atoms and is not independent human or organizational
 replication. The complete emitted JSON MUST validate against the
-closed Draft 2020-12 v2 schema in
-`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json` and its
+closed Draft 2020-12 v3 schema in
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json` and its
 exact byte receipt through `repo_work/check_crebain_mgw_schema.py`.
+The unpublished v2 draft is retired because it did not encode these roles
+correctly; it is not an alternative accepted wire contract.
 
 KSG and continuous Ehrlich PID are inapplicable to this repeated atomic law.
 `I_min` and BROJA are distinct unrequested comparators, never fallbacks.

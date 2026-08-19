@@ -116,10 +116,17 @@ fixture and manifest digests, reconstructs every source and target from the
 declared synthetic geometry, and calls only pid-core 0.9.0 at clean read-only
 revision `bc3aa80fb6025e709c2906a08bce25a4fac40578`, through
 `discrete_sxpid2_with_budget` and `discrete_sxpid3_with_budget`. This is a
-reviewed post-preregistration evaluator adaptation: CREBAIN's immutable manifest
+reviewed post-preregistration sample-estimator implementation adaptation: CREBAIN's immutable manifest
 still binds revision `1cd2424f7967e1752dcc8e53859e8fdad3566f51` and the earlier
-unbudgeted route names. The categorical MGW functional, empirical laws, source
-order, targets, units, and signed outputs are unchanged.
+unbudgeted entry-point names. The wire model keeps four roles distinct: paper
+functional `functional.shared-exclusions.mgw-categorical`, raw-row empirical-PMF
+sample-estimator route `route.shared-exclusions.mgw-empirical-pmf`, upstream
+implementation-method/catalog identity `shared-exclusions.categorical`, and the
+two concrete budgeted pid-core entry points. Raw rows produce a plug-in empirical
+PMF estimate; they do not evaluate a separately declared population law. Exact
+cell balance makes that empirical PMF coincide with the declared canonical law
+for this fixture only. The categorical MGW functional, source order, targets,
+units, and signed outputs are unchanged, and no population inference is made.
 
 The horizontal PID2 result is primary. The 18-atom volumetric PID3 result is
 exploratory and does not close pid-rs's separate open 108-coordinate assurance
@@ -135,7 +142,8 @@ The largest observed Rust/Decimal difference is below `1.97e-16` nats.
 Pointwise results are retained and internally reconstructed, but are not
 separately recomputed by the Decimal route. This exact-law result makes no
 drone-performance claim and has no effect on fusion, verdicts, or Haldir.
-Its 16-row eligibility matrix keeps the MGW functional, pid-core evaluators,
+Its 18-row eligibility matrix keeps the MGW functional, empirical-PMF
+sample-estimator route, upstream implementation method, concrete pid-core entry points,
 `I_min`, two-source BROJA, Schick-Poland, continuous Ehrlich, KSG,
 co-/O-information, NIS, the selected two-arm CUSUM, signed correlation, and the two
 infomorphic objective families distinct. Inapplicability or failure never selects
@@ -145,12 +153,14 @@ another row as a fallback.
 research to-do list.](docs/CREBAIN-DRONE-MGW-STUDY.md)
 
 The JSON output is governed by a closed Draft 2020-12
-[machine schema](crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json)
+[machine schema](crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json)
 with `additionalProperties: false`, explicit required fields, enums, and fixed
 cardinalities at every object boundary. A standard-library checker rejects
 duplicate keys, non-finite or oversized numbers, unknown schema keywords,
 unresolved references, open nested objects, and schema-receipt mismatches. The
-schema fixes the wire contract. Rust custody/algebra checks and the Decimal route
+schema fixes the version 3 wire contract. The unpublished version 2 draft was
+retired because it conflated functional, sample-estimator, implementation-method,
+and entry-point roles; it is not a valid alternate contract. Rust custody/algebra checks and the Decimal route
 remain separate semantic and numerical obligations.
 
 Deep quality also carries a bounded exact-head mutation gate for the seven

@@ -24,20 +24,21 @@ from typing import Sequence
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json"
 FIXTURE_SHA256 = "82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda"
-RUST_STUDY_SCHEMA = "galadriel.crebain-drone-mgw-study.v2"
+RUST_STUDY_SCHEMA = "galadriel.crebain-drone-mgw-study.v3"
 RUST_STUDY_SCHEMA_PATH = (
-    "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+    "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json"
 )
-RUST_STUDY_SCHEMA_ID = "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+RUST_STUDY_SCHEMA_ID = "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json"
 CREBAIN_PRODUCER_REVISION = "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d"
 PID_CORE_REVISION = "bc3aa80fb6025e709c2906a08bce25a4fac40578"
 PID_CORE_VERSION = "0.9.0"
-GALADRIEL_FUNCTIONAL_ALIAS = "functional.shared-exclusions.mgw-categorical"
-UPSTREAM_METHOD_CATALOG_ID = "shared-exclusions.categorical"
-PID2_EVALUATOR_ROUTE = (
+PAPER_FUNCTIONAL_ID = "functional.shared-exclusions.mgw-categorical"
+SAMPLE_ESTIMATOR_ROUTE_ID = "route.shared-exclusions.mgw-empirical-pmf"
+UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID = "shared-exclusions.categorical"
+PID2_IMPLEMENTATION_ENTRY_POINT = (
     "pid_core::stable::categorical::discrete_sxpid2_with_budget"
 )
-PID3_EVALUATOR_ROUTE = (
+PID3_IMPLEMENTATION_ENTRY_POINT = (
     "pid_core::stable::categorical::discrete_sxpid3_with_budget"
 )
 SOURCE_ORDER = [
@@ -46,9 +47,11 @@ SOURCE_ORDER = [
     "acoustic_up_plane_crossed",
 ]
 METHOD_OBJECT_IDS = [
+    PAPER_FUNCTIONAL_ID,
+    SAMPLE_ESTIMATOR_ROUTE_ID,
     "shared-exclusions.categorical",
-    "pid-core/categorical-raw-row-plugin-mgw-pid2",
-    "pid-core/categorical-raw-row-plugin-mgw-pid3",
+    PID2_IMPLEMENTATION_ENTRY_POINT,
+    PID3_IMPLEMENTATION_ENTRY_POINT,
     "pid.imin",
     "pid.broja-two-source-external",
     "pid.general-schick-poland-2021",
@@ -62,6 +65,26 @@ METHOD_OBJECT_IDS = [
     "galadriel.signed-pearson-correlation",
     "infomorphic-objective.pnas-bivariate-2025",
     "infomorphic-objective.iclr-three-input-2025",
+]
+METHOD_OBJECT_KINDS = [
+    "functional",
+    "sample_estimator_route",
+    "implementation_method",
+    "implementation_entry_point",
+    "implementation_entry_point",
+    "functional",
+    "functional",
+    "functional",
+    "functional",
+    "estimator",
+    "estimator",
+    "diagnostic",
+    "diagnostic",
+    "diagnostic",
+    "diagnostic",
+    "diagnostic",
+    "objective_composition",
+    "objective_composition",
 ]
 PRECISION = 80
 OUTPUT_PLACES = 60
@@ -495,6 +518,12 @@ def compare_rust_output(
         fixture_identity["actual_pid_core_revision"], PID_CORE_REVISION,
         "fixture_identity.actual_pid_core_revision",
     )
+    adaptation = rust_output["sample_estimator_implementation_adaptation"]
+    _require_equal(
+        adaptation["selected_implementation_revision"],
+        PID_CORE_REVISION,
+        "sample_estimator_implementation_adaptation.selected_implementation_revision",
+    )
     reconciliation = rust_output["pid_core_source_reconciliation"]
     _require_equal(
         reconciliation["expected_revision"], PID_CORE_REVISION,
@@ -560,51 +589,83 @@ def compare_rust_output(
         rust_output["exploratory_question"]["target"], "volumetric_incursion",
         "exploratory_question.target",
     )
-    _require_equal(
-        rust_output["primary_question"]["upstream_method_catalog_id"],
-        "shared-exclusions.categorical",
-        "primary_question.upstream_method_catalog_id",
-    )
-    _require_equal(
-        rust_output["exploratory_question"]["upstream_method_catalog_id"],
-        "shared-exclusions.categorical",
-        "exploratory_question.upstream_method_catalog_id",
-    )
+    for label, question, entry_point in (
+        (
+            "primary_question",
+            rust_output["primary_question"],
+            PID2_IMPLEMENTATION_ENTRY_POINT,
+        ),
+        (
+            "exploratory_question",
+            rust_output["exploratory_question"],
+            PID3_IMPLEMENTATION_ENTRY_POINT,
+        ),
+    ):
+        _require_equal(
+            question["paper_functional_id"],
+            PAPER_FUNCTIONAL_ID,
+            f"{label}.paper_functional_id",
+        )
+        _require_equal(
+            question["sample_estimator_route_id"],
+            SAMPLE_ESTIMATOR_ROUTE_ID,
+            f"{label}.sample_estimator_route_id",
+        )
+        _require_equal(
+            question["upstream_implementation_method_catalog_id"],
+            UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+            f"{label}.upstream_implementation_method_catalog_id",
+        )
+        _require_equal(
+            question["implementation_entry_point"],
+            entry_point,
+            f"{label}.implementation_entry_point",
+        )
     method_rows = _require_exact_length(
-        rust_output["method_eligibility"], 16, "method_eligibility"
+        rust_output["method_eligibility"], 18, "method_eligibility"
     )
     _require_equal(
         [row["object_id"] for row in method_rows],
         METHOD_OBJECT_IDS,
         "method_eligibility object order",
     )
+    _require_equal(
+        [row["object_kind"] for row in method_rows],
+        METHOD_OBJECT_KINDS,
+        "method_eligibility role order",
+    )
     graph = rust_output["estimand_graph"]
     _require_equal(
-        graph["graph_id"], "galadriel.crebain-mgw-estimand-graph.v1",
+        graph["graph_id"], "galadriel.crebain-mgw-estimand-graph.v2",
         "estimand_graph.graph_id",
     )
     _require_equal(
-        graph["galadriel_functional_alias"],
-        GALADRIEL_FUNCTIONAL_ALIAS,
-        "estimand_graph.galadriel_functional_alias",
+        graph["paper_functional_id"],
+        PAPER_FUNCTIONAL_ID,
+        "estimand_graph.paper_functional_id",
     )
     _require_equal(
-        graph["upstream_method_catalog_id"],
-        UPSTREAM_METHOD_CATALOG_ID,
-        "estimand_graph.upstream_method_catalog_id",
+        graph["sample_estimator_route_id"],
+        SAMPLE_ESTIMATOR_ROUTE_ID,
+        "estimand_graph.sample_estimator_route_id",
     )
     _require_equal(
-        graph["pid2_evaluator_route"],
-        PID2_EVALUATOR_ROUTE,
-        "estimand_graph.pid2_evaluator_route",
+        graph["upstream_implementation_method_catalog_id"],
+        UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+        "estimand_graph.upstream_implementation_method_catalog_id",
     )
     _require_equal(
-        graph["pid3_evaluator_route"],
-        PID3_EVALUATOR_ROUTE,
-        "estimand_graph.pid3_evaluator_route",
+        graph["pid2_implementation_entry_point"],
+        PID2_IMPLEMENTATION_ENTRY_POINT,
+        "estimand_graph.pid2_implementation_entry_point",
     )
-    _require_exact_length(graph["nodes"], 14, "estimand_graph.nodes")
-    _require_exact_length(graph["edges"], 20, "estimand_graph.edges")
+    _require_equal(
+        graph["pid3_implementation_entry_point"],
+        PID3_IMPLEMENTATION_ENTRY_POINT,
+        "estimand_graph.pid3_implementation_entry_point",
+    )
+    _require_exact_length(graph["nodes"], 16, "estimand_graph.nodes")
+    _require_exact_length(graph["edges"], 24, "estimand_graph.edges")
     for field in (
         "all_edge_endpoints_resolved",
         "declared_topological_order_validated",
@@ -613,6 +674,11 @@ def compare_rust_output(
     ):
         _require_equal(graph[field], True, f"estimand_graph.{field}")
     interpretation = rust_output["atom_interpretation"]
+    _require_equal(
+        interpretation["upstream_implementation_method_catalog_id"],
+        UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+        "atom_interpretation.upstream_implementation_method_catalog_id",
+    )
     for field in (
         "pointwise_support_mass_and_averaging_matched",
         "canonical_pointwise_realization_order_matched",
@@ -628,6 +694,23 @@ def compare_rust_output(
     )
     if any(call.get("preflight_passed") is not True for call in resource_calls):
         raise OracleError("Rust output contains an unpassed categorical resource preflight")
+    for index, call in enumerate(resource_calls):
+        source_count = call.get("source_count")
+        if source_count not in (2, 3):
+            raise OracleError(
+                f"Rust output resource_receipt.calls[{index}].source_count "
+                "must be exactly 2 or 3"
+            )
+        expected_entry_point = (
+            PID2_IMPLEMENTATION_ENTRY_POINT
+            if source_count == 2
+            else PID3_IMPLEMENTATION_ENTRY_POINT
+        )
+        _require_equal(
+            call["implementation_entry_point"],
+            expected_entry_point,
+            f"resource_receipt.calls[{index}].implementation_entry_point",
+        )
 
     errors: list[tuple[str, Decimal]] = []
 

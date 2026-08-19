@@ -140,7 +140,7 @@ const CONTINUOUS_AUC_SEED_RELATIONS: [AucIntervalSeedRelation; 4] = [
 
 /// Typed identities for the non-PID comparator and composition rows in one study.
 ///
-/// A [`PidQuestionSpec`] defines only the named PID functional/evaluator rows.
+/// A [`PidQuestionSpec`] defines only the named PID functional/estimator rows.
 /// This sibling record prevents Pearson, mutual-information, and the project-defined
 /// joint contrast `Q` from inheriting that PID identity by proximity in one JSON object.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -555,7 +555,7 @@ impl PidDependencyIdentity {
     /// Cargo feature selected for pid-core by the containing justification crate.
     ///
     /// This is not necessarily required by every route in the crate: the
-    /// categorical evaluator itself is on pid-core's stable default surface.
+    /// categorical sample estimator itself is on pid-core's stable default surface.
     pub const fn workspace_selected_feature(self) -> &'static str {
         self.workspace_selected_feature
     }

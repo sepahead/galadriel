@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the CREBAIN categorical-MGW v2 JSON without third-party packages.
+"""Validate the CREBAIN categorical-MGW v3 JSON without third-party packages.
 
 This module intentionally implements only the JSON Schema Draft 2020-12
 keywords used by the checked-in study schema.  The schema is linted before an
@@ -25,7 +25,7 @@ from typing import Any, Iterable
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SCHEMA = (
     ROOT
-    / "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+    / "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json"
 )
 DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
 MAX_SCHEMA_BYTES = 1_048_576
@@ -77,6 +77,9 @@ SUPPORTED_KEYWORDS = frozenset(
         "properties",
         "required",
         "additionalProperties",
+        "allOf",
+        "if",
+        "then",
         "items",
         "minItems",
         "maxItems",
@@ -382,6 +385,23 @@ def _lint_schema_node(node: Any, path: tuple[object, ...] = ()) -> None:
     if "items" in node:
         _lint_schema_node(node["items"], path + ("items",))
 
+    if "allOf" in node:
+        branches = node["allOf"]
+        if not isinstance(branches, list) or not branches:
+            raise ContractError(
+                f"allOf at {_display_path(path)} must be a non-empty array"
+            )
+        for index, branch in enumerate(branches):
+            _lint_schema_node(branch, path + ("allOf", index))
+
+    if ("if" in node) != ("then" in node):
+        raise ContractError(
+            f"if and then at {_display_path(path)} must appear together in this subset"
+        )
+    if "if" in node:
+        _lint_schema_node(node["if"], path + ("if",))
+        _lint_schema_node(node["then"], path + ("then",))
+
     for keyword in ("minItems", "maxItems", "minLength", "maxLength"):
         if keyword in node and _require_integer(node[keyword], keyword) < 0:
             raise ContractError(f"{keyword} at {_display_path(path)} cannot be negative")
@@ -447,6 +467,11 @@ def _iter_schema_nodes(node: dict[str, Any]) -> Iterable[dict[str, Any]]:
         yield from _iter_schema_nodes(subschema)
     if "items" in node:
         yield from _iter_schema_nodes(node["items"])
+    for branch in node.get("allOf", []):
+        yield from _iter_schema_nodes(branch)
+    if "if" in node:
+        yield from _iter_schema_nodes(node["if"])
+        yield from _iter_schema_nodes(node["then"])
 
 
 def lint_schema(schema: Any) -> dict[str, Any]:
@@ -516,6 +541,17 @@ def _validate_instance(
             )
         finally:
             active_refs.remove(key)
+
+    for branch in node.get("allOf", []):
+        _validate_instance(instance, branch, root, path, active_refs, depth + 1)
+
+    if "if" in node:
+        try:
+            _validate_instance(instance, node["if"], root, path, active_refs, depth + 1)
+        except ContractError:
+            pass
+        else:
+            _validate_instance(instance, node["then"], root, path, active_refs, depth + 1)
 
     declared = node.get("type")
     if declared is not None and not _matches_type(instance, declared):
@@ -663,7 +699,7 @@ def check_paths(instance_path: Path, schema_path: Path = DEFAULT_SCHEMA) -> str:
     validate_semantic_identity_bindings(instance)
     identity = schema_identity(schema_raw)
     return (
-        "PASS CREBAIN categorical-MGW v2 JSON Schema validation: "
+        "PASS CREBAIN categorical-MGW v3 JSON Schema validation: "
         f"schema_sha256={identity.sha256} schema_bytes={identity.size_bytes} "
         f"instance_sha256={hashlib.sha256(instance_raw).hexdigest()} "
         f"instance_bytes={len(instance_raw)}"
@@ -689,7 +725,7 @@ def main(arguments: list[str] | None = None) -> int:
     try:
         print(check_paths(options.instance, options.schema))
     except ContractError as error:
-        print(f"FAIL CREBAIN categorical-MGW v2 JSON Schema validation: {error}", file=sys.stderr)
+        print(f"FAIL CREBAIN categorical-MGW v3 JSON Schema validation: {error}", file=sys.stderr)
         return 1
     return 0
 

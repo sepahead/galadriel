@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120" role="img" aria-labelledby="title desc" xml:lang="en">
   <title id="title">Galadriel offline PID estimand and provenance graph</title>
-  <desc id="desc">The graph begins with a versioned PID question that fixes ordered sources, a predeclared target with explicit provenance, the input law, finite-sample acceptance, transforms, row relation, support or gauge, units, functional, evaluator, atom coordinates, reference roles, and the exact pid-rs dependency pin. It then separates two implemented offline routes. The categorical route evaluates the Makkeh-Gutknecht-Wibral shared-exclusions functional with an explicit resource budget, on the Williams-Beer antichain lattice and with the Gutknecht-Wibral-Makkeh part-whole interpretation. Each signed atom equals its informative part minus its misinformative part. Holding the complete source rows fixed while permuting only the target preserves every informative atom but may change misinformative and net atoms. Retained categorical reports use nats, while named aggregate atoms convert once to bits. The continuous route evaluates the related but distinct Ehrlich-Schick-Poland-Makkeh-Lanfermann-Wollstadt-Wibral functional and estimator, with KSG mutual-information constituents and an explicit resource budget, on a declared full-dimensional continuous law and fixed source gauge. All outputs remain nats. Its two-source atoms are redundancy R sub sx, unique one equals I of source one and target minus redundancy, unique two equals I of source two and target minus redundancy, and synergy equals joint-source mutual information minus both marginal mutual informations plus redundancy. The Schick-Poland general construction and the Williams-Beer I-min functional are reference boundaries, not evaluated fallbacks. A bottom firewall distinguishes both PID routes from Galadriel's project-defined Q, which is joint-source mutual information minus the larger marginal mutual information and is not a PID synergy atom. It also separates PID from the target-free pairwise mutual-information graph, BROJA, and other unevaluated measures.</desc>
+  <desc id="desc">The graph begins with a versioned PID question that fixes ordered sources, a predeclared target with explicit provenance, the input law, finite-sample acceptance, transforms, row relation, support or gauge, units, paper functional, sample-estimator route, implementation method, implementation entry point, atom coordinates, reference roles, and the exact pid-rs dependency pin. It then separates two implemented offline routes. The categorical route keeps five objects distinct. Its paper functional is functional.shared-exclusions.mgw-categorical. Its raw-row empirical-PMF sample-estimator route is route.shared-exclusions.mgw-empirical-pmf. Its upstream implementation-method catalog identity is shared-exclusions.categorical. Its exact implementation entry points are pid_core::stable::categorical::discrete_sxpid2_with_budget and pid_core::stable::categorical::discrete_sxpid3_with_budget. Raw rows produce a plug-in empirical-PMF estimate. They do not evaluate a separately declared population law. Exact CREBAIN fixture balance makes the empirical PMF coincide with the canonical law for that fixture only. The route uses an explicit resource budget, the Williams-Beer antichain lattice, and the Gutknecht-Wibral-Makkeh part-whole interpretation. Each signed atom equals its informative part minus its misinformative part. Holding the complete source rows fixed while permuting only the target preserves every informative atom but may change misinformative and net atoms. Retained categorical sample-estimator reports use nats, while named aggregate atoms convert once to bits. The continuous route evaluates the related but distinct Ehrlich-Schick-Poland-Makkeh-Lanfermann-Wollstadt-Wibral functional and estimator, with KSG mutual-information constituents and an explicit resource budget, on a declared full-dimensional continuous law and fixed source gauge. All outputs remain nats. Its two-source atoms are redundancy R sub sx, unique one equals I of source one and target minus redundancy, unique two equals I of source two and target minus redundancy, and synergy equals joint-source mutual information minus both marginal mutual informations plus redundancy. The Schick-Poland general construction and the Williams-Beer I-min functional are reference boundaries, not evaluated fallbacks. A bottom firewall distinguishes both PID routes from Galadriel's project-defined Q, which is joint-source mutual information minus the larger marginal mutual information and is not a PID synergy atom. It also separates PID from the target-free pairwise mutual-information graph, BROJA, and other unevaluated measures.</desc>
   <defs>
     <style>
       text { font-family: Arial, Helvetica, sans-serif; fill: #102a43; }
@@ -11,6 +11,7 @@
       .body { font-size: 17px; }
       .small { font-size: 15px; fill: #486581; }
       .equation { font-family: Menlo, Consolas, "Liberation Mono", monospace; font-size: 16px; }
+      .equation-tight { font-family: Menlo, Consolas, "Liberation Mono", monospace; font-size: 14px; }
       .firewall { font-size: 16px; }
       .lane { fill: #fbfcfe; stroke: #d9e2ec; stroke-width: 2; rx: 18; }
       .node { stroke-width: 2.2; rx: 14; }
@@ -32,13 +33,13 @@
 
   <rect width="1600" height="1120" fill="#ffffff"/>
   <text x="58" y="58" class="title">Offline PID estimands: two related constructions, never one generic “Wibral PID”</text>
-  <text x="58" y="91" class="subtitle">A functional, estimator, lattice coordinate, law, gauge, units, and software pin jointly define the result.</text>
+  <text x="58" y="91" class="subtitle">Functional, sample-estimator route, implementation method, entry point, law, gauge, units, and pin define a result.</text>
 
   <rect x="55" y="125" width="1490" height="175" rx="14" class="node question"/>
   <text x="82" y="160" class="node-title">PidQuestionSpec v3 seals one scientific question before evaluation</text>
   <text x="82" y="195" class="equation">E_PID := (ordered S₁,S₂, predeclared T, generated law, acceptance rule, transform, row relation,</text>
-  <text x="82" y="225" class="equation">          support/gauge, native units, aggregate units, functional, evaluator, quantity IDs,</text>
-  <text x="82" y="255" class="equation">          coordinates, components, aggregation, role-typed references, exact pid-rs package, version, Git pin, and features)</text>
+  <text x="82" y="225" class="equation">          support/gauge, native units, aggregate units, paper functional, sample-estimator route, implementation method,</text>
+  <text x="82" y="255" class="equation">          implementation entry point, coordinates, components, aggregation, references, and exact pid-rs pin)</text>
   <text x="82" y="284" class="small">Trial arms are typed separately: coupled-law evaluation versus within-trial target permutation. Functional identity alone is not a scalar identity.</text>
 
   <path d="M800 300 V330 H400 V355" class="arrow-purple"/>
@@ -49,29 +50,33 @@
   <rect x="45" y="340" width="740" height="565" rx="18" class="lane"/>
   <text x="70" y="376" class="section" fill="#5d31a6">A · CATEGORICAL MAKKEH–GUTKNECHT–WIBRAL SHARED EXCLUSIONS</text>
 
-  <rect x="70" y="405" width="690" height="105" rx="14" class="node categorical"/>
-  <text x="92" y="439" class="node-title">Paper-defined pointwise functional · empirical evaluator</text>
-  <text x="92" y="471" class="equation">route = stable::categorical::discrete_sxpid2_with_budget</text>
-  <text x="92" y="499" class="small">Finite categorical law · exact count map · retained evaluator outputs use nats</text>
+  <rect x="70" y="405" width="690" height="175" rx="14" class="node categorical"/>
+  <text x="92" y="433" class="node-title">Five distinct categorical method objects</text>
+  <text x="92" y="458" class="equation-tight">functional: functional.shared-exclusions.mgw-categorical</text>
+  <text x="92" y="482" class="equation-tight">sample route: route.shared-exclusions.mgw-empirical-pmf</text>
+  <text x="92" y="506" class="equation-tight">method/catalog: shared-exclusions.categorical</text>
+  <text x="92" y="530" class="equation-tight">entry: pid_core::stable::categorical::discrete_sxpid2_with_budget</text>
+  <text x="92" y="554" class="equation-tight">entry: pid_core::stable::categorical::discrete_sxpid3_with_budget</text>
+  <text x="92" y="574" class="small">Raw rows estimate a PMF. Exact-law coincidence is fixture-only.</text>
 
-  <rect x="70" y="535" width="690" height="165" rx="14" class="node reference"/>
-  <text x="92" y="569" class="node-title">Role-typed provenance edges</text>
-  <circle cx="102" cy="596" r="5" class="bullet-purple"/>
-  <text x="120" y="602" class="body">Functional — Makkeh, Gutknecht &amp; Wibral (2021), PRE 103, 032149</text>
-  <circle cx="102" cy="626" r="5" class="bullet-purple"/>
-  <text x="120" y="632" class="body">Original antichain lattice — Williams &amp; Beer (2010). I_min not evaluated.</text>
-  <circle cx="102" cy="656" r="5" class="bullet-purple"/>
-  <text x="120" y="662" class="body">Part-whole derivation — Gutknecht, Wibral &amp; Makkeh (2021)</text>
-  <circle cx="102" cy="686" r="5" class="bullet-red"/>
-  <text x="120" y="692" class="small">Schick-Poland et al. general construction — related, not evaluated here</text>
+  <rect x="70" y="595" width="690" height="120" rx="14" class="node reference"/>
+  <text x="92" y="621" class="node-title">Role-typed provenance edges</text>
+  <circle cx="102" cy="643" r="5" class="bullet-purple"/>
+  <text x="120" y="649" class="body">Functional — Makkeh, Gutknecht &amp; Wibral (2021)</text>
+  <circle cx="102" cy="665" r="5" class="bullet-purple"/>
+  <text x="120" y="671" class="body">Antichain lattice — Williams &amp; Beer (2010). I_min not evaluated.</text>
+  <circle cx="102" cy="687" r="5" class="bullet-purple"/>
+  <text x="120" y="693" class="body">Part-whole derivation — Gutknecht, Wibral &amp; Makkeh (2021)</text>
+  <circle cx="102" cy="706" r="5" class="bullet-red"/>
+  <text x="120" y="712" class="small">Schick-Poland general construction — related, not evaluated</text>
 
-  <rect x="70" y="725" width="690" height="170" rx="14" class="node categorical"/>
-  <text x="92" y="759" class="node-title">Typed atoms and fixed-source hostile control</text>
-  <text x="92" y="788" class="equation">A_net(a) = A_info(a) − A_misinfo(a),  a ∈ {Red,U₁,U₂,Syn}</text>
-  <text x="92" y="816" class="equation">source rows fixed, T permuted</text>
-  <text x="92" y="842" class="equation">⇒ A_info,coupled(a) = A_info,control(a), for every atom a</text>
-  <text x="92" y="868" class="small">Misinformative and net parts may change. Signed atoms are never clamped.</text>
-  <text x="92" y="888" class="small">Trial reports: nats. Aggregate atom fields: bits after one division by ln(2).</text>
+  <rect x="70" y="730" width="690" height="165" rx="14" class="node categorical"/>
+  <text x="92" y="763" class="node-title">Typed atoms and fixed-source hostile control</text>
+  <text x="92" y="791" class="equation">A_net(a) = A_info(a) − A_misinfo(a),  a ∈ {Red,U₁,U₂,Syn}</text>
+  <text x="92" y="818" class="equation">source rows fixed, T permuted</text>
+  <text x="92" y="844" class="equation">⇒ A_info,coupled(a) = A_info,control(a), for every atom a</text>
+  <text x="92" y="870" class="small">Misinformative and net parts may change. Signed atoms are never clamped.</text>
+  <text x="92" y="890" class="small">Trial reports: nats. Aggregate atoms: bits after one division by ln(2).</text>
 
   <rect x="815" y="340" width="740" height="565" rx="18" class="lane"/>
   <text x="840" y="376" class="section" fill="#14568a">B · CONTINUOUS EHRLICH SHARED-EXCLUSIONS PID2</text>

@@ -1,7 +1,8 @@
 //! Exact categorical shared-exclusions study over CREBAIN's drone sensor fixture.
 //!
-//! This module deliberately starts from a physically parameterized synthetic row contract, not
-//! from an estimator. Each row is one freshly initialized CREBAIN fusion-engine episode with
+//! This module starts from a physically parameterized synthetic row contract. Its raw-row API
+//! forms an empirical PMF and therefore supplies a sample estimate of the paper functional; it is
+//! not a declared-law evaluator. Each row is one freshly initialized CREBAIN fusion-engine episode with
 //! ordered pre-fusion visual, radar, and acoustic measurements, a checked row-level time window,
 //! and synthetic ENU truth generated without consulting the sensor projections, fusion result,
 //! Galadriel verdict, or PID calculation. The pinned producer source supplies the stronger
@@ -36,12 +37,12 @@ use std::collections::BTreeSet;
 use thiserror::Error;
 
 /// Serialization schema for the complete CREBAIN categorical-MGW evidence object.
-pub const CREBAIN_DRONE_MGW_STUDY_SCHEMA: &str = "galadriel.crebain-drone-mgw-study.v2";
-/// Repository-relative formal JSON Schema path for the v2 evidence object.
+pub const CREBAIN_DRONE_MGW_STUDY_SCHEMA: &str = "galadriel.crebain-drone-mgw-study.v3";
+/// Repository-relative formal JSON Schema path for the v3 evidence object.
 pub const CREBAIN_DRONE_MGW_STUDY_SCHEMA_PATH: &str =
-    "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json";
-/// Canonical publication locator for the formal v2 JSON Schema.
-pub const CREBAIN_DRONE_MGW_STUDY_SCHEMA_ID: &str = "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json";
+    "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json";
+/// Canonical publication locator for the formal v3 JSON Schema.
+pub const CREBAIN_DRONE_MGW_STUDY_SCHEMA_ID: &str = "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json";
 /// Exact CREBAIN commit that produced the bundled fixture.
 pub const CREBAIN_FIXTURE_REVISION: &str = "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d";
 /// Exact repository-relative path of the producer fixture.
@@ -87,18 +88,19 @@ const PID3_CANONICAL_ANTICHAINS: [&[u8]; 18] = [
     &[3, 5, 6],
 ];
 
-const FUNCTIONAL_ID: &str = "functional.shared-exclusions.mgw-categorical";
-const UPSTREAM_METHOD_CATALOG_ID: &str = "shared-exclusions.categorical";
+const PAPER_FUNCTIONAL_ID: &str = "functional.shared-exclusions.mgw-categorical";
+const SAMPLE_ESTIMATOR_ROUTE_ID: &str = "route.shared-exclusions.mgw-empirical-pmf";
+const UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID: &str = "shared-exclusions.categorical";
 const UPSTREAM_INTERPRETATION_CATALOG_ID: &str = "software.sxpid-interpretation-contract";
 const PREREGISTERED_PID_RS_REVISION: &str = "1cd2424f7967e1752dcc8e53859e8fdad3566f51";
 const PREREGISTERED_AUTHORITY_BOUNDARY: &str =
     "advisory research evidence only; cannot grant, revoke, or exercise Haldir control authority";
-const PREREGISTERED_PID2_ROUTE: &str = "pid_core::stable::categorical::discrete_sxpid2";
-const PREREGISTERED_PID3_ROUTE: &str = "pid_core::stable::categorical::discrete_sxpid3";
-const PID2_ROUTE: &str = "pid_core::stable::categorical::discrete_sxpid2_with_budget";
-const PID3_ROUTE: &str = "pid_core::stable::categorical::discrete_sxpid3_with_budget";
-const GRAPH_PID2_EVALUATOR_ID: &str = PID2_ROUTE;
-const GRAPH_PID3_EVALUATOR_ID: &str = PID3_ROUTE;
+const PREREGISTERED_PID2_ENTRY_POINT: &str = "pid_core::stable::categorical::discrete_sxpid2";
+const PREREGISTERED_PID3_ENTRY_POINT: &str = "pid_core::stable::categorical::discrete_sxpid3";
+const PID2_IMPLEMENTATION_ENTRY_POINT: &str =
+    "pid_core::stable::categorical::discrete_sxpid2_with_budget";
+const PID3_IMPLEMENTATION_ENTRY_POINT: &str =
+    "pid_core::stable::categorical::discrete_sxpid3_with_budget";
 const PID_RESOURCE_MAX_BYTES: u64 = 64 * 1024 * 1024;
 const PID_RESOURCE_MAX_PAIRWISE_DISTANCES: u64 = 1;
 const PID_RESOURCE_MAX_OPERATIONS_HINT: u128 = 100_000_000;
@@ -138,7 +140,7 @@ pub fn bundled_crebain_drone_mgw_fixture() -> &'static str {
 /// Return the closed Draft 2020-12 schema compiled into the candidate.
 #[must_use]
 pub fn bundled_crebain_drone_mgw_schema() -> &'static str {
-    include_str!("../schemas/crebain-drone-mgw-study-v2.schema.json")
+    include_str!("../schemas/crebain-drone-mgw-study-v3.schema.json")
 }
 
 #[derive(Debug, Deserialize)]
@@ -341,7 +343,7 @@ const SCHICK_POLAND_REFERENCE_EDGES: [ReferenceEdge; 1] = [ReferenceEdge {
     complete_team: "Kyle Schick-Poland; Abdullah Makkeh; Aaron J. Gutknecht; Patricia Wollstadt; Anja Sturm; Michael Wibral",
     title: "A partial information decomposition for discrete and continuous variables",
     locator: "https://arxiv.org/abs/2106.12393",
-    boundary: "general measure-theoretic construction. Neither the categorical MGW evaluator nor the distinct Ehrlich estimator is treated as its alias",
+    boundary: "general measure-theoretic construction. Neither the categorical MGW empirical-PMF sample estimator nor the distinct Ehrlich estimator is treated as its alias",
 }];
 
 const EHRLICH_FUNCTIONAL_REFERENCE_EDGES: [ReferenceEdge; 1] = [ReferenceEdge {
@@ -415,7 +417,7 @@ const PNAS_INFOMORPHIC_REFERENCE_EDGES: [ReferenceEdge; 1] = [ReferenceEdge {
     complete_team: "Abdullah Makkeh; Marcel Graetz; Andreas C. Schneider; David A. Ehrlich; Viola Priesemann; Michael Wibral",
     title: "A general framework for interpretable neural learning based on local information-theoretic goal functions",
     locator: "https://doi.org/10.1073/pnas.2408125122",
-    boundary: "bivariate/two-input learning-objective composition. This is not a PID definition or Galadriel evaluator",
+    boundary: "bivariate/two-input learning-objective composition. This is not a PID definition or Galadriel estimator",
 }];
 
 const ICLR_INFOMORPHIC_REFERENCE_EDGES: [ReferenceEdge; 1] = [ReferenceEdge {
@@ -429,13 +431,16 @@ const ICLR_INFOMORPHIC_REFERENCE_EDGES: [ReferenceEdge; 1] = [ReferenceEdge {
 
 const NO_REFERENCE_EDGES: [ReferenceEdge; 0] = [];
 
-/// Scientific object kind. A paper-defined functional is not its evaluator or an objective.
+/// Scientific object kind. Paper semantics, sample estimation, implementation, and objectives are
+/// separate roles even when one dependency supplies all executable code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum MethodObjectKind {
     Functional,
-    Evaluator,
+    SampleEstimatorRoute,
+    ImplementationMethod,
+    ImplementationEntryPoint,
     Estimator,
     Diagnostic,
     ObjectiveComposition,
@@ -475,7 +480,7 @@ pub struct MethodEligibility {
     execution: ExecutionDisposition,
     estimand_or_output: &'static str,
     assumptions_or_reason: &'static str,
-    evaluator_route: Option<&'static str>,
+    implementation_entry_point: Option<&'static str>,
     reference_edges: &'static [ReferenceEdge],
     fallback_policy: &'static str,
 }
@@ -502,8 +507,8 @@ impl MethodEligibility {
     pub const fn assumptions_or_reason(self) -> &'static str {
         self.assumptions_or_reason
     }
-    pub const fn evaluator_route(self) -> Option<&'static str> {
-        self.evaluator_route
+    pub const fn implementation_entry_point(self) -> Option<&'static str> {
+        self.implementation_entry_point
     }
     pub const fn reference_edges(self) -> &'static [ReferenceEdge] {
         self.reference_edges
@@ -513,40 +518,64 @@ impl MethodEligibility {
     }
 }
 
-const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
+const METHOD_ELIGIBILITY: [MethodEligibility; 18] = [
     MethodEligibility {
-        object_id: UPSTREAM_METHOD_CATALOG_ID,
-        object: "categorical MGW shared-exclusions functional",
+        object_id: PAPER_FUNCTIONAL_ID,
+        object: "paper-defined categorical MGW shared-exclusions functional",
         object_kind: MethodObjectKind::Functional,
         study_role: StudyRole::Primary,
         execution: ExecutionDisposition::Produced,
         estimand_or_output: "paper-defined pointwise cumulatives and Möbius atoms, plus empirical-PMF averages, on a categorical law",
-        assumptions_or_reason: "ordered categorical sources, a named categorical target, and the complete empirical PMF are fixed before evaluation",
-        evaluator_route: None,
+        assumptions_or_reason: "ordered categorical sources, a named categorical target, and the complete balanced row sample are fixed before estimation",
+        implementation_entry_point: None,
         reference_edges: &MGW_REFERENCE_EDGES,
         fallback_policy: "no comparator or alternative PID is substituted on failure",
     },
     MethodEligibility {
-        object_id: "pid-core/categorical-raw-row-plugin-mgw-pid2",
-        object: "pid-core empirical-categorical raw-row plug-in MGW PID2 evaluator",
-        object_kind: MethodObjectKind::Evaluator,
+        object_id: SAMPLE_ESTIMATOR_ROUTE_ID,
+        object: "raw-row empirical-PMF categorical MGW sample-estimator route",
+        object_kind: MethodObjectKind::SampleEstimatorRoute,
+        study_role: StudyRole::Primary,
+        execution: ExecutionDisposition::Produced,
+        estimand_or_output: "empirical-PMF sample estimate of the paper-defined pointwise cumulatives and averaged atoms",
+        assumptions_or_reason: "raw categorical rows are converted to empirical mass before the paper functional is evaluated. This estimates that functional from a sample; it is not a declared-law evaluator",
+        implementation_entry_point: None,
+        reference_edges: &MGW_REFERENCE_EDGES,
+        fallback_policy: "no declared-law evaluator, comparator, or alternative PID is substituted on failure",
+    },
+    MethodEligibility {
+        object_id: UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+        object: "pid-rs categorical shared-exclusions implementation method",
+        object_kind: MethodObjectKind::ImplementationMethod,
+        study_role: StudyRole::Primary,
+        execution: ExecutionDisposition::Produced,
+        estimand_or_output: "upstream implementation-method identity for categorical shared-exclusions sample estimation",
+        assumptions_or_reason: "the pid-rs method catalog identifies implementation provenance. It is neither the paper functional ID nor the Galadriel semantic sample-estimator route ID",
+        implementation_entry_point: None,
+        reference_edges: &MGW_REFERENCE_EDGES,
+        fallback_policy: "no unrecorded implementation method is substituted on failure",
+    },
+    MethodEligibility {
+        object_id: PID2_IMPLEMENTATION_ENTRY_POINT,
+        object: "pid-core budgeted categorical MGW PID2 implementation entry point",
+        object_kind: MethodObjectKind::ImplementationEntryPoint,
         study_role: StudyRole::Primary,
         execution: ExecutionDisposition::Produced,
         estimand_or_output: "pointwise and averaged informative, misinformative, and signed net atoms on the two-source empirical categorical law",
         assumptions_or_reason: "visual and radar are passed in the declared order. The synthetic latent-truth horizontal target is derived without reading projection, fusion, verdict, or PID outputs. Repeated rows define empirical mass, not precision",
-        evaluator_route: Some(PID2_ROUTE),
+        implementation_entry_point: Some(PID2_IMPLEMENTATION_ENTRY_POINT),
         reference_edges: &MGW_REFERENCE_EDGES,
         fallback_policy: "no comparator or alternative PID is substituted on failure",
     },
     MethodEligibility {
-        object_id: "pid-core/categorical-raw-row-plugin-mgw-pid3",
-        object: "pid-core empirical-categorical raw-row plug-in MGW PID3 evaluator",
-        object_kind: MethodObjectKind::Evaluator,
+        object_id: PID3_IMPLEMENTATION_ENTRY_POINT,
+        object: "pid-core budgeted categorical MGW PID3 implementation entry point",
+        object_kind: MethodObjectKind::ImplementationEntryPoint,
         study_role: StudyRole::Exploratory,
         execution: ExecutionDisposition::Produced,
         estimand_or_output: "18 pointwise and averaged Möbius coordinates on the ordered visual/radar/acoustic empirical categorical law",
-        assumptions_or_reason: "the stable evaluator is available, but this bounded fixture does not close pid-rs's separate 108-coordinate formal-assurance program",
-        evaluator_route: Some(PID3_ROUTE),
+        assumptions_or_reason: "the stable implementation entry point is available, but this bounded fixture does not close pid-rs's separate 108-coordinate formal-assurance program",
+        implementation_entry_point: Some(PID3_IMPLEMENTATION_ENTRY_POINT),
         reference_edges: &MGW_REFERENCE_EDGES,
         fallback_policy: "no two-source result is presented as a substitute for the three-source question",
     },
@@ -558,7 +587,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::NotRequested,
         estimand_or_output: "a different redundancy functional and therefore a different atom allocation",
         assumptions_or_reason: "scientifically eligible as a separately preregistered categorical comparator, but not required to answer this MGW question",
-        evaluator_route: None,
+        implementation_entry_point: None,
         reference_edges: &IMIN_REFERENCE_EDGES,
         fallback_policy: "never an alias or fallback for MGW",
     },
@@ -570,7 +599,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::NotRequested,
         estimand_or_output: "unique information defined through a constrained family of distributions",
         assumptions_or_reason: "eligible only as a separately preregistered comparator for the primary two-source law. It requires external implementation identity, feasibility diagnostics, and a separate claim boundary. No PID3 route is implied",
-        evaluator_route: None,
+        implementation_entry_point: None,
         reference_edges: &BROJA_REFERENCE_EDGES,
         fallback_policy: "never an alias or fallback for MGW",
     },
@@ -582,7 +611,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::NotEvaluated,
         estimand_or_output: "general measure-theoretic construction for discrete and continuous variables",
         assumptions_or_reason: "recorded to prevent provenance transfer. This study implements neither a generic evaluator for that construction nor an alias through MGW or Ehrlich",
-        evaluator_route: None,
+        implementation_entry_point: None,
         reference_edges: &SCHICK_POLAND_REFERENCE_EDGES,
         fallback_policy: "not an implicit fallback or compatibility umbrella",
     },
@@ -594,7 +623,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::Inapplicable,
         estimand_or_output: "continuous redundancy and derived two-source PID atoms at a fixed source gauge",
         assumptions_or_reason: "the fixture is a repeated atomic categorical law. No absolutely continuous tuple law or continuous source gauge is declared",
-        evaluator_route: None,
+        implementation_entry_point: None,
         reference_edges: &EHRLICH_FUNCTIONAL_REFERENCE_EDGES,
         fallback_policy: "abstain. Categorical MGW is not called a continuous-PID estimate",
     },
@@ -606,7 +635,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::Inapplicable,
         estimand_or_output: "continuous shared-exclusions redundancy estimate with KSG mutual-information constituents",
         assumptions_or_reason: "atomic, repeated, and categorical inputs violate the estimator's continuous support route independently of the functional question",
-        evaluator_route: None,
+        implementation_entry_point: None,
         reference_edges: &EHRLICH_ESTIMATOR_REFERENCE_EDGES,
         fallback_policy: "abstain. No added-noise or quantization repair is substituted",
     },
@@ -618,7 +647,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::Inapplicable,
         estimand_or_output: "continuous pairwise MI estimate, not PID",
         assumptions_or_reason: "the fixture has repeated atomic categorical support. No full-dimensional continuous population law is declared",
-        evaluator_route: None,
+        implementation_entry_point: None,
         reference_edges: &KSG_REFERENCE_EDGES,
         fallback_policy: "abstain. Added noise would change the estimand",
     },
@@ -630,7 +659,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::NotRequested,
         estimand_or_output: "signed interaction invariant under a declared sign convention. This is not a PID atom",
         assumptions_or_reason: "eligible only after separately preregistering the exact variable tuple and sign convention, such as CoI(V,R,T_H). It does not answer the selected atom-allocation question",
-        evaluator_route: None,
+        implementation_entry_point: None,
         reference_edges: &CO_INFORMATION_REFERENCE_EDGES,
         fallback_policy: "never relabel co-information as redundancy, uniqueness, or synergy",
     },
@@ -642,7 +671,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::NotRequested,
         estimand_or_output: "system-level balance of high-order redundancy- and synergy-dominated dependence. This is not a set of PID coordinates",
         assumptions_or_reason: "eligible only after separately preregistering the exact symmetric system tuple, such as Omega(V,R,A,T_V). Changing the tuple changes the object, and it does not allocate redundancy-lattice atoms",
-        evaluator_route: None,
+        implementation_entry_point: None,
         reference_edges: &O_INFORMATION_REFERENCE_EDGES,
         fallback_policy: "never relabel O-information as any MGW atom",
     },
@@ -654,7 +683,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::NotEvaluated,
         estimand_or_output: "per-channel innovation magnitude under a separately qualified covariance and lifecycle contract",
         assumptions_or_reason: "the exact drone fixture contains no lifecycle-qualified NIS report. Availability elsewhere in Galadriel is not evidence produced by this study",
-        evaluator_route: Some("galadriel-core default detector"),
+        implementation_entry_point: Some("galadriel_core::assess_default"),
         reference_edges: &NO_REFERENCE_EDGES,
         fallback_policy: "PID never alters the accepted verdict or Haldir authority",
     },
@@ -666,7 +695,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::NotEvaluated,
         estimand_or_output: "sequential innovation-magnitude accumulator under a separately qualified state and lifecycle contract. On the fusion core's dof=3 route, only the upper arm can move. Other admitted degrees of freedom retain the general recurrence",
         assumptions_or_reason: "the exact drone fixture contains no lifecycle-qualified CUSUM state or alarm report. The stable object ID names the generic two-sided type. The configuration does not fix degrees of freedom. Galadriel's operational composition does not make this object PID evidence",
-        evaluator_route: Some("galadriel-core default detector"),
+        implementation_entry_point: Some("galadriel_core::assess_default"),
         reference_edges: &CUSUM_REFERENCE_EDGES,
         fallback_policy: "no CUSUM state or alarm is inferred from the PID fixture",
     },
@@ -678,7 +707,7 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         execution: ExecutionDisposition::NotEvaluated,
         estimand_or_output: "directional pairwise linear association under Galadriel's separate lifecycle contract",
         assumptions_or_reason: "the exact drone fixture contains no qualified correlation report. Unlike MI, correlation retains sign, but it is not a PID",
-        evaluator_route: Some("galadriel-core default detector"),
+        implementation_entry_point: Some("galadriel_core::assess_default"),
         reference_edges: &NO_REFERENCE_EDGES,
         fallback_policy: "no correlation result is inferred from the PID fixture",
     },
@@ -689,8 +718,8 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         study_role: StudyRole::DownstreamOnly,
         execution: ExecutionDisposition::NotEvaluated,
         estimand_or_output: "two-input local learning objective composed from named PID atoms",
-        assumptions_or_reason: "a downstream objective does not define a PID functional and is outside this fixed-law evaluator",
-        evaluator_route: None,
+        assumptions_or_reason: "a downstream objective does not define a PID functional and is outside this fixed-law study",
+        implementation_entry_point: None,
         reference_edges: &PNAS_INFOMORPHIC_REFERENCE_EDGES,
         fallback_policy: "never treat an objective composition as an estimator identity",
     },
@@ -701,8 +730,8 @@ const METHOD_ELIGIBILITY: [MethodEligibility; 16] = [
         study_role: StudyRole::DownstreamOnly,
         execution: ExecutionDisposition::NotEvaluated,
         estimand_or_output: "three-input-class local objective vocabulary composed from named information terms",
-        assumptions_or_reason: "role-distinct from the earlier bivariate PNAS work and outside this fixed-law evaluator",
-        evaluator_route: None,
+        assumptions_or_reason: "role-distinct from the earlier bivariate PNAS work and outside this fixed-law study",
+        implementation_entry_point: None,
         reference_edges: &ICLR_INFOMORPHIC_REFERENCE_EDGES,
         fallback_policy: "never treat an objective composition as an estimator identity",
     },
@@ -717,7 +746,9 @@ pub enum EstimandGraphNodeKind {
     DeclaredLaw,
     EmpiricalPmf,
     Functional,
-    Evaluator,
+    SampleEstimatorRoute,
+    ImplementationMethod,
+    ImplementationEntryPoint,
     PointwiseOutput,
     AveragedOutput,
     ValidationReceipt,
@@ -731,8 +762,11 @@ pub enum EstimandGraphNodeKind {
 pub enum EstimandGraphEdgeKind {
     Declares,
     EncodedAs,
+    EstimatedBy,
+    ConsumedBy,
     ImplementedBy,
-    EvaluatedBy,
+    ExposedThrough,
+    SubmittedTo,
     Emits,
     AggregatesInto,
     CheckedBy,
@@ -757,7 +791,7 @@ pub struct EstimandGraphEdge {
     boundary: &'static str,
 }
 
-const ESTIMAND_GRAPH_NODES: [EstimandGraphNode; 14] = [
+const ESTIMAND_GRAPH_NODES: [EstimandGraphNode; 16] = [
     EstimandGraphNode {
         node_id: "producer.crebain-fixture",
         kind: EstimandGraphNodeKind::ProducerFixture,
@@ -789,22 +823,34 @@ const ESTIMAND_GRAPH_NODES: [EstimandGraphNode; 14] = [
         boundary: "ordered sources are visual, radar, and acoustic. The target is derived from latent ENU truth without reading fusion or PID",
     },
     EstimandGraphNode {
-        node_id: FUNCTIONAL_ID,
+        node_id: PAPER_FUNCTIONAL_ID,
         kind: EstimandGraphNodeKind::Functional,
-        label: "Makkeh--Gutknecht--Wibral categorical shared exclusions. Upstream catalog identity: shared-exclusions.categorical",
+        label: "Makkeh--Gutknecht--Wibral categorical shared-exclusions paper functional",
         boundary: "paper-defined signed statistical allocation. It is measure-relative and non-causal",
     },
     EstimandGraphNode {
-        node_id: GRAPH_PID2_EVALUATOR_ID,
-        kind: EstimandGraphNodeKind::Evaluator,
-        label: "pid-core discrete_sxpid2_with_budget",
-        boundary: "post-preregistration bc3aa80 evaluator adaptation. No fallback route is used",
+        node_id: SAMPLE_ESTIMATOR_ROUTE_ID,
+        kind: EstimandGraphNodeKind::SampleEstimatorRoute,
+        label: "raw categorical rows to empirical PMF to MGW sample estimate",
+        boundary: "this semantic route estimates the paper functional from empirical mass. It is not a declared-law evaluator and has no fallback",
     },
     EstimandGraphNode {
-        node_id: GRAPH_PID3_EVALUATOR_ID,
-        kind: EstimandGraphNodeKind::Evaluator,
-        label: "pid-core discrete_sxpid3_with_budget",
-        boundary: "exploratory three-source evaluator. It does not close the 108-coordinate assurance program",
+        node_id: UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+        kind: EstimandGraphNodeKind::ImplementationMethod,
+        label: "pid-rs categorical shared-exclusions implementation method",
+        boundary: "upstream method-catalog provenance. It is neither the paper functional nor the semantic sample-estimator route",
+    },
+    EstimandGraphNode {
+        node_id: PID2_IMPLEMENTATION_ENTRY_POINT,
+        kind: EstimandGraphNodeKind::ImplementationEntryPoint,
+        label: "pid-core discrete_sxpid2_with_budget implementation entry point",
+        boundary: "post-preregistration bc3aa80 budgeted PID2 call. No fallback route is used",
+    },
+    EstimandGraphNode {
+        node_id: PID3_IMPLEMENTATION_ENTRY_POINT,
+        kind: EstimandGraphNodeKind::ImplementationEntryPoint,
+        label: "pid-core discrete_sxpid3_with_budget implementation entry point",
+        boundary: "exploratory budgeted PID3 call. It does not close the 108-coordinate assurance program",
     },
     EstimandGraphNode {
         node_id: "output.pid2-pointwise",
@@ -844,19 +890,23 @@ const ESTIMAND_GRAPH_NODES: [EstimandGraphNode; 14] = [
     },
 ];
 
-const ESTIMAND_GRAPH_EDGES: [EstimandGraphEdge; 20] = [
+const ESTIMAND_GRAPH_EDGES: [EstimandGraphEdge; 24] = [
     EstimandGraphEdge { from: "producer.crebain-fixture", to: "law.and2", kind: EstimandGraphEdgeKind::Declares, boundary: "latent ENU cells and threshold definitions induce the two-bit AND law" },
     EstimandGraphEdge { from: "producer.crebain-fixture", to: "law.and3", kind: EstimandGraphEdgeKind::Declares, boundary: "latent ENU cells and threshold definitions induce the three-bit AND law" },
     EstimandGraphEdge { from: "law.and2", to: "pmf.horizontal", kind: EstimandGraphEdgeKind::EncodedAs, boundary: "the 64 retained rows encode each two-source realization with its declared multiplicity" },
     EstimandGraphEdge { from: "law.and3", to: "pmf.volumetric", kind: EstimandGraphEdgeKind::EncodedAs, boundary: "the 64 retained rows encode eight copies of every three-source realization" },
-    EstimandGraphEdge { from: FUNCTIONAL_ID, to: GRAPH_PID2_EVALUATOR_ID, kind: EstimandGraphEdgeKind::ImplementedBy, boundary: "the evaluator implements the named functional. It does not define the functional" },
-    EstimandGraphEdge { from: FUNCTIONAL_ID, to: GRAPH_PID3_EVALUATOR_ID, kind: EstimandGraphEdgeKind::ImplementedBy, boundary: "the evaluator implements the named functional on the full three-source antichain lattice" },
-    EstimandGraphEdge { from: "pmf.horizontal", to: GRAPH_PID2_EVALUATOR_ID, kind: EstimandGraphEdgeKind::EvaluatedBy, boundary: "ordered visual and radar sources with horizontal target" },
-    EstimandGraphEdge { from: "pmf.volumetric", to: GRAPH_PID3_EVALUATOR_ID, kind: EstimandGraphEdgeKind::EvaluatedBy, boundary: "ordered visual, radar, acoustic sources with volumetric target" },
-    EstimandGraphEdge { from: GRAPH_PID2_EVALUATOR_ID, to: "output.pid2-pointwise", kind: EstimandGraphEdgeKind::Emits, boundary: "nominal realization identity and signed components are retained" },
-    EstimandGraphEdge { from: GRAPH_PID2_EVALUATOR_ID, to: "output.pid2-averaged", kind: EstimandGraphEdgeKind::Emits, boundary: "four named averaged lattice coordinates are retained" },
-    EstimandGraphEdge { from: GRAPH_PID3_EVALUATOR_ID, to: "output.pid3-pointwise", kind: EstimandGraphEdgeKind::Emits, boundary: "all eight realized source-target states and 18 atom coordinates are retained" },
-    EstimandGraphEdge { from: GRAPH_PID3_EVALUATOR_ID, to: "output.pid3-averaged", kind: EstimandGraphEdgeKind::Emits, boundary: "all 18 averaged antichain coordinates are retained" },
+    EstimandGraphEdge { from: PAPER_FUNCTIONAL_ID, to: SAMPLE_ESTIMATOR_ROUTE_ID, kind: EstimandGraphEdgeKind::EstimatedBy, boundary: "the raw-row empirical-PMF route estimates the named paper functional. It neither defines the functional nor evaluates a declared law directly" },
+    EstimandGraphEdge { from: "pmf.horizontal", to: SAMPLE_ESTIMATOR_ROUTE_ID, kind: EstimandGraphEdgeKind::ConsumedBy, boundary: "the semantic sample-estimator route consumes the ordered two-source empirical PMF" },
+    EstimandGraphEdge { from: "pmf.volumetric", to: SAMPLE_ESTIMATOR_ROUTE_ID, kind: EstimandGraphEdgeKind::ConsumedBy, boundary: "the semantic sample-estimator route consumes the ordered three-source empirical PMF" },
+    EstimandGraphEdge { from: SAMPLE_ESTIMATOR_ROUTE_ID, to: UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID, kind: EstimandGraphEdgeKind::ImplementedBy, boundary: "pid-rs supplies the selected implementation method for this semantic route. Its catalog ID is not the functional ID" },
+    EstimandGraphEdge { from: UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID, to: PID2_IMPLEMENTATION_ENTRY_POINT, kind: EstimandGraphEdgeKind::ExposedThrough, boundary: "the selected implementation method exposes the exact budgeted PID2 entry point" },
+    EstimandGraphEdge { from: UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID, to: PID3_IMPLEMENTATION_ENTRY_POINT, kind: EstimandGraphEdgeKind::ExposedThrough, boundary: "the selected implementation method exposes the exact budgeted PID3 entry point" },
+    EstimandGraphEdge { from: "pmf.horizontal", to: PID2_IMPLEMENTATION_ENTRY_POINT, kind: EstimandGraphEdgeKind::SubmittedTo, boundary: "ordered visual and radar rows with the horizontal target are submitted only to the PID2 entry point" },
+    EstimandGraphEdge { from: "pmf.volumetric", to: PID3_IMPLEMENTATION_ENTRY_POINT, kind: EstimandGraphEdgeKind::SubmittedTo, boundary: "ordered visual, radar, and acoustic rows with the volumetric target are submitted only to the PID3 entry point" },
+    EstimandGraphEdge { from: PID2_IMPLEMENTATION_ENTRY_POINT, to: "output.pid2-pointwise", kind: EstimandGraphEdgeKind::Emits, boundary: "nominal realization identity and signed components are retained" },
+    EstimandGraphEdge { from: PID2_IMPLEMENTATION_ENTRY_POINT, to: "output.pid2-averaged", kind: EstimandGraphEdgeKind::Emits, boundary: "four named averaged lattice coordinates are retained" },
+    EstimandGraphEdge { from: PID3_IMPLEMENTATION_ENTRY_POINT, to: "output.pid3-pointwise", kind: EstimandGraphEdgeKind::Emits, boundary: "all eight realized source-target states and 18 atom coordinates are retained" },
+    EstimandGraphEdge { from: PID3_IMPLEMENTATION_ENTRY_POINT, to: "output.pid3-averaged", kind: EstimandGraphEdgeKind::Emits, boundary: "all 18 averaged antichain coordinates are retained" },
     EstimandGraphEdge { from: "output.pid2-pointwise", to: "output.pid2-averaged", kind: EstimandGraphEdgeKind::AggregatesInto, boundary: "empirical-count weighting is reconstructed component by component" },
     EstimandGraphEdge { from: "output.pid3-pointwise", to: "output.pid3-averaged", kind: EstimandGraphEdgeKind::AggregatesInto, boundary: "empirical-count weighting is reconstructed for all 18 coordinates" },
     EstimandGraphEdge { from: "output.pid2-pointwise", to: "receipt.validation", kind: EstimandGraphEdgeKind::CheckedBy, boundary: "support keys, nominal identity, interpretation, and source-position canaries" },
@@ -867,14 +917,16 @@ const ESTIMAND_GRAPH_EDGES: [EstimandGraphEdge; 20] = [
     EstimandGraphEdge { from: "producer.crebain-fixture", to: "receipt.validation", kind: EstimandGraphEdgeKind::CheckedBy, boundary: "byte, manifest, row, episode, time-window, target, and bounded-summary custody are checked before evaluation" },
 ];
 
-/// Validated topology of the exact data, estimand, evaluator, output, and evidence path.
+/// Validated topology of the exact data, functional, sample estimator, implementation, output,
+/// and evidence path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct EstimandGraphReceipt {
     graph_id: &'static str,
-    galadriel_functional_alias: &'static str,
-    upstream_method_catalog_id: &'static str,
-    pid2_evaluator_route: &'static str,
-    pid3_evaluator_route: &'static str,
+    paper_functional_id: &'static str,
+    sample_estimator_route_id: &'static str,
+    upstream_implementation_method_catalog_id: &'static str,
+    pid2_implementation_entry_point: &'static str,
+    pid3_implementation_entry_point: &'static str,
     nodes: &'static [EstimandGraphNode],
     edges: &'static [EstimandGraphEdge],
     all_edge_endpoints_resolved: bool,
@@ -887,18 +939,20 @@ pub struct EstimandGraphReceipt {
 fn estimand_graph_receipt() -> Result<EstimandGraphReceipt> {
     validate_estimand_graph(&ESTIMAND_GRAPH_NODES, &ESTIMAND_GRAPH_EDGES)?;
     Ok(EstimandGraphReceipt {
-        graph_id: "galadriel.crebain-mgw-estimand-graph.v1",
-        galadriel_functional_alias: FUNCTIONAL_ID,
-        upstream_method_catalog_id: UPSTREAM_METHOD_CATALOG_ID,
-        pid2_evaluator_route: PID2_ROUTE,
-        pid3_evaluator_route: PID3_ROUTE,
+        graph_id: "galadriel.crebain-mgw-estimand-graph.v2",
+        paper_functional_id: PAPER_FUNCTIONAL_ID,
+        sample_estimator_route_id: SAMPLE_ESTIMATOR_ROUTE_ID,
+        upstream_implementation_method_catalog_id:
+            UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+        pid2_implementation_entry_point: PID2_IMPLEMENTATION_ENTRY_POINT,
+        pid3_implementation_entry_point: PID3_IMPLEMENTATION_ENTRY_POINT,
         nodes: &ESTIMAND_GRAPH_NODES,
         edges: &ESTIMAND_GRAPH_EDGES,
         all_edge_endpoints_resolved: true,
         declared_topological_order_validated: true,
         question_method_and_graph_identities_reconciled: true,
         operational_authority_node_or_edge_kind_absent: true,
-        boundary: "this graph separates producer custody, declared laws, empirical encodings, the paper-defined functional, project-selected evaluator routes, pointwise and averaged outputs, validation receipts, and the advisory view. It contains no operational-decision or control-authority edge",
+        boundary: "this graph separates producer custody, declared laws, empirical encodings, the paper-defined functional, semantic sample-estimator route, upstream implementation method, concrete entry points, pointwise and averaged outputs, validation receipts, and the advisory view. It contains no operational-decision or control-authority edge",
     })
 }
 
@@ -939,9 +993,23 @@ fn validate_estimand_graph(nodes: &[EstimandGraphNode], edges: &[EstimandGraphEd
         }
     }
     let required_identity_nodes = [
-        (FUNCTIONAL_ID, EstimandGraphNodeKind::Functional),
-        (GRAPH_PID2_EVALUATOR_ID, EstimandGraphNodeKind::Evaluator),
-        (GRAPH_PID3_EVALUATOR_ID, EstimandGraphNodeKind::Evaluator),
+        (PAPER_FUNCTIONAL_ID, EstimandGraphNodeKind::Functional),
+        (
+            SAMPLE_ESTIMATOR_ROUTE_ID,
+            EstimandGraphNodeKind::SampleEstimatorRoute,
+        ),
+        (
+            UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+            EstimandGraphNodeKind::ImplementationMethod,
+        ),
+        (
+            PID2_IMPLEMENTATION_ENTRY_POINT,
+            EstimandGraphNodeKind::ImplementationEntryPoint,
+        ),
+        (
+            PID3_IMPLEMENTATION_ENTRY_POINT,
+            EstimandGraphNodeKind::ImplementationEntryPoint,
+        ),
     ];
     for required_identity in required_identity_nodes {
         let matches = nodes
@@ -950,30 +1018,50 @@ fn validate_estimand_graph(nodes: &[EstimandGraphNode], edges: &[EstimandGraphEd
             .count();
         if matches != 1 {
             return Err(CrebainMgwError::Contract(
-                "estimand graph functional alias or evaluator-route identity changed".to_string(),
+                "estimand graph role and identity binding changed".to_string(),
             ));
         }
     }
     let required_identity_edges = [
         (
-            FUNCTIONAL_ID,
-            GRAPH_PID2_EVALUATOR_ID,
-            EstimandGraphEdgeKind::ImplementedBy,
-        ),
-        (
-            FUNCTIONAL_ID,
-            GRAPH_PID3_EVALUATOR_ID,
-            EstimandGraphEdgeKind::ImplementedBy,
+            PAPER_FUNCTIONAL_ID,
+            SAMPLE_ESTIMATOR_ROUTE_ID,
+            EstimandGraphEdgeKind::EstimatedBy,
         ),
         (
             "pmf.horizontal",
-            GRAPH_PID2_EVALUATOR_ID,
-            EstimandGraphEdgeKind::EvaluatedBy,
+            SAMPLE_ESTIMATOR_ROUTE_ID,
+            EstimandGraphEdgeKind::ConsumedBy,
         ),
         (
             "pmf.volumetric",
-            GRAPH_PID3_EVALUATOR_ID,
-            EstimandGraphEdgeKind::EvaluatedBy,
+            SAMPLE_ESTIMATOR_ROUTE_ID,
+            EstimandGraphEdgeKind::ConsumedBy,
+        ),
+        (
+            SAMPLE_ESTIMATOR_ROUTE_ID,
+            UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+            EstimandGraphEdgeKind::ImplementedBy,
+        ),
+        (
+            UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+            PID2_IMPLEMENTATION_ENTRY_POINT,
+            EstimandGraphEdgeKind::ExposedThrough,
+        ),
+        (
+            UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+            PID3_IMPLEMENTATION_ENTRY_POINT,
+            EstimandGraphEdgeKind::ExposedThrough,
+        ),
+        (
+            "pmf.horizontal",
+            PID2_IMPLEMENTATION_ENTRY_POINT,
+            EstimandGraphEdgeKind::SubmittedTo,
+        ),
+        (
+            "pmf.volumetric",
+            PID3_IMPLEMENTATION_ENTRY_POINT,
+            EstimandGraphEdgeKind::SubmittedTo,
         ),
     ];
     for required_identity in required_identity_edges {
@@ -983,32 +1071,47 @@ fn validate_estimand_graph(nodes: &[EstimandGraphNode], edges: &[EstimandGraphEd
             .count();
         if matches != 1 {
             return Err(CrebainMgwError::Contract(
-                "estimand graph functional-to-evaluator bindings changed".to_string(),
+                "estimand graph functional, sample-estimator, implementation, or arity binding changed"
+                    .to_string(),
             ));
         }
     }
     let primary_question = CrebainMgwQuestionSpec::primary_pid2();
     let exploratory_question = CrebainMgwQuestionSpec::exploratory_pid3();
-    let functional_method_count = METHOD_ELIGIBILITY
+    let functional_count = METHOD_ELIGIBILITY
         .iter()
-        .filter(|row| row.object_id == UPSTREAM_METHOD_CATALOG_ID)
+        .filter(|row| row.object_id == PAPER_FUNCTIONAL_ID)
+        .count();
+    let sample_estimator_route_count = METHOD_ELIGIBILITY
+        .iter()
+        .filter(|row| row.object_id == SAMPLE_ESTIMATOR_ROUTE_ID)
+        .count();
+    let implementation_method_count = METHOD_ELIGIBILITY
+        .iter()
+        .filter(|row| row.object_id == UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID)
         .count();
     let pid2_method_count = METHOD_ELIGIBILITY
         .iter()
-        .filter(|row| row.evaluator_route == Some(PID2_ROUTE))
+        .filter(|row| row.implementation_entry_point == Some(PID2_IMPLEMENTATION_ENTRY_POINT))
         .count();
     let pid3_method_count = METHOD_ELIGIBILITY
         .iter()
-        .filter(|row| row.evaluator_route == Some(PID3_ROUTE))
+        .filter(|row| row.implementation_entry_point == Some(PID3_IMPLEMENTATION_ENTRY_POINT))
         .count();
     let question_and_method_identity_coordinates = [
-        primary_question.galadriel_functional_alias == FUNCTIONAL_ID,
-        exploratory_question.galadriel_functional_alias == FUNCTIONAL_ID,
-        primary_question.upstream_method_catalog_id == UPSTREAM_METHOD_CATALOG_ID,
-        exploratory_question.upstream_method_catalog_id == UPSTREAM_METHOD_CATALOG_ID,
-        primary_question.evaluator_route == PID2_ROUTE,
-        exploratory_question.evaluator_route == PID3_ROUTE,
-        functional_method_count == 1,
+        primary_question.paper_functional_id == PAPER_FUNCTIONAL_ID,
+        exploratory_question.paper_functional_id == PAPER_FUNCTIONAL_ID,
+        primary_question.sample_estimator_route_id == SAMPLE_ESTIMATOR_ROUTE_ID,
+        exploratory_question.sample_estimator_route_id == SAMPLE_ESTIMATOR_ROUTE_ID,
+        primary_question.upstream_implementation_method_catalog_id
+            == UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+        exploratory_question.upstream_implementation_method_catalog_id
+            == UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+        primary_question.implementation_entry_point == PID2_IMPLEMENTATION_ENTRY_POINT,
+        exploratory_question.implementation_entry_point == PID3_IMPLEMENTATION_ENTRY_POINT,
+        functional_count == 1,
+        sample_estimator_route_count == 1,
+        implementation_method_count == 1,
         pid2_method_count == 1,
         pid3_method_count == 1,
     ];
@@ -1102,27 +1205,28 @@ impl FixtureIdentity {
     }
 }
 
-/// Explicit adaptation from the immutable producer preregistration to the reviewed evaluator.
+/// Explicit adaptation from the immutable producer preregistration to the reviewed sample-
+/// estimator implementation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-pub struct EvaluatorAdaptation {
+pub struct SampleEstimatorImplementationAdaptation {
     producer_registered_revision: &'static str,
-    actual_evaluator_revision: &'static str,
+    selected_implementation_revision: &'static str,
     revision_relation: &'static str,
     api_change_review: &'static str,
-    estimand_preservation: &'static str,
+    semantic_route_and_estimand_preservation: &'static str,
     schema_consequence: &'static str,
     verification_scope: &'static str,
 }
 
-impl EvaluatorAdaptation {
+impl SampleEstimatorImplementationAdaptation {
     const fn reviewed() -> Self {
         Self {
             producer_registered_revision: PREREGISTERED_PID_RS_REVISION,
-            actual_evaluator_revision: PID_RS_REVISION,
-            revision_relation: "the immutable producer preregistration and selected evaluator are distinct exact revisions. This receipt does not assert or rely on repository ancestry",
+            selected_implementation_revision: PID_RS_REVISION,
+            revision_relation: "the immutable producer preregistration and selected sample-estimator implementation are distinct exact revisions. This receipt does not assert or rely on repository ancestry",
             api_change_review: "nominal pointwise/averaged atom split, explicit nats accessors, interpretation metadata, software identity, and explicit categorical resource preflight were reviewed",
-            estimand_preservation: "same categorical MGW functional, same empirical PMF, ordered sources, targets, lattice coordinates, natural-log units, signed atoms, and pointwise inclusion",
-            schema_consequence: "Galadriel study schema advanced from v1 to v2. The producer fixture and its preregistration bytes remain unchanged",
+            semantic_route_and_estimand_preservation: "the semantic route is raw rows to an empirical PMF sample estimate of the same categorical MGW paper functional, with the same ordered sources, targets, lattice coordinates, natural-log units, signed atoms, and pointwise inclusion",
+            schema_consequence: "Galadriel study schema v3 replaces the unpublished v2 object because v2 conflated paper-functional, sample-estimator, implementation-method, and entry-point roles. The immutable producer v1 fixture and its preregistration bytes remain unchanged",
             verification_scope: "release qualification must recheck both exact revision identities, estimand preservation, the complete averaged-atom oracle, analytic PID2 law, predicate-isolating metamorphic controls, and candidate-bound output. This record alone is not compatibility proof",
         }
     }
@@ -1162,7 +1266,7 @@ const PRODUCER_SOURCE_ERRATA: [ProducerSourceErratum; 3] = [
         inspected_source_revision: "Galadriel 0.9.0 candidate source",
         inspected_source_locator: "crates/galadriel-core/src/decision.rs:31-36,80-83",
         corrected_statement: "Galadriel's separate operational magnitude lane uses normalized innovation squared plus a two-arm CUSUM. On the fusion core's dof=3 route, the lower arm is inert. Other admitted degrees of freedom retain the general recurrence. Signed Pearson correlation is a distinct directional association diagnostic. None of these objects is evaluated by this fixture",
-        scientific_or_operational_impact: "adds the omitted CUSUM object and separates operational availability from evidence produced here. No PID estimand, evaluator call, or result changes",
+        scientific_or_operational_impact: "adds the omitted CUSUM object and separates operational availability from evidence produced here. No PID estimand, sample-estimator call, or result changes",
         disposition: "consumer-side append-only erratum. Immutable producer fixture and preregistration bytes are retained",
     },
     ProducerSourceErratum {
@@ -1246,11 +1350,11 @@ fn validate_pid_core_workspace_source(
     Ok(())
 }
 
-/// One executed categorical evaluator call and its exact upstream preflight.
+/// One executed categorical implementation entry-point call and its exact upstream preflight.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct CategoricalResourceCallReceipt {
     call_id: &'static str,
-    route: &'static str,
+    implementation_entry_point: &'static str,
     source_count: usize,
     row_count: usize,
     pointwise_included: bool,
@@ -1269,7 +1373,7 @@ pub struct CategoricalResourceReceipt {
 /// Reviewed upstream interpretation contract retained without redefining the paper atoms.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AtomInterpretationReceipt {
-    upstream_functional_catalog_id: &'static str,
+    upstream_implementation_method_catalog_id: &'static str,
     upstream_interpretation_catalog_id: &'static str,
     averaged: SxAtomInterpretation,
     pointwise: SxAtomInterpretation,
@@ -1289,11 +1393,12 @@ pub struct AtomInterpretationReceipt {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CrebainMgwQuestionSpec {
     question_id: &'static str,
-    galadriel_functional_alias: &'static str,
-    upstream_method_catalog_id: &'static str,
+    paper_functional_id: &'static str,
+    sample_estimator_route_id: &'static str,
+    upstream_implementation_method_catalog_id: &'static str,
     reference_edges: &'static [ReferenceEdge],
     axiomatic_caveat_edges: &'static [ReferenceEdge],
-    evaluator_route: &'static str,
+    implementation_entry_point: &'static str,
     ordered_sources: &'static [&'static str],
     target: &'static str,
     target_origin: &'static str,
@@ -1307,12 +1412,14 @@ pub struct CrebainMgwQuestionSpec {
 impl CrebainMgwQuestionSpec {
     fn primary_pid2() -> Self {
         Self {
-            question_id: "crebain-drone-horizontal-incursion-mgw-pid2-v2",
-            galadriel_functional_alias: FUNCTIONAL_ID,
-            upstream_method_catalog_id: UPSTREAM_METHOD_CATALOG_ID,
+            question_id: "crebain-drone-horizontal-incursion-mgw-pid2-v3",
+            paper_functional_id: PAPER_FUNCTIONAL_ID,
+            sample_estimator_route_id: SAMPLE_ESTIMATOR_ROUTE_ID,
+            upstream_implementation_method_catalog_id:
+                UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
             reference_edges: &MGW_REFERENCE_EDGES,
             axiomatic_caveat_edges: &MGW_AXIOMATIC_CAVEAT_EDGES,
-            evaluator_route: PID2_ROUTE,
+            implementation_entry_point: PID2_IMPLEMENTATION_ENTRY_POINT,
             ordered_sources: &SOURCE_ORDER[..2],
             target: "horizontal_incursion",
             target_origin: "synthetic canonical map_enu truth: east <= 50 m AND north <= 1 m. It is derived from preregistered latent ENU coordinates without reading serialized source symbols, sensor projections, fusion output, Galadriel verdicts, or PID results, and before fusion",
@@ -1326,12 +1433,14 @@ impl CrebainMgwQuestionSpec {
 
     fn exploratory_pid3() -> Self {
         Self {
-            question_id: "crebain-drone-volumetric-incursion-mgw-pid3-v2",
-            galadriel_functional_alias: FUNCTIONAL_ID,
-            upstream_method_catalog_id: UPSTREAM_METHOD_CATALOG_ID,
+            question_id: "crebain-drone-volumetric-incursion-mgw-pid3-v3",
+            paper_functional_id: PAPER_FUNCTIONAL_ID,
+            sample_estimator_route_id: SAMPLE_ESTIMATOR_ROUTE_ID,
+            upstream_implementation_method_catalog_id:
+                UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
             reference_edges: &MGW_REFERENCE_EDGES,
             axiomatic_caveat_edges: &MGW_AXIOMATIC_CAVEAT_EDGES,
-            evaluator_route: PID3_ROUTE,
+            implementation_entry_point: PID3_IMPLEMENTATION_ENTRY_POINT,
             ordered_sources: &SOURCE_ORDER,
             target: "volumetric_incursion",
             target_origin: "synthetic canonical map_enu truth: east <= 50 m AND north <= 1 m AND up <= 1 m. It is derived from preregistered latent ENU coordinates without reading serialized source symbols, sensor projections, fusion output, Galadriel verdicts, or PID results, and before fusion",
@@ -1447,7 +1556,7 @@ fn machine_schema_receipt() -> MachineSchemaReceipt {
         bytes: schema.len(),
         closed_world_required: true,
         validation_checker: "repo_work/check_crebain_mgw_schema.py",
-        scope: "the schema closes object fields, enums, required coordinates, and fixed cardinalities for this v2 wire object. The external checker also binds this receipt to the exact schema bytes and validates actual candidate JSON",
+        scope: "the schema closes object fields, enums, role-to-identity conditionals, arity-specific entry-point pairings, required coordinates, and fixed cardinalities for this v3 wire object. The external checker also binds this receipt to the exact schema bytes and validates actual candidate JSON",
     }
 }
 
@@ -1462,7 +1571,7 @@ pub struct CrebainDroneMgwStudy {
     scientific_status: &'static str,
     authority_boundary: &'static str,
     fixture_identity: FixtureIdentity,
-    evaluator_adaptation: EvaluatorAdaptation,
+    sample_estimator_implementation_adaptation: SampleEstimatorImplementationAdaptation,
     producer_source_errata: ProducerSourceErrataReceipt,
     pid_core_software_identity: SoftwareIdentity,
     pid_core_source_reconciliation: PidCoreSourceReconciliation,
@@ -1492,8 +1601,10 @@ impl CrebainDroneMgwStudy {
     pub const fn fixture_validation(&self) -> &FixtureValidation {
         &self.fixture_validation
     }
-    pub const fn evaluator_adaptation(&self) -> EvaluatorAdaptation {
-        self.evaluator_adaptation
+    pub const fn sample_estimator_implementation_adaptation(
+        &self,
+    ) -> SampleEstimatorImplementationAdaptation {
+        self.sample_estimator_implementation_adaptation
     }
     pub const fn producer_source_errata(&self) -> ProducerSourceErrataReceipt {
         self.producer_source_errata
@@ -1677,12 +1788,12 @@ fn validate_manifest(fixture: &Fixture) -> Result<()> {
     require_json(
         manifest,
         "/primary_question/functional_id",
-        Value::from(FUNCTIONAL_ID),
+        Value::from(PAPER_FUNCTIONAL_ID),
     )?;
     require_json(
         manifest,
         "/primary_question/route",
-        Value::from(PREREGISTERED_PID2_ROUTE),
+        Value::from(PREREGISTERED_PID2_ENTRY_POINT),
     )?;
     require_json(
         manifest,
@@ -1697,12 +1808,12 @@ fn validate_manifest(fixture: &Fixture) -> Result<()> {
     require_json(
         manifest,
         "/exploratory_question/functional_id",
-        Value::from(FUNCTIONAL_ID),
+        Value::from(PAPER_FUNCTIONAL_ID),
     )?;
     require_json(
         manifest,
         "/exploratory_question/route",
-        Value::from(PREREGISTERED_PID3_ROUTE),
+        Value::from(PREREGISTERED_PID3_ENTRY_POINT),
     )?;
     require_json(
         manifest,
@@ -2012,7 +2123,7 @@ fn evaluate_ordered_pid2(
         discrete_sxpid2_with_budget(visual.as_ref(), radar.as_ref(), target.as_ref(), budget)?;
     resource_calls.push(CategoricalResourceCallReceipt {
         call_id,
-        route: PID2_ROUTE,
+        implementation_entry_point: PID2_IMPLEMENTATION_ENTRY_POINT,
         source_count: 2,
         row_count: visual.as_ref().nrows(),
         pointwise_included: true,
@@ -2048,7 +2159,7 @@ fn evaluate_ordered_pid3(
     )?;
     resource_calls.push(CategoricalResourceCallReceipt {
         call_id,
-        route: PID3_ROUTE,
+        implementation_entry_point: PID3_IMPLEMENTATION_ENTRY_POINT,
         source_count: 3,
         row_count: visual.as_ref().nrows(),
         pointwise_included: true,
@@ -2306,7 +2417,8 @@ fn validate_atom_interpretation(
         ));
     }
     Ok(AtomInterpretationReceipt {
-        upstream_functional_catalog_id: UPSTREAM_METHOD_CATALOG_ID,
+        upstream_implementation_method_catalog_id:
+            UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
         upstream_interpretation_catalog_id: UPSTREAM_INTERPRETATION_CATALOG_ID,
         averaged,
         pointwise,
@@ -2978,10 +3090,11 @@ pub fn run_crebain_drone_mgw_study(fixture_bytes: &str) -> Result<CrebainDroneMg
     Ok(CrebainDroneMgwStudy {
         schema: CREBAIN_DRONE_MGW_STUDY_SCHEMA,
         machine_schema: machine_schema_receipt(),
-        scientific_status: "deterministic categorical conformance law, not statistical inference",
+        scientific_status: "raw-row empirical-PMF sample estimate on a deterministic categorical conformance fixture. Exact cell balance makes the empirical PMF equal the declared canonical law for this fixture; no population inference follows",
         authority_boundary: AUTHORITY_BOUNDARY,
         fixture_identity: FixtureIdentity::exact(),
-        evaluator_adaptation: EvaluatorAdaptation::reviewed(),
+        sample_estimator_implementation_adaptation:
+            SampleEstimatorImplementationAdaptation::reviewed(),
         producer_source_errata: producer_source_errata_receipt(),
         pid_core_software_identity,
         pid_core_source_reconciliation,
@@ -3055,7 +3168,7 @@ pub fn format_crebain_drone_mgw_markdown(study: &CrebainDroneMgwStudy) -> String
     let mut output = String::new();
     output.push_str("# CREBAIN drone categorical shared-exclusions study\n\n");
     output.push_str(
-        "**Status:** deterministic categorical conformance law, not statistical inference. ",
+        "**Status:** raw-row empirical-PMF sample estimate on a deterministic categorical conformance fixture. Exact cell balance makes the empirical PMF equal the declared canonical law for this fixture; no population inference follows. ",
     );
     output
         .push_str("**Authority:** PID is advisory and cannot change Haldir control authority.\n\n");
@@ -3333,7 +3446,9 @@ mod tests {
         assert_eq!(
             serde_json::to_value([
                 MethodObjectKind::Functional,
-                MethodObjectKind::Evaluator,
+                MethodObjectKind::SampleEstimatorRoute,
+                MethodObjectKind::ImplementationMethod,
+                MethodObjectKind::ImplementationEntryPoint,
                 MethodObjectKind::Estimator,
                 MethodObjectKind::Diagnostic,
                 MethodObjectKind::ObjectiveComposition,
@@ -3341,7 +3456,9 @@ mod tests {
             .expect("object kinds serialize"),
             serde_json::json!([
                 "functional",
-                "evaluator",
+                "sample_estimator_route",
+                "implementation_method",
+                "implementation_entry_point",
                 "estimator",
                 "diagnostic",
                 "objective_composition",
@@ -3382,7 +3499,9 @@ mod tests {
                 EstimandGraphNodeKind::DeclaredLaw,
                 EstimandGraphNodeKind::EmpiricalPmf,
                 EstimandGraphNodeKind::Functional,
-                EstimandGraphNodeKind::Evaluator,
+                EstimandGraphNodeKind::SampleEstimatorRoute,
+                EstimandGraphNodeKind::ImplementationMethod,
+                EstimandGraphNodeKind::ImplementationEntryPoint,
                 EstimandGraphNodeKind::PointwiseOutput,
                 EstimandGraphNodeKind::AveragedOutput,
                 EstimandGraphNodeKind::ValidationReceipt,
@@ -3394,7 +3513,9 @@ mod tests {
                 "declared_law",
                 "empirical_pmf",
                 "functional",
-                "evaluator",
+                "sample_estimator_route",
+                "implementation_method",
+                "implementation_entry_point",
                 "pointwise_output",
                 "averaged_output",
                 "validation_receipt",
@@ -3405,8 +3526,11 @@ mod tests {
             serde_json::to_value([
                 EstimandGraphEdgeKind::Declares,
                 EstimandGraphEdgeKind::EncodedAs,
+                EstimandGraphEdgeKind::EstimatedBy,
+                EstimandGraphEdgeKind::ConsumedBy,
                 EstimandGraphEdgeKind::ImplementedBy,
-                EstimandGraphEdgeKind::EvaluatedBy,
+                EstimandGraphEdgeKind::ExposedThrough,
+                EstimandGraphEdgeKind::SubmittedTo,
                 EstimandGraphEdgeKind::Emits,
                 EstimandGraphEdgeKind::AggregatesInto,
                 EstimandGraphEdgeKind::CheckedBy,
@@ -3416,8 +3540,11 @@ mod tests {
             serde_json::json!([
                 "declares",
                 "encoded_as",
+                "estimated_by",
+                "consumed_by",
                 "implemented_by",
-                "evaluated_by",
+                "exposed_through",
+                "submitted_to",
                 "emits",
                 "aggregates_into",
                 "checked_by",
@@ -3440,6 +3567,15 @@ mod tests {
         assert_eq!(study.pid2.empirical_pmf.minimum_observed_count, 16);
         assert_eq!(study.pid3.empirical_pmf.sample_count, 64);
         assert_eq!(study.pid3.empirical_pmf.minimum_observed_count, 8);
+        assert!(study
+            .pid2
+            .empirical_pmf
+            .population_caveat
+            .contains("population"));
+        assert_eq!(
+            study.pid2.empirical_pmf.population_caveat,
+            study.pid3.empirical_pmf.population_caveat
+        );
 
         let expected_antichains = vec![
             vec![1],
@@ -3621,7 +3757,7 @@ mod tests {
         // The primary AND law is symmetric, so this predicate-isolating mutation changes every
         // field needed by the declared geometry except the serialized factorial-cell symbols.
         // Removing only the cell/source-symbol guard would therefore admit it. The asymmetric
-        // PID2 and PID3 controls retained in AlgebraChecks separately protect evaluator argument
+        // PID2 and PID3 controls retained in AlgebraChecks separately protect entry-point argument
         // positions and the PID3 singleton-antichain labels.
         let mut parsed = fixture();
         let row = &mut parsed.rows[4 * EPISODES_PER_CELL];
@@ -3693,7 +3829,41 @@ mod tests {
     fn method_matrix_never_conflates_or_falls_back() {
         let study = run_crebain_drone_mgw_study(bundled_crebain_drone_mgw_fixture())
             .expect("exact study runs");
-        assert_eq!(study.method_eligibility.len(), 16);
+        assert_eq!(study.method_eligibility.len(), 18);
+        for (object_id, object_kind) in [
+            (PAPER_FUNCTIONAL_ID, MethodObjectKind::Functional),
+            (
+                SAMPLE_ESTIMATOR_ROUTE_ID,
+                MethodObjectKind::SampleEstimatorRoute,
+            ),
+            (
+                UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+                MethodObjectKind::ImplementationMethod,
+            ),
+            (
+                PID2_IMPLEMENTATION_ENTRY_POINT,
+                MethodObjectKind::ImplementationEntryPoint,
+            ),
+            (
+                PID3_IMPLEMENTATION_ENTRY_POINT,
+                MethodObjectKind::ImplementationEntryPoint,
+            ),
+        ] {
+            let row = study
+                .method_eligibility
+                .iter()
+                .find(|row| row.object_id == object_id)
+                .expect("required categorical role row");
+            assert_eq!(row.object_kind, object_kind);
+        }
+        let sample_route = study
+            .method_eligibility
+            .iter()
+            .find(|row| row.object_id == SAMPLE_ESTIMATOR_ROUTE_ID)
+            .expect("sample-estimator route row");
+        assert!(sample_route
+            .assumptions_or_reason
+            .contains("not a declared-law evaluator"));
         let ksg = study
             .method_eligibility
             .iter()
@@ -3770,12 +3940,22 @@ mod tests {
     #[test]
     fn estimand_graph_is_resolved_acyclic_and_has_no_authority_sink() {
         let graph = estimand_graph_receipt().expect("estimand graph validates");
-        assert_eq!(graph.nodes.len(), 14);
-        assert_eq!(graph.edges.len(), 20);
-        assert_eq!(graph.galadriel_functional_alias, FUNCTIONAL_ID);
-        assert_eq!(graph.upstream_method_catalog_id, UPSTREAM_METHOD_CATALOG_ID);
-        assert_eq!(graph.pid2_evaluator_route, PID2_ROUTE);
-        assert_eq!(graph.pid3_evaluator_route, PID3_ROUTE);
+        assert_eq!(graph.nodes.len(), 16);
+        assert_eq!(graph.edges.len(), 24);
+        assert_eq!(graph.paper_functional_id, PAPER_FUNCTIONAL_ID);
+        assert_eq!(graph.sample_estimator_route_id, SAMPLE_ESTIMATOR_ROUTE_ID);
+        assert_eq!(
+            graph.upstream_implementation_method_catalog_id,
+            UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID
+        );
+        assert_eq!(
+            graph.pid2_implementation_entry_point,
+            PID2_IMPLEMENTATION_ENTRY_POINT
+        );
+        assert_eq!(
+            graph.pid3_implementation_entry_point,
+            PID3_IMPLEMENTATION_ENTRY_POINT
+        );
         assert!(graph.all_edge_endpoints_resolved);
         assert!(graph.declared_topological_order_validated);
         assert!(graph.question_method_and_graph_identities_reconciled);
@@ -3815,16 +3995,39 @@ mod tests {
         let mut identity_nodes = ESTIMAND_GRAPH_NODES.to_vec();
         identity_nodes
             .iter_mut()
-            .find(|node| node.node_id == FUNCTIONAL_ID)
+            .find(|node| node.node_id == PAPER_FUNCTIONAL_ID)
             .expect("functional node")
             .node_id = "functional.provenance-fork";
         let mut identity_edges = ESTIMAND_GRAPH_EDGES.to_vec();
         for edge in &mut identity_edges {
-            if edge.from == FUNCTIONAL_ID {
+            if edge.from == PAPER_FUNCTIONAL_ID {
                 edge.from = "functional.provenance-fork";
             }
         }
         assert!(validate_estimand_graph(&identity_nodes, &identity_edges).is_err());
+
+        let mut swapped_roles = ESTIMAND_GRAPH_NODES.to_vec();
+        swapped_roles
+            .iter_mut()
+            .find(|node| node.node_id == PAPER_FUNCTIONAL_ID)
+            .expect("functional node")
+            .kind = EstimandGraphNodeKind::SampleEstimatorRoute;
+        swapped_roles
+            .iter_mut()
+            .find(|node| node.node_id == SAMPLE_ESTIMATOR_ROUTE_ID)
+            .expect("sample-estimator node")
+            .kind = EstimandGraphNodeKind::Functional;
+        assert!(validate_estimand_graph(&swapped_roles, &ESTIMAND_GRAPH_EDGES).is_err());
+
+        let mut crossed_arity = ESTIMAND_GRAPH_EDGES.to_vec();
+        crossed_arity
+            .iter_mut()
+            .find(|edge| {
+                edge.from == "pmf.horizontal" && edge.kind == EstimandGraphEdgeKind::SubmittedTo
+            })
+            .expect("PID2 submission edge")
+            .to = PID3_IMPLEMENTATION_ENTRY_POINT;
+        assert!(validate_estimand_graph(&ESTIMAND_GRAPH_NODES, &crossed_arity).is_err());
     }
 
     #[test]
@@ -4000,7 +4203,7 @@ mod tests {
     }
 
     #[test]
-    fn v2_machine_json_shape_regression_sentinel_is_bound() {
+    fn v3_machine_json_shape_regression_sentinel_is_bound() {
         // This sentinel binds field paths and JSON value kinds, using the first element as the
         // representative shape of each homogeneous array. Cardinalities, scientific values, and
         // Enum spellings are governed by the separate semantic tests and candidate output receipt.
@@ -4012,7 +4215,7 @@ mod tests {
         append_json_shape(&value, "$", &mut shape);
         assert_eq!(
             sha256_hex(shape.as_bytes()),
-            "c63dafc44291a5740818ddfd4775ab96421a6ae6945c55ab9c477e3584386ff1"
+            "4b36dbc4f0e279db0dae6bcf21fa54c3722cca246430626a6af0e669d48f4b72"
         );
     }
 

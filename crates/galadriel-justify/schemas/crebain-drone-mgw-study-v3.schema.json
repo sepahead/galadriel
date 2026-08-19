@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
-  "title": "Galadriel CREBAIN drone categorical-MGW study v2",
+  "$id": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
+  "title": "Galadriel CREBAIN drone categorical-MGW study v3",
   "description": "Closed wire contract for the build-identified output of galadriel-crebain-mgw --format json. This schema describes a deterministic categorical conformance study, not a statistical-inference result or an authorization record.",
   "type": "object",
   "additionalProperties": false,
@@ -11,7 +11,7 @@
     "scientific_status",
     "authority_boundary",
     "fixture_identity",
-    "evaluator_adaptation",
+    "sample_estimator_implementation_adaptation",
     "producer_source_errata",
     "pid_core_software_identity",
     "pid_core_source_reconciliation",
@@ -29,13 +29,13 @@
   ],
   "properties": {
     "schema": {
-      "const": "galadriel.crebain-drone-mgw-study.v2"
+      "const": "galadriel.crebain-drone-mgw-study.v3"
     },
     "machine_schema": {
       "$ref": "#/$defs/MachineSchemaReceipt"
     },
     "scientific_status": {
-      "const": "deterministic categorical conformance law, not statistical inference"
+      "const": "raw-row empirical-PMF sample estimate on a deterministic categorical conformance fixture. Exact cell balance makes the empirical PMF equal the declared canonical law for this fixture; no population inference follows"
     },
     "authority_boundary": {
       "$ref": "#/$defs/AuthorityBoundary"
@@ -43,8 +43,8 @@
     "fixture_identity": {
       "$ref": "#/$defs/FixtureIdentity"
     },
-    "evaluator_adaptation": {
-      "$ref": "#/$defs/EvaluatorAdaptation"
+    "sample_estimator_implementation_adaptation": {
+      "$ref": "#/$defs/SampleEstimatorImplementationAdaptation"
     },
     "producer_source_errata": {
       "$ref": "#/$defs/ProducerSourceErrata"
@@ -66,8 +66,8 @@
     },
     "method_eligibility": {
       "type": "array",
-      "minItems": 16,
-      "maxItems": 16,
+      "minItems": 18,
+      "maxItems": 18,
       "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/MethodEligibility"
@@ -168,16 +168,16 @@
       ],
       "properties": {
         "identifier": {
-          "const": "galadriel.crebain-drone-mgw-study.v2"
+          "const": "galadriel.crebain-drone-mgw-study.v3"
         },
         "dialect": {
           "const": "https://json-schema.org/draft/2020-12/schema"
         },
         "canonical_id": {
-          "const": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+          "const": "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json"
         },
         "repository_path": {
-          "const": "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json"
+          "const": "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json"
         },
         "sha256": {
           "$ref": "#/$defs/Sha256"
@@ -250,15 +250,15 @@
         }
       }
     },
-    "EvaluatorAdaptation": {
+    "SampleEstimatorImplementationAdaptation": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "producer_registered_revision",
-        "actual_evaluator_revision",
+        "selected_implementation_revision",
         "revision_relation",
         "api_change_review",
-        "estimand_preservation",
+        "semantic_route_and_estimand_preservation",
         "schema_consequence",
         "verification_scope"
       ],
@@ -266,7 +266,7 @@
         "producer_registered_revision": {
           "const": "1cd2424f7967e1752dcc8e53859e8fdad3566f51"
         },
-        "actual_evaluator_revision": {
+        "selected_implementation_revision": {
           "const": "bc3aa80fb6025e709c2906a08bce25a4fac40578"
         },
         "revision_relation": {
@@ -275,7 +275,7 @@
         "api_change_review": {
           "$ref": "#/$defs/Text"
         },
-        "estimand_preservation": {
+        "semantic_route_and_estimand_preservation": {
           "$ref": "#/$defs/Text"
         },
         "schema_consequence": {
@@ -658,11 +658,12 @@
       "additionalProperties": false,
       "required": [
         "question_id",
-        "galadriel_functional_alias",
-        "upstream_method_catalog_id",
+        "paper_functional_id",
+        "sample_estimator_route_id",
+        "upstream_implementation_method_catalog_id",
         "reference_edges",
         "axiomatic_caveat_edges",
-        "evaluator_route",
+        "implementation_entry_point",
         "ordered_sources",
         "target",
         "target_origin",
@@ -674,12 +675,15 @@
       ],
       "properties": {
         "question_id": {
-          "const": "crebain-drone-horizontal-incursion-mgw-pid2-v2"
+          "const": "crebain-drone-horizontal-incursion-mgw-pid2-v3"
         },
-        "galadriel_functional_alias": {
+        "paper_functional_id": {
           "const": "functional.shared-exclusions.mgw-categorical"
         },
-        "upstream_method_catalog_id": {
+        "sample_estimator_route_id": {
+          "const": "route.shared-exclusions.mgw-empirical-pmf"
+        },
+        "upstream_implementation_method_catalog_id": {
           "const": "shared-exclusions.categorical"
         },
         "reference_edges": {
@@ -700,7 +704,7 @@
             "$ref": "#/$defs/ReferenceEdge"
           }
         },
-        "evaluator_route": {
+        "implementation_entry_point": {
           "const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"
         },
         "ordered_sources": {
@@ -734,11 +738,12 @@
       "additionalProperties": false,
       "required": [
         "question_id",
-        "galadriel_functional_alias",
-        "upstream_method_catalog_id",
+        "paper_functional_id",
+        "sample_estimator_route_id",
+        "upstream_implementation_method_catalog_id",
         "reference_edges",
         "axiomatic_caveat_edges",
-        "evaluator_route",
+        "implementation_entry_point",
         "ordered_sources",
         "target",
         "target_origin",
@@ -750,12 +755,15 @@
       ],
       "properties": {
         "question_id": {
-          "const": "crebain-drone-volumetric-incursion-mgw-pid3-v2"
+          "const": "crebain-drone-volumetric-incursion-mgw-pid3-v3"
         },
-        "galadriel_functional_alias": {
+        "paper_functional_id": {
           "const": "functional.shared-exclusions.mgw-categorical"
         },
-        "upstream_method_catalog_id": {
+        "sample_estimator_route_id": {
+          "const": "route.shared-exclusions.mgw-empirical-pmf"
+        },
+        "upstream_implementation_method_catalog_id": {
           "const": "shared-exclusions.categorical"
         },
         "reference_edges": {
@@ -776,7 +784,7 @@
             "$ref": "#/$defs/ReferenceEdge"
           }
         },
-        "evaluator_route": {
+        "implementation_entry_point": {
           "const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"
         },
         "ordered_sources": {
@@ -820,16 +828,18 @@
         "execution",
         "estimand_or_output",
         "assumptions_or_reason",
-        "evaluator_route",
+        "implementation_entry_point",
         "reference_edges",
         "fallback_policy"
       ],
       "properties": {
         "object_id": {
           "enum": [
+            "functional.shared-exclusions.mgw-categorical",
+            "route.shared-exclusions.mgw-empirical-pmf",
             "shared-exclusions.categorical",
-            "pid-core/categorical-raw-row-plugin-mgw-pid2",
-            "pid-core/categorical-raw-row-plugin-mgw-pid3",
+            "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+            "pid_core::stable::categorical::discrete_sxpid3_with_budget",
             "pid.imin",
             "pid.broja-two-source-external",
             "pid.general-schick-poland-2021",
@@ -849,7 +859,15 @@
           "$ref": "#/$defs/Text"
         },
         "object_kind": {
-          "enum": ["functional", "evaluator", "estimator", "diagnostic", "objective_composition"]
+          "enum": [
+            "functional",
+            "sample_estimator_route",
+            "implementation_method",
+            "implementation_entry_point",
+            "estimator",
+            "diagnostic",
+            "objective_composition"
+          ]
         },
         "study_role": {
           "enum": [
@@ -870,12 +888,12 @@
         "assumptions_or_reason": {
           "$ref": "#/$defs/Text"
         },
-        "evaluator_route": {
+        "implementation_entry_point": {
           "enum": [
             null,
             "pid_core::stable::categorical::discrete_sxpid2_with_budget",
             "pid_core::stable::categorical::discrete_sxpid3_with_budget",
-            "galadriel-core default detector"
+            "galadriel_core::assess_default"
           ]
         },
         "reference_edges": {
@@ -884,7 +902,119 @@
         "fallback_policy": {
           "$ref": "#/$defs/Text"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "object_id": {"const": "functional.shared-exclusions.mgw-categorical"}
+            },
+            "required": ["object_id"]
+          },
+          "then": {
+            "properties": {
+              "object_kind": {"const": "functional"},
+              "implementation_entry_point": {"const": null}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "object_id": {"const": "route.shared-exclusions.mgw-empirical-pmf"}
+            },
+            "required": ["object_id"]
+          },
+          "then": {
+            "properties": {
+              "object_kind": {"const": "sample_estimator_route"},
+              "implementation_entry_point": {"const": null}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "object_id": {"const": "shared-exclusions.categorical"}
+            },
+            "required": ["object_id"]
+          },
+          "then": {
+            "properties": {
+              "object_kind": {"const": "implementation_method"},
+              "implementation_entry_point": {"const": null}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "object_id": {"const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"}
+            },
+            "required": ["object_id"]
+          },
+          "then": {
+            "properties": {
+              "object_kind": {"const": "implementation_entry_point"},
+              "study_role": {"const": "primary"},
+              "implementation_entry_point": {"const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "object_id": {"const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"}
+            },
+            "required": ["object_id"]
+          },
+          "then": {
+            "properties": {
+              "object_kind": {"const": "implementation_entry_point"},
+              "study_role": {"const": "exploratory"},
+              "implementation_entry_point": {"const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"object_kind": {"const": "sample_estimator_route"}},
+            "required": ["object_kind"]
+          },
+          "then": {
+            "properties": {
+              "object_id": {"const": "route.shared-exclusions.mgw-empirical-pmf"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"object_kind": {"const": "implementation_method"}},
+            "required": ["object_kind"]
+          },
+          "then": {
+            "properties": {
+              "object_id": {"const": "shared-exclusions.categorical"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"object_kind": {"const": "implementation_entry_point"}},
+            "required": ["object_kind"]
+          },
+          "then": {
+            "properties": {
+              "object_id": {
+                "enum": [
+                  "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+                  "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     "GraphNodeId": {
       "enum": [
@@ -894,6 +1024,8 @@
         "pmf.horizontal",
         "pmf.volumetric",
         "functional.shared-exclusions.mgw-categorical",
+        "route.shared-exclusions.mgw-empirical-pmf",
+        "shared-exclusions.categorical",
         "pid_core::stable::categorical::discrete_sxpid2_with_budget",
         "pid_core::stable::categorical::discrete_sxpid3_with_budget",
         "output.pid2-pointwise",
@@ -918,7 +1050,9 @@
             "declared_law",
             "empirical_pmf",
             "functional",
-            "evaluator",
+            "sample_estimator_route",
+            "implementation_method",
+            "implementation_entry_point",
             "pointwise_output",
             "averaged_output",
             "validation_receipt",
@@ -931,7 +1065,60 @@
         "boundary": {
           "$ref": "#/$defs/Text"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "functional"}}, "required": ["kind"]},
+          "then": {"properties": {"node_id": {"const": "functional.shared-exclusions.mgw-categorical"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "sample_estimator_route"}}, "required": ["kind"]},
+          "then": {"properties": {"node_id": {"const": "route.shared-exclusions.mgw-empirical-pmf"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "implementation_method"}}, "required": ["kind"]},
+          "then": {"properties": {"node_id": {"const": "shared-exclusions.categorical"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "implementation_entry_point"}}, "required": ["kind"]},
+          "then": {
+            "properties": {
+              "node_id": {
+                "enum": [
+                  "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+                  "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"node_id": {"const": "functional.shared-exclusions.mgw-categorical"}}, "required": ["node_id"]},
+          "then": {"properties": {"kind": {"const": "functional"}}}
+        },
+        {
+          "if": {"properties": {"node_id": {"const": "route.shared-exclusions.mgw-empirical-pmf"}}, "required": ["node_id"]},
+          "then": {"properties": {"kind": {"const": "sample_estimator_route"}}}
+        },
+        {
+          "if": {"properties": {"node_id": {"const": "shared-exclusions.categorical"}}, "required": ["node_id"]},
+          "then": {"properties": {"kind": {"const": "implementation_method"}}}
+        },
+        {
+          "if": {
+            "properties": {
+              "node_id": {
+                "enum": [
+                  "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+                  "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+                ]
+              }
+            },
+            "required": ["node_id"]
+          },
+          "then": {"properties": {"kind": {"const": "implementation_entry_point"}}}
+        }
+      ]
     },
     "GraphEdge": {
       "type": "object",
@@ -948,8 +1135,11 @@
           "enum": [
             "declares",
             "encoded_as",
+            "estimated_by",
+            "consumed_by",
             "implemented_by",
-            "evaluated_by",
+            "exposed_through",
+            "submitted_to",
             "emits",
             "aggregates_into",
             "checked_by",
@@ -959,17 +1149,123 @@
         "boundary": {
           "$ref": "#/$defs/Text"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "estimated_by"}}, "required": ["kind"]},
+          "then": {
+            "properties": {
+              "from": {"const": "functional.shared-exclusions.mgw-categorical"},
+              "to": {"const": "route.shared-exclusions.mgw-empirical-pmf"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"kind": {"const": "consumed_by"}}, "required": ["kind"]},
+          "then": {
+            "properties": {
+              "from": {"enum": ["pmf.horizontal", "pmf.volumetric"]},
+              "to": {"const": "route.shared-exclusions.mgw-empirical-pmf"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"kind": {"const": "implemented_by"}}, "required": ["kind"]},
+          "then": {
+            "properties": {
+              "from": {"const": "route.shared-exclusions.mgw-empirical-pmf"},
+              "to": {"const": "shared-exclusions.categorical"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"kind": {"const": "exposed_through"}}, "required": ["kind"]},
+          "then": {
+            "properties": {
+              "from": {"const": "shared-exclusions.categorical"},
+              "to": {
+                "enum": [
+                  "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+                  "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"kind": {"const": "submitted_to"}}, "required": ["kind"]},
+          "then": {
+            "properties": {
+              "from": {"enum": ["pmf.horizontal", "pmf.volumetric"]},
+              "to": {
+                "enum": [
+                  "pid_core::stable::categorical::discrete_sxpid2_with_budget",
+                  "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "submitted_to"},
+              "from": {"const": "pmf.horizontal"}
+            },
+            "required": ["kind", "from"]
+          },
+          "then": {
+            "properties": {
+              "to": {"const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "submitted_to"},
+              "from": {"const": "pmf.volumetric"}
+            },
+            "required": ["kind", "from"]
+          },
+          "then": {
+            "properties": {
+              "to": {"const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "submitted_to"},
+              "to": {"const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"}
+            },
+            "required": ["kind", "to"]
+          },
+          "then": {"properties": {"from": {"const": "pmf.horizontal"}}}
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "submitted_to"},
+              "to": {"const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"}
+            },
+            "required": ["kind", "to"]
+          },
+          "then": {"properties": {"from": {"const": "pmf.volumetric"}}}
+        }
+      ]
     },
     "EstimandGraph": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "graph_id",
-        "galadriel_functional_alias",
-        "upstream_method_catalog_id",
-        "pid2_evaluator_route",
-        "pid3_evaluator_route",
+        "paper_functional_id",
+        "sample_estimator_route_id",
+        "upstream_implementation_method_catalog_id",
+        "pid2_implementation_entry_point",
+        "pid3_implementation_entry_point",
         "nodes",
         "edges",
         "all_edge_endpoints_resolved",
@@ -980,24 +1276,27 @@
       ],
       "properties": {
         "graph_id": {
-          "const": "galadriel.crebain-mgw-estimand-graph.v1"
+          "const": "galadriel.crebain-mgw-estimand-graph.v2"
         },
-        "galadriel_functional_alias": {
+        "paper_functional_id": {
           "const": "functional.shared-exclusions.mgw-categorical"
         },
-        "upstream_method_catalog_id": {
+        "sample_estimator_route_id": {
+          "const": "route.shared-exclusions.mgw-empirical-pmf"
+        },
+        "upstream_implementation_method_catalog_id": {
           "const": "shared-exclusions.categorical"
         },
-        "pid2_evaluator_route": {
+        "pid2_implementation_entry_point": {
           "const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"
         },
-        "pid3_evaluator_route": {
+        "pid3_implementation_entry_point": {
           "const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"
         },
         "nodes": {
           "type": "array",
-          "minItems": 14,
-          "maxItems": 14,
+          "minItems": 16,
+          "maxItems": 16,
           "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/GraphNode"
@@ -1005,8 +1304,8 @@
         },
         "edges": {
           "type": "array",
-          "minItems": 20,
-          "maxItems": 20,
+          "minItems": 24,
+          "maxItems": 24,
           "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/GraphEdge"
@@ -1073,7 +1372,7 @@
       "additionalProperties": false,
       "required": [
         "call_id",
-        "route",
+        "implementation_entry_point",
         "source_count",
         "row_count",
         "pointwise_included",
@@ -1094,7 +1393,7 @@
             "named-source-wiring-control-pid3-source-two"
           ]
         },
-        "route": {
+        "implementation_entry_point": {
           "enum": [
             "pid_core::stable::categorical::discrete_sxpid2_with_budget",
             "pid_core::stable::categorical::discrete_sxpid3_with_budget"
@@ -1117,7 +1416,25 @@
         "preflight_passed": {
           "const": true
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"source_count": {"const": 2}}, "required": ["source_count"]},
+          "then": {"properties": {"implementation_entry_point": {"const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"}}}
+        },
+        {
+          "if": {"properties": {"source_count": {"const": 3}}, "required": ["source_count"]},
+          "then": {"properties": {"implementation_entry_point": {"const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"}}}
+        },
+        {
+          "if": {"properties": {"implementation_entry_point": {"const": "pid_core::stable::categorical::discrete_sxpid2_with_budget"}}, "required": ["implementation_entry_point"]},
+          "then": {"properties": {"source_count": {"const": 2}}}
+        },
+        {
+          "if": {"properties": {"implementation_entry_point": {"const": "pid_core::stable::categorical::discrete_sxpid3_with_budget"}}, "required": ["implementation_entry_point"]},
+          "then": {"properties": {"source_count": {"const": 3}}}
+        }
+      ]
     },
     "ResourceReceipt": {
       "type": "object",
@@ -1613,7 +1930,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "upstream_functional_catalog_id",
+        "upstream_implementation_method_catalog_id",
         "upstream_interpretation_catalog_id",
         "averaged",
         "pointwise",
@@ -1629,7 +1946,7 @@
         "galadriel_owned_additional_limits"
       ],
       "properties": {
-        "upstream_functional_catalog_id": {
+        "upstream_implementation_method_catalog_id": {
           "const": "shared-exclusions.categorical"
         },
         "upstream_interpretation_catalog_id": {

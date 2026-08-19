@@ -1,4 +1,4 @@
-"""Hostile controls for the closed CREBAIN categorical-MGW v2 JSON Schema."""
+"""Hostile controls for the closed CREBAIN categorical-MGW v3 JSON Schema."""
 
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ import check_crebain_mgw_schema as checker
 ROOT = Path(__file__).resolve().parents[2]
 # This receipt is intentionally frozen after every reviewed schema edit.  It is
 # not the Rust study-output digest and it is not a scientific-result oracle.
-EXPECTED_SCHEMA_SHA256 = "f2b316988b85e228eb949b1ef5b41db4b1b521c94cd9c83213a3fc665bcb1f7f"
-EXPECTED_SCHEMA_BYTES = 50024
+EXPECTED_SCHEMA_SHA256 = "075e8905a1972772a413e6b3a0928303aec4f1c547ddbd0c281226433fb86b88"
+EXPECTED_SCHEMA_BYTES = 61857
 
 
 class CrebainMgwSchemaTest(unittest.TestCase):
@@ -171,7 +171,7 @@ class CrebainMgwSchemaTest(unittest.TestCase):
 
         wrong_enum = copy.deepcopy(self.actual)
         wrong_enum["method_eligibility"][0]["object_kind"] = "pid"
-        mutations.append(("enum", wrong_enum))
+        mutations.append(("enum|constant", wrong_enum))
 
         wrong_reference_role = copy.deepcopy(self.actual)
         wrong_reference_role["primary_question"]["reference_edges"][0]["role"] = (
@@ -202,6 +202,48 @@ class CrebainMgwSchemaTest(unittest.TestCase):
         for expression, mutation in mutations:
             with self.subTest(expression=expression):
                 self.assert_rejected(mutation, expression)
+
+    def test_functional_sample_estimator_and_arity_identities_cannot_cross(self) -> None:
+        swapped_method_roles = copy.deepcopy(self.actual)
+        swapped_method_roles["method_eligibility"][0]["object_kind"] = (
+            "sample_estimator_route"
+        )
+        swapped_method_roles["method_eligibility"][1]["object_kind"] = "functional"
+        self.assert_rejected(swapped_method_roles, "required constant")
+
+        swapped_graph_roles = copy.deepcopy(self.actual)
+        functional = next(
+            node
+            for node in swapped_graph_roles["estimand_graph"]["nodes"]
+            if node["node_id"] == "functional.shared-exclusions.mgw-categorical"
+        )
+        sample_estimator = next(
+            node
+            for node in swapped_graph_roles["estimand_graph"]["nodes"]
+            if node["node_id"] == "route.shared-exclusions.mgw-empirical-pmf"
+        )
+        functional["kind"], sample_estimator["kind"] = (
+            sample_estimator["kind"],
+            functional["kind"],
+        )
+        self.assert_rejected(swapped_graph_roles, "required constant")
+
+        crossed_entry_points = copy.deepcopy(self.actual)
+        submitted = next(
+            edge
+            for edge in crossed_entry_points["estimand_graph"]["edges"]
+            if edge["kind"] == "submitted_to" and edge["from"] == "pmf.horizontal"
+        )
+        submitted["to"] = (
+            "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+        )
+        self.assert_rejected(crossed_entry_points, "required constant")
+
+        crossed_resource_call = copy.deepcopy(self.actual)
+        crossed_resource_call["resource_receipt"]["calls"][0][
+            "implementation_entry_point"
+        ] = "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+        self.assert_rejected(crossed_resource_call, "required constant")
 
     def test_types_bounds_patterns_and_duplicate_items_fail_closed(self) -> None:
         wrong_type = copy.deepcopy(self.actual)
@@ -312,6 +354,22 @@ class CrebainMgwSchemaTest(unittest.TestCase):
         }
         with self.assertRaisesRegex(checker.ContractError, "recursive \\$ref"):
             checker.validate_document(self.actual, recursive_reference)
+
+        swapped_role_schema = copy.deepcopy(self.schema)
+        functional_binding = swapped_role_schema["$defs"]["GraphNode"]["allOf"][0]
+        functional_binding["then"]["properties"]["node_id"]["const"] = (
+            "route.shared-exclusions.mgw-empirical-pmf"
+        )
+        with self.assertRaisesRegex(checker.ContractError, "required constant"):
+            checker.validate_document(self.actual, swapped_role_schema)
+
+        crossed_pair_schema = copy.deepcopy(self.schema)
+        horizontal_binding = crossed_pair_schema["$defs"]["GraphEdge"]["allOf"][5]
+        horizontal_binding["then"]["properties"]["to"]["const"] = (
+            "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+        )
+        with self.assertRaisesRegex(checker.ContractError, "required constant"):
+            checker.validate_document(self.actual, crossed_pair_schema)
 
     def test_schema_encoding_with_duplicate_keyword_is_rejected(self) -> None:
         duplicate_schema = (

@@ -82,7 +82,7 @@ estimand can be correct for another estimand.
 | GLD-MSD-004 | Which channels form corroborated positive consensus? | One unique largest all-pairs clique whose size is a strict majority | It blocks tied largest explanations and bridge ambiguity while stating the project's exact fault-tolerance ceiling. | Best-peer score, connected component, largest clique with arbitrary tie break, spectral clustering | Default consistency evidence |
 | GLD-MSD-005 | Is there pairwise dependence that signed Pearson can miss? | Report-first KSG MI behind geometry, support, resource, and stability gates | KSG targets continuous dependence without fitting a parametric response curve. The report-first route retains assumptions, warnings, and failure state. | Distance correlation, HSIC, copula MI, kernel-density MI, neural MI | Non-fused companion only |
 | GLD-MSD-006 | How should one target's information be allocated over ordered categorical sources? | Categorical MGW shared-exclusions PID | The registered question requests pointwise and averaged redundant, unique, and synergistic coordinates for an atomic law. MGW supplies that named signed allocation. | Joint contrast, `I_min`, BROJA, co-information, O-information | Offline study only |
-| GLD-MSD-007 | How should one target's information be allocated for an eligible continuous law? | Ehrlich and colleagues' experimental restricted-domain shared-exclusions functional and estimator | This is the named continuous construction exposed by the pinned evaluator for a narrowly declared eligible law. It preserves a distinct functional, gauge, support, and estimator identity without implying general continuous validity. | Quantize then use categorical PID, Gaussian closed-form special cases, kernel PID, general measure-theoretic construction without this evaluator | Offline study only |
+| GLD-MSD-007 | How should one target's information be allocated for an eligible continuous law? | Ehrlich and colleagues' experimental restricted-domain shared-exclusions functional and estimator | This is the named continuous construction exposed by the pinned estimator implementation for a narrowly declared eligible law. It preserves a distinct functional, gauge, support, and estimator identity without implying general continuous validity. | Quantize then use categorical PID, Gaussian closed-form special cases, kernel PID, general measure-theoretic construction without this implementation | Offline study only |
 | GLD-MSD-008 | Can any MI or PID result alter a verdict or downstream authority? | No | These objects do not have calibrated security semantics. Galadriel keeps them outside `FusedVerdict`. At the exact `ECO-019` cut, Haldir has no implemented PID adapter or decision input. | Fuse the score, use PID to deny or restrict, let an operator infer authority from a chart | Explicit non-edge |
 | GLD-MSD-009 | How is error controlled across overlapping repeated assessments? | No stream-level correction is selected | Per-assessment Bonferroni control does not establish a sequential false-alarm guarantee. A temporal model and repeated-look procedure must be registered first. | Alpha spending, anytime-valid inference, block/max-statistic resampling, calibrated run-length design | Open calibration decision. No stream-level error claim. |
 
@@ -333,7 +333,8 @@ The profile fixes a 128-row window, a 64-row point-estimate minimum, and an
 eight-row exhaustive deletion block. The complete stability route therefore
 requires 72 admitted rows before execution. It also fixes geometry `k=5`, KSG `k=3`, an
 intrinsic-dimension mean range `[1.5, 3.0]`, local-estimate median minimum 1.30,
-`cv_min=0.01`, `nn_ratio_max=0.999`, `mi_floor_nats=0.03`, relative separation
+`cv_min=0.01`, `nearest_neighbor_over_pairwise_mean_maximum=0.999`,
+`mi_floor_nats=0.03`, relative separation
 0.4, and exhaustive circular deletion of blocks of eight rows.
 
 These are conservative abstention and sensitivity boundaries exercised against
@@ -342,7 +343,9 @@ support, estimator consistency, a null false-alarm rate, or optimal separation.
 The eight-row deletion enumerates a bounded perturbation family. It is not a
 bootstrap, confidence interval, or p-value.
 
-The per-call KSG budget fixes one thread, one GiB, a maximum-window
+One explicit per-pair budget is constructed before geometry and passed unchanged
+to the intrinsic-dimension report, distance-concentration report, KSG preflight,
+and KSG report. It fixes one thread, one GiB, a maximum-window
 pairwise-distance ceiling of \(4\binom{512}{2}=523{,}264\), and an operation hint
 of \(10^{10}\). The exact pairwise ceiling comes from pid-core's conservative
 maximum-window preflight. A one-unit-smaller hostile budget must reject that
@@ -365,7 +368,7 @@ a successor profile and requires same-row comparison.
 | Geometry `k=5` | A separately fixed neighborhood probes sample geometry without reusing the estimator's `k=3` identity. It is exercised by fixed controls. | Other geometry neighborhoods are **deferred** to sensitivity analysis. | Galadriel has no proof that `5` maximizes diagnostic power. |
 | Intrinsic-dimension mean `[1.5, 3.0]` and local median `>=1.30` | These project screens reject materially one-dimensional or implausibly high sample geometry while retaining the fixed scalar-pair Gaussian controls. | Wider limits are **deferred** to same-law controls. | Passing does not prove full-dimensional population support. |
 | Distance coefficient of variation `>=0.01` | It rejects near-collapsed distance clouds in which neighbor geometry has little resolving scale. | Zero or smaller floors are **rejected for this profile** because they admit the tested collapse boundary. | The floor has no null-calibration theorem. |
-| Nearest/farthest distance ratio `<=0.999` | It rejects near-equal-distance concentration at the declared finite precision. | A different cutoff is **deferred** to dimension and sample-size calibration. | Passing does not establish estimator consistency. |
+| Mean nearest-neighbor distance / mean unordered-pairwise distance `<=0.999` | It rejects near-equal-distance concentration at the declared finite precision. The denominator is the mean over all unordered pairs, not a maximum. | A different cutoff is **deferred** to dimension and sample-size calibration. | Passing does not establish estimator consistency. |
 | MI floor `0.03` nats | It prevents a very small signed estimate from becoming a graph edge solely through a relative rule. | Zero floor is **rejected for this profile**. Other floors are **deferred** to frozen-corpus calibration. | `0.03` is not a significance threshold or minimum operational effect. |
 | Separation ratio `0.4` | It requires an edge to retain a fixed fraction of the strongest admitted pair, which makes the project-defined graph scale-relative. | Absolute-only and differently scaled graphs are **deferred**. | The ratio is uncalibrated and cannot identify cause or an honest majority. |
 | Circular deletion block `8` | The exhaustive profile removes every eight-row circular block and requires identical graph disposition. At minimum input it leaves the registered 64-row point-fit population. | Bootstrap intervals are **rejected as a description of this route**. Other block lengths are **deferred** to a temporal-unit study. | This is bounded deterministic sensitivity, not resampling inference. |
@@ -387,6 +390,24 @@ named functional so the result is reproducible and falsifiable. The independent
 COPY identity-axiom witness and the known multivariate consistency limits remain
 part of the result's caveat graph.
 
+The implementation contract keeps four typed roles separate:
+
+- paper functional `functional.shared-exclusions.mgw-categorical`;
+- raw-row empirical-PMF sample-estimator route
+  `route.shared-exclusions.mgw-empirical-pmf`;
+- upstream implementation-method/catalog identity
+  `shared-exclusions.categorical`; and
+- concrete entry points
+  `pid_core::stable::categorical::discrete_sxpid2_with_budget` and
+  `pid_core::stable::categorical::discrete_sxpid3_with_budget`.
+
+The raw-row route constructs an empirical PMF and returns a plug-in sample
+estimate of the paper functional. It is not a declared-law evaluator. The exact
+CREBAIN cell balance makes the empirical PMF coincide with the declared canonical
+law for that fixture only; it does not turn the API into a population-law route
+or support population inference. Role/ID and source-count/entry-point pairings are
+fail-closed, and failure never selects a comparator or fallback.
+
 ### Alternatives and disposition
 
 | Alternative | Disposition | Reason |
@@ -404,11 +425,12 @@ The detailed CREBAIN fixture choice and its exact result are in
 ## GLD-MSD-007: continuous shared-exclusions PID
 
 The continuous offline study uses the feature-gated experimental
-restricted-domain functional and estimator of Ehrlich and colleagues. It is not the categorical MGW evaluator
-with real-valued inputs. It is also not the general measure-theoretic construction
+restricted-domain functional and estimator of Ehrlich and colleagues. It is not
+the categorical MGW empirical-PMF sample-estimator route applied to real-valued
+inputs. It is also not the general measure-theoretic construction
 of Schick-Poland and colleagues.
 
-Galadriel selects this route because the pinned evaluator exposes the named
+Galadriel selects this route because the pinned continuous estimator exposes the named
 functional, gauge, KSG constituents, and PID2 atom construction required by the
 registered study. A successful `Pid2Report` retains experimental status,
 assumptions, warnings, constituent reports, and atom reconstruction. Failure is a

@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// Versioned serialization schema of the complete companion assessment snapshot.
-pub const DEPENDENCE_ASSESSMENT_REPORT_SCHEMA: &str = "galadriel.dependence-assessment-report.v2";
+pub const DEPENDENCE_ASSESSMENT_REPORT_SCHEMA: &str = "galadriel.dependence-assessment-report.v3";
 
 /// Whether core preparation supplied a common projection family for the MI companion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -522,7 +522,7 @@ mod tests {
         assert_eq!(observed.schema(), DEPENDENCE_ASSESSMENT_REPORT_SCHEMA);
         assert_eq!(
             observed.schema(),
-            "galadriel.dependence-assessment-report.v2"
+            "galadriel.dependence-assessment-report.v3"
         );
         let serialized = serde_json::to_value(&observed)
             .expect("complete companion assessment must serialize as one evidence snapshot");

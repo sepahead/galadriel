@@ -118,16 +118,26 @@ CREBAIN_FIXTURE_SHA256 = (
     "82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda"
 )
 CREBAIN_SCHEMA_SHA256 = (
-    "f2b316988b85e228eb949b1ef5b41db4b1b521c94cd9c83213a3fc665bcb1f7f"
+    "075e8905a1972772a413e6b3a0928303aec4f1c547ddbd0c281226433fb86b88"
 )
-CREBAIN_SCHEMA_BYTES = 50_024
+CREBAIN_SCHEMA_BYTES = 61_857
+CREBAIN_PAPER_FUNCTIONAL_ID = "functional.shared-exclusions.mgw-categorical"
+CREBAIN_SAMPLE_ESTIMATOR_ROUTE_ID = "route.shared-exclusions.mgw-empirical-pmf"
+CREBAIN_UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID = "shared-exclusions.categorical"
+CREBAIN_PID2_IMPLEMENTATION_ENTRY_POINT = (
+    "pid_core::stable::categorical::discrete_sxpid2_with_budget"
+)
+CREBAIN_PID3_IMPLEMENTATION_ENTRY_POINT = (
+    "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+)
 CLM_018_CLAIM_TEXT = (
-    "The offline CREBAIN integration implements a physically parameterized "
-    "synthetic categorical conformance law and candidate gates for its fixed-target "
-    "categorical MGW PID2/PID3 coordinates, including complete signed averaged "
-    "components, lattice reconstruction, a closed-world formal schema, a "
-    "separately implemented 80-digit Decimal numerical cross-route, and an exact-"
-    "output byte receipt from the candidate qualification route."
+    "The offline CREBAIN integration implements a raw-row empirical-PMF sample-"
+    "estimator route for the paper-defined categorical MGW functional on one "
+    "physically parameterized synthetic conformance fixture, with distinct pid-rs "
+    "implementation-method and budgeted PID2/PID3 entry-point identities. Candidate "
+    "gates cover complete signed averaged components, lattice reconstruction, a "
+    "closed-world formal schema, a separately implemented 80-digit Decimal numerical "
+    "cross-route, and an exact-output byte receipt."
 )
 CLM_018_SCOPE = (
     "the immutable 64-row CREBAIN fixture generated at revision "
@@ -153,7 +163,7 @@ CLM_018_EVIDENCE = (
     "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
     "crates/galadriel-justify/src/crebain_mgw.rs",
     "crates/galadriel-justify/src/crebain_mgw_main.rs",
-    "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+    "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
     "docs/CREBAIN-DRONE-MGW-STUDY.md",
     "repo_work/check_crebain_mgw_candidate.py",
     "repo_work/check_crebain_mgw_decimal_oracle.py",
@@ -193,7 +203,7 @@ CLM_018_GATE_CONTRACTS = {
         "closed_world_formal_schema_tests",
         "python3 -B -E -s -S -m unittest -v repo_work.tests.test_crebain_mgw_schema",
         (
-            "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+            "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
             "repo_work/check_crebain_mgw_schema.py",
             "repo_work/tests/test_crebain_mgw_schema.py",
         ),
@@ -352,9 +362,9 @@ PUBLIC_JSON_SCHEMA_IDS = (
         "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
     ),
     (
-        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
         "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
-        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
     ),
 )
 PUBLICATION_SEQUENCE_MARKERS = (
@@ -3054,6 +3064,7 @@ def validate_clm_018_assurance(
             "tier",
             "subject",
             "law",
+            "estimation_boundary",
             "targets",
             "target_boundary",
             "reproducibility_claim",
@@ -3070,6 +3081,12 @@ def validate_clm_018_assurance(
         "law": (
             "an equal-weight empirical categorical law over all eight ordered "
             "visual/radar/acoustic source cells, repeated eight times per cell"
+        ),
+        "estimation_boundary": (
+            "raw rows are converted to an empirical PMF sample estimate of the "
+            "paper functional. Exact cell balance makes that empirical PMF coincide "
+            "with the declared canonical law for this fixture only; the route is not "
+            "a declared-law evaluator and supports no population inference"
         ),
         "targets": (
             "horizontal_incursion = visual AND radar; volumetric_incursion = visual "
@@ -3135,7 +3152,12 @@ def validate_clm_018_assurance(
             "fixture_sha256",
             "producer_preregistered_pid_revision",
             "actual_pid_core_revision",
-            "evaluator_adaptation",
+            "paper_functional_id",
+            "sample_estimator_route_id",
+            "upstream_implementation_method_catalog_id",
+            "pid2_implementation_entry_point",
+            "pid3_implementation_entry_point",
+            "sample_estimator_implementation_adaptation",
             "schema_path",
             "schema_id",
             "schema_sha256",
@@ -3150,21 +3172,29 @@ def validate_clm_018_assurance(
         "fixture_sha256": CREBAIN_FIXTURE_SHA256,
         "producer_preregistered_pid_revision": PID_RS_PREREGISTERED_COMMIT,
         "actual_pid_core_revision": PID_RS_SELECTED_COMMIT,
-        "evaluator_adaptation": (
+        "paper_functional_id": CREBAIN_PAPER_FUNCTIONAL_ID,
+        "sample_estimator_route_id": CREBAIN_SAMPLE_ESTIMATOR_ROUTE_ID,
+        "upstream_implementation_method_catalog_id": (
+            CREBAIN_UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID
+        ),
+        "pid2_implementation_entry_point": CREBAIN_PID2_IMPLEMENTATION_ENTRY_POINT,
+        "pid3_implementation_entry_point": CREBAIN_PID3_IMPLEMENTATION_ENTRY_POINT,
+        "sample_estimator_implementation_adaptation": (
             "the producer preregistration remains immutable while Galadriel "
-            "explicitly adapts to the clean remote pid-core 0.9.0 revision using "
-            "budgeted categorical routes. This assurance does not assert or rely "
-            "on commit ancestry and instead gates exact identities, estimand "
-            "preservation, resources, and output identities"
+            "explicitly adapts the raw-row empirical-PMF sample-estimator route to "
+            "the clean remote pid-core 0.9.0 implementation method and budgeted "
+            "entry points. This assurance does not assert or rely on commit ancestry "
+            "and instead gates distinct functional, sample-estimator, implementation, "
+            "resource, and output identities"
         ),
         "schema_path": (
             "crates/galadriel-justify/schemas/"
-            "crebain-drone-mgw-study-v2.schema.json"
+            "crebain-drone-mgw-study-v3.schema.json"
         ),
         "schema_id": (
             "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
             "crates/galadriel-justify/schemas/"
-            "crebain-drone-mgw-study-v2.schema.json"
+            "crebain-drone-mgw-study-v3.schema.json"
         ),
         "schema_sha256": CREBAIN_SCHEMA_SHA256,
         "schema_bytes": CREBAIN_SCHEMA_BYTES,
@@ -3880,7 +3910,7 @@ def validate_ecosystem_cut(
             "for the optional dependence companion and offline PID studies. "
             "pid-runlog is not present in any resolved Galadriel feature profile. "
             "The immutable CREBAIN producer preregistration remains separately "
-            "bound to its historical evaluator."
+            "bound to its historical implementation revision and unbudgeted entry-point strings."
         ),
     }
     for key, expected in expected_pid_rs_selection.items():

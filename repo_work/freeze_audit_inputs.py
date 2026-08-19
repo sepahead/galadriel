@@ -100,7 +100,7 @@ RELEASE_INPUTS = (
     "deploy/README.md",
     "deploy/galadriel-security-profile.example.json",
     "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
-    "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json",
+    "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
     "scripts/release_audit.py",
     "scripts/secure_deployment.py",
     "repo_work/README.md",

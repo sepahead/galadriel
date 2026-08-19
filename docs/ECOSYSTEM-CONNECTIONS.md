@@ -404,8 +404,10 @@ not 64 independent flight samples.
 
 This creates only `CREBAIN fixture → Galadriel offline study`. It adds no Cargo,
 wire, process, replay, NCP, fusion, or control edge. CREBAIN does not consume the
-result. The fixture establishes one deterministic categorical conformance law,
-not reciprocal deployment qualification, continuous-PID eligibility, recorded
+result. The fixture declares and exactly balances one deterministic categorical
+conformance law; the raw-row route remains an empirical-PMF sample estimator,
+whose estimate coincides with that law only on this fixture. This is not reciprocal
+deployment qualification, population inference, continuous-PID eligibility, recorded
 flight performance, or a Haldir authority path. See
 [`CREBAIN-DRONE-MGW-STUDY.md`](CREBAIN-DRONE-MGW-STUDY.md).
 

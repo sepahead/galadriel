@@ -32,7 +32,7 @@ Verify that source state with these commands:
 
 ```bash
 python3 -B -E -s -S repo_work/check_crebain_mgw_decimal_oracle.py
-python3 -B -E -s -S repo_work/check_crebain_mgw_schema.py /tmp/galadriel-crebain-mgw-v2.json
+python3 -B -E -s -S repo_work/check_crebain_mgw_schema.py /tmp/galadriel-crebain-mgw-v3.json
 python3 -B -E -s -S repo_work/check_crebain_mgw_candidate.py
 python3 -B -E -s -S -m unittest -v repo_work.tests.test_crebain_mgw_mutation
 python3 -B -E -s -S repo_work/build_task_dispositions.py verify
@@ -47,7 +47,7 @@ computational route, not independent human review or a general validation
 theorem.
 
 `check_crebain_mgw_schema.py` is the standard-library validator for the closed
-Draft 2020-12 CREBAIN study-v2 wire contract. It lints the audited keyword
+Draft 2020-12 CREBAIN study-v3 wire contract. It lints the audited keyword
 subset, rejects duplicate members, non-finite/oversized values, open nested
 objects, optional declared properties, unresolved references, and schema-receipt
 mismatches, then validates an exact Rust JSON instance. This is a wire-contract

@@ -174,6 +174,10 @@ The optional dependence adapter has this audit-only snapshot:
 `release/0.9.0/api/galadriel-dependence.0.9.0.txt`. This snapshot shows that
 accepted MI configurations and sealed companion reports expose no public fields.
 It does not make this experimental crate part of the stable surface.
+The renamed geometry threshold and retained fixed-budget evidence advance both
+the nested `galadriel.mi-consensus-report.v3` object and its enclosing
+`galadriel.dependence-assessment-report.v3` snapshot; a v2 outer label must not
+contain the new nested shape.
 
 The companion's versioned JSON snapshot retains `MiAcceptedConfigEvidence` for
 every named or custom graph value and `MiKsgEvaluatorConfigEvidence` for the
@@ -201,7 +205,7 @@ Offline `galadriel-justify` exposes `PidFunctionalIdentity`, role-typed
 question/study schemas distinguish the categorical
 Makkeh–Gutknecht–Wibral functional from the related continuous
 Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction and bind the exact
-sample-evaluator route. They name the original Williams–Beer antichain lattice,
+sample-estimator route. They name the original Williams–Beer antichain lattice,
 the later Gutknecht–Wibral–Makkeh part-whole derivation, and functionals that are
 not evaluated rather than conflating those roles. Each question serializes its
 exact generated law and finite-sample conditioning, every lattice coordinate and
@@ -234,11 +238,24 @@ The same audit-only crate now exposes `crebain_mgw` and the standalone
 law. The binary accepts no external data path. It emits complete JSON by default
 or a Markdown rendering with `--format markdown`. This is not a stable input/wire
 schema, a runtime adapter, or part of `galadriel-core`. The output schema is
-versioned independently as `galadriel.crebain-drone-mgw-study.v2`. Its closed
+versioned independently as `galadriel.crebain-drone-mgw-study.v3`. Version 3
+corrects the semantic wire model by separating paper functional
+`functional.shared-exclusions.mgw-categorical`, empirical-PMF sample-estimator
+route `route.shared-exclusions.mgw-empirical-pmf`, upstream
+implementation-method/catalog identity `shared-exclusions.categorical`, and the
+arity-specific entry points
+`pid_core::stable::categorical::discrete_sxpid2_with_budget` and
+`pid_core::stable::categorical::discrete_sxpid3_with_budget`.
+The raw-row route is a plug-in sample estimator, not a declared-law evaluator;
+exact fixture balance does not change that API role or support population
+inference. Its closed
 Draft 2020-12 document is
-`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json`. The
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json`. The
 study embeds its exact digest/byte receipt, and
 `repo_work/check_crebain_mgw_schema.py` validates both shape and byte binding.
+Conditional schema constraints reject role/ID and source-count/entry-point
+cross-pairing. The unpublished v2 draft is retired, not supported as an alternate
+wire artifact.
 Public accessors do not authorize callers to construct, deserialize, or
 reinterpret a result. Only the byte-bound validation/evaluation path can produce
 one. The dependency-disjoint, separately implemented 80-digit Decimal route

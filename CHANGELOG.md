@@ -51,6 +51,21 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Changed
 
+- Correct the CREBAIN categorical MGW scientific object model and bump its
+  machine output from schema v2 to v3. Version 3 separately binds the paper
+  functional, raw-row empirical-PMF sample-estimator route, upstream
+  implementation-method/catalog identity, and arity-specific budgeted pid-core
+  entry points, with fail-closed role/ID and arity/entry-point constraints. The
+  unpublished ambiguous v2 draft is retired. Fixture bytes and output numerics
+  are unchanged.
+- Correct the dependence geometry contract to mean nearest-neighbor distance /
+  mean unordered-pairwise distance, rename the public threshold accordingly,
+  and add an unequal-distance denominator control. The MI-consensus report and
+  its enclosing dependence-assessment snapshot both advance to wire schema v3.
+- Construct one explicit single-thread resource budget before pair geometry and
+  pass it unchanged through intrinsic dimension, distance concentration, KSG
+  preflight, and KSG execution. Nested evidence retains the exact identity; this
+  is per-call evidence and not an aggregate study-wide resource claim.
 - Add seven static, self-contained, accessible, cross-renderer vector contract
   maps for system evidence flow, detector equations and fusion, lifecycle
   receipts, offline PID estimand provenance, the exact CREBAIN drone-to-MGW

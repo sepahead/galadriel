@@ -24,8 +24,9 @@ CREBAIN producer preregistration and historical migration evidence.
 [![Two distinct offline PID questions, role-typed literature edges, atom equations, and non-fallback boundaries](../assets/pid-estimand-provenance.svg)](../assets/pid-estimand-provenance.svg)
 
 **Offline PID estimand and provenance graph.** `PidQuestionSpec` seals one source
-order, target, and law before evaluation. The categorical lane evaluates the
-Makkeh–Gutknecht–Wibral pointwise shared-exclusions functional on a finite law.
+order, target, and law before estimation. The categorical lane uses a raw-row
+empirical-PMF sample estimator for the Makkeh–Gutknecht–Wibral pointwise
+shared-exclusions functional on a finite law.
 It retains reports in nats and converts only named aggregate atom fields to
 bits. The continuous lane evaluates the related but distinct Ehrlich functional
 and estimator on a declared full-dimensional law, fixed source gauge, and no
@@ -132,8 +133,8 @@ separately implemented 80-digit Decimal event-union/Möbius calculation within
 but the Decimal route does not recompute them. The maximum internal
 lattice-reconstruction error is
 `1.11e-16` nats. The emitted JSON additionally validates against the closed
-Draft 2020-12 v2 schema at
-`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json` using
+Draft 2020-12 v3 schema at
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json` using
 `repo_work/check_crebain_mgw_schema.py`. This is exact finite-law software
 corroboration, not independent human or organizational replication or field
 calibration.
@@ -220,7 +221,7 @@ Every result carries a sealed, version 3 schema-tagged `PidQuestionSpec`: distin
 functional identity, a bounded graph of role-typed primary-reference edges with
 complete teams, the explicit boundary that the Schick-Poland general construction
 is not evaluated, the Williams–Beer original antichain lattice distinct from the
-Gutknecht–Wibral–Makkeh part-whole derivation, exact pid-core sample-evaluator route,
+Gutknecht–Wibral–Makkeh part-whole derivation, exact pid-core estimator route,
 ordered sources, a target fixed before result inspection and separated from any
 accepted fused verdict, exact generated input law and finite-sample
 selection/conditioning, source count, a typed list of every produced PID atom's
@@ -229,15 +230,25 @@ within-trial aggregation law, and native unit, exact root aggregate-field mappin
 coupled-law versus within-trial permutation-control interpretation, route configuration,
 transform and row relation,
 support/gauge statement, sign convention,
-output-unit relation, native evaluator units, and atom-aggregate units. AUC and
+output-unit relation, native estimator units, and atom-aggregate units. AUC and
 bootstrap-interval fields are separately typed as dimensionless. The
-categorical evaluator and every retained upstream trial stay in nats, while its
+categorical sample estimator and every retained upstream trial stay in nats, while its
 named aggregate atom fields convert once to bits. The continuous evaluator,
 retained reports, and aggregates all stay in nats. Every categorical and
 continuous pid-core evaluation uses the explicitly retained single-thread
 `PidStudyResourceContract`. Aggregate study work is preflighted separately, so
 the per-call receipt is not a whole-study memory or duration bound. The
 categorical graph distinguishes the MGW
+paper functional, empirical-PMF sample-estimator route, upstream implementation
+method/catalog identity, and the two concrete budgeted entry points. Their IDs
+are `functional.shared-exclusions.mgw-categorical`,
+`route.shared-exclusions.mgw-empirical-pmf`,
+`shared-exclusions.categorical`, and the arity-specific entry points
+`pid_core::stable::categorical::discrete_sxpid2_with_budget` and
+`pid_core::stable::categorical::discrete_sxpid3_with_budget`. Raw rows
+produce a plug-in empirical-PMF estimate rather than evaluating a declared
+population law; exact cell balance makes the two laws coincide only for this
+fixture and supports no population inference. The graph also distinguishes the
 pointwise definition from both the original lattice and the later part-whole paper.
 The continuous graph distinguishes Ehrlich et al. from its KSG estimator basis and
 also records that its atom coordinates use the original lattice while not evaluating
@@ -378,7 +389,7 @@ Use the least complex statistic that observes the registered estimand:
    dependence that signed correlation misses. Keep it outside the accepted default report
    until a frozen representative streaming study qualifies incremental value.
 4. Add PID only for a documented joint target and ordered source question. Name
-   the categorical MGW or continuous Ehrlich functional, evaluator, law,
+   the categorical MGW or continuous Ehrlich functional, estimator route, law,
    transforms, gauges, row relation, units, and software identity.
 5. Return an error for invalid input.
 6. Return `InsufficientEvidence` for an unavailable estimand.

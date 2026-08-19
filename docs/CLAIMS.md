@@ -89,8 +89,11 @@ It has no reciprocal Galadriel final-candidate pin or runtime qualification.
 The separate immutable fixture-source cut is bound to CREBAIN commit
 `6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d` and exact fixture bytes. That
 source-specific custody relationship is not a reciprocal deployment claim.
-The separate offline CREBAIN drone fixture and categorical MGW evaluator are
+The separate offline CREBAIN drone fixture and categorical MGW empirical-PMF
+sample-estimator implementation are
 `IMPLEMENTED` only for the exact 64-row deterministic law named in `CLM-018`.
+This does not retype the raw-row route as a declared-law evaluator; exact cell
+balance makes its empirical PMF coincide with the canonical fixture law only.
 That claim does not establish recorded-flight inference, continuous-PID
 eligibility, the wider PID3 assurance program, field performance, attack
 classification, or a runtime/control edge.

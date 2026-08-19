@@ -303,7 +303,7 @@ estimator [Ehrlich2024] are not one
 "shared-exclusions form." Galadriel evaluates them in separate offline studies.
 The study must document fixed source identities and order, a target fixed before
 result inspection and separated from any accepted fused verdict,
-functional and evaluator, law, transforms, gauges, row relation, units, and
+functional and estimator route, law, transforms, gauges, row relation, units, and
 software identity. Its atoms are associational, statistical decomposition terms and can be negative.
 They are not probabilities or calibrated attack confidence.
 
@@ -313,7 +313,7 @@ They are not probabilities or calibrated attack confidence.
 “Wibral PID.”** The sealed question fixes ordered sources, one preregistered
 target that is separated from the accepted fused verdict,
 the law, finite-sample acceptance, row relation, gauge, units, functional,
-evaluator, atom coordinates, reference roles, and exact pid-rs pin. The left lane
+estimator route, atom coordinates, reference roles, and exact pid-rs pin. The left lane
 is categorical Makkeh–Gutknecht–Wibral shared exclusions [Makkeh2021] on the
 original Williams–Beer antichain lattice [WilliamsBeer2010], with the later
 Gutknecht–Wibral–Makkeh part-whole derivation [Gutknecht2021] recorded separately.
@@ -336,8 +336,11 @@ targets from latent ENU truth without reading source-symbol fields, sensor
 projections, fusion output, Galadriel, or PID. This makes the targets external
 to fusion/PID, not producer-independent field truth. Galadriel checks each
 declared source against its named pre-fusion coordinate, reconstructs the target
-from retained latent truth, and evaluates categorical MGW PID2/PID3 through
-budgeted pid-core 0.9.0 revision `bc3aa80f…`.
+from retained latent truth, and forms categorical MGW empirical-PMF PID2/PID3
+sample estimates through budgeted pid-core 0.9.0 revision `bc3aa80f…`. Exact
+cell balance makes the empirical PMF coincide with the declared law for this
+fixture; the route is not a population-law evaluator and supports no population
+inference.
 
 Each row retains one episode identifier, one observation timestamp, three
 pre-fusion sensor objects, and a six-field legacy fusion summary—not separate

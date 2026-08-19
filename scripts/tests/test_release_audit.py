@@ -1274,8 +1274,12 @@ class ReleaseAuditTests(unittest.TestCase):
 
         self.assertEqual(claim["tier"], "IMPLEMENTED")
         self.assertEqual(tuple(claim["evidence"]), release_audit.CLM_018_EVIDENCE)
-        self.assertIn("synthetic categorical conformance", claim["claim"])
+        self.assertIn("raw-row empirical-PMF sample-estimator", claim["claim"])
         self.assertNotIn("validates one exact physical row contract", claim["claim"])
+        self.assertIn(
+            "not a declared-law evaluator",
+            assurance["claim_contract"]["estimation_boundary"],
+        )
         self.assertIn(
             "bounded-summary fresh-instance reproducibility", claim["limitations"]
         )
@@ -1286,7 +1290,27 @@ class ReleaseAuditTests(unittest.TestCase):
         self.assertEqual(len(assurance["required_gates"]), 5)
         self.assertIn(
             "does not assert or rely on commit ancestry",
-            assurance["identities"]["evaluator_adaptation"],
+            assurance["identities"]["sample_estimator_implementation_adaptation"],
+        )
+        self.assertEqual(
+            assurance["identities"]["paper_functional_id"],
+            release_audit.CREBAIN_PAPER_FUNCTIONAL_ID,
+        )
+        self.assertEqual(
+            assurance["identities"]["sample_estimator_route_id"],
+            release_audit.CREBAIN_SAMPLE_ESTIMATOR_ROUTE_ID,
+        )
+        self.assertEqual(
+            assurance["identities"]["upstream_implementation_method_catalog_id"],
+            release_audit.CREBAIN_UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID,
+        )
+        self.assertEqual(
+            assurance["identities"]["pid2_implementation_entry_point"],
+            release_audit.CREBAIN_PID2_IMPLEMENTATION_ENTRY_POINT,
+        )
+        self.assertEqual(
+            assurance["identities"]["pid3_implementation_entry_point"],
+            release_audit.CREBAIN_PID3_IMPLEMENTATION_ENTRY_POINT,
         )
         self.assertEqual(
             assurance["closure"]["candidate_gate_status"],
@@ -1379,6 +1403,36 @@ class ReleaseAuditTests(unittest.TestCase):
         false_candidate_closure["closure"]["candidate_gate_status"] = "COMPLETE"
         hostile_cases.append(
             ("false candidate closure", false_candidate_closure, "closure is weakened")
+        )
+
+        swapped_functional_and_route = copy.deepcopy(current)
+        swapped_functional_and_route["identities"]["paper_functional_id"], (
+            swapped_functional_and_route["identities"]["sample_estimator_route_id"]
+        ) = (
+            swapped_functional_and_route["identities"]["sample_estimator_route_id"],
+            swapped_functional_and_route["identities"]["paper_functional_id"],
+        )
+        hostile_cases.append(
+            (
+                "swapped functional and estimator route",
+                swapped_functional_and_route,
+                "incorrect source or schema identity",
+            )
+        )
+
+        crossed_pid_entry_points = copy.deepcopy(current)
+        crossed_pid_entry_points["identities"]["pid2_implementation_entry_point"], (
+            crossed_pid_entry_points["identities"]["pid3_implementation_entry_point"]
+        ) = (
+            crossed_pid_entry_points["identities"]["pid3_implementation_entry_point"],
+            crossed_pid_entry_points["identities"]["pid2_implementation_entry_point"],
+        )
+        hostile_cases.append(
+            (
+                "crossed PID entry points",
+                crossed_pid_entry_points,
+                "incorrect source or schema identity",
+            )
         )
 
         for label, document, error_pattern in hostile_cases:

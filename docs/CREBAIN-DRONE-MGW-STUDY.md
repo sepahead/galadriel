@@ -5,11 +5,13 @@
 This document specifies one grounded, executable offline study connecting a
 physically parameterized **synthetic** three-sensor fixture in CREBAIN to
 Galadriel's exact pinned categorical partial information decomposition (PID)
-evaluator.
+sample-estimator implementation.
 
-It is a **deterministic categorical conformance law**, not a statistical study of
+It is a **deterministic conformance study of a categorical law**, not a statistical study of
 recorded flights. Its information-theoretic object is the uniform canonical
-AND2/AND3 logic-gate law. It establishes that the declared row definition, source
+AND2/AND3 logic-gate law. The raw-row empirical-PMF sample estimate coincides
+with that declared law because the fixture is exactly balanced; this is not a
+population inference or declared-law evaluation. The study establishes that the declared row definition, source
 order, synthetic latent-truth targets, fixture custody, categorical
 Makkeh–Gutknecht–Wibral (MGW) shared-exclusions evaluation, and algebraic
 reconstruction agree on that one bounded law. CREBAIN generated each repeated row
@@ -279,7 +281,7 @@ Co-information and O-information are role-distinct diagnostics that require an
 exact variable tuple and sign convention. The project-defined joint contrast
 `Q` can detect joint-only structure but is not a PID atom allocation. Silent
 fallback to any of these alternatives would change the registered question. The
-selected evaluator therefore returns an error and aborts the study on failure.
+selected sample-estimator implementation therefore returns an error and aborts the study on failure.
 It does not substitute another functional or emit a numeric sentinel.
 
 The continuous Ehrlich route is also rejected for this fixture because repeated
@@ -293,6 +295,23 @@ a quantizer would add a transform to data that is already categorical.
 | Horizontal allocation | visual `V`, radar `R` | `T_H = V R` on this declared law | `pid_core::stable::categorical::discrete_sxpid2_with_budget` | primary deterministic conformance |
 | Volumetric allocation | visual `V`, radar `R`, acoustic `A` | `T_V = V R A` on this declared law | `pid_core::stable::categorical::discrete_sxpid3_with_budget` | Exploratory. Not 108-coordinate assurance closure. |
 
+Each question binds four distinct implementation layers:
+
+1. paper functional `functional.shared-exclusions.mgw-categorical`;
+2. semantic raw-row empirical-PMF sample-estimator route
+   `route.shared-exclusions.mgw-empirical-pmf`;
+3. upstream implementation-method/catalog identity
+   `shared-exclusions.categorical`; and
+4. the arity-specific concrete budgeted pid-core entry point shown in the table.
+
+The raw-row API forms an empirical PMF and computes a plug-in sample estimate of
+the paper functional. It is not a declared-law evaluator. Exact balance across
+the eight canonical source cells makes this fixture's empirical PMF coincide with
+the declared canonical law, but that fixture fact does not change the API role or
+support population inference. The versioned graph, question specifications,
+resource-call receipts, and closed schema bind every role/ID and arity/entry-point
+pairing and reject cross-pairing.
+
 Two identities are intentionally retained:
 
 - CREBAIN's immutable producer manifest preregistered pid-rs revision
@@ -302,11 +321,12 @@ Two identities are intentionally retained:
   read-only revision `bc3aa80fb6025e709c2906a08bce25a4fac40578` through the
   explicit `*_with_budget` routes.
 
-This is a documented post-preregistration evaluator adaptation, not a rewrite of
+This is a documented post-preregistration sample-estimator implementation
+adaptation, not a rewrite of
 the frozen manifest. Review found the same categorical MGW functional, empirical
 probability laws, ordered sources, targets, lattice coordinates, natural-log
 units, signed components, and inclusion of pointwise output. Every one of the nine
-executed evaluator/control calls is separately preflighted against Galadriel's
+executed sample-estimator/control calls is separately preflighted against Galadriel's
 fixed resource ceiling. Per-call admission is not a proof of aggregate peak memory
 for the whole study, retained results, or serialization. No alternative method is
 substituted if a pid-core call fails.
@@ -450,9 +470,9 @@ object with:
 
 ```text
 cargo run --locked -p galadriel-justify --bin galadriel-crebain-mgw \
-  > /tmp/galadriel-crebain-mgw-v2.json
+  > /tmp/galadriel-crebain-mgw-v3.json
 python3 -B -E -s -S repo_work/check_crebain_mgw_decimal_oracle.py \
-  --rust-json /tmp/galadriel-crebain-mgw-v2.json
+  --rust-json /tmp/galadriel-crebain-mgw-v3.json
 ```
 
 Before comparing the 66 averaged components and ten mutual informations, the
@@ -466,15 +486,19 @@ identity field, or pointwise value. The closed schema and Rust semantic guards
 cover those separate obligations.
 
 The complete JSON wire shape is separately governed by the closed Draft 2020-12
-[`crebain-drone-mgw-study-v2.schema.json`](../crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json).
+[`crebain-drone-mgw-study-v3.schema.json`](../crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json).
 Every object is closed, every declared property is required, and cardinalities
-and enum spellings are explicit. Its standard-library checker also rejects
+and enum spellings are explicit. Conditional `if`/`then` constraints bind the
+functional, sample-estimator route, implementation method, and concrete entry
+points to their typed roles and bind each source count to the correct entry point.
+The unpublished version 2 draft was retired because those roles were conflated;
+it is not an alternate schema. The standard-library checker also rejects
 duplicate keys, non-finite or oversized numeric values, unknown schema keywords,
 unresolved references, and disagreement with the serialized schema receipt:
 
 ```text
 python3 -B -E -s -S repo_work/check_crebain_mgw_schema.py \
-  /tmp/galadriel-crebain-mgw-v2.json
+  /tmp/galadriel-crebain-mgw-v3.json
 ```
 
 The schema proves wire-shape conformance. It does not replace Rust semantic,
@@ -492,7 +516,7 @@ python3 -B -E -s -S repo_work/check_crebain_mgw_candidate.py
 That receipt does not publish the raw JSON bytes. The eventual publication
 bundle must preserve those bytes under the exact candidate/toolchain identity.
 
-The stable three-source evaluator makes this bounded fixture possible. It does not
+The stable three-source implementation entry point makes this bounded fixture possible. It does not
 close pid-rs's separate open 108-coordinate formal-assurance program:
 
 \[
@@ -532,11 +556,13 @@ one row never selects another row.
 | Object | Kind | Execution here | Output and distinct role | Boundary |
 |---|---|---|---|---|
 | Categorical MGW shared exclusions | paper-defined functional | produced | pointwise cumulatives and Möbius atoms, plus empirical-PMF averages | The registered allocation. Not synonymous with pid-core software. |
-| pid-core raw-row MGW PID2 plug-in | evaluator | produced, primary | pointwise and averaged four-atom result on ordered `(V,R)` | Exact `discrete_sxpid2_with_budget` route. No fallback. |
-| pid-core raw-row MGW PID3 plug-in | evaluator | produced, exploratory | pointwise and averaged 18-antichain result on ordered `(V,R,A)` | Exact `discrete_sxpid3_with_budget` route. Does not close 108-coordinate assurance. |
+| Raw-row empirical-PMF route | sample estimator | produced | converts accepted categorical rows to an empirical PMF and estimates the named functional | `route.shared-exclusions.mgw-empirical-pmf`; not a declared-law evaluator and not population inference. |
+| pid-rs shared-exclusions categorical implementation | implementation method/catalog object | produced | direct empirical-PMF implementation selected for the semantic route | `shared-exclusions.categorical`; it is neither the paper functional nor an executable entry point. |
+| pid-core raw-row MGW PID2 plug-in | implementation entry point | produced, primary | pointwise and averaged four-atom result on ordered `(V,R)` | Exact `pid_core::stable::categorical::discrete_sxpid2_with_budget` entry point. No fallback. |
+| pid-core raw-row MGW PID3 plug-in | implementation entry point | produced, exploratory | pointwise and averaged 18-antichain result on ordered `(V,R,A)` | Exact `pid_core::stable::categorical::discrete_sxpid3_with_budget` entry point. Does not close 108-coordinate assurance. |
 | Williams–Beer `I_min` | different categorical functional | not requested | another redundancy definition and therefore another atom allocation | Comparator only. Never an MGW alias or fallback. |
 | BROJA | different two-source functional | not requested | unique information from a constrained family of distributions | Requires external implementation identity, feasibility, and residual reporting. No PID3 route is implied. |
-| Schick-Poland general PID | general measure-theoretic construction | not evaluated | a construction spanning discrete and continuous variables | neither MGW nor Ehrlich is presented as its generic evaluator |
+| Schick-Poland general PID | general measure-theoretic construction | not evaluated | a construction spanning discrete and continuous variables | neither MGW nor Ehrlich is presented as its generic implementation |
 | Continuous Ehrlich shared exclusions | continuous functional | inapplicable | continuous redundancy and derived PID2 atoms at a fixed source gauge | the repeated atomic law has the wrong support |
 | Ehrlich nearest-neighbor route | estimator for the continuous functional | inapplicable | continuous shared-exclusions estimate with KSG MI constituents | Support fails. No noise or quantization “repair” is substituted. |
 | Pairwise KSG MI | continuous estimator, not PID | inapplicable | Symmetric pairwise dependence. Its finite-sample estimate may be signed, but that sign is not correlation direction and it allocates no PID atoms. | Repeated atomic support is ineligible. Added noise changes the estimand. |
@@ -545,7 +571,7 @@ one row never selects another row.
 | NIS | operational diagnostic | not evaluated | per-channel innovation magnitude under a separate covariance/lifecycle contract | this fixture contains no lifecycle-qualified NIS report |
 | Two-arm CUSUM | operational sequential diagnostic | not evaluated | Persistent sequential evidence derived in Galadriel's magnitude lane. On the fusion core's `dof=3` route only the upper arm can move. Other admitted degrees of freedom retain the general recurrence. [Page (1954)](https://doi.org/10.1093/biomet/41.1-2.100) supplies the sequential-change foundation. | Galadriel's two-arm composition/lifecycle contract is project-defined and distinct from NIS, correlation, MI, and PID. This fixture contains no CUSUM state or alarm report. |
 | Signed Pearson correlation | operational association diagnostic | not evaluated | Direction-sensitive linear consistency under a separate lifecycle contract. | This fixture contains no qualified correlation report. PID cannot override it. |
-| PNAS bivariate infomorphic objective | downstream objective composition | not evaluated | two-input learning objective composed from named PID atoms | an objective does not define a PID functional or evaluator |
+| PNAS bivariate infomorphic objective | downstream objective composition | not evaluated | two-input learning objective composed from named PID atoms | an objective does not define a PID functional or estimator |
 | ICLR three-input-class objective | downstream objective composition | not evaluated | role-distinct three-input-class local-objective design | not evidence for this fixture and not the PNAS object |
 
 The BROJA contribution elsewhere in the thesis need not be discarded. A
@@ -566,7 +592,7 @@ also supplies a strong exact-law hostile control for source/target lineage and
 lattice algebra.
 It does not strengthen an operational verdict merely by being more complex.
 
-The new evaluator is a standalone `galadriel-justify` binary:
+The study driver is a standalone `galadriel-justify` binary:
 
 ```text
 cargo run --locked -p galadriel-justify --bin galadriel-crebain-mgw
@@ -656,13 +682,13 @@ fixed source gauge, and supported estimator regime.
 | 4 | Is the sampling unit honest? | Yes. Eight fresh-instance rows per law cell. No `n=64` inference claim. | The compact artifact does not prove complete state isolation. Future data must split and resample by independent episode. |
 | 5 | Does support match the estimand? | yes: finite categorical empirical PMF | do not route atomic rows to KSG/Ehrlich |
 | 6 | Is the functional exact and unambiguous? | yes: categorical MGW shared exclusions | never say generic “Wibral PID” |
-| 7 | Are functional and evaluator distinct? | yes: paper-defined functional, pinned pid-core empirical evaluator | review any later API identity change separately |
+| 7 | Are functional, sample-estimator route, implementation method, and entry point distinct? | yes: all four roles carry fixed, cross-bound IDs and the entry point is arity-specific | review any later API or catalog identity change separately |
 | 8 | Are units explicit and consistent? | yes: nats throughout this study | never inherit bit labels from a different aggregate schema |
 | 9 | Are signed atoms preserved? | yes: informative, misinformative, and net retained | negative future results must not be clamped or hidden |
 | 10 | Does the lattice reconstruct its marginals/joint? | yes: PID2 plus seven PID3 down-set identities | retain fail-closed tolerance and complete-coordinate tests |
 | 11 | Is there a dependency-disjoint calculation separate from the production route? | Yes for 66 averaged atom components and ten subset MIs: separate 80-digit event-union/Möbius calculation. | The same fixture/spec/repository means this is not independent human or organizational replication. Pointwise results are not Decimal-recomputed. |
 | 12 | Are hostile controls predicate-isolating? | Yes for bytes, rows, sources, targets, bounded summaries, time, order, and algebra. The bounded gate binds a 149-mutant selected set with 146 caught and three exact compile-unviable substitutions in the local repair reference. | Rerun the gate on the final exact candidate. Expand it with each new field or transform and preserve all non-target predicates in each mutation. |
-| 13 | Are methods kept semantically separate? | yes: 16 functional/evaluator/estimator/diagnostic/objective rows, with no fallback | preregister any future comparator and report its own failures |
+| 13 | Are methods kept semantically separate? | yes: 18 functional/sample-estimator/method/entry-point/diagnostic/objective rows, with no fallback | preregister any future comparator and report its own failures |
 | 14 | Are causal/mechanistic claims blocked? | Yes. Atoms are associational, statistical, and measure-relative. | Defense language must not call atoms causal mechanisms. |
 | 15 | Is authority absent by construction? | yes: no PID-to-verdict or PID-to-Haldir effect path | a future record adapter must prove authorization and plant-command invariance for favorable, adverse, missing, stale, and malformed records |
 | 16 | Are software identity and custody sufficient? | fixture, manifest, CREBAIN revision, pid-core revision bound | publication run still needs Galadriel commit, build, toolchain, host, output digest |
@@ -692,8 +718,8 @@ fixed source gauge, and supported estimator regime.
 - [x] Check all 66 averaged atom components and ten subset MIs against a separate 80-digit event-union/Möbius calculation.
 - [x] State explicitly that pointwise outputs are retained and internally reconstructed but not separately Decimal-recomputed.
 - [x] Preserve the averaged-output calculation as a standard-library oracle with canonical SHA-256 `5aa7a1d92d4aaad9c056ede8a75bdc40abc1fa76634b02bba20aac5cc3913c19`.
-- [x] Encode the functional, evaluator, PMF, pointwise/averaged outputs, validation receipts, and advisory sink as distinct typed graph objects.
-- [x] Publish a 16-row eligibility matrix that separates every functional, evaluator, estimator, diagnostic, including NIS, the selected two-arm CUSUM, and signed correlation, from every downstream objective. Define no fallback route.
+- [x] Encode the paper functional, empirical-PMF sample-estimator route, upstream implementation method, concrete entry points, PMF, pointwise/averaged outputs, validation receipts, and advisory sink as distinct typed graph objects.
+- [x] Publish an 18-row eligibility matrix that separates every functional, sample estimator, implementation method, entry point, diagnostic, including NIS, the selected two-arm CUSUM, and signed correlation, from every downstream objective. Define no fallback route.
 - [x] Add exact JSON and publication-oriented Markdown output with BrokenPipe-safe CLI behavior.
 - [x] Add accessible, renderer-verified system and method SVGs.
 - [x] Add a cargo-mutants 27.1.0/Rust 1.89 exact-head gate for the seven CREBAIN contract functions. Bind the 149-mutant normalized multiset, 146 caught results, and three exact compile-unviable substitutions.
@@ -707,7 +733,7 @@ fixed source gauge, and supported estimator regime.
 - [x] Select clean, remote-reachable pid-core 0.9.0 revision `bc3aa80fb6025e709c2906a08bce25a4fac40578`. Consume no dirty-worktree-only feature.
 - [x] Retain CREBAIN's immutable `1cd2424…` preregistration and record the post-preregistration revision/API adaptation instead of rewriting history.
 - [x] Review the relevant public API and method-catalog identities. Preserve the functional, law, source order, targets, units, signed atoms, and pointwise inclusion.
-- [x] Route all nine production/control calls through explicit `*_with_budget` evaluators and retain their individual preflights.
+- [x] Route all nine production/control calls through explicit `*_with_budget` entry points and retain their individual preflights.
 - [x] Reconcile the compiled pid-core software identity to the selected clean package-subtree revision before producing a study result.
 - [ ] Adopt an upstream specified-rational-law or sparse-count receipt only after a clean published API exists. Require raw-row/count/rational agreement before using the stronger claim.
 - [ ] Adopt checked aggregate resource composition if upstream supplies it. Do not treat nine per-call preflights as a whole-process peak bound.

@@ -77,9 +77,17 @@ Galadriel compiles against the API of the selected immutable revision, not the
 API visible in a mutable sibling pid-rs worktree. At `bc3aa80f…`, categorical
 MGW exposes typed pointwise and averaged atoms and explicit budgeted routes.
 The grounded CREBAIN study calls
-`discrete_sxpid2_with_budget`/`discrete_sxpid3_with_budget`, retains both output
+`pid_core::stable::categorical::discrete_sxpid2_with_budget` and
+`pid_core::stable::categorical::discrete_sxpid3_with_budget`, retains both output
 families without clamping signed values, and records that this is a reviewed
-post-preregistration API adaptation. It does not pretend that the historical
+post-preregistration sample-estimator implementation adaptation. It binds paper
+functional `functional.shared-exclusions.mgw-categorical`, semantic raw-row
+sample-estimator route `route.shared-exclusions.mgw-empirical-pmf`, and upstream
+implementation-method/catalog identity `shared-exclusions.categorical` as
+separate roles from those executable entry points. The raw-row route builds an
+empirical PMF and is not a declared-law evaluator; exact fixture balance makes
+the empirical and canonical laws coincide only for this fixture and supports no
+population inference. It does not pretend that the historical
 unbudgeted route strings frozen at `1cd2424f…` executed the current result.
 
 A later pid-rs improvement is eligible for adoption only after all of the
@@ -95,8 +103,9 @@ following are true:
    high-precision oracle, while pointwise support, ordering, mass, and
    aggregation reproduce the retained averaged atoms. Any intended numerical
    change is justified analytically and recorded as a new study schema.
-5. Categorical MGW, continuous Ehrlich, estimators, comparators, diagnostics,
-   and downstream objective compositions remain separate objects with explicit
+5. Categorical MGW functionals, sample-estimator routes, implementation methods,
+   entry points, continuous Ehrlich objects, comparators, diagnostics, and
+   downstream objective compositions remain separate objects with explicit
    abstentions and no fallback chain.
 
 This rule permits deliberate integration of future pid-rs features while the
@@ -104,18 +113,19 @@ upstream agent is still improving them. It does not turn a moving worktree,
 version string, or convenient API similarity into consumable scientific
 evidence.
 
-For the current adaptation, the complete v2 output has a closed Draft 2020-12
+For the current adaptation, the complete v3 output has a closed Draft 2020-12
 schema at
-`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json`.
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json`.
 `repo_work/check_crebain_mgw_schema.py` validates both the output shape and its
 exact embedded schema-byte receipt. This contract does not turn the synthetic
 AND2/AND3 fixture into field evidence or the 64 repeated rows into independent
-experimental units.
+experimental units. The unpublished v2 draft was retired because its role model
+was semantically ambiguous; it is not an accepted compatibility artifact.
 
 ### Immutable producer wording and typed errata
 
 The producer fixture remains byte-for-byte immutable, including three phrases
-whose stronger readings the current consumer rejects. The v2 result therefore
+whose stronger readings the current consumer rejects. The v3 result therefore
 retains typed, append-only errata rather than silently editing preregistration:
 
 - The producer creates sensor objects and source symbols before deriving each
@@ -272,7 +282,7 @@ can consume its event.
 
 PID remains offline. Each study must fix the source tuple and a target selected
 before result inspection and separated from any accepted fused verdict, and
-must name the categorical MGW or continuous Ehrlich functional, evaluator,
+must name the categorical MGW or continuous Ehrlich functional, estimator route,
 gauges, law, transform relation, row relation, units, and software identity.
 Galadriel's version 3 question records additionally bind the exact generated law
 and finite-sample selection, the original Williams–Beer lattice separately from

@@ -41,6 +41,9 @@ def rust_document(result: dict[str, object]) -> dict[str, object]:
             "actual_pid_core_version": oracle.PID_CORE_VERSION,
             "actual_pid_core_revision": oracle.PID_CORE_REVISION,
         },
+        "sample_estimator_implementation_adaptation": {
+            "selected_implementation_revision": oracle.PID_CORE_REVISION,
+        },
         "pid_core_software_identity": {"source": source},
         "pid_core_source_reconciliation": {
             "expected_revision": oracle.PID_CORE_REVISION,
@@ -68,36 +71,64 @@ def rust_document(result: dict[str, object]) -> dict[str, object]:
         "primary_question": {
             "ordered_sources": oracle.SOURCE_ORDER[:2],
             "target": "horizontal_incursion",
-            "upstream_method_catalog_id": "shared-exclusions.categorical",
+            "paper_functional_id": oracle.PAPER_FUNCTIONAL_ID,
+            "sample_estimator_route_id": oracle.SAMPLE_ESTIMATOR_ROUTE_ID,
+            "upstream_implementation_method_catalog_id": (
+                oracle.UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID
+            ),
+            "implementation_entry_point": oracle.PID2_IMPLEMENTATION_ENTRY_POINT,
         },
         "exploratory_question": {
             "ordered_sources": oracle.SOURCE_ORDER,
             "target": "volumetric_incursion",
-            "upstream_method_catalog_id": "shared-exclusions.categorical",
+            "paper_functional_id": oracle.PAPER_FUNCTIONAL_ID,
+            "sample_estimator_route_id": oracle.SAMPLE_ESTIMATOR_ROUTE_ID,
+            "upstream_implementation_method_catalog_id": (
+                oracle.UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID
+            ),
+            "implementation_entry_point": oracle.PID3_IMPLEMENTATION_ENTRY_POINT,
         },
         "method_eligibility": [
-            {"object_id": object_id} for object_id in oracle.METHOD_OBJECT_IDS
+            {"object_id": object_id, "object_kind": object_kind}
+            for object_id, object_kind in zip(
+                oracle.METHOD_OBJECT_IDS, oracle.METHOD_OBJECT_KINDS, strict=True
+            )
         ],
         "estimand_graph": {
-            "graph_id": "galadriel.crebain-mgw-estimand-graph.v1",
-            "galadriel_functional_alias": oracle.GALADRIEL_FUNCTIONAL_ALIAS,
-            "upstream_method_catalog_id": oracle.UPSTREAM_METHOD_CATALOG_ID,
-            "pid2_evaluator_route": oracle.PID2_EVALUATOR_ROUTE,
-            "pid3_evaluator_route": oracle.PID3_EVALUATOR_ROUTE,
-            "nodes": [None] * 14,
-            "edges": [None] * 20,
+            "graph_id": "galadriel.crebain-mgw-estimand-graph.v2",
+            "paper_functional_id": oracle.PAPER_FUNCTIONAL_ID,
+            "sample_estimator_route_id": oracle.SAMPLE_ESTIMATOR_ROUTE_ID,
+            "upstream_implementation_method_catalog_id": (
+                oracle.UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID
+            ),
+            "pid2_implementation_entry_point": oracle.PID2_IMPLEMENTATION_ENTRY_POINT,
+            "pid3_implementation_entry_point": oracle.PID3_IMPLEMENTATION_ENTRY_POINT,
+            "nodes": [None] * 16,
+            "edges": [None] * 24,
             "all_edge_endpoints_resolved": True,
             "declared_topological_order_validated": True,
             "question_method_and_graph_identities_reconciled": True,
             "operational_authority_node_or_edge_kind_absent": True,
         },
         "atom_interpretation": {
+            "upstream_implementation_method_catalog_id": (
+                oracle.UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID
+            ),
             "pointwise_support_mass_and_averaging_matched": True,
             "canonical_pointwise_realization_order_matched": True,
             "every_retained_atom_interpretation_matched": True,
         },
         "resource_receipt": {
-            "calls": [{"preflight_passed": True} for _ in range(9)]
+            "calls": [
+                {
+                    "preflight_passed": True,
+                    "source_count": 2,
+                    "implementation_entry_point": (
+                        oracle.PID2_IMPLEMENTATION_ENTRY_POINT
+                    ),
+                }
+                for _ in range(9)
+            ]
         },
         "pid2": {
             name: {
@@ -296,10 +327,30 @@ class CrebainMgwDecimalOracleTest(unittest.TestCase):
         ] = False
         mutations.append(("authority graph", false_graph_receipt))
         forked_graph_identity = copy.deepcopy(baseline)
-        forked_graph_identity["estimand_graph"]["galadriel_functional_alias"] = (
+        forked_graph_identity["estimand_graph"]["paper_functional_id"] = (
             "functional.provenance-fork"
         )
         mutations.append(("graph functional identity", forked_graph_identity))
+        swapped_functional_role = copy.deepcopy(baseline)
+        swapped_functional_role["method_eligibility"][0]["object_kind"] = (
+            "sample_estimator_route"
+        )
+        mutations.append(("functional/sample-estimator role", swapped_functional_role))
+        crossed_primary_entry_point = copy.deepcopy(baseline)
+        crossed_primary_entry_point["primary_question"]["implementation_entry_point"] = (
+            oracle.PID3_IMPLEMENTATION_ENTRY_POINT
+        )
+        mutations.append(("crossed PID entry point", crossed_primary_entry_point))
+        invalid_resource_source_count = copy.deepcopy(baseline)
+        invalid_resource_source_count["resource_receipt"]["calls"][0][
+            "source_count"
+        ] = 4
+        mutations.append(("invalid resource source count", invalid_resource_source_count))
+        crossed_resource_entry_point = copy.deepcopy(baseline)
+        crossed_resource_entry_point["resource_receipt"]["calls"][0][
+            "implementation_entry_point"
+        ] = oracle.PID3_IMPLEMENTATION_ENTRY_POINT
+        mutations.append(("crossed resource entry point", crossed_resource_entry_point))
         missing_erratum = copy.deepcopy(baseline)
         missing_erratum["producer_source_errata"]["entries"].pop()
         mutations.append(("producer source erratum", missing_erratum))

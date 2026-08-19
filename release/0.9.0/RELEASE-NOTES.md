@@ -84,11 +84,18 @@ integrations need explicit activation. PID is confined to the offline
   `bc3aa80fb6025e709c2906a08bce25a4fac40578` through distinct APIs. Revision
   `1cd2424f7967e1752dcc8e53859e8fdad3566f51` remains only in the immutable
   CREBAIN producer preregistration and historical migration evidence.
-- Every KSG point fit uses `ksg_mi_report_with_budget`. The retained preflight
-  and execution share one explicit single-thread resource budget. No resolved
+- Every KSG point fit uses `ksg_mi_report_with_budget`. One explicit single-thread
+  resource budget is constructed before geometry and passed unchanged to the
+  intrinsic-dimension report, distance-concentration report, KSG preflight, and
+  KSG execution; nested evidence retains exact identity and `max_threads=1`.
+  The geometry ratio is mean nearest-neighbor distance / mean unordered-pairwise
+  distance; its denominator is the mean across all unordered pairs, not a
+  maximum. This is per-call evidence, not an
+  aggregate study-wide resource claim. The nested MI-consensus report and its
+  enclosing dependence-assessment snapshot are both wire schema v3. No resolved
   Galadriel feature profile contains `pid-runlog`.
 - Every MI graph snapshot records all accepted graph parameters, the fixed KSG
-  evaluator contract, exact row/projection receipts, and distinct scientific,
+  estimator contract, exact row/projection receipts, and distinct scientific,
   resource, numerical, and deletion-stability unavailability categories.
 - Offline PID questions retain role-typed primary references and complete upstream
   trial reports. Pearson, pairwise MI, project-defined `Q`, categorical MGW, and
@@ -117,22 +124,32 @@ integrations need explicit activation. PID is confined to the offline
   three-projection receipts, a full fusion output, or hidden state sufficient to
   prove state isolation.
 - The immutable producer fixture and preregistration bytes remain unchanged.
-  The v2 result carries typed, append-only source errata for target execution
+  The v3 result carries typed, append-only source errata for target execution
   order, row-level synchronization, and `projection_count` semantics.
 - Eight repeats per cell test bounded-summary fresh-instance reproducibility and
   exact custody. They are not 64 independent inferential units and support no
   p-value, confidence interval, flight-performance, or deployment claim.
-- The primary PID2 and exploratory PID3 calls use the explicit budgeted
-  categorical MGW routes. PID3 does not close pid-rs's separate 108-coordinate
+- The primary PID2 and exploratory PID3 calls use
+  `pid_core::stable::categorical::discrete_sxpid2_with_budget` and
+  `pid_core::stable::categorical::discrete_sxpid3_with_budget`. The wire contract
+  separately binds paper functional `functional.shared-exclusions.mgw-categorical`,
+  raw-row empirical-PMF sample-estimator route
+  `route.shared-exclusions.mgw-empirical-pmf`, and upstream
+  implementation-method/catalog identity `shared-exclusions.categorical`. Raw
+  rows produce a plug-in sample estimate, not a declared-law evaluation. Exact
+  balance makes the empirical and canonical laws coincide only for this fixture;
+  it supports no population inference. PID3 does not close pid-rs's separate 108-coordinate
   assurance program.
 - The dependency-disjoint, separately implemented 80-digit Decimal route checks
   66 averaged signed atom components and ten subset mutual informations. It does
   not recompute the retained pointwise atoms and is not independent human or
   organizational replication.
 - The complete JSON output is checked against the closed Draft 2020-12
-  `galadriel.crebain-drone-mgw-study.v2` schema at
-  `crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json` and
+  `galadriel.crebain-drone-mgw-study.v3` schema at
+  `crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json` and
   its exact schema-byte receipt by `repo_work/check_crebain_mgw_schema.py`.
+  Role/ID and source-count/entry-point pairings are conditionally bound. The
+  unpublished v2 draft is retired and is not a compatibility artifact.
 - NIS, the two-arm CUSUM with an inert lower arm on the fusion core's `dof=3` route,
   signed correlation, KSG MI, categorical MGW, continuous
   Ehrlich PID, comparators, invariants, and downstream objectives remain

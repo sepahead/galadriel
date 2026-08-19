@@ -9,8 +9,9 @@ use std::{cmp::Ordering, collections::HashSet, error::Error, fmt, sync::Arc};
 use galadriel_core::{AssessmentBinding, GaladrielError, Modality};
 use pid_core::{
     diagnostics::{
-        distance_concentration_stats, intrinsic_dimension_report, DistanceConcentrationConfig,
-        IntrinsicDimConfig, IntrinsicDimensionReport,
+        distance_concentration_resource_estimate, distance_concentration_stats_with_budget,
+        intrinsic_dimension_report, DistanceConcentrationConfig, IntrinsicDimConfig,
+        IntrinsicDimensionReport,
     },
     stable::continuous::{
         ksg_mi_report_with_budget, ksg_report_resource_estimate, AssumptionLedgerEntry,
@@ -54,7 +55,7 @@ const PREPROCESSING_RELATION_ID: &str =
     "fixed-identity-transform+no-data-adaptive-fit+same-declared-evaluation-row-set-v1";
 const OBSERVATION_TRANSFORM_ID: &str = "no-stochastic-transform+no-added-noise-v1";
 const ID_LOCAL_MEDIAN_MINIMUM: f64 = 1.30;
-const GEOMETRY_PROTOCOL_ID: &str = "levina-bickel-mackay-ghahramani-configured-k+local-median-screen+distance-concentration-chebyshev-v2";
+const GEOMETRY_PROTOCOL_ID: &str = "levina-bickel-mackay-ghahramani-configured-k+local-median-screen+mean-nearest-neighbor-over-mean-unordered-pairwise-chebyshev+fixed-single-thread-budget-v3";
 const UPSTREAM_WARNING_POLICY_ID: &str =
     "retain-all;reject-unsupported-observed-condition;warnings-remain-disclosures-v1";
 
@@ -70,7 +71,7 @@ pub const PID_RS_REVISION: &str = "bc3aa80fb6025e709c2906a08bce25a4fac40578";
 pub const PID_RS_GIT_REPOSITORY: &str = "https://github.com/sepahead/pid-rs";
 
 /// Versioned serialization schema of a standalone MI graph report.
-pub const MI_CONSENSUS_REPORT_SCHEMA: &str = "galadriel.mi-consensus-report.v2";
+pub const MI_CONSENSUS_REPORT_SCHEMA: &str = "galadriel.mi-consensus-report.v3";
 
 /// Maximum scalar analysis window. Exhaustive delete-block configurations are
 /// usually admitted only at smaller windows by the aggregate work ceiling.
@@ -415,7 +416,7 @@ pub struct MiConsensusParams {
     pub id_min: f64,
     pub id_max: f64,
     pub cv_min: f64,
-    pub nn_ratio_max: f64,
+    pub nearest_neighbor_over_pairwise_mean_maximum: f64,
     pub separation_ratio: f64,
     pub mi_floor_nats: f64,
     pub stability: DependenceStabilityParams,
@@ -452,7 +453,7 @@ impl MiConsensusResearchProfile {
             id_min: 1.5,
             id_max: 3.0,
             cv_min: 0.01,
-            nn_ratio_max: 0.999,
+            nearest_neighbor_over_pairwise_mean_maximum: 0.999,
             separation_ratio: 0.4,
             mi_floor_nats: 0.03,
             stability: match self {
@@ -507,7 +508,7 @@ pub enum MiConsensusConfigError {
     IntrinsicDimensionMinimumInvalid,
     IntrinsicDimensionMaximumInvalid,
     DistanceCvMinimumInvalid,
-    NearestNeighborRatioInvalid,
+    NearestNeighborOverPairwiseMeanMaximumInvalid,
     SeparationRatioInvalid,
     MiFloorInvalid,
     DeleteBlockSizeInvalid,
@@ -537,8 +538,9 @@ impl fmt::Display for MiConsensusConfigError {
             Self::DistanceCvMinimumInvalid => {
                 formatter.write_str("MI-consensus cv_min must be finite and > 0")
             }
-            Self::NearestNeighborRatioInvalid => formatter
-                .write_str("MI-consensus nn_ratio_max must be finite and in (0, 1]"),
+            Self::NearestNeighborOverPairwiseMeanMaximumInvalid => formatter.write_str(
+                "MI-consensus nearest_neighbor_over_pairwise_mean_maximum must be finite and in (0, 1]",
+            ),
             Self::SeparationRatioInvalid => formatter
                 .write_str("MI-consensus separation_ratio must be finite and in (0, 1]"),
             Self::MiFloorInvalid => {
@@ -582,7 +584,7 @@ pub struct MiConsensusConfig {
     id_min: f64,
     id_max: f64,
     cv_min: f64,
-    nn_ratio_max: f64,
+    nearest_neighbor_over_pairwise_mean_maximum: f64,
     separation_ratio: f64,
     mi_floor_nats: f64,
     stability: DependenceStability,
@@ -625,11 +627,13 @@ impl MiConsensusConfig {
         if !params.cv_min.is_finite() || params.cv_min <= 0.0 {
             return Err(MiConsensusConfigError::DistanceCvMinimumInvalid);
         }
-        if !params.nn_ratio_max.is_finite()
-            || params.nn_ratio_max <= 0.0
-            || params.nn_ratio_max > 1.0
+        if !params
+            .nearest_neighbor_over_pairwise_mean_maximum
+            .is_finite()
+            || params.nearest_neighbor_over_pairwise_mean_maximum <= 0.0
+            || params.nearest_neighbor_over_pairwise_mean_maximum > 1.0
         {
-            return Err(MiConsensusConfigError::NearestNeighborRatioInvalid);
+            return Err(MiConsensusConfigError::NearestNeighborOverPairwiseMeanMaximumInvalid);
         }
         if !params.separation_ratio.is_finite()
             || params.separation_ratio <= 0.0
@@ -663,7 +667,8 @@ impl MiConsensusConfig {
             id_min: params.id_min,
             id_max: params.id_max,
             cv_min: params.cv_min,
-            nn_ratio_max: params.nn_ratio_max,
+            nearest_neighbor_over_pairwise_mean_maximum: params
+                .nearest_neighbor_over_pairwise_mean_maximum,
             separation_ratio: params.separation_ratio,
             mi_floor_nats: params.mi_floor_nats,
             stability,
@@ -694,8 +699,8 @@ impl MiConsensusConfig {
     pub const fn cv_min(&self) -> f64 {
         self.cv_min
     }
-    pub const fn nn_ratio_max(&self) -> f64 {
-        self.nn_ratio_max
+    pub const fn nearest_neighbor_over_pairwise_mean_maximum(&self) -> f64 {
+        self.nearest_neighbor_over_pairwise_mean_maximum
     }
     pub const fn separation_ratio(&self) -> f64 {
         self.separation_ratio
@@ -725,7 +730,7 @@ impl MiConsensusConfig {
 
     /// Canonical identity of all accepted values and fixed estimator semantics.
     pub fn identity(&self) -> MiConsensusConfigDigest {
-        let mut identity = IdentityBuilder::new(b"galadriel-mi-consensus-config-v1");
+        let mut identity = IdentityBuilder::new(b"galadriel-mi-consensus-config-v2");
         identity.u8(
             b"classification",
             match self.classification() {
@@ -748,7 +753,10 @@ impl MiConsensusConfig {
         identity.f64(b"id_max", self.id_max);
         identity.f64(b"id_local_median_min", ID_LOCAL_MEDIAN_MINIMUM);
         identity.f64(b"cv_min", self.cv_min);
-        identity.f64(b"nn_ratio_max", self.nn_ratio_max);
+        identity.f64(
+            b"nearest_neighbor_over_pairwise_mean_maximum",
+            self.nearest_neighbor_over_pairwise_mean_maximum,
+        );
         identity.f64(b"separation_ratio", self.separation_ratio);
         identity.f64(b"mi_floor_nats", self.mi_floor_nats);
         match self.stability {
@@ -874,7 +882,8 @@ impl MiAcceptedConfigEvidence {
             intrinsic_dimension_maximum: config.id_max,
             intrinsic_dimension_local_median_minimum: ID_LOCAL_MEDIAN_MINIMUM,
             distance_pairwise_cv_minimum: config.cv_min,
-            nearest_neighbor_over_pairwise_mean_maximum: config.nn_ratio_max,
+            nearest_neighbor_over_pairwise_mean_maximum: config
+                .nearest_neighbor_over_pairwise_mean_maximum,
             separation_ratio: config.separation_ratio,
             mi_floor_nats: config.mi_floor_nats,
             stability_protocol: config.stability.name(),
@@ -1057,17 +1066,23 @@ pub struct MiEstimatorEvidence {
 /// declared population law, estimator consistency, or security relevance.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct PairGeometryEvidence {
+    resource_budget: ResourceBudget,
     intrinsic_dimension_report: Arc<IntrinsicDimensionReport>,
+    distance_concentration_resource_estimate: ResourceEstimate,
     intrinsic_dimension_minimum: f64,
     intrinsic_dimension_maximum: f64,
     intrinsic_dimension_local_median_minimum: f64,
     distance_pairwise_cv: f64,
     distance_pairwise_cv_minimum: f64,
     nearest_neighbor_over_pairwise_mean: f64,
-    nearest_neighbor_ratio_maximum: f64,
+    nearest_neighbor_over_pairwise_mean_maximum: f64,
 }
 
 impl PairGeometryEvidence {
+    /// One explicit host-invariant ceiling used by both geometry diagnostics and KSG.
+    pub const fn resource_budget(&self) -> ResourceBudget {
+        self.resource_budget
+    }
     pub fn intrinsic_dimension(&self) -> f64 {
         self.intrinsic_dimension_report.mean
     }
@@ -1093,11 +1108,14 @@ impl PairGeometryEvidence {
     pub const fn distance_pairwise_cv_minimum(&self) -> f64 {
         self.distance_pairwise_cv_minimum
     }
+    pub const fn distance_concentration_resource_estimate(&self) -> ResourceEstimate {
+        self.distance_concentration_resource_estimate
+    }
     pub const fn nearest_neighbor_over_pairwise_mean(&self) -> f64 {
         self.nearest_neighbor_over_pairwise_mean
     }
-    pub const fn nearest_neighbor_ratio_maximum(&self) -> f64 {
-        self.nearest_neighbor_ratio_maximum
+    pub const fn nearest_neighbor_over_pairwise_mean_maximum(&self) -> f64 {
+        self.nearest_neighbor_over_pairwise_mean_maximum
     }
 }
 
@@ -1332,6 +1350,7 @@ pub enum PairUnavailableCategory {
 /// The successful variant deliberately retains the complete inline report evidence.
 /// The domain is fixed at most 15 pairs, so avoiding a new fallible allocation per
 /// pair is preferable to shrinking this closed research enum.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum PairMiOutcome {
     Estimated(PairKsgEvidence),
@@ -2110,13 +2129,13 @@ fn intrinsic_geometry_is_admissible(
 
 fn concentration_geometry_is_admissible(
     pairwise_cv: f64,
-    nearest_neighbor_ratio: f64,
+    nearest_neighbor_over_pairwise_mean: f64,
     config: &MiConsensusConfig,
 ) -> bool {
     pairwise_cv.is_finite()
-        && nearest_neighbor_ratio.is_finite()
+        && nearest_neighbor_over_pairwise_mean.is_finite()
         && pairwise_cv >= config.cv_min
-        && nearest_neighbor_ratio <= config.nn_ratio_max
+        && nearest_neighbor_over_pairwise_mean <= config.nearest_neighbor_over_pairwise_mean_maximum
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2210,14 +2229,24 @@ fn pair_mi_inner(
     let first_matrix = column_matrix(first).map_err(classify_pid_error)?;
     let second_matrix = column_matrix(second).map_err(classify_pid_error)?;
     let joint = joint_matrix(first, second).map_err(classify_pid_error)?;
+    // One explicit ceiling keeps all retained geometry and KSG evidence independent of the host's
+    // available-parallelism value. It is a per-call preflight, not an aggregate study budget.
+    let resource_budget = ksg_resource_budget().map_err(classify_pid_error)?;
     let intrinsic_report = intrinsic_dimension_report(
         joint.as_ref(),
         &IntrinsicDimConfig::default()
             .with_k(config.geom_k)
             .with_metric(Metric::Chebyshev),
-        ResourceBudget::default(),
+        resource_budget,
     )
     .map_err(classify_pid_error)?;
+    if intrinsic_report.resource_budget != resource_budget || resource_budget.max_threads != 1 {
+        return Err(PairFitFailure::AdapterInvariant(PidError::InvalidConfig {
+            context: "galadriel-dependence",
+            message:
+                "intrinsic-dimension report did not retain the fixed single-thread resource budget",
+        }));
+    }
     let intrinsic = intrinsic_report.mean;
     let local_median = intrinsic_report.local_estimate_quantiles.median;
     if !intrinsic_geometry_is_admissible(intrinsic, local_median, config) {
@@ -2229,9 +2258,12 @@ fn pair_mi_inner(
             ),
         });
     }
-    let concentration = distance_concentration_stats(
+    let distance_concentration_resource_estimate =
+        distance_concentration_resource_estimate(joint.as_ref()).map_err(classify_pid_error)?;
+    let concentration = distance_concentration_stats_with_budget(
         joint.as_ref(),
         &DistanceConcentrationConfig::default().with_metric(Metric::Chebyshev),
+        resource_budget,
     )
     .map_err(classify_pid_error)?;
     if !concentration_geometry_is_admissible(
@@ -2242,7 +2274,7 @@ fn pair_mi_inner(
         return Err(PairFitFailure::Unavailable {
             category: PairUnavailableCategory::GeometryRejected,
             note: format!(
-                "geometry diagnostic rejected pair (cv {:.4}, nn/pair {:.4})",
+                "geometry diagnostic rejected pair (cv {:.4}, mean nearest-neighbor distance / mean unordered-pairwise distance {:.4})",
                 concentration.pairwise_cv, concentration.nn_over_pairwise_mean
             ),
         });
@@ -2268,10 +2300,8 @@ fn pair_mi_inner(
         )
     })
     .map_err(classify_pid_error)?;
-    // Execute the report under the same explicit single-thread resource policy used by the
-    // retained preflight. Galadriel separately enforces its own aggregate pair-scan ceiling at
-    // configuration construction. This per-report budget is not an aggregate peak-memory claim.
-    let resource_budget = ksg_resource_budget().map_err(classify_pid_error)?;
+    // Execute the report under the same explicit single-thread resource policy used by both
+    // geometry diagnostics and the retained KSG preflight.
     let expected_resource_estimate = ksg_report_resource_estimate(
         first_matrix.as_ref(),
         second_matrix.as_ref(),
@@ -2314,14 +2344,17 @@ fn pair_mi_inner(
         });
     }
     let geometry = PairGeometryEvidence {
+        resource_budget,
         intrinsic_dimension_report: Arc::new(intrinsic_report),
+        distance_concentration_resource_estimate,
         intrinsic_dimension_minimum: config.id_min,
         intrinsic_dimension_maximum: config.id_max,
         intrinsic_dimension_local_median_minimum: ID_LOCAL_MEDIAN_MINIMUM,
         distance_pairwise_cv: concentration.pairwise_cv,
         distance_pairwise_cv_minimum: config.cv_min,
         nearest_neighbor_over_pairwise_mean: concentration.nn_over_pairwise_mean,
-        nearest_neighbor_ratio_maximum: config.nn_ratio_max,
+        nearest_neighbor_over_pairwise_mean_maximum: config
+            .nearest_neighbor_over_pairwise_mean_maximum,
     };
     let report = Arc::new(report);
     Ok(PairMiOutcome::Estimated(PairKsgEvidence {
@@ -2583,6 +2616,14 @@ mod tests {
     #[test]
     fn ksg_budget_binds_the_exact_maximum_window_preflight() {
         let budget = ksg_resource_budget().unwrap();
+        let second_budget = ksg_resource_budget().unwrap();
+        assert_eq!(budget, second_budget);
+        let budget_json = serde_json::to_vec(&budget).unwrap();
+        assert_eq!(budget_json, serde_json::to_vec(&second_budget).unwrap());
+        assert_eq!(
+            budget_json,
+            br#"{"max_bytes":1073741824,"max_pairwise_distances":523264,"max_operations_hint":10000000000,"max_threads":1}"#
+        );
         assert_eq!(budget.max_bytes, KSG_RESOURCE_MAX_BYTES);
         assert_eq!(
             budget.max_pairwise_distances,
@@ -2638,6 +2679,44 @@ mod tests {
                 ..
             }) if requested == u128::from(KSG_RESOURCE_MAX_PAIRWISE_DISTANCES)
                 && limit == u128::from(KSG_RESOURCE_MAX_PAIRWISE_DISTANCES - 1)
+        ));
+    }
+
+    #[test]
+    fn distance_concentration_uses_mean_unordered_pairwise_denominator_and_budget() {
+        let points = MatOwned::new(vec![0.0, 1.0, 4.0], 3, 1).unwrap();
+        let budget = ksg_resource_budget().unwrap();
+        let config = DistanceConcentrationConfig::default().with_metric(Metric::Chebyshev);
+        let estimate = distance_concentration_resource_estimate(points.as_ref()).unwrap();
+        assert_eq!(estimate.pairwise_distances, 3);
+        let report =
+            distance_concentration_stats_with_budget(points.as_ref(), &config, budget).unwrap();
+
+        // Pairwise distances are 1, 4, and 3; nearest-neighbor distances are 1, 1, and 3.
+        let expected_pairwise_mean = 8.0 / 3.0;
+        let expected_nearest_neighbor_mean = 5.0 / 3.0;
+        let expected_ratio = expected_nearest_neighbor_mean / expected_pairwise_mean;
+        let ratio_using_maximum_distance = expected_nearest_neighbor_mean / 4.0;
+        assert!((report.pairwise_mean - expected_pairwise_mean).abs() < 1.0e-15);
+        assert!((report.nn_mean - expected_nearest_neighbor_mean).abs() < 1.0e-15);
+        assert!((report.nn_over_pairwise_mean - expected_ratio).abs() < 1.0e-15);
+        assert!((report.nn_over_pairwise_mean - ratio_using_maximum_distance).abs() > 0.1);
+
+        let one_below = ResourceBudget::new(
+            budget.max_bytes,
+            2,
+            budget.max_operations_hint,
+            budget.max_threads,
+        )
+        .unwrap();
+        assert!(matches!(
+            distance_concentration_stats_with_budget(points.as_ref(), &config, one_below),
+            Err(PidError::ResourceLimitExceeded {
+                resource: "pairwise_distances",
+                requested: 3,
+                limit: 2,
+                ..
+            })
         ));
     }
 
@@ -2792,10 +2871,10 @@ mod tests {
         }
         for value in [f64::NAN, 0.0, 1.01] {
             let mut params = base.clone();
-            params.nn_ratio_max = value;
+            params.nearest_neighbor_over_pairwise_mean_maximum = value;
             assert_eq!(
                 MiConsensusConfig::try_new(params, declared_law.clone()).unwrap_err(),
-                MiConsensusConfigError::NearestNeighborRatioInvalid
+                MiConsensusConfigError::NearestNeighborOverPairwiseMeanMaximumInvalid
             );
         }
         for value in [f64::NAN, 0.0, 1.01] {
@@ -2825,7 +2904,7 @@ mod tests {
         }
 
         let mut accepted_ceilings = base.clone();
-        accepted_ceilings.nn_ratio_max = 1.0;
+        accepted_ceilings.nearest_neighbor_over_pairwise_mean_maximum = 1.0;
         accepted_ceilings.separation_ratio = 1.0;
         accepted_ceilings.stability = DependenceStabilityParams::ExhaustiveCircularDeleteBlock {
             block_size: accepted_ceilings.window - accepted_ceilings.min_samples,
@@ -2851,7 +2930,7 @@ mod tests {
         params.id_min = 1.4;
         params.id_max = 2.8;
         params.cv_min = 0.02;
-        params.nn_ratio_max = 0.95;
+        params.nearest_neighbor_over_pairwise_mean_maximum = 0.95;
         params.separation_ratio = 0.55;
         params.mi_floor_nats = 0.04;
         let expected_params = params.clone();
@@ -2940,8 +3019,12 @@ mod tests {
         assert_eq!(config.id_max().to_bits(), expected_params.id_max.to_bits());
         assert_eq!(config.cv_min().to_bits(), expected_params.cv_min.to_bits());
         assert_eq!(
-            config.nn_ratio_max().to_bits(),
-            expected_params.nn_ratio_max.to_bits()
+            config
+                .nearest_neighbor_over_pairwise_mean_maximum()
+                .to_bits(),
+            expected_params
+                .nearest_neighbor_over_pairwise_mean_maximum
+                .to_bits()
         );
         assert_eq!(
             config.separation_ratio().to_bits(),
@@ -2992,7 +3075,9 @@ mod tests {
             accepted
                 .nearest_neighbor_over_pairwise_mean_maximum()
                 .to_bits(),
-            config.nn_ratio_max().to_bits()
+            config
+                .nearest_neighbor_over_pairwise_mean_maximum()
+                .to_bits()
         );
         assert_eq!(
             accepted.separation_ratio().to_bits(),
@@ -3255,7 +3340,7 @@ mod tests {
         }
 
         let pairwise_cv = config.cv_min() + 0.1;
-        let neighbor_ratio = config.nn_ratio_max() - 0.1;
+        let neighbor_ratio = config.nearest_neighbor_over_pairwise_mean_maximum() - 0.1;
         assert!(concentration_geometry_is_admissible(
             pairwise_cv,
             neighbor_ratio,
@@ -3263,7 +3348,7 @@ mod tests {
         ));
         assert!(concentration_geometry_is_admissible(
             config.cv_min(),
-            config.nn_ratio_max(),
+            config.nearest_neighbor_over_pairwise_mean_maximum(),
             &config
         ));
         for (rejected_cv, rejected_ratio) in [
@@ -3272,7 +3357,10 @@ mod tests {
             (f64::INFINITY, neighbor_ratio),
             (pairwise_cv, f64::NEG_INFINITY),
             (config.cv_min() - 0.001, neighbor_ratio),
-            (pairwise_cv, config.nn_ratio_max() + 0.001),
+            (
+                pairwise_cv,
+                config.nearest_neighbor_over_pairwise_mean_maximum() + 0.001,
+            ),
         ] {
             assert!(!concentration_geometry_is_admissible(
                 rejected_cv,
@@ -3517,6 +3605,7 @@ mod tests {
         assert!(!report.estimator().calibrated_security_role());
 
         assert_eq!(report.schema(), MI_CONSENSUS_REPORT_SCHEMA);
+        assert_eq!(report.schema(), "galadriel.mi-consensus-report.v3");
         assert_eq!(report.channels().len(), input.channels().len());
         assert_eq!(report.row_set().channel_count(), input.channels().len());
         assert_eq!(report.row_set().rows_per_channel(), config.window());
@@ -3681,6 +3770,26 @@ mod tests {
 
             let geometry = evidence.geometry();
             let intrinsic = geometry.intrinsic_dimension_report();
+            assert_eq!(geometry.resource_budget(), expected_budget);
+            assert_eq!(geometry.resource_budget().max_threads, 1);
+            assert_eq!(intrinsic.resource_budget, expected_budget);
+            assert_eq!(upstream.resource_budget, expected_budget);
+            assert_eq!(
+                geometry.distance_concentration_resource_estimate(),
+                distance_concentration_resource_estimate(
+                    joint_matrix(first_values, second_values)
+                        .expect("joint pair matrix")
+                        .as_ref()
+                )
+                .expect("distance-concentration preflight")
+            );
+            geometry
+                .resource_budget()
+                .check(
+                    "retained distance-concentration preflight",
+                    geometry.distance_concentration_resource_estimate(),
+                )
+                .expect("retained geometry budget covers the retained preflight");
             assert_eq!(
                 geometry.intrinsic_dimension().to_bits(),
                 intrinsic.mean.to_bits()
@@ -3705,8 +3814,12 @@ mod tests {
                 config.cv_min().to_bits()
             );
             assert_eq!(
-                geometry.nearest_neighbor_ratio_maximum().to_bits(),
-                config.nn_ratio_max().to_bits()
+                geometry
+                    .nearest_neighbor_over_pairwise_mean_maximum()
+                    .to_bits(),
+                config
+                    .nearest_neighbor_over_pairwise_mean_maximum()
+                    .to_bits()
             );
             let geometry_json = serde_json::to_value(geometry).unwrap();
             assert_eq!(

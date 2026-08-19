@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="2640" viewBox="0 0 1800 2640" role="img" aria-labelledby="title desc" xml:lang="en" focusable="false">
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="2756" viewBox="0 0 1800 2756" role="img" aria-labelledby="title desc" xml:lang="en" focusable="false">
   <title id="title">Question-first method selection for the CREBAIN categorical MGW study</title>
-  <desc id="desc">Publication diagram that separates four question-first lanes and sixteen typed method objects. Normalized innovation squared assesses per-channel innovation magnitude. A two-arm CUSUM is a separate operational diagnostic. Its lower arm is inert on the fusion core's degrees-of-freedom-three route. Other admitted degrees of freedom retain the general recurrence. Signed Pearson correlation assesses directional linear agreement. None of these three operational diagnostics is evaluated by this fixture. KSG estimates general pairwise continuous dependence, including nonlinear dependence, when its declared support and row assumptions hold. Mutual information is direction-free with respect to correlation sign. KSG is not a PID. KSG is inapplicable to this repeated atomic categorical fixture. Categorical Makkeh-Gutknecht-Wibral shared-exclusions PID is produced because the study fixes ordered categorical sources, a named latent-truth target, and the complete empirical PMF. The primary PID2 chart uses a zero to 0.45 nat scale. This domain contains the largest value of 0.405465 nats. The chart shows informative, misinformative, and signed net components for redundancy, unique visual, unique radar, and synergy. The full eligibility matrix keeps the paper-defined categorical MGW functional separate from pid-core's budgeted PID2 and PID3 evaluators. It also keeps Williams-Beer I-min, two-source-only BROJA, the Schick-Poland general construction, the continuous Ehrlich functional, the Ehrlich nearest-neighbor estimator, pairwise KSG mutual information, co-information, O-information, normalized innovation squared, the two-arm CUSUM, signed correlation, and the PNAS and ICLR infomorphic objective compositions separate. Only the MGW functional and its two selected pid-core evaluators produce output here. PID3 remains exploratory. It does not close the separate 108-coordinate averaged cumulative-plus-atom assurance program. The dependency-disjoint Decimal route compares 66 averaged atom components only. Asymmetric PID2 and PID3 canaries protect source order. All output remains record-only advisory evidence with no edge to FusedVerdict or Haldir policy.</desc>
+  <desc id="desc">Publication diagram that separates four question-first lanes and eighteen typed method objects. Normalized innovation squared assesses per-channel innovation magnitude. A two-arm CUSUM is a separate operational diagnostic. Its lower arm is inert on the fusion core's degrees-of-freedom-three route. Other admitted degrees of freedom retain the general recurrence. Signed Pearson correlation assesses directional linear agreement. None of these three operational diagnostics is evaluated by this fixture. KSG estimates general pairwise continuous dependence, including nonlinear dependence, when its declared support and row assumptions hold. Mutual information is direction-free with respect to correlation sign. KSG is not a PID. KSG is inapplicable to this repeated atomic categorical fixture. Categorical Makkeh-Gutknecht-Wibral shared-exclusions PID is produced because the study fixes ordered categorical sources, a named latent-truth target, and complete raw rows. The matrix separates five selected categorical objects. The paper functional is functional.shared-exclusions.mgw-categorical. The raw-row empirical-PMF sample-estimator route is route.shared-exclusions.mgw-empirical-pmf. The upstream implementation-method catalog identity is shared-exclusions.categorical. The concrete entry points are pid_core::stable::categorical::discrete_sxpid2_with_budget and pid_core::stable::categorical::discrete_sxpid3_with_budget. Raw rows produce a plug-in empirical-PMF estimate. They do not evaluate a separately declared population law. Exact cell balance makes the empirical PMF coincide with the canonical law for this fixture only. The primary PID2 chart uses a zero to 0.45 nat scale. This domain contains the largest value of 0.405465 nats. The chart shows informative, misinformative, and signed net components for redundancy, unique visual, unique radar, and synergy. The full eligibility matrix also keeps Williams-Beer I-min, two-source-only BROJA, the Schick-Poland general construction, the continuous Ehrlich functional, the Ehrlich nearest-neighbor estimator, pairwise KSG mutual information, co-information, O-information, normalized innovation squared, the two-arm CUSUM, signed correlation, and the PNAS and ICLR infomorphic objective compositions separate. Only the five selected categorical-chain objects have produced status. Concrete PID output is emitted through the two exact entry points. PID3 remains exploratory. It does not close the separate 108-coordinate averaged cumulative-plus-atom assurance program. The dependency-disjoint Decimal route compares 66 averaged atom components only. Asymmetric PID2 and PID3 canaries protect source order. All output remains record-only advisory evidence with no edge to FusedVerdict or Haldir policy.</desc>
   <defs>
     <style>
       text { font-family: "Source Sans 3", "Source Sans Pro", Inter, "IBM Plex Sans", Arial, Helvetica, sans-serif; }
@@ -13,6 +13,7 @@
       .tiny { font-size: 16px; fill: #3F596F; }
       .table-main { font-size: 19px; fill: #2C3E50; }
       .table-small { font-size: 17px; fill: #3F596F; }
+      .table-id { font-family: "IBM Plex Mono", Menlo, Consolas, monospace; font-size: 13px; fill: #3F596F; }
       .equation { font-family: "IBM Plex Mono", Menlo, Consolas, monospace; font-size: 20px; fill: #2C3E50; }
       .lane { fill: #FCFBF7; stroke: #D2E0E2; stroke-width: 2.2; }
       .operational { fill: #edf7ff; stroke: #1769aa; stroke-width: 2.4; }
@@ -81,8 +82,8 @@
   <text x="1015" y="468" text-anchor="middle" class="badge-light">PRODUCED</text>
   <text x="942" y="516" class="node-title">How is information about one target allocated?</text>
   <text x="942" y="555" class="body">Use a named PID functional on a fixed source–target estimand.</text>
-  <text x="942" y="590" class="small">Here: categorical MGW · ordered sources · latent-truth target · empirical PMF</text>
-  <text x="942" y="620" class="tiny">The output is a measure-relative statistical allocation, not a stronger verdict.</text>
+  <text x="942" y="590" class="small">Here: categorical MGW · ordered sources · latent-truth target · raw rows → empirical PMF</text>
+  <text x="942" y="620" class="tiny">This is a sample estimate. Exact-law coincidence is limited to this balanced fixture.</text>
 
   <rect x="40" y="720" width="1720" height="610" rx="22" class="lane"/>
   <text x="68" y="754" class="section">2 · PRIMARY PID2 RESULT · HORIZONTAL INCURSION · NATURAL-LOG UNITS</text>
@@ -158,137 +159,158 @@
 
   <text x="68" y="1303" class="tiny">Scale maximum = 0.45 nats. The largest bar, ln(3/2) = 0.405465…, is inside the plotted domain.</text>
 
-  <rect x="40" y="1355" width="1720" height="1180" rx="22" class="lane"/>
-  <text x="68" y="1389" class="section">3 · SIXTEEN DISTINCT OBJECTS IN THE TYPED ELIGIBILITY MATRIX</text>
-  <text x="68" y="1423" class="small">Status applies only to this exact fixture. Functional, evaluator, estimator, diagnostic, and objective identities never transfer by proximity.</text>
+  <rect x="40" y="1355" width="1720" height="1296" rx="22" class="lane"/>
+  <text x="68" y="1389" class="section">3 · EIGHTEEN DISTINCT OBJECTS IN THE TYPED ELIGIBILITY MATRIX</text>
+  <text x="68" y="1423" class="small">Status applies only here. Functional, sample-estimator route, implementation method, entry point, estimator, diagnostic, and objective stay distinct.</text>
 
   <rect x="70" y="1450" width="1660" height="58" fill="#E7EEF0"/>
   <text x="90" y="1486" class="body" font-weight="700">Object</text>
   <text x="475" y="1486" class="body" font-weight="700">Kind</text>
   <text x="690" y="1486" class="body" font-weight="700">Disposition</text>
   <text x="930" y="1486" class="body" font-weight="700">Exact role and boundary here</text>
-  <line x1="455" y1="1450" x2="455" y2="2436" class="grid"/>
-  <line x1="665" y1="1450" x2="665" y2="2436" class="grid"/>
-  <line x1="900" y1="1450" x2="900" y2="2436" class="grid"/>
+  <line x1="455" y1="1450" x2="455" y2="2552" class="grid"/>
+  <line x1="665" y1="1450" x2="665" y2="2552" class="grid"/>
+  <line x1="900" y1="1450" x2="900" y2="2552" class="grid"/>
 
   <rect x="70" y="1508" width="1660" height="58" class="row-a"/>
-  <text x="90" y="1543" class="table-main">Categorical MGW shared exclusions</text>
+  <text x="90" y="1532" class="table-main">Categorical MGW paper functional</text>
+  <text x="90" y="1554" class="table-id">functional.shared-exclusions.mgw-categorical</text>
   <text x="475" y="1543" class="table-main">Functional</text>
   <rect x="690" y="1523" width="174" height="28" rx="14" class="produced"/><text x="777" y="1542" text-anchor="middle" class="badge">PRODUCED · PRIMARY</text>
   <text x="930" y="1534" class="table-main">Paper-defined pointwise cumulatives and Möbius atoms.</text>
-  <text x="930" y="1556" class="table-small">Empirical-PMF averages. No alternative PID is substituted.</text>
+  <text x="930" y="1556" class="table-small">The functional does not identify a sample route or software entry point.</text>
 
   <rect x="70" y="1566" width="1660" height="58" class="row-b"/>
-  <text x="90" y="1590" class="table-main">pid-core raw-row MGW PID2</text>
-  <text x="90" y="1612" class="table-small">discrete_sxpid2_with_budget</text>
-  <text x="475" y="1601" class="table-main">Evaluator</text>
+  <text x="90" y="1590" class="table-main">Raw-row empirical-PMF route</text>
+  <text x="90" y="1612" class="table-id">route.shared-exclusions.mgw-empirical-pmf</text>
+  <text x="475" y="1592" class="table-small">Sample-estimator</text>
+  <text x="475" y="1613" class="table-small">route</text>
   <rect x="690" y="1581" width="174" height="28" rx="14" class="produced"/><text x="777" y="1600" text-anchor="middle" class="badge">PRODUCED · PRIMARY</text>
-  <text x="930" y="1592" class="table-main">Ordered (V,R), T_H · 4 pointwise and averaged signed atoms.</text>
-  <text x="930" y="1614" class="table-small">Explicit per-call budget. The evaluator does not define MGW.</text>
+  <text x="930" y="1592" class="table-main">Raw rows form a plug-in empirical PMF before functional evaluation.</text>
+  <text x="930" y="1614" class="table-small">This is sample estimation, not evaluation of a declared population law.</text>
 
   <rect x="70" y="1624" width="1660" height="58" class="row-a"/>
-  <text x="90" y="1648" class="table-main">pid-core raw-row MGW PID3</text>
-  <text x="90" y="1670" class="table-small">discrete_sxpid3_with_budget</text>
-  <text x="475" y="1659" class="table-main">Evaluator</text>
-  <rect x="690" y="1639" width="174" height="28" rx="14" class="explore"/><text x="777" y="1658" text-anchor="middle" class="badge">PRODUCED · EXPLORE</text>
-  <text x="930" y="1650" class="table-main">Ordered (V,R,A), T_V · 18 antichain atoms.</text>
-  <text x="930" y="1672" class="table-small">The separate 108-coordinate assurance program remains open.</text>
+  <text x="90" y="1648" class="table-main">pid-rs implementation method</text>
+  <text x="90" y="1670" class="table-id">shared-exclusions.categorical</text>
+  <text x="475" y="1650" class="table-small">Implementation</text>
+  <text x="475" y="1671" class="table-small">method</text>
+  <rect x="690" y="1639" width="174" height="28" rx="14" class="produced"/><text x="777" y="1658" text-anchor="middle" class="badge">PRODUCED · PRIMARY</text>
+  <text x="930" y="1650" class="table-main">Upstream method-catalog identity for categorical sample estimation.</text>
+  <text x="930" y="1672" class="table-small">It is neither the paper-functional ID nor Galadriel's route ID.</text>
 
   <rect x="70" y="1682" width="1660" height="58" class="row-b"/>
-  <text x="90" y="1717" class="table-main">Williams–Beer I_min PID</text>
-  <text x="475" y="1717" class="table-main">Functional</text>
-  <rect x="690" y="1697" width="174" height="28" rx="14" class="separate"/><text x="777" y="1716" text-anchor="middle" class="badge">NOT REQUESTED</text>
-  <text x="930" y="1708" class="table-main">Different redundancy functional and atom allocation.</text>
-  <text x="930" y="1730" class="table-small">Comparator only. A shared lattice does not make it an MGW alias.</text>
+  <text x="90" y="1706" class="table-main">pid-core budgeted MGW PID2</text>
+  <text x="90" y="1728" class="table-small">Exact concrete entry point</text>
+  <text x="475" y="1708" class="table-small">Implementation</text>
+  <text x="475" y="1729" class="table-small">entry point</text>
+  <rect x="690" y="1697" width="174" height="28" rx="14" class="produced"/><text x="777" y="1716" text-anchor="middle" class="badge">PRODUCED · PRIMARY</text>
+  <text x="930" y="1708" class="table-id">pid_core::stable::categorical::discrete_sxpid2_with_budget</text>
+  <text x="930" y="1730" class="table-small">Ordered (V,R), T_H · explicit budget · pointwise and averaged atoms.</text>
 
   <rect x="70" y="1740" width="1660" height="58" class="row-a"/>
-  <text x="90" y="1775" class="table-main">BROJA PID</text>
-  <text x="475" y="1775" class="table-main">Functional</text>
-  <rect x="690" y="1755" width="174" height="28" rx="14" class="separate"/><text x="777" y="1774" text-anchor="middle" class="badge">NOT REQUESTED</text>
-  <text x="930" y="1766" class="table-main">External constrained-distribution comparator for PID2 only.</text>
-  <text x="930" y="1788" class="table-small">Separate solver provenance. No three-source BROJA route is implied.</text>
+  <text x="90" y="1764" class="table-main">pid-core budgeted MGW PID3</text>
+  <text x="90" y="1786" class="table-small">Exact concrete entry point</text>
+  <text x="475" y="1766" class="table-small">Implementation</text>
+  <text x="475" y="1787" class="table-small">entry point</text>
+  <rect x="690" y="1755" width="174" height="28" rx="14" class="explore"/><text x="777" y="1774" text-anchor="middle" class="badge">PRODUCED · EXPLORE</text>
+  <text x="930" y="1766" class="table-id">pid_core::stable::categorical::discrete_sxpid3_with_budget</text>
+  <text x="930" y="1788" class="table-small">Ordered (V,R,A), T_V · 18 atoms. The 108-coordinate program stays open.</text>
 
   <rect x="70" y="1798" width="1660" height="58" class="row-b"/>
-  <text x="90" y="1822" class="table-main">Schick-Poland general PID</text>
-  <text x="90" y="1844" class="table-small">discrete and continuous construction</text>
+  <text x="90" y="1833" class="table-main">Williams–Beer I_min PID</text>
   <text x="475" y="1833" class="table-main">Functional</text>
-  <rect x="690" y="1813" width="174" height="28" rx="14" class="not-evaluated"/><text x="777" y="1832" text-anchor="middle" class="badge">NOT EVALUATED</text>
-  <text x="930" y="1824" class="table-main">General measure-theoretic reference boundary.</text>
-  <text x="930" y="1846" class="table-small">Neither MGW nor Ehrlich is treated as its alias or umbrella.</text>
+  <rect x="690" y="1813" width="174" height="28" rx="14" class="separate"/><text x="777" y="1832" text-anchor="middle" class="badge">NOT REQUESTED</text>
+  <text x="930" y="1824" class="table-main">Different redundancy functional and atom allocation.</text>
+  <text x="930" y="1846" class="table-small">Comparator only. A shared lattice does not make it an MGW alias.</text>
 
   <rect x="70" y="1856" width="1660" height="58" class="row-a"/>
-  <text x="90" y="1880" class="table-main">Continuous Ehrlich shared exclusions</text>
-  <text x="90" y="1902" class="table-small">functional and derived PID2 atoms</text>
+  <text x="90" y="1891" class="table-main">BROJA PID</text>
   <text x="475" y="1891" class="table-main">Functional</text>
-  <rect x="690" y="1871" width="174" height="28" rx="14" class="inapplicable"/><text x="777" y="1890" text-anchor="middle" class="badge">INAPPLICABLE</text>
-  <text x="930" y="1882" class="table-main">Distinct continuous estimand at a fixed source gauge.</text>
-  <text x="930" y="1904" class="table-small">No absolutely continuous law is declared for these atomic rows.</text>
+  <rect x="690" y="1871" width="174" height="28" rx="14" class="separate"/><text x="777" y="1890" text-anchor="middle" class="badge">NOT REQUESTED</text>
+  <text x="930" y="1882" class="table-main">External constrained-distribution comparator for PID2 only.</text>
+  <text x="930" y="1904" class="table-small">Separate solver provenance. No three-source BROJA route is implied.</text>
 
   <rect x="70" y="1914" width="1660" height="58" class="row-b"/>
-  <text x="90" y="1938" class="table-main">Ehrlich shared-exclusions kNN</text>
-  <text x="90" y="1960" class="table-small">continuous nearest-neighbor estimator</text>
-  <text x="475" y="1949" class="table-main">Estimator</text>
-  <rect x="690" y="1929" width="174" height="28" rx="14" class="inapplicable"/><text x="777" y="1948" text-anchor="middle" class="badge">INAPPLICABLE</text>
-  <text x="930" y="1940" class="table-main">Estimator identity is separate from the Ehrlich functional.</text>
-  <text x="930" y="1962" class="table-small">Atomic support abstains. No added-noise or quantization repair.</text>
+  <text x="90" y="1938" class="table-main">Schick-Poland general PID</text>
+  <text x="90" y="1960" class="table-small">discrete and continuous construction</text>
+  <text x="475" y="1949" class="table-main">Functional</text>
+  <rect x="690" y="1929" width="174" height="28" rx="14" class="not-evaluated"/><text x="777" y="1948" text-anchor="middle" class="badge">NOT EVALUATED</text>
+  <text x="930" y="1940" class="table-main">General measure-theoretic reference boundary.</text>
+  <text x="930" y="1962" class="table-small">Neither MGW nor Ehrlich is treated as its alias or umbrella.</text>
 
   <rect x="70" y="1972" width="1660" height="58" class="row-a"/>
-  <text x="90" y="2007" class="table-main">Pairwise KSG mutual information</text>
-  <text x="475" y="2007" class="table-main">Estimator</text>
+  <text x="90" y="1996" class="table-main">Continuous Ehrlich shared exclusions</text>
+  <text x="90" y="2018" class="table-small">functional and derived PID2 atoms</text>
+  <text x="475" y="2007" class="table-main">Functional</text>
   <rect x="690" y="1987" width="174" height="28" rx="14" class="inapplicable"/><text x="777" y="2006" text-anchor="middle" class="badge">INAPPLICABLE</text>
-  <text x="930" y="1998" class="table-main">General pairwise continuous dependence · direction-free · not PID.</text>
-  <text x="930" y="2020" class="table-small">Repeated categorical support violates the declared route.</text>
+  <text x="930" y="1998" class="table-main">Distinct continuous estimand at a fixed source gauge.</text>
+  <text x="930" y="2020" class="table-small">No absolutely continuous law is declared for these atomic rows.</text>
 
   <rect x="70" y="2030" width="1660" height="58" class="row-b"/>
-  <text x="90" y="2065" class="table-main">Co-information</text>
-  <text x="475" y="2065" class="table-main">Diagnostic</text>
-  <rect x="690" y="2045" width="174" height="28" rx="14" class="separate"/><text x="777" y="2064" text-anchor="middle" class="badge">NOT REQUESTED</text>
-  <text x="930" y="2056" class="table-main">Signed interaction invariant under a declared convention.</text>
-  <text x="930" y="2078" class="table-small">It is not a redundancy, unique-information, or synergy atom.</text>
+  <text x="90" y="2054" class="table-main">Ehrlich shared-exclusions kNN</text>
+  <text x="90" y="2076" class="table-small">continuous nearest-neighbor estimator</text>
+  <text x="475" y="2065" class="table-main">Estimator</text>
+  <rect x="690" y="2045" width="174" height="28" rx="14" class="inapplicable"/><text x="777" y="2064" text-anchor="middle" class="badge">INAPPLICABLE</text>
+  <text x="930" y="2056" class="table-main">Estimator identity is separate from the Ehrlich functional.</text>
+  <text x="930" y="2078" class="table-small">Atomic support abstains. No added-noise or quantization repair.</text>
 
   <rect x="70" y="2088" width="1660" height="58" class="row-a"/>
-  <text x="90" y="2123" class="table-main">O-information</text>
-  <text x="475" y="2123" class="table-main">Diagnostic</text>
-  <rect x="690" y="2103" width="174" height="28" rx="14" class="separate"/><text x="777" y="2122" text-anchor="middle" class="badge">NOT REQUESTED</text>
-  <text x="930" y="2114" class="table-main">System-level redundancy- versus synergy-dominated balance.</text>
-  <text x="930" y="2136" class="table-small">It does not allocate redundancy-lattice atoms.</text>
+  <text x="90" y="2123" class="table-main">Pairwise KSG mutual information</text>
+  <text x="475" y="2123" class="table-main">Estimator</text>
+  <rect x="690" y="2103" width="174" height="28" rx="14" class="inapplicable"/><text x="777" y="2122" text-anchor="middle" class="badge">INAPPLICABLE</text>
+  <text x="930" y="2114" class="table-main">General pairwise continuous dependence · direction-free · not PID.</text>
+  <text x="930" y="2136" class="table-small">Repeated categorical support violates the declared route.</text>
 
   <rect x="70" y="2146" width="1660" height="58" class="row-b"/>
-  <text x="90" y="2181" class="table-main">Normalized innovation squared</text>
+  <text x="90" y="2181" class="table-main">Co-information</text>
   <text x="475" y="2181" class="table-main">Diagnostic</text>
-  <rect x="690" y="2161" width="174" height="28" rx="14" class="not-evaluated"/><text x="777" y="2180" text-anchor="middle" class="badge">NOT EVALUATED</text>
-  <text x="930" y="2172" class="table-main">Per-channel innovation-magnitude diagnostic.</text>
-  <text x="930" y="2194" class="table-small">No lifecycle-qualified NIS report is produced here.</text>
+  <rect x="690" y="2161" width="174" height="28" rx="14" class="separate"/><text x="777" y="2180" text-anchor="middle" class="badge">NOT REQUESTED</text>
+  <text x="930" y="2172" class="table-main">Signed interaction invariant under a declared convention.</text>
+  <text x="930" y="2194" class="table-small">It is not a redundancy, unique-information, or synergy atom.</text>
 
   <rect x="70" y="2204" width="1660" height="58" class="row-a"/>
-  <text x="90" y="2239" class="table-main">Two-arm CUSUM</text>
+  <text x="90" y="2239" class="table-main">O-information</text>
   <text x="475" y="2239" class="table-main">Diagnostic</text>
-  <rect x="690" y="2219" width="174" height="28" rx="14" class="not-evaluated"/><text x="777" y="2238" text-anchor="middle" class="badge">NOT EVALUATED</text>
-  <text x="930" y="2230" class="table-main">Sequential accumulator. Fusion-core dof=3 lower arm is inert.</text>
-  <text x="930" y="2252" class="table-small">Distinct from NIS. No lifecycle-qualified state or alarm is produced here.</text>
+  <rect x="690" y="2219" width="174" height="28" rx="14" class="separate"/><text x="777" y="2238" text-anchor="middle" class="badge">NOT REQUESTED</text>
+  <text x="930" y="2230" class="table-main">System-level redundancy- versus synergy-dominated balance.</text>
+  <text x="930" y="2252" class="table-small">It does not allocate redundancy-lattice atoms.</text>
 
   <rect x="70" y="2262" width="1660" height="58" class="row-b"/>
-  <text x="90" y="2297" class="table-main">Signed Pearson correlation</text>
+  <text x="90" y="2297" class="table-main">Normalized innovation squared</text>
   <text x="475" y="2297" class="table-main">Diagnostic</text>
   <rect x="690" y="2277" width="174" height="28" rx="14" class="not-evaluated"/><text x="777" y="2296" text-anchor="middle" class="badge">NOT EVALUATED</text>
-  <text x="930" y="2288" class="table-main">Directional linear agreement under a separate lifecycle contract.</text>
-  <text x="930" y="2310" class="table-small">No correlation result is inferred from PID output.</text>
+  <text x="930" y="2288" class="table-main">Per-channel innovation-magnitude diagnostic.</text>
+  <text x="930" y="2310" class="table-small">No lifecycle-qualified NIS report is produced here.</text>
 
   <rect x="70" y="2320" width="1660" height="58" class="row-a"/>
-  <text x="90" y="2344" class="table-main">PNAS bivariate infomorphic</text>
-  <text x="90" y="2366" class="table-small">objective composition</text>
-  <text x="475" y="2355" class="table-main">Objective</text>
-  <rect x="690" y="2335" width="174" height="28" rx="14" class="separate"/><text x="777" y="2354" text-anchor="middle" class="badge">DOWNSTREAM ONLY</text>
-  <text x="930" y="2346" class="table-main">Two-input local learning goal composed from named atoms.</text>
-  <text x="930" y="2368" class="table-small">An objective composition is not a PID definition or evaluator.</text>
+  <text x="90" y="2355" class="table-main">Two-arm CUSUM</text>
+  <text x="475" y="2355" class="table-main">Diagnostic</text>
+  <rect x="690" y="2335" width="174" height="28" rx="14" class="not-evaluated"/><text x="777" y="2354" text-anchor="middle" class="badge">NOT EVALUATED</text>
+  <text x="930" y="2346" class="table-main">Sequential accumulator. Fusion-core dof=3 lower arm is inert.</text>
+  <text x="930" y="2368" class="table-small">Distinct from NIS. No lifecycle-qualified state or alarm is produced here.</text>
 
   <rect x="70" y="2378" width="1660" height="58" class="row-b"/>
-  <text x="90" y="2402" class="table-main">ICLR three-input-class</text>
-  <text x="90" y="2424" class="table-small">local objective composition</text>
-  <text x="475" y="2413" class="table-main">Objective</text>
-  <rect x="690" y="2393" width="174" height="28" rx="14" class="separate"/><text x="777" y="2412" text-anchor="middle" class="badge">DOWNSTREAM ONLY</text>
-  <text x="930" y="2404" class="table-main">Role-distinct from the PNAS bivariate objective.</text>
-  <text x="930" y="2426" class="table-small">Outside this evaluator. It does not define another PID.</text>
+  <text x="90" y="2413" class="table-main">Signed Pearson correlation</text>
+  <text x="475" y="2413" class="table-main">Diagnostic</text>
+  <rect x="690" y="2393" width="174" height="28" rx="14" class="not-evaluated"/><text x="777" y="2412" text-anchor="middle" class="badge">NOT EVALUATED</text>
+  <text x="930" y="2404" class="table-main">Directional linear agreement under a separate lifecycle contract.</text>
+  <text x="930" y="2426" class="table-small">No correlation result is inferred from PID output.</text>
+
+  <rect x="70" y="2436" width="1660" height="58" class="row-a"/>
+  <text x="90" y="2460" class="table-main">PNAS bivariate infomorphic</text>
+  <text x="90" y="2482" class="table-small">objective composition</text>
+  <text x="475" y="2471" class="table-main">Objective</text>
+  <rect x="690" y="2451" width="174" height="28" rx="14" class="separate"/><text x="777" y="2470" text-anchor="middle" class="badge">DOWNSTREAM ONLY</text>
+  <text x="930" y="2462" class="table-main">Two-input local learning goal composed from named atoms.</text>
+  <text x="930" y="2484" class="table-small">An objective composition is not a PID definition or implementation route.</text>
+
+  <rect x="70" y="2494" width="1660" height="58" class="row-b"/>
+  <text x="90" y="2518" class="table-main">ICLR three-input-class</text>
+  <text x="90" y="2540" class="table-small">local objective composition</text>
+  <text x="475" y="2529" class="table-main">Objective</text>
+  <rect x="690" y="2509" width="174" height="28" rx="14" class="separate"/><text x="777" y="2528" text-anchor="middle" class="badge">DOWNSTREAM ONLY</text>
+  <text x="930" y="2520" class="table-main">Role-distinct from the PNAS bivariate objective.</text>
+  <text x="930" y="2542" class="table-small">Outside this sample-estimator route. It does not define another PID.</text>
 
   <line x1="70" y1="1508" x2="1730" y2="1508" class="grid"/>
   <line x1="70" y1="1566" x2="1730" y2="1566" class="grid"/>
@@ -307,12 +329,14 @@
   <line x1="70" y1="2320" x2="1730" y2="2320" class="grid"/>
   <line x1="70" y1="2378" x2="1730" y2="2378" class="grid"/>
   <line x1="70" y1="2436" x2="1730" y2="2436" class="grid"/>
+  <line x1="70" y1="2494" x2="1730" y2="2494" class="grid"/>
+  <line x1="70" y1="2552" x2="1730" y2="2552" class="grid"/>
 
-  <text x="70" y="2473" class="small">Reference roles are typed separately across MGW, Williams–Beer, Schick-Poland, Ehrlich, KSG, and co-/O-information.</text>
-  <text x="70" y="2501" class="small">Page (1954) supplies only the sequential CUSUM foundation. Harder–Rauh–Lyu supply caveats. Two papers define objectives.</text>
-  <text x="70" y="2527" class="tiny">Full author teams, titles, locators, and role boundaries are serialized in the study. Citation adjacency never authorizes method substitution.</text>
+  <text x="70" y="2589" class="small">Reference roles are typed separately across MGW, Williams–Beer, Schick-Poland, Ehrlich, KSG, and co-/O-information.</text>
+  <text x="70" y="2617" class="small">Page (1954) supplies only the sequential CUSUM foundation. Harder–Rauh–Lyu supply caveats. Two papers define objectives.</text>
+  <text x="70" y="2643" class="tiny">Full author teams, titles, locators, and role boundaries are serialized in the study. Citation adjacency never authorizes method substitution.</text>
 
-  <rect x="40" y="2558" width="1720" height="65" rx="17" class="firewall"/>
-  <text x="68" y="2585" class="node-title danger-text">RECORD-ONLY AUTHORITY BOUNDARY</text>
-  <text x="68" y="2611" class="small danger-text">No PID value enters FusedVerdict or a Haldir decision. Galadriel 0.9.0 has no Haldir adapter, runtime edge, or policy effect.</text>
+  <rect x="40" y="2674" width="1720" height="65" rx="17" class="firewall"/>
+  <text x="68" y="2701" class="node-title danger-text">RECORD-ONLY AUTHORITY BOUNDARY</text>
+  <text x="68" y="2727" class="small danger-text">No PID value enters FusedVerdict or a Haldir decision. Galadriel 0.9.0 has no Haldir adapter, runtime edge, or policy effect.</text>
 </svg>

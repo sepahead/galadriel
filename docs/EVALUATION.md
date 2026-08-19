@@ -168,13 +168,17 @@ changes the accepted default core report.
 The selected pid-rs revision is
 `bc3aa80fb6025e709c2906a08bce25a4fac40578`. Its `pid-core` manifest declares
 version `0.9.0`. The dependence crate uses only its stable report-first KSG
-surface and calls `ksg_mi_report_with_budget` with the same explicit
-single-thread budget used for its retained preflight. No resolved Galadriel
+surface. For each pair, it constructs one explicit single-thread budget before
+geometry and passes that exact budget to the intrinsic-dimension report,
+distance-concentration report, KSG preflight, and
+`ksg_mi_report_with_budget`. The nested evidence retains the same budget identity
+and `max_threads=1`. This is per-call resource evidence, not an aggregate
+study-wide peak-memory or duration claim. No resolved Galadriel
 feature profile contains `pid-runlog`. Revision `1cd2424f…` remains only in the
 immutable CREBAIN producer preregistration and historical migration evidence.
 
 Every graph report carries the complete accepted named/custom graph parameters
-and a separate fixed KSG evaluator snapshot, even if the graph is unavailable.
+and a separate fixed KSG estimator snapshot, even if the graph is unavailable.
 Resource rejection during a point fit or deletion replay is typed separately
 from scientific pair unavailability and deletion instability.
 
@@ -203,19 +207,25 @@ fusion output, or enough state to prove state isolation. The repeats test
 bounded-summary fresh-instance reproducibility and exact software custody. They
 are not 64 independent experimental units.
 
-The evaluator verifies fixture/manifest SHA-256 values and reconstructs the
+The study verifies fixture/manifest SHA-256 values and reconstructs the
 declared source symbols and latent-truth targets before calling categorical
 `discrete_sxpid2_with_budget` and `discrete_sxpid3_with_budget` under an explicit
-resource budget. Closed-form AND-law mutual information, PID2 reconstruction,
+resource budget. These are the two arity-specific implementation entry points for
+sample-estimator route `route.shared-exclusions.mgw-empirical-pmf`, implemented
+by upstream method/catalog object `shared-exclusions.categorical`, estimating
+paper functional `functional.shared-exclusions.mgw-categorical`. Raw rows form an
+empirical PMF; they are not a declared-law evaluator. Exact fixture balance makes
+that empirical PMF equal the canonical law here without supporting population
+inference. Closed-form AND-law mutual information, PID2 reconstruction,
 seven PID3 down-set identities, fixed-source informative invariance, pointwise
 support/averaging checks, and a dependency-disjoint, separately implemented
 80-digit Decimal route provide bounded controls. That comparison covers the 66
 **averaged** signed atom components and ten subset mutual informations. It does
 not recompute the retained pointwise atoms and is not independent human or
 organizational replication. KSG and continuous Ehrlich PID are ineligible and
-are not executed on this repeated atomic law. The emitted v2 JSON is checked against the
+are not executed on this repeated atomic law. The emitted v3 JSON is checked against the
 closed Draft 2020-12 schema in
-`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v2.schema.json` by
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json` by
 `repo_work/check_crebain_mgw_schema.py`. The complete methodology and results
 are in
 [`CREBAIN-DRONE-MGW-STUDY.md`](CREBAIN-DRONE-MGW-STUDY.md).
