@@ -3190,7 +3190,7 @@ class ReviewToolsTest(unittest.TestCase):
                     "galadriel-justify",
                 ],
                 "supersedes": "ECO-001",
-                "why": "Binds the clean remote pid-core 0.9.0 revision selected by Cargo.lock for the optional dependence companion and offline PID studies. pid-runlog is not present in any resolved Galadriel feature profile. The immutable CREBAIN producer preregistration remains separately bound to its historical evaluator.",
+                "why": "Binds the clean remote pid-core 0.9.0 revision selected by Cargo.lock for the optional dependence companion and offline PID studies. pid-runlog is not present in any resolved Galadriel feature profile. The immutable CREBAIN producer preregistration remains separately bound to its historical implementation revision and unbudgeted entry-point strings.",
             },
             {
                 "id": "ECO-019",

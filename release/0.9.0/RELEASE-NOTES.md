@@ -185,8 +185,8 @@ integrations need explicit activation. PID is confined to the offline
 - Four receipts bind the broad shards.
 - One receipt binds the three focused outcomes.
 - All four broad shards and all three focused outcomes are exact-candidate gates.
-- A separate exact-head deep-quality job bounds the CREBAIN contract at 149
-  selected mutants: 146 caught, three exact compiler-unviable return
+- A separate exact-head deep-quality job bounds the CREBAIN contract at 155
+  selected mutants: 152 caught, three exact compiler-unviable return
   substitutions, and zero missed or timed out. It uploads a candidate-bound
   receipt outside the established signed version 5 mutation set. Finalization
   does not yet ingest that extra receipt, so publication must separately retain

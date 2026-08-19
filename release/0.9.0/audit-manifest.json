@@ -125,11 +125,11 @@
       "size_bytes": 26798
     },
     {
-      "git_blob_id": "01dcbbd0e5ffb06c38e3524f78661a3a062249b6",
+      "git_blob_id": "2313cd6cbb23730f278a3cf7fb75cd2f38409985",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d640a4115819e9f574cca34ddf53e462a30b39c91cb28b59d5d837f1cdbc63dc",
+      "sha256": "1e7cec7f33fd2ee8b989fadc190fac4c2effc0c0444fe1b7236010d1e52c62d9",
       "size_bytes": 63474
     },
     {
@@ -205,11 +205,11 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "bde8f94c623f03f562a6fc8de435342e297deb5e",
+      "git_blob_id": "57c439934a601ee2152495b0f83e737697ec5e02",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "74acefa5e3f3596f45defe3ec0d406579ca900e005fb66c8d0185fb84ae41eee",
+      "sha256": "07d5e487487ca6ff33065462d6bd19fb1d5f273bb009459dbc1535d20265a44b",
       "size_bytes": 61939
     },
     {
@@ -981,19 +981,19 @@
       "size_bytes": 7805
     },
     {
-      "git_blob_id": "0c0e784a8f136f17bdf0dc732b562baf0337f98b",
+      "git_blob_id": "3160dcb30429058c1d32ef622d0d6778676aa11a",
       "git_mode": "100644",
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "999b0100e85a4900e524d059d091eaac8854b05cb05d2cdc48250bd148085919",
+      "sha256": "2400d36369af6988aaa7b27797c184c7aeddfae3a9c6f942d962af11138e42f5",
       "size_bytes": 55152
     },
     {
-      "git_blob_id": "323dcedec36b78d5c4494931b276b87aed650283",
+      "git_blob_id": "410a7e1a339ca2d57afd1131fc7aed6137c6eabd",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d61f8dfd49abfa2cd37aa6eeb9fa994ba7b740e47b09b7733fd3d06a60485814",
+      "sha256": "853e1d08a3b0ea93435a4aee772bde1959a39d2df0fead0ab0e5527ab3ce67d3",
       "size_bytes": 27609
     },
     {
@@ -1333,27 +1333,27 @@
       "size_bytes": 32297
     },
     {
-      "git_blob_id": "f2c7aa16b42ba0c60188cfdd9f816c6f9e541c12",
+      "git_blob_id": "156198b2b2ec40c6c58f76d5cc8e2089a990c2f5",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "f6f75674bf3d25bba650d0a76e90f2bd26189f9ec10fd19d92423b40c1e38a44",
+      "sha256": "7430d3c8f0dbbd1641d75ef2827dbc4c193f6feeec6afa43a44148d8bd7ac082",
       "size_bytes": 26418
     },
     {
-      "git_blob_id": "f3519053cb073336fc12922e46218a126264b60b",
+      "git_blob_id": "8aa37110fb061da422ac738e5216215f4fd52980",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "9e736540769852488c6e70c79b4408734d1ffffcc77f3e386a604787876e31b0",
+      "sha256": "dc6349b7faa165a9d4ee4e671993c8479d5472028d53f62b0dae1acae64e0c6a",
       "size_bytes": 28015
     },
     {
-      "git_blob_id": "191e3623ee9251c0e9ca580c7f2d009de46bcf46",
+      "git_blob_id": "cf16d7aa6a3e7d99ddcf8f79cd5a5f0ef9dd7f98",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "c5d9776f3d0a53efc542578f2b8004528f13e5ab5766e7bb4c95191bc2d00c80",
+      "sha256": "3991b527f92f35f615bc72e2396ef161c18457598c85d8b9dee8ea56c17ac866",
       "size_bytes": 60928
     },
     {
@@ -1429,11 +1429,11 @@
       "size_bytes": 322
     },
     {
-      "git_blob_id": "9da83f4c5a97df2559ef205ce064fffa4afbf786",
+      "git_blob_id": "05a287a3a82880b75261f2d54e2bf0451b77829f",
       "git_mode": "100644",
       "path": "release/0.9.0/audit/threat-register.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "938ee9e33c5e2e82a9d208a864bcd180764042cf0d9f6d32c61e170031a66435",
+      "sha256": "b118463569459e82425c00cc9502722f0830b0e4699218001d42ed8f7f9d5df5",
       "size_bytes": 30699
     },
     {
@@ -1613,11 +1613,11 @@
       "size_bytes": 67085
     },
     {
-      "git_blob_id": "aa36d1fb3d11ce0a23790270b04af5557705b245",
+      "git_blob_id": "92faa026bc3e05e8f249588a3dffb1ede5c3f948",
       "git_mode": "100644",
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "589d644cc8cb687cf49616b42394ae3ddc6392b89df4fe602f92f1158c32cdd1",
+      "sha256": "f342168619782a5fe024520bbb7cfae6f1b27d46d811578b65c036639e244eb8",
       "size_bytes": 48465
     },
     {
@@ -1653,11 +1653,11 @@
       "size_bytes": 32916
     },
     {
-      "git_blob_id": "c7256cc592743072b6e300aba09e13a4139439b5",
+      "git_blob_id": "7d6591e784a2fc7e328fbaf17b60f0400b90bf63",
       "git_mode": "100644",
       "path": "repo_work/check_crebain_mgw_mutation.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1d3268afbf78c0c314a87098f70001b936a3938137df8bc4b58ff84739719a0d",
+      "sha256": "0638ba5a87620dd565a53c25fdab37c66afdfb3b9e3ef43587cdd4c5e43404eb",
       "size_bytes": 36645
     },
     {
@@ -1933,12 +1933,12 @@
       "size_bytes": 12774
     },
     {
-      "git_blob_id": "52b333cf12af47126fc5876b96dd0e243b7d8b4c",
+      "git_blob_id": "574a25b4620f0ee5762fc944a27b2e30227cb0e9",
       "git_mode": "100644",
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "04ed35df2ed9b8575a4fa7caeb6b9358fc1d4fef19b30e12e1504c2cfb7ed39c",
-      "size_bytes": 227441
+      "sha256": "66009b2b5da1304fe46eefebfe85a77b210bf04fef128b1288ce9c56b9ec29e2",
+      "size_bytes": 227490
     },
     {
       "git_blob_id": "6ddc9e9c9536ebfff98a52ff712a7888e9fa7b2d",
@@ -1973,11 +1973,11 @@
       "size_bytes": 212
     },
     {
-      "git_blob_id": "49906dd226de550c6e28bb4710898d23d2acb557",
+      "git_blob_id": "392fca369dc05f6f3c82bb7f0fbef432dfcbf299",
       "git_mode": "100755",
       "path": "scripts/release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "481d2e7cc7bda14b135edd0d0d1bdb412924009ce13521434e64dc9fa97b1242",
+      "sha256": "522f288c70082374ede1789cfd9632ddb35ec6fc8e7d33c546b13d43afc9910f",
       "size_bytes": 179001
     },
     {
@@ -3173,11 +3173,11 @@
   ],
   "normative_documents": [
     {
-      "git_blob_id": "f2c7aa16b42ba0c60188cfdd9f816c6f9e541c12",
+      "git_blob_id": "156198b2b2ec40c6c58f76d5cc8e2089a990c2f5",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "f6f75674bf3d25bba650d0a76e90f2bd26189f9ec10fd19d92423b40c1e38a44",
+      "sha256": "7430d3c8f0dbbd1641d75ef2827dbc4c193f6feeec6afa43a44148d8bd7ac082",
       "size_bytes": 26418
     },
     {
@@ -3237,11 +3237,11 @@
       "size_bytes": 1260
     },
     {
-      "git_blob_id": "323dcedec36b78d5c4494931b276b87aed650283",
+      "git_blob_id": "410a7e1a339ca2d57afd1131fc7aed6137c6eabd",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "d61f8dfd49abfa2cd37aa6eeb9fa994ba7b740e47b09b7733fd3d06a60485814",
+      "sha256": "853e1d08a3b0ea93435a4aee772bde1959a39d2df0fead0ab0e5527ab3ce67d3",
       "size_bytes": 27609
     },
     {
@@ -3253,11 +3253,11 @@
       "size_bytes": 6391
     },
     {
-      "git_blob_id": "191e3623ee9251c0e9ca580c7f2d009de46bcf46",
+      "git_blob_id": "cf16d7aa6a3e7d99ddcf8f79cd5a5f0ef9dd7f98",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "c5d9776f3d0a53efc542578f2b8004528f13e5ab5766e7bb4c95191bc2d00c80",
+      "sha256": "3991b527f92f35f615bc72e2396ef161c18457598c85d8b9dee8ea56c17ac866",
       "size_bytes": 60928
     }
   ],
@@ -3354,11 +3354,11 @@
     "size_bytes": 301
   },
   "threat_register": {
-    "git_blob_id": "9da83f4c5a97df2559ef205ce064fffa4afbf786",
+    "git_blob_id": "05a287a3a82880b75261f2d54e2bf0451b77829f",
     "git_mode": "100644",
     "path": "release/0.9.0/audit/threat-register.json",
     "purpose": "repository threat, misuse, and failure register",
-    "sha256": "938ee9e33c5e2e82a9d208a864bcd180764042cf0d9f6d32c61e170031a66435",
+    "sha256": "b118463569459e82425c00cc9502722f0830b0e4699218001d42ed8f7f9d5df5",
     "size_bytes": 30699
   },
   "toolchains": [

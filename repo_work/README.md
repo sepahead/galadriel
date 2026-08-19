@@ -61,7 +61,7 @@ raw output remains a separate release artifact step.
 `check_crebain_mgw_mutation.py` owns a separate exact-head mutation gate for the
 CREBAIN scientific contract. The deep-quality workflow first enumerates the
 selected set with cargo-mutants 27.1.0 and Rust 1.89.0. It then requires exactly
-149 mutants: 146 caught, three exact compile-unviable
+155 mutants: 152 caught, three exact compile-unviable
 `Ok(Default::default())` function-return substitutions, and no missed, timed-out,
 or surviving mutant. The gate binds a line-insensitive canonical multiset digest
 over each package, file, function, return type, transformation, replacement,

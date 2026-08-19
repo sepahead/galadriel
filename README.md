@@ -164,8 +164,8 @@ and entry-point roles; it is not a valid alternate contract. Rust custody/algebr
 remain separate semantic and numerical obligations.
 
 Deep quality also carries a bounded exact-head mutation gate for the seven
-CREBAIN contract functions. Its frozen selected set contains 149 transformations.
-The required outcome is 146 caught mutants, three exact compile-unviable
+CREBAIN contract functions. Its frozen selected set contains 155 transformations.
+The required outcome is 152 caught mutants, three exact compile-unviable
 function-return substitutions, and no missed, timed-out, or surviving mutant.
 The local repair reference has that outcome. The final candidate must reproduce
 it under cargo-mutants 27.1.0 and Rust 1.89.0 before publication.

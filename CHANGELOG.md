@@ -96,8 +96,8 @@ Before `1.0`, minor releases can contain breaking changes.
   claiming independent flights, field validity, causal meaning, 108-coordinate
   assurance closure, fusion influence, or control authority.
 - Add a bounded exact-head cargo-mutants gate for the seven CREBAIN scientific
-  contract functions. Freeze a line-insensitive 149-mutant multiset digest and
-  require 146 caught mutants, three exact compile-unviable function-return
+  contract functions. Freeze a line-insensitive 155-mutant multiset digest and
+  require 152 caught mutants, three exact compile-unviable function-return
   substitutions, and no missed, timed-out, or surviving mutant. Retain the
   candidate, toolchain, selector, command, outcome bytes, and GitHub run in a
   fail-closed receipt.

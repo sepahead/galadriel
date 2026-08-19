@@ -65,15 +65,15 @@ RECEIPT_SCHEMA = "galadriel.crebain-mgw-mutation-run.v1"
 GITHUB_JOB = "crebain-mgw-mutation"
 
 EXPECTED_COUNTS = {
-    "total_mutants": 149,
+    "total_mutants": 155,
     "missed": 0,
-    "caught": 146,
+    "caught": 152,
     "timeout": 0,
     "unviable": 3,
     "success": 0,
 }
 EXPECTED_NORMALIZED_MUTANTS_SHA256 = (
-    "64b9003123d33a633a949e7fa989237dd2512e03fe18878a9fd01e019c41cc7d"
+    "31fa7f1288a1bb23d63065515ea2789dfdc1da46c5339d789fd4689167b2b269"
 )
 EXPECTED_UNVIABLE = frozenset(
     {

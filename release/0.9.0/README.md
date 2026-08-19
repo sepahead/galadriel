@@ -205,7 +205,7 @@ The three focused outcome files share one focused receipt.
 All four broad shards and all three focused outcomes are exact-candidate gates.
 
 Deep quality also requires one separate bounded CREBAIN MGW gate on the same
-exact head. It enumerates 149 selected mutants and requires 146 caught, three
+exact head. It enumerates 155 selected mutants and requires 152 caught, three
 exact compile-unviable function-return substitutions, and no missed, timed-out,
 or surviving mutant. The dedicated `crebain-mgw-mutation` job uploads its
 candidate-bound receipt and outcome as `crebain-mgw-mutation-results`.

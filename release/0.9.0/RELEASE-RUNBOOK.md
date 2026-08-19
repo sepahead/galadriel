@@ -150,7 +150,7 @@ Restart every candidate-bound check.
    All four broad shards and all three focused outcomes are exact-candidate gates.
 
    The same exact-head workflow also requires the separate bounded CREBAIN MGW
-   gate. Its selected set has 149 mutants. The required result is 146 caught,
+   gate. Its selected set has 155 mutants. The required result is 152 caught,
    three exact compile-unviable function-return substitutions, and zero missed,
    timed-out, or surviving mutants. The dedicated `crebain-mgw-mutation` job
    uploads its outcome and candidate-bound receipt as

@@ -156,10 +156,10 @@ The runner rejects a source-span, transformation, or set difference before mutat
 Deep quality has one additional bounded gate for the CREBAIN MGW scientific
 contract. It uses cargo-mutants 27.1.0 and Rust 1.89.0. It selects only
 `crebain_mgw.rs` functions matched by the frozen seven-name expression. A
-non-executing listing must contain exactly 149 mutants and match canonical
+non-executing listing must contain exactly 155 mutants and match canonical
 line-insensitive multiset digest
-`64b9003123d33a633a949e7fa989237dd2512e03fe18878a9fd01e019c41cc7d` before
-execution starts. The executed result must contain 146 caught mutants and three
+`31fa7f1288a1bb23d63065515ea2789dfdc1da46c5339d789fd4689167b2b269` before
+execution starts. The executed result must contain 152 caught mutants and three
 exact compile-unviable `Ok(Default::default())` function-return substitutions.
 It permits no missed, timed-out, or surviving mutant. The gate validates each
 full descriptor and exact Cargo phase command. Its receipt binds the candidate
