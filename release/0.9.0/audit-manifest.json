@@ -1789,12 +1789,12 @@
       "size_bytes": 320993
     },
     {
-      "git_blob_id": "d10cb6e9ee48290d3e8ae2fa33d31a6b34bc3090",
+      "git_blob_id": "08b73ee05bedeacfe042e2401335e5c5d52daabf",
       "git_mode": "100644",
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "83f51614ace9d87db39dbc14d60adadbdff9887977130438ad64aacd7f8cd361",
-      "size_bytes": 280834
+      "sha256": "a3deb29216ed74ee02b58f4d2534e755538b57f1ac12d6330ffd1ca01b608a86",
+      "size_bytes": 280835
     },
     {
       "git_blob_id": "3dc0129f528c1a7031dcdbba666d0c0b9b890a98",
