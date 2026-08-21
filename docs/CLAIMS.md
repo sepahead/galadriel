@@ -57,7 +57,7 @@ parts of the component under specified conditions. It makes none of these claims
 - a DOI
 - a Zenodo record
 
-Dated read-only ecosystem inspections through 2026-08-03 do not change a claim
+Dated read-only ecosystem inspections through 2026-08-18 do not change a claim
 tier.
 Galadriel remains pinned to NCP wire 0.8.
 The implemented sidecars are historical NCP 1.0 migration input.
@@ -85,7 +85,18 @@ Neither state is implementation or validation evidence.
 
 Crebain is an optional reference producer with no Galadriel Cargo dependency.
 The inspected Crebain component has schema-v1 fixture alignment.
-It has no reciprocal final-candidate pin.
+It has no reciprocal Galadriel final-candidate pin or runtime qualification.
+The separate immutable fixture-source cut is bound to CREBAIN commit
+`6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d` and exact fixture bytes. That
+source-specific custody relationship is not a reciprocal deployment claim.
+The separate offline CREBAIN drone fixture and categorical MGW empirical-PMF
+sample-estimator implementation are
+`IMPLEMENTED` only for the exact 64-row deterministic law named in `CLM-018`.
+This does not retype the raw-row route as a declared-law evaluator; exact cell
+balance makes its empirical PMF coincide with the canonical fixture law only.
+That claim does not establish recorded-flight inference, continuous-PID
+eligibility, the wider PID3 assurance program, field performance, attack
+classification, or a runtime/control edge.
 Haldir is a prospective record-only consumer with no version 0.9.0 runtime edge.
 Prisoma is a prospective immutable offline consumer with no version 0.9.0
 runtime edge.

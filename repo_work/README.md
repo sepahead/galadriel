@@ -31,9 +31,43 @@ The generator refreshes only the derived residual-risk text.
 Verify that source state with these commands:
 
 ```bash
+python3 -B -E -s -S repo_work/check_crebain_mgw_decimal_oracle.py
+python3 -B -E -s -S repo_work/check_crebain_mgw_schema.py /tmp/galadriel-crebain-mgw-v3.json
+python3 -B -E -s -S repo_work/check_crebain_mgw_candidate.py
+python3 -B -E -s -S -m unittest -v repo_work.tests.test_crebain_mgw_mutation
 python3 -B -E -s -S repo_work/build_task_dispositions.py verify
 python3 -B -E -s -S scripts/release_audit.py verify
 ```
+
+`check_crebain_mgw_decimal_oracle.py` is a standard-library-only, 80-digit
+recalculation of the byte-bound drone law. It evaluates the categorical MGW
+event-union formula and performs its own antichain Möbius inversion without
+importing or executing pid-rs. Its 66-component digest is a bounded second
+computational route, not independent human review or a general validation
+theorem.
+
+`check_crebain_mgw_schema.py` is the standard-library validator for the closed
+Draft 2020-12 CREBAIN study-v3 wire contract. It lints the audited keyword
+subset, rejects duplicate members, non-finite/oversized values, open nested
+objects, optional declared properties, unresolved references, and schema-receipt
+mismatches, then validates an exact Rust JSON instance. This is a wire-contract
+gate. It does not replace the Rust semantic checks or Decimal computation.
+
+`check_crebain_mgw_candidate.py` executes the actual Rust study offline, applies
+both gates to the same exact bytes, and emits a canonical candidate receipt with
+the Rust JSON digest/size. Qualification retains the receipt log. Publishing the
+raw output remains a separate release artifact step.
+
+`check_crebain_mgw_mutation.py` owns a separate exact-head mutation gate for the
+CREBAIN scientific contract. The deep-quality workflow first enumerates the
+selected set with cargo-mutants 27.1.0 and Rust 1.89.0. It then requires exactly
+155 mutants: 152 caught, three exact compile-unviable
+`Ok(Default::default())` function-return substitutions, and no missed, timed-out,
+or surviving mutant. The gate binds a line-insensitive canonical multiset digest
+over each package, file, function, return type, transformation, replacement,
+genre, and multiplicity. It still validates every full source span and Cargo
+build/test phase. Line movement alone does not invalidate the gate. A changed
+selected transformation does.
 
 The release process produces exact-file completion after the signed candidate exists.
 It also produces task findings, the final twenty-lens review, and the release decision.
@@ -242,11 +276,15 @@ Public-API verification invokes `cargo-public-api` through the exact
 The workspace gate uses Rust 1.89.0.
 The current-stable gate uses Rust and Cargo 1.97.1.
 
-After all four `mutation-diff` jobs pass for the exact candidate, download their four artifact directories.
+After all four `mutation-diff` jobs and the dedicated `crebain-mgw-mutation`
+job pass for the exact candidate, download their five artifact directories.
 Inspect each directory.
 Each job contains one broad outcome and one broad shard receipt.
 Shard `2/4` also contains three focused outcomes and one focused receipt.
-All four broad shards and all three focused outcomes are exact-candidate gates.
+The separate `crebain-mgw-mutation-results` artifact contains the bounded
+CREBAIN MGW outcome and its candidate-bound receipt.
+All four broad shards, all three focused outcomes, and the CREBAIN MGW outcome
+are exact-candidate gates.
 
 Each exact mutation command uses environment schema `galadriel.mutation-environment.v2`.
 The command requires the Linux process file system (`procfs`), process file descriptors, and serialized child-subreaper ownership.
@@ -273,6 +311,11 @@ Before each focused run, pinned cargo-mutants enumerates the complete selected s
 The runner rejects a source-span, transformation, or set difference before mutation execution.
 Assemble all 13 mutation artifacts.
 These artifacts are seven outcome files, five run receipts, and one retained `git.diff`.
+
+The signed version 5 mutation assembler retains the established 13-artifact set.
+The CREBAIN MGW receipt remains a separate required exact-head workflow artifact
+until a reviewed mutation-evidence schema revision admits it. Do not count that
+separate receipt as one of the 13 version 5 artifacts.
 
 The receipt set contains four broad shard receipts and one focused receipt.
 Do not rewrite the candidate or trust a candidate-provided key:
@@ -602,7 +645,7 @@ It rejects hidden or conflicting software bill of materials identities.
 It binds the host-filtered license inventory to its exact semantic digest.
 The supply-chain CI job rebuilds that inventory from locked all-feature metadata.
 It rejects an obsolete qualification digest before candidate promotion.
-The 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope is not the complete 437-package graph.
+The 381-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope is not the complete 436-package graph.
 These checks do not qualify another target, registry, compiler, host, or deployment.
 
 Its signed manifest covers each retained artifact.

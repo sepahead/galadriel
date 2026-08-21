@@ -163,19 +163,18 @@ MUTATION_LIVENESS_EXCLUDE_RES = (
     # boundary is also unreachable: admitted suite work is a multiple of 270,
     # the cap has remainder 60, and a public-constructor frontier binds the
     # largest admitted neighborhood at 597,753,000 units.
-    # The remaining five accessors expose constructor-fixed fields on sealed
+    # The remaining four accessors expose constructor-fixed fields on sealed
     # evidence types; their listed replacements equal the only publicly
     # reachable values. Path/line/column anchors make source drift fail loud.
-    r"^crates/galadriel-dependence/src/engine\.rs:337:29: replace > with >= in DeclaredMiInput::try_new_with_origin$",
-    r"^crates/galadriel-dependence/src/engine\.rs:818:13: replace > with >= in quadratic_fit_work$",
-    r"^crates/galadriel-dependence/src/engine\.rs:2376:37: replace < with <= in canonical_pair$",
+    r"^crates/galadriel-dependence/src/engine\.rs:346:29: replace > with >= in DeclaredMiInput::try_new_with_origin$",
+    r"^crates/galadriel-dependence/src/engine\.rs:833:13: replace > with >= in quadratic_fit_work$",
+    r"^crates/galadriel-dependence/src/engine\.rs:2455:37: replace < with <= in canonical_pair$",
     r"^crates/galadriel-dependence/src/suite\.rs:129:39: replace > with == in DependenceResearchSuite::try_new_with_profile$",
     r"^crates/galadriel-dependence/src/suite\.rs:129:39: replace > with >= in DependenceResearchSuite::try_new_with_profile$",
-    r"^crates/galadriel-dependence/src/engine\.rs:991:9: replace MiKsgEvaluatorConfigEvidence::tie_epsilon -> f64 with 0\.0$",
-    r"^crates/galadriel-dependence/src/engine\.rs:1000:9: replace MiKsgEvaluatorConfigEvidence::support_intrinsic_dimension -> Option<usize> with None$",
-    r"^crates/galadriel-dependence/src/engine\.rs:1006:9: replace MiKsgEvaluatorConfigEvidence::support_density_regular -> bool with true$",
-    r"^crates/galadriel-dependence/src/engine\.rs:1009:9: replace MiKsgEvaluatorConfigEvidence::support_finite_information -> bool with true$",
-    r"^crates/galadriel-dependence/src/engine\.rs:1208:9: replace MiEstimatorEvidence::calibrated_security_role -> bool with false$",
+    r"^crates/galadriel-dependence/src/engine\.rs:1005:9: replace MiKsgEvaluatorConfigEvidence::tie_epsilon -> f64 with 0\.0$",
+    r"^crates/galadriel-dependence/src/engine\.rs:1017:9: replace MiKsgEvaluatorConfigEvidence::support_density_regular -> bool with true$",
+    r"^crates/galadriel-dependence/src/engine\.rs:1020:9: replace MiKsgEvaluatorConfigEvidence::support_finite_information -> bool with true$",
+    r"^crates/galadriel-dependence/src/engine\.rs:1228:9: replace MiEstimatorEvidence::calibrated_security_role -> bool with false$",
 )
 MUTATION_BASELINE_COMMIT = "94e2f8cc01f352d2bf899b7f656997f143a2588f"
 BROAD_MUTATION_RECEIPT = "BROAD-MUTATION-RUN.json"

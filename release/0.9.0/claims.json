@@ -160,6 +160,31 @@
       "scope": "release-operations rehearsal and incident response",
       "evidence": [],
       "limitations": "The checked procedures are not evidence that the release operator ran the GitHub publication path, destructive rollback, credential revocation, or production-equivalent incident drills."
+    },
+    {
+      "id": "CLM-018",
+      "claim": "The offline CREBAIN integration implements a raw-row empirical-PMF sample-estimator route for the paper-defined categorical MGW functional on one physically parameterized synthetic conformance fixture, with distinct pid-rs implementation-method and budgeted PID2/PID3 entry-point identities. Candidate gates cover complete signed averaged components, lattice reconstruction, a closed-world formal schema, a separately implemented 80-digit Decimal numerical cross-route, and an exact-output byte receipt.",
+      "tier": "IMPLEMENTED",
+      "scope": "the immutable 64-row CREBAIN fixture generated at revision 6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d and evaluated with pid-core revision bc3aa80fb6025e709c2906a08bce25a4fac40578. PID2 is primary deterministic conformance, PID3 is exploratory, and repeats support only bounded-summary fresh-instance reproducibility",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+        "crates/galadriel-justify/src/crebain_mgw.rs",
+        "crates/galadriel-justify/src/crebain_mgw_main.rs",
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
+        "docs/CREBAIN-DRONE-MGW-STUDY.md",
+        "repo_work/check_crebain_mgw_candidate.py",
+        "repo_work/check_crebain_mgw_decimal_oracle.py",
+        "repo_work/check_crebain_mgw_schema.py",
+        "repo_work/finalize_release.py",
+        "repo_work/qualify_candidate.py",
+        "repo_work/tests/test_crebain_mgw_candidate.py",
+        "repo_work/tests/test_crebain_mgw_decimal_oracle.py",
+        "repo_work/tests/test_finalize_qualification.py",
+        "repo_work/tests/test_crebain_mgw_schema.py",
+        "release/0.9.0/clm-018-assurance.json"
+      ],
+      "limitations": "The fixture is synthetic and physically parameterized, not physical or recorded-flight evidence. Its repeated rows demonstrate only bounded-summary fresh-instance reproducibility. They do not establish complete producer state isolation, 64 independent experimental units, or inferential precision. The target is dataflow-independent of projections, fusion, verdicts, and PID, but is generated inside the producer after sensor objects and source symbols are constructed. This is not a continuous-PID, 108-coordinate-assurance, causal, attack-classification, field-performance, deployment, safety, or authority claim. Candidate-bound retained execution evidence, independent human review, and independent clean-room reproduction remain absent."
     }
   ]
 }

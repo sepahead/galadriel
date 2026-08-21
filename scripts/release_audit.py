@@ -90,6 +90,7 @@ from release_assurance import (  # noqa: E402
 RELEASE = ROOT / "release" / "0.9.0"
 INPUTS = RELEASE / "audit-inputs.json"
 CLAIMS = RELEASE / "claims.json"
+CLM_018_ASSURANCE = RELEASE / "clm-018-assurance.json"
 DISPOSITIONS = RELEASE / "task-dispositions.json"
 CLOSURE_PLAN = RELEASE / "task-closure-plan.json"
 TASKS = RELEASE / "tasks.json"
@@ -108,6 +109,217 @@ AUDIT_DATE_SEMANTICS = (
 )
 NCP_STATUS_COMMIT = "1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
 PRISOMA_REINSPECTION_COMMIT = "efcad9943af818913702f11c47ed0c280a2a1f13"
+CREBAIN_FIXTURE_SOURCE_COMMIT = "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d"
+PRISOMA_PUBLICATION_CONTRACT_COMMIT = "85f55c99564d1899f2e34c8412c41aaa9fc8f6c3"
+PID_RS_SELECTED_COMMIT = "bc3aa80fb6025e709c2906a08bce25a4fac40578"
+HALDIR_RECORD_ONLY_REVIEW_COMMIT = "c19f9011e4919a5bc67fab5f90d6c8eefed4455b"
+PID_RS_PREREGISTERED_COMMIT = "1cd2424f7967e1752dcc8e53859e8fdad3566f51"
+CREBAIN_FIXTURE_SHA256 = (
+    "82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda"
+)
+CREBAIN_SCHEMA_SHA256 = (
+    "075e8905a1972772a413e6b3a0928303aec4f1c547ddbd0c281226433fb86b88"
+)
+CREBAIN_SCHEMA_BYTES = 61_857
+CREBAIN_PAPER_FUNCTIONAL_ID = "functional.shared-exclusions.mgw-categorical"
+CREBAIN_SAMPLE_ESTIMATOR_ROUTE_ID = "route.shared-exclusions.mgw-empirical-pmf"
+CREBAIN_UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID = "shared-exclusions.categorical"
+CREBAIN_PID2_IMPLEMENTATION_ENTRY_POINT = (
+    "pid_core::stable::categorical::discrete_sxpid2_with_budget"
+)
+CREBAIN_PID3_IMPLEMENTATION_ENTRY_POINT = (
+    "pid_core::stable::categorical::discrete_sxpid3_with_budget"
+)
+CLM_018_CLAIM_TEXT = (
+    "The offline CREBAIN integration implements a raw-row empirical-PMF sample-"
+    "estimator route for the paper-defined categorical MGW functional on one "
+    "physically parameterized synthetic conformance fixture, with distinct pid-rs "
+    "implementation-method and budgeted PID2/PID3 entry-point identities. Candidate "
+    "gates cover complete signed averaged components, lattice reconstruction, a "
+    "closed-world formal schema, a separately implemented 80-digit Decimal numerical "
+    "cross-route, and an exact-output byte receipt."
+)
+CLM_018_SCOPE = (
+    "the immutable 64-row CREBAIN fixture generated at revision "
+    f"{CREBAIN_FIXTURE_SOURCE_COMMIT} and evaluated with pid-core revision "
+    f"{PID_RS_SELECTED_COMMIT}. PID2 is primary deterministic conformance, PID3 is "
+    "exploratory, and repeats support only bounded-summary fresh-instance "
+    "reproducibility"
+)
+CLM_018_LIMITATIONS = (
+    "The fixture is synthetic and physically parameterized, not physical or "
+    "recorded-flight evidence. Its repeated rows demonstrate only bounded-summary "
+    "fresh-instance reproducibility. They do not establish complete producer state "
+    "isolation, 64 independent experimental units, or inferential precision. The "
+    "target is dataflow-independent of projections, fusion, verdicts, and PID, but "
+    "is generated inside the producer after sensor objects and source symbols are "
+    "constructed. This is not a continuous-PID, 108-coordinate-assurance, causal, "
+    "attack-classification, field-performance, deployment, safety, or authority "
+    "claim. Candidate-bound retained execution evidence, independent human review, "
+    "and independent clean-room reproduction remain absent."
+)
+CLM_018_EVIDENCE = (
+    ".github/workflows/ci.yml",
+    "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+    "crates/galadriel-justify/src/crebain_mgw.rs",
+    "crates/galadriel-justify/src/crebain_mgw_main.rs",
+    "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
+    "docs/CREBAIN-DRONE-MGW-STUDY.md",
+    "repo_work/check_crebain_mgw_candidate.py",
+    "repo_work/check_crebain_mgw_decimal_oracle.py",
+    "repo_work/check_crebain_mgw_schema.py",
+    "repo_work/finalize_release.py",
+    "repo_work/qualify_candidate.py",
+    "repo_work/tests/test_crebain_mgw_candidate.py",
+    "repo_work/tests/test_crebain_mgw_decimal_oracle.py",
+    "repo_work/tests/test_finalize_qualification.py",
+    "repo_work/tests/test_crebain_mgw_schema.py",
+    "release/0.9.0/clm-018-assurance.json",
+)
+CLM_018_HISTORICAL_PROJECTION = {
+    "release/0.9.0/tasks.json": (
+        "8278951155e7477e59a113e566bb2056a1705ba9fbce7899b4786ada16cec5ca",
+        "immutable 116-task source projection",
+    ),
+    "release/0.9.0/task-closure-plan.json": (
+        "23ef2f6085521863b9c575ee0b898e4ec87962ec15f205a729d9ec651972a085",
+        "derived closure obligations for the historical projection",
+    ),
+    "release/0.9.0/task-dispositions.json": (
+        "ea36cbbdbed8dfc4aae7a0034dfe91f223de24c7771f837530bff4ddee920639",
+        "candidate-bound disposition interface for the historical projection",
+    ),
+}
+CLM_018_GATE_CONTRACTS = {
+    "GATE-CLM018-001": (
+        "rust_contract_and_metamorphic_tests",
+        "cargo test --locked -p galadriel-justify crebain_mgw",
+        (
+            "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+            "crates/galadriel-justify/src/crebain_mgw.rs",
+        ),
+    ),
+    "GATE-CLM018-002": (
+        "closed_world_formal_schema_tests",
+        "python3 -B -E -s -S -m unittest -v repo_work.tests.test_crebain_mgw_schema",
+        (
+            "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
+            "repo_work/check_crebain_mgw_schema.py",
+            "repo_work/tests/test_crebain_mgw_schema.py",
+        ),
+    ),
+    "GATE-CLM018-003": (
+        "separate_decimal_oracle_tests",
+        "python3 -B -E -s -S -m unittest -v "
+        "repo_work.tests.test_crebain_mgw_decimal_oracle",
+        (
+            "repo_work/check_crebain_mgw_decimal_oracle.py",
+            "repo_work/tests/test_crebain_mgw_decimal_oracle.py",
+        ),
+    ),
+    "GATE-CLM018-004": (
+        "actual_binary_candidate_wrapper_test",
+        "python3 -B -E -s -S -m unittest -v "
+        "repo_work.tests.test_crebain_mgw_candidate",
+        (
+            ".github/workflows/ci.yml",
+            "crates/galadriel-justify/src/crebain_mgw_main.rs",
+            "repo_work/check_crebain_mgw_candidate.py",
+            "repo_work/check_crebain_mgw_decimal_oracle.py",
+            "repo_work/check_crebain_mgw_schema.py",
+            "repo_work/qualify_candidate.py",
+            "repo_work/tests/test_crebain_mgw_candidate.py",
+        ),
+    ),
+    "GATE-CLM018-005": (
+        "candidate_bound_actual_rust_schema_decimal_receipt",
+        "python3 -B -E -s -S repo_work/check_crebain_mgw_candidate.py",
+        (
+            "repo_work/check_crebain_mgw_candidate.py",
+            "repo_work/check_crebain_mgw_decimal_oracle.py",
+            "repo_work/check_crebain_mgw_schema.py",
+            "repo_work/finalize_release.py",
+            "repo_work/qualify_candidate.py",
+            "repo_work/tests/test_finalize_qualification.py",
+        ),
+    ),
+}
+CLM_018_QUALIFICATION_RUST_BLOCK = """    CommandSpec(
+        "crebain-mgw-rust-contract",
+        (
+            "cargo",
+            "test",
+            "--locked",
+            "-p",
+            "galadriel-justify",
+            "crebain_mgw",
+        ),
+        timeout_seconds=900,
+    ),
+"""
+CLM_018_QUALIFICATION_TEST_BLOCK = """    CommandSpec(
+        "crebain-mgw-contract-tests",
+        (
+            "python3",
+            "-B",
+            "-E",
+            "-s",
+            "-S",
+            "-m",
+            "unittest",
+            "-v",
+            "repo_work.tests.test_crebain_mgw_candidate",
+            "repo_work.tests.test_crebain_mgw_decimal_oracle",
+            "repo_work.tests.test_crebain_mgw_schema",
+        ),
+        timeout_seconds=900,
+    ),
+"""
+CLM_018_QUALIFICATION_COMMAND_BLOCK = """    CommandSpec(
+        "crebain-mgw-candidate-contract",
+        (
+            "python3",
+            "-B",
+            "-E",
+            "-s",
+            "-S",
+            "repo_work/check_crebain_mgw_candidate.py",
+        ),
+        timeout_seconds=600,
+    ),
+"""
+CLM_018_LENS_CONTROL_MARKERS = {
+    "L01": "synthetic categorical conformance",
+    "L02": "Boolean AND targets",
+    "L03": "no confidence interval or p-value",
+    "L04": "explicit resource receipts fail closed",
+    "L05": "without asserting retained per-modality timestamps",
+    "L06": "Separate identities bind",
+    "L07": "makes no cryptographic producer-authentication claim",
+    "L08": "no authority edge",
+    "L09": "schema checker is bounded and closed-world",
+    "L10": "explicit pid-core resource estimates and budgets for all nine calls",
+    "L11": "explicitly denies complete state-isolation evidence",
+    "L12": "Decimal coordinate digest",
+    "L13": "treats API review as a gate rather than inferred SemVer compatibility",
+    "L14": "actual Rust JSON carries an exact schema receipt",
+    "L15": "no deployment, ROS, network, credential, rollback, or operational acceptance claim",
+    "L16": "complete signed averaged coordinates",
+    "L17": "actual Rust-to-Decimal comparison",
+    "L18": "prospective record-only Haldir use",
+    "L19": "without rewriting historical tasks",
+    "L20": "fixed negative PID3 control",
+}
+CLM_018_RELEASE_README_MARKERS = (
+    "## Append-only CLM-018 assurance extension",
+    "**GLD-090-CLM-018:** Claim `CLM-018` **SHALL** remain an `IMPLEMENTED` claim",
+    "physically parameterized **synthetic categorical conformance law**",
+    "It **SHALL\nNOT** be described as physical validation",
+    "only bounded-summary fresh-instance reproducibility",
+    "Every exact candidate **SHALL** run and retain all five named gates",
+    "exact Rust output SHA-256 value and byte size",
+    "independent clean-room reproduction remain outstanding",
+)
 NCP_COMPACT_CONTRACT_HASH = "163acc57d8a62b66"
 NCP_COMPLETE_NORMATIVE_DIGEST = (
     "9cae331742d01e9b164e029aa06c644e6b1886176d0816a6ef883af138355c90"
@@ -148,6 +360,11 @@ PUBLIC_JSON_SCHEMA_IDS = (
         "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
         "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
         "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
+    ),
+    (
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
+        "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
     ),
 )
 PUBLICATION_SEQUENCE_MARKERS = (
@@ -258,7 +475,7 @@ PUBLICATION_SEQUENCE_MARKERS = (
     "wrong, follow the full withdrawal procedure below.",
 )
 RELEASE_RUNBOOK_CONTRACT_SHA256 = (
-    "1af7d1ee056e217535ccaa51b2935a3ed1673ec3fc3e64edc36e1e7651de5f6b"
+    "0145967678b09749a2e670905ef95135fb6f8261dcdf896825e5ef46b1da258c"
 )
 RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256 = (
     "917a7308fd7c3c5adcd1bac4218425ee26226abe50762cf3bbd1d3b6f256f11f"
@@ -307,7 +524,7 @@ VALID_THREAT_REGISTER_STATUSES = {
 REQUIRED_REPOSITORY_INPUTS = {
     "pid-rs": (
         "https://github.com/sepahead/pid-rs",
-        "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+        "bc3aa80fb6025e709c2906a08bce25a4fac40578",
         "optional pairwise-MI companion and offline PID dependency selected by Cargo.lock",
         "PINNED_COMPONENT",
     ),
@@ -321,6 +538,12 @@ REQUIRED_REPOSITORY_INPUTS = {
         "https://github.com/sepahead/crebain",
         "4c311900ade5668200a48d56fb191be1916b884a",
         "retained historical reference-producer fixture for contract review with no Cargo or runtime dependency",
+        "RECIPROCAL_FIXTURE",
+    ),
+    "CREBAIN fixture source": (
+        "https://github.com/sepahead/crebain",
+        "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d",
+        "immutable source commit that generated the bundled offline categorical fixture. It has no Cargo, runtime, feedback, or authority edge",
         "RECIPROCAL_FIXTURE",
     ),
     "Haldir": (
@@ -349,7 +572,7 @@ REQUIRED_REPOSITORY_INPUTS = {
     ),
 }
 LOCKED_REPOSITORY_PACKAGES = {
-    "pid-rs": {"pid-core", "pid-runlog"},
+    "pid-rs": {"pid-core"},
     "NCP": {"ncp-core", "ncp-zenoh"},
 }
 AUDIT_TO_QUALIFICATION_TOOL = {
@@ -2492,7 +2715,7 @@ def validate_project_metadata(
         ),
         "docs/CLAIMS.md": (
             "Version 0.9.0 implements a bounded and fail-closed advisory component.",
-            "Dated read-only ecosystem inspections through 2026-08-03 do not change a claim",
+            "Dated read-only ecosystem inspections through 2026-08-18 do not change a claim",
         ),
         "release/0.9.0/README.md": (
             "# Galadriel 0.9.0 source release record",
@@ -2732,6 +2955,513 @@ def validate_project_metadata(
     }
 
 
+def validate_clm_018_assurance(
+    claim: dict[str, Any] | None,
+    snapshot: RepositorySnapshot | None = None,
+) -> dict[str, Any]:
+    """Validate the append-only assurance extension for the bounded CLM-018 claim."""
+
+    if claim is None:
+        raise AuditError("claims matrix must retain CLM-018")
+    expected_claim = {
+        "id": "CLM-018",
+        "claim": CLM_018_CLAIM_TEXT,
+        "tier": "IMPLEMENTED",
+        "scope": CLM_018_SCOPE,
+        "evidence": list(CLM_018_EVIDENCE),
+        "limitations": CLM_018_LIMITATIONS,
+    }
+    if claim != expected_claim:
+        raise AuditError("CLM-018 differs from its exact bounded synthetic claim contract")
+
+    document = load_json(CLM_018_ASSURANCE, snapshot)
+    require_keys(
+        document,
+        {
+            "schema",
+            "release",
+            "claim_id",
+            "governance",
+            "claim_contract",
+            "identities",
+            "producer_source_errata",
+            "required_gates",
+            "lenses",
+            "closure",
+        },
+        "CLM-018 assurance",
+    )
+    if (
+        document["schema"] != "galadriel.clm-018-assurance-extension.v1"
+        or document["release"] != VERSION
+        or document["claim_id"] != "CLM-018"
+    ):
+        raise AuditError("CLM-018 assurance has the wrong schema, release, or claim")
+    release_readme_path = RELEASE / "README.md"
+    release_readme = (
+        _snapshot_text(release_readme_path, snapshot)
+        if snapshot is not None
+        else release_readme_path.read_text(encoding="utf-8")
+    )
+    for marker in CLM_018_RELEASE_README_MARKERS:
+        if release_readme.count(marker) != 1:
+            raise AuditError(f"CLM-018 release contract omits exact marker: {marker}")
+
+    governance = document["governance"]
+    require_keys(
+        governance,
+        {
+            "extension_kind",
+            "historical_task_count",
+            "historical_task_range",
+            "historical_projection",
+            "policy",
+        },
+        "CLM-018 assurance governance",
+    )
+    if (
+        governance["extension_kind"] != "append_only_claim_assurance"
+        or governance["historical_task_count"] != 116
+        or governance["historical_task_range"] != "T000 through T115"
+    ):
+        raise AuditError("CLM-018 assurance weakens its append-only task boundary")
+    policy = governance["policy"]
+    for marker in (
+        "added after the immutable 116-task handoff projection",
+        "does not insert a task",
+        "rewrite a historical task",
+        "manufacture a historical disposition",
+        "post-commit candidate evidence as complete",
+    ):
+        if not isinstance(policy, str) or marker not in policy:
+            raise AuditError(f"CLM-018 governance policy omits boundary: {marker}")
+    projection = governance["historical_projection"]
+    if not isinstance(projection, list) or len(projection) != len(
+        CLM_018_HISTORICAL_PROJECTION
+    ):
+        raise AuditError("CLM-018 assurance must bind exactly three historical artifacts")
+    seen_projection: set[str] = set()
+    for item in projection:
+        require_keys(item, {"path", "sha256", "role"}, "CLM-018 historical artifact")
+        path_string = item["path"]
+        if not isinstance(path_string, str) or path_string in seen_projection:
+            raise AuditError("CLM-018 historical artifact path is invalid or duplicate")
+        seen_projection.add(path_string)
+        expected = CLM_018_HISTORICAL_PROJECTION.get(path_string)
+        if expected is None or (item["sha256"], item["role"]) != expected:
+            raise AuditError(
+                f"CLM-018 historical artifact contract differs for {path_string}"
+            )
+        if sha256(ROOT / path_string, snapshot) != expected[0]:
+            raise AuditError(f"CLM-018 historical task bytes changed: {path_string}")
+    if seen_projection != set(CLM_018_HISTORICAL_PROJECTION):
+        raise AuditError("CLM-018 assurance omits a historical task artifact")
+
+    claim_contract = document["claim_contract"]
+    require_keys(
+        claim_contract,
+        {
+            "tier",
+            "subject",
+            "law",
+            "estimation_boundary",
+            "targets",
+            "target_boundary",
+            "reproducibility_claim",
+            "pid_scope",
+            "numerical_scope",
+            "authority_boundary",
+            "forbidden_inferences",
+        },
+        "CLM-018 bounded claim contract",
+    )
+    expected_contract_fields = {
+        "tier": "IMPLEMENTED",
+        "subject": "physically parameterized synthetic categorical conformance law",
+        "law": (
+            "an equal-weight empirical categorical law over all eight ordered "
+            "visual/radar/acoustic source cells, repeated eight times per cell"
+        ),
+        "estimation_boundary": (
+            "raw rows are converted to an empirical PMF sample estimate of the "
+            "paper functional. Exact cell balance makes that empirical PMF coincide "
+            "with the declared canonical law for this fixture only; the route is not "
+            "a declared-law evaluator and supports no population inference"
+        ),
+        "targets": (
+            "horizontal_incursion = visual AND radar; volumetric_incursion = visual "
+            "AND radar AND acoustic"
+        ),
+        "target_boundary": (
+            "the producer derives each synthetic target from its latent ENU cell "
+            "after constructing sensor objects and source symbols but before fusion. "
+            "Target derivation reads neither serialized source fields, projections, "
+            "fusion output, Galadriel verdicts, nor PID results"
+        ),
+        "reproducibility_claim": (
+            "the 64 retained rows establish bounded-summary fresh-instance "
+            "reproducibility for the generated fixture and no stronger "
+            "state-isolation or statistical-independence claim"
+        ),
+        "pid_scope": (
+            "categorical shared-exclusions MGW PID2 is the primary deterministic "
+            "conformance decomposition. Categorical shared-exclusions MGW PID3 is "
+            "exploratory and does not close pid-rs's separate 108-coordinate "
+            "assurance program"
+        ),
+        "numerical_scope": (
+            "all 66 averaged informative, misinformative, and signed-net atom "
+            "components, ten subset mutual informations, lattice identities, and "
+            "one negative signed-atom theorem control are checked. The candidate "
+            "wrapper receipts exact Rust output SHA-256 and byte size. Retained "
+            "pointwise atoms are internally reconstructed but are not independently "
+            "recomputed by the Decimal route"
+        ),
+        "authority_boundary": (
+            "the study is offline advisory research evidence. For fixed admitted "
+            "authority input, Haldir authorization, trusted-state policy, and "
+            "plant-command outputs are identical across PID record states. Audit "
+            "records may vary. No operator-behavior noninterference is claimed"
+        ),
+    }
+    for field, expected in expected_contract_fields.items():
+        if claim_contract[field] != expected:
+            raise AuditError(f"CLM-018 bounded claim contract differs at {field}")
+    expected_forbidden_inferences = [
+        "physical or recorded-flight validation",
+        "complete producer state isolation",
+        "64 independent experimental units",
+        "continuous-PID validity",
+        "closure of the separate 108-coordinate assurance program",
+        "causal or attack-classification validity",
+        "field, deployment, safety, latency, or availability performance",
+        "sensor-truth authentication or a calibrated posterior",
+        "command, policy, authorization, or control authority",
+        "independent human review or independent clean-room reproduction",
+    ]
+    if claim_contract["forbidden_inferences"] != expected_forbidden_inferences:
+        raise AuditError("CLM-018 assurance weakens its forbidden-inference boundary")
+
+    identities = document["identities"]
+    require_keys(
+        identities,
+        {
+            "producer_repository",
+            "producer_revision",
+            "fixture_path",
+            "fixture_sha256",
+            "producer_preregistered_pid_revision",
+            "actual_pid_core_revision",
+            "paper_functional_id",
+            "sample_estimator_route_id",
+            "upstream_implementation_method_catalog_id",
+            "pid2_implementation_entry_point",
+            "pid3_implementation_entry_point",
+            "sample_estimator_implementation_adaptation",
+            "schema_path",
+            "schema_id",
+            "schema_sha256",
+            "schema_bytes",
+        },
+        "CLM-018 identities",
+    )
+    expected_identities = {
+        "producer_repository": "https://github.com/sepahead/crebain",
+        "producer_revision": CREBAIN_FIXTURE_SOURCE_COMMIT,
+        "fixture_path": "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+        "fixture_sha256": CREBAIN_FIXTURE_SHA256,
+        "producer_preregistered_pid_revision": PID_RS_PREREGISTERED_COMMIT,
+        "actual_pid_core_revision": PID_RS_SELECTED_COMMIT,
+        "paper_functional_id": CREBAIN_PAPER_FUNCTIONAL_ID,
+        "sample_estimator_route_id": CREBAIN_SAMPLE_ESTIMATOR_ROUTE_ID,
+        "upstream_implementation_method_catalog_id": (
+            CREBAIN_UPSTREAM_IMPLEMENTATION_METHOD_CATALOG_ID
+        ),
+        "pid2_implementation_entry_point": CREBAIN_PID2_IMPLEMENTATION_ENTRY_POINT,
+        "pid3_implementation_entry_point": CREBAIN_PID3_IMPLEMENTATION_ENTRY_POINT,
+        "sample_estimator_implementation_adaptation": (
+            "the producer preregistration remains immutable while Galadriel "
+            "explicitly adapts the raw-row empirical-PMF sample-estimator route to "
+            "the clean remote pid-core 0.9.0 implementation method and budgeted "
+            "entry points. This assurance does not assert or rely on commit ancestry "
+            "and instead gates distinct functional, sample-estimator, implementation, "
+            "resource, and output identities"
+        ),
+        "schema_path": (
+            "crates/galadriel-justify/schemas/"
+            "crebain-drone-mgw-study-v3.schema.json"
+        ),
+        "schema_id": (
+            "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
+            "crates/galadriel-justify/schemas/"
+            "crebain-drone-mgw-study-v3.schema.json"
+        ),
+        "schema_sha256": CREBAIN_SCHEMA_SHA256,
+        "schema_bytes": CREBAIN_SCHEMA_BYTES,
+    }
+    if identities != expected_identities:
+        raise AuditError("CLM-018 assurance has an incorrect source or schema identity")
+    fixture_path = ROOT / identities["fixture_path"]
+    schema_path = ROOT / identities["schema_path"]
+    if sha256(fixture_path, snapshot) != CREBAIN_FIXTURE_SHA256:
+        raise AuditError("CLM-018 fixture bytes differ from the assured identity")
+    schema_bytes = (
+        _snapshot_bytes(schema_path, snapshot)
+        if snapshot is not None
+        else schema_path.read_bytes()
+    )
+    if (
+        hashlib.sha256(schema_bytes).hexdigest() != CREBAIN_SCHEMA_SHA256
+        or len(schema_bytes) != CREBAIN_SCHEMA_BYTES
+    ):
+        raise AuditError("CLM-018 schema bytes differ from the assured identity")
+
+    expected_errata = {
+        "ERR-TARGET-ORIGIN": (
+            "/analysis_manifest/target_origin",
+            "after sensor objects and source symbols are constructed",
+        ),
+        "ERR-OPERATIONAL-METHODS": (
+            "/analysis_manifest/method_exclusions/nis_and_correlation",
+            "NIS and a two-arm CUSUM",
+        ),
+        "ERR-PROJECTION-COUNT": (
+            "/rows/*/fusion_receipt/{projection_count,common_projection_prior_id}",
+            "three admitted observations, not three present projections",
+        ),
+    }
+    errata = document["producer_source_errata"]
+    if (
+        not isinstance(errata, list)
+        or not all(isinstance(item, dict) for item in errata)
+        or [item.get("id") for item in errata] != list(expected_errata)
+    ):
+        raise AuditError("CLM-018 assurance must retain the three ordered source errata")
+    for item in errata:
+        require_keys(
+            item,
+            {"id", "json_pointer", "corrected_boundary"},
+            "CLM-018 producer-source erratum",
+        )
+        expected_pointer, boundary_marker = expected_errata[item["id"]]
+        if item["json_pointer"] != expected_pointer or boundary_marker not in item[
+            "corrected_boundary"
+        ]:
+            raise AuditError(f"CLM-018 source erratum is weakened: {item['id']}")
+    source_text = (
+        _snapshot_text(ROOT / "crates/galadriel-justify/src/crebain_mgw.rs", snapshot)
+        if snapshot is not None
+        else (ROOT / "crates/galadriel-justify/src/crebain_mgw.rs").read_text(
+            encoding="utf-8"
+        )
+    )
+    for marker in (
+        "after the producer constructs sensor observation objects and source symbols",
+        "two-arm CUSUM. On the fusion core's dof=3 route, the lower arm is inert",
+        "producer assigns projection_count from pid_observations.len()",
+    ):
+        if marker not in source_text:
+            raise AuditError(f"CLM-018 Rust errata receipt omits source boundary: {marker}")
+
+    gates = document["required_gates"]
+    if (
+        not isinstance(gates, list)
+        or not all(isinstance(gate, dict) for gate in gates)
+        or [gate.get("id") for gate in gates] != list(CLM_018_GATE_CONTRACTS)
+    ):
+        raise AuditError("CLM-018 assurance must retain all five ordered gates")
+    for gate in gates:
+        require_keys(
+            gate,
+            {"id", "kind", "command", "evidence", "supports", "boundary"},
+            "CLM-018 gate",
+        )
+        kind, command, evidence = CLM_018_GATE_CONTRACTS[gate["id"]]
+        if (
+            gate["kind"] != kind
+            or gate["command"] != command
+            or gate["evidence"] != list(evidence)
+        ):
+            raise AuditError(f"CLM-018 gate contract is weakened: {gate['id']}")
+        if not isinstance(gate["supports"], str) or not gate["supports"].strip():
+            raise AuditError(f"CLM-018 gate lacks a supported claim: {gate['id']}")
+        if not isinstance(gate["boundary"], str) or not gate["boundary"].strip():
+            raise AuditError(f"CLM-018 gate lacks a boundary: {gate['id']}")
+        for path_string in evidence:
+            exists = (
+                path_string in snapshot.files
+                if snapshot is not None
+                else (ROOT / path_string).is_file()
+            )
+            if not exists:
+                raise AuditError(
+                    f"CLM-018 gate evidence is missing: {gate['id']}: {path_string}"
+                )
+    workflow = (
+        _snapshot_text(ROOT / ".github/workflows/ci.yml", snapshot)
+        if snapshot is not None
+        else (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    )
+    for marker in (
+        "repo_work.tests.test_crebain_mgw_candidate",
+        "repo_work.tests.test_crebain_mgw_decimal_oracle",
+        "repo_work.tests.test_crebain_mgw_schema",
+        "cargo test --workspace --all-features --locked",
+    ):
+        if marker not in workflow:
+            raise AuditError(f"CLM-018 candidate workflow omits gate marker: {marker}")
+    qualifier_path = ROOT / "repo_work/qualify_candidate.py"
+    qualifier = (
+        _snapshot_text(qualifier_path, snapshot)
+        if snapshot is not None
+        else qualifier_path.read_text(encoding="utf-8")
+    )
+    if qualifier.count(CLM_018_QUALIFICATION_RUST_BLOCK) != 1:
+        raise AuditError(
+            "candidate qualifier omits the exact CLM-018 Rust contract command"
+        )
+    if qualifier.count(CLM_018_QUALIFICATION_TEST_BLOCK) != 1:
+        raise AuditError(
+            "CLM-018 qualifier must retain one exact schema, Decimal, and "
+            "actual-wrapper test command"
+        )
+    if qualifier.count(CLM_018_QUALIFICATION_COMMAND_BLOCK) != 1:
+        raise AuditError(
+            "CLM-018 qualifier must retain one exact candidate-bound actual-binary "
+            "schema and Rust-to-Decimal command"
+        )
+    finalizer_path = ROOT / "repo_work/finalize_release.py"
+    finalizer = (
+        _snapshot_text(finalizer_path, snapshot)
+        if snapshot is not None
+        else finalizer_path.read_text(encoding="utf-8")
+    )
+    for marker in (
+        "def validate_crebain_candidate_receipt(document_bytes: bytes)",
+        'if spec.name == "crebain-mgw-candidate-contract":',
+        "validate_crebain_candidate_receipt(combined_output)",
+    ):
+        if finalizer.count(marker) != 1:
+            raise AuditError(
+                f"CLM-018 finalizer omits candidate-receipt binding: {marker}"
+            )
+    candidate_gate_path = ROOT / "repo_work/check_crebain_mgw_candidate.py"
+    candidate_gate = (
+        _snapshot_text(candidate_gate_path, snapshot)
+        if snapshot is not None
+        else candidate_gate_path.read_text(encoding="utf-8")
+    )
+    for marker in (
+        '"--offline"',
+        "schema_checker.validate_machine_schema_binding(instance, schema_raw)",
+        "schema_checker.validate_semantic_identity_bindings(instance)",
+        "decimal_oracle.compare_rust_output(oracle, rust_json)",
+        '"rust_output_sha256"',
+        '"rust_output_bytes"',
+        '"schema_all_passed"',
+        '"decimal_all_passed"',
+        '"galadriel.crebain-mgw-candidate-gate.v1"',
+    ):
+        if candidate_gate.count(marker) != 1:
+            raise AuditError(f"CLM-018 candidate wrapper omits exact marker: {marker}")
+
+    lenses = document["lenses"]
+    expected_lens_ids = [f"L{index:02d}" for index in range(1, 21)]
+    if (
+        not isinstance(lenses, list)
+        or not all(isinstance(lens, dict) for lens in lenses)
+        or [lens.get("id") for lens in lenses] != expected_lens_ids
+    ):
+        raise AuditError("CLM-018 assurance must contain ordered lenses L01 through L20")
+    lens_evidence_union: set[str] = set()
+    for lens in lenses:
+        require_keys(
+            lens,
+            {
+                "id",
+                "title",
+                "disposition",
+                "defect_or_counterexample",
+                "control_or_claim_removal",
+                "evidence",
+                "remaining_risk",
+            },
+            "CLM-018 lens",
+        )
+        lens_id = lens["id"]
+        if lens["disposition"] != "RESOLVED_FOR_BOUNDED_IMPLEMENTED_CLAIM":
+            raise AuditError(f"CLM-018 lens has the wrong bounded disposition: {lens_id}")
+        for field in (
+            "title",
+            "defect_or_counterexample",
+            "control_or_claim_removal",
+            "remaining_risk",
+        ):
+            if not isinstance(lens[field], str) or not lens[field].strip():
+                raise AuditError(f"CLM-018 lens {lens_id} lacks {field}")
+        if CLM_018_LENS_CONTROL_MARKERS[lens_id] not in lens[
+            "control_or_claim_removal"
+        ]:
+            raise AuditError(f"CLM-018 lens control is weakened: {lens_id}")
+        evidence = lens["evidence"]
+        if (
+            not isinstance(evidence, list)
+            or not evidence
+            or not all(isinstance(path_string, str) for path_string in evidence)
+            or len(evidence) != len(set(evidence))
+        ):
+            raise AuditError(f"CLM-018 lens {lens_id} has invalid evidence")
+        for path_string in evidence:
+            if not path_string:
+                raise AuditError(f"CLM-018 lens {lens_id} has a non-path evidence item")
+            exists = (
+                path_string in snapshot.files
+                if snapshot is not None
+                else (ROOT / path_string).is_file()
+            )
+            if not exists:
+                raise AuditError(
+                    f"CLM-018 lens evidence is missing: {lens_id}: {path_string}"
+                )
+            lens_evidence_union.add(path_string)
+    assured_evidence = lens_evidence_union | {
+        str(CLM_018_ASSURANCE.relative_to(ROOT))
+    }
+    if not set(CLM_018_EVIDENCE).issubset(assured_evidence):
+        raise AuditError("CLM-018 twenty-lens map does not cover every claim evidence class")
+
+    closure = document["closure"]
+    require_keys(
+        closure,
+        {
+            "lens_count",
+            "disposition",
+            "candidate_gate_status",
+            "deployment_qualification",
+            "independent_human_review",
+            "independent_clean_room_reproduction",
+            "residual_risk",
+        },
+        "CLM-018 closure",
+    )
+    expected_closure = {
+        "lens_count": 20,
+        "disposition": "CLOSED_FOR_BOUNDED_IMPLEMENTED_SYNTHETIC_CONFORMANCE_CLAIM",
+        "candidate_gate_status": "REQUIRED_NOT_PRETENDED_COMPLETE_BY_THIS_SOURCE_ARTIFACT",
+        "deployment_qualification": "NOT_CLAIMED",
+        "independent_human_review": "NOT_RUN",
+        "independent_clean_room_reproduction": "NOT_RUN",
+    }
+    for field, expected in expected_closure.items():
+        if closure[field] != expected:
+            raise AuditError(f"CLM-018 closure is weakened at {field}")
+    if not isinstance(closure["residual_risk"], str) or not closure[
+        "residual_risk"
+    ].strip():
+        raise AuditError("CLM-018 closure lacks residual risk")
+    return document
+
+
 def validate_claims(
     snapshot: RepositorySnapshot | None = None,
 ) -> list[dict[str, Any]]:
@@ -2840,6 +3570,7 @@ def validate_claims(
         r"https://github\.com/sepahead/NCP/(?:tree|blob)/main", ncp_limitations
     ):
         raise AuditError("CLM-008 must not bind NCP status to mutable main")
+    validate_clm_018_assurance(by_id.get("CLM-018"), snapshot)
     return document["claims"]
 
 
@@ -3033,9 +3764,9 @@ def validate_ecosystem_cut(
                 f"ecosystem cut inspected_at predates observation {observation_id}"
             )
         observation_dates[observation_id] = observed_at
-    expected_ids = {f"ECO-{index:03d}" for index in range(1, 16)}
+    expected_ids = {f"ECO-{index:03d}" for index in range(1, 20)}
     if seen != expected_ids:
-        raise AuditError("ecosystem cut must contain exactly ECO-001 through ECO-015")
+        raise AuditError("ecosystem cut must contain exactly ECO-001 through ECO-019")
     ncp_status = next(
         observation for observation in observations if observation["id"] == "ECO-014"
     )
@@ -3109,6 +3840,106 @@ def validate_ecosystem_cut(
     for key, expected in expected_prisoma_status.items():
         if prisoma_status[key] != expected:
             raise AuditError(f"ECO-015 has an incorrect Prisoma reinspection field: {key}")
+    crebain_fixture_status = next(
+        observation for observation in observations if observation["id"] == "ECO-016"
+    )
+    expected_crebain_fixture_status = {
+        "project": "Crebain",
+        "relationship": "offline_fixture_source_and_optional_reference_producer",
+        "ref": "immutable commit",
+        "object": CREBAIN_FIXTURE_SOURCE_COMMIT,
+        "identity_kind": "immutable_fixture_source_commit",
+        "observed_at": "2026-08-17",
+        "timestamp_precision": "date",
+        "required_by_default": False,
+        "required_for": [],
+        "supersedes": "ECO-004",
+        "why": (
+            "Binds the exact clean remote commit that generated the 64-row CREBAIN "
+            "drone fixture embedded as data by galadriel-justify. It adds no Cargo, "
+            "runtime, feedback, deployment-qualification, or authority edge."
+        ),
+    }
+    for key, expected in expected_crebain_fixture_status.items():
+        if crebain_fixture_status[key] != expected:
+            raise AuditError(f"ECO-016 has an incorrect CREBAIN fixture field: {key}")
+    prisoma_contract_status = next(
+        observation for observation in observations if observation["id"] == "ECO-017"
+    )
+    expected_prisoma_contract_status = {
+        "project": "Prisoma",
+        "relationship": "prospective_downstream_offline_consumer",
+        "ref": "refs/heads/main",
+        "object": PRISOMA_PUBLICATION_CONTRACT_COMMIT,
+        "identity_kind": "mutable_head_reinspection",
+        "observed_at": "2026-08-17",
+        "timestamp_precision": "date",
+        "required_by_default": False,
+        "required_for": [],
+        "supersedes": "ECO-015",
+        "why": (
+            "Records the clean remote Prisoma head containing its PID method-selection/"
+            "publication contract and bounded pid-rs handoff. Galadriel still has no "
+            "Prisoma dependency, adapter, route, or runtime edge."
+        ),
+    }
+    for key, expected in expected_prisoma_contract_status.items():
+        if prisoma_contract_status[key] != expected:
+            raise AuditError(f"ECO-017 has an incorrect Prisoma contract field: {key}")
+    pid_rs_selection = next(
+        observation for observation in observations if observation["id"] == "ECO-018"
+    )
+    expected_pid_rs_selection = {
+        "project": "pid-rs",
+        "relationship": "upstream_dependency_selection",
+        "ref": "immutable commit",
+        "object": PID_RS_SELECTED_COMMIT,
+        "identity_kind": "immutable_dependency_commit",
+        "observed_at": "2026-08-18",
+        "timestamp_precision": "date",
+        "required_by_default": False,
+        "required_for": [
+            "dependence feature",
+            "galadriel-dependence",
+            "galadriel-eval",
+            "galadriel-justify",
+        ],
+        "supersedes": "ECO-001",
+        "why": (
+            "Binds the clean remote pid-core 0.9.0 revision selected by Cargo.lock "
+            "for the optional dependence companion and offline PID studies. "
+            "pid-runlog is not present in any resolved Galadriel feature profile. "
+            "The immutable CREBAIN producer preregistration remains separately "
+            "bound to its historical implementation revision and unbudgeted entry-point strings."
+        ),
+    }
+    for key, expected in expected_pid_rs_selection.items():
+        if pid_rs_selection[key] != expected:
+            raise AuditError(f"ECO-018 has an incorrect pid-rs selection field: {key}")
+    haldir_record_only_review = next(
+        observation for observation in observations if observation["id"] == "ECO-019"
+    )
+    expected_haldir_record_only_review = {
+        "project": "Haldir",
+        "relationship": "prospective_downstream_record_only_consumer",
+        "ref": "refs/heads/review/galadriel-pid-record-only-clean",
+        "object": HALDIR_RECORD_ONLY_REVIEW_COMMIT,
+        "identity_kind": "signed_review_head_observation",
+        "observed_at": "2026-08-18",
+        "timestamp_precision": "date",
+        "required_by_default": False,
+        "required_for": [],
+        "supersedes": "ECO-012",
+        "why": (
+            "Records the signed Haldir review commit that defines fixed-input "
+            "authorization and plant-command noninterference plus a prospective "
+            "record-only audit seam. It adds no Galadriel dependency, adapter, "
+            "runtime route, authority input, or deployment claim."
+        ),
+    }
+    for key, expected in expected_haldir_record_only_review.items():
+        if haldir_record_only_review[key] != expected:
+            raise AuditError(f"ECO-019 has an incorrect Haldir review field: {key}")
     return inspected_at, observation_dates
 
 

@@ -4,10 +4,12 @@ Galadriel includes an optional pairwise-MI companion and separate offline Partia
 Information Decomposition (PID) studies. These are different estimands and APIs.
 This document gives the decision rule for each use.
 It does not present pre-audit synthetic numbers as current detector evidence.
-Galadriel pins pid-rs revision
-`1cd2424f7967e1752dcc8e53859e8fdad3566f51` for this path.
+Galadriel selects `pid-core` 0.9.0 from pid-rs revision
+`bc3aa80fb6025e709c2906a08bce25a4fac40578` for this path. Revision
+`1cd2424f7967e1752dcc8e53859e8fdad3566f51` remains only in the immutable
+CREBAIN producer preregistration and historical migration evidence.
 
-> **Evidence status after the 2026-07 audit.**
+> **Evidence status after the 2026-07 audit and 2026-08 exact-law adaptation.**
 > The canonical studies are synthetic or theoretical.
 > [`PID_RS_1_0_MIGRATION.md`](PID_RS_1_0_MIGRATION.md) records a fixed-seed
 > pid-rs 0.4 to 1.0 reproduction.
@@ -22,8 +24,9 @@ Galadriel pins pid-rs revision
 [![Two distinct offline PID questions, role-typed literature edges, atom equations, and non-fallback boundaries](../assets/pid-estimand-provenance.svg)](../assets/pid-estimand-provenance.svg)
 
 **Offline PID estimand and provenance graph.** `PidQuestionSpec` seals one source
-order, target, and law before evaluation. The categorical lane evaluates the
-Makkeh–Gutknecht–Wibral pointwise shared-exclusions functional on a finite law.
+order, target, and law before estimation. The categorical lane uses a raw-row
+empirical-PMF sample estimator for the Makkeh–Gutknecht–Wibral pointwise
+shared-exclusions functional on a finite law.
 It retains reports in nats and converts only named aggregate atom fields to
 bits. The continuous lane evaluates the related but distinct Ehrlich functional
 and estimator on a declared full-dimensional law, fixed source gauge, and no
@@ -70,6 +73,75 @@ reference roles:
   and continuous variables” (2021),
   [arXiv:2106.12393](https://arxiv.org/abs/2106.12393).
 
+## Grounded exact-law case: three synthetic drone-sensor symbols
+
+The historical caveat above still applies to recorded CREBAIN residuals. A new,
+narrower fixture now answers a different question without pretending that those
+residuals form a continuous PID-ready population.
+
+CREBAIN commit `6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d`
+generates an exact 64-row, physically parameterized synthetic encoding of the
+canonical laws `T_H = V AND R` and `T_V = V AND R AND A`. Each row has one
+producer-declared fresh fusion engine, one prior, one row-level observation
+timestamp, three pre-fusion sensor objects, ordered source symbols, latent ENU
+truth, and a six-field legacy fusion summary. The target generator does not read
+the source-symbol fields, sensor projections, fusion result, Galadriel verdict,
+or PID output. The target is therefore external to fusion/PID, not
+producer-independent field truth. The compact fixture lacks per-sensor
+timestamps, complete projection receipts, a full fusion output, and enough
+hidden state to prove state isolation. Eight repeats of each source cell test
+bounded-summary fresh-instance reproducibility and custody. They do not supply
+inferential precision. Galadriel embeds the exact 64,218-byte fixture and checks
+SHA-256
+`82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda`,
+checks each declared source symbol against its named coordinate, reconstructs
+each target from latent truth, and invokes only the budgeted categorical MGW
+routes `discrete_sxpid2_with_budget` and `discrete_sxpid3_with_budget`:
+
+\[
+\operatorname{PID2}_{\mathrm{MGW}}(V,R;T_H),
+\qquad
+\operatorname{PID3}_{\mathrm{MGW}}(V,R,A;T_V).
+\]
+
+The PID2 question is primary. PID3 is exploratory and does not close pid-rs's
+separate 108-coordinate assurance program. KSG and continuous Ehrlich PID
+are ineligible and are not executed because the fixture is a repeated atomic categorical law. `I_min` and
+BROJA remain different, unrequested comparators rather than fallbacks.
+
+[![Question-first selection, exact PID2 informative/misinformative/net components, interpretation firewall, and method eligibility](../assets/crebain-mgw-method-map.svg)](../assets/crebain-mgw-method-map.svg)
+
+**What PID adds—and does not add.** NIS answers a per-channel innovation-
+magnitude question. The generic CUSUM component retains upper and lower fields,
+and the lower arm is inert on the fusion core's `dof=3` route. It can move for
+other admitted degrees of freedom. Signed correlation asks a directional linear cross-channel
+consistency question. These are distinct operational diagnostics, none evaluated
+by this fixture. KSG can answer an eligible pairwise continuous-dependence
+question. Categorical MGW answers how a fixed,
+producer-generated but fusion/PID-separated target's information is allocated
+over ordered categorical sources. On the
+horizontal AND law, the net atoms in nats are redundancy `0.084949518`, unique
+visual `0.130812036`, unique radar `0.130812036`, and synergy `0.215761554`.
+They reconstruct joint MI `0.562335145`. Pairwise or joint statistics can detect
+dependence, but do not provide this MGW allocation. The allocation remains
+measure-relative and non-causal, and it cannot alter fusion or Haldir authority.
+
+All 66 **averaged** informative, misinformative, and net PID2/PID3 components,
+plus ten subset mutual informations, agree with a dependency-disjoint,
+separately implemented 80-digit Decimal event-union/Möbius calculation within
+`1.97e-16` nats. Pointwise records are retained and internally reconstructed,
+but the Decimal route does not recompute them. The maximum internal
+lattice-reconstruction error is
+`1.11e-16` nats. The emitted JSON additionally validates against the closed
+Draft 2020-12 v3 schema at
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json` using
+`repo_work/check_crebain_mgw_schema.py`. This is exact finite-law software
+corroboration, not independent human or organizational replication or field
+calibration.
+
+[Read the complete row contract, equations, 18-coordinate PID3 table,
+twenty-lens review, evidence ladder, citations, and to-do list.](CREBAIN-DRONE-MGW-STUDY.md)
+
 ## 1. For linear-Gaussian dependence, covariance determines population mutual information
 
 For jointly Gaussian scalar variables,
@@ -105,6 +177,10 @@ They also include randomized sign coupling with zero population correlation and
 a constrained variable.
 
 The synthetic study tests a report-first KSG estimate that passes the configured input gates.
+The runtime companion calls pid-core's `ksg_mi_report_with_budget` route. Its
+preflight estimate and executed report use the same explicit single-thread
+`ResourceBudget`, while Galadriel's graph work ceiling remains a separate
+aggregate bound. No Galadriel feature profile resolves `pid-runlog`.
 It asks whether the estimate separates coupled windows from finite-sample
 random-permutation controls. Conditional on the generated rows, those controls
 are exchangeable and are not independent-law samples. The study accounts for
@@ -141,32 +217,49 @@ evidence.
 That definition permits negative local or aggregate atoms.
 The atoms are not probabilities, confidence values, or calibrated attack scores.
 
-Every result carries a sealed, version 2 schema-tagged `PidQuestionSpec`: distinct
-functional identity; a bounded graph of role-typed primary-reference edges with
-complete teams; the explicit boundary that the Schick-Poland general construction
-is not evaluated; the Williams–Beer original antichain lattice distinct from the
-Gutknecht–Wibral–Makkeh part-whole derivation; exact pid-core sample-evaluator route;
-ordered sources; external target; exact generated input law and finite-sample
-selection/conditioning; source count; a typed list of every produced PID atom's
+Every result carries a sealed, version 3 schema-tagged `PidQuestionSpec`: distinct
+functional identity, a bounded graph of role-typed primary-reference edges with
+complete teams, the explicit boundary that the Schick-Poland general construction
+is not evaluated, the Williams–Beer original antichain lattice distinct from the
+Gutknecht–Wibral–Makkeh part-whole derivation, exact pid-core estimator route,
+ordered sources, a target fixed before result inspection and separated from any
+accepted fused verdict, exact generated input law and finite-sample
+selection/conditioning, source count, a typed list of every produced PID atom's
 quantity ID, two-source lattice coordinate, construction, component set,
-within-trial aggregation law, and native unit; exact root aggregate-field mapping;
-coupled-law versus within-trial permutation-control interpretation; route configuration;
-transform and row relation;
-support/gauge statement; sign convention;
-output-unit relation; native evaluator units; and atom-aggregate units. AUC and
+within-trial aggregation law, and native unit, exact root aggregate-field mapping,
+coupled-law versus within-trial permutation-control interpretation, route configuration,
+transform and row relation,
+support/gauge statement, sign convention,
+output-unit relation, native estimator units, and atom-aggregate units. AUC and
 bootstrap-interval fields are separately typed as dimensionless. The
-categorical evaluator and every retained upstream trial stay in nats, while its
+categorical sample estimator and every retained upstream trial stay in nats, while its
 named aggregate atom fields convert once to bits. The continuous evaluator,
-retained reports, and aggregates all stay in nats. The categorical graph distinguishes the MGW
+retained reports, and aggregates all stay in nats. Every categorical and
+continuous pid-core evaluation uses the explicitly retained single-thread
+`PidStudyResourceContract`. Aggregate study work is preflighted separately, so
+the per-call receipt is not a whole-study memory or duration bound. The
+categorical graph distinguishes the MGW
+paper functional, empirical-PMF sample-estimator route, upstream implementation
+method/catalog identity, and the two concrete budgeted entry points. Their IDs
+are `functional.shared-exclusions.mgw-categorical`,
+`route.shared-exclusions.mgw-empirical-pmf`,
+`shared-exclusions.categorical`, and the arity-specific entry points
+`pid_core::stable::categorical::discrete_sxpid2_with_budget` and
+`pid_core::stable::categorical::discrete_sxpid3_with_budget`. Raw rows
+produce a plug-in empirical-PMF estimate rather than evaluating a declared
+population law; exact cell balance makes the two laws coincide only for this
+fixture and supports no population inference. The graph also distinguishes the
 pointwise definition from both the original lattice and the later part-whole paper.
 The continuous graph distinguishes Ehrlich et al. from its KSG estimator basis and
 also records that its atom coordinates use the original lattice while not evaluating
 the Williams–Beer `I_min` functional.
-The attached
-`PidDependencyIdentity` is a mechanically checked package/version/Git
-revision/feature envelope. The pinned pid-rs revision predates its richer
-software-identity API, so Galadriel does not inflate this envelope into source,
-build, binary, or attestation identity.
+The fixed question's `PidDependencyIdentity` is a mechanically checked
+package/version/Git-revision/feature selection envelope. Each produced study
+separately retains a `PidExecutionIdentity`, reconciles pid-core's
+build-context-dependent `SoftwareIdentity` to that selection, and requires the
+declared `pid-core` package subtree to be clean at the selected WorkspaceGit
+commit. This receipt is not whole-repository cleanliness, binary attestation,
+scientific validity, or numerical portability.
 
 A sibling `JustificationStudyProtocol` gives the Pearson comparator, pairwise-MI
 composition, project-defined joint contrast `Q`, PID-question scope, and
@@ -281,6 +374,11 @@ It is not a documentation fix.
 
 ## 6. Operational decision rule
 
+The proposed rationale, rejected alternatives, provisional profile choices, and
+twenty-lens reopen checklist are in
+[`METHOD-SELECTION-DECISIONS.md`](METHOD-SELECTION-DECISIONS.md). This section is
+the compact operational ordering. It does not replace that decision record.
+
 Use the least complex statistic that observes the registered estimand:
 
 1. Use Normalized Innovation Squared (NIS) and CUSUM to assess per-channel
@@ -288,10 +386,10 @@ Use the least complex statistic that observes the registered estimand:
 2. Use signed correlation when comparable residuals have an expected positive
    linear consensus.
 3. Add the MI companion only when recorded evidence shows meaningful nonlinear
-   dependence that signed correlation misses. Keep it outside the authoritative verdict
+   dependence that signed correlation misses. Keep it outside the accepted default report
    until a frozen representative streaming study qualifies incremental value.
 4. Add PID only for a documented joint target and ordered source question. Name
-   the categorical MGW or continuous Ehrlich functional, evaluator, law,
+   the categorical MGW or continuous Ehrlich functional, estimator route, law,
    transforms, gauges, row relation, units, and software identity.
 5. Return an error for invalid input.
 6. Return `InsufficientEvidence` for an unavailable estimand.
@@ -300,7 +398,8 @@ The symmetric MI graph and offline PID atoms cannot:
 
 - repair mixed coordinate frames or sequentially changing priors
 - create evidence for a missing, degenerate, non-finite, or short modality series
-- create an honest majority from two channels
+- infer a minority when only two channels are requested. A 2-of-3 clique can be
+  the unique largest strict majority under the declared graph rule.
 - resolve tied or contradictory consensus geometry
 - change unavailable geometry or an unstable exhaustive deletion into an
   optimistic graph event
@@ -331,6 +430,8 @@ It cannot construct an accepted core or dependence companion report.
 
 ```bash
 cargo run --locked -p galadriel-justify --release
+cargo run --locked -p galadriel-justify --release --bin galadriel-crebain-mgw
+cargo run --locked -p galadriel-justify --release --bin galadriel-crebain-mgw -- --format markdown
 cargo test -p galadriel-justify --locked
 ```
 

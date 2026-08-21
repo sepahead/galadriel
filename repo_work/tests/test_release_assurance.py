@@ -42,6 +42,11 @@ from check_focused_mutation import assert_new_output_path  # noqa: E402
 from finalize_release import (  # noqa: E402
     CLOSURE_MANIFEST,
     CLOSURE_SIGNATURE,
+    CREBAIN_CANDIDATE_BOUNDARY,
+    CREBAIN_CANDIDATE_RECEIPT_SCHEMA,
+    CREBAIN_DECIMAL_ORACLE_SHA256,
+    CREBAIN_MACHINE_SCHEMA_BYTES,
+    CREBAIN_MACHINE_SCHEMA_SHA256,
     EXPECTED_QUALIFICATION_TOOLS,
     LOCAL_CONVERGENCE,
     LOCAL_CONVERGENCE_SIGNATURE,
@@ -168,6 +173,39 @@ from run_broad_mutation import (  # noqa: E402
     github_run_provenance,
     run_shard as run_broad_mutation_shard,
 )
+
+
+def crebain_candidate_receipt() -> bytes:
+    """Return one canonical passing candidate-gate stdout fixture."""
+
+    document = {
+        "schema": CREBAIN_CANDIDATE_RECEIPT_SCHEMA,
+        "rust_output_sha256": "c" * 64,
+        "rust_output_bytes": 253_502,
+        "machine_schema_sha256": CREBAIN_MACHINE_SCHEMA_SHA256,
+        "machine_schema_bytes": CREBAIN_MACHINE_SCHEMA_BYTES,
+        "decimal_oracle_sha256": CREBAIN_DECIMAL_ORACLE_SHA256,
+        "averaged_atom_components_compared": 66,
+        "subset_mutual_informations_compared": 10,
+        "pointwise_decimal_components_compared": 0,
+        "maximum_abs_error_nats": (
+            "1.96486887552982119960425290562084565907426063E-16"
+        ),
+        "tolerance_nats": "3E-16",
+        "schema_all_passed": True,
+        "decimal_all_passed": True,
+        "boundary": CREBAIN_CANDIDATE_BOUNDARY,
+    }
+    return (
+        json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode("utf-8")
 
 
 def focused_span_document(span: tuple[int, int, int, int]) -> dict[str, object]:
@@ -3526,6 +3564,53 @@ if child.returncode != -signal.SIGTERM:
         with self.assertRaisesRegex(ReviewError, "invalid status"):
             network_command_preconditions_met(fetches[0], [{"status": "SKIP"}])
 
+    def test_crebain_candidate_gates_run_after_locked_dependency_fetch(self) -> None:
+        names = [spec.name for spec in BASE_COMMANDS]
+        fetch_index = names.index("fetch-locked-dependencies")
+        fuzz_fetch_index = names.index("fetch-locked-fuzz-dependencies")
+        rust_index = names.index("crebain-mgw-rust-contract")
+        tests_index = names.index("crebain-mgw-contract-tests")
+        candidate_index = names.index("crebain-mgw-candidate-contract")
+        self.assertLess(fetch_index, rust_index)
+        self.assertLess(fuzz_fetch_index, rust_index)
+        self.assertEqual(rust_index + 1, tests_index)
+        self.assertEqual(tests_index + 1, candidate_index)
+
+        rust_contract = BASE_COMMANDS[rust_index]
+        self.assertEqual(
+            rust_contract.argv,
+            (
+                "cargo",
+                "test",
+                "--locked",
+                "-p",
+                "galadriel-justify",
+                "crebain_mgw",
+            ),
+        )
+
+        tests = BASE_COMMANDS[tests_index]
+        self.assertEqual(
+            tests.argv[-3:],
+            (
+                "repo_work.tests.test_crebain_mgw_candidate",
+                "repo_work.tests.test_crebain_mgw_decimal_oracle",
+                "repo_work.tests.test_crebain_mgw_schema",
+            ),
+        )
+        candidate = BASE_COMMANDS[candidate_index]
+        self.assertEqual(
+            candidate.argv,
+            (
+                "python3",
+                "-B",
+                "-E",
+                "-s",
+                "-S",
+                "repo_work/check_crebain_mgw_candidate.py",
+            ),
+        )
+
     def test_semantic_freeze_verification_precedes_release_audit(self) -> None:
         names = [spec.name for spec in BASE_COMMANDS]
         freeze_index = names.index("frozen-audit-inputs-verify")
@@ -3575,6 +3660,7 @@ if child.returncode != -signal.SIGTERM:
             "repo_work.tests.test_finalize_qualification",
             "repo_work.tests.test_qualification_artifacts",
             "repo_work.tests.test_host_process_bounds",
+            "repo_work.tests.test_crebain_mgw_mutation",
         )
         self.assertEqual(modules, expected)
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -3711,7 +3797,11 @@ if child.returncode != -signal.SIGTERM:
                     "timeout_seconds": spec.timeout_seconds,
                 }
                 log = root / relative
-                combined_output = b"PASS\n"
+                combined_output = (
+                    crebain_candidate_receipt()
+                    if spec.name == "crebain-mgw-candidate-contract"
+                    else b"PASS\n"
+                )
                 receipt = {
                     "name": spec.name,
                     "argv": executed_argv,
@@ -3797,11 +3887,75 @@ if child.returncode != -signal.SIGTERM:
                     private_root=recorded_root,
                     allowed_signers_snapshot=Path(trust),
                 )
+            valid_commands = copy.deepcopy(commands)
             commands[5]["argv"] = ["true"]
             with self.assertRaisesRegex(ReviewError, "command contract drifted"):
                 validate_qualification_commands(
                     commands,
                     manifest_artifacts=manifest,
+                    qualification_root=root,
+                    sandbox_policy_sha256=candidate_policy_sha256,
+                    dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,
+                    git_executable=git_executable,
+                    private_root=recorded_root,
+                    allowed_signers_snapshot=Path(trust),
+                )
+
+            candidate_index = next(
+                index
+                for index, command in enumerate(valid_commands)
+                if command["name"] == "crebain-mgw-candidate-contract"
+            )
+            bad_commands = copy.deepcopy(valid_commands)
+            bad_document = json.loads(crebain_candidate_receipt())
+            bad_document["decimal_all_passed"] = False
+            bad_output = (
+                json.dumps(
+                    bad_document,
+                    allow_nan=False,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            ).encode("utf-8")
+            bad_receipt = {
+                key: value
+                for key, value in bad_commands[candidate_index].items()
+                if key not in {"log_sha256", "log_size_bytes"}
+            }
+            bad_receipt["combined_output_sha256"] = hashlib.sha256(
+                bad_output
+            ).hexdigest()
+            bad_receipt["combined_output_size_bytes"] = len(bad_output)
+            candidate_spec = specs[candidate_index]
+            candidate_header = {
+                "argv": bad_receipt["argv"],
+                "cwd": candidate_spec.cwd,
+                "environment_overrides": dict(candidate_spec.environment),
+                "sandbox": bad_receipt["sandbox"],
+                "started_at": bad_receipt["started_at"],
+                "subject_executable": candidate_spec.subject_executable,
+                "timeout_seconds": candidate_spec.timeout_seconds,
+            }
+            bad_receipt = write_receipt_log(
+                root / bad_receipt["log"],
+                canonical_json(candidate_header)
+                + b"--- combined stdout/stderr ---\n"
+                + bad_output,
+                bad_receipt,
+            )
+            bad_commands[candidate_index] = bad_receipt
+            bad_manifest = copy.deepcopy(manifest)
+            bad_manifest[bad_receipt["log"]] = {
+                "path": bad_receipt["log"],
+                "sha256": bad_receipt["log_sha256"],
+                "size_bytes": bad_receipt["log_size_bytes"],
+            }
+            with self.assertRaisesRegex(ReviewError, "contract drifted"):
+                validate_qualification_commands(
+                    bad_commands,
+                    manifest_artifacts=bad_manifest,
                     qualification_root=root,
                     sandbox_policy_sha256=candidate_policy_sha256,
                     dependency_fetch_policy_sha256=dependency_fetch_policy_sha256,

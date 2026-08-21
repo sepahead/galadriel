@@ -71,6 +71,57 @@ A `COMPLETE` task **SHALL** have normative `SHALL` requirements and retained evi
 It **SHALL** also have all twenty handoff lenses and a residual-risk disposition.
 Prose alone **SHALL NOT** close a task.
 
+## Append-only CLM-018 assurance extension
+
+[`clm-018-assurance.json`](clm-018-assurance.json) governs the CREBAIN
+categorical-MGW study added after the immutable T000-through-T115 handoff
+projection. It is an append-only claim-assurance extension: it does not insert a
+task into `tasks.json`, change any historical task byte, manufacture a historical
+disposition, or mark post-commit candidate evidence complete. The extension binds
+the SHA-256 identities of the historical task projection, closure plan, and empty
+candidate-disposition interface so that this separation fails closed.
+
+**GLD-090-CLM-018:** Claim `CLM-018` **SHALL** remain an `IMPLEMENTED` claim about
+one physically parameterized **synthetic categorical conformance law**. It **SHALL
+NOT** be described as physical validation, recorded-flight evidence, complete
+producer state isolation, 64 independent experimental units, continuous-PID
+validity, closure of pid-rs's separate 108-coordinate assurance program, field
+or deployment performance, or control authority. The eight repeats per source
+cell establish only bounded-summary fresh-instance reproducibility.
+
+The assurance extension separates the immutable producer fixture source, the
+producer's historical pid-rs preregistration, the actual clean pid-core
+implementation revision, and the candidate build identity. It retains the producer fixture bytes
+and records three append-only corrections: target construction occurs after sensor
+objects and source symbols are built. NIS, the two-arm CUSUM with an inert lower
+arm on the fusion core's `dof=3` route, and signed Pearson correlation are distinct
+non-PID operational diagnostics. The legacy
+`projection_count=3` field counts admitted observations rather than proving three
+present projections.
+
+Every exact candidate **SHALL** run and retain all five named gates in the
+extension:
+
+1. The Rust fixture, algebra, source-identity, resource, errata, and metamorphic
+   contract tests.
+2. The bounded closed-world Draft 2020-12 schema hostile-test suite.
+3. The separately implemented 80-digit Decimal oracle hostile-test suite.
+4. The end-to-end wrapper test, which runs the actual offline Rust binary through
+   the exact formal schema and Decimal route.
+5. The candidate qualifier's direct execution of that wrapper, which retains one
+   canonical receipt containing the exact Rust output SHA-256 value and byte size,
+   schema identity, Decimal-oracle identity, comparison counts, error, tolerance,
+   and separate schema/Decimal pass states.
+
+Schema conformance and numerical agreement are separate gates. The Decimal route
+does not call pid-rs, but it remains law-specific software corroboration rather
+than independent experimental evidence. It does not independently recompute the
+retained pointwise atoms. The extension applies all twenty release-review lenses,
+with a counterexample, control or claim removal, exact evidence, and remaining
+risk for each lens. Its closure is deliberately limited to the bounded source
+claim. Candidate-bound execution, qualified independent human review, and
+independent clean-room reproduction remain outstanding.
+
 ## Release records
 
 - `RELEASE-NOTES.md` contains the tracked body text for the review-gated GitHub release.
@@ -91,6 +142,9 @@ Prose alone **SHALL NOT** close a task.
   It is not the active pair.
 - `claims.json` separates implemented, validated, deployment-qualified, and unclaimed behavior.
   Version 0.9.0 has no deployment-qualified claim.
+- `clm-018-assurance.json` is the append-only assurance and twenty-lens evidence map
+  for the bounded synthetic CREBAIN categorical-MGW claim. It does not modify or
+  retroactively close the immutable 116-task projection.
 - `handoff-source.json` identifies the immutable source package.
   `tasks.json` contains the current task-index projection.
 - `task-closure-plan.json` records the required task closure.
@@ -149,6 +203,15 @@ These artifacts are seven outcome files, five run receipts, and one retained `gi
 Each of the four broad outcome files has one broad shard receipt.
 The three focused outcome files share one focused receipt.
 All four broad shards and all three focused outcomes are exact-candidate gates.
+
+Deep quality also requires one separate bounded CREBAIN MGW gate on the same
+exact head. It enumerates 155 selected mutants and requires 152 caught, three
+exact compile-unviable function-return substitutions, and no missed, timed-out,
+or surviving mutant. The dedicated `crebain-mgw-mutation` job uploads its
+candidate-bound receipt and outcome as `crebain-mgw-mutation-results`.
+The signed version 5 assembler does not add these two files to its established
+13-artifact set. Retain and verify the separate workflow artifact until a
+reviewed mutation-evidence schema revision admits it.
 
 Each exact mutation command uses environment schema `galadriel.mutation-environment.v2`.
 It requires the Linux process file system (`procfs`), process file descriptors, and serialized child-subreaper ownership.
@@ -304,8 +367,8 @@ The inherited sandbox and resource limits apply before candidate execution.
 A sandboxed process can request work from an existing external service.
 The process scan cannot attribute that external service work.
 
-The license inventory covers the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope.
-It does not cover all 437 packages for every target.
+The license inventory covers the exact 381-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope.
+It does not cover all 436 packages for every target.
 
 The frozen 100-track evidence design has two structural acceptance failures.
 `GLD-090-ACC-001` needs at least 369 tracks under its zero-event Garwood bound.

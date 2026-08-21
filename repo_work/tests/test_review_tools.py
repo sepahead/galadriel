@@ -27,6 +27,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from audit_tracked_files import criticality
 from check_feature_graph import (
     EXPECTED_DEFAULT_MEMBERS,
     EXPECTED_UPSTREAM_MANIFESTS,
@@ -1699,8 +1700,20 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertIn("AGENTS.md", freeze.RELEASE_INPUTS)
         self.assertIn("CLAUDE.mdc", freeze.RELEASE_INPUTS)
         self.assertIn("docs/DEPENDENCY-POLICY.md", freeze.RELEASE_INPUTS)
+        self.assertIn("docs/CREBAIN-DRONE-MGW-STUDY.md", freeze.RELEASE_INPUTS)
+        self.assertIn(
+            "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+            freeze.RELEASE_INPUTS,
+        )
         self.assertIn("release/0.9.0/RELEASE-RUNBOOK.md", freeze.RELEASE_INPUTS)
         self.assertIn("repo_work/process_containment.py", freeze.RELEASE_INPUTS)
+        self.assertIn(
+            "repo_work/check_crebain_mgw_decimal_oracle.py", freeze.RELEASE_INPUTS
+        )
+        self.assertIn(
+            "repo_work/tests/test_crebain_mgw_decimal_oracle.py",
+            freeze.RELEASE_INPUTS,
+        )
         self.assertIn(
             "repo_work/verify_release_python_runtime.sh", freeze.RELEASE_INPUTS
         )
@@ -1719,6 +1732,22 @@ class ReviewToolsTest(unittest.TestCase):
         exact_name = "FROZEN-AUDIT-INPUTS-0.9.0.json"
         self.assertGreaterEqual(instructions.count(exact_name), 8)
         self.assertNotIn('"$freeze_dir/FROZEN-AUDIT-INPUTS.json"', instructions)
+
+    def test_method_selection_decision_has_release_review_classification(self) -> None:
+        relative = "docs/METHOD-SELECTION-DECISIONS.md"
+        self.assertIn(relative, freeze.RELEASE_INPUTS)
+
+        decision = (TOOLS.parent / relative).read_text(encoding="utf-8")
+        self.assertRegex(
+            decision,
+            r"(?m)^## GLD-MSD-008: .*authority boundary$",
+        )
+
+        public, security, science, authority = criticality(relative)
+        self.assertTrue(public)
+        self.assertFalse(security)
+        self.assertTrue(science)
+        self.assertTrue(authority)
 
     def test_release_input_manifest_requires_exact_index_bytes(self) -> None:
         def make_repository(name: str) -> Path:
@@ -2561,9 +2590,12 @@ class ReviewToolsTest(unittest.TestCase):
         graph = {
             "galadriel-dependence": frozenset(),
             "pid-core": PID_STABLE_RESOLVED_FEATURES,
-            "pid-runlog": frozenset(),
         }
         validate_profile_graph(profile, graph)
+        graph["pid-runlog"] = frozenset()
+        with self.assertRaisesRegex(ReviewError, "forbidden packages"):
+            validate_profile_graph(profile, graph)
+        graph.pop("pid-runlog")
         graph["pid-core"] = PID_STABLE_RESOLVED_FEATURES | {"parallel"}
         with self.assertRaisesRegex(ReviewError, "resolved pid-core features"):
             validate_profile_graph(profile, graph)
@@ -2868,7 +2900,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(cut["author"], "Sepehr Mahmoudian")
         self.assertEqual(
             (cut["inspected_at"], cut["timestamp_precision"]),
-            ("2026-08-14", "date"),
+            ("2026-08-18", "date"),
         )
         observations = cut["observations"]
         expected_observations = [
@@ -3113,21 +3145,85 @@ class ReviewToolsTest(unittest.TestCase):
                 "supersedes": "ECO-007",
                 "why": "Records the committed 2026-08-14 Prisoma head after its first-principles provenance and estimand redesign. Galadriel still has no Prisoma dependency, adapter, route, or runtime edge.",
             },
+            {
+                "id": "ECO-016",
+                "project": "Crebain",
+                "relationship": "offline_fixture_source_and_optional_reference_producer",
+                "ref": "immutable commit",
+                "object": "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d",
+                "identity_kind": "immutable_fixture_source_commit",
+                "observed_at": "2026-08-17",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": "ECO-004",
+                "why": "Binds the exact clean remote commit that generated the 64-row CREBAIN drone fixture embedded as data by galadriel-justify. It adds no Cargo, runtime, feedback, deployment-qualification, or authority edge.",
+            },
+            {
+                "id": "ECO-017",
+                "project": "Prisoma",
+                "relationship": "prospective_downstream_offline_consumer",
+                "ref": "refs/heads/main",
+                "object": "85f55c99564d1899f2e34c8412c41aaa9fc8f6c3",
+                "identity_kind": "mutable_head_reinspection",
+                "observed_at": "2026-08-17",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": "ECO-015",
+                "why": "Records the clean remote Prisoma head containing its PID method-selection/publication contract and bounded pid-rs handoff. Galadriel still has no Prisoma dependency, adapter, route, or runtime edge.",
+            },
+            {
+                "id": "ECO-018",
+                "project": "pid-rs",
+                "relationship": "upstream_dependency_selection",
+                "ref": "immutable commit",
+                "object": "bc3aa80fb6025e709c2906a08bce25a4fac40578",
+                "identity_kind": "immutable_dependency_commit",
+                "observed_at": "2026-08-18",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [
+                    "dependence feature",
+                    "galadriel-dependence",
+                    "galadriel-eval",
+                    "galadriel-justify",
+                ],
+                "supersedes": "ECO-001",
+                "why": "Binds the clean remote pid-core 0.9.0 revision selected by Cargo.lock for the optional dependence companion and offline PID studies. pid-runlog is not present in any resolved Galadriel feature profile. The immutable CREBAIN producer preregistration remains separately bound to its historical implementation revision and unbudgeted entry-point strings.",
+            },
+            {
+                "id": "ECO-019",
+                "project": "Haldir",
+                "relationship": "prospective_downstream_record_only_consumer",
+                "ref": "refs/heads/review/galadriel-pid-record-only-clean",
+                "object": "c19f9011e4919a5bc67fab5f90d6c8eefed4455b",
+                "identity_kind": "signed_review_head_observation",
+                "observed_at": "2026-08-18",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [],
+                "supersedes": "ECO-012",
+                "why": "Records the signed Haldir review commit that defines fixed-input authorization and plant-command noninterference plus a prospective record-only audit seam. It adds no Galadriel dependency, adapter, runtime route, authority input, or deployment claim.",
+            },
         ]
         self.assertEqual(observations, expected_observations)
         self.assertEqual(
             cut["limitations"],
             [
                 "Mutable head observations are inspection provenance, not dependency pins.",
+                "The immutable CREBAIN fixture-source commit binds one embedded offline data artifact. It is not a runtime dependency or reciprocal deployment qualification.",
                 "The immutable NCP release-status snapshot is inspection provenance. It does not replace the wire-0.8 dependency pin or qualify either external role.",
                 "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir, Prisoma, Engram/Paper2Brain, ROS, or external-authority runtime edge.",
                 "Later Haldir observations do not rewrite the discovery observation or frozen historical evidence.",
+                "ECO-018 supersedes the active dependency selection in ECO-001. It does not rewrite that historical observation or the CREBAIN producer's immutable preregistration.",
+                "ECO-019 observes a signed review-branch commit. It is not merged Haldir main, an implemented audit route, or runtime qualification.",
                 "The directed declared graph is acyclic: optional upstream inputs point into Galadriel, prospective evidence consumers point outward, and no command or feedback edge returns upstream.",
             ],
         )
         self.assertEqual(
             [row["id"] for row in observations],
-            [f"ECO-{index:03d}" for index in range(1, 16)],
+            [f"ECO-{index:03d}" for index in range(1, 20)],
         )
         self.assertEqual(
             [row["project"] for row in observations],
@@ -3147,6 +3243,10 @@ class ReviewToolsTest(unittest.TestCase):
                 "Paper2Brain",
                 "NCP",
                 "Prisoma",
+                "Crebain",
+                "Prisoma",
+                "pid-rs",
+                "Haldir",
             ],
         )
         self.assertTrue(
@@ -3171,6 +3271,10 @@ class ReviewToolsTest(unittest.TestCase):
                 "ECO-011": "ECO-006",
                 "ECO-012": "ECO-011",
                 "ECO-015": "ECO-007",
+                "ECO-016": "ECO-004",
+                "ECO-017": "ECO-015",
+                "ECO-018": "ECO-001",
+                "ECO-019": "ECO-012",
             },
         )
         self.assertEqual(
@@ -3211,6 +3315,18 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(
             observations[14]["identity_kind"],
             "mutable_head_reinspection",
+        )
+        self.assertEqual(
+            observations[15]["identity_kind"],
+            "immutable_fixture_source_commit",
+        )
+        self.assertEqual(
+            observations[16]["identity_kind"],
+            "mutable_head_reinspection",
+        )
+        self.assertEqual(
+            observations[17]["identity_kind"],
+            "immutable_dependency_commit",
         )
         self.assertEqual(
             max(row["observed_at"] for row in observations),

@@ -18,8 +18,8 @@ from common import ReviewError
 from release_assurance import run_bounded_host_command
 
 
-PID_PIN = "1cd2424f7967e1752dcc8e53859e8fdad3566f51"
-PID_VERSION = "1.0.0"
+PID_PIN = "bc3aa80fb6025e709c2906a08bce25a4fac40578"
+PID_VERSION = "0.9.0"
 PID_SOURCE = (
     "git+https://github.com/sepahead/pid-rs?"
     f"rev={PID_PIN}"
@@ -53,6 +53,8 @@ EXPECTED_UPSTREAM_MANIFESTS = {
                     "experimental-hyperbolic",
                     "experimental-pipelines",
                     "research-mixed-dimension-pid3",
+                    "dep:pid-runlog",
+                    "dep:same-file",
                 }
             ),
             "experimental-continuous": frozenset(),
@@ -68,11 +70,6 @@ EXPECTED_UPSTREAM_MANIFESTS = {
             "parallel": frozenset({"dep:rayon"}),
             "research-mixed-dimension-pid3": frozenset({"experimental-continuous"}),
         },
-    },
-    "pid-runlog": {
-        "version": PID_VERSION,
-        "source": PID_SOURCE,
-        "features": {},
     },
     "ncp-core": {
         "version": "0.8.0",
@@ -95,7 +92,7 @@ EXPECTED_UPSTREAM_MANIFESTS = {
     },
 }
 EXACT_UPSTREAM_FEATURE_MAPS = frozenset(
-    {"pid-core", "pid-runlog", "ncp-core", "ncp-zenoh"}
+    {"pid-core", "ncp-core", "ncp-zenoh"}
 )
 EXPECTED_DEFAULT_MEMBERS = [
     "crates/galadriel-core",
@@ -173,8 +170,10 @@ PROFILES = (
     Profile(
         "dependence",
         ("--features", "dependence"),
-        frozenset({"galadriel-dependence", "pid-core", "pid-runlog"}),
-        frozenset({"galadriel-ncp", "ncp-core", "ncp-zenoh", "zenoh", "tokio"}),
+        frozenset({"galadriel-dependence", "pid-core"}),
+        frozenset(
+            {"pid-runlog", "galadriel-ncp", "ncp-core", "ncp-zenoh", "zenoh", "tokio"}
+        ),
         (("pid-core", PID_STABLE_RESOLVED_FEATURES),),
     ),
     Profile(
@@ -212,7 +211,6 @@ PROFILES = (
             {
                 "galadriel-dependence",
                 "pid-core",
-                "pid-runlog",
                 "galadriel-ncp",
                 "ncp-core",
                 "ncp-zenoh",
@@ -220,7 +218,7 @@ PROFILES = (
                 "tokio",
             }
         ),
-        frozenset(),
+        frozenset({"pid-runlog"}),
         (
             ("pid-core", PID_STABLE_RESOLVED_FEATURES),
             ("ncp-core", NCP_RESOLVED_FEATURES),
@@ -239,12 +237,11 @@ PROFILES = (
                 "galadriel-sim",
                 "galadriel-dependence",
                 "pid-core",
-                "pid-runlog",
                 "galadriel-ncp",
                 "ncp-core",
             }
         ),
-        frozenset({"ncp-zenoh", "zenoh", "tokio"}),
+        frozenset({"pid-runlog", "ncp-zenoh", "zenoh", "tokio"}),
         (
             ("pid-core", PID_STABLE_RESOLVED_FEATURES),
             ("ncp-core", NCP_RESOLVED_FEATURES),
@@ -254,10 +251,11 @@ PROFILES = (
     Profile(
         "justify-member",
         (),
-        frozenset({"galadriel-justify", "galadriel-core", "pid-core", "pid-runlog"}),
+        frozenset({"galadriel-justify", "galadriel-core", "pid-core"}),
         frozenset(
             {
                 "galadriel-dependence",
+                "pid-runlog",
                 "galadriel-ncp",
                 "ncp-core",
                 "ncp-zenoh",
@@ -405,7 +403,7 @@ def validate_profile_graph(profile: Profile, graph: dict[str, frozenset[str]]) -
     forbidden = sorted(profile.forbidden & selected)
     if missing or forbidden:
         raise ReviewError(
-            f"feature graph {profile.name!r}: missing={missing}, forbidden={forbidden}"
+            f"feature graph {profile.name!r}: missing={missing}, forbidden packages={forbidden}"
         )
     for package, expected in profile.exact_features:
         actual = graph.get(package)

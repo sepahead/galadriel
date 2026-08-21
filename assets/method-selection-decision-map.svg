@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="2400" height="1900" viewBox="0 0 2400 1900"
+     role="img" aria-labelledby="title desc" xml:lang="en" focusable="false">
+  <title id="title">Galadriel question-first method-selection decision map</title>
+  <desc id="desc">A five-lane decision map for the proposed Galadriel 0.9 profile. Residual magnitude selects right-tail normalized innovation squared plus a tabular two-arm CUSUM. The lower arm is inert on the fusion core's degrees-of-freedom-three route. Other admitted degrees of freedom retain the general recurrence. Positive linear association selects signed Pearson correlation, one-sided Fisher-z screening, per-assessment Bonferroni correction, and a unique largest all-pairs clique that is a strict majority. General continuous pair dependence selects report-first KSG-1 only as a geometry-, support-, resource-, and stability-gated companion. The full stability route needs at least 72 admitted rows and deletes every circular block of eight. Target information allocation selects categorical MGW for an atomic law or the feature-gated experimental Ehrlich PID2 route for an eligible continuous law. An explicit authority firewall prevents every mutual-information or PID result from changing a verdict, grant, restriction, trusted state, or plant command. Each lane names alternatives and its evidence ceiling. The decision record remains proposed and awaits human acceptance and publication review.</desc>
+
+  <defs>
+    <style>
+      text { font-family: "Source Sans 3", "Source Sans Pro", Inter, "IBM Plex Sans", Arial, Helvetica, sans-serif; }
+      .title { font-size: 48px; font-weight: 750; letter-spacing: -0.45px; fill: #1F3F60; }
+      .subtitle { font-size: 25px; font-weight: 500; fill: #3F596F; }
+      .eyebrow { font-size: 20px; font-weight: 750; letter-spacing: 2.2px; fill: #1F3F60; }
+      .column { font-size: 20px; font-weight: 750; letter-spacing: 1.7px; fill: #F7F3E9; }
+      .lane-id { font-size: 20px; font-weight: 750; letter-spacing: 1.35px; fill: #1F3F60; }
+      .question { font-size: 29px; font-weight: 700; fill: #2C3E50; }
+      .method { font-size: 29px; font-weight: 750; fill: #2C3E50; }
+      .body { font-size: 23px; font-weight: 450; fill: #2C3E50; }
+      .body-strong { font-size: 23px; font-weight: 700; fill: #2C3E50; }
+      .small { font-size: 20px; font-weight: 500; fill: #3F596F; }
+      .small-strong { font-size: 20px; font-weight: 750; fill: #2C3E50; }
+      .mono { font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace; font-size: 21px; font-weight: 600; fill: #2C3E50; }
+      .badge-light { font-size: 18px; font-weight: 800; letter-spacing: 0.8px; fill: #FFFFFF; }
+      .badge-dark { font-size: 18px; font-weight: 800; letter-spacing: 0.8px; fill: #2C3E50; }
+      .legend { font-size: 19px; font-weight: 600; fill: #2C3E50; }
+      .legend-head { font-size: 19px; font-weight: 800; letter-spacing: 1.1px; fill: #1F3F60; }
+      .page { fill: #F7F3E9; }
+      .paper { fill: #FCFBF7; stroke: #B7C8CC; stroke-width: 2.2; }
+      .question-box { fill: #F2F6F5; stroke: #9FB7BA; stroke-width: 2.2; }
+      .method-box { fill: #FFFEFB; stroke: #9FB7BA; stroke-width: 2.2; }
+      .boundary-box { fill: #F7F9F8; stroke: #B7C8CC; stroke-width: 2.2; }
+      .subbox { fill: #F5F0E5; stroke: #C6A75F; stroke-width: 1.8; }
+      .rule-bronze { stroke: #916400; stroke-width: 2; }
+      .rule-lapis { stroke: #1F3F60; stroke-width: 4; }
+      .separator { stroke: #B7C8CC; stroke-width: 1.6; }
+      .flow-selected { stroke: #087F5B; stroke-width: 4; fill: none; }
+      .flow-companion { stroke: #6F42C1; stroke-width: 4; stroke-dasharray: 11 8; fill: none; }
+      .selected-fill { fill: #087F5B; }
+      .companion-fill { fill: #6F42C1; }
+      .deferred-fill { fill: #A15C00; }
+      .rejected-fill { fill: #B42318; }
+      .nonedge-fill { fill: #743E37; }
+      .selected-text { fill: #087F5B; }
+      .companion-text { fill: #6F42C1; }
+      .deferred-text { fill: #8A4F00; }
+      .rejected-text { fill: #9C241B; }
+      .nonedge-text { fill: #743E37; }
+    </style>
+
+    <pattern id="paper-weave" width="28" height="28" patternUnits="userSpaceOnUse">
+      <rect width="28" height="28" fill="#F7F3E9"/>
+      <path d="M0 7H28 M0 21H28 M7 0V28 M21 0V28" fill="none" stroke="#D2E0E2" stroke-width="0.8"/>
+      <path d="M0 0L28 28 M28 0L0 28" fill="none" stroke="#E4DDD0" stroke-width="0.55"/>
+    </pattern>
+    <pattern id="selected-pattern" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="#DCEFE8"/>
+      <path d="M-3 12L12 -3 M3 15L15 3" stroke="#087F5B" stroke-width="2.2"/>
+    </pattern>
+    <pattern id="companion-pattern" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="#EEE7FA"/>
+      <path d="M-3 12L12 -3 M3 15L15 3" stroke="#6F42C1" stroke-width="2.2"/>
+    </pattern>
+    <pattern id="deferred-pattern" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="#FFF1CF"/>
+      <path d="M2 6H5 M8 6H11" stroke="#A15C00" stroke-width="2.4"/>
+    </pattern>
+    <pattern id="rejected-pattern" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="#FBE9E7"/>
+      <path d="M-2 2L10 14 M2 -2L14 10 M14 2L2 14 M10 -2L-2 10" stroke="#B42318" stroke-width="1.7"/>
+    </pattern>
+  </defs>
+
+  <rect width="2400" height="1900" class="page"/>
+  <rect x="0" y="0" width="2400" height="32" fill="url(#paper-weave)" aria-hidden="true"/>
+
+  <!-- Title architecture -->
+  <text x="70" y="92" class="eyebrow">GALADRIEL · PROPOSED 0.9 METHOD AND PROFILE DECISIONS</text>
+  <text x="70" y="145" class="title">Start with the question. Preserve the estimand. Stop before authority.</text>
+  <text x="70" y="184" class="subtitle">Least-complex selected object → separate expressive companion → explicit non-edge</text>
+  <rect x="1890" y="60" width="440" height="92" rx="10" fill="#F5F0E5" stroke="#916400" stroke-width="2"/>
+  <rect x="1890" y="60" width="10" height="92" fill="url(#deferred-pattern)"/>
+  <text x="1920" y="94" class="small-strong">RECORD STATE · PROPOSED</text>
+  <text x="1920" y="124" class="small">Human acceptance and independent</text>
+  <text x="1920" y="148" class="small">statistical/PID review remain open.</text>
+  <line x1="70" y1="210" x2="2330" y2="210" class="rule-bronze" aria-hidden="true"/>
+  <line x1="70" y1="216" x2="460" y2="216" class="rule-lapis" aria-hidden="true"/>
+  <path d="M70 202L78 210L70 218L62 210Z" fill="#F7F3E9" stroke="#916400" stroke-width="2" aria-hidden="true"/>
+  <path d="M2330 202L2338 210L2330 218L2322 210Z" fill="#F7F3E9" stroke="#916400" stroke-width="2" aria-hidden="true"/>
+
+  <!-- Column headers -->
+  <rect x="70" y="238" width="560" height="46" fill="#1F3F60"/>
+  <rect x="675" y="238" width="920" height="46" fill="#1F6968"/>
+  <rect x="1640" y="238" width="690" height="46" fill="#2C3E50"/>
+  <text x="94" y="269" class="column">REGISTERED QUESTION</text>
+  <text x="699" y="269" class="column">DECISION ROUTE · EXACT ROLE</text>
+  <text x="1664" y="269" class="column">ALTERNATIVES · EVIDENCE CEILING</text>
+
+  <!-- Lane 1: magnitude -->
+  <g id="magnitude-lane" aria-label="Magnitude lane">
+    <rect x="70" y="300" width="560" height="258" rx="10" class="question-box"/>
+    <rect x="70" y="300" width="11" height="258" fill="url(#selected-pattern)"/>
+    <text x="102" y="339" class="lane-id">GLD-MSD-001 · 003</text>
+    <text x="102" y="389" class="question">Did one admitted channel’s</text>
+    <text x="102" y="427" class="question">normalized residual show an</text>
+    <text x="102" y="465" class="question">upper-tail or sustained change?</text>
+    <text x="102" y="512" class="small">Not an association or attribution question.</text>
+
+    <line x1="630" y1="429" x2="658" y2="429" class="flow-selected" aria-hidden="true"/>
+    <path d="M675 429L657 418L657 440Z" class="selected-fill" aria-hidden="true"/>
+
+    <rect x="675" y="300" width="920" height="258" rx="10" class="method-box"/>
+    <rect x="699" y="320" width="136" height="31" rx="15" class="selected-fill"/>
+    <text x="767" y="342" text-anchor="middle" class="badge-light">SELECTED</text>
+    <text x="699" y="390" class="method">Right-tail NIS + tabular two-arm CUSUM</text>
+    <text x="699" y="430" class="body">χ² upper-tail magnitude evidence · ordered two-arm memory</text>
+    <text x="699" y="466" class="body-strong">Fusion-core dof = 3: the lower recurrence stays at zero.</text>
+    <text x="699" y="502" class="body">The validated interface retains both recurrences for other dof values.</text>
+    <text x="699" y="536" class="small">NIS α is split across known or expected channels.</text>
+
+    <rect x="1640" y="300" width="690" height="258" rx="10" class="boundary-box"/>
+    <rect x="1664" y="322" width="18" height="18" fill="url(#deferred-pattern)" stroke="#A15C00"/>
+    <text x="1694" y="339" class="small"><tspan class="small-strong deferred-text">DEFER:</tspan> EWMA · GLR · SPRT · one-sided schema change</text>
+    <rect x="1664" y="361" width="18" height="18" fill="url(#rejected-pattern)" stroke="#B42318"/>
+    <text x="1694" y="378" class="small"><tspan class="small-strong rejected-text">REJECT AS REPLACEMENT:</tspan> NIS-only · Shewhart</text>
+    <line x1="1664" y1="400" x2="2306" y2="400" class="separator"/>
+    <text x="1664" y="435" class="small-strong">EVIDENCE CEILING</text>
+    <text x="1664" y="468" class="small">Locates statistical magnitude evidence only.</text>
+    <text x="1664" y="498" class="small">No cause, intent, ground truth, field calibration,</text>
+    <text x="1664" y="528" class="small">or repeated-look false-alarm guarantee.</text>
+  </g>
+
+  <!-- Lane 2: directional association and consensus -->
+  <g id="association-lane" aria-label="Directional linear association and consensus lane">
+    <rect x="70" y="578" width="560" height="286" rx="10" class="question-box"/>
+    <rect x="70" y="578" width="11" height="286" fill="url(#selected-pattern)"/>
+    <text x="102" y="617" class="lane-id">GLD-MSD-002 · 003 · 004</text>
+    <text x="102" y="667" class="question">Do comparable channels retain</text>
+    <text x="102" y="705" class="question">the expected positive linear</text>
+    <text x="102" y="743" class="question">relation—and who corroborates?</text>
+    <text x="102" y="792" class="small">Sign, multiplicity, and graph identity all matter.</text>
+    <text x="102" y="824" class="small">A strong negative edge is not corroboration.</text>
+
+    <line x1="630" y1="721" x2="658" y2="721" class="flow-selected" aria-hidden="true"/>
+    <path d="M675 721L657 710L657 732Z" class="selected-fill" aria-hidden="true"/>
+
+    <rect x="675" y="578" width="920" height="286" rx="10" class="method-box"/>
+    <rect x="699" y="598" width="136" height="31" rx="15" class="selected-fill"/>
+    <text x="767" y="620" text-anchor="middle" class="badge-light">SELECTED</text>
+    <text x="699" y="668" class="method">Signed Pearson + one-sided Fisher-z</text>
+    <text x="699" y="706" class="body">Bonferroni over active axes × channel pairs, per assessment.</text>
+    <line x1="699" y1="726" x2="1568" y2="726" class="separator"/>
+    <text x="699" y="766" class="body-strong">Unique largest all-pairs clique with |C| &gt; channels / 2</text>
+    <text x="699" y="802" class="body">Tie, bridge ambiguity, or no strict majority → insufficient evidence.</text>
+    <text x="699" y="838" class="small">2-of-3 is allowed. A dyad is not a strict majority at 4+ channels.</text>
+
+    <rect x="1640" y="578" width="690" height="286" rx="10" class="boundary-box"/>
+    <rect x="1664" y="600" width="18" height="18" fill="url(#deferred-pattern)" stroke="#A15C00"/>
+    <text x="1694" y="617" class="small"><tspan class="small-strong deferred-text">DEFER:</tspan> ranks · robust r · Holm/max-stat · spectral</text>
+    <rect x="1664" y="639" width="18" height="18" fill="url(#rejected-pattern)" stroke="#B42318"/>
+    <text x="1694" y="656" class="small"><tspan class="small-strong rejected-text">REJECT:</tspan> |r| · connected component · arbitrary tie-break</text>
+    <line x1="1664" y1="680" x2="2306" y2="680" class="separator"/>
+    <text x="1664" y="715" class="small-strong">EVIDENCE CEILING</text>
+    <text x="1664" y="748" class="small">Fisher reference is conditional on i.i.d.</text>
+    <text x="1664" y="778" class="small">bivariate-normal rows. Bonferroni is one-assessment</text>
+    <text x="1664" y="808" class="small">control only. No colluding-majority identification,</text>
+    <text x="1664" y="838" class="small">authentication, cause, or stream-level error claim.</text>
+  </g>
+
+  <!-- Lane 3: general pair dependence -->
+  <g id="dependence-lane" aria-label="General pair dependence companion lane">
+    <rect x="70" y="884" width="560" height="300" rx="10" class="question-box"/>
+    <rect x="70" y="884" width="11" height="300" fill="url(#companion-pattern)"/>
+    <text x="102" y="923" class="lane-id">GLD-MSD-005</text>
+    <text x="102" y="973" class="question">Can an eligible continuous pair</text>
+    <text x="102" y="1011" class="question">share nonlinear, direction-free</text>
+    <text x="102" y="1049" class="question">dependence that Pearson misses?</text>
+    <text x="102" y="1098" class="small">Compare on the same admitted rows.</text>
+    <text x="102" y="1130" class="small">Do not relabel MI as a direction statistic.</text>
+
+    <line x1="630" y1="1034" x2="658" y2="1034" class="flow-companion" aria-hidden="true"/>
+    <path d="M675 1034L657 1023L657 1045Z" class="companion-fill" aria-hidden="true"/>
+
+    <rect x="675" y="884" width="920" height="300" rx="10" class="method-box"/>
+    <rect x="699" y="904" width="182" height="31" rx="15" class="companion-fill"/>
+    <text x="790" y="926" text-anchor="middle" class="badge-light">COMPANION</text>
+    <rect x="893" y="904" width="166" height="31" rx="15" fill="#FBE9E7" stroke="#B42318" stroke-width="1.8"/>
+    <text x="976" y="926" text-anchor="middle" class="badge-dark">NOT FUSED</text>
+    <text x="699" y="974" class="method">Report-first KSG-1 mutual information</text>
+    <text x="699" y="1012" class="body">Support + geometry + resource + stability gates. Exact ties abstain.</text>
+    <text x="699" y="1048" class="mono">window 128 · point fit ≥ 64 · full route ≥ 72 admitted rows</text>
+    <text x="699" y="1084" class="body">Exhaustive circular deletion block = 8. Graph disposition must persist.</text>
+    <text x="699" y="1120" class="small">The complete companion graph cannot change the default verdict.</text>
+    <text x="699" y="1152" class="small">KSG k=3 · geometry k=5 · one explicit execution thread.</text>
+
+    <rect x="1640" y="884" width="690" height="300" rx="10" class="boundary-box"/>
+    <rect x="1664" y="906" width="18" height="18" fill="url(#deferred-pattern)" stroke="#A15C00"/>
+    <text x="1694" y="923" class="small"><tspan class="small-strong deferred-text">DEFER:</tspan> distance correlation · HSIC · copula/KDE MI · KSG-2</text>
+    <rect x="1664" y="945" width="18" height="18" fill="url(#rejected-pattern)" stroke="#B42318"/>
+    <text x="1694" y="962" class="small"><tspan class="small-strong rejected-text">REJECT HERE:</tspan> neural-estimator contract · generic jitter repair</text>
+    <line x1="1664" y1="986" x2="2306" y2="986" class="separator"/>
+    <text x="1664" y="1021" class="small-strong">EVIDENCE CEILING</text>
+    <text x="1664" y="1054" class="small">Block-8 deletion is bounded sensitivity—not a bootstrap,</text>
+    <text x="1664" y="1084" class="small">confidence interval, or p-value. Passing gates does not prove</text>
+    <text x="1664" y="1114" class="small">population support, consistency, null calibration, cause,</text>
+    <text x="1664" y="1144" class="small">or honest-majority structure.</text>
+  </g>
+
+  <!-- Lane 4: target information allocation -->
+  <g id="allocation-lane" aria-label="Target information allocation lane">
+    <rect x="70" y="1204" width="560" height="326" rx="10" class="question-box"/>
+    <rect x="70" y="1204" width="11" height="326" fill="url(#selected-pattern)"/>
+    <text x="102" y="1243" class="lane-id">GLD-MSD-006 · 007</text>
+    <text x="102" y="1293" class="question">How is information about one</text>
+    <text x="102" y="1331" class="question">named target allocated across</text>
+    <text x="102" y="1369" class="question">ordered sources?</text>
+    <line x1="102" y1="1393" x2="598" y2="1393" class="separator"/>
+    <text x="102" y="1430" class="body-strong">Atomic / categorical law</text>
+    <text x="102" y="1462" class="small">or eligible continuous law?</text>
+    <text x="102" y="1498" class="small">Support chooses the route. No silent fallback.</text>
+
+    <line x1="630" y1="1367" x2="658" y2="1367" class="flow-selected" aria-hidden="true"/>
+    <path d="M675 1367L657 1356L657 1378Z" class="selected-fill" aria-hidden="true"/>
+
+    <rect x="675" y="1204" width="920" height="326" rx="10" class="method-box"/>
+    <rect x="699" y="1224" width="420" height="276" rx="8" class="subbox"/>
+    <rect x="721" y="1244" width="235" height="31" rx="15" class="selected-fill"/>
+    <text x="838" y="1266" text-anchor="middle" class="badge-light">SELECTED · OFFLINE</text>
+    <text x="721" y="1314" class="method">Categorical MGW</text>
+    <text x="721" y="1348" class="body">Atomic empirical law</text>
+    <text x="721" y="1380" class="body">Pointwise + averaged signed atoms</text>
+    <text x="721" y="1412" class="body">Ordered sources · no quantizer</text>
+    <text x="721" y="1450" class="small">Named shared-exclusions functional.</text>
+    <text x="721" y="1478" class="small">not a universal PID ranking.</text>
+
+    <rect x="1141" y="1224" width="430" height="276" rx="8" fill="#F2EDF9" stroke="#8164B2" stroke-width="1.8"/>
+    <rect x="1163" y="1244" width="386" height="31" rx="15" class="selected-fill"/>
+    <text x="1356" y="1266" text-anchor="middle" class="badge-light">SELECTED · EXPERIMENTAL · OFFLINE</text>
+    <text x="1163" y="1314" class="method">Ehrlich PID2</text>
+    <text x="1163" y="1348" class="body">Eligible continuous law only</text>
+    <text x="1163" y="1380" class="body">Restricted-domain shared exclusions</text>
+    <text x="1163" y="1412" class="body">Fixed gauge + typed failure. No fallback</text>
+    <text x="1163" y="1450" class="small">Feature gate:</text>
+    <text x="1163" y="1478" class="mono">experimental-continuous</text>
+
+    <rect x="1640" y="1204" width="690" height="326" rx="10" class="boundary-box"/>
+    <rect x="1664" y="1226" width="18" height="18" fill="url(#companion-pattern)" stroke="#6F42C1"/>
+    <text x="1694" y="1243" class="small"><tspan class="small-strong companion-text">SEPARATE COMPARATORS:</tspan> I_min · BROJA · co-/O-information</text>
+    <rect x="1664" y="1265" width="18" height="18" fill="url(#deferred-pattern)" stroke="#A15C00"/>
+    <text x="1694" y="1282" class="small"><tspan class="small-strong deferred-text">DEFER:</tspan> Gaussian special cases · kernel PID · general PID3</text>
+    <rect x="1664" y="1304" width="18" height="18" fill="url(#rejected-pattern)" stroke="#B42318"/>
+    <text x="1694" y="1321" class="small"><tspan class="small-strong rejected-text">REJECT:</tspan> quantize continuous law as fallback · functional aliasing</text>
+    <line x1="1664" y1="1345" x2="2306" y2="1345" class="separator"/>
+    <text x="1664" y="1380" class="small-strong">EVIDENCE CEILING</text>
+    <text x="1664" y="1413" class="small">Measure-relative allocation—not unique truth, causation,</text>
+    <text x="1664" y="1443" class="small">trust, intent, or security semantics. No general continuous</text>
+    <text x="1664" y="1473" class="small">PID3, pointwise certification, or field-validity claim.</text>
+  </g>
+
+  <!-- Lane 5: authority firewall -->
+  <g id="authority-lane" aria-label="Authority firewall lane">
+    <rect x="70" y="1550" width="560" height="218" rx="10" fill="#F8ECE9" stroke="#A3574F" stroke-width="2.4"/>
+    <rect x="70" y="1550" width="11" height="218" fill="url(#rejected-pattern)"/>
+    <text x="102" y="1589" class="lane-id nonedge-text">GLD-MSD-008 · AUTHORITY FIREWALL</text>
+    <text x="102" y="1641" class="question">May any MI or PID result alter</text>
+    <text x="102" y="1679" class="question">a verdict or downstream authority?</text>
+    <text x="102" y="1726" class="small">The scientific result does not supply decision semantics.</text>
+
+    <line x1="630" y1="1659" x2="658" y2="1659" stroke="#743E37" stroke-width="4" aria-hidden="true"/>
+    <path d="M675 1659L657 1648L657 1670Z" class="nonedge-fill" aria-hidden="true"/>
+
+    <rect x="675" y="1550" width="920" height="218" rx="10" fill="#FFF8F5" stroke="#A3574F" stroke-width="2.4"/>
+    <rect x="699" y="1570" width="356" height="31" rx="15" class="nonedge-fill"/>
+    <text x="877" y="1592" text-anchor="middle" class="badge-light">SELECTED · EXPLICIT NON-EDGE</text>
+    <text x="699" y="1642" class="method nonedge-text">NO authority effect</text>
+    <text x="699" y="1682" class="body-strong">No verdict · no grant · no restrict/deny · no trusted-state change</text>
+    <text x="699" y="1718" class="body-strong">No plant command · no operator-inferred attack confidence</text>
+    <text x="699" y="1750" class="small">Research objects remain stored, auditable, and advisory only.</text>
+
+    <!-- Explicit double barrier: there is deliberately no arrow into authority. -->
+    <line x1="1611" y1="1575" x2="1611" y2="1743" stroke="#B42318" stroke-width="6" aria-hidden="true"/>
+    <line x1="1624" y1="1575" x2="1624" y2="1743" stroke="#B42318" stroke-width="3" aria-hidden="true"/>
+    <path d="M1601 1646L1634 1679 M1634 1646L1601 1679" stroke="#B42318" stroke-width="5" fill="none" aria-hidden="true"/>
+
+    <rect x="1640" y="1550" width="690" height="218" rx="10" fill="#FFF8F5" stroke="#A3574F" stroke-width="2.4"/>
+    <rect x="1664" y="1572" width="18" height="18" fill="url(#rejected-pattern)" stroke="#B42318"/>
+    <text x="1694" y="1589" class="small"><tspan class="small-strong rejected-text">REJECT:</tspan> fuse score · PID deny/restrict · chart-as-authority</text>
+    <line x1="1664" y1="1614" x2="2306" y2="1614" class="separator"/>
+    <text x="1664" y="1649" class="small-strong">EVIDENCE CEILING</text>
+    <text x="1664" y="1682" class="small">Descriptive/advisory record only. No calibrated security,</text>
+    <text x="1664" y="1712" class="small">causal, control, authorization, or application-validity claim.</text>
+    <text x="1664" y="1742" class="small">A future adapter must preserve authority-output byte identity.</text>
+  </g>
+
+  <!-- Compact, redundant status legend -->
+  <g id="legend" aria-label="Decision status and connector legend">
+    <line x1="70" y1="1794" x2="2330" y2="1794" class="rule-bronze" aria-hidden="true"/>
+    <line x1="70" y1="1800" x2="360" y2="1800" class="rule-lapis" aria-hidden="true"/>
+    <path d="M2330 1786L2338 1794L2330 1802L2322 1794Z" fill="#F7F3E9" stroke="#916400" stroke-width="2" aria-hidden="true"/>
+    <text x="70" y="1840" class="legend-head">STATUS + CONNECTORS</text>
+
+    <rect x="350" y="1818" width="28" height="28" fill="url(#selected-pattern)" stroke="#087F5B" stroke-width="1.7"/>
+    <text x="390" y="1839" class="legend">SELECTED</text>
+    <rect x="495" y="1818" width="28" height="28" fill="url(#companion-pattern)" stroke="#6F42C1" stroke-width="1.7"/>
+    <text x="535" y="1839" class="legend">COMPANION / SEPARATE</text>
+    <rect x="790" y="1818" width="28" height="28" fill="url(#deferred-pattern)" stroke="#A15C00" stroke-width="1.7"/>
+    <text x="830" y="1839" class="legend">DEFERRED</text>
+    <rect x="970" y="1818" width="28" height="28" fill="url(#rejected-pattern)" stroke="#B42318" stroke-width="1.7"/>
+    <text x="1010" y="1839" class="legend">REJECTED FOR THIS ESTIMAND</text>
+
+    <line x1="1350" y1="1832" x2="1400" y2="1832" class="flow-selected" aria-hidden="true"/>
+    <path d="M1418 1832L1400 1821L1400 1843Z" class="selected-fill" aria-hidden="true"/>
+    <text x="1432" y="1839" class="legend">selected execution</text>
+    <line x1="1620" y1="1832" x2="1670" y2="1832" class="flow-companion" aria-hidden="true"/>
+    <path d="M1688 1832L1670 1821L1670 1843Z" class="companion-fill" aria-hidden="true"/>
+    <text x="1702" y="1839" class="legend">companion only</text>
+    <line x1="1918" y1="1817" x2="1918" y2="1847" stroke="#B42318" stroke-width="5" aria-hidden="true"/>
+    <line x1="1930" y1="1817" x2="1930" y2="1847" stroke="#B42318" stroke-width="2.5" aria-hidden="true"/>
+    <text x="1946" y="1839" class="legend">no authority edge</text>
+
+    <text x="70" y="1880" class="small"><tspan class="small-strong">GLD-MSD-009:</tspan> no stream-level correction selected. Alpha spending, anytime-valid inference, and block/max-stat resampling remain deferred. An empirical run-length study is preferred.</text>
+  </g>
+</svg>

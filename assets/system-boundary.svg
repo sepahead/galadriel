@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc" xml:lang="en">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc" xml:lang="en" focusable="false">
   <title id="title">Galadriel 0.9 evidence flow and authority boundary</title>
-  <desc id="desc">A left-to-right system diagram. A conforming producer sends exact observation and monitor sidecars into a bounded cross-route assembler and typed lifecycle admission gate. Accepted frames feed two core detector evidence paths: per-channel NIS and CUSUM magnitude evidence, and signed-correlation consistency evidence in a producer-declared common projection. Conservative fusion produces a raw advisory report. Invalid or incomplete input abstains, rejects, or faults. A dashed, non-authoritative branch computes an optional geometry-gated pairwise KSG mutual-information report. This branch is an opt-in in-process library companion with executable use in the synthetic demo, evaluation, and benchmark; replay, observe, and NCP do not invoke it. A separate lower galadriel-justify research lane evaluates categorical Makkeh-Gutknecht-Wibral PID or continuous Ehrlich PID only for fixed ordered sources and an external target. Neither mutual information nor PID enters fusion, and Galadriel has no command or authority-grant path.</desc>
+  <desc id="desc">A left-to-right system diagram. A conforming producer sends exact observation and monitor sidecars into a bounded cross-route assembler and typed lifecycle admission gate. Accepted frames feed two core detector evidence paths: per-channel NIS and CUSUM magnitude evidence, and signed-correlation consistency evidence in a producer-declared common projection. Conservative fusion produces a raw advisory report. Invalid or incomplete input abstains, rejects, or faults. A dashed, non-authoritative branch computes an optional geometry-gated pairwise KSG mutual-information report. This branch is an opt-in in-process library companion with executable use in the synthetic demo, evaluation, and benchmark. Replay, observe, and NCP do not invoke it. A separate lower galadriel-justify research lane evaluates categorical Makkeh-Gutknecht-Wibral PID or continuous Ehrlich PID only for fixed ordered sources and a predeclared target with explicit provenance. Neither mutual information nor PID enters fusion, and Galadriel has no command or authority-grant path.</desc>
   <defs>
     <style>
       text { font-family: Arial, Helvetica, sans-serif; fill: #102a43; }
@@ -77,11 +77,12 @@
   <path d="M580 367 H605 V315 H630" class="solid-arrow"/>
   <path d="M618 308 L630 315 L618 322 Z" class="arrowhead"/>
 
-  <rect x="995" y="175" width="245" height="130" rx="14" class="node magnitude"/>
+  <rect x="995" y="175" width="245" height="145" rx="14" class="node magnitude"/>
   <text x="1017" y="209" class="node-title">Magnitude evidence</text>
   <text x="1017" y="241" class="equation">q = yᵀ S⁻¹ y</text>
-  <text x="1017" y="269" class="body">χ² window; two-sided CUSUM</text>
-  <text x="1017" y="291" class="small">Per channel; sign is not used.</text>
+  <text x="1017" y="269" class="body">Right-tail NIS</text>
+  <text x="1017" y="291" class="small">Two-arm CUSUM</text>
+  <text x="1017" y="313" class="small">Core dof=3: lower arm inert.</text>
 
   <rect x="995" y="335" width="245" height="145" rx="14" class="node consistency"/>
   <text x="1017" y="369" class="node-title">Signed consistency</text>
@@ -138,7 +139,7 @@
   <rect x="70" y="745" width="330" height="130" rx="14" class="node neutral"/>
   <text x="92" y="779" class="node-title">Fixed scientific question</text>
   <text x="92" y="811" class="body">Ordered sources (S₁, S₂)</text>
-  <text x="92" y="839" class="body">External target T + exact law</text>
+  <text x="92" y="839" class="body">Predeclared target T + exact law</text>
   <text x="92" y="863" class="small">Gauge, rows, units, software identity</text>
 
   <rect x="470" y="725" width="335" height="85" rx="14" class="node research"/>
@@ -181,5 +182,5 @@
   <text x="485" y="960" class="small">descriptive or offline research</text>
   <line x1="805" y1="938" x2="805" y2="970" stroke="#b42318" stroke-width="7"/>
   <text x="830" y="960" class="small">rejection or authority boundary</text>
-  <text x="1530" y="990" class="small" text-anchor="end">Every arrow is one-way; no command loop exists.</text>
+  <text x="1530" y="990" class="small" text-anchor="end">Every arrow is one-way. No command loop exists.</text>
 </svg>

@@ -53,20 +53,20 @@
       "size_bytes": 933
     },
     {
-      "git_blob_id": "275a0fe35e13bdda55652cd7c1c00edc252cd1e5",
+      "git_blob_id": "adeb405c83099fc493fd971c178d4dfe878c7d63",
       "git_mode": "100644",
       "path": ".github/workflows/ci.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "6a4ac621ea96f996c2fcf549ff8a67ea8419424805040a0bd6f1ac0cc90d5f69",
-      "size_bytes": 11017
+      "sha256": "e4689d05776559c1312800d63a8c8408caa363d94421874b7b0ff1b2e356596d",
+      "size_bytes": 12061
     },
     {
-      "git_blob_id": "9470c6554d7d3d333e0728ff812eb65ec47f91a6",
+      "git_blob_id": "f65e0e64ca1d9bb0be3ff73c8413ffa56e699930",
       "git_mode": "100644",
       "path": ".github/workflows/deep-quality.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "95ebcda695afeb73e03c2067e12fc7856d1b7963870a0ca6f22d14753a55095f",
-      "size_bytes": 11491
+      "sha256": "48d63647026ab679fec2d582a711c61c9d7d7fc10524b81032d659f52e02403c",
+      "size_bytes": 14030
     },
     {
       "git_blob_id": "11e2b007ffb644259e56266a236b2956b6c59aa7",
@@ -117,20 +117,20 @@
       "size_bytes": 262
     },
     {
-      "git_blob_id": "a041618b93336bdb5b968f3b7f297a1e77cf4d8d",
+      "git_blob_id": "ec5ab03083a189f02d110ee822995a4ab7af981b",
       "git_mode": "100644",
       "path": "AGENTS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5580db3409d7d485590a49c2608271c600fcf464d638f771b8e962f605f2af9c",
-      "size_bytes": 25821
+      "sha256": "8f38a539b35257ed0cbb79e748f1a06bf0e0db5b9b59af191823c0cedb2e1943",
+      "size_bytes": 26798
     },
     {
-      "git_blob_id": "0a2b5420ccce731a5c3fd8763060a7599fd0eceb",
+      "git_blob_id": "7db6fc4759e216e22a78f240138404d744f1de98",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "07916a31658885f8a3639398970b0191b96118cc40d91446e185d423bdf2e18c",
-      "size_bytes": 59684
+      "sha256": "863146a6b6c87dbc6e2c302ff9a89295c3d714a0b9f11329ccea2b15f8e93735",
+      "size_bytes": 63862
     },
     {
       "git_blob_id": "93e56077732b34820e2594e8f61d5579b5f9849d",
@@ -141,12 +141,12 @@
       "size_bytes": 938
     },
     {
-      "git_blob_id": "e0e54eea3aec05d7ea6ba3958cd3c873036f2951",
+      "git_blob_id": "800ce09c977fffcc6853887ddf9055921ead5dee",
       "git_mode": "100644",
       "path": "CLAUDE.mdc",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a352e09cbb31d72d6323ba12d0b4381e1aad6301ee8e8a02c2ffa8b1092f2f81",
-      "size_bytes": 22990
+      "sha256": "cfd34c3331142bd1762812c4c531b05cf98d7571b134910bec99ff2c407d321e",
+      "size_bytes": 23852
     },
     {
       "git_blob_id": "ecb1f6e6fa20c20257071b51c22c75fcb3b6c56d",
@@ -165,20 +165,20 @@
       "size_bytes": 5173
     },
     {
-      "git_blob_id": "2abf55e834c270e2c2dd1ba74548e4dd224b46fa",
+      "git_blob_id": "21cbaad008fcb7a315e7aabfadf907b69ed882cd",
       "git_mode": "100644",
       "path": "Cargo.lock",
       "purpose": "locked software/toolchain input",
-      "sha256": "c760893ae7ca3f5577c81855736236e2e2d6f272b4cb9f48d7984866c18ccf4e",
-      "size_bytes": 108101
+      "sha256": "37dc3369e16d146f9ad7a8aa15c86bdbb443ddf19349bc99a91c92b454750700",
+      "size_bytes": 107844
     },
     {
-      "git_blob_id": "0f13ec94e13362377cf0adeb9fb66ff9adaf1f2d",
+      "git_blob_id": "91d9698f9820e49f154ea71d53cd6198a52d9d45",
       "git_mode": "100644",
       "path": "Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "e0365ca1307f8e15f9a59a4490644cd9014f46cc605a0866fb1ddfb3c02c5348",
-      "size_bytes": 3494
+      "sha256": "3671ec0b414840f97a3b705af60dfbc0fb281d794d9b582c2cf1a120a0104c17",
+      "size_bytes": 3430
     },
     {
       "git_blob_id": "8e3d744f4d0938d18bb581252066c5b5c0c76588",
@@ -205,12 +205,12 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "0a2ac1786794c1275e4ff19cb77d7991d59b4cd3",
+      "git_blob_id": "57c439934a601ee2152495b0f83e737697ec5e02",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "ca7a590322b6c54fadb69bb4792c9e9f6dba6bfd5f2daae811e2e6a822fcb27d",
-      "size_bytes": 52745
+      "sha256": "07d5e487487ca6ff33065462d6bd19fb1d5f273bb009459dbc1535d20265a44b",
+      "size_bytes": 61939
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -221,11 +221,11 @@
       "size_bytes": 6391
     },
     {
-      "git_blob_id": "075000209e05d57d36e8d7c6385b3e0d7d0382e2",
+      "git_blob_id": "9a289f162ad2fa3bc6bacbc8c0b2f479ae0587b0",
       "git_mode": "100644",
       "path": "SECURITY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "9627a3e91411179fab3aedebebe68111ec3ff4503f1076aa1b2a454c3a10f769",
+      "sha256": "0c32a364fb695961d1f2785cee3249f45cc0b882269cb6d1cf7704921ab498b7",
       "size_bytes": 12946
     },
     {
@@ -237,12 +237,28 @@
       "size_bytes": 1260
     },
     {
-      "git_blob_id": "a9eac2d1a781e261ea9e76e5bf71873e5a43d031",
+      "git_blob_id": "951c19f04c45f6832d82cbfe2c7cbfcdbc3473cc",
+      "git_mode": "100644",
+      "path": "assets/crebain-drone-mgw-pipeline.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "77fc977dad42101d925eff7691adbe0c2b57aae97295d7162f4770cccf9275e0",
+      "size_bytes": 19639
+    },
+    {
+      "git_blob_id": "c2901b88367f58b05525ee0a672e6c891d7d39e6",
+      "git_mode": "100644",
+      "path": "assets/crebain-mgw-method-map.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "243a05afcd9221ff6f3527ffe36d2630a3a2bcd08d963ae27ea59f078d2a1f27",
+      "size_bytes": 28393
+    },
+    {
+      "git_blob_id": "0161f0d603f16e1a07cfc1a5c9e01a032efa68a5",
       "git_mode": "100644",
       "path": "assets/detector-evidence.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "e5b63bfa89612beae9bc56e840a7f1c1932701184c7dcc512b612b75b9a9af52",
-      "size_bytes": 10519
+      "sha256": "1fe521436ae28bf1dfa03bf41179299f914007a3a1698fd8bf5ec5a16515fc8f",
+      "size_bytes": 10716
     },
     {
       "git_blob_id": "935eb9b4b11a8f70c79d17525e7a73cf7f058563",
@@ -261,20 +277,28 @@
       "size_bytes": 9848
     },
     {
-      "git_blob_id": "ee42bb8982b264ef8be13000d1b25c4fb207dcfb",
+      "git_blob_id": "5c78afb33cfda601457c0d0eac12e1298b128f39",
+      "git_mode": "100644",
+      "path": "assets/method-selection-decision-map.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "17ebecb012f66b85ead18ba31d7834e0bae9080866280b9294373331b3f77bbc",
+      "size_bytes": 25112
+    },
+    {
+      "git_blob_id": "29ceb1b021c6ecdd65ada64496af223b8c960148",
       "git_mode": "100644",
       "path": "assets/pid-estimand-provenance.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1d5b7b3497b242e2409a5fe9418700c0d0acaf72085250a6dc084b11163a050b",
-      "size_bytes": 10360
+      "sha256": "e1d8c246c437682c316eaae6258c8fbcd0585175f17fa3457c7ece89b49e6cc1",
+      "size_bytes": 11595
     },
     {
-      "git_blob_id": "b0ce67860f3b597cb96241fd1910bc347a293a88",
+      "git_blob_id": "c3b6a46563a0bcbe10c300f3a3d4c2ae2ed1bc84",
       "git_mode": "100644",
       "path": "assets/system-boundary.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "fb480cabfd95362df6bfb9bcc48516e6b9284206c7c7dd89d2fc14ffe5195633",
-      "size_bytes": 12050
+      "sha256": "5448ffb7e804701aeb5e0abdb5b0c3bcdc976cd1df04f4238fc1fb75b787108c",
+      "size_bytes": 12142
     },
     {
       "git_blob_id": "c8b06120e872993601d7d38855da811c5bf56464",
@@ -405,12 +429,12 @@
       "size_bytes": 12033
     },
     {
-      "git_blob_id": "d70be433288b693c92778e5890f5d6b3074a7b30",
+      "git_blob_id": "40f057b31621a4a3e5bf53e8faac03e61e299205",
       "git_mode": "100644",
       "path": "crates/galadriel-core/src/decision.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "403d391611786fe69e9555a550fffe93cbf6d766badd0a5dcd874fc0dd2dabf4",
-      "size_bytes": 64168
+      "sha256": "a4a4941bf26d374ba39e19c043a553c3bd6214b7cb950c53a4ddd022554817e0",
+      "size_bytes": 65159
     },
     {
       "git_blob_id": "341833d0ed114a6b348a5eb50a10b23578f018d6",
@@ -485,28 +509,28 @@
       "size_bytes": 10280
     },
     {
-      "git_blob_id": "4d368f41cc0b583b344e8aaff83a969732bde447",
+      "git_blob_id": "12df4d9b9605614a0b245f0f88fc6746d54771fb",
       "git_mode": "100644",
       "path": "crates/galadriel-dependence/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "407016dfc1e410cd4488967ca1591694f61effa986690e292b0bed717e838a66",
-      "size_bytes": 818
+      "sha256": "a7c498173a5235caeb53d494e51f1dfdaccddc00b83bf42de816ed4a79ea5a91",
+      "size_bytes": 837
     },
     {
-      "git_blob_id": "ecfdb37db6f613357b2f72695044f9d661b37f7c",
+      "git_blob_id": "102da98cf126b0964eed6f12e1527bbcef9641f0",
       "git_mode": "100644",
       "path": "crates/galadriel-dependence/src/engine.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "24daad004395bdd14807f337894cc8f0afdb13d9df7aa56d174ea213687d9b04",
-      "size_bytes": 150627
+      "sha256": "f1609084134a5a2f8deb7684ddd82d6d469687cd37d019c6da611951b51df4b4",
+      "size_bytes": 163119
     },
     {
-      "git_blob_id": "0e7ba86f700dfb26e7fab3f01b52d6e0fe8e4dcf",
+      "git_blob_id": "dcf834805c7a6ab6c54daea8fa43a4c8b3bf7954",
       "git_mode": "100644",
       "path": "crates/galadriel-dependence/src/fusion.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "10b7bc5aeb5b8d45ea186e630e9f835bdd9a5128da74dcb3a1e3668d43892dd0",
-      "size_bytes": 23756
+      "sha256": "c1dd2bcd3b103104ad2ac7f485dd17e3315e5c3387a6f9930aae97af3c9e0bfd",
+      "size_bytes": 23890
     },
     {
       "git_blob_id": "a7454804e4ea90c56b03b8058fa80a69f66aa89f",
@@ -573,20 +597,52 @@
       "size_bytes": 5255
     },
     {
-      "git_blob_id": "c6a22b2ac9e23d3991d35a8cbb9e88bbe7755485",
+      "git_blob_id": "8c5f9c5ba15169a1c8bfccf92e0b1e7eff0f7881",
       "git_mode": "100644",
       "path": "crates/galadriel-justify/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "81752fad6fd44e96e88da190e8a11fccb224b04f96b9bb64095943f8d7675667",
-      "size_bytes": 797
+      "sha256": "ad876aaca4728276097ceb7a002145fa9d2dc5cd6902b271916f689768814ffb",
+      "size_bytes": 932
     },
     {
-      "git_blob_id": "85e2d9ce1e27354a0fa84a28239dfdaae8699ca7",
+      "git_blob_id": "4e931db19f187e8981c81dc1149d51f5e553b0aa",
+      "git_mode": "100644",
+      "path": "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "82a837415b56c3646386a5c3e6fe28a492906c164edc461249bab7844aa4ebda",
+      "size_bytes": 64218
+    },
+    {
+      "git_blob_id": "884addb5e7046dde7f08c3a573d6ec632db2aac4",
+      "git_mode": "100644",
+      "path": "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
+      "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
+      "sha256": "075e8905a1972772a413e6b3a0928303aec4f1c547ddbd0c281226433fb86b88",
+      "size_bytes": 61857
+    },
+    {
+      "git_blob_id": "1b542d8df6522a0a5f85c15fc95e75ed2442b809",
+      "git_mode": "100644",
+      "path": "crates/galadriel-justify/src/crebain_mgw.rs",
+      "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
+      "sha256": "685fdffb9a4f1440d1bab9e863deb7dc2b9daab668a294b9daac929f30d1a86e",
+      "size_bytes": 187478
+    },
+    {
+      "git_blob_id": "755aa9f9e38716cd1ad085a97960a702a33fd23d",
+      "git_mode": "100644",
+      "path": "crates/galadriel-justify/src/crebain_mgw_main.rs",
+      "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
+      "sha256": "62fdf3f8c6f0fe3f83ccf398ed67cea2e1e57a89b0b53368d09bdd970846707d",
+      "size_bytes": 3824
+    },
+    {
+      "git_blob_id": "fcf8440bd52178fd1af6403471f1c235f4a13b7f",
       "git_mode": "100644",
       "path": "crates/galadriel-justify/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "d5dafb3170899d93df2cfa40912d6ac1be2eb3e988b284b4dbe97d490385b1c0",
-      "size_bytes": 177220
+      "sha256": "a98dc598e4b250ff867784ada5b9bfeb388ffe4adce9414ea5faf6373311dd75",
+      "size_bytes": 188579
     },
     {
       "git_blob_id": "c2ad83e2102a3412c009d2a9e59e803af4478f74",
@@ -885,36 +941,36 @@
       "size_bytes": 1335
     },
     {
-      "git_blob_id": "272efb5df277686ec28479abaa326b337ef20b82",
+      "git_blob_id": "5e2c24ea17f659c8fffd1bab4d069e98e5c7327a",
       "git_mode": "100644",
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "aa3eed7426f3264ccd9f3b2732b12b68ab241f05582c8d06059ee039b6631706",
-      "size_bytes": 20866
+      "sha256": "5dd35f546690363db71c13c9736b9b197909fcd3d0c64669eb9126827d19c354",
+      "size_bytes": 22215
     },
     {
-      "git_blob_id": "f3dd74ddf8b3b268d5a6bbb5ba3d138852afe157",
+      "git_blob_id": "3f5a6ff1b11ddea8630f4aac4eacedf2f96415c9",
       "git_mode": "100644",
       "path": "docs/API-SURFACE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "af5a120c1493bfae621b0a7f61485005d47da85fbc062f9026c8c051a81f51e6",
-      "size_bytes": 10618
+      "sha256": "0c08add9a87f6f5a9c569eb4f14f32a1ea858d792971d7e47f7e8bb4cb9ba47f",
+      "size_bytes": 14526
     },
     {
-      "git_blob_id": "dd2c5c13bc794d62c6b578aada79164b269c1379",
+      "git_blob_id": "9bda8fc75e5d0564e9dbf4d6eaefacd081312417",
       "git_mode": "100644",
       "path": "docs/CLAIMS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "363fc3d76412b023964245f15a3b5f6d4f9828fd12af67a5f30c8a68398195e6",
-      "size_bytes": 4414
+      "sha256": "4958176d92376ce4bdc9118bf0bdfde63bed51405c35408a0da505050c5e2d41",
+      "size_bytes": 5202
     },
     {
-      "git_blob_id": "2d176cef73fbf60d359b4d8eedda3263aedea8e9",
+      "git_blob_id": "5ea03be8cc79d351f1700d671f833d0fa91ef3c4",
       "git_mode": "100644",
       "path": "docs/CONFIGURATION-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "6446f9689a120add49148a6b1e47374b996c2c6fb03d4ec2c857dc3ab4cd5c1f",
-      "size_bytes": 36611
+      "sha256": "af6ea9a76956856672a8bc3f9c7d949e7622a013a2bb85731d2e3806505be821",
+      "size_bytes": 37227
     },
     {
       "git_blob_id": "8339c3755635997f8d7da22e7103afcadb028992",
@@ -925,44 +981,60 @@
       "size_bytes": 7805
     },
     {
-      "git_blob_id": "b991aa21885492711d11a7d10d44b745b83679dd",
+      "git_blob_id": "3160dcb30429058c1d32ef622d0d6778676aa11a",
+      "git_mode": "100644",
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "2400d36369af6988aaa7b27797c184c7aeddfae3a9c6f942d962af11138e42f5",
+      "size_bytes": 55152
+    },
+    {
+      "git_blob_id": "410a7e1a339ca2d57afd1131fc7aed6137c6eabd",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d9208b50ae157a933ce25bf55fc718a85ec3baf57568bd4a94baf827c7e83899",
-      "size_bytes": 26107
+      "sha256": "853e1d08a3b0ea93435a4aee772bde1959a39d2df0fead0ab0e5527ab3ce67d3",
+      "size_bytes": 27609
     },
     {
-      "git_blob_id": "f4aa4a1d14d65c9eb9fce8a5ce360ab952d3f946",
+      "git_blob_id": "d326ce4aa92a8dfe796b81949c4112adf15f8477",
       "git_mode": "100644",
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "aa4bc9836c9696e4acf8daa2c45a307c99c79e272dcc6c523716bc8558d5c18b",
-      "size_bytes": 23847
+      "sha256": "a04c3d0805c658f4cf9c4c2f5e3828bf267a67d95e1a569d9fd8e7723142f316",
+      "size_bytes": 29141
     },
     {
-      "git_blob_id": "5e576082f48eedbd876489b4660a523dfb23c83b",
+      "git_blob_id": "87c95b50bdd65b71f8556423c5e69dfb7a2b1321",
       "git_mode": "100644",
       "path": "docs/EVALUATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3e600bec120c282f15d0ed006fd396d69d243543b2da7bea69ecc88b0dcae9ca",
-      "size_bytes": 20209
+      "sha256": "7bd46904d3d4fcb749272acb1233406bcc5f2a817056da3adff45100e83846d2",
+      "size_bytes": 23691
     },
     {
-      "git_blob_id": "e722ac249ad0ae9341c1c9afa80afa22ce4d774f",
+      "git_blob_id": "ce4650f3827d96a02bd411e196b1d94339e7cd26",
       "git_mode": "100644",
       "path": "docs/JUSTIFICATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "329bf63307d03d99b0da37556b2be8e64ab00b32f2207a7fd04d282a02514b3d",
-      "size_bytes": 18713
+      "sha256": "2df599e2c029f16756dd962ecee42003e02a8152e36224416b79388ca6b81b72",
+      "size_bytes": 25212
     },
     {
-      "git_blob_id": "c57f2a5219d6618ca3511a2ef37939fbae633e5d",
+      "git_blob_id": "82f2b089424fbc753290a01329a43b8257de06d3",
+      "git_mode": "100644",
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "130024eebdca782ee03ceef6fb207abd29b72a5d9f0cfe626f64137899f511fe",
+      "size_bytes": 49979
+    },
+    {
+      "git_blob_id": "aaf6506ba5d29070248df2953b92f5e43bd01ceb",
       "git_mode": "100644",
       "path": "docs/MIGRATION-0.9.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "43dece7aae3cf714c757c4d69e62bfc5079dd898b68b39f1075a244a8dcb9189",
-      "size_bytes": 12736
+      "sha256": "b5e8c41daaf1bdaf2bf295ebb149ab26407818652d4b18e0ae1f5d1722d1de62",
+      "size_bytes": 12958
     },
     {
       "git_blob_id": "f61b96314d188f8f86003eee946db840366e0fb3",
@@ -973,20 +1045,20 @@
       "size_bytes": 18177
     },
     {
-      "git_blob_id": "8c1e7d00aa8f7a258a12ea79594ff0fd599da057",
+      "git_blob_id": "fbe1b50877500485092336d9651526ef6c459781",
       "git_mode": "100644",
       "path": "docs/PAPER.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8b6bc512afb2744da040529719247189334890ac755c8149e2311b94e4258baa",
-      "size_bytes": 27954
+      "sha256": "95988d18d917502e10a32e255e63edde472d76330ca871dd9bd4b98c20e6bde5",
+      "size_bytes": 32008
     },
     {
-      "git_blob_id": "35550f5dd8430e14cabd0bbd74a8f0f823f53348",
+      "git_blob_id": "57f72ae2a26154839a5e0692f94cfd0a0595bc3b",
       "git_mode": "100644",
       "path": "docs/PID_RS_1_0_MIGRATION.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "82ec87bb5dda424c0f288517eb86085e8df589a4138be9960ca3d16db6d4513e",
-      "size_bytes": 11598
+      "sha256": "16cd7e59b798e82e4e6668a4f4c4fcdcc7a8419203fc6b155b880b1032cfdf86",
+      "size_bytes": 17523
     },
     {
       "git_blob_id": "e942ecfcc76e22be7b2af77702a7a58bb7ddd3e1",
@@ -1029,20 +1101,20 @@
       "size_bytes": 17401
     },
     {
-      "git_blob_id": "166d8f3e3ce41d59896e3f111f3544423d027f79",
+      "git_blob_id": "14c035cc1ec351505bc6af5d196a3b5517147122",
       "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5327b971efa708906333b822c3214d32e2dc1975c03bdf03ba7c339fad894769",
-      "size_bytes": 20542
+      "sha256": "8c49d3fd76373d684ec64f8f3560231e3336043fc2542b41548ca7942e810951",
+      "size_bytes": 26841
     },
     {
-      "git_blob_id": "f1e8e3055b9387656c4907065ff9be8f02b102fe",
+      "git_blob_id": "148ec21d2b24e3c45a13b238b450e9eb3ab4cd9e",
       "git_mode": "100644",
       "path": "docs/THREAT-MODEL.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a451fbe44f4d7ec0c205f5052d4649a07471e42c9d6dff4e9a24ae6d5fbb9734",
-      "size_bytes": 16508
+      "sha256": "42c8770fb70dc98b12172c7d6fa7cbd6ad7479301e07b11d43fd36f2e1f1aaef",
+      "size_bytes": 16832
     },
     {
       "git_blob_id": "3765749aad130fc611f5c5d35d3f532284898946",
@@ -1261,28 +1333,28 @@
       "size_bytes": 32297
     },
     {
-      "git_blob_id": "1f1ff2df62352df27042122e7ed448610900cce8",
+      "git_blob_id": "156198b2b2ec40c6c58f76d5cc8e2089a990c2f5",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "03d003218ee7508927545c38c4560cd8aaf3ed861e7d5c3fd092fb2e30fa6688",
-      "size_bytes": 22472
+      "sha256": "7430d3c8f0dbbd1641d75ef2827dbc4c193f6feeec6afa43a44148d8bd7ac082",
+      "size_bytes": 26418
     },
     {
-      "git_blob_id": "1c0e512d70cf91edecc65578386746e2c9c9aadf",
+      "git_blob_id": "8aa37110fb061da422ac738e5216215f4fd52980",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-NOTES.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "8fb5d42cc83c9cce3f8120351d465a33d2ffcfe4a4c2dd5a851c014dcd6b7dad",
-      "size_bytes": 22598
+      "sha256": "dc6349b7faa165a9d4ee4e671993c8479d5472028d53f62b0dae1acae64e0c6a",
+      "size_bytes": 28015
     },
     {
-      "git_blob_id": "a4e81ad990e3fe00582b0be156daa91b85ad9bab",
+      "git_blob_id": "cf16d7aa6a3e7d99ddcf8f79cd5a5f0ef9dd7f98",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "790e855f065d3425f3f8f424558734e41b8f680d47eff32925aaeb6e75e5dcee",
-      "size_bytes": 59757
+      "sha256": "3991b527f92f35f615bc72e2396ef161c18457598c85d8b9dee8ea56c17ac866",
+      "size_bytes": 60928
     },
     {
       "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
@@ -1317,20 +1389,20 @@
       "size_bytes": 83785
     },
     {
-      "git_blob_id": "c70802bce1d98678636c233a15673ff22aa77645",
+      "git_blob_id": "b2c82bca6800305a6df3fbb3ca9f3fda0f8f56c7",
       "git_mode": "100644",
       "path": "release/0.9.0/api/galadriel-dependence.0.9.0.txt",
       "purpose": "retained baseline, migration, calibration and public-API evidence",
-      "sha256": "54de9c19ce4a9f695b67f408d2f960cea5893ad68b88aeec0c54eee7ae839139",
-      "size_bytes": 184582
+      "sha256": "7e447ea2eb5192e1e675805b9db74b336737eda00a20ce744ce3bddd64ab1adf",
+      "size_bytes": 184807
     },
     {
-      "git_blob_id": "3c2c5c8289f4c8f65d793181b91cb22209002d91",
+      "git_blob_id": "f14aa705a531dc559955d4f0df37644e268199d4",
       "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "da4199197c72d57ae20e216f0663fbef05f18328ce0c3414f5e7f01c8dff7c42",
-      "size_bytes": 20684
+      "sha256": "4262c7ab7bd4ba3d2466c41ed9a831a05a957fc8bf2a84a67576b3d715b4f405",
+      "size_bytes": 21123
     },
     {
       "git_blob_id": "7e563049b65dc6761e76b7d0c96c1cc10bd5c0dc",
@@ -1357,28 +1429,36 @@
       "size_bytes": 322
     },
     {
-      "git_blob_id": "461b3d1ff52c6c0c7b4dc4ca39f2de0d75f361b0",
+      "git_blob_id": "05a287a3a82880b75261f2d54e2bf0451b77829f",
       "git_mode": "100644",
       "path": "release/0.9.0/audit/threat-register.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "8e389b44267e3ec9fce7c46b03b10c3290c8b4ba8ab16f631d0f3a1b5c7e8c1d",
-      "size_bytes": 30244
+      "sha256": "b118463569459e82425c00cc9502722f0830b0e4699218001d42ed8f7f9d5df5",
+      "size_bytes": 30699
     },
     {
-      "git_blob_id": "d8350f98a43372b6b617fa02a28431be01680e5b",
+      "git_blob_id": "55aeabde765f5b41b3ac5b15671ad99bd15b44a8",
       "git_mode": "100644",
       "path": "release/0.9.0/claims.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "d9bca8feb847f80c4658c58ed901e32430c3442fa3cce54a7ccc2b3718a4ae97",
-      "size_bytes": 10742
+      "sha256": "e7524bcd5be54155681e961b7048ab43ca39b9cc990824561ab8a2027c5fce00",
+      "size_bytes": 13323
     },
     {
-      "git_blob_id": "12810d45685c0d3af5ef07c2f0c534adfcf1359b",
+      "git_blob_id": "416927bab5f23190577fcf3df307a7fcc494d512",
+      "git_mode": "100644",
+      "path": "release/0.9.0/clm-018-assurance.json",
+      "purpose": "release governance, claims, review, and signed audit inputs",
+      "sha256": "06e8325f918e6b840ebfcba7c8ba1be613a74a1ea03f5dc392e4c1e39c3139dd",
+      "size_bytes": 30071
+    },
+    {
+      "git_blob_id": "b6f11893de5418acae5511cb93ce504db1bbe990",
       "git_mode": "100644",
       "path": "release/0.9.0/ecosystem-cut.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "0425685528978f5f4e6dc3046456aab7cfc1615bd598d5a3bd16f94e0951db8e",
-      "size_bytes": 11002
+      "sha256": "ae11ea915a77a5bca1b0c30bd2e6af3a7d1eba58f16318e314509e80aff04204",
+      "size_bytes": 14434
     },
     {
       "git_blob_id": "68c93810199672d53ed4ac82fb71d2e0b5a6c7c8",
@@ -1469,12 +1549,12 @@
       "size_bytes": 958
     },
     {
-      "git_blob_id": "87c10ffd3ed73d3aa03ea1a4c988173a6ad35eed",
+      "git_blob_id": "6923f9ba91fb3323123c673a3dbc0a6466e4910d",
       "git_mode": "100644",
       "path": "release/0.9.0/local-convergence-schema.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "5e50c73f8aee350636b1282f3e6385e398557c957533cecdaf82c661ac6780c8",
-      "size_bytes": 24936
+      "sha256": "c48463e9241278d450d5f7e8a21e15033a0ac26a82bf09e50d50ee069086da44",
+      "size_bytes": 24998
     },
     {
       "git_blob_id": "190eb4cd60382a2dbb7d459f6006bdcd98d7c898",
@@ -1533,20 +1613,20 @@
       "size_bytes": 67085
     },
     {
-      "git_blob_id": "6aac5ff4540ef423a0d648410f61b12aa5e2c07f",
+      "git_blob_id": "92faa026bc3e05e8f249588a3dffb1ede5c3f948",
       "git_mode": "100644",
       "path": "repo_work/README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7528c1302e46722ad40daa54a8d398b08e65c7cf9713e5ad80908639a1903ab9",
-      "size_bytes": 45803
+      "sha256": "f342168619782a5fe024520bbb7cfae6f1b27d46d811578b65c036639e244eb8",
+      "size_bytes": 48465
     },
     {
-      "git_blob_id": "fe589c24e463fe969c8953a0ae23bd7f6d09925c",
+      "git_blob_id": "67574e1e708dbd9773bee455541210115061ad0c",
       "git_mode": "100644",
       "path": "repo_work/audit_tracked_files.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "cda7d7ae44235b4a0e2eceb081abf73e23b0d8ad5092370c74cadd0887abd250",
-      "size_bytes": 17438
+      "sha256": "38411842d2f5d7fdfc7847c8eb6c1513cc8b847fe83f2940d8a3dc6ee0702cb4",
+      "size_bytes": 17530
     },
     {
       "git_blob_id": "f57cd123b20d8045e3573cebe2da53fa98ef140c",
@@ -1557,12 +1637,44 @@
       "size_bytes": 21960
     },
     {
-      "git_blob_id": "fa9cc0e03ee8f2db827736f835cb4fae68d3009f",
+      "git_blob_id": "ec142d8991186ad56fd48f27b8426e6747d16b64",
+      "git_mode": "100644",
+      "path": "repo_work/check_crebain_mgw_candidate.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "b88908c8e9c5af5e494e8a54ebeb94fa6709d646f7e1711a014640c891a8f8a6",
+      "size_bytes": 6438
+    },
+    {
+      "git_blob_id": "8efeeedf53b7a22e00da1e1f16244706a37ef134",
+      "git_mode": "100644",
+      "path": "repo_work/check_crebain_mgw_decimal_oracle.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "aa856ab08e781f0920602ec6cfc8d88ac0babe51b399a091d5b8609505400c50",
+      "size_bytes": 32916
+    },
+    {
+      "git_blob_id": "7d6591e784a2fc7e328fbaf17b60f0400b90bf63",
+      "git_mode": "100644",
+      "path": "repo_work/check_crebain_mgw_mutation.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "0638ba5a87620dd565a53c25fdab37c66afdfb3b9e3ef43587cdd4c5e43404eb",
+      "size_bytes": 36645
+    },
+    {
+      "git_blob_id": "7798671f6fe1ab8e8f749efe6dc7cf88adda394d",
+      "git_mode": "100644",
+      "path": "repo_work/check_crebain_mgw_schema.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "0f02324c7974a8d4ab0cb697817b8e6783b3164d7e0bfefd4bd6400aae7855e5",
+      "size_bytes": 28076
+    },
+    {
+      "git_blob_id": "32bc9ec57f96d92966aef422acc880c2ae1010a7",
       "git_mode": "100644",
       "path": "repo_work/check_feature_graph.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f8709c07a5c33e144d18854cfbf7b656cc1ed6d558aa19c5a2bfb21007cb8373",
-      "size_bytes": 24538
+      "sha256": "c1be70bc8d0b51de8b6c9aafdd006ea5aa90eade8af9554c65f779bd21f15df8",
+      "size_bytes": 24501
     },
     {
       "git_blob_id": "0f3696f46a66c4be3b3fbcecfe953646972017a6",
@@ -1605,28 +1717,28 @@
       "size_bytes": 98825
     },
     {
-      "git_blob_id": "f8832980b9ee6fb90c24127dc3f072b69298c76e",
+      "git_blob_id": "1c820dc3539f68058e8691a9b42c5ea30fe58d73",
       "git_mode": "100644",
       "path": "repo_work/finalize_release.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "f9f02ce9506ec21b297595c46dda32c90854f845ef197cd79f61079b193f9a89",
-      "size_bytes": 256271
+      "sha256": "313c34ad7c83dd85548091e9b5d080c6148746e4c5a619f2d1630cb7822b55b6",
+      "size_bytes": 260399
     },
     {
-      "git_blob_id": "b0844fd90e47cb7cc846b3b09a4318c1129b849d",
+      "git_blob_id": "1663c1e09a58dae95978e41ca9254ee5963151cf",
       "git_mode": "100644",
       "path": "repo_work/freeze_audit_inputs.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "464c4e5f44b1d81b9ecadbaa1eec524027d7fdcb1522130190917eb5fb14ba40",
-      "size_bytes": 99301
+      "sha256": "81d6cd0b134c86dc40b4110f8ef279b66483aac548409db982e7419fa7502747",
+      "size_bytes": 99978
     },
     {
-      "git_blob_id": "55680cbda743b72fc3cdf96bb9e9cee3e570da62",
+      "git_blob_id": "4c8582c0e2deffede2839fd91da23784a60a67a9",
       "git_mode": "100644",
       "path": "repo_work/local_convergence.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8215fb60d3e55dfc2a6b0890977906533ecc7f67a83fc23da455f5a45189b27a",
-      "size_bytes": 28876
+      "sha256": "908cdecceb8a3615c26e330f6111acbfed8887b49724616df47440a690d4df9d",
+      "size_bytes": 28938
     },
     {
       "git_blob_id": "3ce0578cb8b88ca78e655d336e0c1a6d1e39f2be",
@@ -1661,28 +1773,28 @@
       "size_bytes": 74863
     },
     {
-      "git_blob_id": "312cb1b619d283fac5caae071ae12f55aa9868b7",
+      "git_blob_id": "12dd91739f1085737ad8e68254faaeca040aab23",
       "git_mode": "100644",
       "path": "repo_work/qualification_artifacts.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "3804729b2344446095806bcf749bb175bb79e2ddcaa12bc2ff2ae26d3aa9c34e",
-      "size_bytes": 86096
+      "sha256": "546ff9ac048dfee22f671b73f19a1aeef108df02157d2d8aeb3a715db99679ee",
+      "size_bytes": 87247
     },
     {
-      "git_blob_id": "672711f27859fe82254ce09509538f506222bcd2",
+      "git_blob_id": "f0bf5de5ab17fa5776f1dfb604b1d19a2fa18418",
       "git_mode": "100644",
       "path": "repo_work/qualify_candidate.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "91b5715045998355ef18d0c0e77cc3594530c8e03990fc0d3a1708090395eac6",
-      "size_bytes": 319972
+      "sha256": "26e136b8c5e7b0c5e9ad3949221df9bc0f990c30026d795f200eb15c31722c17",
+      "size_bytes": 320993
     },
     {
-      "git_blob_id": "7fcab8c29d8a86500c9a234f11b702161540741c",
+      "git_blob_id": "4652890afb25ed50e25683bd3c390abb8de788d0",
       "git_mode": "100644",
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5efc4df8ace4b454706a0ae111be538a4b8fabaa615b79d1208556e721b404ce",
-      "size_bytes": 280988
+      "sha256": "08d485fe1ea35c57298e493ed109f2ca002ad0b4a1190b03faedb1881a48bb6c",
+      "size_bytes": 280835
     },
     {
       "git_blob_id": "3dc0129f528c1a7031dcdbba666d0c0b9b890a98",
@@ -1693,12 +1805,12 @@
       "size_bytes": 12211
     },
     {
-      "git_blob_id": "3ba6ab66127d73ac0ab2ea6daa686a41a93467b9",
+      "git_blob_id": "b49443a544679541a4fdf2f01d73f6ef1fa3aee0",
       "git_mode": "100644",
       "path": "repo_work/run_broad_mutation.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d8a09f9d638b77a056f2f0f0f80d189a7b89053fd4877c74a9f1e1c6476831af",
-      "size_bytes": 23186
+      "sha256": "e3ed0a3d77bd3868d6ab7a2809c911ae4ff72399efee44f0ff59c3da22e8b2c4",
+      "size_bytes": 23236
     },
     {
       "git_blob_id": "1b1d9ebab2c892f718f06b03567195d8b345c12b",
@@ -1717,6 +1829,38 @@
       "size_bytes": 36423
     },
     {
+      "git_blob_id": "4c3819b40c11a0ddc2a5febce3d1ae255e0a0ea8",
+      "git_mode": "100644",
+      "path": "repo_work/tests/test_crebain_mgw_candidate.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "9ce9e8391904613b71377bcd3bda2071bbb73af4f63651c8b865bd6baa2ddc19",
+      "size_bytes": 1808
+    },
+    {
+      "git_blob_id": "f56a7c1312e5e6771818195b864ecbe2454fd18c",
+      "git_mode": "100644",
+      "path": "repo_work/tests/test_crebain_mgw_decimal_oracle.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "7ca12c5c0ae6e8499f36c6ae084f86f70d026569fe4b03c2dfa7cb6ef0625d13",
+      "size_bytes": 16935
+    },
+    {
+      "git_blob_id": "84dd23f785e851ab0e9968dd52e9e3555c8d139f",
+      "git_mode": "100644",
+      "path": "repo_work/tests/test_crebain_mgw_mutation.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "e89a654f3fba2235a65521ad1b3eea805aa8b4a92c528f44ec8f055fdbe4baad",
+      "size_bytes": 16136
+    },
+    {
+      "git_blob_id": "64579d2de0690a4b1c1f85a928bf4228722fde31",
+      "git_mode": "100644",
+      "path": "repo_work/tests/test_crebain_mgw_schema.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "10fc165717e21ce6d45ef72566771ec904e88e68bd87437469688bf67cc8075e",
+      "size_bytes": 17724
+    },
+    {
       "git_blob_id": "36232419447fcc7f82b23d9d0efe161cc7cacc60",
       "git_mode": "100644",
       "path": "repo_work/tests/test_evidence_batch_transaction.py",
@@ -1733,12 +1877,12 @@
       "size_bytes": 10390
     },
     {
-      "git_blob_id": "23da27abd455964bd7f7f3180c57fab202a2c53d",
+      "git_blob_id": "bf0bf59318626796e38cdffe71b877cb1c5451cb",
       "git_mode": "100644",
       "path": "repo_work/tests/test_finalize_qualification.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "bdaf1cfe2d412b8082fb5d74944add965c360167982b6971936eb2d058a624bc",
-      "size_bytes": 171769
+      "sha256": "1902bef00231bea1da8a2756a19ed125bba6aa9a3aa64d84af557ccc843b4f4e",
+      "size_bytes": 174264
     },
     {
       "git_blob_id": "edba4557cee34802ad42f5b4969542897076aec1",
@@ -1757,12 +1901,12 @@
       "size_bytes": 54731
     },
     {
-      "git_blob_id": "fa1c992e5f68cf8ba55d9833c32ee43850d4e690",
+      "git_blob_id": "1332bc20b47444b597dded756e877fabd9f26e17",
       "git_mode": "100644",
       "path": "repo_work/tests/test_qualification_artifacts.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5d0deb75ff4af2ece8220752f39dbc2741cf06e6f65bb74adccdb2b623b93b4f",
-      "size_bytes": 48973
+      "sha256": "7edd106034beecececa5db872f28210a46ceeb23d6ebe69a8025e11d7459038c",
+      "size_bytes": 50522
     },
     {
       "git_blob_id": "968018e49e3c9997c1fc144d852bc048d3d41e20",
@@ -1773,12 +1917,12 @@
       "size_bytes": 12931
     },
     {
-      "git_blob_id": "9c1d823eef8532f3b6efe6c6b198ee4fd0e87bbf",
+      "git_blob_id": "5556771f392a61e9c93a5af9712d4b1c4ce657a2",
       "git_mode": "100644",
       "path": "repo_work/tests/test_release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "6c91031245c8be87b28299e033bb2a4879a478315a02a6153d946ff5aaf2a094",
-      "size_bytes": 292704
+      "sha256": "2834d53ebbdb8ddb1aa7903527ce42d52d39b9d34de7df0014e01e8f602d245b",
+      "size_bytes": 298685
     },
     {
       "git_blob_id": "bf7c1a3caa4c775b4addca1e762a7bc627dfa251",
@@ -1789,12 +1933,12 @@
       "size_bytes": 12774
     },
     {
-      "git_blob_id": "23bf5f7c5c005106335043362dfdb6728ea4a031",
+      "git_blob_id": "574a25b4620f0ee5762fc944a27b2e30227cb0e9",
       "git_mode": "100644",
       "path": "repo_work/tests/test_review_tools.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2dc39450e5a18a2445d5ca90df17651e365aa093082e9e2fee7553fe6b6ce950",
-      "size_bytes": 221466
+      "sha256": "66009b2b5da1304fe46eefebfe85a77b210bf04fef128b1288ce9c56b9ec29e2",
+      "size_bytes": 227490
     },
     {
       "git_blob_id": "6ddc9e9c9536ebfff98a52ff712a7888e9fa7b2d",
@@ -1829,12 +1973,12 @@
       "size_bytes": 212
     },
     {
-      "git_blob_id": "2e54261009e5021a9213e94803504cb5b4f1cc8a",
+      "git_blob_id": "392fca369dc05f6f3c82bb7f0fbef432dfcbf299",
       "git_mode": "100755",
       "path": "scripts/release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "cc027b1d5703fa63d3faed8f27f23dc070469386a91a90376688499c2bce1901",
-      "size_bytes": 142901
+      "sha256": "522f288c70082374ede1789cfd9632ddb35ec6fc8e7d33c546b13d43afc9910f",
+      "size_bytes": 179001
     },
     {
       "git_blob_id": "e962e5f5bde6281fcd36c55095ae4c2904e77f8b",
@@ -1845,15 +1989,15 @@
       "size_bytes": 45817
     },
     {
-      "git_blob_id": "1f071b7d3d1977da3a44ad6ee90cf8ca369fc25b",
+      "git_blob_id": "96dd517d465624802840ad5993fdc36057aa3c8f",
       "git_mode": "100644",
       "path": "scripts/tests/test_release_audit.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "550eba194772702d6e1d789a16e7c91a08fceb6b7464edf1132da58a7c8195bf",
-      "size_bytes": 73529
+      "sha256": "7f90debc023f1a4c77855472afbc873f87413789ef7b5c45b3493c806eac2093",
+      "size_bytes": 85829
     }
   ],
-  "audit_date": "2026-08-15",
+  "audit_date": "2026-08-18",
   "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",
@@ -2013,6 +2157,31 @@
       "limitations": "The checked procedures are not evidence that the release operator ran the GitHub publication path, destructive rollback, credential revocation, or production-equivalent incident drills.",
       "scope": "release-operations rehearsal and incident response",
       "tier": "NOT_CLAIMED"
+    },
+    {
+      "claim": "The offline CREBAIN integration implements a raw-row empirical-PMF sample-estimator route for the paper-defined categorical MGW functional on one physically parameterized synthetic conformance fixture, with distinct pid-rs implementation-method and budgeted PID2/PID3 entry-point identities. Candidate gates cover complete signed averaged components, lattice reconstruction, a closed-world formal schema, a separately implemented 80-digit Decimal numerical cross-route, and an exact-output byte receipt.",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "crates/galadriel-justify/fixtures/crebain_drone_mgw_v1.json",
+        "crates/galadriel-justify/src/crebain_mgw.rs",
+        "crates/galadriel-justify/src/crebain_mgw_main.rs",
+        "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
+        "docs/CREBAIN-DRONE-MGW-STUDY.md",
+        "repo_work/check_crebain_mgw_candidate.py",
+        "repo_work/check_crebain_mgw_decimal_oracle.py",
+        "repo_work/check_crebain_mgw_schema.py",
+        "repo_work/finalize_release.py",
+        "repo_work/qualify_candidate.py",
+        "repo_work/tests/test_crebain_mgw_candidate.py",
+        "repo_work/tests/test_crebain_mgw_decimal_oracle.py",
+        "repo_work/tests/test_finalize_qualification.py",
+        "repo_work/tests/test_crebain_mgw_schema.py",
+        "release/0.9.0/clm-018-assurance.json"
+      ],
+      "id": "CLM-018",
+      "limitations": "The fixture is synthetic and physically parameterized, not physical or recorded-flight evidence. Its repeated rows demonstrate only bounded-summary fresh-instance reproducibility. They do not establish complete producer state isolation, 64 independent experimental units, or inferential precision. The target is dataflow-independent of projections, fusion, verdicts, and PID, but is generated inside the producer after sensor objects and source symbols are constructed. This is not a continuous-PID, 108-coordinate-assurance, causal, attack-classification, field-performance, deployment, safety, or authority claim. Candidate-bound retained execution evidence, independent human review, and independent clean-room reproduction remain absent.",
+      "scope": "the immutable 64-row CREBAIN fixture generated at revision 6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d and evaluated with pid-core revision bc3aa80fb6025e709c2906a08bce25a4fac40578. PID2 is primary deterministic conformance, PID3 is exploratory, and repeats support only bounded-summary fresh-instance reproducibility",
+      "tier": "IMPLEMENTED"
     }
   ],
   "external_sources": [
@@ -2030,18 +2199,6 @@
     },
     {
       "kind": "external_reference",
-      "line": 108,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/pid-rs"
-    },
-    {
-      "kind": "external_reference",
-      "line": 109,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/NCP"
-    },
-    {
-      "kind": "external_reference",
       "line": 10,
       "path": "README.md",
       "url": "https://github.com/sepahead/galadriel/actions/workflows/ci.yml"
@@ -2051,24 +2208,6 @@
       "line": 10,
       "path": "README.md",
       "url": "https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg"
-    },
-    {
-      "kind": "external_reference",
-      "line": 110,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/crebain"
-    },
-    {
-      "kind": "external_reference",
-      "line": 111,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/haldir"
-    },
-    {
-      "kind": "external_reference",
-      "line": 112,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/prisoma"
     },
     {
       "kind": "external_reference",
@@ -2102,31 +2241,61 @@
     },
     {
       "kind": "external_reference",
-      "line": 171,
+      "line": 207,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/pid-rs"
+    },
+    {
+      "kind": "external_reference",
+      "line": 208,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/NCP"
+    },
+    {
+      "kind": "external_reference",
+      "line": 209,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/crebain"
+    },
+    {
+      "kind": "external_reference",
+      "line": 210,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/haldir"
+    },
+    {
+      "kind": "external_reference",
+      "line": 211,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/prisoma"
+    },
+    {
+      "kind": "external_reference",
+      "line": 284,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
     },
     {
       "kind": "external_reference",
-      "line": 179,
+      "line": 292,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
     },
     {
       "kind": "external_reference",
-      "line": 184,
+      "line": 297,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
     {
       "kind": "external_reference",
-      "line": 657,
+      "line": 783,
       "path": "README.md",
       "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     },
     {
       "kind": "external_reference",
-      "line": 843,
+      "line": 970,
       "path": "README.md",
       "url": "https://github.com/sepahead"
     },
@@ -2138,19 +2307,19 @@
     },
     {
       "kind": "external_reference",
-      "line": 272,
+      "line": 286,
       "path": "docs/ADVISORY-BOUNDARY.md",
       "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
     },
     {
       "kind": "external_reference",
-      "line": 282,
+      "line": 296,
       "path": "docs/ADVISORY-BOUNDARY.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
     },
     {
       "kind": "external_reference",
-      "line": 287,
+      "line": 301,
       "path": "docs/ADVISORY-BOUNDARY.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
@@ -2173,6 +2342,120 @@
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
     {
+      "kind": "paper",
+      "line": 259,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1103/PhysRevE.87.012130"
+    },
+    {
+      "kind": "paper",
+      "line": 262,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1109/ISIT.2014.6875230"
+    },
+    {
+      "kind": "paper",
+      "line": 265,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1103/8rzp-w5z1"
+    },
+    {
+      "kind": "paper",
+      "line": 572,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1093/biomet/41.1-2.100"
+    },
+    {
+      "kind": "paper",
+      "line": 780,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1103/PhysRevE.103.032149"
+    },
+    {
+      "kind": "paper",
+      "line": 784,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1098/rspa.2021.0110"
+    },
+    {
+      "kind": "external_reference",
+      "line": 787,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://arxiv.org/abs/1004.2515"
+    },
+    {
+      "kind": "paper",
+      "line": 790,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1103/PhysRevE.87.012130"
+    },
+    {
+      "kind": "paper",
+      "line": 794,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1109/ISIT.2014.6875230"
+    },
+    {
+      "kind": "paper",
+      "line": 798,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1103/8rzp-w5z1"
+    },
+    {
+      "kind": "paper",
+      "line": 803,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1103/PhysRevE.110.014115"
+    },
+    {
+      "kind": "external_reference",
+      "line": 807,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://arxiv.org/abs/2106.12393"
+    },
+    {
+      "kind": "paper",
+      "line": 810,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1103/PhysRevE.69.066138"
+    },
+    {
+      "kind": "paper",
+      "line": 813,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.3390/e16042161"
+    },
+    {
+      "kind": "paper",
+      "line": 816,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1007/BF02289159"
+    },
+    {
+      "kind": "paper",
+      "line": 821,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1103/PhysRevE.100.032305"
+    },
+    {
+      "kind": "paper",
+      "line": 823,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1093/biomet/41.1-2.100"
+    },
+    {
+      "kind": "paper",
+      "line": 828,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://doi.org/10.1073/pnas.2408125122"
+    },
+    {
+      "kind": "external_reference",
+      "line": 833,
+      "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
+      "url": "https://openreview.net/forum?id=CLE09ESvul"
+    },
+    {
       "kind": "external_reference",
       "line": 104,
       "path": "docs/DEPENDENCY-POLICY.md",
@@ -2180,75 +2463,177 @@
     },
     {
       "kind": "external_reference",
-      "line": 415,
+      "line": 438,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
     },
     {
       "kind": "external_reference",
-      "line": 421,
+      "line": 444,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
     },
     {
       "kind": "external_reference",
-      "line": 427,
+      "line": 450,
       "path": "docs/DEPENDENCY-POLICY.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
     {
       "kind": "external_reference",
-      "line": 280,
+      "line": 302,
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
     },
     {
       "kind": "external_reference",
-      "line": 289,
+      "line": 311,
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
     },
     {
       "kind": "external_reference",
-      "line": 297,
+      "line": 319,
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
     },
     {
       "kind": "paper",
-      "line": 46,
+      "line": 49,
       "path": "docs/JUSTIFICATION.md",
       "url": "https://doi.org/10.1103/PhysRevE.103.032149"
     },
     {
       "kind": "external_reference",
-      "line": 49,
+      "line": 52,
       "path": "docs/JUSTIFICATION.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
     {
       "kind": "paper",
-      "line": 56,
+      "line": 59,
       "path": "docs/JUSTIFICATION.md",
       "url": "https://doi.org/10.1098/rspa.2021.0110"
     },
     {
       "kind": "paper",
-      "line": 62,
+      "line": 65,
       "path": "docs/JUSTIFICATION.md",
       "url": "https://doi.org/10.1103/PhysRevE.110.014115"
     },
     {
       "kind": "paper",
-      "line": 66,
+      "line": 69,
       "path": "docs/JUSTIFICATION.md",
       "url": "https://doi.org/10.1103/PhysRevE.69.066138"
     },
     {
       "kind": "external_reference",
-      "line": 71,
+      "line": 74,
       "path": "docs/JUSTIFICATION.md",
       "url": "https://arxiv.org/abs/2106.12393"
+    },
+    {
+      "kind": "paper",
+      "line": 602,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1098/rspl.1895.0041"
+    },
+    {
+      "kind": "external_reference",
+      "line": 605,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "http://hdl.handle.net/2440/15169"
+    },
+    {
+      "kind": "paper",
+      "line": 606,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1093/biomet/41.1-2.100"
+    },
+    {
+      "kind": "paper",
+      "line": 608,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1080/00401706.1959.10489860"
+    },
+    {
+      "kind": "paper",
+      "line": 610,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1214/aoms/1177731118"
+    },
+    {
+      "kind": "paper",
+      "line": 613,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1109/TAC.1976.1101146"
+    },
+    {
+      "kind": "paper",
+      "line": 619,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1080/01621459.1967.10482935"
+    },
+    {
+      "kind": "paper",
+      "line": 621,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.2307/4615733"
+    },
+    {
+      "kind": "paper",
+      "line": 624,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1093/biomet/75.4.800"
+    },
+    {
+      "kind": "paper",
+      "line": 625,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1103/PhysRevE.69.066138"
+    },
+    {
+      "kind": "paper",
+      "line": 628,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1007/11564089_7"
+    },
+    {
+      "kind": "paper",
+      "line": 631,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1214/009053607000000505"
+    },
+    {
+      "kind": "external_reference",
+      "line": 634,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://arxiv.org/abs/1004.2515"
+    },
+    {
+      "kind": "paper",
+      "line": 636,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.3390/e16042161"
+    },
+    {
+      "kind": "paper",
+      "line": 638,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1103/PhysRevE.103.032149"
+    },
+    {
+      "kind": "external_reference",
+      "line": 641,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://arxiv.org/abs/2106.12393"
+    },
+    {
+      "kind": "paper",
+      "line": 645,
+      "path": "docs/METHOD-SELECTION-DECISIONS.md",
+      "url": "https://doi.org/10.1103/PhysRevE.110.014115"
     },
     {
       "kind": "external_reference",
@@ -2486,43 +2871,43 @@
     },
     {
       "kind": "external_reference",
-      "line": 495,
+      "line": 559,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2311.06373"
     },
     {
       "kind": "external_reference",
-      "line": 496,
+      "line": 560,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1604.03006"
     },
     {
       "kind": "paper",
-      "line": 497,
+      "line": 561,
       "path": "docs/PAPER.md",
       "url": "https://doi.org/10.1098/rspa.2021.0110"
     },
     {
       "kind": "external_reference",
-      "line": 498,
+      "line": 562,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2106.07098"
     },
     {
       "kind": "external_reference",
-      "line": 500,
+      "line": 564,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2002.03356"
     },
     {
       "kind": "external_reference",
-      "line": 503,
+      "line": 567,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/2106.12393"
     },
     {
       "kind": "external_reference",
-      "line": 504,
+      "line": 568,
       "path": "docs/PAPER.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
@@ -2715,16 +3100,10 @@
       "version": "0.8.0"
     },
     {
-      "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "commit": "bc3aa80fb6025e709c2906a08bce25a4fac40578",
       "name": "pid-core",
-      "source": "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#1cd2424f7967e1752dcc8e53859e8fdad3566f51",
-      "version": "1.0.0"
-    },
-    {
-      "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
-      "name": "pid-runlog",
-      "source": "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#1cd2424f7967e1752dcc8e53859e8fdad3566f51",
-      "version": "1.0.0"
+      "source": "git+https://github.com/sepahead/pid-rs?rev=bc3aa80fb6025e709c2906a08bce25a4fac40578#bc3aa80fb6025e709c2906a08bce25a4fac40578",
+      "version": "0.9.0"
     }
   ],
   "github_actions": [
@@ -2794,12 +3173,12 @@
   ],
   "normative_documents": [
     {
-      "git_blob_id": "1f1ff2df62352df27042122e7ed448610900cce8",
+      "git_blob_id": "156198b2b2ec40c6c58f76d5cc8e2089a990c2f5",
       "git_mode": "100644",
       "path": "release/0.9.0/README.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "03d003218ee7508927545c38c4560cd8aaf3ed861e7d5c3fd092fb2e30fa6688",
-      "size_bytes": 22472
+      "sha256": "7430d3c8f0dbbd1641d75ef2827dbc4c193f6feeec6afa43a44148d8bd7ac082",
+      "size_bytes": 26418
     },
     {
       "git_blob_id": "e33a9edd78c22eaad5fdcb6d36f5a3174f3a6f3e",
@@ -2810,44 +3189,44 @@
       "size_bytes": 5497
     },
     {
-      "git_blob_id": "dd2c5c13bc794d62c6b578aada79164b269c1379",
+      "git_blob_id": "9bda8fc75e5d0564e9dbf4d6eaefacd081312417",
       "git_mode": "100644",
       "path": "docs/CLAIMS.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "363fc3d76412b023964245f15a3b5f6d4f9828fd12af67a5f30c8a68398195e6",
-      "size_bytes": 4414
+      "sha256": "4958176d92376ce4bdc9118bf0bdfde63bed51405c35408a0da505050c5e2d41",
+      "size_bytes": 5202
     },
     {
-      "git_blob_id": "166d8f3e3ce41d59896e3f111f3544423d027f79",
+      "git_blob_id": "14c035cc1ec351505bc6af5d196a3b5517147122",
       "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "5327b971efa708906333b822c3214d32e2dc1975c03bdf03ba7c339fad894769",
-      "size_bytes": 20542
+      "sha256": "8c49d3fd76373d684ec64f8f3560231e3336043fc2542b41548ca7942e810951",
+      "size_bytes": 26841
     },
     {
-      "git_blob_id": "f1e8e3055b9387656c4907065ff9be8f02b102fe",
+      "git_blob_id": "148ec21d2b24e3c45a13b238b450e9eb3ab4cd9e",
       "git_mode": "100644",
       "path": "docs/THREAT-MODEL.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "a451fbe44f4d7ec0c205f5052d4649a07471e42c9d6dff4e9a24ae6d5fbb9734",
-      "size_bytes": 16508
+      "sha256": "42c8770fb70dc98b12172c7d6fa7cbd6ad7479301e07b11d43fd36f2e1f1aaef",
+      "size_bytes": 16832
     },
     {
-      "git_blob_id": "272efb5df277686ec28479abaa326b337ef20b82",
+      "git_blob_id": "5e2c24ea17f659c8fffd1bab4d069e98e5c7327a",
       "git_mode": "100644",
       "path": "docs/ADVISORY-BOUNDARY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "aa3eed7426f3264ccd9f3b2732b12b68ab241f05582c8d06059ee039b6631706",
-      "size_bytes": 20866
+      "sha256": "5dd35f546690363db71c13c9736b9b197909fcd3d0c64669eb9126827d19c354",
+      "size_bytes": 22215
     },
     {
-      "git_blob_id": "f3dd74ddf8b3b268d5a6bbb5ba3d138852afe157",
+      "git_blob_id": "3f5a6ff1b11ddea8630f4aac4eacedf2f96415c9",
       "git_mode": "100644",
       "path": "docs/API-SURFACE.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "af5a120c1493bfae621b0a7f61485005d47da85fbc062f9026c8c051a81f51e6",
-      "size_bytes": 10618
+      "sha256": "0c08add9a87f6f5a9c569eb4f14f32a1ea858d792971d7e47f7e8bb4cb9ba47f",
+      "size_bytes": 14526
     },
     {
       "git_blob_id": "67257f62dd8485af3886c2d2cf073a52c0acc226",
@@ -2858,12 +3237,12 @@
       "size_bytes": 1260
     },
     {
-      "git_blob_id": "b991aa21885492711d11a7d10d44b745b83679dd",
+      "git_blob_id": "410a7e1a339ca2d57afd1131fc7aed6137c6eabd",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "d9208b50ae157a933ce25bf55fc718a85ec3baf57568bd4a94baf827c7e83899",
-      "size_bytes": 26107
+      "sha256": "853e1d08a3b0ea93435a4aee772bde1959a39d2df0fead0ab0e5527ab3ce67d3",
+      "size_bytes": 27609
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -2874,12 +3253,12 @@
       "size_bytes": 6391
     },
     {
-      "git_blob_id": "a4e81ad990e3fe00582b0be156daa91b85ad9bab",
+      "git_blob_id": "cf16d7aa6a3e7d99ddcf8f79cd5a5f0ef9dd7f98",
       "git_mode": "100644",
       "path": "release/0.9.0/RELEASE-RUNBOOK.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "790e855f065d3425f3f8f424558734e41b8f680d47eff32925aaeb6e75e5dcee",
-      "size_bytes": 59757
+      "sha256": "3991b527f92f35f615bc72e2396ef161c18457598c85d8b9dee8ea56c17ac866",
+      "size_bytes": 60928
     }
   ],
   "release": {
@@ -2896,7 +3275,7 @@
   },
   "repositories": [
     {
-      "commit": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+      "commit": "bc3aa80fb6025e709c2906a08bce25a4fac40578",
       "name": "pid-rs",
       "qualification": "PINNED_COMPONENT",
       "role": "optional pairwise-MI companion and offline PID dependency selected by Cargo.lock",
@@ -2914,6 +3293,13 @@
       "name": "Crebain",
       "qualification": "RECIPROCAL_FIXTURE",
       "role": "retained historical reference-producer fixture for contract review with no Cargo or runtime dependency",
+      "url": "https://github.com/sepahead/crebain"
+    },
+    {
+      "commit": "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d",
+      "name": "CREBAIN fixture source",
+      "qualification": "RECIPROCAL_FIXTURE",
+      "role": "immutable source commit that generated the bundled offline categorical fixture. It has no Cargo, runtime, feedback, or authority edge",
       "url": "https://github.com/sepahead/crebain"
     },
     {
@@ -2968,12 +3354,12 @@
     "size_bytes": 301
   },
   "threat_register": {
-    "git_blob_id": "461b3d1ff52c6c0c7b4dc4ca39f2de0d75f361b0",
+    "git_blob_id": "05a287a3a82880b75261f2d54e2bf0451b77829f",
     "git_mode": "100644",
     "path": "release/0.9.0/audit/threat-register.json",
     "purpose": "repository threat, misuse, and failure register",
-    "sha256": "8e389b44267e3ec9fce7c46b03b10c3290c8b4ba8ab16f631d0f3a1b5c7e8c1d",
-    "size_bytes": 30244
+    "sha256": "b118463569459e82425c00cc9502722f0830b0e4699218001d42ed8f7f9d5df5",
+    "size_bytes": 30699
   },
   "toolchains": [
     {

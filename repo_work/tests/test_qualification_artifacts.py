@@ -240,6 +240,7 @@ def metadata_fixture() -> tuple[dict[str, object], bytes]:
             )
         ],
         "resolve": {"nodes": nodes, "root": None},
+        "build_directory": "/fixture/target",
         "target_directory": "/fixture/target",
         "version": 1,
         "workspace_root": WORKSPACE_ROOT,
@@ -340,6 +341,7 @@ def high_fanout_metadata_fixture(
             )
         ],
         "resolve": {"nodes": nodes, "root": None},
+        "build_directory": "/fixture/target",
         "target_directory": "/fixture/target",
         "version": 1,
         "workspace_root": WORKSPACE_ROOT,
@@ -890,6 +892,35 @@ class CargoMetadataValidatorTest(unittest.TestCase):
             graph.package_by_name("serde").checksum,
             CHECKSUM,
         )
+
+    def test_rejects_a_cargo_build_directory_outside_the_target_contract(self) -> None:
+        metadata, lock = metadata_fixture()
+        metadata["build_directory"] = "/fixture/another-build-root"
+        with self.assertRaisesRegex(
+            ReviewError, "Cargo build and target directories differ"
+        ):
+            validate_cargo_metadata(encode_json(metadata), lock)
+
+    def test_accepts_cargo_189_metadata_without_build_directory(self) -> None:
+        metadata, lock = metadata_fixture()
+        metadata.pop("build_directory")
+        graph = validate_cargo_metadata(encode_json(metadata), lock)
+        self.assertEqual(len(graph.packages), len(metadata["packages"]))
+
+    def test_accepts_only_the_bounded_cargo_package_hint_shape(self) -> None:
+        metadata, lock = metadata_fixture()
+        metadata["packages"][0]["hints"] = {"mostly-unused": True}
+        validate_cargo_metadata(encode_json(metadata), lock)
+
+        wrong_hint = copy.deepcopy(metadata)
+        wrong_hint["packages"][0]["hints"] = {"future-hint": True}
+        with self.assertRaisesRegex(ReviewError, "hints has another field set"):
+            validate_cargo_metadata(encode_json(wrong_hint), lock)
+
+        wrong_type = copy.deepcopy(metadata)
+        wrong_type["packages"][0]["hints"] = {"mostly-unused": "yes"}
+        with self.assertRaisesRegex(ReviewError, "hint is not Boolean"):
+            validate_cargo_metadata(encode_json(wrong_type), lock)
 
     def test_accepts_an_unrenamed_library_target_name(self) -> None:
         metadata, lock = metadata_fixture()

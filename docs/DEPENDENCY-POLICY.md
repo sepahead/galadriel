@@ -153,6 +153,23 @@ The release audit binds each frozen focused mutant to its tracked source span.
 Before each focused run, pinned cargo-mutants enumerates the complete selected set.
 The runner rejects a source-span, transformation, or set difference before mutation execution.
 
+Deep quality has one additional bounded gate for the CREBAIN MGW scientific
+contract. It uses cargo-mutants 27.1.0 and Rust 1.89.0. It selects only
+`crebain_mgw.rs` functions matched by the frozen seven-name expression. A
+non-executing listing must contain exactly 155 mutants and match canonical
+line-insensitive multiset digest
+`31fa7f1288a1bb23d63065515ea2789dfdc1da46c5339d789fd4689167b2b269` before
+execution starts. The executed result must contain 152 caught mutants and three
+exact compile-unviable `Ok(Default::default())` function-return substitutions.
+It permits no missed, timed-out, or surviving mutant. The gate validates each
+full descriptor and exact Cargo phase command. Its receipt binds the candidate
+commit, tree, toolchain, command, outcome bytes, and GitHub run.
+
+The signed version 5 mutation assembler retains its established 13 artifacts.
+The CREBAIN receipt is a separate required exact-head workflow artifact until a
+reviewed mutation-evidence schema revision admits it. Do not silently add it to
+the version 5 count or omit its deep-quality result.
+
 ## Qualification artifact contract
 
 `qualification.json` uses schema `galadriel.candidate-qualification.v3`.
@@ -337,7 +354,7 @@ They do not track a descendant that creates another session.
 Candidate-controlled commands MUST use the platform-specific candidate containment mode.
 
 The resolved Cargo metadata validator binds the locked all-feature graph.
-The validated graph contains 437 packages and seven workspace packages.
+The validated graph contains 436 packages and seven workspace packages.
 
 The qualifier makes 15 two-run byte comparisons.
 One comparison covers the source archive.
@@ -365,13 +382,13 @@ In a passing qualification, the SBOMs describe the qualified source graph.
 They do not identify a deployed binary or target environment.
 
 The license inventory uses scope `CARGO_DENY_HOST_FILTERED_GRAPH`.
-It contains the exact 382-package host-filtered subset of the validated
-437-package graph.
-It contains exactly 707 license assignments.
+It contains the exact 381-package host-filtered subset of the validated
+436-package graph.
+It contains exactly 705 license assignments.
 Its sorted package-identity set has this SHA-256 value:
-`7c4d600e46b0dc1f1d50917acf65f8550bc4d9d568978d145eb0cae5b893b463`.
+`272dc6ab496ff2c0c9a43991c01b8b2d5a9ce1004afcc15adbea6c25908ab280`.
 Its canonical package-and-license content has this SHA-256 value:
-`8a8a8b9c981f67c9e93159813c128bd6033ea11aa539555e9f7303c3de7d68a8`.
+`bcc6f05fe91eaecf62f74db821453b6d35d01fbf7fe94245e7c74ecc9ed24822`.
 The supply-chain CI job rebuilds this inventory from locked metadata.
 It verifies both exact digests.
 
@@ -380,7 +397,7 @@ The exact identity form is `workspace+crates/{name}#{name}@{version}`.
 This inventory does not describe another host or target graph.
 
 The license-policy summary requires zero errors and zero warnings.
-It also requires 375 accepted help records and seven skipped notes.
+It also requires 374 accepted help records and seven skipped notes.
 The vulnerability report requires the pinned database and exact `Cargo.lock`.
 It retains the two declared unmaintained-package warnings.
 These checks do not prove vulnerability-free code or maintenance assurance.
@@ -402,10 +419,16 @@ described as one.
 
 The default build excludes pid-rs.
 The dependence, evaluation, and offline justification paths require the immutable pid-rs revision
-`1cd2424f7967e1752dcc8e53859e8fdad3566f51`.
-Its manifest declares `1.0.0`.
+`bc3aa80fb6025e709c2906a08bce25a4fac40578`.
+Its `pid-core` manifest declares `0.9.0`.
 This revision is an experimental component input.
 It is not the identity of current pid-rs `main`.
+No resolved Galadriel feature profile contains `pid-runlog`. The dependence
+adapter uses `ksg_mi_report_with_budget`. Its retained estimate and its executed
+report use the same explicit single-thread `ResourceBudget`. Revision
+`1cd2424f7967e1752dcc8e53859e8fdad3566f51` is a historical input retained by
+the immutable CREBAIN producer preregistration and the migration record, not a
+second active dependency pin.
 Upstream pid-rs release qualification remains `NOT_CLAIMED`.
 
 NCP qualification applies only to the commit selected by the public annotated

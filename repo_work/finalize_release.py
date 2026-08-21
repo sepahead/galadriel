@@ -24,6 +24,7 @@ import stat
 import sys
 import tempfile
 from collections.abc import Callable
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -566,6 +567,9 @@ FROZEN_QUALIFICATION_COMMAND_NAMES = (
     "release-audit-verify",
     "fetch-locked-dependencies",
     "fetch-locked-fuzz-dependencies",
+    "crebain-mgw-rust-contract",
+    "crebain-mgw-contract-tests",
+    "crebain-mgw-candidate-contract",
     "format",
     "feature-graph-contract",
     "cli-pure-feature-graph",
@@ -601,6 +605,101 @@ FROZEN_QUALIFICATION_COMMAND_NAMES = (
     "fuzz-detector-boundaries-5000",
     "fuzz-lifecycle-state-5000",
 )
+
+CREBAIN_CANDIDATE_RECEIPT_SCHEMA = "galadriel.crebain-mgw-candidate-gate.v1"
+CREBAIN_MACHINE_SCHEMA_SHA256 = (
+    "075e8905a1972772a413e6b3a0928303aec4f1c547ddbd0c281226433fb86b88"
+)
+CREBAIN_MACHINE_SCHEMA_BYTES = 61_857
+CREBAIN_DECIMAL_ORACLE_SHA256 = (
+    "5aa7a1d92d4aaad9c056ede8a75bdc40abc1fa76634b02bba20aac5cc3913c19"
+)
+CREBAIN_CANDIDATE_BOUNDARY = (
+    "candidate execution subreceipt for exact Rust bytes, closed wire schema, "
+    "and dependency-disjoint averaged-law Decimal comparison. Candidate commit and tree "
+    "binding are supplied by the qualification envelope. Raw output publication, "
+    "pointwise Decimal reproduction, field validity, and human replication are separate"
+)
+
+
+def validate_crebain_candidate_receipt(document_bytes: bytes) -> dict[str, Any]:
+    """Require the exact machine-readable CREBAIN candidate-gate stdout."""
+
+    try:
+        document = loads_json(document_bytes)
+        validate_json_structure(
+            document,
+            max_depth=8,
+            max_nodes=128,
+            label="CREBAIN candidate receipt",
+        )
+    except (MemoryError, RecursionError, ReviewError, UnicodeError, ValueError) as error:
+        raise ReviewError(f"CREBAIN candidate receipt is invalid: {error}") from error
+    expected_fields = {
+        "schema",
+        "rust_output_sha256",
+        "rust_output_bytes",
+        "machine_schema_sha256",
+        "machine_schema_bytes",
+        "decimal_oracle_sha256",
+        "averaged_atom_components_compared",
+        "subset_mutual_informations_compared",
+        "pointwise_decimal_components_compared",
+        "maximum_abs_error_nats",
+        "tolerance_nats",
+        "schema_all_passed",
+        "decimal_all_passed",
+        "boundary",
+    }
+    if not isinstance(document, dict) or set(document) != expected_fields:
+        raise ReviewError("CREBAIN candidate receipt field set drifted")
+    try:
+        exact_bytes = (
+            json.dumps(
+                document,
+                allow_nan=False,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        raise ReviewError("CREBAIN candidate receipt is not canonical JSON") from error
+    if document_bytes != exact_bytes:
+        raise ReviewError("CREBAIN candidate receipt bytes are not canonical")
+    if (
+        document["schema"] != CREBAIN_CANDIDATE_RECEIPT_SCHEMA
+        or not _lower_hex(document["rust_output_sha256"], 64)
+        or type(document["rust_output_bytes"]) is not int
+        or not 0 < document["rust_output_bytes"] <= 16 * 1024 * 1024
+        or document["machine_schema_sha256"] != CREBAIN_MACHINE_SCHEMA_SHA256
+        or document["machine_schema_bytes"] != CREBAIN_MACHINE_SCHEMA_BYTES
+        or document["decimal_oracle_sha256"] != CREBAIN_DECIMAL_ORACLE_SHA256
+        or document["averaged_atom_components_compared"] != 66
+        or document["subset_mutual_informations_compared"] != 10
+        or document["pointwise_decimal_components_compared"] != 0
+        or document["schema_all_passed"] is not True
+        or document["decimal_all_passed"] is not True
+        or document["boundary"] != CREBAIN_CANDIDATE_BOUNDARY
+        or not isinstance(document["maximum_abs_error_nats"], str)
+        or document["tolerance_nats"] != "3E-16"
+    ):
+        raise ReviewError("CREBAIN candidate receipt contract drifted")
+    try:
+        maximum_error = Decimal(document["maximum_abs_error_nats"])
+        tolerance = Decimal(document["tolerance_nats"])
+    except (InvalidOperation, ValueError) as error:
+        raise ReviewError("CREBAIN candidate receipt has an invalid Decimal") from error
+    if (
+        not maximum_error.is_finite()
+        or not tolerance.is_finite()
+        or maximum_error < 0
+        or tolerance <= 0
+        or maximum_error > tolerance
+    ):
+        raise ReviewError("CREBAIN candidate receipt exceeds its Decimal tolerance")
+    return document
 CLOSURE_RESERVED_ROOT_PATHS = frozenset(
     {
         QUALIFICATION_MANIFEST,
@@ -643,13 +742,8 @@ EXPECTED_GIT_PACKAGE_SOURCES = {
     ),
     "pid-core": (
         "git+https://github.com/sepahead/pid-rs"
-        "?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51"
-        "#1cd2424f7967e1752dcc8e53859e8fdad3566f51"
-    ),
-    "pid-runlog": (
-        "git+https://github.com/sepahead/pid-rs"
-        "?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51"
-        "#1cd2424f7967e1752dcc8e53859e8fdad3566f51"
+        "?rev=bc3aa80fb6025e709c2906a08bce25a4fac40578"
+        "#bc3aa80fb6025e709c2906a08bce25a4fac40578"
     ),
 }
 EXPECTED_QUALIFICATION_TOOLS = {
@@ -4346,6 +4440,8 @@ def validate_qualification_commands(
             raise ReviewError(
                 f"qualification command output contradicts its receipt: {spec.name}"
             )
+        if spec.name == "crebain-mgw-candidate-contract":
+            validate_crebain_candidate_receipt(combined_output)
         try:
             header = loads_json(prefix)
             validate_json_structure(
@@ -5174,7 +5270,7 @@ def validate_vulnerability_report(document: Any) -> None:
         "last-updated": None,
     }:
         raise ReviewError("qualification vulnerability report used another database")
-    if document["lockfile"] != {"dependency-count": 437}:
+    if document["lockfile"] != {"dependency-count": 436}:
         raise ReviewError("qualification vulnerability report used another lockfile")
     if document["settings"] != {
         "target_arch": [],

@@ -174,8 +174,8 @@ This research source version has no remediation-time SLA.
   They close each SBOM package and dependency graph against `Cargo.lock`.
   They reject hidden components and conflicting identity or license fields.
   The exact checks are in `docs/DEPENDENCY-POLICY.md`.
-- The license inventory covers the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset.
-  The qualification Cargo graph contains 437 packages.
+- The license inventory covers the exact 381-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset.
+  The qualification Cargo graph contains 436 packages.
   This inventory does not describe another host or target graph.
   Same-host comparison does not prove independent or cross-platform reproduction.
   Source-graph checks do not prove deployed-binary content.
