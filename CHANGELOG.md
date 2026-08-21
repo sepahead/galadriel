@@ -66,6 +66,11 @@ Before `1.0`, minor releases can contain breaking changes.
   pass it unchanged through intrinsic dimension, distance concentration, KSG
   preflight, and KSG execution. Nested evidence retains the exact identity; this
   is per-call evidence and not an aggregate study-wide resource claim.
+- Factor the adapter's budget-echo and single-thread obligations into one pure,
+  fail-closed predicate with independent hostile fixtures for each conjunct.
+  This preserves forward-drift detection while making the logical composition
+  mutation-live; excluding the formerly indistinguishable `||` to `&&` mutant
+  would instead have hidden a reachable weakening of the adapter contract.
 - Add seven static, self-contained, accessible, cross-renderer vector contract
   maps for system evidence flow, detector equations and fusion, lifecycle
   receipts, offline PID estimand provenance, the exact CREBAIN drone-to-MGW

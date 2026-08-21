@@ -168,7 +168,7 @@ MUTATION_LIVENESS_EXCLUDE_RES = (
     # reachable values. Path/line/column anchors make source drift fail loud.
     r"^crates/galadriel-dependence/src/engine\.rs:346:29: replace > with >= in DeclaredMiInput::try_new_with_origin$",
     r"^crates/galadriel-dependence/src/engine\.rs:833:13: replace > with >= in quadratic_fit_work$",
-    r"^crates/galadriel-dependence/src/engine\.rs:2440:37: replace < with <= in canonical_pair$",
+    r"^crates/galadriel-dependence/src/engine\.rs:2455:37: replace < with <= in canonical_pair$",
     r"^crates/galadriel-dependence/src/suite\.rs:129:39: replace > with == in DependenceResearchSuite::try_new_with_profile$",
     r"^crates/galadriel-dependence/src/suite\.rs:129:39: replace > with >= in DependenceResearchSuite::try_new_with_profile$",
     r"^crates/galadriel-dependence/src/engine\.rs:1005:9: replace MiKsgEvaluatorConfigEvidence::tie_epsilon -> f64 with 0\.0$",

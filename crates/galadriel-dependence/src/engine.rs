@@ -2240,7 +2240,7 @@ fn pair_mi_inner(
         resource_budget,
     )
     .map_err(classify_pid_error)?;
-    if intrinsic_report.resource_budget != resource_budget || resource_budget.max_threads != 1 {
+    if !fixed_single_thread_budget_is_retained(intrinsic_report.resource_budget, resource_budget) {
         return Err(PairFitFailure::AdapterInvariant(PidError::InvalidConfig {
             context: "galadriel-dependence",
             message:
@@ -2396,6 +2396,21 @@ fn ksg_resource_budget() -> Result<ResourceBudget, PidError> {
         KSG_RESOURCE_MAX_OPERATIONS_HINT,
         KSG_RESOURCE_MAX_THREADS,
     )
+}
+
+fn fixed_single_thread_budget_is_retained(
+    observed: ResourceBudget,
+    expected: ResourceBudget,
+) -> bool {
+    // Keep the two independent obligations explicit and directly testable: the diagnostic must
+    // echo every caller-selected ceiling, and the caller-selected policy must remain the fixed
+    // single-thread contract. Testing only the production construction cannot exercise either
+    // drift independently because the current upstream implementation faithfully echoes its
+    // input; this predicate lets the adapter retain a fail-closed check for a future upstream
+    // change without leaving the conjunction's semantics observationally untested today.
+    // The literal is intentional: deriving this check from KSG_RESOURCE_MAX_THREADS would let a
+    // future accidental change to that construction constant redefine "single-thread" here too.
+    observed == expected && expected.max_threads == 1
 }
 
 fn ksg_config() -> KsgConfig {
@@ -2679,6 +2694,36 @@ mod tests {
                 ..
             }) if requested == u128::from(KSG_RESOURCE_MAX_PAIRWISE_DISTANCES)
                 && limit == u128::from(KSG_RESOURCE_MAX_PAIRWISE_DISTANCES - 1)
+        ));
+    }
+
+    #[test]
+    fn fixed_single_thread_budget_guard_accepts_exact_policy_and_rejects_each_drift() {
+        let budget = ksg_resource_budget().unwrap();
+        assert!(fixed_single_thread_budget_is_retained(budget, budget));
+
+        let changed_observed_limit = ResourceBudget::new(
+            budget.max_bytes - 1,
+            budget.max_pairwise_distances,
+            budget.max_operations_hint,
+            budget.max_threads,
+        )
+        .unwrap();
+        assert!(!fixed_single_thread_budget_is_retained(
+            changed_observed_limit,
+            budget
+        ));
+
+        let multi_thread_policy = ResourceBudget::new(
+            budget.max_bytes,
+            budget.max_pairwise_distances,
+            budget.max_operations_hint,
+            2,
+        )
+        .unwrap();
+        assert!(!fixed_single_thread_budget_is_retained(
+            multi_thread_policy,
+            multi_thread_policy
         ));
     }
 

@@ -125,12 +125,12 @@
       "size_bytes": 26798
     },
     {
-      "git_blob_id": "2313cd6cbb23730f278a3cf7fb75cd2f38409985",
+      "git_blob_id": "7db6fc4759e216e22a78f240138404d744f1de98",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1e7cec7f33fd2ee8b989fadc190fac4c2effc0c0444fe1b7236010d1e52c62d9",
-      "size_bytes": 63474
+      "sha256": "863146a6b6c87dbc6e2c302ff9a89295c3d714a0b9f11329ccea2b15f8e93735",
+      "size_bytes": 63862
     },
     {
       "git_blob_id": "93e56077732b34820e2594e8f61d5579b5f9849d",
@@ -517,12 +517,12 @@
       "size_bytes": 837
     },
     {
-      "git_blob_id": "5ed1519d598c4f77c579e4229ddc14f8a9aef6e7",
+      "git_blob_id": "102da98cf126b0964eed6f12e1527bbcef9641f0",
       "git_mode": "100644",
       "path": "crates/galadriel-dependence/src/engine.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "521c7328e5d817ec1743480073ca14ee2e06c940400a9aa308f3f8d4da6228a3",
-      "size_bytes": 161244
+      "sha256": "f1609084134a5a2f8deb7684ddd82d6d469687cd37d019c6da611951b51df4b4",
+      "size_bytes": 163119
     },
     {
       "git_blob_id": "dcf834805c7a6ab6c54daea8fa43a4c8b3bf7954",
@@ -1789,11 +1789,11 @@
       "size_bytes": 320993
     },
     {
-      "git_blob_id": "08b73ee05bedeacfe042e2401335e5c5d52daabf",
+      "git_blob_id": "4652890afb25ed50e25683bd3c390abb8de788d0",
       "git_mode": "100644",
       "path": "repo_work/release_assurance.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a3deb29216ed74ee02b58f4d2534e755538b57f1ac12d6330ffd1ca01b608a86",
+      "sha256": "08d485fe1ea35c57298e493ed109f2ca002ad0b4a1190b03faedb1881a48bb6c",
       "size_bytes": 280835
     },
     {
