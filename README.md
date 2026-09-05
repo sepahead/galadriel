@@ -461,12 +461,19 @@ Author and maintainer: **Sepehr Mahmoudian**.
 | [`galadriel-cli`](crates/galadriel-cli) | `demo`, `replay`, and strict `observe` driver | Operator prototype. The live path has component tests. |
 | [`galadriel-dependence`](crates/galadriel-dependence) | Geometry-gated pairwise KSG-MI companion | Optional descriptive research path; never fused |
 | [`galadriel-ncp`](crates/galadriel-ncp) | strict codecs, pinned registry, monitor tap, assembler, lifecycle gate, operational Zenoh receiver | Unit, golden, and in-process Zenoh tests. No external deployment evidence. |
+| [`galadriel-local-adapter`](crates/galadriel-local-adapter) | Bounded scalar input for the actual exploratory magnitude detector | Experimental library with an optional private-pipe owner. Integrated release gates remain open. |
 | [`galadriel-eval`](crates/galadriel-eval) | Monte Carlo evaluation and cost bench | Synthetic only |
 | [`galadriel-justify`](crates/galadriel-justify) | canonical forced-versus-justified studies | Synthetic/theoretical only |
 
 The workspace MSRV is **Rust 1.89**.
 The current-stable Clippy and test gate uses Rust and Cargo 1.97.1.
 Mutable test totals and benchmark values are not project-status claims.
+
+The local adapter has an independent Cargo workspace, lock, dependency policy, and source gate.
+It reuses the existing core without changing the seven-package root graph.
+Root workspace commands do not select this package.
+Use the [adapter commands and source boundary](crates/galadriel-local-adapter/README.md) for this optional experimental surface.
+Its checks grant no 0.9 release, scientific completion, or installed ecosystem qualification.
 
 ## CLI features and workspace dependencies
 

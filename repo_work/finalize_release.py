@@ -339,8 +339,10 @@ EXPECTED_TOOL_FILE_IDENTITIES = {
         6003488,
     ),
     "cargo-deny": (
-        "69ae1960301a8bc649a2e9ef0d1e164e12c3b0b6a1d4d0c072b52741c88e35b7",
-        7505744,
+        # Exact successor input; the prior identity remains in the revision record.
+        # release/0.9.0/tool-inputs/cargo-deny-2026-09-05.json
+        "26335000fbf0698b4eb646ffeb6fca02a9cb12f5b9f461170ffa384d7b6ab1a4",
+        7489208,
     ),
     "cargo-fuzz": (
         "602ad1fc84bab09d49a042d24979252308225cf6fcfa9ef2b14a2c23be72fe79",

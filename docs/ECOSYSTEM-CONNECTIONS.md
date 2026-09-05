@@ -34,6 +34,13 @@ retains the exact dated identities.
 
 ## Dependency and activation matrix
 
+The optional candidate local process interface has a separate scope.
+[`galadriel-local-adapter`](../crates/galadriel-local-adapter/README.md#optional-private-pipe-owner) invokes the actual scalar research detector through private NCP pipes.
+Its `ncp-local` feature uses the shared candidate local plan and response contracts.
+It accepts only record-only monitoring and binds the configured body generation before ingestion.
+The pinned SDK and component tests do not establish reciprocal release qualification or remote deployment.
+The matrix below describes the retained wire-0.8 release cut.
+
 `required` applies only to the named build or operating mode. It does not mean
 that every Galadriel build needs the project.
 

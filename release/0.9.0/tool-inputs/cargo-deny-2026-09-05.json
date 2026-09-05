@@ -1,0 +1,58 @@
+{
+  "schema": "galadriel.qualification-tool-input-revision.v1",
+  "revision": "2026-09-05-cargo-deny-official-0.19.9-arm64",
+  "scope": "qualification_input_only",
+  "release_authority": false,
+  "tool": "cargo-deny",
+  "version": "0.19.9",
+  "target": "aarch64-apple-darwin",
+  "reason": "The historical host executable was not recovered from a bounded search. The official release artifact is a new exact input, not a reproduction of the historical build.",
+  "active": {
+    "origin": "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.19.9/cargo-deny-0.19.9-aarch64-apple-darwin.tar.gz",
+    "archive_sha256": "be6fd555e910ac360e25cbef4f16ead47d87d2545fa07aa27223ef0f9af1a02c",
+    "archive_size_bytes": 4528547,
+    "archive_member": "cargo-deny-0.19.9-aarch64-apple-darwin/cargo-deny",
+    "executable_sha256": "26335000fbf0698b4eb646ffeb6fca02a9cb12f5b9f461170ffa384d7b6ab1a4",
+    "executable_size_bytes": 7489208,
+    "archive_member_mode": "0o755",
+    "retained_notices": [
+      {
+        "archive_member": "cargo-deny-0.19.9-aarch64-apple-darwin/LICENSE-APACHE",
+        "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
+        "size_bytes": 10850
+      },
+      {
+        "archive_member": "cargo-deny-0.19.9-aarch64-apple-darwin/LICENSE-MIT",
+        "sha256": "090a294a492ab2f41388252312a65cf2f0e423330b721a68c6665ac64766753b",
+        "size_bytes": 1058
+      }
+    ],
+    "provenance_scope": "Official-origin acquisition and observed archive/member bytes. No reproducible-build or upstream-signature assurance is added."
+  },
+  "historical": {
+    "source_commit": "937df9321df1243a322c3da2092edf024607f97a",
+    "source_path": "repo_work/finalize_release.py",
+    "executable_sha256": "69ae1960301a8bc649a2e9ef0d1e164e12c3b0b6a1d4d0c072b52741c88e35b7",
+    "executable_size_bytes": 7505744,
+    "recovery_status": "NOT_RECOVERED",
+    "search_scope": "Bounded read-only exact-size search in tool, cache, and private temporary roots; this is not an exhaustive backup search.",
+    "visited_files": 1069693,
+    "exact_size_candidates": 0,
+    "current_qualification_authority": false
+  },
+  "unchanged_requirements": [
+    "Every other tool identity",
+    "Exact loader, executable-file, dispatch, and process policy",
+    "Pinned RustSec database and root/fuzz dependency policies",
+    "Qualification schema and exact candidate commit/tree join",
+    "Historical source and signed evidence",
+    "Scientific statuses, acceptance, and release review requirements"
+  ],
+  "required_revalidation": [
+    "Actual private staged artifact admission and recovered-host dispatch/compile controls",
+    "Rejected historical, altered, and truncated tool receipts",
+    "Rejected stale candidate qualification records",
+    "Root and fuzz dependency policy against the unchanged pinned advisory database",
+    "Complete applicable Python and source gates from the settled source/index transaction"
+  ]
+}

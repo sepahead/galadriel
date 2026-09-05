@@ -10,7 +10,7 @@
     "source_preparation_state": "UNPUBLISHED_CANDIDATE",
     "candidate_release_date": null
   },
-  "audit_date": "2026-08-15",
+  "audit_date": "2026-09-05",
   "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "url": "https://github.com/sepahead/galadriel",
@@ -296,11 +296,23 @@
       "purpose": "locked software/toolchain input",
       "patterns": [
         "Cargo.lock",
+        "release/0.9.0/tool-inputs/cargo-deny-2026-09-05.json",
+        "release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json",
+        "crates/galadriel-local-adapter/Cargo.lock",
+        "crates/galadriel-local-adapter/deny.toml",
         "fuzz/Cargo.lock",
         "fuzz/Cargo.toml",
         "fuzz/deny.toml",
         "rust-toolchain.toml",
         "deny.toml"
+      ]
+    },
+    {
+      "purpose": "independent experimental local-adapter source contract and verifier",
+      "patterns": [
+        "crates/galadriel-local-adapter/source-profile.json",
+        "crates/galadriel-local-adapter/verify_source.py",
+        "crates/galadriel-local-adapter/test_verify_source.py"
       ]
     },
     {

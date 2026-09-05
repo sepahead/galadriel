@@ -31,10 +31,22 @@ A breaking change **SHALL** also change the minor version.
 - `galadriel-justify`
 - `galadriel-dependence`
 - `galadriel-ncp`
+- `galadriel-local-adapter`
 
 Their feature names and wire adapters are also experimental or supporting
 surfaces. They **SHALL NOT** be described as stable 1.0 APIs or
 deployment-qualified protocols.
+
+`galadriel-local-adapter` prepares one track, clock domain, first sequence, and
+ordered modality/dimension roster. It invokes the existing `SubsetMagnitudeV0_9`
+engine without changing the stable core API.
+Its scalar reports remain exploratory magnitude diagnostics.
+Missing evidence retires its window and produces explicit abstention.
+The [adapter guide](../crates/galadriel-local-adapter/README.md) defines its bounded
+local API.
+Its explicit `ncp-local` feature adds a private-pipe monitor owner under the candidate NCP local contract.
+This owner can return advisory evidence only.
+It provides no command capability or remote transport qualification.
 
 The sidecar and monitor schemas accept only the Galadriel core identity grammar.
 An accepted identity contains 1 through 64 ASCII bytes.

@@ -10,6 +10,7 @@ import json
 import sys
 import tarfile
 import tempfile
+import tomllib
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -1233,6 +1234,74 @@ class CycloneDxValidatorTest(unittest.TestCase):
 
 
 class CargoDenyLicenseValidatorTest(unittest.TestCase):
+    def test_lock_patch_record_binds_one_active_license_projection(self) -> None:
+        root = TOOLS.parent
+        record = json.loads(
+            (
+                root / "release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json"
+            ).read_text()
+        )
+        lock_bytes = (root / "Cargo.lock").read_bytes()
+        package = next(
+            row
+            for row in tomllib.loads(lock_bytes.decode())["package"]
+            if row["name"] == "chacha20"
+        )
+        self.assertIs(record["release_authority"], False)
+        self.assertIs(record["historical"]["current_qualification_authority"], False)
+        self.assertEqual(
+            record["active"]["lockfile_sha256"], hashlib.sha256(lock_bytes).hexdigest()
+        )
+        self.assertEqual(record["active"]["package"], package)
+        self.assertEqual(
+            record["package_count"], artifacts.EXPECTED_HOST_FILTERED_LICENSE_PACKAGES
+        )
+        self.assertEqual(
+            record["license_assignment_count"],
+            artifacts.EXPECTED_HOST_FILTERED_LICENSE_ASSIGNMENTS,
+        )
+        self.assertEqual(record["inventory_scope"], CARGO_DENY_HOST_FILTERED_SCOPE)
+        self.assertEqual(
+            record["active"]["projections"],
+            {
+                "package_ids_sha256": artifacts.EXPECTED_HOST_FILTERED_LICENSE_PACKAGE_IDS_SHA256,
+                "semantic_sha256": artifacts.EXPECTED_HOST_FILTERED_LICENSE_SEMANTIC_SHA256,
+            },
+        )
+        self.assertEqual(
+            record["historical"]["projections"],
+            {
+                "package_ids_sha256": "7c4d600e46b0dc1f1d50917acf65f8550bc4d9d568978d145eb0cae5b893b463",
+                "semantic_sha256": "8a8a8b9c981f67c9e93159813c128bd6033ea11aa539555e9f7303c3de7d68a8",
+            },
+        )
+
+    def test_version_change_cannot_reuse_prior_license_projection(self) -> None:
+        prior_graph = host_filtered_license_graph()
+        packages = list(prior_graph.packages)
+        prior_package = packages[-1]
+        packages[-1] = replace(
+            prior_package,
+            package_id=f"{REGISTRY}#{prior_package.name}@2.0.0",
+            version="2.0.0",
+        )
+        current_graph = replace(prior_graph, packages=tuple(packages))
+        prior_inventory = license_inventory(prior_graph)
+        current_inventory = license_inventory(current_graph)
+        validate_synthetic_license_inventory(current_inventory, current_graph)
+        cases = (
+            (prior_graph, current_graph, prior_inventory, current_inventory),
+            (current_graph, prior_graph, current_inventory, prior_inventory),
+        )
+        for observed_graph, expected_graph, observed_inventory, expected_inventory in cases:
+            with self.assertRaisesRegex(ReviewError, "package set is not exact"):
+                validate_synthetic_license_inventory(
+                    observed_inventory,
+                    observed_graph,
+                    expected_inventory=expected_inventory,
+                    expected_graph=expected_graph,
+                )
+
     def test_accepts_exact_policy_summary(self) -> None:
         report = encode_json(
             {

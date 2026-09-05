@@ -21,6 +21,8 @@ members = [
     "crates/galadriel-eval",
     "crates/galadriel-justify",
 ]
+# The optional native owner has an independent lock and source gate.
+exclude = ["crates/galadriel-local-adapter"]
 # The default build excludes galadriel-dependence and its pid-core dependency.
 # Select it with `-p galadriel-dependence` or the CLI `dependence` feature.
 default-members = [

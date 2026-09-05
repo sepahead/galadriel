@@ -29,6 +29,10 @@
 Status: accepted Galadriel-side ADR. Local consumer components are implemented.
 Deployment evidence is excluded.
 
+This contract owns the retained wire-0.8 sidecar and lifecycle routes.
+The experimental [local scalar owner](../crates/galadriel-local-adapter/README.md#optional-private-pipe-owner) uses a separate, explicitly selected private-pipe contract.
+It does not satisfy this contract's remote producer or deployment qualification gates.
+
 These Galadriel components exist and have component tests:
 
 - strict contracts

@@ -1,0 +1,183 @@
+name: Local adapter source
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-adapter-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  PYTHONDONTWRITEBYTECODE: "1"
+  RUSTFLAGS: "-D warnings"
+  RUSTSEC_ADVISORY_DB_URL: https://github.com/RustSec/advisory-db
+  RUSTSEC_ADVISORY_DB_COMMIT: f981d991604f3e7d4a0eb94e559cb3e5a94a6dc2
+  RUSTSEC_ADVISORY_DB_TREE: 26bea0ac10667f826b5522a828a27861ae4b5287
+  RUSTSEC_ADVISORY_DB_DIRECTORY: advisory-db-3157b0e258782691
+
+jobs:
+  source:
+    name: independent source · MSRV · policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify subject identity
+        env:
+          EXPECTED_SUBJECT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse 'HEAD^{commit}')" = "$EXPECTED_SUBJECT"
+
+      - name: Install pinned Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.6"
+
+      - name: Install pinned MSRV
+        uses: dtolnay/rust-toolchain@c1709d61444fb708e6ed87924f95626398d8d115 # 1.89.0
+        with:
+          components: rustfmt, clippy
+
+      - name: Materialize independent locked graphs
+        run: |
+          cargo fetch --locked
+          cargo fetch --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml
+
+      - name: Verify closed source and feature graphs
+        shell: bash
+        run: |
+          set -euo pipefail
+          metadata_root="$(mktemp -d)"
+          trap 'rm -rf "$metadata_root"' EXIT
+          cargo metadata --locked --offline --format-version=1 \
+            --manifest-path crates/galadriel-local-adapter/Cargo.toml \
+            --no-default-features > "$metadata_root/pure.json"
+          cargo metadata --locked --offline --format-version=1 \
+            --manifest-path crates/galadriel-local-adapter/Cargo.toml \
+            --no-default-features --features ncp-local > "$metadata_root/native.json"
+          python3 -B -E -s -S -m unittest discover \
+            -s crates/galadriel-local-adapter -p test_verify_source.py -v
+          python3 -B -E -s -S crates/galadriel-local-adapter/verify_source.py \
+            --pure-metadata "$metadata_root/pure.json" \
+            --native-metadata "$metadata_root/native.json"
+
+      - name: Build default root without the optional adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          root_copy="$(mktemp -d)"
+          trap 'rm -rf "$root_copy"' EXIT
+          git archive HEAD Cargo.toml Cargo.lock rust-toolchain.toml \
+            crates/galadriel-core crates/galadriel-sim crates/galadriel-cli \
+            crates/galadriel-dependence crates/galadriel-ncp \
+            crates/galadriel-eval crates/galadriel-justify \
+            | tar -x -C "$root_copy"
+          test ! -e "$root_copy/crates/galadriel-local-adapter"
+          cargo build --locked --offline --manifest-path "$root_copy/Cargo.toml"
+
+      - name: Check formatting and both library feature graphs
+        run: |
+          cargo test --locked --offline -p galadriel-core --no-default-features
+          cargo fmt --manifest-path crates/galadriel-local-adapter/Cargo.toml -- --check
+          cargo clippy --locked --offline --manifest-path crates/galadriel-local-adapter/Cargo.toml --no-default-features --all-targets -- -D warnings
+          cargo clippy --locked --offline --manifest-path crates/galadriel-local-adapter/Cargo.toml --all-features --all-targets -- -D warnings
+          cargo test --locked --offline --manifest-path crates/galadriel-local-adapter/Cargo.toml --no-default-features
+          cargo test --locked --offline --manifest-path crates/galadriel-local-adapter/Cargo.toml --all-features
+
+      - name: Check public documentation and release build
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: |
+          cargo doc --locked --offline --manifest-path crates/galadriel-local-adapter/Cargo.toml --all-features --no-deps
+          cargo build --locked --offline --release --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-local --bin galadriel-ncp-local
+
+      - name: Install pinned dependency-policy tool
+        env:
+          RUSTFLAGS: ""
+        run: cargo install cargo-deny --version 0.19.9 --locked
+
+      - name: Materialize pinned advisory database
+        shell: bash
+        env:
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: "1"
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          set -euo pipefail
+          adapter_cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+          database_root="$adapter_cargo_home/advisory-dbs"
+          database="$database_root/$RUSTSEC_ADVISORY_DB_DIRECTORY"
+          test ! -e "$database"
+          mkdir -p "$database_root"
+          git init --quiet "$database"
+          git -C "$database" config --local core.hooksPath /dev/null
+          git -C "$database" remote add origin "$RUSTSEC_ADVISORY_DB_URL"
+          git -C "$database" fetch --no-tags --depth=1 origin "$RUSTSEC_ADVISORY_DB_COMMIT"
+          git -C "$database" checkout --detach --quiet FETCH_HEAD
+          test "$(git -C "$database" rev-parse 'HEAD^{commit}')" = "$RUSTSEC_ADVISORY_DB_COMMIT"
+          test "$(git -C "$database" rev-parse 'HEAD^{tree}')" = "$RUSTSEC_ADVISORY_DB_TREE"
+          test "$(git -C "$database" remote get-url origin)" = "$RUSTSEC_ADVISORY_DB_URL"
+          test -z "$(git -C "$database" status --porcelain=v1 --untracked-files=all)"
+          git -C "$database" fsck --strict --no-progress
+
+      - name: Check independent native dependency policy
+        run: cargo deny --offline --manifest-path crates/galadriel-local-adapter/Cargo.toml --all-features --locked check --config crates/galadriel-local-adapter/deny.toml
+
+      - name: Verify advisory identity after the scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          adapter_cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+          database="$adapter_cargo_home/advisory-dbs/$RUSTSEC_ADVISORY_DB_DIRECTORY"
+          test "$(git -C "$database" rev-parse 'HEAD^{commit}')" = "$RUSTSEC_ADVISORY_DB_COMMIT"
+          test "$(git -C "$database" rev-parse 'HEAD^{tree}')" = "$RUSTSEC_ADVISORY_DB_TREE"
+          test "$(git -C "$database" remote get-url origin)" = "$RUSTSEC_ADVISORY_DB_URL"
+          test -z "$(git -C "$database" status --porcelain=v1 --untracked-files=all)"
+
+      - name: Reject source mutation and import caches
+        run: |
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          test -z "$(find crates/galadriel-local-adapter -path '*/target' -prune -o -name __pycache__ -print -quit)"
+
+  current-stable:
+    name: independent owner · current stable
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify subject identity
+        env:
+          EXPECTED_SUBJECT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse 'HEAD^{commit}')" = "$EXPECTED_SUBJECT"
+
+      - name: Install pinned current stable
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          toolchain: 1.97.1
+          components: clippy
+
+      - name: Exercise the independent native owner
+        run: |
+          cargo fetch --locked
+          cargo fetch --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml
+          cargo test --locked --offline -p galadriel-core --no-default-features
+          cargo clippy --locked --offline --manifest-path crates/galadriel-local-adapter/Cargo.toml --all-targets --all-features -- -D warnings
+          cargo test --locked --offline --manifest-path crates/galadriel-local-adapter/Cargo.toml --all-features

@@ -1,0 +1,41 @@
+{
+  "schema": "galadriel.local-adapter-source.v1",
+  "scope": "experimental_source_only",
+  "release_authority": false,
+  "package_version": "0.9.0",
+  "sdk": {
+    "name": "ncp-local",
+    "version": "1.0.0",
+    "repository": "https://github.com/sepahead/NCP",
+    "revision": "de751d499b5e07d1c95a072e08255083d77cb38b"
+  },
+  "root_members": [
+    "crates/galadriel-core",
+    "crates/galadriel-sim",
+    "crates/galadriel-cli",
+    "crates/galadriel-dependence",
+    "crates/galadriel-ncp",
+    "crates/galadriel-eval",
+    "crates/galadriel-justify"
+  ],
+  "root_git_pins": {
+    "ncp-core": "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+    "ncp-zenoh": "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+    "pid-core": "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+    "pid-runlog": "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#1cd2424f7967e1752dcc8e53859e8fdad3566f51"
+  },
+  "files": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "deny.toml",
+    "source-profile.json",
+    "src/bin/galadriel-ncp-local.rs",
+    "src/lib.rs",
+    "src/ncp_local.rs",
+    "test_verify_source.py",
+    "tests/ncp_local.rs",
+    "tests/scalar.rs",
+    "verify_source.py"
+  ]
+}

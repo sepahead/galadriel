@@ -1944,6 +1944,7 @@ do
 done
 cc -isysroot "$source.missing-sdk" -c "$source" -o "$object_file"
 rustc +1.89.0 "$rust_source" -o "$rust_binary"
+cargo-deny --version
 """
                 result = run_bounded_process(
                     sandboxed_argv(
@@ -1973,6 +1974,7 @@ rustc +1.89.0 "$rust_source" -o "$rust_binary"
                     separate_stderr=True,
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, b"cargo-deny 0.19.9\n")
                 self.assertGreater(object_file.stat().st_size, 0)
                 self.assertGreater(rust_binary.stat().st_size, 0)
                 self.assertFalse(result.timed_out)
@@ -3580,6 +3582,23 @@ while not marker.exists() and time.monotonic() < deadline:
                 expected_evidence_config_sha256="c" * 64,
             )
 
+        historical_candidate = {
+            "commit": "937df9321df1243a322c3da2092edf024607f97a",
+            "tree": "bb07b88224e548d1b724786b2e2dd9a5b91492ac",
+        }
+        for field, value in historical_candidate.items():
+            with self.subTest(stale_candidate_field=field):
+                stale = copy.deepcopy(qualification)
+                stale["candidate"][field] = value
+                with self.assertRaisesRegex(ReviewError, "wrong candidate"):
+                    validate_qualification_record(
+                        stale,
+                        commit=COMMIT,
+                        tree=TREE,
+                        source_date_epoch=source_date_epoch,
+                        expected_evidence_config_sha256="c" * 64,
+                    )
+
     def test_repository_control_requires_equal_clean_snapshots(self) -> None:
         snapshot = repository_snapshot()
         advisory_snapshot = advisory_repository_snapshot()
@@ -3950,6 +3969,56 @@ while not marker.exists() and time.monotonic() < deadline:
         }
         validate_qualification_tool_files(qualification)
         validate_qualification_tool_bindings(qualification)
+
+        # This exact official artifact is an input successor, not an old-build match.
+        self.assertEqual(
+            (
+                executables["cargo-deny"]["sha256"],
+                executables["cargo-deny"]["size_bytes"],
+            ),
+            (
+                "26335000fbf0698b4eb646ffeb6fca02a9cb12f5b9f461170ffa384d7b6ab1a4",
+                7489208,
+            ),
+        )
+        rejected_deny_records = {
+            "historical": {
+                "sha256": "69ae1960301a8bc649a2e9ef0d1e164e12c3b0b6a1d4d0c072b52741c88e35b7",
+                "size_bytes": 7505744,
+            },
+            "altered": {"sha256": "0" * 64},
+            "truncated": {"size_bytes": 7489207},
+        }
+        for label, fields in rejected_deny_records.items():
+            with self.subTest(cargo_deny_record=label):
+                rejected = copy.deepcopy(qualification)
+                rejected["tool_files"]["executables"]["cargo-deny"].update(fields)
+                with self.assertRaisesRegex(
+                    ReviewError, "executable metadata is invalid: cargo-deny"
+                ):
+                    validate_qualification_tool_files(rejected)
+
+        revision = json.loads(
+            (ROOT / "release/0.9.0/tool-inputs/cargo-deny-2026-09-05.json").read_text()
+        )
+        self.assertIs(revision["release_authority"], False)
+        self.assertEqual(
+            (
+                revision["active"]["executable_sha256"],
+                revision["active"]["executable_size_bytes"],
+            ),
+            EXPECTED_TOOL_FILE_IDENTITIES["cargo-deny"],
+        )
+        self.assertEqual(
+            (
+                revision["historical"]["executable_sha256"],
+                revision["historical"]["executable_size_bytes"],
+            ),
+            (
+                rejected_deny_records["historical"]["sha256"],
+                rejected_deny_records["historical"]["size_bytes"],
+            ),
+        )
 
         drifted_tree = copy.deepcopy(qualification)
         drifted_tree["tool_files"]["python_runtime_tree"]["sha256"] = "0" * 64

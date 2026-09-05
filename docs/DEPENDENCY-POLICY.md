@@ -1,6 +1,60 @@
 # Qualification dependency policy
 
+## Independent experimental local adapter
+
+`crates/galadriel-local-adapter` has its own Cargo workspace and committed lock.
+Its default library has no NCP dependency.
+The optional native owner selects only the standalone `ncp-local` SDK.
+It reuses the existing `galadriel-core` package from the same source tree.
+It does not copy the detector or change root PID and wire-0.8 pins.
+
+The package remains experimental, version `0.9.0`, with `publish = false`.
+Its source contract is `crates/galadriel-local-adapter/source-profile.json`.
+The contract binds the exact SDK revision, root dependency boundary, and complete adapter file roster.
+`verify_source.py` checks actual locked Cargo metadata for both feature graphs.
+It rejects sibling SDK paths, changed Git identities, and unrelated runtime dependencies.
+The independent `deny.toml` has no historical Zenoh or PID exceptions.
+
+`.github/workflows/local-adapter.yml` exercises this separate source contract.
+It checks the actual scalar library, native process controls, both Rust toolchains, documentation, and dependency policy.
+Both toolchains also run the reused core's own tests with its empty feature selection.
+It also builds the default root from an archive without the optional adapter.
+The original repository workflow and all applicable governance checks remain required.
+The living audit inventories every new adapter source, test, manifest, lock, policy, and workflow.
+
+This source milestone does not qualify a native artifact or complete the historical research release.
+The existing 107 `OPEN` and nine `NOT_CLAIMED` requirements remain unchanged.
+The threat register stays living, with no release date or active freeze pair.
+An installed native release requires a separate exact artifact contract and operational evidence.
+All other requirements retain the historical 0.9 qualification contract.
+
+## Cargo-deny executable input revision
+
+The [2026-09-05 input record](../release/0.9.0/tool-inputs/cargo-deny-2026-09-05.json) selects one official `cargo-deny 0.19.9` arm64 artifact.
+The executable has SHA-256 `26335000fbf0698b4eb646ffeb6fca02a9cb12f5b9f461170ffa384d7b6ab1a4` and 7,489,208 bytes.
+The record binds its archive, exact member, supplied notices, and retained historical identity.
+
+The prior 7,505,744-byte host executable was not recovered from the bounded search.
+This input revision does not reproduce that build or change its historical evidence.
+The current qualifier admits one exact executable identity.
+It rejects the prior identity and stale candidate receipts.
+
+Stage the selected artifact privately before qualification.
+Use the existing exact dispatch, loader, and process checks.
+Keep every other tool pin and the RustSec database unchanged.
+Repeat all affected host, dependency-policy, Python, and source checks.
+This revision grants no scientific status, release freeze, or terminal qualification.
+
+## Chacha20 license-inventory projection
+
+The compatible `chacha20` lock patch also changes its exact license-inventory package identity.
+The [license input record](../release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json) preserves both historical and current projection hashes.
+Only `chacha20 0.10.1` becomes `0.10.2`; its MIT and Apache-2.0 license assignments remain identical.
+The verifier still requires exactly 382 packages, 707 assignments, and both complete identity projections.
+Historical or altered inventories cannot satisfy the current source gate.
+
 ## Abbreviations
+
 
 | Short form | Meaning |
 |---|---|

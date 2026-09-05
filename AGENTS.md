@@ -50,6 +50,7 @@ Read the documents that own the changed surface.
 | Claims, public API, or release scope | `docs/CLAIMS.md`, `docs/API-SURFACE.md`, and `release/0.9.0/README.md` |
 | Dependence companion or PID study code | `docs/PID_RS_1_0_MIGRATION.md`, `docs/EVALUATION.md`, and `docs/JUSTIFICATION.md` |
 | NCP, JSONL, Zenoh, producer, or live receiver code | `docs/PRODUCER-CONTRACT.md`, `docs/SECURE-DEPLOYMENT.md`, and `docs/ECOSYSTEM-CONNECTIONS.md` |
+| Independent local scalar adapter | `crates/galadriel-local-adapter/README.md`, its `source-profile.json`, and `docs/DEPENDENCY-POLICY.md` |
 | Advisory or downstream behavior | `docs/ADVISORY-BOUNDARY.md` and `docs/ECOSYSTEM-CONNECTIONS.md` |
 | Evidence, qualification, tags, assets, or publication | `docs/DEPENDENCY-POLICY.md`, `release/0.9.0/RELEASE-RUNBOOK.md`, and `repo_work/README.md` |
 
@@ -66,6 +67,14 @@ Sepehr Mahmoudian is the release author and commit author.
 The canonical GitHub owner is `sepahead`.
 Every workspace package must keep `publish = false`.
 Do not publish a crate to crates.io.
+
+The optional `galadriel-local-adapter` is an independent experimental source package.
+Its workspace, lock, source profile, dependency policy, and CI checks are separate.
+Use its explicit manifest path for Cargo commands.
+Keep the original seven root members and their historical integration pins intact.
+Inventory every adapter source and policy file in the living repository audit.
+The source gate supplements all applicable repository checks.
+It cannot authorize a release, scientific freeze, task completion, or native binary qualification.
 
 No project DOI exists.
 No project Zenodo record exists.

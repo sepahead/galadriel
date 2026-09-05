@@ -59,6 +59,8 @@ RELEASE_INPUTS = (
     "fuzz/Cargo.lock",
     "fuzz/deny.toml",
     "release/0.9.0/audit-inputs.json",
+    "release/0.9.0/tool-inputs/cargo-deny-2026-09-05.json",
+    "release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json",
     "release/0.9.0/ecosystem-cut.json",
     "release/0.9.0/handoff-source.json",
     "release/0.9.0/tasks.json",
