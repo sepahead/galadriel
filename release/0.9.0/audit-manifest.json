@@ -93,44 +93,12 @@
       "size_bytes": 1478
     },
     {
-      "git_blob_id": "b25fb25c6b312cf48591f3a6e70b7dfd0f7eca28",
-      "git_mode": "100644",
-      "path": ".superstack/build-context.md",
-      "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d71d34c90f068be813ec50db07c21aa87239b35c32307841a6c45ba1b7c0c005",
-      "size_bytes": 5042
-    },
-    {
-      "git_blob_id": "01f0f4c232242d5d29081bfaa4367cdc9d77f1a0",
-      "git_mode": "100644",
-      "path": ".superstack/galadriel-review-2026-07-10.html",
-      "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "378f726d6f8e681db0f2fdde99835640be33af324e2182def3da80e97c411ac8",
-      "size_bytes": 17155
-    },
-    {
-      "git_blob_id": "01335b8411b3e2dc4d3b26543e4fbada22c5916a",
-      "git_mode": "100644",
-      "path": ".superstack/security-reports/galadriel-2026-07-10.md",
-      "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "81322be635dd846599f4366da1bd473c807a79ba43ecdc3ffd2b139321405e83",
-      "size_bytes": 18167
-    },
-    {
-      "git_blob_id": "0b623032bc968ea78e79f5f99221906bea19bafe",
-      "git_mode": "100644",
-      "path": ".superstack/security-reports/history.md",
-      "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "966bfacfdacd2136e5deebfb847d434f2b207dfac77436f52d20e7973de14330",
-      "size_bytes": 262
-    },
-    {
-      "git_blob_id": "05b72c3626f95518bd9cab278b9b0143e42e11db",
+      "git_blob_id": "049417bd2c25637887d92e09afd187333c1545b9",
       "git_mode": "100644",
       "path": "AGENTS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "bdf11267c0bff15536161818ecf6a3bee991a8a9e38a69fe3ea49e4aeab6927d",
-      "size_bytes": 26508
+      "sha256": "c422e070facb100580a8f0c13f3e84741617d670f82fc70db10eb787107ec982",
+      "size_bytes": 14258
     },
     {
       "git_blob_id": "0a2b5420ccce731a5c3fd8763060a7599fd0eceb",
@@ -149,12 +117,20 @@
       "size_bytes": 938
     },
     {
-      "git_blob_id": "e0e54eea3aec05d7ea6ba3958cd3c873036f2951",
+      "git_blob_id": "7acd684e161a7ed948ef6f19287228bf992e6ec5",
+      "git_mode": "100644",
+      "path": "CLAUDE.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "7a9433f1921e0b92bec8389d981eff74020998726e048abf8166c1a5d083a330",
+      "size_bytes": 704
+    },
+    {
+      "git_blob_id": "1c62dcffc0190075a0d62a8dc6fb30bfd5a9c79a",
       "git_mode": "100644",
       "path": "CLAUDE.mdc",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a352e09cbb31d72d6323ba12d0b4381e1aad6301ee8e8a02c2ffa8b1092f2f81",
-      "size_bytes": 22990
+      "sha256": "ca30d647d87d94c9bd24b23902da6b95e189fed39e1916f761082b5c813c5da6",
+      "size_bytes": 1083
     },
     {
       "git_blob_id": "ecb1f6e6fa20c20257071b51c22c75fcb3b6c56d",
@@ -213,12 +189,12 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "7b36e3c084542e64c1fb2612b38d40b21c60f24c",
+      "git_blob_id": "ab1bcc7948e5df69fb8ab9d82da7f78c34188d11",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "49a02b37e08e7556ae0fac83d80e741545d21147e5da734a76f8d8ba272050c7",
-      "size_bytes": 53423
+      "sha256": "9575fe85ed1d737182ed5dd0b31cfa31ee921565e80942345204123f15166644",
+      "size_bytes": 16453
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -243,6 +219,22 @@
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "8ccc9a5cac53e99b1d0e7249bc71d5712470f5313e039109d434d9b42dd19e0a",
       "size_bytes": 1260
+    },
+    {
+      "git_blob_id": "691e51297e02d65ed397cc1ee82b0652f3179a5a",
+      "git_mode": "100644",
+      "path": "assets/architecture-mobile.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "fe552c5e728cfbeb7943778bb73733cacd360d238cb1596b82ed5383ef1b8283",
+      "size_bytes": 5528
+    },
+    {
+      "git_blob_id": "0cdd6665507443e457c10d8fcd724ddfb33fca7e",
+      "git_mode": "100644",
+      "path": "assets/architecture.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "df6eb505e39732febdb0fa81b533ea1981c4fddad0833381406e5d1d9293ee6b",
+      "size_bytes": 5598
     },
     {
       "git_blob_id": "a9eac2d1a781e261ea9e76e5bf71873e5a43d031",
@@ -1061,6 +1053,14 @@
       "size_bytes": 18713
     },
     {
+      "git_blob_id": "e20fe557eefc53db5747149a72732b29c5e2f3f4",
+      "git_mode": "100644",
+      "path": "docs/MAINTAINER_WORKFLOWS.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "7567f533a6903fbf605f08b87481d383a081815c6059df2474319d9da7074ccc",
+      "size_bytes": 15501
+    },
+    {
       "git_blob_id": "c57f2a5219d6618ca3511a2ef37939fbae633e5d",
       "git_mode": "100644",
       "path": "docs/MIGRATION-0.9.md",
@@ -1147,6 +1147,62 @@
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "a451fbe44f4d7ec0c205f5052d4649a07471e42c9d6dff4e9a24ae6d5fbb9734",
       "size_bytes": 16508
+    },
+    {
+      "git_blob_id": "3f1bf6969271c053968eca8d3e6c9f7de69a99c4",
+      "git_mode": "100644",
+      "path": "docs/WORKFLOWS.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "a2a324c746d4440f378b06769b15c1006cbdb8a5b8c0483d4a2eb0a69e63d4c7",
+      "size_bytes": 53093
+    },
+    {
+      "git_blob_id": "23704a3e820b303d8c3eb88c3a02fb2065e858ca",
+      "git_mode": "100644",
+      "path": "docs/history/2026-07-10-review/README.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "24ae498f6cb1ed78610fb129dffe84ab59f0dc2277f4eab336a51a4e5778ab9a",
+      "size_bytes": 1716
+    },
+    {
+      "git_blob_id": "b25fb25c6b312cf48591f3a6e70b7dfd0f7eca28",
+      "git_mode": "100644",
+      "path": "docs/history/2026-07-10-review/build-context.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "d71d34c90f068be813ec50db07c21aa87239b35c32307841a6c45ba1b7c0c005",
+      "size_bytes": 5042
+    },
+    {
+      "git_blob_id": "01f0f4c232242d5d29081bfaa4367cdc9d77f1a0",
+      "git_mode": "100644",
+      "path": "docs/history/2026-07-10-review/galadriel-review-2026-07-10.html",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "378f726d6f8e681db0f2fdde99835640be33af324e2182def3da80e97c411ac8",
+      "size_bytes": 17155
+    },
+    {
+      "git_blob_id": "3ea03e4eef969107380bf893d4f98aefae7bfa6a",
+      "git_mode": "100644",
+      "path": "docs/history/2026-07-10-review/relocation.json",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "0161822e112af1acd75138809946f960bbf77a059dde5f45b9878f3f48bf4704",
+      "size_bytes": 1967
+    },
+    {
+      "git_blob_id": "01335b8411b3e2dc4d3b26543e4fbada22c5916a",
+      "git_mode": "100644",
+      "path": "docs/history/2026-07-10-review/security-reports/galadriel-2026-07-10.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "81322be635dd846599f4366da1bd473c807a79ba43ecdc3ffd2b139321405e83",
+      "size_bytes": 18167
+    },
+    {
+      "git_blob_id": "0b623032bc968ea78e79f5f99221906bea19bafe",
+      "git_mode": "100644",
+      "path": "docs/history/2026-07-10-review/security-reports/history.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "966bfacfdacd2136e5deebfb847d434f2b207dfac77436f52d20e7973de14330",
+      "size_bytes": 262
     },
     {
       "git_blob_id": "3765749aad130fc611f5c5d35d3f532284898946",
@@ -1429,12 +1485,12 @@
       "size_bytes": 184582
     },
     {
-      "git_blob_id": "7f89601e3ad4e2b09c154d27e40013f72e60f6c7",
+      "git_blob_id": "29467126479c17630e6dda140cc9dca0ffad3f4b",
       "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "760e893cb709191af1bd03d33f8949fb3d039cc065fb6e872b41db046f2fc4e8",
-      "size_bytes": 21236
+      "sha256": "d56876e9d460ffbc3fc6131a1887f3254a6d4e5a1b68925d0679489e0f719caa",
+      "size_bytes": 21283
     },
     {
       "git_blob_id": "7e563049b65dc6761e76b7d0c96c1cc10bd5c0dc",
@@ -2150,18 +2206,6 @@
     },
     {
       "kind": "external_reference",
-      "line": 108,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/pid-rs"
-    },
-    {
-      "kind": "external_reference",
-      "line": 109,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/NCP"
-    },
-    {
-      "kind": "external_reference",
       "line": 10,
       "path": "README.md",
       "url": "https://github.com/sepahead/galadriel/actions/workflows/ci.yml"
@@ -2171,24 +2215,6 @@
       "line": 10,
       "path": "README.md",
       "url": "https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg"
-    },
-    {
-      "kind": "external_reference",
-      "line": 110,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/crebain"
-    },
-    {
-      "kind": "external_reference",
-      "line": 111,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/haldir"
-    },
-    {
-      "kind": "external_reference",
-      "line": 112,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/prisoma"
     },
     {
       "kind": "external_reference",
@@ -2210,45 +2236,45 @@
     },
     {
       "kind": "external_reference",
-      "line": 14,
+      "line": 172,
       "path": "README.md",
-      "url": "https://img.shields.io/badge/status-research%20review-orange.svg"
+      "url": "https://github.com/sepahead/crebain"
     },
     {
       "kind": "external_reference",
-      "line": 15,
+      "line": 173,
       "path": "README.md",
-      "url": "https://img.shields.io/badge/unsafe-forbidden-success.svg"
+      "url": "https://github.com/sepahead/NCP"
     },
     {
       "kind": "external_reference",
-      "line": 171,
+      "line": 174,
       "path": "README.md",
-      "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
+      "url": "https://github.com/sepahead/pid-rs"
     },
     {
       "kind": "external_reference",
-      "line": 179,
+      "line": 175,
       "path": "README.md",
-      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
+      "url": "https://github.com/sepahead/prisoma"
     },
     {
       "kind": "external_reference",
-      "line": 184,
+      "line": 176,
       "path": "README.md",
-      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
+      "url": "https://github.com/sepahead/engram"
     },
     {
       "kind": "external_reference",
-      "line": 664,
+      "line": 177,
       "path": "README.md",
-      "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
+      "url": "https://github.com/sepahead/haldir"
     },
     {
       "kind": "external_reference",
-      "line": 850,
+      "line": 37,
       "path": "README.md",
-      "url": "https://github.com/sepahead"
+      "url": "https://github.com/sepahead/galadriel.git"
     },
     {
       "kind": "external_reference",
@@ -2819,6 +2845,60 @@
       "line": 568,
       "path": "docs/RELATED-WORK.md",
       "url": "https://anavs.com/wp-content/uploads/2025/10/Detection_and_Mitigation_of_Jamming_Meaconing_and_Spoofing_based_on_Machine_Learning_and_Multi_Sensor_Data.pdf"
+    },
+    {
+      "kind": "external_reference",
+      "line": 106,
+      "path": "docs/WORKFLOWS.md",
+      "url": "https://github.com/sepahead/pid-rs"
+    },
+    {
+      "kind": "external_reference",
+      "line": 107,
+      "path": "docs/WORKFLOWS.md",
+      "url": "https://github.com/sepahead/NCP"
+    },
+    {
+      "kind": "external_reference",
+      "line": 108,
+      "path": "docs/WORKFLOWS.md",
+      "url": "https://github.com/sepahead/crebain"
+    },
+    {
+      "kind": "external_reference",
+      "line": 109,
+      "path": "docs/WORKFLOWS.md",
+      "url": "https://github.com/sepahead/haldir"
+    },
+    {
+      "kind": "external_reference",
+      "line": 110,
+      "path": "docs/WORKFLOWS.md",
+      "url": "https://github.com/sepahead/prisoma"
+    },
+    {
+      "kind": "external_reference",
+      "line": 169,
+      "path": "docs/WORKFLOWS.md",
+      "url": "https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd"
+    },
+    {
+      "kind": "external_reference",
+      "line": 177,
+      "path": "docs/WORKFLOWS.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json"
+    },
+    {
+      "kind": "external_reference",
+      "line": 182,
+      "path": "docs/WORKFLOWS.md",
+      "url": "https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/docs/handoff/NCP_V1_0_ECOSYSTEM_FINALIZATION_BLUEPRINT.md"
+    },
+    {
+      "kind": "external_reference",
+      "line": 662,
+      "path": "docs/WORKFLOWS.md",
+      "url": "https://www.usenix.org/conference/usenixsecurity22/presentation/hallyburton"
     }
   ],
   "git_dependencies": [

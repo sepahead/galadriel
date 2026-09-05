@@ -366,6 +366,7 @@
         ".gitattributes",
         ".ncp-consumer",
         ".superstack/**/*",
+        "docs/history/2026-07-10-review/**/*",
         "*.md",
         "CITATION.cff",
         "LICENSE*",
