@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="398 170 124 124" width="124" height="124" role="img" aria-label="GALADRIEL historical profile mark"><title>GALADRIEL historical profile mark</title><desc>Archived design extracted from a historical portfolio SVG. This image makes no current product or release claim.</desc><defs /><style>:root{--hub-accent: #34d399; --cube-accent: #fb923c; --tri-accent: #a78bfa;}
+.chip{fill: #0d1117; stroke-width: 1.5;}
+.chip-label{font: 400 12px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #c9d1d9;}
+:root{--hub-accent: #059669; --cube-accent: #c2410c; --tri-accent: #7c3aed;}
+.chip{fill: #ffffff;}
+.chip-label{fill: #1f2328;}</style><g class="nodes"><g>
+    <rect x="395.5" y="216" width="129" height="32" rx="8" class="chip" stroke="#ef4444" />
+    <g transform="translate(406.8 227.3) scale(0.62)"><path d="M2 6 V4.4 a4 4 0 0 1 8 0 V6" fill="none" stroke="#ef4444" stroke-width="1.5" /><rect x="0" y="6" width="12" height="9" rx="1.6" fill="#ef4444" /></g>
+    <text x="422.5" y="237" class="chip-label">GALADRIEL</text>
+  </g>
+  </g></svg>

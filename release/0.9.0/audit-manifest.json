@@ -189,12 +189,12 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "ab1bcc7948e5df69fb8ab9d82da7f78c34188d11",
+      "git_blob_id": "afd8bf6e475e6b7971fec25c471067b7e90d9459",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "9575fe85ed1d737182ed5dd0b31cfa31ee921565e80942345204123f15166644",
-      "size_bytes": 16453
+      "sha256": "6e41840cf74e2517ffad7d765736d4743e38b2f0451d3be01d2be34d12ec591a",
+      "size_bytes": 16541
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -237,6 +237,398 @@
       "size_bytes": 5598
     },
     {
+      "git_blob_id": "7fa8c90cd3a19b3a02e0d5f2ccd69e548686b2de",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/.gitattributes",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "3aeb6677589e6cc3e5cfc0b6e1ddadeb130d909cca98afc59454e12a97c20af1",
+      "size_bytes": 117
+    },
+    {
+      "git_blob_id": "885941731842112e95ab6a59b248982cf097038f",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/README.md",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "e91acf66b64e2bdbdd9710a5aadebdd334227566097e73ecb44d7d6dd2d402a2",
+      "size_bytes": 20484
+    },
+    {
+      "git_blob_id": "cbcba455053bb9d6d74e547ac5a872be5bc37edd",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-08-001-profile-dark-cd237f6b77.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "cd237f6b7742063025a65a2d5ec223cfd231462dffdfb42ebba13d251600b28f",
+      "size_bytes": 963
+    },
+    {
+      "git_blob_id": "5c1174cbcd86a35b6020015a2be9a4f9a96e9c92",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-08-002-profile-light-64c3cb319b.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "64c3cb319b1fcec4abbd38ad93c98716ea09f18b53654117e15d128f9df96092",
+      "size_bytes": 1090
+    },
+    {
+      "git_blob_id": "6a02379608eb50e3e3e3af738443d467c45e68bd",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-08-003-profile-dark-3c90ec23ec.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "3c90ec23ecf154a93ea4b6202c6eb71553d683934c4c3ef8e22e4991e8cebadc",
+      "size_bytes": 963
+    },
+    {
+      "git_blob_id": "9e4281718769cb35e8e8e256ef58ebe04a331407",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-08-004-profile-light-f9224e925e.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "f9224e925ebe2403e00c868ffab8e24f6cafd10afeb67545d6a373da5f499322",
+      "size_bytes": 1090
+    },
+    {
+      "git_blob_id": "001ac85338a9ebde76c6a0506ab206299949ece4",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-09-005-galadriel-logo-2ca42c35bf.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "2ca42c35bf7e26031acf69396e1c4522688bd30a1ca950b8c5b812e3e5605c77",
+      "size_bytes": 6136
+    },
+    {
+      "git_blob_id": "4ddfdbb95c0d1707ddd052e9e6a6b16d9703392a",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-09-006-profile-dark-854f5a90e6.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "854f5a90e66c792fba82f404679fe5a41948e24e0ee32a9b16d810b00703fcfc",
+      "size_bytes": 2461
+    },
+    {
+      "git_blob_id": "3b0f34f4a15b9f5c596a6d3222ce244f8aaff580",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-09-007-profile-light-7533648310.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "7533648310fb14fac81f5609eb47a76cc4bf0dfbb131ce82d57a1bf717f646b0",
+      "size_bytes": 2719
+    },
+    {
+      "git_blob_id": "374a09692c43d90d8073f24d96bfa5f2973420a9",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-008-galadriel-logo-54f8b60b45.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "54f8b60b450ae11fa98fb08b763121ab1f82da62dec35d439b62fee436844bac",
+      "size_bytes": 5481
+    },
+    {
+      "git_blob_id": "3ee82997ae5987b2ae1caf4a2c2a81887ec62125",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-009-galadriel-logo-3e5543b471.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "3e5543b471956e1e51d9a5866607d77d5977073ca787f8ce7ab560171f2f1f28",
+      "size_bytes": 5870
+    },
+    {
+      "git_blob_id": "8a0493daae496a9fd8cd053685a0d6c4ee013d80",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-010-profile-dark-b7d6392d1f.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "b7d6392d1fe49da1263edcc7c4cfbb1fdeda1f3b2ac639de2a8355f45a343748",
+      "size_bytes": 2748
+    },
+    {
+      "git_blob_id": "210e5a1e94a2c999198b4e2be32fd58785a78c89",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-011-profile-light-5169c1e865.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "5169c1e865eacde84f3f45dc9519712a58175763217d573c2fe73a85ebd5ac45",
+      "size_bytes": 3038
+    },
+    {
+      "git_blob_id": "637463d4dc7911cb3ea30b30b6bdb66b32da2b64",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-012-profile-dark-47fb8d3429.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "47fb8d3429e1a134094e6017a9909bac3266e7861b0dc15f4f19a0d85b84b27f",
+      "size_bytes": 3246
+    },
+    {
+      "git_blob_id": "7ed5d496b9b07621e7e12b23b833a8ad9d1beb54",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-013-profile-light-071ff0860b.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "071ff0860b6572c1c18da0680792a00dbb098e77329889046d423929e2cbea8e",
+      "size_bytes": 3614
+    },
+    {
+      "git_blob_id": "ac6bf1ed6481a6165fe3bc63c03b1cac8a879aba",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-014-galadriel-logo-25539e1f40.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "25539e1f40fb5771fd8ebf1ee363a671155e9397f941072ba78dcbca1523bb8e",
+      "size_bytes": 6622
+    },
+    {
+      "git_blob_id": "b9d486208640cec846dc009b50618ea5d451962f",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-015-profile-dark-68187cfb70.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "68187cfb7027355898cf8954ca1099b157f9bc19fc8aa88185318baf06e15652",
+      "size_bytes": 3937
+    },
+    {
+      "git_blob_id": "8296ae3d0ae026b844d33f3fac579f68dbd9a31b",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-016-profile-light-73daf3bfac.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "73daf3bfac4c6b391491fd85ea617ccff64560d245095d68bdc9d328bcfcc88b",
+      "size_bytes": 4042
+    },
+    {
+      "git_blob_id": "4e63e0684365fc3cf056681c76ef01d3c828cc79",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-017-profile-dark-c8aa8521d9.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "c8aa8521d97b52578d60af207d0905a7d2c6a5204fa4e871ead4cc2cac88a6e5",
+      "size_bytes": 4080
+    },
+    {
+      "git_blob_id": "e1bd18c6b71ffd1a32a20c59b386eb053bcbc902",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-018-profile-light-41cf385317.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "41cf385317d611f54e134b7f5836da717589e7f890b1dd15bee8962858169100",
+      "size_bytes": 4185
+    },
+    {
+      "git_blob_id": "58fa946bd9b01f1f11fa50e709d5161fe8e6e52a",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-019-profile-dark-9bf7c04ae4.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "9bf7c04ae4922d86751d0cdea26af84232a62b79389e72c4727eaa436cac94f5",
+      "size_bytes": 4043
+    },
+    {
+      "git_blob_id": "fbed47d483c127032483332c6bcbd543ab9cb47c",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-020-profile-light-726a745664.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "726a7456645c9c44ff5f41b851f4abbf52eb8b30e7da0b92280dcae40371e06f",
+      "size_bytes": 4120
+    },
+    {
+      "git_blob_id": "60bbbe502a1bc3d5abd1d70c1691979088479e14",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-021-profile-dark-d02eaad08a.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "d02eaad08af9ddc12243ba47db38efa1808caa847a280e8665d2b009e65ec61c",
+      "size_bytes": 4077
+    },
+    {
+      "git_blob_id": "0860748b46f70348d574aefbd07eb4f48bfbe1f9",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-022-profile-light-1a06b0d7d7.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "1a06b0d7d79989679d05d6b65e4312e12f1073dcc1b055f58b75d0a908a0dd4e",
+      "size_bytes": 4154
+    },
+    {
+      "git_blob_id": "40311a27ab2f3c3530084c59a89a709537d3c84a",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-023-profile-dark-af2c898a0d.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "af2c898a0d03549381d011854d4afa2ffe7e83957b2c072491be9c80a4ba6d32",
+      "size_bytes": 4715
+    },
+    {
+      "git_blob_id": "b1180e0145de121e967371ed600dbbf584e88fca",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-024-profile-light-d9b74bb2cf.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "d9b74bb2cfe412defb4bdce27e74faf8804bc1c0c9f67b6efe7102e8d0586e3f",
+      "size_bytes": 4792
+    },
+    {
+      "git_blob_id": "c0030391b67715552c8a1c81aaa8b930343ccb0a",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-025-profile-dark-842b5d9cbf.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "842b5d9cbfae16f1b65c688ebd7c598cb2f2b551c8c5d0a769548cab1e69d51b",
+      "size_bytes": 4963
+    },
+    {
+      "git_blob_id": "04766f5a37b4cd8d84f2f668c09c4d5d4853c233",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-026-profile-light-3a84f10e47.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "3a84f10e47d17742d969ab99a0d276050f1248fd06f5ee0fd37668b0b9adae73",
+      "size_bytes": 5040
+    },
+    {
+      "git_blob_id": "880db5297ad01a3618e81e349225b9a533505752",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-027-profile-dark-64628a929b.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "64628a929ba8c4001d21fbdbf60f250264c6828bae3b909263f1cfaa5e891cb2",
+      "size_bytes": 5584
+    },
+    {
+      "git_blob_id": "04f1b333685b40c7ccb626eb535554f362b1f23f",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-10-028-profile-light-87f340a5dd.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "87f340a5dd97a40813c8979fe477807ec216d5f03d2b2373edc9beaae0871daf",
+      "size_bytes": 5661
+    },
+    {
+      "git_blob_id": "e0ed90d351fdcbe541299e73b581698af96def79",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-11-029-galadriel-logo-41f17ec026.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "41f17ec026b3c83f0dfd419bd81777138a01e0fe007a1b50579da69196a8e569",
+      "size_bytes": 7306
+    },
+    {
+      "git_blob_id": "780784bb7963974c5d76da09b42d13e5a9fe0024",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-11-030-profile-dark-039471ab6c.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "039471ab6ce6d57dcaeffcc6737cc1b1380f87e4504e498cbd4733c8f6220055",
+      "size_bytes": 5585
+    },
+    {
+      "git_blob_id": "3a35b50887ab3ac56822e43defd9fc2c67bca6e1",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-11-031-profile-light-c308ce5f8d.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "c308ce5f8db50640f834b821c04f2ae05c0952d6833826c73483ea6a48df7907",
+      "size_bytes": 5662
+    },
+    {
+      "git_blob_id": "36e33a41aa759614728cc7ed714f8574738d8995",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-11-032-galadriel-logo-882e9fafbb.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "882e9fafbb81577d5c1e2c76bca0bd09d84f470b61fdb459ec2725200e840593",
+      "size_bytes": 7302
+    },
+    {
+      "git_blob_id": "f69f72d8de84c5e2c6baaba264fc93279b94fb91",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-11-033-profile-dark-16db34714e.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "16db34714e63bc7d47016c9413034a4e677ab8fd0a5b02f6747dc1575e0fefaa",
+      "size_bytes": 5599
+    },
+    {
+      "git_blob_id": "425e02fa9970282b74dd92c73e9c33f1fe848709",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-11-034-profile-light-4a9acd89f1.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "4a9acd89f1cdcfee9502e550b7c1ba78cd04b7d79f883a5968937c92ee5fe4a4",
+      "size_bytes": 5676
+    },
+    {
+      "git_blob_id": "57301f7913a3849caffdbdc23c8748421e9dcf9f",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-12-035-profile-dark-03c7d21d94.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "03c7d21d940bb9288345ccdfd5c62251e77e8f0cf84a45ae3039ccaafccd4c5c",
+      "size_bytes": 5599
+    },
+    {
+      "git_blob_id": "3902268e47a363400f28740e8a8fee122314fa91",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-12-036-profile-light-311034cf64.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "311034cf64095723497afd25de2d7cf02041ab4892fd04c41dfe8c3623231159",
+      "size_bytes": 5676
+    },
+    {
+      "git_blob_id": "417cb80ead1539d2466b967f50ae223eaf33dfcd",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-12-037-profile-dark-8a4b7d8e9d.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "8a4b7d8e9dac52ccac3022cf8cb04c6f3d1924f19acb2546035d912d618837eb",
+      "size_bytes": 5599
+    },
+    {
+      "git_blob_id": "f2bb7af68b0feda00edcecf3ee438adc16af63b2",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-12-038-profile-light-f8ae556723.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "f8ae55672340f6e6d58a108c08213400295b5d05c8e15dca4fa299578bd42fd7",
+      "size_bytes": 5676
+    },
+    {
+      "git_blob_id": "8f4ec9a59d527e3025f4ebbb0ae089d30df9547b",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-13-039-profile-dark-28fbfc22a7.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "28fbfc22a7525d1b6ba4704d4add4759e828c200bc110eb5771f348152a3e08d",
+      "size_bytes": 5599
+    },
+    {
+      "git_blob_id": "a2f7911277e7015afb0f0c2ca4cd49a1b5338901",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-13-040-profile-light-bf0e552608.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "bf0e552608983192b57291b1a70cb81151efc8c65fadae18418b5015e8025ee5",
+      "size_bytes": 5676
+    },
+    {
+      "git_blob_id": "935eb9b4b11a8f70c79d17525e7a73cf7f058563",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-07-22-041-galadriel-logo-95a2916ead.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "95a2916ead48458219335694c48f5a7904a515c91731f35e08496fcad4af2b98",
+      "size_bytes": 7120
+    },
+    {
+      "git_blob_id": "9e2fea1ac62ac70f028ba369f55d98807c7d545d",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-08-20-042-profile-dark-0e753d30da.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "0e753d30da59816a178d07c0d27611966df32fbe81ecc1773bfc92be2bce2c4c",
+      "size_bytes": 5522
+    },
+    {
+      "git_blob_id": "82c23c68f16f9bcb3a71044e90814b1f0ecd6c54",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-09-05-043-profile-dark-3e6026d63d.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "3e6026d63d3b008bbd2a4861ee342845626806daf4beef7b294600d005624be5",
+      "size_bytes": 5522
+    },
+    {
+      "git_blob_id": "b76d8267f4599286cf81f66a2895ff9f9a40cf62",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-09-05-044-profile-dark-136983fc0f.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "136983fc0f8f278c532d00ae8638f7998a5d5d48861053c7a36dbcda8a4f3496",
+      "size_bytes": 5522
+    },
+    {
+      "git_blob_id": "5ece6e7cce59ee7c3ebe159bcd647b343ce4d789",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-09-07-045-profile-dark-ae3c990989.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "ae3c990989c5fc1eb11a60f04c1c5ee9dc94df636968e6e5fb9fb04682501f2b",
+      "size_bytes": 9441
+    },
+    {
+      "git_blob_id": "5877487e19de7956eef686ff98de9b97c7b7fd87",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/galadriel/2026-09-07-046-galadriel-logo-d3f4ea5c77.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "d3f4ea5c77586e8295f44ee71e4a1733ad1bec9d23a72190021230160f1d1009",
+      "size_bytes": 9510
+    },
+    {
+      "git_blob_id": "276b3aec14a03b10c3279557051c80519da8f1aa",
+      "git_mode": "100644",
+      "path": "assets/archive/logos/manifest.json",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "267fb1a0a48e597141334abb2ee681816adcdfe3e55f7db4269d28dca907f463",
+      "size_bytes": 124355
+    },
+    {
       "git_blob_id": "a9eac2d1a781e261ea9e76e5bf71873e5a43d031",
       "git_mode": "100644",
       "path": "assets/detector-evidence.svg",
@@ -245,12 +637,12 @@
       "size_bytes": 10519
     },
     {
-      "git_blob_id": "935eb9b4b11a8f70c79d17525e7a73cf7f058563",
+      "git_blob_id": "5877487e19de7956eef686ff98de9b97c7b7fd87",
       "git_mode": "100644",
       "path": "assets/galadriel-logo.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "95a2916ead48458219335694c48f5a7904a515c91731f35e08496fcad4af2b98",
-      "size_bytes": 7120
+      "sha256": "d3f4ea5c77586e8295f44ee71e4a1733ad1bec9d23a72190021230160f1d1009",
+      "size_bytes": 9510
     },
     {
       "git_blob_id": "f6fb678e0f0c4d1c9a4d8c53aa35de09b98ae6e8",
@@ -1485,12 +1877,12 @@
       "size_bytes": 184582
     },
     {
-      "git_blob_id": "29467126479c17630e6dda140cc9dca0ffad3f4b",
+      "git_blob_id": "15adccf902d06c3201dbb93bceb100e931f324d7",
       "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "d56876e9d460ffbc3fc6131a1887f3254a6d4e5a1b68925d0679489e0f719caa",
-      "size_bytes": 21283
+      "sha256": "3dc654d717d19567d55c7a4e195bbef220356eedef34b06a02d30941ed7e1855",
+      "size_bytes": 21320
     },
     {
       "git_blob_id": "7e563049b65dc6761e76b7d0c96c1cc10bd5c0dc",
@@ -2029,7 +2421,7 @@
       "size_bytes": 73529
     }
   ],
-  "audit_date": "2026-09-05",
+  "audit_date": "2026-09-07",
   "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "commit": "94e2f8cc01f352d2bf899b7f656997f143a2588f",
@@ -2206,73 +2598,73 @@
     },
     {
       "kind": "external_reference",
-      "line": 10,
+      "line": 12,
       "path": "README.md",
       "url": "https://github.com/sepahead/galadriel/actions/workflows/ci.yml"
     },
     {
       "kind": "external_reference",
-      "line": 10,
+      "line": 12,
       "path": "README.md",
       "url": "https://github.com/sepahead/galadriel/actions/workflows/ci.yml/badge.svg"
     },
     {
       "kind": "external_reference",
-      "line": 11,
+      "line": 13,
       "path": "README.md",
       "url": "https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg"
     },
     {
       "kind": "external_reference",
-      "line": 12,
+      "line": 14,
       "path": "README.md",
       "url": "https://img.shields.io/badge/rust-1.89%2B-orange.svg"
     },
     {
       "kind": "external_reference",
-      "line": 13,
+      "line": 15,
       "path": "README.md",
       "url": "https://img.shields.io/badge/source%20state-unpublished%20candidate-orange.svg"
     },
     {
       "kind": "external_reference",
-      "line": 172,
+      "line": 174,
       "path": "README.md",
       "url": "https://github.com/sepahead/crebain"
     },
     {
       "kind": "external_reference",
-      "line": 173,
+      "line": 175,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP"
     },
     {
       "kind": "external_reference",
-      "line": 174,
+      "line": 176,
       "path": "README.md",
       "url": "https://github.com/sepahead/pid-rs"
     },
     {
       "kind": "external_reference",
-      "line": 175,
+      "line": 177,
       "path": "README.md",
       "url": "https://github.com/sepahead/prisoma"
     },
     {
       "kind": "external_reference",
-      "line": 176,
+      "line": 178,
       "path": "README.md",
       "url": "https://github.com/sepahead/engram"
     },
     {
       "kind": "external_reference",
-      "line": 177,
+      "line": 179,
       "path": "README.md",
       "url": "https://github.com/sepahead/haldir"
     },
     {
       "kind": "external_reference",
-      "line": 37,
+      "line": 39,
       "path": "README.md",
       "url": "https://github.com/sepahead/galadriel.git"
     },

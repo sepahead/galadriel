@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="338 108 124 124" width="124" height="124" role="img" aria-label="GALADRIEL historical profile mark"><title>GALADRIEL historical profile mark</title><desc>Archived design extracted from a historical portfolio SVG. This image makes no current product or release claim.</desc><defs><filter id="nodeShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#000000" flood-opacity="0.38" />
+    </filter>
+    </defs><style /><g class="nodes"><g>
+      <g filter="url(#nodeShadow)" transform="translate(355 125) scale(.5)">
+<title id="galadriel-mark-title">Galadriel sensor monitor</title>
+<desc id="galadriel-mark-desc">A scanning red eye watches three incoming sensor channels inside an angular shield. A brushed gunmetal rim and restrained red inset frame the advisory monitor. The eye and feed pulses repeat; reduced motion keeps the full mark still.</desc>
+<defs>
+ <radialGradient id="galadriel-seat" cx="36%" cy="28%" r="82%"><stop stop-color="#24313b" /><stop offset=".5" stop-color="#131b25" /><stop offset="1" stop-color="#080d15" /></radialGradient>
+ <linearGradient id="galadriel-rim" x1="40" y1="29" x2="144" y2="151" gradientUnits="userSpaceOnUse"><stop stop-color="#354653" /><stop offset=".18" stop-color="#bbc5ca" /><stop offset=".36" stop-color="#647f8c" /><stop offset=".54" stop-color="#283c48" /><stop offset=".73" stop-color="#738c92" /><stop offset="1" stop-color="#1b2c39" /></linearGradient>
+ <linearGradient id="galadriel-shield-edge" x1="44" y1="28" x2="184" y2="202" gradientUnits="userSpaceOnUse"><stop stop-color="#b3e2e4" /><stop offset=".3" stop-color="#43bacb" /><stop offset=".7" stop-color="#227386" /><stop offset="1" stop-color="#466a77" /></linearGradient>
+ <linearGradient id="galadriel-inset" x1="38" y1="36" x2="141" y2="146" gradientUnits="userSpaceOnUse"><stop stop-color="#b57978" /><stop offset=".35" stop-color="#883d48" /><stop offset="1" stop-color="#341f2d" /></linearGradient>
+</defs>
+<g fill="none">
+ <circle cx="90" cy="90" r="68" fill="url(#galadriel-seat)" stroke="#070b11" stroke-width="5" />
+ <circle cx="90" cy="90" r="68" stroke="url(#galadriel-rim)" stroke-width="3.2" />
+ <circle cx="90" cy="90" r="63.6" stroke="url(#galadriel-inset)" stroke-width="1.1" />
+ <circle cx="90" cy="90" r="61.9" stroke="#293743" stroke-width=".5" />
+ <path d="M42 42 45 45 M135 135 138 138" stroke="#7e8e96" stroke-opacity=".45" stroke-width="1" />
+</g>
+<g transform="translate(34.8 33.88) scale(.46)">
+
+  <defs>
+    <linearGradient id="galadriel-plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10202f" />
+      <stop offset="45%" stop-color="#0a1420" />
+      <stop offset="100%" stop-color="#050a11" />
+    </linearGradient>
+    <linearGradient id="galadriel-crown" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a3a4d" />
+      <stop offset="100%" stop-color="#101a26" />
+    </linearGradient>
+    <linearGradient id="galadriel-slitwell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#020304" />
+      <stop offset="100%" stop-color="#12060a" />
+    </linearGradient>
+    <linearGradient id="galadriel-trail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0" />
+      <stop offset="50%" stop-color="#ef4444" stop-opacity="0.32" />
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0" />
+    </linearGradient>
+    <radialGradient id="galadriel-eyeglow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff6b5e" stop-opacity="0.9" />
+      <stop offset="45%" stop-color="#ef4444" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="galadriel-eyecore" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffd7cf" />
+      <stop offset="35%" stop-color="#ff5a4d" />
+      <stop offset="100%" stop-color="#c81e1e" />
+    </linearGradient>
+    <filter id="galadriel-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.6" result="b" />
+      <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+    <style>
+      .galadriel-rim{fill:none;stroke:url(#galadriel-shield-edge);stroke-width:2.4;stroke-linejoin:miter;stroke-opacity:.9}
+      .galadriel-rimdark{fill:none;stroke:#0a1a24;stroke-width:5.6;stroke-linejoin:miter}
+      .galadriel-rimglow{fill:none;stroke:#22d3ee;stroke-width:7;stroke-linejoin:miter;stroke-opacity:.2;filter:url(#galadriel-glow)}
+      .galadriel-vtick{stroke:#22d3ee;stroke-width:2.2;stroke-linecap:round;stroke-opacity:.9}
+      .galadriel-bevel{fill:none;stroke:#3b82a0;stroke-width:1.2;stroke-opacity:.5;stroke-linejoin:miter}
+      .galadriel-facet{stroke:#22d3ee;stroke-width:1;stroke-opacity:.14}
+      .galadriel-slitedge{fill:none;stroke:#22d3ee;stroke-width:1.4;stroke-opacity:.55;stroke-linejoin:miter}
+      .galadriel-fiber{fill:none;stroke:#22d3ee;stroke-width:3;stroke-linecap:round;stroke-opacity:.75}
+      .galadriel-fiberglow{fill:none;stroke:#22d3ee;stroke-width:7;stroke-linecap:round;stroke-opacity:.16;filter:url(#galadriel-glow)}
+      .galadriel-pulse{fill:none;stroke:#a5f3fc;stroke-width:3.4;stroke-linecap:round;stroke-opacity:.95;stroke-dasharray:13 174}
+      .galadriel-fport{fill:#0a121c;stroke:#22d3ee;stroke-width:2.4}
+      .galadriel-fjack{fill:#a5f3fc}
+      .galadriel-eye{animation:galadriel-scan 3.6s ease-in-out infinite}
+      .galadriel-pulse{animation:galadriel-feed 2.6s linear infinite}
+      .galadriel-side-feed{animation-delay:.9s}
+      @keyframes galadriel-feed{from{stroke-dashoffset:187}to{stroke-dashoffset:0}}
+      @keyframes galadriel-scan{0%{transform:translateX(0)}25%{transform:translateX(42px)}75%{transform:translateX(-42px)}100%{transform:translateX(0)}}
+      @media (prefers-reduced-motion:reduce){.galadriel-eye,.galadriel-pulse{animation:none}}
+      @media (prefers-color-scheme:light){.galadriel-rimglow{stroke-opacity:.28}.galadriel-rim{stroke-opacity:1}.galadriel-rimdark{stroke:#123240}.galadriel-vtick{stroke-opacity:1}}
+    </style>
+  </defs>
+
+  
+  <path d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z" fill="url(#galadriel-plate)" />
+  
+  <path d="M44 48 L71 26 L169 26 L196 48 L196 70 L44 70 Z" fill="url(#galadriel-crown)" opacity="0.65" />
+  
+  <path d="M112 18 L128 18 L124 74 L116 74 Z" fill="url(#galadriel-crown)" opacity="0.9" stroke="#22d3ee" stroke-opacity="0.28" stroke-width="1" />
+  
+  <path d="M74 18 L104 18 L58 118 L46 92 Z" fill="#9fdcec" opacity="0.045" />
+  
+  <path class="galadriel-bevel" d="M44 48 L71 26 L169 26 L196 48 L196 119 L181 158 L120 215 L59 158 L44 119 Z" />
+
+  
+  <path class="galadriel-facet" d="M52 132 L120 172 L188 132" fill="none" />
+  <path class="galadriel-facet" d="M68 160 L120 190 L172 160" fill="none" />
+
+  
+  <g>
+    <path class="galadriel-fiberglow" d="M74 163 C74 139 87 126 87 104" />
+    <path class="galadriel-fiber" d="M74 163 C74 139 87 126 87 104" />
+    <path class="galadriel-pulse galadriel-side-feed" d="M74 163 C74 139 87 126 87 104" />
+    <path class="galadriel-fiberglow" d="M120 202 C120 170 120 135 120 104" />
+    <path class="galadriel-fiber" d="M120 202 C120 170 120 135 120 104" />
+    <path class="galadriel-pulse" d="M120 202 C120 170 120 135 120 104" />
+    <path class="galadriel-fiberglow" d="M166 163 C166 139 153 126 153 104" />
+    <path class="galadriel-fiber" d="M166 163 C166 139 153 126 153 104" />
+    <path class="galadriel-pulse galadriel-side-feed" d="M166 163 C166 139 153 126 153 104" />
+    <circle class="galadriel-fport" cx="74" cy="163" r="5" />
+    <circle class="galadriel-fport" cx="120" cy="202" r="5" />
+    <circle class="galadriel-fport" cx="166" cy="163" r="5" />
+    <circle class="galadriel-fjack" cx="87" cy="104" r="3" />
+    <circle class="galadriel-fjack" cx="120" cy="104" r="3" />
+    <circle class="galadriel-fjack" cx="153" cy="104" r="3" />
+  </g>
+
+  
+  <path d="M46 89 L60 76 L180 76 L194 89 L180 102 L60 102 Z" fill="url(#galadriel-slitwell)" />
+  <path class="galadriel-slitedge" d="M46 89 L60 76 L180 76 L194 89 L180 102 L60 102 Z" />
+
+  
+  <clipPath id="galadriel-slitclip"><path d="M46 89 L60 76 L180 76 L194 89 L180 102 L60 102 Z" /></clipPath>
+  <g clip-path="url(#galadriel-slitclip)">
+    <rect x="52" y="76" width="136" height="26" fill="url(#galadriel-trail)" />
+    <g class="galadriel-eye">
+      <ellipse cx="120" cy="89" rx="30" ry="11" fill="url(#galadriel-eyeglow)" />
+      <rect x="106" y="84.5" width="28" height="9" rx="4.5" fill="url(#galadriel-eyecore)" filter="url(#galadriel-glow)" />
+    </g>
+  </g>
+
+  
+  <path class="galadriel-rimglow" d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z" />
+  <path class="galadriel-rimdark" d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z" />
+  <path class="galadriel-rim" d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z" />
+  
+  <line class="galadriel-vtick" x1="28" y1="122" x2="34" y2="122" />
+  <line class="galadriel-vtick" x1="206" y1="122" x2="212" y2="122" />
+  <line class="galadriel-vtick" x1="120" y1="229" x2="120" y2="235" />
+  <line class="galadriel-vtick" x1="68" y1="9" x2="68" y2="15" />
+  <line class="galadriel-vtick" x1="172" y1="9" x2="172" y2="15" />
+</g>
+</g>
+      </g>
+  </g></svg>

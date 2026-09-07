@@ -2,6 +2,8 @@
   <img src="assets/galadriel-logo.svg" alt="Galadriel's Mirror: a shield with a red eye and three incoming sensor channels." width="200" height="200" />
 </p>
 
+<p align="center"><a href="assets/archive/logos/README.md">Logo design archive</a></p>
+
 # Galadriel's Mirror
 
 <p align="center"><strong>Advisory sensor-consistency monitoring for tampering research.</strong></p>

@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Galadriel sentinel shield: an angular futuristic crest whose visor slit carries a sweeping red scanning eye; three sensor channels feed it from below — the watcher that looks for the channel that lies.">
+  <title>Galadriel — Sentinel Shield (the eye that scans for the lying channel)</title>
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#18222f"/>
+      <stop offset="45%" stop-color="#0c141e"/>
+      <stop offset="100%" stop-color="#05080d"/>
+    </linearGradient>
+    <linearGradient id="crown" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a3a4d"/>
+      <stop offset="100%" stop-color="#101a26"/>
+    </linearGradient>
+    <linearGradient id="slitwell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#020304"/>
+      <stop offset="100%" stop-color="#12060a"/>
+    </linearGradient>
+    <linearGradient id="trail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#ef4444" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="eyeglow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff6b5e" stop-opacity="0.9"/>
+      <stop offset="45%" stop-color="#ef4444" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="eyecore" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffd7cf"/>
+      <stop offset="35%" stop-color="#ff5a4d"/>
+      <stop offset="100%" stop-color="#c81e1e"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <style>
+      .rim{fill:none;stroke:#22d3ee;stroke-width:2.4;stroke-linejoin:miter;stroke-opacity:.85}
+      .rimglow{fill:none;stroke:#22d3ee;stroke-width:5;stroke-linejoin:miter;stroke-opacity:.22;filter:url(#glow)}
+      .bevel{fill:none;stroke:#3b82a0;stroke-width:1.2;stroke-opacity:.5;stroke-linejoin:miter}
+      .facet{stroke:#22d3ee;stroke-width:1;stroke-opacity:.14}
+      .slitedge{fill:none;stroke:#22d3ee;stroke-width:1.4;stroke-opacity:.55;stroke-linejoin:miter}
+      .trace{fill:none;stroke:#22d3ee;stroke-width:1.6;stroke-linecap:round;stroke-opacity:.75}
+      .traceglow{fill:none;stroke:#22d3ee;stroke-width:4;stroke-linecap:round;stroke-opacity:.18;filter:url(#glow)}
+      .tnode{fill:#0a121c;stroke:#22d3ee;stroke-width:1.4}
+      .tdot{fill:#22d3ee}
+      .eye{animation:scan 3.6s ease-in-out infinite}
+      @keyframes scan{0%{transform:translateX(0)}25%{transform:translateX(42px)}75%{transform:translateX(-42px)}100%{transform:translateX(0)}}
+      @media (prefers-reduced-motion:reduce){.eye{animation:none}}
+      @media (prefers-color-scheme:light){.rimglow{stroke-opacity:.3}}
+    </style>
+  </defs>
+
+  <!-- shield body: angular chamfered crest -->
+  <path d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z" fill="url(#plate)"/>
+  <!-- crown panel above the visor -->
+  <path d="M44 48 L71 26 L169 26 L196 48 L196 70 L44 70 Z" fill="url(#crown)" opacity="0.65"/>
+  <!-- crest ridge descending to the visor -->
+  <path d="M112 18 L128 18 L124 74 L116 74 Z" fill="url(#crown)" opacity="0.9" stroke="#22d3ee" stroke-opacity="0.28" stroke-width="1"/>
+  <!-- specular sheen -->
+  <path d="M74 18 L104 18 L58 118 L46 92 Z" fill="#9fdcec" opacity="0.045"/>
+  <!-- inner bevel -->
+  <path class="bevel" d="M44 48 L71 26 L169 26 L196 48 L196 119 L181 158 L120 215 L59 158 L44 119 Z"/>
+
+  <!-- lower facet lines -->
+  <path class="facet" d="M52 132 L120 172 L188 132" fill="none"/>
+  <path class="facet" d="M68 160 L120 190 L172 160" fill="none"/>
+
+  <!-- three sensor channels feeding the visor -->
+  <g>
+    <path class="traceglow" d="M120 204 V122"/>
+    <path class="trace" d="M120 204 V122"/>
+    <path class="traceglow" d="M84 168 V142 L104 122"/>
+    <path class="trace" d="M84 168 V142 L104 122"/>
+    <path class="traceglow" d="M156 168 V142 L136 122"/>
+    <path class="trace" d="M156 168 V142 L136 122"/>
+    <path class="traceglow" d="M104 122 H136"/>
+    <path class="trace" d="M104 122 H136"/>
+    <path class="traceglow" d="M120 122 V104"/>
+    <path class="trace" d="M120 122 V104"/>
+    <path class="tnode" d="M120 198.8 L125.2 204 L120 209.2 L114.8 204 Z"/><path class="tdot" d="M120 202 L122 204 L120 206 L118 204 Z"/>
+    <path class="tnode" d="M84 162.8 L89.2 168 L84 173.2 L78.8 168 Z"/><path class="tdot" d="M84 166 L86 168 L84 170 L82 168 Z"/>
+    <path class="tnode" d="M156 162.8 L161.2 168 L156 173.2 L150.8 168 Z"/><path class="tdot" d="M156 166 L158 168 L156 170 L154 168 Z"/>
+  </g>
+
+  <!-- visor slit: hexagonal, pointed ends -->
+  <path d="M46 89 L60 76 L180 76 L194 89 L180 102 L60 102 Z" fill="url(#slitwell)"/>
+  <path class="slitedge" d="M46 89 L60 76 L180 76 L194 89 L180 102 L60 102 Z"/>
+
+  <!-- scanning eye (clipped to the slit) -->
+  <clipPath id="slitclip"><path d="M46 89 L60 76 L180 76 L194 89 L180 102 L60 102 Z"/></clipPath>
+  <g clip-path="url(#slitclip)">
+    <rect x="52" y="76" width="136" height="26" fill="url(#trail)"/>
+    <g class="eye">
+      <ellipse cx="120" cy="89" rx="30" ry="11" fill="url(#eyeglow)"/>
+      <rect x="106" y="84.5" width="28" height="9" rx="4.5" fill="url(#eyecore)" filter="url(#glow)"/>
+    </g>
+  </g>
+
+  <!-- rim -->
+  <path class="rimglow" d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z"/>
+  <path class="rim" d="M36 44 L68 18 L172 18 L204 44 L204 122 L188 164 L120 226 L52 164 L36 122 Z"/>
+</svg>

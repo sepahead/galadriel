@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="398 170 124 124" width="124" height="124" role="img" aria-label="GALADRIEL historical profile mark"><title>GALADRIEL historical profile mark</title><desc>Archived design extracted from a historical portfolio SVG. This image makes no current product or release claim.</desc><defs><filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4" result="b" />
+      <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+    </defs><style>:root{--hub-accent: #34d399; --cube-accent: #fb923c; --tri-accent: #a78bfa;}
+.gal-seat{fill: #ef4444; fill-opacity: 0.07; filter: url(#soft);}
+.gal-ring{fill: none; stroke: #8b97a6; stroke-opacity: 0.42; stroke-width: 1;}
+.gal-chan{fill: none; stroke: #b9c2cd; stroke-width: 1.4; stroke-linecap: round; stroke-opacity: 0.82;}
+.gal-node{fill: #b9c2cd;}
+.gal-hot{fill: none; stroke: #ef4444; stroke-width: 1.8; stroke-linecap: round;}
+.gal-hotf{fill: #ef4444;}
+:root{--hub-accent: #059669; --cube-accent: #c2410c; --tri-accent: #7c3aed;}
+.gal-seat{fill: #dc2626; fill-opacity: 0.05;}
+.gal-ring{stroke: #6b7684;}
+.gal-chan{stroke: #59636f;}
+.gal-node{fill: #59636f;}
+.gal-hot{stroke: #dc2626;}
+.gal-hotf{fill: #dc2626;}</style><g class="nodes"><g class="gal">
+    <circle cx="460" cy="232" r="34" class="gal-seat" />
+    <circle cx="460" cy="232" r="12" class="gal-ring" />
+    <circle cx="460" cy="232" r="27" class="gal-ring" />
+    <circle cx="460" cy="232" r="30" class="gal-ring" stroke-dasharray="1.5 4" />
+    <path d="M453 232 H467 M460 225 V239" class="gal-ring" />
+    <line x1="469.2" y1="257.4" x2="462.7" y2="239.5" class="gal-chan" /><circle cx="469.2" cy="257.4" r="1.7" class="gal-node" /><line x1="436.6" y1="245.5" x2="453.1" y2="236" class="gal-chan" /><circle cx="436.6" cy="245.5" r="1.7" class="gal-node" /><line x1="440.9" y1="212.9" x2="454.3" y2="226.3" class="gal-chan" /><circle cx="440.9" cy="212.9" r="1.7" class="gal-node" />
+    <circle cx="460" cy="232" r="5" class="gal-ring" />
+    <circle cx="460" cy="232" r="2" class="gal-node" />
+    <line x1="483.4" y1="218.5" x2="496.5" y2="221.5" class="gal-hot" /><circle cx="483.4" cy="218.5" r="2" class="gal-hotf" /><path d="M496.5 218.5 L499.5 221.5 L496.5 224.5 L493.5 221.5 Z" class="gal-hotf"><animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite" /></path><circle cx="496.5" cy="221.5" r="5.5" fill="none" class="gal-hot" stroke-opacity="0.5"><animate attributeName="r" values="3;7.5;3" dur="2s" repeatCount="indefinite" /><animate attributeName="stroke-opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite" /></circle>
+    </g>
+  </g></svg>

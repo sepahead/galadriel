@@ -10,7 +10,7 @@
     "source_preparation_state": "UNPUBLISHED_CANDIDATE",
     "candidate_release_date": null
   },
-  "audit_date": "2026-09-05",
+  "audit_date": "2026-09-07",
   "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "url": "https://github.com/sepahead/galadriel",
@@ -371,6 +371,7 @@
         "CITATION.cff",
         "LICENSE*",
         "assets/*",
+        "assets/archive/logos/**/*",
         "docs/**/*.md",
         "deploy/README.md",
         "deploy/galadriel-security-profile.example.json",

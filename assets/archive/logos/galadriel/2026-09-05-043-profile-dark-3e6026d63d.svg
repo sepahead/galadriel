@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="393 270 124 124" width="124" height="124" role="img" aria-label="GALADRIEL historical profile mark"><title>GALADRIEL historical profile mark</title><desc>Archived design extracted from a historical portfolio SVG. This image makes no current product or release claim.</desc><defs><radialGradient id="galGrad" cx="50%" cy="40%" r="68%">
+      <stop offset="0%" stop-color="#2a0a0a" />
+      <stop offset="100%" stop-color="#10131a" />
+    </radialGradient>
+    <filter id="nodeShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="#000000" flood-opacity="0.38" />
+    </filter>
+    </defs><style>.seat-ring{fill: none; stroke-width: 2.2;}
+.seat-groove{fill: none; stroke: #05070b; stroke-opacity: 0.5; stroke-width: 1;}
+.seat-hairline{fill: none; stroke: #2b333d; stroke-opacity: 0.55; stroke-width: 1;}
+.seat-gal{fill: url(#galGrad);}
+.gal-signal{fill: none; stroke: #ef4444; stroke-opacity: 0.7; stroke-width: 1.1;}
+.gal-fiber{fill: none; stroke: #22d3ee; stroke-opacity: 0.75; stroke-width: 1.4; stroke-linecap: round;}
+.gal-pulse{fill: none; stroke: #a5f3fc; stroke-opacity: 0.95; stroke-width: 1.4; stroke-linecap: round; stroke-dasharray: 3 40;}
+.gal-port{fill: #0a121c; stroke: #22d3ee; stroke-opacity: 0.9; stroke-width: 1;}
+.gal-jack{fill: #a5f3fc; fill-opacity: 0.85;}
+.gal-plate{fill: url(#galPlateG); stroke: #22d3ee; stroke-opacity: 0.9; stroke-width: 1.2; stroke-linejoin: miter;}
+.gal-crest{stroke: #22d3ee; stroke-opacity: 0.28; stroke-width: 0.6; stroke-linejoin: miter;}
+.gal-slit{fill: #05070b; stroke: #22d3ee; stroke-opacity: 0.55; stroke-width: 0.8; stroke-linejoin: miter;}
+.gal-hotf{fill: #ef4444;}</style><g class="nodes"><g class="gal">
+    <defs>
+      <linearGradient id="galBezel" x1="0" y1="298" x2="0" y2="366" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#e8eef4" /><stop offset="45%" stop-color="#8d99a6" /><stop offset="100%" stop-color="#2b3542" />
+      </linearGradient>
+    </defs>
+    <g filter="url(#nodeShadow)"><circle cx="455" cy="332" r="34" class="seat-gal" /></g>
+    <circle cx="455" cy="332" r="34" stroke="url(#galBezel)" class="seat-ring" />
+    <circle cx="455" cy="332" r="31.8" class="seat-groove" />
+    <circle cx="455" cy="332" r="35.4" class="seat-hairline" />
+    <circle cx="455" cy="332" r="31.8" class="gal-signal" />
+    <defs>
+      <radialGradient id="galEye" gradientUnits="userSpaceOnUse" cx="455" cy="324.4" r="8">
+        <stop offset="0%" stop-color="#ff6b5e" stop-opacity="0.9" />
+        <stop offset="55%" stop-color="#ef4444" stop-opacity="0.45" />
+        <stop offset="100%" stop-color="#ef4444" stop-opacity="0" />
+      </radialGradient>
+      <linearGradient id="galPlateG" x1="0" y1="308.1" x2="0" y2="355.9" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#10202f" /><stop offset="45%" stop-color="#0a1420" /><stop offset="100%" stop-color="#050a11" />
+      </linearGradient>
+      <linearGradient id="galCrownG" x1="0" y1="309.9" x2="0" y2="320" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#2a3a4d" /><stop offset="100%" stop-color="#101a26" />
+      </linearGradient>
+      <clipPath id="galSlit" clipPathUnits="userSpaceOnUse"><path d="M438 324.4 L441.2 321.4 L468.8 321.4 L472 324.4 L468.8 327.4 L441.2 327.4 Z" /></clipPath>
+    </defs>
+    <path d="M435.7 314.1 L443 308.1 L467 308.1 L474.3 314.1 L474.3 332 L470.6 341.7 L455 355.9 L439.4 341.7 L435.7 332 Z" class="gal-plate" />
+    <path d="M437.5 315 L443.7 309.9 L466.3 309.9 L472.5 315 L472.5 320 L437.5 320 Z" fill="url(#galCrownG)" opacity="0.65" /><path d="M453.2 308.1 L456.8 308.1 L455.9 321 L454.1 321 Z" fill="url(#galCrownG)" opacity="0.9" class="gal-crest" />
+    <path class="gal-fiber" d="M444.5 341.5 C444.5 336 447.5 333 447.5 327.8" /><path class="gal-pulse" d="M444.5 341.5 C444.5 336 447.5 333 447.5 327.8"><animate attributeName="stroke-dashoffset" from="43" to="0" dur="2.6s" begin="0.9s" repeatCount="indefinite" /></path><circle class="gal-port" cx="444.5" cy="341.5" r="1.4" /><circle class="gal-jack" cx="447.5" cy="327.8" r="0.9" /><path class="gal-fiber" d="M455 350.5 C455 343 455 335 455 327.8" /><path class="gal-pulse" d="M455 350.5 C455 343 455 335 455 327.8"><animate attributeName="stroke-dashoffset" from="43" to="0" dur="2.6s" begin="0s" repeatCount="indefinite" /></path><circle class="gal-port" cx="455" cy="350.5" r="1.4" /><circle class="gal-jack" cx="455" cy="327.8" r="0.9" /><path class="gal-fiber" d="M465.5 341.5 C465.5 336 462.5 333 462.5 327.8" /><path class="gal-pulse" d="M465.5 341.5 C465.5 336 462.5 333 462.5 327.8"><animate attributeName="stroke-dashoffset" from="43" to="0" dur="2.6s" begin="0.9s" repeatCount="indefinite" /></path><circle class="gal-port" cx="465.5" cy="341.5" r="1.4" /><circle class="gal-jack" cx="462.5" cy="327.8" r="0.9" />
+    <path d="M438 324.4 L441.2 321.4 L468.8 321.4 L472 324.4 L468.8 327.4 L441.2 327.4 Z" class="gal-slit" />
+    <g clip-path="url(#galSlit)">
+      <g>
+        <ellipse cx="455" cy="324.4" rx="8" ry="3" fill="url(#galEye)" />
+        <rect x="451.4" y="323.2" width="7.2" height="2.4" rx="1.2" class="gal-hotf" />
+        <animateTransform attributeName="transform" type="translate" values="0 0;9.7 0;-9.7 0;0 0" keyTimes="0;0.25;0.75;1" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1" dur="3.6s" repeatCount="indefinite" />
+      </g>
+    </g>
+    </g>
+  </g></svg>
