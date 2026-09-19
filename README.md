@@ -52,7 +52,7 @@ Its selected build graph excludes the optional PID and transport libraries.
 | --- | --- | --- |
 | [Standalone core](crates/galadriel-core/README.md) | Typed observations, magnitude, signed consistency, sealed reports | Caller-declared source labels and statistical assumptions need independent justification |
 | [Scalar library](crates/galadriel-local-adapter/README.md) | Bounded NIS streams using the actual exploratory magnitude engine | Magnitude diagnostic, not a complete signed-consistency report |
-| [Local NCP process](crates/galadriel-local-adapter/README.md#optional-private-pipe-owner) | Private-pipe, record-only assessment of an exact body response | Current application supplies one Visual modality per entity and retains insufficiency |
+| [Fixed-profile scalar NCP process](crates/galadriel-local-adapter/README.md#optional-private-pipe-owner) | Private-pipe, record-only assessment of an exact body response | This adapter supplies one Visual modality per entity and retains insufficiency |
 | [Retained wire-0.8 workflows](docs/WORKFLOWS.md#cli-features-and-workspace-dependencies) | Sidecars, diagnostic JSONL replay, optional Zenoh receiver | Separate historical transport; deployment and calibration remain unqualified |
 | [Optional MI and offline PID](docs/PID_RS_1_0_MIGRATION.md) | Explicit dependence questions and synthetic studies | These methods do not alter the core verdict or prove attack mechanisms |
 
@@ -66,7 +66,7 @@ Its selected build graph excludes the optional PID and transport libraries.
 **Text alternative.** The full core validates a track, exact sequence, scope, and comparable sensor projections.
 Magnitude and signed-consistency evidence enter conservative fusion.
 The independent scalar adapter uses magnitude evidence only.
-Its current NCP application lacks the second modality and signed projection required for a complete assessment.
+Its fixed-profile scalar NCP adapter lacks the second modality and signed projection required for a complete assessment.
 Both paths preserve missingness and return advisory results.
 Optional mutual information (MI) accompanies the unchanged core report.
 Partial information decomposition (PID) remains an offline study.
@@ -124,7 +124,7 @@ Every report retains `calibrated_posterior = false`.
 The named scalar detector requires at least 32 samples and **two modalities**.
 Its window holds 64 samples per modality.
 Three coordinates from one Visual sensor are one modality, not three independent sensors.
-The current scalar NCP application therefore preserves `InsufficientEvidence` for its one-Visual input.
+The fixed-profile scalar NCP adapter therefore preserves `InsufficientEvidence` for its one-Visual input.
 
 Available zero is a measurement. An unavailable observation is a different state.
 Association misses and rejected updates can censor the strongest disturbances.
@@ -169,13 +169,21 @@ It does not require every ecosystem project as a dependency.
 It requires the named scalar body response and cannot directly consume CREBAIN's city RGB, pressure, or thermal arrays.
 Those arrays do not automatically supply comparable innovations or signed projections.
 
+Galadriel is optional in the modular application system.
+Its advisory reports support cybersecurity experiments with possible sensor tampering.
+Other applications can run without it. An anomaly does not prove an attack.
+Galadriel has no command authority.
+
+The [modular application guide](https://github.com/sepahead/NCP/blob/main/local/modular/STATUS.md) separates current components from the intended paper workflow.
+Monitoring CREBAIN's [typed sensor application](https://github.com/sepahead/crebain/tree/main/integrations/ncp-force-ground-sensors) requires a separately admitted Galadriel adapter.
+
 | Project | Relationship | Current limit |
 | --- | --- | --- |
-| [CREBAIN](https://github.com/sepahead/crebain) | Optional evidence producer; current local application consumes its scalar-body response shape | No Cargo dependency on CREBAIN; city multimodal detector integration remains unqualified |
+| [CREBAIN](https://github.com/sepahead/crebain) | Optional evidence producer; the fixed-profile scalar adapter consumes its scalar-body response shape | No Cargo dependency on CREBAIN; city multimodal detector integration remains unqualified |
 | [NCP](https://github.com/sepahead/NCP) | Optional local contract library or separate retained wire-0.8 libraries | Galadriel owns no broker or controller |
 | [pid-rs](https://github.com/sepahead/pid-rs) | Optional algorithm library for MI and offline PID | Shared library code does not establish independent replication |
 | [Prisoma](https://github.com/sepahead/prisoma) | A separately owned capture or experiment consumer can retain advisory records | Galadriel owns no store or embodied experiment runner |
-| [Engram](https://github.com/sepahead/engram) | Optional external neural controller and supervisor in a separately qualified composition | No neural simulator or general Engram integration is provided here |
+| [Engram (private source)](https://github.com/sepahead/Paper2Brain) | Optional external neural controller and supervisor in a separately qualified composition | Private repository access is required. No neural simulator or general Engram integration is provided here |
 | [Haldir](https://github.com/sepahead/haldir) | Prospective separately admitted downstream policy | No Galadriel-to-Haldir runtime or authority edge exists |
 
 The [dated ecosystem record](docs/ECOSYSTEM-CONNECTIONS.md) retains earlier revisions and explicit non-edges.

@@ -189,12 +189,12 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "afd8bf6e475e6b7971fec25c471067b7e90d9459",
+      "git_blob_id": "2069cb9079a41a3ab6835bee4b6e9ef8afc45e0b",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "6e41840cf74e2517ffad7d765736d4743e38b2f0451d3be01d2be34d12ec591a",
-      "size_bytes": 16541
+      "sha256": "92b699979474651a07ce289218a92d8e4f5a9b8fb7ae5b814657756623f6df28",
+      "size_bytes": 17231
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -2628,37 +2628,49 @@
     },
     {
       "kind": "external_reference",
-      "line": 174,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/crebain"
-    },
-    {
-      "kind": "external_reference",
-      "line": 175,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/NCP"
-    },
-    {
-      "kind": "external_reference",
-      "line": 176,
-      "path": "README.md",
-      "url": "https://github.com/sepahead/pid-rs"
-    },
-    {
-      "kind": "external_reference",
       "line": 177,
       "path": "README.md",
-      "url": "https://github.com/sepahead/prisoma"
+      "url": "https://github.com/sepahead/NCP/blob/main/local/modular/STATUS.md"
     },
     {
       "kind": "external_reference",
       "line": 178,
       "path": "README.md",
-      "url": "https://github.com/sepahead/engram"
+      "url": "https://github.com/sepahead/crebain/tree/main/integrations/ncp-force-ground-sensors"
     },
     {
       "kind": "external_reference",
-      "line": 179,
+      "line": 182,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/crebain"
+    },
+    {
+      "kind": "external_reference",
+      "line": 183,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/NCP"
+    },
+    {
+      "kind": "external_reference",
+      "line": 184,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/pid-rs"
+    },
+    {
+      "kind": "external_reference",
+      "line": 185,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/prisoma"
+    },
+    {
+      "kind": "external_reference",
+      "line": 186,
+      "path": "README.md",
+      "url": "https://github.com/sepahead/Paper2Brain"
+    },
+    {
+      "kind": "external_reference",
+      "line": 187,
       "path": "README.md",
       "url": "https://github.com/sepahead/haldir"
     },
