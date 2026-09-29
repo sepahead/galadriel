@@ -61,6 +61,7 @@ RELEASE_INPUTS = (
     "release/0.9.0/audit-inputs.json",
     "release/0.9.0/tool-inputs/cargo-deny-2026-09-05.json",
     "release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json",
+    "release/0.9.0/tool-inputs/rustsec-2026-0041-0285-license-2026-09-29.json",
     "release/0.9.0/ecosystem-cut.json",
     "release/0.9.0/handoff-source.json",
     "release/0.9.0/tasks.json",

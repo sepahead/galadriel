@@ -799,7 +799,7 @@ class ReviewToolsTest(unittest.TestCase):
             diagnostics = io.StringIO()
             with (
                 self.subTest(label=label),
-                    mock.patch(
+                mock.patch(
                     "check_vulnerable_features.run_bounded_host_command",
                     return_value=assurance.BoundedHostResult(
                         0,

@@ -48,7 +48,7 @@ This revision grants no scientific status, release freeze, or terminal qualifica
 ## Chacha20 license-inventory projection
 
 The compatible `chacha20` lock patch also changes its exact license-inventory package identity.
-The [license input record](../release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json) preserves both historical and current projection hashes.
+The [license input record](../release/0.9.0/tool-inputs/rustsec-2026-0041-0285-license-2026-09-29.json) binds the current projection hashes and names its predecessor, the [chacha20 record](../release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json).
 Only `chacha20 0.10.1` becomes `0.10.2`; its MIT and Apache-2.0 license assignments remain identical.
 The verifier still requires exactly 382 packages, 707 assignments, and both complete identity projections.
 Historical or altered inventories cannot satisfy the current source gate.

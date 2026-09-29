@@ -64,12 +64,12 @@ CARGO_DENY_HOST_FILTERED_SCOPE = "CARGO_DENY_HOST_FILTERED_GRAPH"
 EXPECTED_HOST_FILTERED_LICENSE_PACKAGES = 382
 EXPECTED_HOST_FILTERED_LICENSE_ASSIGNMENTS = 707
 # Exact lock-patch projection; historical values remain in the input record.
-# release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json
+# release/0.9.0/tool-inputs/rustsec-2026-0041-0285-license-2026-09-29.json
 EXPECTED_HOST_FILTERED_LICENSE_PACKAGE_IDS_SHA256 = (
-    "edb662699171f99a34bf87bb88cafca781e47eceba602eda8a4df187a7c3000c"
+    "39d0de7dfae882e153be6591c93a1d2377d926f8d740366b5c62e4ef1ff0259b"
 )
 EXPECTED_HOST_FILTERED_LICENSE_SEMANTIC_SHA256 = (
-    "ea86caddea067fb4ca42d2f6b41bbac68398a60cfb769b4fb8a5b3325e22e6de"
+    "82597011660ddb6bb7d41f6fd14d6ded73ac4983e3c0c2df0142d663e547cf7c"
 )
 EXPECTED_LICENSE_ACCEPTED_HELP_COUNT = 375
 EXPECTED_LICENSE_SKIPPED_NOTE_COUNT = 7
@@ -980,13 +980,29 @@ def _metadata_declaration_index(
     )
 
 
-def _resolved_source_variants(source: str | None) -> tuple[str | None, ...]:
+# Reviewed root [patch.crates-io] entries. A dependency declared against the
+# registry may resolve to exactly this (name, Git source) pair and to no other.
+# Keep this table equal to the root Cargo.toml patch table.
+REVIEWED_REGISTRY_PATCHES = {
+    (
+        "zenoh-transport",
+        "git+https://github.com/sepahead/zenoh-transport-lz4-backport"
+        "?rev=9045545b72a77602a87f40203cb614b48157b4bc"
+        "#9045545b72a77602a87f40203cb614b48157b4bc",
+    ): REGISTRY_SOURCE,
+}
+
+
+def _resolved_source_variants(
+    name: str, source: str | None
+) -> tuple[str | None, ...]:
     if not isinstance(source, str) or not source.startswith("git+"):
         return (source,)
     base, separator, _commit = source.rpartition("#")
     if separator != "#":
         return (source,)
-    return (source, base)
+    patched = REVIEWED_REGISTRY_PATCHES.get((name, source))
+    return (source, base) if patched is None else (source, base, patched)
 
 
 def _matching_metadata_declarations(
@@ -999,7 +1015,9 @@ def _matching_metadata_declarations(
     library_target_names: frozenset[str],
 ) -> set[int]:
     matches: set[int] = set()
-    for source in _resolved_source_variants(resolved_package["source"]):
+    for source in _resolved_source_variants(
+        resolved_package["name"], resolved_package["source"]
+    ):
         renamed_key = (
             dependency_name,
             source,

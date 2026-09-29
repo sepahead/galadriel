@@ -1,0 +1,55 @@
+{
+  "schema": "galadriel.qualification-license-input-revision.v2",
+  "revision": "2026-09-29-rustsec-2026-0041-0285",
+  "scope": "exact_lock_patch_projection_only",
+  "release_authority": false,
+  "inventory_scope": "CARGO_DENY_HOST_FILTERED_GRAPH",
+  "package_count": 382,
+  "license_assignment_count": 707,
+  "historical": {
+    "source_record": "release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json",
+    "lockfile_sha256": "59a37942c2d118eeb721a7c1b27d3f9f888b0e2cdc6cb8c5ee5e49549ac4589f",
+    "projections": {
+      "package_ids_sha256": "edb662699171f99a34bf87bb88cafca781e47eceba602eda8a4df187a7c3000c",
+      "semantic_sha256": "ea86caddea067fb4ca42d2f6b41bbac68398a60cfb769b4fb8a5b3325e22e6de"
+    },
+    "current_qualification_authority": false
+  },
+  "active": {
+    "lockfile_sha256": "febe096472bc3e4750156cc066aff61f7c61db4ef306b5ad1312650429932621",
+    "projections": {
+      "package_ids_sha256": "39d0de7dfae882e153be6591c93a1d2377d926f8d740366b5c62e4ef1ff0259b",
+      "semantic_sha256": "82597011660ddb6bb7d41f6fd14d6ded73ac4983e3c0c2df0142d663e547cf7c"
+    }
+  },
+  "changed_identities": {
+    "removed": [
+      "registry+https://github.com/rust-lang/crates.io-index#lz4_flex@0.10.0",
+      "registry+https://github.com/rust-lang/crates.io-index#rustls-webpki@0.103.13",
+      "registry+https://github.com/rust-lang/crates.io-index#rustls@0.23.41",
+      "registry+https://github.com/rust-lang/crates.io-index#spin@0.10.0",
+      "registry+https://github.com/rust-lang/crates.io-index#spin@0.9.8",
+      "registry+https://github.com/rust-lang/crates.io-index#twox-hash@1.6.3",
+      "registry+https://github.com/rust-lang/crates.io-index#zenoh-transport@1.9.0"
+    ],
+    "added": [
+      "git+https://github.com/sepahead/zenoh-transport-lz4-backport?rev=9045545b72a77602a87f40203cb614b48157b4bc#zenoh-transport@1.9.0",
+      "registry+https://github.com/rust-lang/crates.io-index#lz4_flex@0.11.6",
+      "registry+https://github.com/rust-lang/crates.io-index#rustls-webpki@0.103.15",
+      "registry+https://github.com/rust-lang/crates.io-index#rustls@0.23.45",
+      "registry+https://github.com/rust-lang/crates.io-index#spin@0.10.1",
+      "registry+https://github.com/rust-lang/crates.io-index#spin@0.9.9",
+      "registry+https://github.com/rust-lang/crates.io-index#twox-hash@2.1.4"
+    ]
+  },
+  "reconstruction": {
+    "method": "cargo metadata --locked --offline --all-features and cargo deny 0.19.9 list --layout crate on the exact lock, checked by repo_work/qualification_artifacts.py",
+    "scope": "Observed package and assignment identity; no new legal clearance, upstream signature, scientific release, or terminal qualification."
+  },
+  "unchanged_requirements": [
+    "Exact closed Cargo metadata and lock joins",
+    "Package and license assignment counts",
+    "License policy, tools, and advisory database",
+    "Historical terminal artifacts and source evidence"
+  ]
+}
