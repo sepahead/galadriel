@@ -61,6 +61,13 @@
       "qualification": "NOT_CLAIMED"
     },
     {
+      "name": "Zenoh transport backport",
+      "url": "https://github.com/sepahead/zenoh-transport-lz4-backport",
+      "commit": "9045545b72a77602a87f40203cb614b48157b4bc",
+      "role": "reviewed Zenoh 1.9.0 transport backport selected by the Cargo.lock patch (lz4_flex 0.11.6, RUSTSEC-2026-0041)",
+      "qualification": "PINNED_COMPONENT"
+    },
+    {
       "name": "RustSec advisory database",
       "url": "https://github.com/RustSec/advisory-db",
       "commit": "f981d991604f3e7d4a0eb94e559cb3e5a94a6dc2",

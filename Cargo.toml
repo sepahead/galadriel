@@ -74,5 +74,11 @@ pid-core = { version = "1.0.0", git = "https://github.com/sepahead/pid-rs", rev 
 ncp-core = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 ncp-zenoh = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
 
+[patch.crates-io]
+# Narrow reviewed security backport for Zenoh 1.9.0 (RUSTSEC-2026-0041: lz4_flex
+# 0.10 can leak uninitialised memory on invalid input). It is the same immutable
+# revision that NCP applies; Cargo.lock must resolve this exact Git object.
+zenoh-transport = { git = "https://github.com/sepahead/zenoh-transport-lz4-backport", rev = "9045545b72a77602a87f40203cb614b48157b4bc" }
+
 [profile.release]
 lto = "thin"
