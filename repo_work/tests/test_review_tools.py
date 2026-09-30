@@ -59,6 +59,7 @@ from check_vulnerable_features import (
     MAX_METADATA_STDERR_BYTES,
     MAX_METADATA_STDOUT_BYTES,
     METADATA_TIMEOUT_SECONDS,
+    PACKAGE_SOURCE,
     main as vulnerable_features_main,
     validate_metadata,
 )
@@ -731,10 +732,10 @@ class ReviewToolsTest(unittest.TestCase):
             "packages": [
                 {"id": "path+file:///workspace#galadriel@0.9.0", "name": "galadriel"},
                 {
-                    "id": "registry+https://github.com/rust-lang/crates.io-index#zenoh-transport@1.9.0",
+                    "id": "git+https://github.com/sepahead/zenoh-transport-lz4-backport?rev=9045545b72a77602a87f40203cb614b48157b4bc#zenoh-transport@1.9.0",
                     "name": "zenoh-transport",
                     "version": "1.9.0",
-                    "source": "registry+https://github.com/rust-lang/crates.io-index",
+                    "source": PACKAGE_SOURCE,
                 },
             ],
             "resolve": {
@@ -744,7 +745,7 @@ class ReviewToolsTest(unittest.TestCase):
                         "features": ["default"],
                     },
                     {
-                        "id": "registry+https://github.com/rust-lang/crates.io-index#zenoh-transport@1.9.0",
+                        "id": "git+https://github.com/sepahead/zenoh-transport-lz4-backport?rev=9045545b72a77602a87f40203cb614b48157b4bc#zenoh-transport@1.9.0",
                         "features": [
                             "shared-memory",
                             "transport_tcp",
@@ -763,14 +764,12 @@ class ReviewToolsTest(unittest.TestCase):
             b"",
         )
         with (
-            mock.patch("check_vulnerable_features.dt.datetime") as datetime_type,
             mock.patch(
                 "check_vulnerable_features.run_bounded_host_command",
                 return_value=metadata_process,
             ) as run_metadata,
             contextlib.redirect_stdout(io.StringIO()),
         ):
-            datetime_type.now.return_value.date.return_value = dt.date(2026, 7, 22)
             self.assertEqual(vulnerable_features_main(), 0)
         run_metadata.assert_called_once_with(
             CARGO_METADATA_COMMAND,
@@ -800,7 +799,6 @@ class ReviewToolsTest(unittest.TestCase):
             diagnostics = io.StringIO()
             with (
                 self.subTest(label=label),
-                mock.patch("check_vulnerable_features.dt.datetime") as datetime_type,
                 mock.patch(
                     "check_vulnerable_features.run_bounded_host_command",
                     return_value=assurance.BoundedHostResult(
@@ -811,7 +809,6 @@ class ReviewToolsTest(unittest.TestCase):
                 ),
                 contextlib.redirect_stderr(diagnostics),
             ):
-                datetime_type.now.return_value.date.return_value = dt.date(2026, 7, 22)
                 self.assertEqual(vulnerable_features_main(), 2)
             self.assertIn(diagnostic, diagnostics.getvalue())
 

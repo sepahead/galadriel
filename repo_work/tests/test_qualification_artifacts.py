@@ -1236,23 +1236,32 @@ class CycloneDxValidatorTest(unittest.TestCase):
 class CargoDenyLicenseValidatorTest(unittest.TestCase):
     def test_lock_patch_record_binds_one_active_license_projection(self) -> None:
         root = TOOLS.parent
+        tool_inputs = root / "release/0.9.0/tool-inputs"
         record = json.loads(
-            (
-                root / "release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json"
-            ).read_text()
+            (tool_inputs / "rustsec-2026-0041-0285-license-2026-09-29.json").read_text()
+        )
+        predecessor = json.loads(
+            (tool_inputs / "chacha20-license-2026-09-05.json").read_text()
         )
         lock_bytes = (root / "Cargo.lock").read_bytes()
-        package = next(
-            row
+        locked = {
+            f"{row.get('source', '').partition('#')[0]}#{row['name']}@{row['version']}"
             for row in tomllib.loads(lock_bytes.decode())["package"]
-            if row["name"] == "chacha20"
-        )
+        }
         self.assertIs(record["release_authority"], False)
         self.assertIs(record["historical"]["current_qualification_authority"], False)
         self.assertEqual(
             record["active"]["lockfile_sha256"], hashlib.sha256(lock_bytes).hexdigest()
         )
-        self.assertEqual(record["active"]["package"], package)
+        self.assertEqual(
+            record["historical"]["lockfile_sha256"],
+            predecessor["active"]["lockfile_sha256"],
+        )
+        self.assertEqual(
+            record["historical"]["projections"], predecessor["active"]["projections"]
+        )
+        self.assertLessEqual(set(record["changed_identities"]["added"]), locked)
+        self.assertFalse(set(record["changed_identities"]["removed"]) & locked)
         self.assertEqual(
             record["package_count"], artifacts.EXPECTED_HOST_FILTERED_LICENSE_PACKAGES
         )
@@ -1269,7 +1278,7 @@ class CargoDenyLicenseValidatorTest(unittest.TestCase):
             },
         )
         self.assertEqual(
-            record["historical"]["projections"],
+            predecessor["historical"]["projections"],
             {
                 "package_ids_sha256": "7c4d600e46b0dc1f1d50917acf65f8550bc4d9d568978d145eb0cae5b893b463",
                 "semantic_sha256": "8a8a8b9c981f67c9e93159813c128bd6033ea11aa539555e9f7303c3de7d68a8",
