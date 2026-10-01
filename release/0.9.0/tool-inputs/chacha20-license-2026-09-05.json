@@ -1,0 +1,63 @@
+{
+  "schema": "galadriel.qualification-license-input-revision.v1",
+  "revision": "2026-09-05-chacha20-0.10.2",
+  "scope": "exact_lock_patch_projection_only",
+  "release_authority": false,
+  "inventory_scope": "CARGO_DENY_HOST_FILTERED_GRAPH",
+  "package_count": 382,
+  "license_assignment_count": 707,
+  "historical": {
+    "source_commit": "937df9321df1243a322c3da2092edf024607f97a",
+    "lockfile_sha256": "c760893ae7ca3f5577c81855736236e2e2d6f272b4cb9f48d7984866c18ccf4e",
+    "package": {
+      "name": "chacha20",
+      "version": "0.10.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "d524456ba66e72eb8b115ff89e01e497f8e6d11d78b70b1aa13c0fbd97540a81",
+      "dependencies": [
+        "cfg-if",
+        "cpufeatures 0.3.0",
+        "rand_core 0.10.1"
+      ]
+    },
+    "projections": {
+      "package_ids_sha256": "7c4d600e46b0dc1f1d50917acf65f8550bc4d9d568978d145eb0cae5b893b463",
+      "semantic_sha256": "8a8a8b9c981f67c9e93159813c128bd6033ea11aa539555e9f7303c3de7d68a8"
+    },
+    "current_qualification_authority": false
+  },
+  "active": {
+    "lockfile_sha256": "59a37942c2d118eeb721a7c1b27d3f9f888b0e2cdc6cb8c5ee5e49549ac4589f",
+    "package": {
+      "name": "chacha20",
+      "version": "0.10.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "65c35e4b699c7e15ccbe7ee35c005e4fc0a278d22238a2857e6ce2dadeda1b06",
+      "dependencies": [
+        "cfg-if",
+        "cpufeatures 0.3.0",
+        "rand_core 0.10.1"
+      ]
+    },
+    "projections": {
+      "package_ids_sha256": "edb662699171f99a34bf87bb88cafca781e47eceba602eda8a4df187a7c3000c",
+      "semantic_sha256": "ea86caddea067fb4ca42d2f6b41bbac68398a60cfb769b4fb8a5b3325e22e6de"
+    }
+  },
+  "unchanged_license_assignments": [
+    "Apache-2.0",
+    "MIT"
+  ],
+  "reconstruction": {
+    "changed_identity_only": "registry+https://github.com/rust-lang/crates.io-index#chacha20@0.10.2 -> registry+https://github.com/rust-lang/crates.io-index#chacha20@0.10.1",
+    "both_historical_hashes_reproduced": true,
+    "receipt_sha256": "94925941325c0736eb81337125b4d35b27f9d4f478d3bcace4ee3417897faba9",
+    "scope": "Observed package and assignment identity; no new legal clearance, upstream signature, scientific release, or terminal qualification."
+  },
+  "unchanged_requirements": [
+    "Exact closed Cargo metadata and lock joins",
+    "Package and license assignment counts",
+    "License policy, tools, and advisory database",
+    "Historical terminal artifacts and source evidence"
+  ]
+}

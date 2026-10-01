@@ -63,14 +63,16 @@ MAX_LICENSE_LINES = 20_000
 CARGO_DENY_HOST_FILTERED_SCOPE = "CARGO_DENY_HOST_FILTERED_GRAPH"
 EXPECTED_HOST_FILTERED_LICENSE_PACKAGES = 381
 EXPECTED_HOST_FILTERED_LICENSE_ASSIGNMENTS = 705
+# Exact lock-patch projection; historical values remain in the input record.
+# release/0.9.0/tool-inputs/pid-core-bc3aa80-license-2026-10-01.json
 EXPECTED_HOST_FILTERED_LICENSE_PACKAGE_IDS_SHA256 = (
-    "272dc6ab496ff2c0c9a43991c01b8b2d5a9ce1004afcc15adbea6c25908ab280"
+    "20b059259c12cd28312f15bec3749d50fba2d158381ba69ade3a46d6c7a2b316"
 )
 EXPECTED_HOST_FILTERED_LICENSE_SEMANTIC_SHA256 = (
-    "bcc6f05fe91eaecf62f74db821453b6d35d01fbf7fe94245e7c74ecc9ed24822"
+    "fdd33e2bb98d2008b19d552666c9c93fad55ae3182a999ed85b49a65eeae40c8"
 )
-EXPECTED_LICENSE_ACCEPTED_HELP_COUNT = 374
-EXPECTED_LICENSE_SKIPPED_NOTE_COUNT = 7
+EXPECTED_LICENSE_ACCEPTED_HELP_COUNT = 373
+EXPECTED_LICENSE_SKIPPED_NOTE_COUNT = 8
 
 METADATA_ROOT_FIELDS = {
     "metadata",
@@ -994,13 +996,29 @@ def _metadata_declaration_index(
     )
 
 
-def _resolved_source_variants(source: str | None) -> tuple[str | None, ...]:
+# Reviewed root [patch.crates-io] entries. A dependency declared against the
+# registry may resolve to exactly this (name, Git source) pair and to no other.
+# Keep this table equal to the root Cargo.toml patch table.
+REVIEWED_REGISTRY_PATCHES = {
+    (
+        "zenoh-transport",
+        "git+https://github.com/sepahead/zenoh-transport-lz4-backport"
+        "?rev=9045545b72a77602a87f40203cb614b48157b4bc"
+        "#9045545b72a77602a87f40203cb614b48157b4bc",
+    ): REGISTRY_SOURCE,
+}
+
+
+def _resolved_source_variants(
+    name: str, source: str | None
+) -> tuple[str | None, ...]:
     if not isinstance(source, str) or not source.startswith("git+"):
         return (source,)
     base, separator, _commit = source.rpartition("#")
     if separator != "#":
         return (source,)
-    return (source, base)
+    patched = REVIEWED_REGISTRY_PATCHES.get((name, source))
+    return (source, base) if patched is None else (source, base, patched)
 
 
 def _matching_metadata_declarations(
@@ -1013,7 +1031,9 @@ def _matching_metadata_declarations(
     library_target_names: frozenset[str],
 ) -> set[int]:
     matches: set[int] = set()
-    for source in _resolved_source_variants(resolved_package["source"]):
+    for source in _resolved_source_variants(
+        resolved_package["name"], resolved_package["source"]
+    ):
         renamed_key = (
             dependency_name,
             source,

@@ -1,0 +1,45 @@
+{
+  "schema": "galadriel.historical-file-relocation.v1",
+  "historical_only": true,
+  "release_authority": false,
+  "source_commit": "d395c5e0e997fb677194e93b5d8b3da08b6d2101",
+  "source_tree": "5674be0233bc64d1762b83014ccda572855d2d67",
+  "files": [
+    {
+      "original_path": ".superstack/build-context.md",
+      "archive_path": "docs/history/2026-07-10-review/build-context.md",
+      "source_commit": "d395c5e0e997fb677194e93b5d8b3da08b6d2101",
+      "git_mode": "100644",
+      "git_blob": "b25fb25c6b312cf48591f3a6e70b7dfd0f7eca28",
+      "bytes": 5042,
+      "sha256": "d71d34c90f068be813ec50db07c21aa87239b35c32307841a6c45ba1b7c0c005"
+    },
+    {
+      "original_path": ".superstack/galadriel-review-2026-07-10.html",
+      "archive_path": "docs/history/2026-07-10-review/galadriel-review-2026-07-10.html",
+      "source_commit": "d395c5e0e997fb677194e93b5d8b3da08b6d2101",
+      "git_mode": "100644",
+      "git_blob": "01f0f4c232242d5d29081bfaa4367cdc9d77f1a0",
+      "bytes": 17155,
+      "sha256": "378f726d6f8e681db0f2fdde99835640be33af324e2182def3da80e97c411ac8"
+    },
+    {
+      "original_path": ".superstack/security-reports/galadriel-2026-07-10.md",
+      "archive_path": "docs/history/2026-07-10-review/security-reports/galadriel-2026-07-10.md",
+      "source_commit": "d395c5e0e997fb677194e93b5d8b3da08b6d2101",
+      "git_mode": "100644",
+      "git_blob": "01335b8411b3e2dc4d3b26543e4fbada22c5916a",
+      "bytes": 18167,
+      "sha256": "81322be635dd846599f4366da1bd473c807a79ba43ecdc3ffd2b139321405e83"
+    },
+    {
+      "original_path": ".superstack/security-reports/history.md",
+      "archive_path": "docs/history/2026-07-10-review/security-reports/history.md",
+      "source_commit": "d395c5e0e997fb677194e93b5d8b3da08b6d2101",
+      "git_mode": "100644",
+      "git_blob": "0b623032bc968ea78e79f5f99221906bea19bafe",
+      "bytes": 262,
+      "sha256": "966bfacfdacd2136e5deebfb847d434f2b207dfac77436f52d20e7973de14330"
+    }
+  ]
+}

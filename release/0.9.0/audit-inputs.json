@@ -10,7 +10,7 @@
     "source_preparation_state": "UNPUBLISHED_CANDIDATE",
     "candidate_release_date": null
   },
-  "audit_date": "2026-08-18",
+  "audit_date": "2026-10-01",
   "audit_date_semantics": "Maintainer-local calendar date of the latest audit-input update. It cannot precede any retained inspection or observation date at its declared precision.",
   "baseline_repository": {
     "url": "https://github.com/sepahead/galadriel",
@@ -66,6 +66,13 @@
       "commit": "9845c31bc5bae4746120858037b27f9c9ed2f445",
       "role": "retained application inventory snapshot with no Galadriel dependency, API, route, adapter, or runtime edge",
       "qualification": "NOT_CLAIMED"
+    },
+    {
+      "name": "Zenoh transport backport",
+      "url": "https://github.com/sepahead/zenoh-transport-lz4-backport",
+      "commit": "9045545b72a77602a87f40203cb614b48157b4bc",
+      "role": "reviewed Zenoh 1.9.0 transport backport selected by the Cargo.lock patch (lz4_flex 0.11.6, RUSTSEC-2026-0041)",
+      "qualification": "PINNED_COMPONENT"
     },
     {
       "name": "RustSec advisory database",
@@ -304,11 +311,25 @@
       "purpose": "locked software/toolchain input",
       "patterns": [
         "Cargo.lock",
+        "release/0.9.0/tool-inputs/cargo-deny-2026-09-05.json",
+        "release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json",
+        "release/0.9.0/tool-inputs/rustsec-2026-0041-0285-license-2026-09-29.json",
+        "release/0.9.0/tool-inputs/pid-core-bc3aa80-license-2026-10-01.json",
+        "crates/galadriel-local-adapter/Cargo.lock",
+        "crates/galadriel-local-adapter/deny.toml",
         "fuzz/Cargo.lock",
         "fuzz/Cargo.toml",
         "fuzz/deny.toml",
         "rust-toolchain.toml",
         "deny.toml"
+      ]
+    },
+    {
+      "purpose": "independent experimental local-adapter source contract and verifier",
+      "patterns": [
+        "crates/galadriel-local-adapter/source-profile.json",
+        "crates/galadriel-local-adapter/verify_source.py",
+        "crates/galadriel-local-adapter/test_verify_source.py"
       ]
     },
     {
@@ -363,10 +384,12 @@
         ".gitattributes",
         ".ncp-consumer",
         ".superstack/**/*",
+        "docs/history/2026-07-10-review/**/*",
         "*.md",
         "CITATION.cff",
         "LICENSE*",
         "assets/*",
+        "assets/archive/logos/**/*",
         "docs/**/*.md",
         "deploy/README.md",
         "deploy/galadriel-security-profile.example.json",

@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Galadriel cross-sensor fusion reticle: four sensor channels lock on one target while a single red channel diverges toward a phantom, signalling a spoofed sensor.">
+  <title>Galadriel — Multi-Sensor Fusion Reticle (one lying channel)</title>
+  <defs>
+    <radialGradient id="field" cx="50%" cy="46%" r="72%">
+      <stop offset="0%" stop-color="#111b28"/>
+      <stop offset="62%" stop-color="#0a1018"/>
+      <stop offset="100%" stop-color="#05070c"/>
+    </radialGradient>
+    <radialGradient id="sweepGrad" cx="0%" cy="50%" r="100%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0"/>
+      <stop offset="70%" stop-color="#22d3ee" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0.30"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="plate"><rect x="10" y="10" width="220" height="220" rx="30"/></clipPath>
+    <pattern id="scan" width="6" height="4" patternUnits="userSpaceOnUse">
+      <rect width="6" height="1" fill="#22d3ee" opacity="0.5"/>
+    </pattern>
+    <style>
+      .ring{fill:none;stroke:#22d3ee;stroke-opacity:.16}
+      .cross{stroke:#22d3ee;stroke-opacity:.12;stroke-width:1}
+      .bezel{fill:none;stroke:#22d3ee;stroke-opacity:.5;stroke-width:2;stroke-dasharray:1.5 15;stroke-linecap:round}
+      .bglow{stroke:#22d3ee;stroke-width:5;stroke-linecap:round;opacity:.30;filter:url(#glow)}
+      .bcore{stroke:#22d3ee;stroke-width:2;stroke-linecap:round;opacity:.92}
+      .rglow{stroke:#ef4444;stroke-width:5;stroke-linecap:round;opacity:.42;filter:url(#glow)}
+      .rcore{stroke:#ef4444;stroke-width:2.4;stroke-linecap:round;opacity:1}
+      .node{fill:#0a0f18;stroke:#22d3ee;stroke-width:1.6}
+      .ndot{fill:#22d3ee}
+      .rnode{fill:#160a0c;stroke:#ef4444;stroke-width:1.8}
+      .rdot{fill:#ef4444}
+      .fork{fill:none;stroke:#ef4444;stroke-width:1.4;stroke-dasharray:3 5;stroke-opacity:.34}
+      .lock{fill:none;stroke:#22d3ee;stroke-width:2.6;stroke-linecap:round;filter:url(#glow)}
+      .pring{fill:none;stroke:#ef4444;stroke-width:1.4;stroke-dasharray:3 4;opacity:.7}
+      .pdia{fill:#ef4444;filter:url(#glow)}
+      .edge{fill:none;stroke:#22d3ee;stroke-opacity:.22;stroke-width:1.5}
+      .sweep{transform-box:view-box;transform-origin:120px 120px;animation:spin 9s linear infinite}
+      .pulse{transform-box:view-box;transform-origin:150px 152px;animation:beat 2.2s ease-in-out infinite}
+      @keyframes spin{from{transform:rotate(-115deg)}to{transform:rotate(245deg)}}
+      @keyframes beat{0%,100%{opacity:.7;transform:scale(.9)}50%{opacity:1;transform:scale(1.16)}}
+      @media (prefers-reduced-motion:reduce){.sweep{animation:none}.pulse{animation:none}}
+      @media (prefers-color-scheme:light){.edge{stroke-opacity:.4}}
+    </style>
+  </defs>
+
+  <!-- background plate -->
+  <rect x="10" y="10" width="220" height="220" rx="30" fill="url(#field)"/>
+  <g clip-path="url(#plate)">
+    <rect x="10" y="10" width="220" height="220" fill="url(#scan)" opacity="0.05"/>
+
+    <!-- scope rings + crosshair -->
+    <line class="cross" x1="20" y1="120" x2="220" y2="120"/>
+    <line class="cross" x1="120" y1="20" x2="120" y2="220"/>
+    <circle class="ring" cx="120" cy="120" r="26"/>
+    <circle class="ring" cx="120" cy="120" r="52"/>
+    <circle class="ring" cx="120" cy="120" r="78"/>
+    <circle class="ring" cx="120" cy="120" r="100"/>
+    <circle class="bezel" cx="120" cy="120" r="103"/>
+
+    <!-- rotating scan sweep (under beams) -->
+    <g class="sweep" transform="rotate(-115 120 120)">
+      <path d="M120 120 L215.1 89.1 A100 100 0 0 1 215.1 150.9 Z" fill="url(#sweepGrad)"/>
+      <line x1="120" y1="120" x2="220" y2="120" stroke="#22d3ee" stroke-opacity="0.55" stroke-width="1.5"/>
+    </g>
+
+    <!-- corroborating cyan channels (all lock on center) -->
+    <g>
+      <line class="bglow" x1="120" y1="144" x2="120" y2="204"/>
+      <line class="bcore" x1="120" y1="144" x2="120" y2="204"/>
+      <line class="bglow" x1="97.2" y1="127.4" x2="40.1" y2="146"/>
+      <line class="bcore" x1="97.2" y1="127.4" x2="40.1" y2="146"/>
+      <line class="bglow" x1="105.9" y1="100.6" x2="70.6" y2="52"/>
+      <line class="bcore" x1="105.9" y1="100.6" x2="70.6" y2="52"/>
+      <line class="bglow" x1="134.1" y1="100.6" x2="169.4" y2="52"/>
+      <line class="bcore" x1="134.1" y1="100.6" x2="169.4" y2="52"/>
+    </g>
+
+    <!-- lying red channel: forks off consensus toward a phantom -->
+    <line class="fork" x1="203.7" y1="147.2" x2="120" y2="120"/>
+    <line class="rglow" x1="199" y1="147.4" x2="150" y2="152"/>
+    <line class="rcore" x1="199" y1="147.4" x2="150" y2="152"/>
+
+    <!-- sensor node chips -->
+    <g>
+      <circle class="node" cx="120" cy="208" r="5"/><circle class="ndot" cx="120" cy="208" r="2"/>
+      <circle class="node" cx="36.3" cy="147.2" r="5"/><circle class="ndot" cx="36.3" cy="147.2" r="2"/>
+      <circle class="node" cx="68.3" cy="48.8" r="5"/><circle class="ndot" cx="68.3" cy="48.8" r="2"/>
+      <circle class="node" cx="171.7" cy="48.8" r="5"/><circle class="ndot" cx="171.7" cy="48.8" r="2"/>
+      <circle class="rnode" cx="203.7" cy="147.2" r="5.4"/><circle class="rdot" cx="203.7" cy="147.2" r="2.1"/>
+    </g>
+
+    <!-- phantom target (false lock) -->
+    <g class="pulse">
+      <circle class="pring" cx="150" cy="152" r="12"/>
+      <path class="pdia" d="M150 146 L156 152 L150 158 L144 152 Z"/>
+    </g>
+
+    <!-- true consensus lock at center -->
+    <g class="lock">
+      <path d="M105 113 V105 H113"/>
+      <path d="M127 105 H135 V113"/>
+      <path d="M135 127 V135 H127"/>
+      <path d="M113 135 H105 V127"/>
+    </g>
+    <circle cx="120" cy="120" r="8" fill="none" stroke="#22d3ee" stroke-width="1.4" opacity="0.7"/>
+    <circle cx="120" cy="120" r="3" fill="#22d3ee"/>
+  </g>
+
+  <rect class="edge" x="10.75" y="10.75" width="218.5" height="218.5" rx="29.5"/>
+</svg>

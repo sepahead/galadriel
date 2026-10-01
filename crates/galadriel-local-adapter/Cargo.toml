@@ -1,0 +1,40 @@
+[package]
+name = "galadriel-local-adapter"
+version = "0.9.0"
+edition = "2021"
+rust-version = "1.89"
+license = "MIT OR Apache-2.0"
+authors = ["Sepehr Mahmoudian"]
+repository = "https://github.com/sepahead/galadriel"
+description = "Bounded, advisory scalar NIS adapter for Galadriel's exploratory magnitude detector."
+readme = "README.md"
+publish = false
+
+[workspace]
+resolver = "2"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[features]
+default = []
+ncp-local = ["dep:ncp-local", "dep:serde", "dep:serde_json"]
+
+[dependencies]
+galadriel-core = { version = "=0.9.0", path = "../galadriel-core" }
+sha2 = "0.11"
+thiserror = "2"
+ncp-local = { version = "=1.0.0", git = "https://github.com/sepahead/NCP", rev = "de751d499b5e07d1c95a072e08255083d77cb38b", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+
+[dev-dependencies]
+serde_json = "1"
+
+[[bin]]
+name = "galadriel-ncp-local"
+path = "src/bin/galadriel-ncp-local.rs"
+required-features = ["ncp-local"]
+
+[profile.release]
+lto = "thin"

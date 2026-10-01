@@ -564,6 +564,12 @@ REQUIRED_REPOSITORY_INPUTS = {
         "retained application inventory snapshot with no Galadriel dependency, API, route, adapter, or runtime edge",
         "NOT_CLAIMED",
     ),
+    "Zenoh transport backport": (
+        "https://github.com/sepahead/zenoh-transport-lz4-backport",
+        "9045545b72a77602a87f40203cb614b48157b4bc",
+        "reviewed Zenoh 1.9.0 transport backport selected by the Cargo.lock patch (lz4_flex 0.11.6, RUSTSEC-2026-0041)",
+        "PINNED_COMPONENT",
+    ),
     "RustSec advisory database": (
         "https://github.com/RustSec/advisory-db",
         "f981d991604f3e7d4a0eb94e559cb3e5a94a6dc2",
@@ -574,6 +580,7 @@ REQUIRED_REPOSITORY_INPUTS = {
 LOCKED_REPOSITORY_PACKAGES = {
     "pid-rs": {"pid-core"},
     "NCP": {"ncp-core", "ncp-zenoh"},
+    "Zenoh transport backport": {"zenoh-transport"},
 }
 AUDIT_TO_QUALIFICATION_TOOL = {
     "git": "git",

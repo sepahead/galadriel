@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Assert the audited Zenoh compression advisory path remains disabled."""
+"""Assert the patched Zenoh transport is selected and its compression path stays disabled.
+
+RUSTSEC-2026-0041 is fixed by the reviewed backport that resolves lz4_flex 0.11.6.
+The compression feature remains disabled as defense in depth.
+"""
 
 from __future__ import annotations
 
-import datetime as dt
 import sys
 from typing import Any
 
@@ -12,10 +15,13 @@ from common import ReviewError, loads_json
 from release_assurance import run_bounded_host_command
 
 
-EXPIRY = dt.date(2026, 10, 1)
 PACKAGE = "zenoh-transport"
 PACKAGE_VERSION = "1.9.0"
-PACKAGE_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
+PACKAGE_SOURCE = (
+    "git+https://github.com/sepahead/zenoh-transport-lz4-backport"
+    "?rev=9045545b72a77602a87f40203cb614b48157b4bc"
+    "#9045545b72a77602a87f40203cb614b48157b4bc"
+)
 FORBIDDEN_FEATURE = "transport_compression"
 CARGO_METADATA_COMMAND: tuple[str, ...] = (
     "cargo",
@@ -106,7 +112,7 @@ def validate_metadata(document: Any) -> None:
             target_features = features
             if FORBIDDEN_FEATURE in features:
                 raise ValueError(
-                    f"RUSTSEC-2026-0041 mitigation invalid: {FORBIDDEN_FEATURE} is enabled"
+                    f"defense-in-depth invalid: {FORBIDDEN_FEATURE} is enabled"
                 )
 
     if target_features is None:
@@ -116,12 +122,6 @@ def validate_metadata(document: Any) -> None:
 
 
 def main() -> int:
-    if dt.datetime.now(dt.timezone.utc).date() > EXPIRY:
-        print(
-            "RUSTSEC-2026-0041 exception expired; upgrade the dependency or renew with review",
-            file=sys.stderr,
-        )
-        return 2
     try:
         process = run_bounded_host_command(
             CARGO_METADATA_COMMAND,

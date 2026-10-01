@@ -1,0 +1,58 @@
+{
+  "schema": "galadriel.qualification-license-input-revision.v2",
+  "revision": "2026-10-01-pid-core-bc3aa80",
+  "scope": "exact_lock_patch_projection_only",
+  "release_authority": false,
+  "inventory_scope": "CARGO_DENY_HOST_FILTERED_GRAPH",
+  "package_count": 381,
+  "license_assignment_count": 705,
+  "historical": {
+    "source_record": "release/0.9.0/tool-inputs/rustsec-2026-0041-0285-license-2026-09-29.json",
+    "lockfile_sha256": "febe096472bc3e4750156cc066aff61f7c61db4ef306b5ad1312650429932621",
+    "projections": {
+      "package_ids_sha256": "39d0de7dfae882e153be6591c93a1d2377d926f8d740366b5c62e4ef1ff0259b",
+      "semantic_sha256": "82597011660ddb6bb7d41f6fd14d6ded73ac4983e3c0c2df0142d663e547cf7c"
+    },
+    "current_qualification_authority": false
+  },
+  "active": {
+    "lockfile_sha256": "2338a462592562877325642df2ef9df74239baf2362517144e3fd5b7a5ab359a",
+    "projections": {
+      "package_ids_sha256": "20b059259c12cd28312f15bec3749d50fba2d158381ba69ade3a46d6c7a2b316",
+      "semantic_sha256": "fdd33e2bb98d2008b19d552666c9c93fad55ae3182a999ed85b49a65eeae40c8"
+    }
+  },
+  "changed_identities": {
+    "removed": [
+      "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#pid-core@1.0.0",
+      "git+https://github.com/sepahead/pid-rs?rev=1cd2424f7967e1752dcc8e53859e8fdad3566f51#pid-runlog@1.0.0"
+    ],
+    "added": [
+      "git+https://github.com/sepahead/pid-rs?rev=bc3aa80fb6025e709c2906a08bce25a4fac40578#pid-core@0.9.0"
+    ]
+  },
+  "license_policy_summary": {
+    "accepted_help_count": 373,
+    "skipped_note_count": 8,
+    "skipped_private_crates": [
+      "galadriel-cli",
+      "galadriel-core",
+      "galadriel-dependence",
+      "galadriel-eval",
+      "galadriel-justify",
+      "galadriel-ncp",
+      "galadriel-sim",
+      "zenoh-transport"
+    ],
+    "note": "The unpublished zenoh-transport backport (publish = false) is skipped as a private crate. Its declared license, EPL-2.0 OR Apache-2.0, is unchanged and remains in the inventory."
+  },
+  "reconstruction": {
+    "method": "cargo metadata --locked --offline --all-features and cargo deny 0.19.9 list --layout crate on the exact lock, checked by repo_work/qualification_artifacts.py",
+    "scope": "Observed package and assignment identity; no new legal clearance, upstream signature, scientific release, or terminal qualification."
+  },
+  "unchanged_requirements": [
+    "Exact closed Cargo metadata and lock joins",
+    "License policy, tools, and advisory database",
+    "Historical terminal artifacts and source evidence"
+  ]
+}

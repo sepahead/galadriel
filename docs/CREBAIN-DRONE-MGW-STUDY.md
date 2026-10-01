@@ -526,8 +526,8 @@ close pid-rs's separate open 108-coordinate formal-assurance program:
 \]
 
 Those are averaged cumulatives and averaged atoms, not “108 signed coordinates.”
-The defense should present PID3 as exploratory unless that wider assurance and
-qualified review are complete before thesis freeze.
+Present PID3 as exploratory unless that wider assurance and qualified review
+are complete.
 
 ## 8. Fixed-source informative invariant
 
@@ -574,7 +574,7 @@ one row never selects another row.
 | PNAS bivariate infomorphic objective | downstream objective composition | not evaluated | two-input learning objective composed from named PID atoms | an objective does not define a PID functional or estimator |
 | ICLR three-input-class objective | downstream objective composition | not evaluated | role-distinct three-input-class local-objective design | not evidence for this fixture and not the PNAS object |
 
-The BROJA contribution elsewhere in the thesis need not be discarded. A
+A separate BROJA analysis need not be discarded. A
 model-family Blackwell/garbling argument and its resulting closed-form comparator
 can remain a distinct analytical result. It must not be generalized into a claim
 that BROJA equals minimum-mutual-information PID outside the proved family, and it
@@ -689,13 +689,13 @@ fixed source gauge, and supported estimator regime.
 | 11 | Is there a dependency-disjoint calculation separate from the production route? | Yes for 66 averaged atom components and ten subset MIs: separate 80-digit event-union/Möbius calculation. | The same fixture/spec/repository means this is not independent human or organizational replication. Pointwise results are not Decimal-recomputed. |
 | 12 | Are hostile controls predicate-isolating? | Yes for bytes, rows, sources, targets, bounded summaries, time, order, and algebra. The bounded gate binds a 155-mutant selected set with 152 caught and three exact compile-unviable substitutions in the local repair reference. | Rerun the gate on the final exact candidate. Expand it with each new field or transform and preserve all non-target predicates in each mutation. |
 | 13 | Are methods kept semantically separate? | yes: 18 functional/sample-estimator/method/entry-point/diagnostic/objective rows, with no fallback | preregister any future comparator and report its own failures |
-| 14 | Are causal/mechanistic claims blocked? | Yes. Atoms are associational, statistical, and measure-relative. | Defense language must not call atoms causal mechanisms. |
+| 14 | Are causal/mechanistic claims blocked? | Yes. Atoms are associational, statistical, and measure-relative. | Reports must not call atoms causal mechanisms. |
 | 15 | Is authority absent by construction? | yes: no PID-to-verdict or PID-to-Haldir effect path | a future record adapter must prove authorization and plant-command invariance for favorable, adverse, missing, stale, and malformed records |
 | 16 | Are software identity and custody sufficient? | fixture, manifest, CREBAIN revision, pid-core revision bound | publication run still needs Galadriel commit, build, toolchain, host, output digest |
 | 17 | Are errors, abstentions, and missingness visible? | Typed fixture/pid-core failure. Method abstentions explicit. | Future episode studies need per-episode produced/unavailable/error records. |
 | 18 | Is external validity stated honestly? | Yes. Synthetic deterministic conformance only. No drone-performance claim. | Stochastic simulator, SITL, HIL, replay, and field evidence remain open. |
 | 19 | Is the artifact reproducible and readable? | exact CLI, JSON, Markdown, SVGs, equations, hashes | freeze exact output bundle only after final candidate commit |
-| 20 | Are human ownership and AI assistance handled? | this audit records computational provenance, not human expertise | candidate must derive/check the theorem and tables, preserve AI provenance, follow university disclosure rules, and obtain qualified human review before a load-bearing defense claim |
+| 20 | Are human ownership and review provenance handled? | this audit records computational provenance, not human expertise | a responsible maintainer must derive and check the theorem and tables, preserve review provenance, and obtain qualified human review before any load-bearing claim |
 
 ## 13. Complete to-do list
 
@@ -753,7 +753,7 @@ fixed source gauge, and supported estimator regime.
 - [ ] Compare NIS, the selected two-arm CUSUM, signed correlation, categorical MGW, optional `I_min`, optional two-source BROJA, KSG, continuous Ehrlich, and co-/O-information only in separately eligible columns.
 - [ ] Advance through stochastic simulation, SITL, HIL, immutable replay, and field studies as distinct claim tiers.
 - [ ] Test compute budgets, deadlines, restarts, corrupt inputs, missing modalities, and adversarial timing on target hardware.
-- [ ] Obtain qualified human PID review and an independent reproduction before treating novel PID interpretation as defense-critical.
+- [ ] Obtain qualified human PID review and an independent reproduction before treating novel PID interpretation as load-bearing.
 
 ### Haldir and ecosystem boundary
 
@@ -764,13 +764,13 @@ fixed source gauge, and supported estimator regime.
 - [ ] Reconcile Prisoma's method-selection/provenance graph against the exact published Galadriel and pid-rs commits. Keep dirty drafts advisory until committed.
 - [ ] Preserve all useful review/prototype bytes until their publication commit is verified reachable from remote `main` and retrieval succeeds. Delete temporary refs/worktrees only at the very end.
 
-### Defense ownership and contingency
+### Ownership and contingency
 
-- [ ] Candidate personally derives the MGW event equations, Möbius reconstruction, AND-law MI values, and at least the load-bearing PID2 table.
-- [ ] Candidate reproduces the exact fixture and output from a clean checkout and records the result independently of this AI-assisted audit.
-- [ ] Preserve council/AI assistance provenance and follow the university's disclosure rules. Correlated agent agreement is not independent replication.
+- [ ] A responsible maintainer personally derives the MGW event equations, Möbius reconstruction, AND-law MI values, and at least the load-bearing PID2 table.
+- [ ] An independent maintainer reproduces the exact fixture and output from a clean checkout and records the result separately from this audit.
+- [ ] Preserve review provenance. Correlated reviewer agreement is not independent replication.
 - [ ] Ask qualified human reviewers to challenge functional identity, target construction, episode independence, signed-atom interpretation, and comparator boundaries.
-- [ ] If outward-rounded reproduction and qualified human review are incomplete by thesis/slide freeze, keep PID3 and the exact atom tables in an exploratory appendix. Base the load-bearing defense on the target's independence from fusion/PID, finite-law equations, closed-form MI, algebraic checks, and honest limitations.
+- [ ] If outward-rounded reproduction and qualified human review are incomplete at publication time, keep PID3 and the exact atom tables exploratory. Base load-bearing claims on the target's independence from fusion/PID, finite-law equations, closed-form MI, algebraic checks, and honest limitations.
 
 ## 14. Primary references
 
