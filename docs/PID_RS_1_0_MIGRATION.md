@@ -1,4 +1,4 @@
-# pid-rs 0.4 to 1.0 migration
+# Historical pid-rs 0.4-to-1.0 migration and current 0.9.0 adaptation
 
 ## Abbreviations
 
@@ -8,26 +8,40 @@
 | SHA-256 | Secure Hash Algorithm 256 |
 | SxPID | shared-exclusions partial information decomposition |
 
-Galadriel pins immutable pid-rs revision `1cd2424f7967e1752dcc8e53859e8fdad3566f51`.
-Its `pid-core` manifest declares version 1.0.0.
-The retained 2026-07-22 inspection found no public v1 tag or released upstream 1.x artifact.
-The term “1.0” below identifies the pinned source and application programming interface (API) migration.
-It does not identify a published dependency release.
+Galadriel currently selects `pid-core` 0.9.0 from clean, remote-reachable pid-rs
+revision `bc3aa80fb6025e709c2906a08bce25a4fac40578`. No resolved Galadriel
+feature profile includes `pid-runlog`.
 
-The pin contains commit `91cd811a27b15de60c5cdb08d5516bf3471883ce`.
-It also contains the same-day correctness and continuous integration (CI) follow-up commits.
-The prior pin used pid-core 0.4.0 at `ad489f5bf5e15c164c599d069a6bee0f338c0e48`.
+This file keeps its historical name and the reproduction below because
+Galadriel previously migrated from pid-core 0.4.0 at
+`ad489f5bf5e15c164c599d069a6bee0f338c0e48` to a source snapshot at
+`1cd2424f7967e1752dcc8e53859e8fdad3566f51` whose manifest declared 1.0.0.
+That snapshot contained `91cd811a27b15de60c5cdb08d5516bf3471883ce`
+and same-day correctness/CI follow-ups. The retained 2026-07-22 inspection found
+no public v1 tag or released upstream 1.x artifact. Accordingly, every “1.0” in
+the fixed-seed reproduction identifies that historical source/API frame, not a
+published dependency release or the current Cargo selection.
+
+The immutable CREBAIN producer preregistration also names `1cd2424f…`. Galadriel
+does not rewrite those producer bytes. The v2 study records an explicit
+post-preregistration adaptation to `bc3aa80f…`, verifies that the selected
+revision preserves the categorical estimand, and separately reports the actual
+evaluator identity. Historical registration and current execution are therefore
+two typed facts, not competing dependency pins.
 
 The pid-rs project supplies Partial Information Decomposition (PID) APIs.
 It also supplies Kraskov–Stögbauer–Grassberger (KSG) estimators.
 
 This is an explicit scientific and API migration, not only a dependency update.
 The original 0.4-to-1.0 reproduction below remains historical evidence. The
-current 2026-08-14 architecture supersedes its former runtime PID composition:
+current 2026-08-18 architecture supersedes its former runtime PID composition:
 
 - The minimum supported Rust version (MSRV) moves from Rust 1.88 to 1.89.
 - `galadriel-dependence` uses only pid-rs's stable report-first KSG surface. It
   does not enable continuous PID, mixed-dimensional PID3, or pipeline features.
+- Every KSG point fit calls `ksg_mi_report_with_budget`. The retained preflight
+  and executed report share one explicit single-thread `ResourceBudget`.
+  Galadriel's graph work ceiling remains a separate aggregate bound.
 - Every MI configuration requires caller-declared population, observation, and
   sampling models. Galadriel validates the declaration representation but does
   not prove it.
@@ -50,11 +64,85 @@ current 2026-08-14 architecture supersedes its former runtime PID composition:
 - `galadriel-justify` separately enables `experimental-continuous` for complete
   Ehrlich PID2 reports. It also uses stable categorical Makkeh–Gutknecht–Wibral
   SxPID. These are distinct functionals and fixed offline questions.
+- No resolved Galadriel profile includes `pid-runlog`.
 - The scope binds producer, session, epoch, stream, state generation, terminal
   sequence, terminal timestamp, and clock domain before companion work starts.
 - `DependenceAssessmentBinding` nests the exact core version-2 binding and the
   complete dependence-suite identity. It authenticates neither the caller nor
   the scientific declarations.
+
+### Exact-pin adapter rule
+
+Galadriel compiles against the API of the selected immutable revision, not the
+API visible in a mutable sibling pid-rs worktree. At `bc3aa80f…`, categorical
+MGW exposes typed pointwise and averaged atoms and explicit budgeted routes.
+The grounded CREBAIN study calls
+`pid_core::stable::categorical::discrete_sxpid2_with_budget` and
+`pid_core::stable::categorical::discrete_sxpid3_with_budget`, retains both output
+families without clamping signed values, and records that this is a reviewed
+post-preregistration sample-estimator implementation adaptation. It binds paper
+functional `functional.shared-exclusions.mgw-categorical`, semantic raw-row
+sample-estimator route `route.shared-exclusions.mgw-empirical-pmf`, and upstream
+implementation-method/catalog identity `shared-exclusions.categorical` as
+separate roles from those executable entry points. The raw-row route builds an
+empirical PMF and is not a declared-law evaluator; exact fixture balance makes
+the empirical and canonical laws coincide only for this fixture and supports no
+population inference. It does not pretend that the historical
+unbudgeted route strings frozen at `1cd2424f…` executed the current result.
+
+A later pid-rs improvement is eligible for adoption only after all of the
+following are true:
+
+1. The exact commit is clean and reachable from the canonical remote branch.
+2. Its method-catalog identity, defining references, estimand, units, and
+   supported coordinate set are reviewed independently of its Rust type names.
+3. The Galadriel adapter is changed narrowly and the exact CREBAIN fixture is
+   replayed against the new route.
+4. All 66 **averaged** PID2/PID3 informative, misinformative, and net components
+   and the ten bound subset mutual informations reproduce the law-specific
+   high-precision oracle, while pointwise support, ordering, mass, and
+   aggregation reproduce the retained averaged atoms. Any intended numerical
+   change is justified analytically and recorded as a new study schema.
+5. Categorical MGW functionals, sample-estimator routes, implementation methods,
+   entry points, continuous Ehrlich objects, comparators, diagnostics, and
+   downstream objective compositions remain separate objects with explicit
+   abstentions and no fallback chain.
+
+This rule permits deliberate integration of future pid-rs features while the
+upstream agent is still improving them. It does not turn a moving worktree,
+version string, or convenient API similarity into consumable scientific
+evidence.
+
+For the current adaptation, the complete v3 output has a closed Draft 2020-12
+schema at
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json`.
+`repo_work/check_crebain_mgw_schema.py` validates both the output shape and its
+exact embedded schema-byte receipt. This contract does not turn the synthetic
+AND2/AND3 fixture into field evidence or the 64 repeated rows into independent
+experimental units. The unpublished v2 draft was retired because its role model
+was semantically ambiguous; it is not an accepted compatibility artifact.
+
+### Immutable producer wording and typed errata
+
+The producer fixture remains byte-for-byte immutable, including three phrases
+whose stronger readings the current consumer rejects. The v3 result therefore
+retains typed, append-only errata rather than silently editing preregistration:
+
+- The producer creates sensor objects and source symbols before deriving each
+  target from the latent ENU cell. The target calculation does not read those
+  symbols, sensor projections, fusion output, Galadriel, or PID. This is
+  separation from the evaluated stack, not producer-independent field truth.
+- The fixture has one row-level observation timestamp. It does not retain three
+  independently checkable sensor timestamps.
+- `projection_count` is the admitted-observation count. Together with the prior
+  identifier it shows a bounded three-input legacy summary and constrains every
+  present projection, but it does not prove three non-`None` projections.
+
+The compact receipt is exactly six fields: prior identifier, input count,
+expected count, projection count, truncation, and degradation. It is not a full
+fusion output or hidden-state snapshot. The repeated cells support only
+bounded-summary fresh-instance reproducibility and software custody, not a
+state-isolation theorem.
 
 ### Concrete upstream resource-composition handoff
 
@@ -121,7 +209,7 @@ Its SHA-256 is `070d7b61ae773c9fb5d73cab9ba23c642d17110adaf63556e285748cbb20f479
 The complete standard-output streams now have the same hash.
 That hash is `495293442347f13710d6d928e12fdc8c8faf3f1d29bb8d19f06131f5a402fca7`.
 
-Current source verification uses:
+The historical reproduction used:
 
 ```text
 cargo +1.96.0 test --locked -p galadriel-dependence -p galadriel-justify
@@ -192,14 +280,23 @@ truth, population support, or independence. A representative streaming
 qualification and locked holdout remain necessary before any operational policy
 can consume its event.
 
-PID remains offline. Each study must fix the source tuple and external target and
-must name the categorical MGW or continuous Ehrlich functional, evaluator,
+PID remains offline. Each study must fix the source tuple and a target selected
+before result inspection and separated from any accepted fused verdict, and
+must name the categorical MGW or continuous Ehrlich functional, estimator route,
 gauges, law, transform relation, row relation, units, and software identity.
-Galadriel's version 2 question records additionally bind the exact generated law
+Galadriel's version 3 question records additionally bind the exact generated law
 and finite-sample selection, the original Williams–Beer lattice separately from
 the evaluated functional, every output coordinate/component/construction, the
 coupled and within-trial permutation arm roles, and exact root-field statistics
 and units. The sibling protocol binds the paired bootstrap seed/quantile rules but
 does not replace a source/tree/toolchain publication identity.
-Negative shared-exclusions atoms remain meaningful signed associative terms; they
+Negative shared-exclusions atoms remain meaningful signed associational terms. They
 must not be clamped or labeled causal mechanisms.
+
+NIS, the two-arm CUSUM with an inert lower arm on the fusion core's `dof=3` route,
+signed correlation, KSG MI, and PID remain distinct objects with separate
+assumptions and outputs. The exact CREBAIN fixture
+evaluates only categorical MGW. It does not emit lifecycle-qualified NIS, CUSUM,
+or correlation evidence. PID is record-only with respect to Haldir: adding or
+removing its record must leave authorization and plant-command outputs
+unchanged, and no PID value can grant, revoke, restrict, or exercise authority.

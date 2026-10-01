@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc" xml:lang="en">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc" xml:lang="en" focusable="false">
   <title id="title">Galadriel detector mathematics and decision algebra</title>
-  <desc id="desc">A three-column diagram. The first column defines normalized innovation energy q sub i as y sub i transpose times S sub i inverse times y sub i. It compares the window sum Q sub n with a chi-squared reference having n times d degrees of freedom, and applies upper and lower cumulative sums H sub i equals max of zero and H sub i minus one plus x sub i minus mu minus k, and L sub i equals max of zero and L sub i minus one plus mu minus x sub i minus k. The second column estimates every signed Pearson correlation. Its usable-edge threshold is the maximum of the configured correlation floor, gamma times the strongest pair correlation, and the family-adjusted one-sided Fisher threshold. Attribution requires one unique largest clique K with cardinality greater than half the channel count; bridges, ties, conflicts, or an undefined pair remain insufficient. The Fisher reference assumes the declared independent and identically distributed bivariate-normal row model; Galadriel does not prove that declaration. The third column shows the deterministic conservative fusion rules and the SHA-256 assessment binding over the complete scope, release suite, and ordered observations. Invalid representation returns an error. An unavailable estimand produces insufficient evidence. Pairwise mutual information and partial information decomposition do not enter this fusion.</desc>
+  <desc id="desc">A three-column diagram. The first column defines normalized innovation energy q sub i as y sub i transpose times S sub i inverse times y sub i. It compares the window sum Q sub n with a right-tail chi-squared reference having n times d degrees of freedom, and applies upper and lower cumulative sums H sub i equals max of zero and H sub i minus one plus x sub i minus mu minus k, and L sub i equals max of zero and L sub i minus one plus mu minus x sub i minus k. On the fusion core's degrees-of-freedom-three route, mu equals k and the lower arm stays zero. Other admitted degrees of freedom retain the general recurrence. The second column estimates every signed Pearson correlation. Its usable-edge threshold is the maximum of the configured correlation floor, gamma times the strongest pair correlation, and the family-adjusted one-sided Fisher threshold. Attribution requires one unique largest clique K with cardinality greater than half the channel count. Bridges, ties, conflicts, or an undefined pair remain insufficient. The Fisher reference assumes the declared independent and identically distributed bivariate-normal row model. Galadriel does not prove that declaration. The third column shows the deterministic conservative fusion rules and the SHA-256 assessment binding over the complete scope, release suite, and ordered observations. Invalid representation returns an error. An unavailable estimand produces insufficient evidence. Pairwise mutual information and partial information decomposition do not enter this fusion.</desc>
   <defs>
     <style>
       text { font-family: Arial, Helvetica, sans-serif; fill: #102a43; }
@@ -49,14 +49,14 @@
   <path d="M278 478 L285 490 L292 478 Z" class="arrowhead"/>
 
   <rect x="70" y="490" width="430" height="220" rx="14" class="node magnitude"/>
-  <text x="92" y="524" class="node-title">2. NIS window + two-sided CUSUM</text>
+  <text x="92" y="524" class="node-title">2. Right-tail NIS + two-arm CUSUM</text>
   <text x="92" y="554" class="equation">Q_n = Σ_i q_i</text>
   <text x="92" y="580" class="equation">Q_n ~ χ²(nd), only under the stated sum law</text>
   <text x="92" y="606" class="equation">p_R=Pr[χ²(nd)≥Q_n]   ;   α_ch=α_NIS/C</text>
   <text x="92" y="632" class="equation">x_i = q_i / √(2d)   ;   μ = d / √(2d)</text>
   <text x="92" y="658" class="equation">H_i = max(0, H_(i−1) + x_i − μ − k)</text>
   <text x="92" y="684" class="equation">L_i = max(0, L_(i−1) + μ − x_i − k)</text>
-  <text x="92" y="704" class="small">Elevated iff p_R &lt; α_ch. Either CUSUM arm alarms at h.</text>
+  <text x="92" y="704" class="small">On fusion-core dof=3 rows, only the upper CUSUM arm can reach h.</text>
 
   <path d="M285 710 V740" class="arrow"/>
   <path d="M278 728 L285 740 L292 728 Z" class="arrowhead"/>

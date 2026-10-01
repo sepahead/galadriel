@@ -51,32 +51,89 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Changed
 
-- Add four static, self-contained, accessible, cross-renderer vector contract
+- Correct the CREBAIN categorical MGW scientific object model and bump its
+  machine output from schema v2 to v3. Version 3 separately binds the paper
+  functional, raw-row empirical-PMF sample-estimator route, upstream
+  implementation-method/catalog identity, and arity-specific budgeted pid-core
+  entry points, with fail-closed role/ID and arity/entry-point constraints. The
+  unpublished ambiguous v2 draft is retired. Fixture bytes and output numerics
+  are unchanged.
+- Correct the dependence geometry contract to mean nearest-neighbor distance /
+  mean unordered-pairwise distance, rename the public threshold accordingly,
+  and add an unequal-distance denominator control. The MI-consensus report and
+  its enclosing dependence-assessment snapshot both advance to wire schema v3.
+- Construct one explicit single-thread resource budget before pair geometry and
+  pass it unchanged through intrinsic dimension, distance concentration, KSG
+  preflight, and KSG execution. Nested evidence retains the exact identity; this
+  is per-call evidence and not an aggregate study-wide resource claim.
+- Factor the adapter's budget-echo and single-thread obligations into one pure,
+  fail-closed predicate with independent hostile fixtures for each conjunct.
+  This preserves forward-drift detection while making the logical composition
+  mutation-live; excluding the formerly indistinguishable `||` to `&&` mutant
+  would instead have hidden a reachable weakening of the adapter contract.
+- Add seven static, self-contained, accessible, cross-renderer vector contract
   maps for system evidence flow, detector equations and fusion, lifecycle
-  receipts, and offline PID estimand provenance. Replace the README flow sketch
-  with the exact authority-boundary graph and add complete descriptions in the
-  statistical, lifecycle, paper, and justification documents. Explicit SVG
-  geometry preserves arrow direction and rounded boundaries across librsvg and
-  macOS rendering. The figures keep pairwise MI outside fusion and keep
-  categorical MGW and continuous Ehrlich PID distinct.
+  receipts, offline PID estimand provenance, the exact CREBAIN drone-to-MGW
+  pipeline, question-first method eligibility, and method-profile decisions.
+  Add a reviewed decision record that binds each selected method and numerical
+  profile to its question, assumptions, alternatives, evidence ceiling, and
+  reopen condition. Expose the selected CUSUM's dimension-dependent lower arm
+  and test the exact `dof=3` inert and `dof=4` active cases. Replace the README flow
+  sketch with the exact authority-boundary graph and add complete descriptions
+  in the statistical, lifecycle, paper, and justification documents. Explicit
+  SVG geometry preserves arrow direction and rounded boundaries across librsvg
+  and macOS rendering. The figures keep pairwise MI outside fusion, keep
+  categorical MGW and continuous Ehrlich PID distinct, and expose the non-edge
+  from offline PID to Haldir authority.
+- Add a byte-bound 64-row CREBAIN drone fixture and standalone offline
+  `galadriel-crebain-mgw` JSON/Markdown evaluator. Reconstruct every ordered
+  pre-fusion source and synthetic latent-ENU target, timestamp, factorial cell,
+  episode, and bounded six-field fusion summary before invoking categorical MGW
+  PID2/PID3. The target branch does not read projections, fusion, Galadriel
+  verdicts, or PID, but it is generated inside the producer and is not external
+  measured truth. Retain
+  all pointwise and averaged informative, misinformative, and signed net fields
+  in nats. Check PID2 algebra, all seven PID3 down-set identities, analytic AND
+  mutual informations, fixed-source informative invariance, and all 66 averaged
+  atom components against a retained standard-library 80-digit event-union/Möbius
+  oracle with a canonical 60-place output digest. Classify PID2 as primary
+  deterministic conformance and PID3 as exploratory without
+  claiming independent flights, field validity, causal meaning, 108-coordinate
+  assurance closure, fusion influence, or control authority.
+- Add a bounded exact-head cargo-mutants gate for the seven CREBAIN scientific
+  contract functions. Freeze a line-insensitive 155-mutant multiset digest and
+  require 152 caught mutants, three exact compile-unviable function-return
+  substitutions, and no missed, timed-out, or surviving mutant. Retain the
+  candidate, toolchain, selector, command, outcome bytes, and GitHub run in a
+  fail-closed receipt.
 - Replace the PID-named runtime research crate and CLI feature with
   `galadriel-dependence` and `dependence`. Preserve the frozen NCP route, schema,
   `PidObservation`, and historical capture names as compatibility identifiers.
 - Make the optional runtime path a report-first pairwise KSG-MI companion. Require
   explicit law and episode declarations, coherent same-row preprocessing, no
   added noise, complete pair evidence, exact row receipts, and checked work.
+- Replace the ambient-default-equivalent pair-distance allowance in each KSG
+  report budget with the exact 523,264-distance maximum for the admitted
+  512-row scalar window. Add a worst-case preflight and one-below-limit control
+  so the explicit single-thread policy cannot collapse to pid-core's host-bound
+  default on a one-CPU runner.
 - Keep categorical Makkeh–Gutknecht–Wibral and continuous Ehrlich PID as distinct
   offline justification studies with fixed source and target questions. Bind each
   question to role-typed primary-literature edges, including the categorical
   MGW definition, original Williams–Beer antichain lattice, later part-whole
   derivation, KSG estimator basis, and explicit non-alias boundary for the
-  Schick-Poland general construction; serialize every complete upstream trial report.
+  Schick-Poland general construction. Serialize every complete upstream trial report.
   Separate native evaluator/trial units from aggregate/display units so the
   categorical bit conversion cannot relabel retained pid-core nats. Give Pearson,
-  pairwise MI, project-defined `Q`, and PID outputs separate typed identities;
-  bind exact generated laws, trial-arm roles, root-field statistics/units, RNG and
-  paired-bootstrap rules in version 2 schemas; seal aggregates and make
+  pairwise MI, project-defined `Q`, and PID outputs separate typed identities.
+  Bind exact generated laws, trial-arm roles, root-field statistics/units, RNG and
+  paired-bootstrap rules in version 3 schemas. Seal aggregates and make
   report-derived summaries mechanically verifiable.
+- Move the active pid-core selection from the historical 1.0.0 preregistration
+  revision `1cd2424f7967e1752dcc8e53859e8fdad3566f51` to clean remote pid-core
+  0.9.0 revision `bc3aa80fb6025e709c2906a08bce25a4fac40578`. The former remains immutable
+  CREBAIN preregistration history. It is not the executing dependency. No
+  Galadriel resolution profile includes `pid-runlog` at the current pin.
 - Update the pinned checkout action to version 7.0.1.
 - Update Tokio to version 1.53.1 for the optional live NCP path.
 - Keep statrs at version 0.18 until the statistical requalification is complete.
@@ -273,15 +330,15 @@ Before `1.0`, minor releases can contain breaking changes.
   Deny candidate execution of the retained but unused CMake and pkgconf tools.
   Inventory checkpoints detect persistent drift but do not make user-owned toolchain paths immutable.
 - Add exact semantic validation for retained release artifacts.
-  Bind the 437-package metadata graph to `Cargo.lock`.
+  Bind the 436-package metadata graph to `Cargo.lock`.
   Bind source-archive types, modes, owners, times, and content to the exact Git tree.
   Bind every package member byte and mode to the exact tracked crate-file map.
   Close each SBOM identity, component, and dependency field against the validated Cargo graph.
 
   Compare one source archive, seven package archives, and seven SBOM documents across two runs.
   Retain all 15 comparisons.
-  Bind the license inventory to the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset.
-  This host-filtered evidence does not describe the complete 437-package graph on another target.
+  Bind the license inventory to the exact 381-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset.
+  This host-filtered evidence does not describe the complete 436-package graph on another target.
   The author-operated same-host comparisons do not prove independent or cross-platform reproduction.
 - Add a focused 26-mutant acceptance-estimation gate.
   Require 23 caught mutants and three exact compile-unviable replacements.

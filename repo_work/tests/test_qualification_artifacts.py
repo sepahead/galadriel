@@ -241,6 +241,7 @@ def metadata_fixture() -> tuple[dict[str, object], bytes]:
             )
         ],
         "resolve": {"nodes": nodes, "root": None},
+        "build_directory": "/fixture/target",
         "target_directory": "/fixture/target",
         "version": 1,
         "workspace_root": WORKSPACE_ROOT,
@@ -341,6 +342,7 @@ def high_fanout_metadata_fixture(
             )
         ],
         "resolve": {"nodes": nodes, "root": None},
+        "build_directory": "/fixture/target",
         "target_directory": "/fixture/target",
         "version": 1,
         "workspace_root": WORKSPACE_ROOT,
@@ -892,6 +894,35 @@ class CargoMetadataValidatorTest(unittest.TestCase):
             CHECKSUM,
         )
 
+    def test_rejects_a_cargo_build_directory_outside_the_target_contract(self) -> None:
+        metadata, lock = metadata_fixture()
+        metadata["build_directory"] = "/fixture/another-build-root"
+        with self.assertRaisesRegex(
+            ReviewError, "Cargo build and target directories differ"
+        ):
+            validate_cargo_metadata(encode_json(metadata), lock)
+
+    def test_accepts_cargo_189_metadata_without_build_directory(self) -> None:
+        metadata, lock = metadata_fixture()
+        metadata.pop("build_directory")
+        graph = validate_cargo_metadata(encode_json(metadata), lock)
+        self.assertEqual(len(graph.packages), len(metadata["packages"]))
+
+    def test_accepts_only_the_bounded_cargo_package_hint_shape(self) -> None:
+        metadata, lock = metadata_fixture()
+        metadata["packages"][0]["hints"] = {"mostly-unused": True}
+        validate_cargo_metadata(encode_json(metadata), lock)
+
+        wrong_hint = copy.deepcopy(metadata)
+        wrong_hint["packages"][0]["hints"] = {"future-hint": True}
+        with self.assertRaisesRegex(ReviewError, "hints has another field set"):
+            validate_cargo_metadata(encode_json(wrong_hint), lock)
+
+        wrong_type = copy.deepcopy(metadata)
+        wrong_type["packages"][0]["hints"] = {"mostly-unused": "yes"}
+        with self.assertRaisesRegex(ReviewError, "hint is not Boolean"):
+            validate_cargo_metadata(encode_json(wrong_type), lock)
+
     def test_accepts_an_unrenamed_library_target_name(self) -> None:
         metadata, lock = metadata_fixture()
         serde_id = package_id("serde", "1.0.0", REGISTRY)
@@ -1238,10 +1269,20 @@ class CargoDenyLicenseValidatorTest(unittest.TestCase):
         root = TOOLS.parent
         tool_inputs = root / "release/0.9.0/tool-inputs"
         record = json.loads(
-            (tool_inputs / "rustsec-2026-0041-0285-license-2026-09-29.json").read_text()
+            (tool_inputs / "pid-core-bc3aa80-license-2026-10-01.json").read_text()
         )
         predecessor = json.loads(
+            (tool_inputs / "rustsec-2026-0041-0285-license-2026-09-29.json").read_text()
+        )
+        origin = json.loads(
             (tool_inputs / "chacha20-license-2026-09-05.json").read_text()
+        )
+        self.assertEqual(
+            predecessor["historical"]["lockfile_sha256"],
+            origin["active"]["lockfile_sha256"],
+        )
+        self.assertEqual(
+            predecessor["historical"]["projections"], origin["active"]["projections"]
         )
         lock_bytes = (root / "Cargo.lock").read_bytes()
         locked = {
@@ -1278,7 +1319,7 @@ class CargoDenyLicenseValidatorTest(unittest.TestCase):
             },
         )
         self.assertEqual(
-            predecessor["historical"]["projections"],
+            origin["historical"]["projections"],
             {
                 "package_ids_sha256": "7c4d600e46b0dc1f1d50917acf65f8550bc4d9d568978d145eb0cae5b893b463",
                 "semantic_sha256": "8a8a8b9c981f67c9e93159813c128bd6033ea11aa539555e9f7303c3de7d68a8",

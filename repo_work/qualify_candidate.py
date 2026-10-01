@@ -2072,6 +2072,7 @@ BASE_COMMANDS = (
             "repo_work.tests.test_finalize_qualification",
             "repo_work.tests.test_qualification_artifacts",
             "repo_work.tests.test_host_process_bounds",
+            "repo_work.tests.test_crebain_mgw_mutation",
         ),
     ),
     CommandSpec(
@@ -2107,6 +2108,47 @@ BASE_COMMANDS = (
     CommandSpec(
         "fetch-locked-fuzz-dependencies",
         ("cargo", "fetch", "--locked", "--manifest-path", "fuzz/Cargo.toml"),
+    ),
+    CommandSpec(
+        "crebain-mgw-rust-contract",
+        (
+            "cargo",
+            "test",
+            "--locked",
+            "-p",
+            "galadriel-justify",
+            "crebain_mgw",
+        ),
+        timeout_seconds=900,
+    ),
+    CommandSpec(
+        "crebain-mgw-contract-tests",
+        (
+            "python3",
+            "-B",
+            "-E",
+            "-s",
+            "-S",
+            "-m",
+            "unittest",
+            "-v",
+            "repo_work.tests.test_crebain_mgw_candidate",
+            "repo_work.tests.test_crebain_mgw_decimal_oracle",
+            "repo_work.tests.test_crebain_mgw_schema",
+        ),
+        timeout_seconds=900,
+    ),
+    CommandSpec(
+        "crebain-mgw-candidate-contract",
+        (
+            "python3",
+            "-B",
+            "-E",
+            "-s",
+            "-S",
+            "repo_work/check_crebain_mgw_candidate.py",
+        ),
+        timeout_seconds=600,
     ),
     CommandSpec("format", ("cargo", "fmt", "--all", "--check")),
     CommandSpec(

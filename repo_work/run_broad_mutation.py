@@ -269,7 +269,10 @@ def assert_untracked_allowlist(
 
 
 def github_run_provenance(
-    environment: Mapping[str, str], commit: str
+    environment: Mapping[str, str],
+    commit: str,
+    *,
+    expected_job: str = CANONICAL_JOB,
 ) -> dict[str, str] | None:
     """Return strict GitHub Actions provenance for the exact candidate."""
 
@@ -300,7 +303,7 @@ def github_run_provenance(
         raise ReviewError("GitHub mutation repository is not canonical")
     if result["workflow"] != CANONICAL_WORKFLOW:
         raise ReviewError("GitHub mutation workflow is not canonical")
-    if result["job"] != CANONICAL_JOB:
+    if result["job"] != expected_job:
         raise ReviewError("GitHub mutation job is not canonical")
     ref = result["ref"]
     branch_prefix = "refs/heads/"

@@ -346,7 +346,7 @@ pub galadriel_dependence::MiConsensusConfigError::IntrinsicDimensionMaximumInval
 pub galadriel_dependence::MiConsensusConfigError::IntrinsicDimensionMinimumInvalid
 pub galadriel_dependence::MiConsensusConfigError::MiFloorInvalid
 pub galadriel_dependence::MiConsensusConfigError::MinimumSamplesOutOfRange
-pub galadriel_dependence::MiConsensusConfigError::NearestNeighborRatioInvalid
+pub galadriel_dependence::MiConsensusConfigError::NearestNeighborOverPairwiseMeanMaximumInvalid
 pub galadriel_dependence::MiConsensusConfigError::SeparationRatioInvalid
 pub galadriel_dependence::MiConsensusConfigError::WindowOutOfRange
 pub galadriel_dependence::MiConsensusConfigError::WorkEstimateExceedsLimit
@@ -1266,7 +1266,7 @@ pub fn galadriel_dependence::MiConsensusConfig::identity(&self) -> galadriel_dep
 pub const fn galadriel_dependence::MiConsensusConfig::law(&self) -> &galadriel_dependence::ContinuousLawDeclaration
 pub const fn galadriel_dependence::MiConsensusConfig::mi_floor_nats(&self) -> f64
 pub const fn galadriel_dependence::MiConsensusConfig::min_samples(&self) -> usize
-pub const fn galadriel_dependence::MiConsensusConfig::nn_ratio_max(&self) -> f64
+pub const fn galadriel_dependence::MiConsensusConfig::nearest_neighbor_over_pairwise_mean_maximum(&self) -> f64
 pub const fn galadriel_dependence::MiConsensusConfig::quadratic_fit_work(&self) -> usize
 pub fn galadriel_dependence::MiConsensusConfig::required_samples(&self) -> usize
 pub const fn galadriel_dependence::MiConsensusConfig::separation_ratio(&self) -> f64
@@ -1371,7 +1371,7 @@ pub galadriel_dependence::MiConsensusParams::id_max: f64
 pub galadriel_dependence::MiConsensusParams::id_min: f64
 pub galadriel_dependence::MiConsensusParams::mi_floor_nats: f64
 pub galadriel_dependence::MiConsensusParams::min_samples: usize
-pub galadriel_dependence::MiConsensusParams::nn_ratio_max: f64
+pub galadriel_dependence::MiConsensusParams::nearest_neighbor_over_pairwise_mean_maximum: f64
 pub galadriel_dependence::MiConsensusParams::separation_ratio: f64
 pub galadriel_dependence::MiConsensusParams::stability: galadriel_dependence::DependenceStabilityParams
 pub galadriel_dependence::MiConsensusParams::window: usize
@@ -1540,7 +1540,6 @@ pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_boundar
 pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_contract(&self) -> &'static str
 pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_density_regular(&self) -> bool
 pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_finite_information(&self) -> bool
-pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::support_intrinsic_dimension(&self) -> core::option::Option<usize>
 pub const fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::tie_epsilon(&self) -> f64
 impl core::clone::Clone for galadriel_dependence::MiKsgEvaluatorConfigEvidence
 pub fn galadriel_dependence::MiKsgEvaluatorConfigEvidence::clone(&self) -> galadriel_dependence::MiKsgEvaluatorConfigEvidence
@@ -1584,6 +1583,7 @@ impl<T> typenum::type_operators::Same for galadriel_dependence::MiKsgEvaluatorCo
 pub type galadriel_dependence::MiKsgEvaluatorConfigEvidence::Output = T
 pub struct galadriel_dependence::PairGeometryEvidence
 impl galadriel_dependence::PairGeometryEvidence
+pub const fn galadriel_dependence::PairGeometryEvidence::distance_concentration_resource_estimate(&self) -> pid_core::resource::ResourceEstimate
 pub const fn galadriel_dependence::PairGeometryEvidence::distance_pairwise_cv(&self) -> f64
 pub const fn galadriel_dependence::PairGeometryEvidence::distance_pairwise_cv_minimum(&self) -> f64
 pub fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension(&self) -> f64
@@ -1593,7 +1593,8 @@ pub const fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension_max
 pub const fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension_minimum(&self) -> f64
 pub fn galadriel_dependence::PairGeometryEvidence::intrinsic_dimension_report(&self) -> &pid_core::geometry::IntrinsicDimensionReport
 pub const fn galadriel_dependence::PairGeometryEvidence::nearest_neighbor_over_pairwise_mean(&self) -> f64
-pub const fn galadriel_dependence::PairGeometryEvidence::nearest_neighbor_ratio_maximum(&self) -> f64
+pub const fn galadriel_dependence::PairGeometryEvidence::nearest_neighbor_over_pairwise_mean_maximum(&self) -> f64
+pub const fn galadriel_dependence::PairGeometryEvidence::resource_budget(&self) -> pid_core::resource::ResourceBudget
 impl core::clone::Clone for galadriel_dependence::PairGeometryEvidence
 pub fn galadriel_dependence::PairGeometryEvidence::clone(&self) -> galadriel_dependence::PairGeometryEvidence
 impl core::cmp::PartialEq for galadriel_dependence::PairGeometryEvidence

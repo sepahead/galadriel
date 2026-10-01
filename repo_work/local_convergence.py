@@ -87,7 +87,7 @@ CROSS_REPO_REQUIREMENTS: tuple[dict[str, Any], ...] = (
         "direction": "upstream_library",
         "classification": "required_optional_build_dependency",
         "dependency_pin_required_for_qualified_graphs": True,
-        "pin": "1cd2424f7967e1752dcc8e53859e8fdad3566f51",
+        "pin": "bc3aa80fb6025e709c2906a08bce25a4fac40578",
         "status": "LOCAL_PIN_VERIFIED_RECIPROCAL_NOT_CLAIMED",
         "conditions": [
             "Local qualification must verify the exact pid-core source, version, and enabled feature aliases used by Galadriel 0.9.0.",
@@ -129,7 +129,7 @@ CROSS_REPO_REQUIREMENTS: tuple[dict[str, Any], ...] = (
         "status": "ABSENT_NOT_CLAIMED",
         "conditions": [
             "Do not advertise a Galadriel adapter, route, or authorization effect for 0.9.0.",
-            "Any future integration must remain record-only or independently admitted and restrict-only.",
+            "Any future Haldir integration must remain record-only. PID and Galadriel evidence must not alter trusted state, policy, authorization, or plant commands.",
         ],
     },
     {

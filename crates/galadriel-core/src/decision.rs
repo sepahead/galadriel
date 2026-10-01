@@ -1587,6 +1587,35 @@ mod tests {
     }
 
     #[test]
+    fn named_profile_preserves_dimension_dependent_lower_cusum_semantics() {
+        let mut mirror = exploratory_mirror(detector_config());
+        for (track, dof) in [(1, 3_u8), (2, 4_u8)] {
+            for frame in 0..40 {
+                mirror
+                    .ingest(&observation(
+                        track,
+                        frame + 1,
+                        frame,
+                        Modality::Radar,
+                        0.0,
+                        dof,
+                    ))
+                    .unwrap();
+            }
+        }
+
+        let dof_three_report = assess(&mirror, 1, 39);
+        let dof_three = &dof_three_report.channels[0];
+        assert!(!dof_three.cusum_low_alarm());
+        assert!(!dof_three.cusum_high_alarm());
+
+        let dof_four_report = assess(&mirror, 2, 39);
+        let dof_four = &dof_four_report.channels[0];
+        assert!(dof_four.cusum_low_alarm());
+        assert!(!dof_four.cusum_high_alarm());
+    }
+
+    #[test]
     fn minimum_family_alpha_keeps_underflowed_tails_on_the_correct_side() {
         let cfg = detector_config_with(|params| {
             params.window_len = 1;

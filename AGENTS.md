@@ -91,8 +91,14 @@ Its historical lock retains four Git package pins:
 
 | Packages | Exact source revision |
 | --- | --- |
-| `pid-core`, `pid-runlog` | `1cd2424f7967e1752dcc8e53859e8fdad3566f51` |
+| `pid-core` | `bc3aa80fb6025e709c2906a08bce25a4fac40578` |
 | `ncp-core`, `ncp-zenoh` | `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e` |
+| `zenoh-transport` | `9045545b72a77602a87f40203cb614b48157b4bc` |
+
+The selected pid-rs revision's `pid-core` manifest declares version `0.9.0`.
+No resolved feature profile includes `pid-runlog`.
+Every KSG point fit uses the report-first `ksg_mi_report_with_budget` route.
+Its preflight and execution share one explicit single-thread `ResourceBudget`.
 
 Those NCP packages use wire `0.8`.
 Their pin does not prove compatibility with a different contract, current producer, or remote deployment.

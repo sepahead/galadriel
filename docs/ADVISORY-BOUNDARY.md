@@ -14,6 +14,7 @@
 | mTLS | mutual Transport Layer Security |
 | NCP | Neuro-Cybernetic Protocol |
 | NIS | normalized innovation squared |
+| PID | partial information decomposition |
 | ROS | Robot Operating System |
 | TTL | time to live |
 | WebPKI | Web Public Key Infrastructure |
@@ -41,10 +42,12 @@ relax a velocity or slew limit. It **SHALL NOT** extend a command TTL or lease,
 refresh a watchdog, or erase an independent fault.
 
 **GLD-090-AUTH-002:** Record-only handling **SHALL** leave the complete consumer
-policy snapshot unchanged. A future independently admitted restrict-only handler
-**SHALL** be monotonically non-widening. It **SHALL** preserve capability and
-watchdog identities. `validate_advisory_effect` is the machine-testable reference
-for these transitions.
+policy snapshot unchanged. The Haldir record-only contract permits no
+evidence-dependent restriction. A different future consumer can define a
+separately admitted restrict-only handler. That handler **SHALL** be monotonically
+non-widening. It **SHALL** preserve capability and watchdog identities.
+`validate_advisory_effect` is the machine-testable reference for these generic
+transitions.
 
 **GLD-090-AUTH-003:** A restrict-only comparison **SHALL** use snapshots created
 with `AuthoritySnapshot::new_strict`. Each snapshot **SHALL** contain the same
@@ -58,6 +61,15 @@ The legacy `AuthoritySnapshot::new` signature remains available for 0.9 source
 migration. It creates an unbound snapshot. `validate_advisory_effect` rejects an
 unbound or mismatched snapshot in restrict-only mode before it compares scalar
 values. Record-only mode can still compare two exactly equal legacy snapshots.
+
+**GLD-090-AUTH-004:** Offline PID evidence **SHALL NOT** enter `FusedVerdict`,
+create or revoke a capability, select a controller action, change a fusion
+weight, or assert a Haldir policy effect. A future Haldir record may reference
+an exact PID artifact only as advisory research evidence. Any Haldir restriction
+**SHALL** be derived without PID or Galadriel evidence. Favorable, nominal,
+positive, negative,
+missing, stale, malformed, or unavailable PID values **SHALL NOT** grant,
+restore, refresh, or widen authority.
 
 ## 1. What Galadriel is and is not
 
@@ -144,9 +156,10 @@ This section is normative for integrators.
    This behavior is not fail-open.
    The assurance profile keeps Galadriel optional.
    It assigns no safety claim to Galadriel.
-3. **Use restrict-only behavior only after separate admission and qualification.**
+3. **Limit restrict-only behavior to a different, separately admitted consumer.**
    Complete an independent calibration study.
-   A future profile can let a specific qualified verdict reduce a speed envelope.
+   This option does not apply to Haldir's record-only PID contract.
+   A future non-Haldir profile can let a specific qualified verdict reduce a speed envelope.
    It can instead shorten a command horizon or require a hold or replan.
    The effect needs a bound, dwell, hysteresis, rate limit, and explicit recovery.
    Restrictive evidence is also a denial-of-service lever.
@@ -162,7 +175,8 @@ This section is normative for integrators.
    `StateUnusable` is a consumer-derived qualification over several signed inputs.
    These inputs include covariance, freshness, heartbeat, frame validity, and
    plant mode.
-   They can also include an admitted Galadriel result.
+   A generic future consumer can also include an admitted Galadriel result.
+   Haldir cannot include that result under its record-only PID contract.
    Galadriel never emits `StateUnusable`.
 
    The consumer uses an independent signed monitor-admission record to decide
@@ -337,6 +351,12 @@ A later read-only observation on 2026-07-23 found descendant
 audit, evidence, and release tooling only. It creates no runtime edge or
 external-conformance change.
 
+A 2026-08-18 observation binds signed Haldir review commit
+`c19f9011e4919a5bc67fab5f90d6c8eefed4455b`. That review defines fixed-input
+authorization and plant-command noninterference plus a prospective record-only
+audit seam. It is not merged Haldir `main`, an implemented route, or runtime
+qualification.
+
 This later object is mutable coordination provenance.
 The refreshed Galadriel inspection cut retains it.
 
@@ -345,14 +365,16 @@ the preceding mutable-head reference. It does not change an earlier observation
 or frozen historical evidence.
 
 Haldir has no version 0.9.0 runtime edge.
-A future adapter **MUST** admit a raw Galadriel verdict into a Haldir-owned
-record.
-It **MUST** derive `StateUnusable` and policy eligibility independently.
-It **MUST NOT** accept these conclusions as producer assertions.
+A future record-only adapter **MUST** admit a raw Galadriel verdict only into a
+Haldir-owned audit record.
+It **MUST NOT** derive `StateUnusable`, trusted state, policy eligibility,
+authorization, or a plant command from that verdict.
+For fixed Haldir authority input, those outputs **MUST** remain identical when the
+record is favorable, adverse, missing, stale, malformed, or unavailable.
 
 Prisoma discovery object `63cff105e0e40281376e6f827d7782e9b351961a`
-and the 2026-08-14 committed reinspection
-`efcad9943af818913702f11c47ed0c280a2a1f13` have no version 0.9.0 runtime edge.
+and the current 2026-08-17 committed reinspection
+`85f55c99564d1899f2e34c8412c41aaa9fc8f6c3` have no version 0.9.0 runtime edge.
 It is a prospective immutable offline consumer.
 Its optional observer accepts only exact base-plane keys.
 It rejects named sensor subkeys.

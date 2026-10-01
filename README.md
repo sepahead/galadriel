@@ -193,20 +193,24 @@ Neither record closes final cross-repository qualification.
 <details>
 <summary>Exact retained ecosystem inspection identities</summary>
 
-The unchanged [inspection cut](release/0.9.0/ecosystem-cut.json) records these historical objects and explicit non-edges.
+The [inspection cut](release/0.9.0/ecosystem-cut.json) records these historical objects and explicit non-edges.
 Only its dependency rows are Cargo pins.
 The other rows do not identify current peer heads or grant reciprocal compatibility.
 The newer local SDK revision above is a separate component dependency.
 
 | Project and observation | Exact retained object |
 | --- | --- |
-| pid-rs dependency | `1cd2424f7967e1752dcc8e53859e8fdad3566f51` |
+| pid-rs dependency, July 18 | `1cd2424f7967e1752dcc8e53859e8fdad3566f51` |
+| pid-rs dependency selection, August 18 | `bc3aa80fb6025e709c2906a08bce25a4fac40578` |
 | NCP wire-0.8 dependency | `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e` |
 | NCP design inspection, July 18 | `10492c81ac671ef1909962a9f1fede33781b9933` |
 | Crebain inspection, July 18 | `0a58a5b8dd799884ddb06f1308b1748216fab322` |
+| Crebain offline fixture source, August 17 | `6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d` |
 | Haldir discovery, July 18 | `0e94f61cfd5c78482198a765157571746a256181` |
 | Haldir later inspection, July 18 | `dd3d8a1c993721f89a1edb04dec5247761c694ad` |
+| Haldir record-only review branch, August 18 | `c19f9011e4919a5bc67fab5f90d6c8eefed4455b` |
 | Prisoma inspection, July 18 | `63cff105e0e40281376e6f827d7782e9b351961a` |
+| Prisoma prospective offline consumer, August 17 | `85f55c99564d1899f2e34c8412c41aaa9fc8f6c3` |
 | Engram/Paper2Brain example realm | No integration object in that cut |
 | ROS / ROS 2 | No interface in that cut |
 | External authority | No command edge |
@@ -233,6 +237,13 @@ The historical CREBAIN capture lasts approximately 15.8 seconds and lacks the re
 It supports bounded parsing and basic NIS checks only.
 Full-detector recorded-stream metrics remain `not_estimable`.
 Synthetic results cannot fill that gap.
+
+The offline [CREBAIN drone study](docs/CREBAIN-DRONE-MGW-STUDY.md) checks exact categorical shared-exclusions PID on one byte-bound synthetic fixture.
+Its 64 rows repeat two uniform logic-gate laws: the AND of the visual and radar bits, and the AND of all three bits.
+All 66 averaged atom components and 10 subset mutual informations match an independent decimal oracle within 3e-16 nats.
+This is a conformance check of the selected `pid-core` route, not detector evidence.
+It cannot change a fused verdict, an authorization decision, or a plant command.
+The [method decision record](docs/METHOD-SELECTION-DECISIONS.md) gives the selected routes and their reopen conditions.
 
 The frozen acceptance design retains structural failures.
 Two criteria require at least 369 and 738 tracks.

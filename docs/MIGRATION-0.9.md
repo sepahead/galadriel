@@ -267,9 +267,9 @@ Makkeh–Gutknecht–Wibral and continuous
 Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID use distinct functionals and
 must name fixed sources, a target, law, transforms, gauges, row relation, and
 software identity. They are not fallback implementations for the opt-in MI
-graph. `PidQuestionSpec` and its smaller pinned-dependency envelope make that
-functional/evaluator distinction explicit in each offline study result. Its
-version 2 schema also binds the exact generated law and finite-sample selection,
+graph. `PidQuestionSpec` and its smaller pinned-dependency envelope make the
+functional/estimator-route distinction explicit in each offline study result. Its
+version 3 schema also binds the exact generated law and finite-sample selection,
 the complete typed lattice-coordinate/component family, direct-versus-derived
 construction, root PID aggregate map, units, and coupled/permutation arm roles.
 `JustificationStudyProtocol` separately identifies Pearson, pairwise MI, and the
@@ -278,3 +278,6 @@ aggregate and binds the paired bootstrap/RNG seed and percentile protocol withou
 claiming a multiplicity guarantee or source/build identity. The aggregate results
 seal their fields and can recompute report-derived summaries bit-for-bit. Upstream
 pid-core errors retain their typed source through `JustificationError`.
+Each offline PID result also retains the explicit single-thread
+`PidStudyResourceContract` used by its `_with_budget` estimator calls. This is a
+per-call ceiling, not an aggregate peak-memory or wall-clock guarantee.

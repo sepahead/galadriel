@@ -88,6 +88,29 @@ jobs:
           repo_work.tests.test_qualification_artifacts
           repo_work.tests.test_host_process_bounds
 
+      - name: Verify CREBAIN contract tools
+        run: >-
+          python3 -B -E -s -S -m unittest -v
+          repo_work.tests.test_crebain_mgw_candidate
+          repo_work.tests.test_crebain_mgw_decimal_oracle
+          repo_work.tests.test_crebain_mgw_mutation
+          repo_work.tests.test_crebain_mgw_schema
+
+      - name: Verify CREBAIN Rust contract and metamorphic controls
+        run: cargo test --locked -p galadriel-justify crebain_mgw
+
+      - name: Verify separate CREBAIN MGW Decimal route
+        run: python3 -B -E -s -S repo_work/check_crebain_mgw_decimal_oracle.py
+
+      - name: Verify actual Rust output against the CREBAIN MGW Decimal route
+        run: |
+          rust_json="$(mktemp)"
+          cargo run --locked --quiet -p galadriel-justify \
+            --bin galadriel-crebain-mgw -- --format json > "$rust_json"
+          python3 -B -E -s -S repo_work/check_crebain_mgw_decimal_oracle.py \
+            --rust-json "$rust_json"
+          python3 -B -E -s -S repo_work/check_crebain_mgw_schema.py "$rust_json"
+
       - name: Reject Python import-cache artifacts
         run: |
           test -z "$(find scripts repo_work -type d -name __pycache__ -print -quit)"

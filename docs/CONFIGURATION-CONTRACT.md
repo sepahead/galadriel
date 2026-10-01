@@ -350,7 +350,7 @@ These values do not make calibrated field-performance claims.
 - intrinsic-dimension mean interval `[1.5, 3.0]`
 - intrinsic-dimension local-estimate median minimum `1.30`
 - `cv_min=0.01`
-- `nn_ratio_max=0.999`
+- `nearest_neighbor_over_pairwise_mean_maximum=0.999`
 - `separation_ratio=0.4`
 - `mi_floor_nats=0.03`
 - stability `ExhaustiveCircularDeleteBlock { block_size: 8 }`
@@ -362,8 +362,13 @@ deletion-stability payload.
 Every MI report serializes an accepted-configuration snapshot containing these
 values, the derived required-row count, work estimate and ceiling, modality and
 input-tail ceilings, and per-pair fit units. It separately serializes the fixed
-KSG evaluator contract. A custom report therefore does not require source access
-to discover which accepted numbers and evaluator settings its digest represents.
+KSG estimator contract. One explicit `ResourceBudget` with `max_threads=1` is
+constructed before geometry and passed unchanged to the intrinsic-dimension
+report, distance-concentration report, KSG preflight, and KSG report. Nested
+evidence retains that exact budget identity and the distance-concentration
+resource estimate. This is a per-pair call ceiling, not an aggregate study-wide
+memory, operation, or duration claim. A custom report therefore does not require source access
+to discover which accepted numbers and estimator settings its digest represents.
 
 Every edge is a two-coordinate scalar joint. The intrinsic-dimension screen uses
 the complete pid-rs report, retains all local estimates and quantiles, and checks
@@ -372,6 +377,10 @@ project-defined conservative abstention rules exercised against fixed Gaussian,
 smooth one-dimensional, and heterogeneous near-manifold controls. Passing cannot
 prove a full-dimensional population law, estimator consistency, or application
 validity.
+
+The distance-concentration ratio is exactly `mean nearest-neighbor distance /
+mean unordered-pairwise distance`. Its denominator is the mean across all
+unordered pairs, not a maximum.
 
 ## Validation and cost contract
 

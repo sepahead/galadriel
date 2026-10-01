@@ -2,7 +2,7 @@
   "schema": "galadriel.ecosystem-inspection-cut.v1",
   "release": "0.9.0",
   "author": "Sepehr Mahmoudian",
-  "inspected_at": "2026-08-14",
+  "inspected_at": "2026-08-18",
   "timestamp_precision": "date",
   "scope": "Read-only external identity and local relationship-absence record; only Cargo revisions are release pins.",
   "observations": [
@@ -232,13 +232,72 @@
       "required_for": [],
       "supersedes": "ECO-007",
       "why": "Records the committed 2026-08-14 Prisoma head after its first-principles provenance and estimand redesign. Galadriel still has no Prisoma dependency, adapter, route, or runtime edge."
+    },
+    {
+      "id": "ECO-016",
+      "project": "Crebain",
+      "relationship": "offline_fixture_source_and_optional_reference_producer",
+      "ref": "immutable commit",
+      "object": "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d",
+      "identity_kind": "immutable_fixture_source_commit",
+      "observed_at": "2026-08-17",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": "ECO-004",
+      "why": "Binds the exact clean remote commit that generated the 64-row CREBAIN drone fixture embedded as data by galadriel-justify. It adds no Cargo, runtime, feedback, deployment-qualification, or authority edge."
+    },
+    {
+      "id": "ECO-017",
+      "project": "Prisoma",
+      "relationship": "prospective_downstream_offline_consumer",
+      "ref": "refs/heads/main",
+      "object": "85f55c99564d1899f2e34c8412c41aaa9fc8f6c3",
+      "identity_kind": "mutable_head_reinspection",
+      "observed_at": "2026-08-17",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": "ECO-015",
+      "why": "Records the clean remote Prisoma head containing its PID method-selection/publication contract and bounded pid-rs handoff. Galadriel still has no Prisoma dependency, adapter, route, or runtime edge."
+    },
+    {
+      "id": "ECO-018",
+      "project": "pid-rs",
+      "relationship": "upstream_dependency_selection",
+      "ref": "immutable commit",
+      "object": "bc3aa80fb6025e709c2906a08bce25a4fac40578",
+      "identity_kind": "immutable_dependency_commit",
+      "observed_at": "2026-08-18",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": ["dependence feature", "galadriel-dependence", "galadriel-eval", "galadriel-justify"],
+      "supersedes": "ECO-001",
+      "why": "Binds the clean remote pid-core 0.9.0 revision selected by Cargo.lock for the optional dependence companion and offline PID studies. pid-runlog is not present in any resolved Galadriel feature profile. The immutable CREBAIN producer preregistration remains separately bound to its historical implementation revision and unbudgeted entry-point strings."
+    },
+    {
+      "id": "ECO-019",
+      "project": "Haldir",
+      "relationship": "prospective_downstream_record_only_consumer",
+      "ref": "refs/heads/review/galadriel-pid-record-only-clean",
+      "object": "c19f9011e4919a5bc67fab5f90d6c8eefed4455b",
+      "identity_kind": "signed_review_head_observation",
+      "observed_at": "2026-08-18",
+      "timestamp_precision": "date",
+      "required_by_default": false,
+      "required_for": [],
+      "supersedes": "ECO-012",
+      "why": "Records the signed Haldir review commit that defines fixed-input authorization and plant-command noninterference plus a prospective record-only audit seam. It adds no Galadriel dependency, adapter, runtime route, authority input, or deployment claim."
     }
   ],
   "limitations": [
     "Mutable head observations are inspection provenance, not dependency pins.",
+    "The immutable CREBAIN fixture-source commit binds one embedded offline data artifact. It is not a runtime dependency or reciprocal deployment qualification.",
     "The immutable NCP release-status snapshot is inspection provenance. It does not replace the wire-0.8 dependency pin or qualify either external role.",
     "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir, Prisoma, Engram/Paper2Brain, ROS, or external-authority runtime edge.",
     "Later Haldir observations do not rewrite the discovery observation or frozen historical evidence.",
+    "ECO-018 supersedes the active dependency selection in ECO-001. It does not rewrite that historical observation or the CREBAIN producer's immutable preregistration.",
+    "ECO-019 observes a signed review-branch commit. It is not merged Haldir main, an implemented audit route, or runtime qualification.",
     "The directed declared graph is acyclic: optional upstream inputs point into Galadriel, prospective evidence consumers point outward, and no command or feedback edge returns upstream."
   ]
 }

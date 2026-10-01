@@ -17,8 +17,8 @@ workspace = true
 
 [dependencies]
 galadriel-core = { workspace = true }
-# pid-core uses the exact public revision whose manifest declares version 1.0.0.
-# This repository does not claim a public v1 tag or published 1.x artifact.
+# pid-core uses the exact clean remote revision whose manifest declares version 0.9.0.
+# The Git revision, not a mutable branch or unpublished tag, is the dependency identity.
 pid-core = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 sha2 = { workspace = true }

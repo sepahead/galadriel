@@ -19,10 +19,10 @@ deployment satisfies the identification assumptions.
 [![Detector quantities summarized as a three-column decision graph](../assets/detector-evidence.svg)](../assets/detector-evidence.svg)
 
 **Orientation figure — non-normative.** The left column follows the magnitude
-route from NIS through the declared chi-square window reference and two-sided
+route from NIS through the declared chi-square window reference and a two-arm
 CUSUM. The middle column follows the signed-consistency route from every Pearson
-pair through the family-adjusted Fisher threshold and unique strict-majority
-clique. The right column summarizes fusion and input binding. This figure is a
+pair through the family-adjusted Fisher threshold and the unique largest clique
+whose size is a strict majority. The right column summarizes fusion and input binding. This figure is a
 map of the contract. The numbered requirements and source definitions below
 control if any wording or layout is less precise. Invalid input and unavailable
 evidence remain different states, and neither MI nor PID enters core fusion.
@@ -95,6 +95,17 @@ lo=max(0, lo+μ-x-k)
 
 The configured slack is `k`. An arm alarms when its accumulator is greater than
 or equal to threshold `h`. A component reset sets both arms to zero.
+
+The selected 0.9 configuration fixes `k=3/sqrt(6)`. It does not fix `dof`.
+Validated observations admit `dof` from 1 through 255. On the fusion core's
+`dof=3` route, `mu=d/sqrt(2d)=k`, and the lower recurrence reduces to
+`lo=max(0,lo-x)`. Since admitted NIS gives `x>=0` and the arm starts at zero, the
+lower arm remains zero on that route. The same is true for `dof` 1 and 2 because
+`mu<=k`. For `dof>=4`, `mu>k`, so a sufficiently small `x` can increase the
+lower arm. The selected object is therefore genuinely two-arm over its complete
+admitted domain. The fusion-core `dof=3` route has effective upper-shift
+sensitivity only. Any claim about lower-shift performance requires a
+dimension-specific calibration study and a qualified producer law.
 
 Ordinary threshold alarms describe the current arms. They can decay and are not
 separately latched. An exact arm update can exceed `f64::MAX`. In that case, the
@@ -180,11 +191,12 @@ A verdict requires all these conditions:
 - sufficient samples
 - finite columns with a defined pairwise estimand
 - a usable threshold
-- exactly one all-pairs positive clique that contains a strict majority
+- one unique largest all-pairs positive clique that contains a strict majority
 
 An outsider can have a threshold-clearing bridge to that clique. This condition
-makes attribution ambiguous. `Nominal` means that the unique clique contains all
-requested channels. `Decoupled` identifies each unbridged outsider. All other
+makes attribution ambiguous. Smaller subcliques do not count as tied largest
+explanations. `Nominal` means that the unique largest clique contains all requested
+channels. `Decoupled` identifies each unbridged outsider. All other
 admissible but unidentifiable states are `InsufficientEvidence`. `note` is
 explanatory only.
 
@@ -264,6 +276,16 @@ graph of report-first pairwise KSG-MI estimates. Each `PairKsgEvidence` retains 
 typed support contract, method and scientific status, estimand identity,
 assumption ledger, warnings, provenance, preprocessing and sampling descriptions,
 resource estimate, exact upstream revision, sample count, `k`, and nats units.
+The selected dependency is `pid-core` 0.9.0 at
+`bc3aa80fb6025e709c2906a08bce25a4fac40578`. Every point fit uses
+`ksg_mi_report_with_budget`. One explicit single-thread `ResourceBudget` is
+constructed before geometry and passed unchanged to the intrinsic-dimension
+report, distance-concentration report, KSG preflight, and KSG execution. Nested
+evidence retains the exact budget identity and `max_threads=1`. The concentration
+ratio is `mean nearest-neighbor distance / mean unordered-pairwise distance`;
+the denominator is the mean across all unordered pairs, not a maximum. Galadriel's graph work
+ceiling is a separate aggregate bound. No resolved Galadriel feature profile includes
+`pid-runlog`.
 
 The caller supplies `ContinuousLawDeclaration` text for the population law,
 binary64 observation model, and sampling model. Construction validates only that
@@ -277,7 +299,7 @@ For each channel, `strongest_pair_mi_nats` is the maximum incident edge in the
 complete estimated graph. The configured global reference is the maximum over all
 edges. The threshold is
 `max(mi_floor_nats, separation_ratio * global_reference)`. A retained separation
-requires one unique strict-majority clique and a strict minority whose every edge
+requires one unique largest strict-majority clique and a strict minority whose every edge
 to that clique lies below the threshold.
 
 `MiGraphDisposition` has these descriptive meanings:
@@ -341,19 +363,20 @@ stream, and suite. MI has no path into `FusedVerdict` or `ConsistencyEvidence`.
 Categorical Makkeh–Gutknecht–Wibral shared-exclusions PID and the related but
 distinct continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral construction
 are offline `galadriel-justify` study
-functionals. Each question must fix source identities and order, an external
-target, functional and estimator identity, law, units, transformations, gauges,
+functionals. Each question must fix source identities and order, a target fixed
+before result inspection and separated from any accepted fused verdict,
+functional and estimator identity, law, units, transformations, gauges,
 row relation, and software identity. A hand-built local kNN-MI CUSUM is a
 project-defined heuristic, not either PID construction.
 
-The unit contract has two layers. Native pid-core evaluators and retained trial
+The unit contract has two layers. Native pid-core estimator implementations and retained trial
 reports are in nats. Categorical aggregate/display atom fields convert those
 values once to bits; continuous aggregates remain in nats. Every serialized
 trial envelope carries its native unit, so a bit-valued aggregate question cannot
 silently relabel raw upstream nats.
 
 `PidQuestionSpec` governs only named PID fields and retained PID trials. Its
-version 2 schema serializes the exact generated law and finite-sample acceptance
+version 3 schema serializes the exact generated law and finite-sample acceptance
 rule; the complete two-source output family as typed quantity IDs, lattice
 coordinates, direct-versus-derived atom constructions, component sets,
 within-trial aggregation laws, and native units; each root PID aggregate field's
@@ -372,13 +395,91 @@ resolved RNG dependency bytes and Galadriel source tree remain external
 publication-bundle requirements. Categorical MI and `Q` are mechanically derived from each retained
 pid-core result. Sealed aggregate results expose a bitwise coherence verifier;
 typed `JustificationError` retains the original Galadriel or pid-core error source.
+Both categorical and continuous result roots retain the exact single-thread
+`PidStudyResourceContract` used by every `_with_budget` evaluator call. This is a
+per-call ceiling. The checked study preflight is the separate composed-work
+contract, and neither claims an end-to-end allocation or wall-clock bound.
 
 `PidQuestionSpec` makes those two implemented study questions nominally
 distinct and records their complete defining teams and exact primary references.
-Its `PidDependencyIdentity` is only a mechanically checked package/version/Git
-pin/feature envelope because the selected pid-rs revision predates pid-rs's
-richer software-identity surface. It must not be represented as source, build,
-binary, or attestation identity.
+Its `PidDependencyIdentity` is a mechanically checked package/version/Git
+pin/feature selection envelope. Each produced study separately retains
+`PidExecutionIdentity`, reconciles pid-core's build-context-dependent
+`SoftwareIdentity`, and requires the selected WorkspaceGit revision and a clean
+`pid-core` package subtree. Neither receipt is whole-repository cleanliness,
+binary attestation, scientific validity, or numerical portability.
+
+### Exact CREBAIN drone categorical law
+
+`galadriel-crebain-mgw` is a separate offline evaluator over one exact embedded
+CREBAIN fixture. It does not consume replay, NCP, an accepted `DefaultReport`,
+or the dependence companion. Before PID evaluation it MUST verify:
+
+- Exact fixture byte count and SHA-256.
+- Exact recursively key-sorted analysis-manifest SHA-256.
+- Source order `(visual, radar, acoustic)`.
+- One unique episode identifier per row and the producer's fresh-engine declaration.
+- A 1,000 ms prior and one 1,100 ms row-level observation timestamp.
+- The six retained legacy fusion-summary fields: prior identifier, input count,
+  expected count, projection count, truncation, and degradation.
+- All eight source cells appearing exactly eight times in canonical order.
+- Each declared source bit checked against its named pre-fusion coordinate.
+- Horizontal/volumetric targets reconstructed from retained latent ENU truth.
+
+The producer generated each target without reading source-symbol fields, sensor
+projections, fusion output, Galadriel, or PID. This separates the target from
+the evaluated fusion/PID stack. It does not make the target producer-independent
+field truth. The compact fixture does not retain separate sensor timestamps,
+complete three-projection receipts, a full fusion output, or sufficient hidden
+state to prove state isolation.
+
+The equal-weight categorical law is
+
+\[
+p(V,R,A)=1/8,\qquad T_H=VR,\qquad T_V=VRA.
+\]
+
+The eight repeats per cell test bounded-summary fresh-instance reproducibility
+and exact custody. The study MUST record no p-value, confidence interval,
+resampling result, or claim of 64 independent experimental units. The primary
+entry point is `pid_core::stable::categorical::discrete_sxpid2_with_budget` over
+`(V,R;T_H)`. The
+`pid_core::stable::categorical::discrete_sxpid3_with_budget` entry point over
+`(V,R,A;T_V)` is exploratory. Both expose raw-row empirical-PMF sample-estimator
+route `route.shared-exclusions.mgw-empirical-pmf`, implemented by catalog method
+`shared-exclusions.categorical`, for paper functional
+`functional.shared-exclusions.mgw-categorical`. Raw rows form a plug-in empirical
+PMF estimate; this is not a declared-law evaluator. Exact balance makes the
+fixture empirical PMF coincide with the declared canonical law but does not
+support population inference. Both use
+the same explicit resource-budget policy, and the aggregate receipt accounts
+for all nine sample-estimator/control calls. The result MUST retain
+every pointwise/averaged informative, misinformative, and signed net field in
+nats. It MUST check both PID2 self-redundancy identities, PID2 joint
+reconstruction, all seven PID3 down-set identities, exact analytic AND-law
+mutual informations, and fixed-source informative-atom invariance under a
+deterministic target rotation.
+
+The dependency-disjoint, separately implemented 80-digit Decimal route compares
+the 66 averaged atom components and ten subset mutual informations. It does not
+recompute pointwise atoms and is not independent human or organizational
+replication. The complete emitted JSON MUST validate against the
+closed Draft 2020-12 v3 schema in
+`crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json` and its
+exact byte receipt through `repo_work/check_crebain_mgw_schema.py`.
+The unpublished v2 draft is retired because it did not encode these roles
+correctly; it is not an alternative accepted wire contract.
+
+KSG and continuous Ehrlich PID are inapplicable to this repeated atomic law.
+`I_min` and BROJA are distinct unrequested comparators, never fallbacks.
+Co-information/O-information, NIS, the selected two-arm CUSUM, signed correlation, and
+infomorphic objectives remain separate quantities. None of those operational
+diagnostics is evaluated by this fixture. No field in this study can enter
+`FusedVerdict`, `ConsistencyEvidence`, or an authority decision. A future Haldir
+record must leave authorization and plant-command outputs unchanged. PID cannot
+grant, revoke, restrict, or exercise authority. The complete equations,
+coordinates, method matrix, and claim ladder are in
+[`CREBAIN-DRONE-MGW-STUDY.md`](CREBAIN-DRONE-MGW-STUDY.md).
 
 ## Repeated use and missingness
 

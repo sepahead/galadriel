@@ -149,6 +149,13 @@ Restart every candidate-bound check.
    The three focused outcome files share one focused receipt.
    All four broad shards and all three focused outcomes are exact-candidate gates.
 
+   The same exact-head workflow also requires the separate bounded CREBAIN MGW
+   gate. Its selected set has 155 mutants. The required result is 152 caught,
+   three exact compile-unviable function-return substitutions, and zero missed,
+   timed-out, or surviving mutants. The dedicated `crebain-mgw-mutation` job
+   uploads its outcome and candidate-bound receipt as
+   `crebain-mgw-mutation-results`, separate from the version 5 mutation set.
+
    The observational mutation-baseline job remains residual evidence.
    It is not a successful release gate.
 
@@ -251,7 +258,14 @@ cargo fetch --locked
   repo_work.tests.test_qualify_candidate_evidence \
   repo_work.tests.test_finalize_qualification \
   repo_work.tests.test_qualification_artifacts \
-  repo_work.tests.test_host_process_bounds
+  repo_work.tests.test_host_process_bounds \
+  repo_work.tests.test_crebain_mgw_mutation
+cargo test --locked -p galadriel-justify crebain_mgw
+"$release_python" -B -E -s -S -m unittest -v \
+  repo_work.tests.test_crebain_mgw_candidate \
+  repo_work.tests.test_crebain_mgw_decimal_oracle \
+  repo_work.tests.test_crebain_mgw_schema
+"$release_python" -B -E -s -S repo_work/check_crebain_mgw_candidate.py
 test -z "$(find scripts repo_work -type d -name __pycache__ -print -quit)"
 test -z "$(find scripts repo_work -type f -name '*.pyc' -print -quit)"
 "$release_python" -B -E -s -S repo_work/build_task_dispositions.py verify
@@ -402,6 +416,12 @@ The assembler verifies the exact commit, tree, diff, workflow run, and shard ord
 It verifies all four broad outcomes and all three focused outcomes.
 It signs one new mutation manifest outside the repository.
 It does not convert the observational mutation baseline into a gate.
+
+The version 5 assembler retains exactly the established 13 artifacts. It does
+not ingest the additional CREBAIN MGW receipt. Before publication, require the
+CREBAIN gate to pass on the same exact head and retain its downloaded workflow
+artifact separately. A future signed-set integration requires a reviewed schema
+revision. Do not alter version 5 counts in place.
 
 ## Qualify the candidate
 
@@ -568,8 +588,8 @@ The inherited sandbox and resource limits apply before candidate execution.
 A sandboxed process can request work from an existing external service.
 The process scan cannot attribute that external service work.
 
-The license inventory covers the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope.
-It does not cover all 437 packages for every target.
+The license inventory covers the exact 381-package `CARGO_DENY_HOST_FILTERED_GRAPH` scope.
+It does not cover all 436 packages for every target.
 
 The frozen evidence design uses 100 holdout tracks for each condition.
 `GLD-090-ACC-001` has a zero-event upper Garwood bound of `0.3689904` episodes per hour.
