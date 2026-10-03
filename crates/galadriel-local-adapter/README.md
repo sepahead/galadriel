@@ -112,9 +112,9 @@ These component checks do not qualify NCP transport, real producer semantics, fi
 The `ncp-local` feature adds the `galadriel-ncp-local` binary and the `ncp_local::local_owner` library constructor.
 It uses the standalone `ncp-local` Rust SDK.
 This SDK contains the bounded local contract and has no Zenoh dependency.
-The historical `galadriel-ncp` consumer retains its separate NCP 0.8 dependency.
+The separate `galadriel-ncp` consumer keeps its own NCP 1.0.0-rc.1 candidate dependency.
 The default library has no NCP dependency.
-The existing Galadriel wire-0.8 sidecar and Zenoh profiles remain separate.
+The Galadriel wire-1.0 sidecar and Zenoh profiles remain separate.
 
 ```bash
 cargo build --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-local --bin galadriel-ncp-local
@@ -191,7 +191,7 @@ cargo clippy --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml 
 `Cargo.lock` owns the resolved dependency versions and checksums.
 `deny.toml` admits only the independent graph's reviewed licenses and sources.
 It contains no advisory exceptions.
-The root lock retains its separate historical PID and wire-0.8 identities.
+The root lock keeps its separate PID and NCP 1.0.0-rc.1 identities.
 
 The source verifier rejects a development sibling SDK path.
 It requires the selected full Git revision in the manifest, lock, and resolved native graph.

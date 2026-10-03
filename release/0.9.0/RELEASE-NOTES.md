@@ -106,7 +106,7 @@ integrations need explicit activation. PID is confined to the offline
   within-trial permutation arms, root-field statistics/units, and the exact paired
   bootstrap seed/quantile protocol. They explicitly do not bind the Galadriel
   source tree or resolved RNG bytes; a publication bundle must do that.
-- Optional NCP wire 0.8 integration uses revision `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
+- Optional NCP wire 1.0 integration uses the untagged 1.0.0-rc.1 candidate revision `2819dae3b6338bb1df6d105ebb5b7433936a993d`.
 - The `ncp-live` feature also activates the pinned Zenoh adapter and Tokio.
 - Direct `galadriel-ncp` feature `zenoh` activates the same live stack.
 
@@ -303,15 +303,17 @@ These paths require pid-rs:
 NCP is optional in the default CLI build.
 `galadriel-ncp`, `galadriel-eval`, and the CLI `ncp` feature require NCP.
 CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` adds the transport dependencies.
-Galadriel remains pinned to immutable NCP `v0.8.0` and wire `0.8`.
-Its implemented sidecars are historical NCP 1.0 migration input.
+Galadriel pins the untagged NCP `1.0.0-rc.1` candidate at commit
+`2819dae3b6338bb1df6d105ebb5b7433936a993d` (wire `1.0`).
+Its implemented sidecars use schema `2.0` envelopes on that wire.
 They are not native-1.0 role evidence.
 
 The 2026-08-03 NCP status inspection is bound to
 [commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
-That commit is the unreleased and release-blocked `1.0.0-rc.1` candidate.
+That commit is an earlier state of the same unreleased and release-blocked
+`1.0.0-rc.1` candidate.
 It uses wire `1.0` and compact `CONTRACT_HASH` `163acc57d8a62b66`.
-The latest immutable NCP release remains `v0.8.0` and uses a different wire.
+The latest tagged NCP protocol release remains `v0.8.0`, which uses wire `0.8`.
 
 The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
 records `G03` as `OPEN`.
@@ -400,7 +402,7 @@ They resolve only after the release operator pushes the immutable tag to the can
 The publication procedure checks all six after that push and before release publication.
 
 [`ecosystem-cut.json`](https://github.com/sepahead/galadriel/blob/v0.9.0/release/0.9.0/ecosystem-cut.json) records the exact objects.
-It separates the immutable 2026-08-03 NCP release-status snapshot from Galadriel's wire-0.8 dependency pin.
+It separates the immutable 2026-08-03 NCP release-status snapshot from Galadriel's NCP dependency selection.
 It also records five dated Haldir observations and the dated Paper2Brain observation.
 Mutable inspected heads record provenance only.
 They are not release pins or reciprocal acceptance.

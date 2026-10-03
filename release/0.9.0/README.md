@@ -153,7 +153,9 @@ independent clean-room reproduction remain outstanding.
 - `ecosystem-cut.json` records the dated peer observations and each relationship direction.
   It records build and runtime optionality, the graph rationale, and the acyclic boundary.
   It records the immutable 2026-08-03 NCP release-status snapshot separately
-  from the wire-0.8 dependency pin.
+  from the NCP dependency selection.
+  `ECO-020` supersedes the wire-0.8 pin in `ECO-002` with the untagged
+  NCP 1.0.0-rc.1 candidate commit.
   It also records the Haldir supersession and dated Paper2Brain observation.
   Paper2Brain remains an explicit integration non-edge.
   Mutable heads record provenance only.

@@ -875,8 +875,8 @@ release_python=repo_work/verify_release_python_runtime.sh
 
    schema_paths=(
      "release/0.9.0/local-convergence-schema.json"
-     "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json"
-     "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json"
+     "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v2.schema.json"
+     "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v2.schema.json"
    )
    test "${#schema_paths[@]}" -eq 3
 

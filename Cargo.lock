@@ -1001,7 +1001,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.11.0",
  "statrs",
  "thiserror",
 ]
@@ -1015,7 +1015,7 @@ dependencies = [
  "pid-core",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.11.0",
 ]
 
 [[package]]
@@ -1032,7 +1032,7 @@ dependencies = [
  "rand_distr",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.11.0",
  "statrs",
  "thiserror",
 ]
@@ -1047,7 +1047,7 @@ dependencies = [
  "rand_distr",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.11.0",
  "thiserror",
 ]
 
@@ -1060,7 +1060,7 @@ dependencies = [
  "ncp-zenoh",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.11.0",
  "thiserror",
  "tokio",
  "zenoh",
@@ -1073,7 +1073,7 @@ dependencies = [
  "galadriel-core",
  "rand 0.8.7",
  "rand_distr",
- "sha2",
+ "sha2 0.11.0",
  "thiserror",
 ]
 
@@ -1646,17 +1646,19 @@ dependencies = [
 
 [[package]]
 name = "ncp-core"
-version = "0.8.0"
-source = "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
+version = "1.0.0-rc.1"
+source = "git+https://github.com/sepahead/NCP?rev=2819dae3b6338bb1df6d105ebb5b7433936a993d#2819dae3b6338bb1df6d105ebb5b7433936a993d"
 dependencies = [
+ "getrandom 0.3.4",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
 ]
 
 [[package]]
 name = "ncp-zenoh"
-version = "0.8.0"
-source = "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
+version = "1.0.0-rc.1"
+source = "git+https://github.com/sepahead/NCP?rev=2819dae3b6338bb1df6d105ebb5b7433936a993d#2819dae3b6338bb1df6d105ebb5b7433936a993d"
 dependencies = [
  "ncp-core",
  "serde",
@@ -1976,7 +1978,7 @@ dependencies = [
  "nalgebra",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.11.0",
 ]
 
 [[package]]
@@ -2766,6 +2768,17 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.2.17",
+ "digest 0.10.7",
 ]
 
 [[package]]

@@ -112,6 +112,7 @@ PRISOMA_REINSPECTION_COMMIT = "efcad9943af818913702f11c47ed0c280a2a1f13"
 CREBAIN_FIXTURE_SOURCE_COMMIT = "6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d"
 PRISOMA_PUBLICATION_CONTRACT_COMMIT = "85f55c99564d1899f2e34c8412c41aaa9fc8f6c3"
 PID_RS_SELECTED_COMMIT = "bc3aa80fb6025e709c2906a08bce25a4fac40578"
+NCP_SELECTED_COMMIT = "2819dae3b6338bb1df6d105ebb5b7433936a993d"
 HALDIR_RECORD_ONLY_REVIEW_COMMIT = "c19f9011e4919a5bc67fab5f90d6c8eefed4455b"
 PID_RS_PREREGISTERED_COMMIT = "1cd2424f7967e1752dcc8e53859e8fdad3566f51"
 CREBAIN_FIXTURE_SHA256 = (
@@ -352,14 +353,14 @@ PUBLIC_JSON_SCHEMA_IDS = (
         "release/0.9.0/local-convergence-schema.json",
     ),
     (
-        "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
+        "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v2.schema.json",
         "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
-        "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
+        "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v2.schema.json",
     ),
     (
-        "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
+        "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v2.schema.json",
         "https://raw.githubusercontent.com/sepahead/galadriel/v0.9.0/"
-        "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
+        "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v2.schema.json",
     ),
     (
         "crates/galadriel-justify/schemas/crebain-drone-mgw-study-v3.schema.json",
@@ -475,7 +476,7 @@ PUBLICATION_SEQUENCE_MARKERS = (
     "wrong, follow the full withdrawal procedure below.",
 )
 RELEASE_RUNBOOK_CONTRACT_SHA256 = (
-    "0145967678b09749a2e670905ef95135fb6f8261dcdf896825e5ef46b1da258c"
+    "ce21a3e48a86dec7e4b21937a21c0fe97c33342bbbe09c0c5367d075d2ebfb40"
 )
 RELEASE_PYTHON_NATIVE_PREFLIGHT_SHA256 = (
     "917a7308fd7c3c5adcd1bac4218425ee26226abe50762cf3bbd1d3b6f256f11f"
@@ -530,8 +531,8 @@ REQUIRED_REPOSITORY_INPUTS = {
     ),
     "NCP": (
         "https://github.com/sepahead/NCP",
-        "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
-        "optional NCP 0.8 transport dependency selected by Cargo.lock",
+        "2819dae3b6338bb1df6d105ebb5b7433936a993d",
+        "optional NCP 1.0.0-rc.1 candidate transport dependency selected by Cargo.lock",
         "PINNED_COMPONENT",
     ),
     "Crebain": (
@@ -3771,9 +3772,9 @@ def validate_ecosystem_cut(
                 f"ecosystem cut inspected_at predates observation {observation_id}"
             )
         observation_dates[observation_id] = observed_at
-    expected_ids = {f"ECO-{index:03d}" for index in range(1, 20)}
+    expected_ids = {f"ECO-{index:03d}" for index in range(1, 21)}
     if seen != expected_ids:
-        raise AuditError("ecosystem cut must contain exactly ECO-001 through ECO-019")
+        raise AuditError("ecosystem cut must contain exactly ECO-001 through ECO-020")
     ncp_status = next(
         observation for observation in observations if observation["id"] == "ECO-014"
     )
@@ -3947,6 +3948,37 @@ def validate_ecosystem_cut(
     for key, expected in expected_haldir_record_only_review.items():
         if haldir_record_only_review[key] != expected:
             raise AuditError(f"ECO-019 has an incorrect Haldir review field: {key}")
+    ncp_selection = next(
+        observation for observation in observations if observation["id"] == "ECO-020"
+    )
+    expected_ncp_selection = {
+        "project": "NCP",
+        "relationship": "upstream_dependency_selection",
+        "ref": "immutable commit",
+        "object": NCP_SELECTED_COMMIT,
+        "identity_kind": "immutable_dependency_commit",
+        "observed_at": "2026-10-03",
+        "timestamp_precision": "date",
+        "required_by_default": False,
+        "required_for": [
+            "ncp feature",
+            "ncp-live feature",
+            "galadriel-ncp",
+            "galadriel-ncp zenoh feature",
+            "galadriel-eval",
+        ],
+        "supersedes": "ECO-002",
+        "why": (
+            "Binds the untagged NCP 1.0.0-rc.1 candidate commit selected by Cargo.lock. "
+            "It provides wire-1.0 core types. The CLI ncp-live feature or direct "
+            "galadriel-ncp zenoh feature selects its Zenoh adapter, and every Cargo "
+            "root that resolves zenoh-transport applies the reviewed backport. The "
+            "candidate is not a tagged NCP release."
+        ),
+    }
+    for key, expected in expected_ncp_selection.items():
+        if ncp_selection[key] != expected:
+            raise AuditError(f"ECO-020 has an incorrect NCP selection field: {key}")
     return inspected_at, observation_dates
 
 

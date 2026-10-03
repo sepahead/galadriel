@@ -70,8 +70,8 @@ galadriel-ncp = { version = "0.9.0", path = "crates/galadriel-ncp" }
 # companion needs only stable report-first KSG. The separate justify crate opts
 # into the continuous research surface for its explicit offline Ehrlich studies.
 pid-core = { version = "0.9.0", git = "https://github.com/sepahead/pid-rs", rev = "bc3aa80fb6025e709c2906a08bce25a4fac40578" }
-ncp-core = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
-ncp-zenoh = { version = "0.8.0", git = "https://github.com/sepahead/NCP", rev = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e" } # v0.8.0
+ncp-core = { version = "1.0.0-rc.1", git = "https://github.com/sepahead/NCP", rev = "2819dae3b6338bb1df6d105ebb5b7433936a993d" } # v1.0.0-rc.1
+ncp-zenoh = { version = "1.0.0-rc.1", git = "https://github.com/sepahead/NCP", rev = "2819dae3b6338bb1df6d105ebb5b7433936a993d" } # v1.0.0-rc.1
 
 [patch.crates-io]
 # Narrow reviewed security backport for Zenoh 1.9.0 (RUSTSEC-2026-0041: lz4_flex

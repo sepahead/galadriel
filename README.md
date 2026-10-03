@@ -53,7 +53,7 @@ Its selected build graph excludes the optional PID and transport libraries.
 | [Standalone core](crates/galadriel-core/README.md) | Typed observations, magnitude, signed consistency, sealed reports | Caller-declared source labels and statistical assumptions need independent justification |
 | [Scalar library](crates/galadriel-local-adapter/README.md) | Bounded NIS streams using the actual exploratory magnitude engine | Magnitude diagnostic, not a complete signed-consistency report |
 | [Fixed-profile scalar NCP process](crates/galadriel-local-adapter/README.md#optional-private-pipe-owner) | Private-pipe, record-only assessment of an exact body response | This adapter supplies one Visual modality per entity and retains insufficiency |
-| [Retained wire-0.8 workflows](docs/WORKFLOWS.md#cli-features-and-workspace-dependencies) | Sidecars, diagnostic JSONL replay, optional Zenoh receiver | Separate historical transport; deployment and calibration remain unqualified |
+| [Wire-1.0 sidecar workflows](docs/WORKFLOWS.md#cli-features-and-workspace-dependencies) | Sidecars, diagnostic JSONL replay, optional Zenoh receiver | Untagged NCP 1.0.0-rc.1 candidate transport; deployment and calibration remain unqualified |
 | [Optional MI and offline PID](docs/PID_RS_1_0_MIGRATION.md) | Explicit dependence questions and synthetic studies | These methods do not alter the core verdict or prove attack mechanisms |
 
 ## How evidence becomes a report
@@ -144,7 +144,7 @@ Neither lifecycle integrity nor transport authentication proves physical truth.
 The Neuro-Cybernetic Protocol (NCP) is optional.
 The independent local package compiles the `monitor` role under `galadriel.scalar-nis-record-only.v1`.
 Its `ncp-local` feature selects SDK `1.0.0` at public revision `de751d499b5e07d1c95a072e08255083d77cb38b`.
-The historical seven-member workspace retains its separate wire-0.8 dependencies.
+The seven-member root workspace uses its separate NCP 1.0.0-rc.1 candidate dependencies (wire 1.0).
 
 ```bash
 cargo build --locked \
@@ -180,7 +180,7 @@ Monitoring CREBAIN's [typed sensor application](https://github.com/sepahead/creb
 | Project | Relationship | Current limit |
 | --- | --- | --- |
 | [CREBAIN](https://github.com/sepahead/crebain) | Optional evidence producer; the fixed-profile scalar adapter consumes its scalar-body response shape | No Cargo dependency on CREBAIN; city multimodal detector integration remains unqualified |
-| [NCP](https://github.com/sepahead/NCP) | Optional local contract library or separate retained wire-0.8 libraries | Galadriel owns no broker or controller |
+| [NCP](https://github.com/sepahead/NCP) | Optional local contract library or the separate wire-1.0 candidate libraries | Galadriel owns no broker or controller |
 | [pid-rs](https://github.com/sepahead/pid-rs) | Optional algorithm library for MI and offline PID | Shared library code does not establish independent replication |
 | [Prisoma](https://github.com/sepahead/prisoma) | A separately owned capture or experiment consumer can retain advisory records | Galadriel owns no store or embodied experiment runner |
 | [Engram (private source)](https://github.com/sepahead/Paper2Brain) | Optional external neural controller and supervisor in a separately qualified composition | Private repository access is required. No neural simulator or general Engram integration is provided here |
@@ -202,7 +202,8 @@ The newer local SDK revision above is a separate component dependency.
 | --- | --- |
 | pid-rs dependency, July 18 | `1cd2424f7967e1752dcc8e53859e8fdad3566f51` |
 | pid-rs dependency selection, August 18 | `bc3aa80fb6025e709c2906a08bce25a4fac40578` |
-| NCP wire-0.8 dependency | `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e` |
+| NCP wire-0.8 dependency, July 18 | `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e` |
+| NCP 1.0.0-rc.1 dependency selection, October 3 | `2819dae3b6338bb1df6d105ebb5b7433936a993d` |
 | NCP design inspection, July 18 | `10492c81ac671ef1909962a9f1fede33781b9933` |
 | Crebain inspection, July 18 | `0a58a5b8dd799884ddb06f1308b1748216fab322` |
 | Crebain offline fixture source, August 17 | `6ef60fabbf8c8a8008e7a77304d3e095b6b9e91d` |

@@ -20,12 +20,13 @@ pub const MONITOR_SENSOR_NAME: &str = "galadriel-monitor";
 /// Producer-monitor payload discriminator.
 pub const MONITOR_KIND: &str = "galadriel_producer_event";
 
-/// Current Galadriel producer-monitor schema version.
-pub const MONITOR_SCHEMA_VERSION: &str = "1.0";
+/// Current Galadriel producer-monitor schema version. Schema 2.0 carries NCP
+/// wire 1.0; schema 1.0 carried the retired wire 0.8 and is no longer accepted.
+pub const MONITOR_SCHEMA_VERSION: &str = "2.0";
 
 /// Machine-readable JSON Schema for [`MONITOR_SCHEMA_VERSION`].
 pub const MONITOR_SCHEMA_JSON: &str =
-    include_str!("../schemas/galadriel-monitor-envelope-v1.schema.json");
+    include_str!("../schemas/galadriel-monitor-envelope-v2.schema.json");
 
 /// Largest declared heartbeat interval or deadline, in milliseconds.
 pub const MAX_HEARTBEAT_DURATION_MS: u64 = 300_000;
@@ -1269,8 +1270,8 @@ mod tests {
         assert_eq!(envelope.event_seq(), 8);
         assert_eq!(envelope.clone().into_event(), envelope.event().clone());
         let expected = concat!(
-            r#"{"kind":"galadriel_producer_event","schema_version":"1.0","#,
-            r#""ncp_version":"0.8","contract_hash":"d1b50a2d8a265276","#,
+            r#"{"kind":"galadriel_producer_event","schema_version":"2.0","#,
+            r#""ncp_version":"1.0","contract_hash":"163acc57d8a62b66","#,
             r#""session_id":"uav3","producer_id":"crebain","event_seq":8,"#,
             r#""event":{"type":"modality_outcome","data":{"fusion_seq":41,"#,
             r#""fusion_timestamp_ms":1700000000000,"frame_id":17,"context_id":23,"#,
@@ -1463,7 +1464,7 @@ mod tests {
             MonitorEnvelope::try_new("uav3", "crebain", 1, ProducerEvent::Heartbeat(heartbeat()))
                 .unwrap();
         let valid = serde_json::to_value(envelope).unwrap();
-        for version in ["00.08", "1.0"] {
+        for version in ["01.0", "1.1"] {
             let mut raw = valid.clone();
             raw["ncp_version"] = serde_json::json!(version);
 
