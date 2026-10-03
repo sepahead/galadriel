@@ -29,7 +29,14 @@
 Status: accepted Galadriel-side ADR. Local consumer components are implemented.
 Deployment evidence is excluded.
 
-This contract owns the retained wire-0.8 sidecar and lifecycle routes.
+This contract owns the wire-1.0 sidecar and lifecycle routes.
+Both route envelopes use schema `2.0` with `ncp_version = "1.0"` and the
+`CONTRACT_HASH` of the pinned NCP 1.0.0-rc.1 candidate (`163acc57d8a62b66`).
+Schema `2.0` keeps the exact schema `1.0` shapes; only the `schema_version` and
+`ncp_version` values change. Schema `1.0` carried wire `0.8` and is no longer
+accepted.
+In this contract, "v1 observation" names the frozen observation shape of the
+observation route, and the monitor field `v1_expected` keeps its name.
 The experimental [local scalar owner](../crates/galadriel-local-adapter/README.md#optional-private-pipe-owner) uses a separate, explicitly selected private-pipe contract.
 It does not satisfy this contract's remote producer or deployment qualification gates.
 
@@ -65,6 +72,9 @@ alignment for these items:
 - registry bounds
 - 3,053-byte retained registry fixture
 
+That inspection predates the schema `2.0` move. A Crebain sender at that
+revision does not match the current envelope.
+
 The fixture has raw SHA-256
 `506ce1437acc20ee5d36fd1e3551dd020095cc4d30d22d959c5df3cca81715a6`. Its
 canonical SHA-256 is
@@ -86,11 +96,11 @@ routes. A conforming producer uses both routes for different responsibilities.
 
 | Route | Payload | Responsibility |
 |---|---|---|
-| `{realm}/session/{epoch}/sensor/galadriel-pid` | Frozen `SidecarEnvelope` schema v1 | At most one accepted observation for each `(track, modality, frame)`. The observation must be suitable for existing detectors. |
-| `{realm}/session/{epoch}/sensor/galadriel-monitor` | Strict monitor envelope schema v1 | Measurement lifecycle outcomes, fusion-frame closure, and producer liveness. |
+| `{realm}/session/{epoch}/sensor/galadriel-pid` | Frozen `SidecarEnvelope` shape, schema `2.0` | At most one accepted observation for each `(track, modality, frame)`. The observation must be suitable for existing detectors. |
+| `{realm}/session/{epoch}/sensor/galadriel-monitor` | Strict monitor envelope, schema `2.0` | Measurement lifecycle outcomes, fusion-frame closure, and producer liveness. |
 
 The observation route MUST remain byte-compatible and schema-compatible with
-[`galadriel-pid-envelope-v1.schema.json`](../crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json).
+[`galadriel-pid-envelope-v2.schema.json`](../crates/galadriel-ncp/schemas/galadriel-pid-envelope-v2.schema.json).
 Monitor events MUST NOT enter that route.
 
 The monitor route MUST use a separate strict project-owned schema with its own
@@ -109,8 +119,8 @@ The existing v1 sidecar is deliberately narrow. Its strict `SidecarEnvelope`
 contains these fields:
 
 - `kind = "galadriel_pid_observation"`
-- `schema_version = "1.0"`
-- NCP version and hash provenance
+- `schema_version = "2.0"`
+- NCP version and hash provenance (`ncp_version = "1.0"`)
 - `session_id`
 - `producer_id`
 - one `PidObservation`
@@ -356,11 +366,11 @@ namespace.
 
 ## Monitor wire contract
 
-The monitor route carries one strict envelope per event. Its version-1 envelope
-MUST contain:
+The monitor route carries one strict envelope per event. Its envelope MUST
+contain:
 
 - `kind = "galadriel_producer_event"`
-- `schema_version = "1.0"`
+- `schema_version = "2.0"`
 - the canonical `ncp_version` spelling from the frozen schema
 - `contract_hash` with the observation-sidecar advisory compatibility semantics
 - `session_id` and `producer_id` that match the key and peer identity

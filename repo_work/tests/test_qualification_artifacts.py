@@ -1268,22 +1268,28 @@ class CargoDenyLicenseValidatorTest(unittest.TestCase):
     def test_lock_patch_record_binds_one_active_license_projection(self) -> None:
         root = TOOLS.parent
         tool_inputs = root / "release/0.9.0/tool-inputs"
-        record = json.loads(
-            (tool_inputs / "pid-core-bc3aa80-license-2026-10-01.json").read_text()
+        chain_names = (
+            "chacha20-license-2026-09-05.json",
+            "rustsec-2026-0041-0285-license-2026-09-29.json",
+            "pid-core-bc3aa80-license-2026-10-01.json",
+            "ncp-2819dae-license-2026-10-03.json",
         )
-        predecessor = json.loads(
-            (tool_inputs / "rustsec-2026-0041-0285-license-2026-09-29.json").read_text()
-        )
-        origin = json.loads(
-            (tool_inputs / "chacha20-license-2026-09-05.json").read_text()
-        )
-        self.assertEqual(
-            predecessor["historical"]["lockfile_sha256"],
-            origin["active"]["lockfile_sha256"],
-        )
-        self.assertEqual(
-            predecessor["historical"]["projections"], origin["active"]["projections"]
-        )
+        chain = [
+            json.loads((tool_inputs / name).read_text()) for name in chain_names
+        ]
+        origin, predecessor, record = chain[0], chain[-2], chain[-1]
+        for earlier_name, earlier, later in zip(chain_names, chain, chain[1:]):
+            self.assertEqual(
+                later["historical"]["source_record"],
+                f"release/0.9.0/tool-inputs/{earlier_name}",
+            )
+            self.assertEqual(
+                later["historical"]["lockfile_sha256"],
+                earlier["active"]["lockfile_sha256"],
+            )
+            self.assertEqual(
+                later["historical"]["projections"], earlier["active"]["projections"]
+            )
         lock_bytes = (root / "Cargo.lock").read_bytes()
         locked = {
             f"{row.get('source', '').partition('#')[0]}#{row['name']}@{row['version']}"

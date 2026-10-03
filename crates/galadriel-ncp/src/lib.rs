@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! # galadriel-ncp
 //!
-//! Galadriel sidecar ingestion uses pinned NCP 0.8 addressing. The
-//! `galadriel-cli` `ncp` feature activates this crate.
+//! Galadriel sidecar ingestion uses the addressing of the pinned NCP 1.0.0-rc.1
+//! candidate (wire 1.0). The `galadriel-cli` `ncp` feature activates this crate.
 //!
 //! Galadriel is a **read-only** consumer of innovation records. Native
 //! innovations may be carried for diagnostics, but consistency uses only the
@@ -77,7 +77,7 @@ pub use ncp_zenoh;
 
 /// Maximum bytes accepted for the sidecar `session_id` / `producer_id` segments.
 ///
-/// NCP 0.8 bounds a transport-neutral session identifier to 1..=64 bytes.
+/// NCP 1.0 bounds a transport-neutral session identifier to 1..=64 bytes.
 /// Galadriel also requires the stricter core identity grammar so that a valid
 /// envelope cannot fail when the lifecycle layer creates typed identities.
 pub const MAX_ID_SEGMENT_BYTES: usize = EpochId::MAX_BYTES;
@@ -109,8 +109,9 @@ pub fn valid_producer_identity(value: &str) -> bool {
 /// primary cross-sensor signal is NIS/CUSUM plus signed (sign-preserving) correlation and
 /// PID is only an optional additive research diagnostic. The route and payload kind keep
 /// the name because it is a *frozen* on-the-wire contract shared with the Crebain producer
-/// and the JSON Schema; renaming it is a breaking change deliberately deferred to the next
-/// sidecar-schema version bump (see [`SIDECAR_SCHEMA_VERSION`]), never done ad hoc.
+/// and the JSON Schema; renaming it is a breaking change deferred to a later sidecar-schema
+/// version (see [`SIDECAR_SCHEMA_VERSION`]), never done ad hoc. The wire-1.0 bump to 2.0
+/// keeps the name so that producers change only the version fields.
 pub const SIDECAR_SENSOR_NAME: &str = "galadriel-pid";
 
 /// Sidecar payload discriminator. This is deliberately not an NCP normative
@@ -118,8 +119,9 @@ pub const SIDECAR_SENSOR_NAME: &str = "galadriel-pid";
 pub const SIDECAR_KIND: &str = "galadriel_pid_observation";
 
 /// Current Galadriel sidecar schema. An incompatible shape requires a new value
-/// and coordinated producer/consumer update.
-pub const SIDECAR_SCHEMA_VERSION: &str = "1.0";
+/// and coordinated producer/consumer update. Schema 2.0 carries NCP wire 1.0;
+/// schema 1.0 carried the retired wire 0.8 and is no longer accepted.
+pub const SIDECAR_SCHEMA_VERSION: &str = "2.0";
 
 /// Machine-readable JSON Schema for [`SIDECAR_SCHEMA_VERSION`]. Semantic checks
 /// that JSON Schema cannot express (paired research fields, covariance positive
@@ -127,7 +129,7 @@ pub const SIDECAR_SCHEMA_VERSION: &str = "1.0";
 /// decoding the typed observation; [`SidecarEnvelope::validate_for`] additionally
 /// binds the envelope's transport provenance.
 pub const SIDECAR_SCHEMA_JSON: &str =
-    include_str!("../schemas/galadriel-pid-envelope-v1.schema.json");
+    include_str!("../schemas/galadriel-pid-envelope-v2.schema.json");
 
 /// A validated live-sidecar envelope.
 ///
@@ -136,7 +138,7 @@ pub const SIDECAR_SCHEMA_JSON: &str =
 /// `session_id` is the producer epoch boundary; producers must not reuse it after a
 /// restart that resets observation sequences.
 ///
-/// This epoch discipline is **sidecar-owned** and deliberately simpler than NCP 0.8's
+/// This epoch discipline is **sidecar-owned** and deliberately simpler than NCP 1.0's
 /// control-plane sessions, whose server-issued `generation` distinguishes incarnations
 /// of one `session_id`. The sidecar has no session server to issue generations, so a
 /// producer restart must mint a *new* `session_id` (subscribers key on the exact path
@@ -1294,8 +1296,8 @@ mod tests {
         let observation = test_observation(42, 1_700_000_000_000, 7, Modality::Radar, 2.75, 3);
         let envelope = SidecarEnvelope::try_new("uav3", "crebain", observation).unwrap();
         let expected = concat!(
-            r#"{"kind":"galadriel_pid_observation","schema_version":"1.0","#,
-            r#""ncp_version":"0.8","contract_hash":"d1b50a2d8a265276","#,
+            r#"{"kind":"galadriel_pid_observation","schema_version":"2.0","#,
+            r#""ncp_version":"1.0","contract_hash":"163acc57d8a62b66","#,
             r#""session_id":"uav3","producer_id":"crebain","observation":{"#,
             r#""track_id":42,"timestamp_ms":1700000000000,"seq":7,"#,
             r#""modality":"radar","nis":2.75,"dof":3}}"#
@@ -1528,7 +1530,7 @@ mod tests {
         assert!(serde_json::from_value::<SidecarEnvelope>(wrong_version).is_err());
 
         let mut forward_version = serde_json::to_value(&envelope).unwrap();
-        forward_version["ncp_version"] = serde_json::json!("1.0");
+        forward_version["ncp_version"] = serde_json::json!("1.1");
         let forward_version = serde_json::to_vec(&forward_version).unwrap();
         assert!(matches!(
             SidecarEnvelope::decode(&forward_version),
@@ -1538,7 +1540,7 @@ mod tests {
         ));
 
         let mut noncanonical_version = serde_json::to_value(&envelope).unwrap();
-        noncanonical_version["ncp_version"] = serde_json::json!("00.08");
+        noncanonical_version["ncp_version"] = serde_json::json!("01.0");
         assert!(serde_json::from_value::<SidecarEnvelope>(noncanonical_version).is_err());
 
         assert!(matches!(

@@ -27,15 +27,15 @@ PID_SOURCE = (
 )
 NCP_SOURCE = (
     "git+https://github.com/sepahead/NCP?"
-    "rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
-    "#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
+    "rev=2819dae3b6338bb1df6d105ebb5b7433936a993d"
+    "#2819dae3b6338bb1df6d105ebb5b7433936a993d"
 )
-NCP_PIN = "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
+NCP_PIN = "2819dae3b6338bb1df6d105ebb5b7433936a993d"
 NCP_CONSUMER_TOOLING_MIN_COMMIT = "205384508d619923e05aef192bedaeb57cf665fc"
 MAX_NCP_CONSUMER_BYTES = 16 * 1024
 EXPECTED_NCP_CONSUMER_ROWS = (
-    ("cargo_rev", "Cargo.toml", "v0.8.0", NCP_PIN),
-    ("cargo_lock_rev", "Cargo.lock", "v0.8.0", NCP_PIN),
+    ("cargo_rev", "Cargo.toml", "v1.0.0-rc.1", NCP_PIN),
+    ("cargo_lock_rev", "Cargo.lock", "v1.0.0-rc.1", NCP_PIN),
 )
 ZENOH_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
 
@@ -72,7 +72,7 @@ EXPECTED_UPSTREAM_MANIFESTS = {
         },
     },
     "ncp-core": {
-        "version": "0.8.0",
+        "version": "1.0.0-rc.1",
         "source": NCP_SOURCE,
         "features": {
             "default": frozenset(),
@@ -81,7 +81,7 @@ EXPECTED_UPSTREAM_MANIFESTS = {
         },
     },
     "ncp-zenoh": {
-        "version": "0.8.0",
+        "version": "1.0.0-rc.1",
         "source": NCP_SOURCE,
         "features": {"default": frozenset()},
     },

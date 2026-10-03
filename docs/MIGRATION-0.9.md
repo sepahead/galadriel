@@ -35,6 +35,7 @@ It does not round these values.
 Zero remains valid for ordinals and timestamps.
 Zero also remains valid for `TrackId`.
 The frozen Galadriel and Crebain observation schema v1 admitted that value.
+Schema `2.0`, its wire-1.0 successor, keeps that shape.
 Adapters **MUST NOT** silently reinterpret this established sidecar value.
 
 Zero is invalid for `ProjectionFrameId`, `ProjectionContextId`, and `FrozenPriorId`.

@@ -3042,7 +3042,7 @@ mod tests {
 
     #[test]
     fn incompatible_ncp_version_latches_typed_fault() {
-        for version in ["0.7", "1.0"] {
+        for version in ["0.8", "1.1"] {
             let harness = Harness::new(MonitorLiveConfig::default());
             let mut value: serde_json::Value =
                 serde_json::from_slice(&encoded(1)).expect("test envelope is JSON");

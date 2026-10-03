@@ -277,21 +277,26 @@ Haldir is a prospective record-only consumer, not a qualified integration.
 Galadriel has no command credential.
 It cannot call an authorization path.
 
-### NCP wire 0.8
+### NCP wire 1.0 candidate
 
-Galadriel pins `ncp-core` and `ncp-zenoh` to the immutable revision selected by
-the public `v0.8.0` tag.
-The exact revision is `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
-The 2026-08-03 NCP status inspection is bound to
-[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
-That commit is the unreleased and release-blocked `1.0.0-rc.1` candidate.
+Galadriel pins `ncp-core` and `ncp-zenoh` to the untagged NCP `1.0.0-rc.1`
+candidate.
+The exact revision is `2819dae3b6338bb1df6d105ebb5b7433936a993d`.
 It uses wire `1.0` and compact `CONTRACT_HASH` `163acc57d8a62b66`.
-The latest immutable NCP release remains `v0.8.0` and uses a different wire.
-The candidate is not a Galadriel dependency or an installed compatibility result.
+The candidate has no release tag, so the commit is its identity.
+The retired pin was revision `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`, the
+commit of the public `v0.8.0` tag, which uses wire `0.8`.
+The latest tagged NCP protocol release remains `v0.8.0`.
+The 2026-08-03 NCP status inspection is bound to
+[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd),
+an earlier state of the same unreleased and release-blocked `1.0.0-rc.1`
+candidate.
+The dependency pin is not an installed compatibility result.
 
-Galadriel named sensor sidecars are wire-0.8 project surfaces.
-They are not native wire-1.0 extensions.
-They are historical NCP 1.0 migration input, not native-1.0 role evidence.
+Galadriel named sensor sidecars are project surfaces carried on wire `1.0`.
+The observation envelope and the producer-monitor envelope both use schema
+`2.0`; schema `1.0` carried wire `0.8` and is no longer accepted.
+The sidecars are not native wire-1.0 extensions or native-1.0 role evidence.
 
 The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
 records `G03` as `OPEN`.

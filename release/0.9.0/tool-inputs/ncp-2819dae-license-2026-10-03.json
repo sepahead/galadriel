@@ -1,0 +1,60 @@
+{
+  "schema": "galadriel.qualification-license-input-revision.v2",
+  "revision": "2026-10-03-ncp-2819dae",
+  "scope": "exact_lock_patch_projection_only",
+  "release_authority": false,
+  "inventory_scope": "CARGO_DENY_HOST_FILTERED_GRAPH",
+  "package_count": 382,
+  "license_assignment_count": 707,
+  "historical": {
+    "source_record": "release/0.9.0/tool-inputs/pid-core-bc3aa80-license-2026-10-01.json",
+    "lockfile_sha256": "2338a462592562877325642df2ef9df74239baf2362517144e3fd5b7a5ab359a",
+    "projections": {
+      "package_ids_sha256": "20b059259c12cd28312f15bec3749d50fba2d158381ba69ade3a46d6c7a2b316",
+      "semantic_sha256": "fdd33e2bb98d2008b19d552666c9c93fad55ae3182a999ed85b49a65eeae40c8"
+    },
+    "current_qualification_authority": false
+  },
+  "active": {
+    "lockfile_sha256": "71f96481656d3d76e131ad4603d2789ce2ced2b37f9b116f7f7f8dd02c971aa0",
+    "projections": {
+      "package_ids_sha256": "033803e9ac6dc08ed85c915ceaa6887d6f1a4c60ebc56874ce838e6e91fd19df",
+      "semantic_sha256": "bac82b0bdfa8f92efec88bb205b86fedd7b3899cc101d086039911ae2d5d03c4"
+    }
+  },
+  "changed_identities": {
+    "removed": [
+      "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#ncp-core@0.8.0",
+      "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#ncp-zenoh@0.8.0"
+    ],
+    "added": [
+      "git+https://github.com/sepahead/NCP?rev=2819dae3b6338bb1df6d105ebb5b7433936a993d#ncp-core@1.0.0-rc.1",
+      "git+https://github.com/sepahead/NCP?rev=2819dae3b6338bb1df6d105ebb5b7433936a993d#ncp-zenoh@1.0.0-rc.1",
+      "registry+https://github.com/rust-lang/crates.io-index#sha2@0.10.9"
+    ]
+  },
+  "license_policy_summary": {
+    "accepted_help_count": 374,
+    "skipped_note_count": 8,
+    "skipped_private_crates": [
+      "galadriel-cli",
+      "galadriel-core",
+      "galadriel-dependence",
+      "galadriel-eval",
+      "galadriel-justify",
+      "galadriel-ncp",
+      "galadriel-sim",
+      "zenoh-transport"
+    ],
+    "note": "The NCP 1.0.0-rc.1 candidate adds sha2 0.10.9 (Apache-2.0 OR MIT) through ncp-core. The unpublished zenoh-transport backport (publish = false) is still skipped as a private crate. Its declared license, EPL-2.0 OR Apache-2.0, is unchanged and remains in the inventory."
+  },
+  "reconstruction": {
+    "method": "cargo metadata --locked --offline --all-features and cargo deny 0.19.9 list --layout crate on the exact lock, checked by repo_work/qualification_artifacts.py",
+    "scope": "Observed package and assignment identity; no new legal clearance, upstream signature, scientific release, or terminal qualification."
+  },
+  "unchanged_requirements": [
+    "Exact closed Cargo metadata and lock joins",
+    "License policy, tools, and advisory database",
+    "Historical terminal artifacts and source evidence"
+  ]
+}

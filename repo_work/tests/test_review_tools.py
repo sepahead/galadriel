@@ -1168,6 +1168,8 @@ class ReviewToolsTest(unittest.TestCase):
         for name in (
             "galadriel-pid-envelope-v1.schema.json",
             "galadriel-monitor-envelope-v1.schema.json",
+            "galadriel-pid-envelope-v2.schema.json",
+            "galadriel-monitor-envelope-v2.schema.json",
         ):
             document = json.loads((schema_root / name).read_text(encoding="utf-8"))
             self.assertEqual(
@@ -1285,8 +1287,8 @@ class ReviewToolsTest(unittest.TestCase):
             "release/0.9.0/RELEASE-RUNBOOK.md",
             "CITATION.cff",
             "release/0.9.0/local-convergence-schema.json",
-            "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json",
-            "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json",
+            "crates/galadriel-ncp/schemas/galadriel-pid-envelope-v2.schema.json",
+            "crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v2.schema.json",
         ):
             self.assertIn(f'"{path}"', runbook)
 
@@ -2567,10 +2569,10 @@ class ReviewToolsTest(unittest.TestCase):
             validate_workspace_manifest(workspace_manifest)
 
         expected_descriptor = (
-            "cargo_rev Cargo.toml v0.8.0 "
-            "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e\n"
-            "cargo_lock_rev Cargo.lock v0.8.0 "
-            "2f5bd586d4bb20c90362bb6f5698b7f64057ba4e\n"
+            "cargo_rev Cargo.toml v1.0.0-rc.1 "
+            "2819dae3b6338bb1df6d105ebb5b7433936a993d\n"
+            "cargo_lock_rev Cargo.lock v1.0.0-rc.1 "
+            "2819dae3b6338bb1df6d105ebb5b7433936a993d\n"
         )
         self.assertEqual(len(parse_ncp_consumer_descriptor(expected_descriptor)), 2)
         for attack in (
@@ -2659,8 +2661,8 @@ class ReviewToolsTest(unittest.TestCase):
             (
                 "getrandom v0.3.4|",
                 "getrandom v0.4.3|std",
-                "ncp-core v0.8.0 (locked)|default",
-                "ncp-core v0.8.0 (locked)|default (*)",
+                "ncp-core v1.0.0-rc.1 (locked)|default",
+                "ncp-core v1.0.0-rc.1 (locked)|default (*)",
             )
         )
         graph = parse_graph_output(profile, output)
@@ -2670,7 +2672,7 @@ class ReviewToolsTest(unittest.TestCase):
         with self.assertRaisesRegex(ReviewError, "inconsistent features for ncp-core"):
             parse_graph_output(
                 profile,
-                output + "\nncp-core v0.8.0 (locked)|default,schema\n",
+                output + "\nncp-core v1.0.0-rc.1 (locked)|default,schema\n",
             )
 
         for control in (
@@ -2695,20 +2697,20 @@ class ReviewToolsTest(unittest.TestCase):
                 ):
                     parse_graph_output(
                         profile,
-                        f"ncp-core v0.8.0 (locked)|default{control}\n",
+                        f"ncp-core v1.0.0-rc.1 (locked)|default{control}\n",
                     )
 
         self.assertEqual(
             parse_graph_output(
                 profile,
-                "ncp-core v0.8.0 (locked)|default\r\n",
+                "ncp-core v1.0.0-rc.1 (locked)|default\r\n",
             )["ncp-core"],
             frozenset({"default"}),
         )
         with self.assertRaisesRegex(ReviewError, "unsafe non-printable characters"):
             parse_graph_output(
                 profile,
-                "ncp-core v0.8.0 (locked)|default\r",
+                "ncp-core v1.0.0-rc.1 (locked)|default\r",
             )
 
     def test_feature_graph_target_all_tokio_contract_is_exact(self) -> None:
@@ -2897,7 +2899,7 @@ class ReviewToolsTest(unittest.TestCase):
         self.assertEqual(cut["author"], "Sepehr Mahmoudian")
         self.assertEqual(
             (cut["inspected_at"], cut["timestamp_precision"]),
-            ("2026-08-18", "date"),
+            ("2026-10-03", "date"),
         )
         observations = cut["observations"]
         expected_observations = [
@@ -3203,6 +3205,26 @@ class ReviewToolsTest(unittest.TestCase):
                 "supersedes": "ECO-012",
                 "why": "Records the signed Haldir review commit that defines fixed-input authorization and plant-command noninterference plus a prospective record-only audit seam. It adds no Galadriel dependency, adapter, runtime route, authority input, or deployment claim.",
             },
+            {
+                "id": "ECO-020",
+                "project": "NCP",
+                "relationship": "upstream_dependency_selection",
+                "ref": "immutable commit",
+                "object": "2819dae3b6338bb1df6d105ebb5b7433936a993d",
+                "identity_kind": "immutable_dependency_commit",
+                "observed_at": "2026-10-03",
+                "timestamp_precision": "date",
+                "required_by_default": False,
+                "required_for": [
+                    "ncp feature",
+                    "ncp-live feature",
+                    "galadriel-ncp",
+                    "galadriel-ncp zenoh feature",
+                    "galadriel-eval",
+                ],
+                "supersedes": "ECO-002",
+                "why": "Binds the untagged NCP 1.0.0-rc.1 candidate commit selected by Cargo.lock. It provides wire-1.0 core types. The CLI ncp-live feature or direct galadriel-ncp zenoh feature selects its Zenoh adapter, and every Cargo root that resolves zenoh-transport applies the reviewed backport. The candidate is not a tagged NCP release.",
+            },
         ]
         self.assertEqual(observations, expected_observations)
         self.assertEqual(
@@ -3210,17 +3232,18 @@ class ReviewToolsTest(unittest.TestCase):
             [
                 "Mutable head observations are inspection provenance, not dependency pins.",
                 "The immutable CREBAIN fixture-source commit binds one embedded offline data artifact. It is not a runtime dependency or reciprocal deployment qualification.",
-                "The immutable NCP release-status snapshot is inspection provenance. It does not replace the wire-0.8 dependency pin or qualify either external role.",
+                "The immutable NCP release-status snapshot is inspection provenance. It does not replace the NCP dependency selection or qualify either external role.",
                 "No observation claims reciprocal final-candidate acceptance, deployment qualification, or a current Haldir, Prisoma, Engram/Paper2Brain, ROS, or external-authority runtime edge.",
                 "Later Haldir observations do not rewrite the discovery observation or frozen historical evidence.",
                 "ECO-018 supersedes the active dependency selection in ECO-001. It does not rewrite that historical observation or the CREBAIN producer's immutable preregistration.",
                 "ECO-019 observes a signed review-branch commit. It is not merged Haldir main, an implemented audit route, or runtime qualification.",
+                "ECO-020 supersedes the active NCP dependency selection in ECO-002. It does not rewrite that historical wire-0.8 observation, and the untagged candidate commit is not a tagged NCP release.",
                 "The directed declared graph is acyclic: optional upstream inputs point into Galadriel, prospective evidence consumers point outward, and no command or feedback edge returns upstream.",
             ],
         )
         self.assertEqual(
             [row["id"] for row in observations],
-            [f"ECO-{index:03d}" for index in range(1, 20)],
+            [f"ECO-{index:03d}" for index in range(1, 21)],
         )
         self.assertEqual(
             [row["project"] for row in observations],
@@ -3244,6 +3267,7 @@ class ReviewToolsTest(unittest.TestCase):
                 "Prisoma",
                 "pid-rs",
                 "Haldir",
+                "NCP",
             ],
         )
         self.assertTrue(
@@ -3272,6 +3296,7 @@ class ReviewToolsTest(unittest.TestCase):
                 "ECO-017": "ECO-015",
                 "ECO-018": "ECO-001",
                 "ECO-019": "ECO-012",
+                "ECO-020": "ECO-002",
             },
         )
         self.assertEqual(

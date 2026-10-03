@@ -34,7 +34,7 @@
       "id": "CLM-003",
       "claim": "The NCP adapters bound JSONL/live state, validate versioned producer and lifecycle envelopes, and retain explicit typed terminal faults.",
       "tier": "IMPLEMENTED",
-      "scope": "galadriel-ncp component and in-process receiver behavior at the exact NCP 0.8 pin",
+      "scope": "galadriel-ncp component and in-process receiver behavior at the exact NCP 1.0.0-rc.1 candidate pin",
       "evidence": [
         "crates/galadriel-ncp/src/lib.rs",
         "crates/galadriel-ncp/src/assembler.rs",

@@ -19,8 +19,8 @@
     "crates/galadriel-justify"
   ],
   "root_git_pins": {
-    "ncp-core": "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
-    "ncp-zenoh": "git+https://github.com/sepahead/NCP?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e",
+    "ncp-core": "git+https://github.com/sepahead/NCP?rev=2819dae3b6338bb1df6d105ebb5b7433936a993d#2819dae3b6338bb1df6d105ebb5b7433936a993d",
+    "ncp-zenoh": "git+https://github.com/sepahead/NCP?rev=2819dae3b6338bb1df6d105ebb5b7433936a993d#2819dae3b6338bb1df6d105ebb5b7433936a993d",
     "pid-core": "git+https://github.com/sepahead/pid-rs?rev=bc3aa80fb6025e709c2906a08bce25a4fac40578#bc3aa80fb6025e709c2906a08bce25a4fac40578",
     "zenoh-transport": "git+https://github.com/sepahead/zenoh-transport-lz4-backport?rev=9045545b72a77602a87f40203cb614b48157b4bc#9045545b72a77602a87f40203cb614b48157b4bc"
   },
