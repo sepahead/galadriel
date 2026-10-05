@@ -190,6 +190,31 @@ Require it to bind both tiers to the expected candidate commit and tree.
 Require it to verify both complete manifest inventories and `SHA256SUMS` files.
 
 
+## Coupled release records
+
+These records change together. Change one only through its owning command.
+Run the release-audit generator last, after every other edit.
+
+- `release/0.9.0/audit-manifest.json` and `release/0.9.0/requirements-ledger.json` come from
+  `python3 -B -E -s -S scripts/release_audit.py generate`. The generator reads the Git index.
+  Stage every change first. Then run `python3 -B -E -s -S scripts/release_audit.py verify`.
+- `release/0.9.0/local-convergence-schema.json` comes from
+  `python3 -B -E -s -S repo_work/local_convergence.py write-schema --repo .`.
+  Check it with `python3 -B -E -s -S repo_work/local_convergence.py schema --repo .`.
+- A deliberate runbook edit changes `RELEASE_RUNBOOK_CONTRACT_SHA256` in `scripts/release_audit.py`.
+  Hash the runbook after you replace its two mode-dependent lines with their placeholders.
+- The 116-task projection in `release/0.9.0/` is frozen by `clm-018-assurance.json`.
+  `task-closure-plan.json` copies each `NOT_CLAIMED` limitation, for example `CLM-008` as `T105`.
+  Do not change those limitations. Record a correction as an erratum in [Claims](CLAIMS.md).
+- An ecosystem change adds one new observation to `release/0.9.0/ecosystem-cut.json`.
+  The new row supersedes the old row, which stays unchanged.
+  Update the expected row in `scripts/release_audit.py` and the exact copy in `repo_work/tests/test_review_tools.py`.
+  Raise `inspected_at` and the `audit_date` in `audit-inputs.json` to the observation date.
+- A `Cargo.lock` change that alters the license inventory adds an append-only record in
+  `release/0.9.0/tool-inputs/`. The record copies its predecessor's active projection as history.
+  Update the `EXPECTED_*` constants in `repo_work/qualification_artifacts.py`, the chain test,
+  `RELEASE_INPUTS` in `repo_work/freeze_audit_inputs.py`, and `audit-inputs.json`.
+
 ## Required verification
 
 Run focused tests while you edit.

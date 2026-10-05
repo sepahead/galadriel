@@ -93,20 +93,20 @@
       "size_bytes": 1508
     },
     {
-      "git_blob_id": "0c9f7c4b26bc245273aeb4d32ee5075291460639",
+      "git_blob_id": "bb3f2b9c9f16dbe0aeaf4cf12e6c2a7bb56fffad",
       "git_mode": "100644",
       "path": "AGENTS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "2febee47b2e91f914fc97df7aa039dc772ece51c55b20b903bd5daac3eb693c9",
-      "size_bytes": 14619
+      "sha256": "145837b3c67ff4d6b129ca9d672bf1b70292941f0789c1ec84b2281df111fe11",
+      "size_bytes": 15669
     },
     {
-      "git_blob_id": "521ce3ba96d6c94f29ccfc3bfe38fc7002066728",
+      "git_blob_id": "486e42b91024888ec3736e61befdd2b8fe5f8b1d",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "40fe31f36f63e28ede2885dba7327111eed0829c14cd5960f5e37fc5516b6d45",
-      "size_bytes": 65213
+      "sha256": "658a2f11c44253099a2b6b4b97e02485bedaea4e3488a3a4c789a468a4a2dd0e",
+      "size_bytes": 65752
     },
     {
       "git_blob_id": "93e56077732b34820e2594e8f61d5579b5f9849d",
@@ -117,12 +117,12 @@
       "size_bytes": 938
     },
     {
-      "git_blob_id": "7acd684e161a7ed948ef6f19287228bf992e6ec5",
+      "git_blob_id": "fc37f98abf832d6ccc1bf807f82c14389aabe04d",
       "git_mode": "100644",
       "path": "CLAUDE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7a9433f1921e0b92bec8389d981eff74020998726e048abf8166c1a5d083a330",
-      "size_bytes": 704
+      "sha256": "10ffd3cd902646efbe82f8418c264c699a97832c66b2a98ee01a2135e1ff45e2",
+      "size_bytes": 848
     },
     {
       "git_blob_id": "1c62dcffc0190075a0d62a8dc6fb30bfd5a9c79a",
@@ -1525,12 +1525,12 @@
       "size_bytes": 25212
     },
     {
-      "git_blob_id": "e20fe557eefc53db5747149a72732b29c5e2f3f4",
+      "git_blob_id": "7813f4b7675a515c9000ed3572b8711b74edeaa1",
       "git_mode": "100644",
       "path": "docs/MAINTAINER_WORKFLOWS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7567f533a6903fbf605f08b87481d383a081815c6059df2474319d9da7074ccc",
-      "size_bytes": 15501
+      "sha256": "a3dc50ce364d9df2d7098ab9c00bf601e628d63e0a86da2b0069ee65e6c336ca",
+      "size_bytes": 17359
     },
     {
       "git_blob_id": "82f2b089424fbc753290a01329a43b8257de06d3",
@@ -1581,12 +1581,12 @@
       "size_bytes": 15068
     },
     {
-      "git_blob_id": "f4789562a12d51e285f2819f2aee1de66bef875b",
+      "git_blob_id": "4a7d673a3db3aaffc9aad173a0762b47b60eb6a8",
       "git_mode": "100644",
       "path": "docs/PRODUCER-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "314b38d5730fb1059bffd9fcb46b0ee18106fa93be911f11360585911127e923",
-      "size_bytes": 38322
+      "sha256": "55a5521360b43b6e9ec445fab3e0b1807d41018b1df4321c3e97f72ee85ceb88",
+      "size_bytes": 38371
     },
     {
       "git_blob_id": "659f629c57ce9eb2db4af0fa528aeed49a125603",

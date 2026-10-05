@@ -51,13 +51,19 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Changed
 
+- Rewrite the agent contract. `AGENTS.md` gains an authority-and-workflow section
+  (agents may merge CI-green pull requests to `main`; tags, releases, reference
+  deletion, and settings stay release-operator actions) and an artifact-classes
+  section. `CLAUDE.md` imports `AGENTS.md`. The pin table becomes a pointer to
+  `Cargo.lock` and `.ncp-consumer`, which also corrects a stale wire-0.8 statement.
+  Maintainer workflows gain the coupled release records and their generators.
 - Move the optional NCP integration from the immutable `v0.8.0` commit (wire
   0.8) to the untagged NCP 1.0.0-rc.1 candidate at commit
   `2819dae3b6338bb1df6d105ebb5b7433936a993d` (wire 1.0, compact `CONTRACT_HASH`
   `163acc57d8a62b66`). The observation sidecar and producer-monitor envelopes
-  advance from schema 1.0 to 2.0. Their shapes are unchanged; only
-  `schema_version` and `ncp_version` change, and schema 1.0 envelopes are
-  rejected. The new `galadriel-pid-envelope-v2` and `galadriel-monitor-envelope-v2`
+  advance from schema 1.0 to 2.0. Their shapes are unchanged; the
+  `schema_version` and `ncp_version` constants change, `contract_hash` carries
+  the candidate's value, and schema 1.0 envelopes are rejected. The new `galadriel-pid-envelope-v2` and `galadriel-monitor-envelope-v2`
   JSON Schemas define the producer contract; the v1 files remain as the record of
   the retired envelope. A producer such as CREBAIN must emit schema 2.0 with
   `ncp_version` 1.0. The 0.9.0 release records add ecosystem observation

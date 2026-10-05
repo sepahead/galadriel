@@ -5,6 +5,17 @@ This file defines the operating contract for maintainers and coding agents.
 Every completion claim must name its tested scope and remaining limitations.
 Current requirements, historical observations, and proposed capabilities remain separate.
 
+## Authority and workflow
+
+The owner authorizes agents to commit, push branches, and merge pull requests to `main`.
+`main` requires signed commits, linear history, and the three required CI checks.
+Work on a signed branch, open a pull request, wait for green CI, and squash-merge it.
+Publishing a release, creating or moving a tag, deleting references, and changing repository settings remain release-operator actions.
+Do not add AI attribution or co-author trailers.
+Preserve unrelated work and another contributor's active scope.
+Edit only assigned paths during delegated work.
+Report an ownership conflict before editing a shared file.
+
 ## Read before changing
 
 Read [README.md](README.md), [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [RELEASE-POLICY.md](RELEASE-POLICY.md), and [SUPPORT.md](SUPPORT.md).
@@ -27,8 +38,8 @@ Use an exact commit as retained identity. A mutable branch name is insufficient.
 
 ## Working method
 
-1. Preserve unrelated work and another contributor's active scope.
-2. Inventory branches and worktrees before recovery work.
+1. Inventory branches and worktrees before recovery work.
+2. Question each assumption in the task and verify each fact against its primary source.
 3. Compare five to ten credible approaches before a material design decision.
 4. State each approach's assumptions, benefits, failure modes, and decisive experiment.
 5. Use independent reviews for separable scientific, security, ownership, and release decisions.
@@ -48,8 +59,6 @@ Retain failed trials and negative results. Do not replace difficult cases to imp
 Recover useful work at the hunk or component level.
 Record retained, integrated, superseded, and rejected work with reasons.
 Remove a branch or worktree only after preserving its useful changes and audit evidence.
-Edit only assigned paths during delegated work.
-Report an ownership conflict before editing a shared file.
 
 ## Scientific and authority boundaries
 
@@ -87,20 +96,17 @@ Unsigned in-memory receipts are not a durable journal.
 The default build remains pure and small.
 Keep `dependence`, `ncp`, and `ncp-live` off by default.
 The root workspace has exactly seven members.
-Its root lock pins four Git packages:
-
-| Packages | Exact source revision |
-| --- | --- |
-| `pid-core` | `bc3aa80fb6025e709c2906a08bce25a4fac40578` |
-| `ncp-core`, `ncp-zenoh` (untagged NCP 1.0.0-rc.1 candidate) | `2819dae3b6338bb1df6d105ebb5b7433936a993d` |
-| `zenoh-transport` | `9045545b72a77602a87f40203cb614b48157b4bc` |
+`Cargo.lock` and `.ncp-consumer` own its four exact Git package pins.
+They select `pid-core` from pid-rs, `ncp-core` and `ncp-zenoh` from the untagged NCP 1.0.0-rc.1
+candidate, and the reviewed `zenoh-transport` backport.
+[Dependency policy](docs/DEPENDENCY-POLICY.md) records each revision.
 
 The selected pid-rs revision's `pid-core` manifest declares version `0.9.0`.
 No resolved feature profile includes `pid-runlog`.
 Every KSG point fit uses the report-first `ksg_mi_report_with_budget` route.
 Its preflight and execution share one explicit single-thread `ResourceBudget`.
 
-Those NCP packages use wire `0.8`.
+Those NCP packages use wire `1.0`.
 Their pin does not prove compatibility with a different contract, current producer, or remote deployment.
 The example `engram/ncp` realm does not create an application integration.
 Galadriel has no ROS binding, Haldir runtime edge, or command-authority path.
@@ -147,6 +153,33 @@ Do not call it a broker or operating-system memory ceiling.
 Secure configuration is not external mTLS/ACL qualification or exclusive router-certificate pinning.
 Local puts and valid receipt hashes do not establish receiver delivery or physical truth.
 
+## Artifact classes
+
+Classify every artifact before you change it.
+
+Keep these historical or generated records unchanged except through their explicit owning procedure:
+
+- `evidence/results/post-audit-v1-8a0084f/report.md`
+- `release/0.9.0/evidence/ACCEPTANCE-CRITERIA.md`
+- `release/0.9.0/reviews/phase-1.md`
+- `release/0.9.0/WITHDRAWN-RELEASES.md`
+- Historical signed inputs, receipts, source bindings, and archived review bytes
+
+The immutable 116-task projection is `tasks.json`, `task-closure-plan.json`, and `task-dispositions.json` in `release/0.9.0/`.
+`clm-018-assurance.json` binds their exact bytes.
+The closure plan copies each `NOT_CLAIMED` limitation, for example `CLM-008` as `T105`.
+Those claim limitations are therefore frozen; record a correction as an erratum in [Claims](docs/CLAIMS.md).
+
+Generated records change only through their generators.
+[Maintainer workflows](docs/MAINTAINER_WORKFLOWS.md#coupled-release-records) lists each generator and its coupled checks.
+This covers the audit manifest, requirements ledger, local-convergence schema, runbook contract hash, license projection chain, and ecosystem cut.
+
+Preserve license files byte-for-byte.
+Do not rewrite contract, fixture, schema, or evidence JSON as style work.
+Generate current projections through their declared generators.
+The living source inventory must cover every current tracked file except its declared self-exclusion.
+Do not rewrite immutable historical inventories when paths move.
+
 ## Release and preservation
 
 The source version is `0.9.0` through a review-gated GitHub research source release process.
@@ -174,20 +207,6 @@ Do not recreate the active folder or edit its archived four-file evidence set.
 Preserve the original path, commit, blob, size, and SHA-256 mapping.
 Relocation does not refresh the reviews or grant current qualification.
 
-Keep these historical or generated records unchanged except through their explicit owning procedure:
-
-- `evidence/results/post-audit-v1-8a0084f/report.md`
-- `release/0.9.0/evidence/ACCEPTANCE-CRITERIA.md`
-- `release/0.9.0/reviews/phase-1.md`
-- `release/0.9.0/WITHDRAWN-RELEASES.md`
-- Historical signed inputs, receipts, source bindings, and archived review bytes
-
-Preserve license files byte-for-byte.
-Do not rewrite contract, fixture, schema, or evidence JSON as style work.
-Generate current projections through their declared generators.
-The living source inventory must cover every current tracked file except its declared self-exclusion.
-Do not rewrite immutable historical inventories when paths move.
-
 ## Validation, language, and handoff
 
 Run focused checks during implementation.
@@ -211,6 +230,3 @@ Candidate-controlled qualification commands must not receive ambient credentials
 Record exact source identity, commands, tools, inputs, exit status, and evidence limitations.
 Keep qualification output outside the checkout in a fresh owned directory.
 Preserve unrelated work and staged state at handoff.
-Do not add AI attribution or co-author trailers.
-Only the release operator can merge, publish, tag, delete references, or change repository settings.
-A delegated agent prepares a concrete reviewed result and does not attempt those actions.

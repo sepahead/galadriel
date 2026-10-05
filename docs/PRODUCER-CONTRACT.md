@@ -32,8 +32,8 @@ Deployment evidence is excluded.
 This contract owns the wire-1.0 sidecar and lifecycle routes.
 Both route envelopes use schema `2.0` with `ncp_version = "1.0"` and the
 `CONTRACT_HASH` of the pinned NCP 1.0.0-rc.1 candidate (`163acc57d8a62b66`).
-Schema `2.0` keeps the exact schema `1.0` shapes; only the `schema_version` and
-`ncp_version` values change. Schema `1.0` carried wire `0.8` and is no longer
+Schema `2.0` keeps the exact schema `1.0` shapes. The `schema_version` and
+`ncp_version` constants change, and `contract_hash` carries the candidate's value. Schema `1.0` carried wire `0.8` and is no longer
 accepted.
 In this contract, "v1 observation" names the frozen observation shape of the
 observation route, and the monitor field `v1_expected` keeps its name.
