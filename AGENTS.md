@@ -16,7 +16,7 @@ Then read the documents that own the affected surface:
 | Core types, detector, fusion, configuration | [Core contract](docs/CORE-CONTRACT.md), [Configuration](docs/CONFIGURATION-CONTRACT.md), [Statistics](docs/STATISTICAL-CONTRACT.md), [State machine](docs/STATE-MACHINE.md) |
 | Public claims and API scope | [Claims](docs/CLAIMS.md), [API policy](docs/API-SURFACE.md), [Release record](release/0.9.0/README.md) |
 | Scalar library and local NCP owner | [Adapter guide](crates/galadriel-local-adapter/README.md), its [source profile](crates/galadriel-local-adapter/source-profile.json), [Dependency policy](docs/DEPENDENCY-POLICY.md) |
-| Retained wire-0.8, JSONL, Zenoh, producers | [Producer contract](docs/PRODUCER-CONTRACT.md), [Secure deployment](docs/SECURE-DEPLOYMENT.md), [Ecosystem record](docs/ECOSYSTEM-CONNECTIONS.md) |
+| Wire-1.0 sidecars, JSONL, Zenoh, producers | [Producer contract](docs/PRODUCER-CONTRACT.md), [Secure deployment](docs/SECURE-DEPLOYMENT.md), [Ecosystem record](docs/ECOSYSTEM-CONNECTIONS.md) |
 | MI companion and offline PID | [PID migration](docs/PID_RS_1_0_MIGRATION.md), [Evaluation](docs/EVALUATION.md), [Justification](docs/JUSTIFICATION.md) |
 | Downstream advisory use | [Advisory boundary](docs/ADVISORY-BOUNDARY.md), [Ecosystem record](docs/ECOSYSTEM-CONNECTIONS.md) |
 | Evidence, qualification, assets, publication | [Maintainer workflows](docs/MAINTAINER_WORKFLOWS.md), [Dependency policy](docs/DEPENDENCY-POLICY.md), [Release runbook](release/0.9.0/RELEASE-RUNBOOK.md), [Review utilities](repo_work/README.md) |
@@ -87,12 +87,12 @@ Unsigned in-memory receipts are not a durable journal.
 The default build remains pure and small.
 Keep `dependence`, `ncp`, and `ncp-live` off by default.
 The root workspace has exactly seven members.
-Its historical lock retains four Git package pins:
+Its root lock pins four Git packages:
 
 | Packages | Exact source revision |
 | --- | --- |
 | `pid-core` | `bc3aa80fb6025e709c2906a08bce25a4fac40578` |
-| `ncp-core`, `ncp-zenoh` | `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e` |
+| `ncp-core`, `ncp-zenoh` (untagged NCP 1.0.0-rc.1 candidate) | `2819dae3b6338bb1df6d105ebb5b7433936a993d` |
 | `zenoh-transport` | `9045545b72a77602a87f40203cb614b48157b4bc` |
 
 The selected pid-rs revision's `pid-core` manifest declares version `0.9.0`.

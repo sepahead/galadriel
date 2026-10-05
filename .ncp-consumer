@@ -1,24 +1,24 @@
 # This file declares the exact Neuro-Cybernetic Protocol (NCP) pins for Galadriel.
 # NCP consumer tools find this file without repository-specific logic.
 # The relevant tools are check-consumer-pins.sh and repin-ncp.sh.
-# Galadriel pins an immutable release commit instead of a movable tag.
+# Galadriel pins an immutable commit instead of a movable tag.
 # Each revision row also records the consumer release label.
-# The NCP repinner derives the commit from the canonical local tag.
+# The pinned commit is the unreleased NCP 1.0.0-rc.1 candidate.
+# It has no release tag, so the label is not a tag and the commit is its identity.
+# Its wire is 1.0 and its compact CONTRACT_HASH is 163acc57d8a62b66.
+# The previous pin was the commit of the immutable v0.8.0 tag (wire 0.8).
 #
 # These revision rows need NCP consumer tooling at commit
 # 205384508d619923e05aef192bedaeb57cf665fc or later.
-# The pinned v0.8.0 runtime checker predates these row types.
-# That checker can skip both rows.
+# The pinned candidate contains that tooling.
 # The Galadriel feature graph gate rejects an invalid local descriptor.
 # Invalid descriptors are empty, unknown, legacy, partial, or drifted.
-# Current NCP HEAD is the unreleased and release-blocked 1.0.0-rc.1 candidate.
-# Its wire is 1.0 and its compact CONTRACT_HASH is 163acc57d8a62b66.
-# Galadriel remains on immutable v0.8.0 and has no native-1.0 migration.
+# Galadriel implements no native-1.0 observer or raw-advisory publisher role.
 #
 # The default command-line interface (CLI) graph has no NCP dependency.
 # The galadriel-ncp workspace crate has a direct ncp-core dependency.
 # The galadriel-eval workspace crate depends on galadriel-ncp.
 # The off-by-default CLI `ncp` feature selects the adapter.
 # The `ncp-live` feature also enables ncp-zenoh, Zenoh, and Tokio.
-cargo_rev       Cargo.toml v0.8.0 2f5bd586d4bb20c90362bb6f5698b7f64057ba4e
-cargo_lock_rev  Cargo.lock v0.8.0 2f5bd586d4bb20c90362bb6f5698b7f64057ba4e
+cargo_rev       Cargo.toml v1.0.0-rc.1 2819dae3b6338bb1df6d105ebb5b7433936a993d
+cargo_lock_rev  Cargo.lock v1.0.0-rc.1 2819dae3b6338bb1df6d105ebb5b7433936a993d

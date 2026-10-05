@@ -6,7 +6,7 @@
 Its default library has no NCP dependency.
 The optional native owner selects only the standalone `ncp-local` SDK.
 It reuses the existing `galadriel-core` package from the same source tree.
-It does not copy the detector or change root PID and wire-0.8 pins.
+It does not copy the detector or change the root PID and NCP pins.
 
 The package remains experimental, version `0.9.0`, with `publish = false`.
 Its source contract is `crates/galadriel-local-adapter/source-profile.json`.
@@ -45,12 +45,18 @@ Keep every other tool pin and the RustSec database unchanged.
 Repeat all affected host, dependency-policy, Python, and source checks.
 This revision grants no scientific status, release freeze, or terminal qualification.
 
-## Chacha20 license-inventory projection
+## License-inventory projection chain
 
-The compatible `chacha20` lock patch also changes its exact license-inventory package identity.
-The [license input record](../release/0.9.0/tool-inputs/rustsec-2026-0041-0285-license-2026-09-29.json) binds the current projection hashes and names its predecessor, the [chacha20 record](../release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json).
-Only `chacha20 0.10.1` becomes `0.10.2`; its MIT and Apache-2.0 license assignments remain identical.
-The verifier still requires exactly 382 packages, 707 assignments, and both complete identity projections.
+Each compatible lock change that alters the license inventory adds one input record.
+Each record names its predecessor and copies the predecessor's active projection as its historical projection.
+
+1. The [chacha20 record](../release/0.9.0/tool-inputs/chacha20-license-2026-09-05.json) changes only `chacha20 0.10.1` to `0.10.2`; its MIT and Apache-2.0 assignments remain identical.
+2. The [Zenoh transport record](../release/0.9.0/tool-inputs/rustsec-2026-0041-0285-license-2026-09-29.json) selects the reviewed `zenoh-transport` backport and the patched `lz4_flex`, `rustls`, `rustls-webpki`, and `spin` releases.
+3. The [pid-core record](../release/0.9.0/tool-inputs/pid-core-bc3aa80-license-2026-10-01.json) replaces `pid-core` and `pid-runlog` 1.0.0 with `pid-core` 0.9.0 at `bc3aa80`.
+4. The [NCP record](../release/0.9.0/tool-inputs/ncp-2819dae-license-2026-10-03.json) replaces `ncp-core` and `ncp-zenoh` 0.8.0 with the 1.0.0-rc.1 candidate and adds `sha2` 0.10.9 (Apache-2.0 or MIT).
+
+The NCP record binds the current projection hashes.
+The verifier requires exactly 382 packages, 707 assignments, and both complete identity projections.
 Historical or altered inventories cannot satisfy the current source gate.
 
 ## Abbreviations
@@ -436,13 +442,13 @@ In a passing qualification, the SBOMs describe the qualified source graph.
 They do not identify a deployed binary or target environment.
 
 The license inventory uses scope `CARGO_DENY_HOST_FILTERED_GRAPH`.
-It contains the exact 381-package host-filtered subset of the validated
-436-package graph.
-It contains exactly 705 license assignments.
+It contains the exact 382-package host-filtered subset of the validated
+437-package graph.
+It contains exactly 707 license assignments.
 Its sorted package-identity set has this SHA-256 value:
-`272dc6ab496ff2c0c9a43991c01b8b2d5a9ce1004afcc15adbea6c25908ab280`.
+`033803e9ac6dc08ed85c915ceaa6887d6f1a4c60ebc56874ce838e6e91fd19df`.
 Its canonical package-and-license content has this SHA-256 value:
-`bcc6f05fe91eaecf62f74db821453b6d35d01fbf7fe94245e7c74ecc9ed24822`.
+`bac82b0bdfa8f92efec88bb205b86fedd7b3899cc101d086039911ae2d5d03c4`.
 The supply-chain CI job rebuilds this inventory from locked metadata.
 It verifies both exact digests.
 
@@ -451,7 +457,7 @@ The exact identity form is `workspace+crates/{name}#{name}@{version}`.
 This inventory does not describe another host or target graph.
 
 The license-policy summary requires zero errors and zero warnings.
-It also requires 374 accepted help records and seven skipped notes.
+It also requires 374 accepted help records and eight skipped notes.
 The vulnerability report requires the pinned database and exact `Cargo.lock`.
 It retains the two declared unmaintained-package warnings.
 These checks do not prove vulnerability-free code or maintenance assurance.
@@ -485,15 +491,17 @@ the immutable CREBAIN producer preregistration and the migration record, not a
 second active dependency pin.
 Upstream pid-rs release qualification remains `NOT_CLAIMED`.
 
-NCP qualification applies only to the commit selected by the public annotated
-`v0.8.0` tag.
-The exact NCP revision is `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`.
-The 2026-08-03 NCP status inspection is bound to
-[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
-That commit is the unreleased and release-blocked `1.0.0-rc.1` candidate.
+NCP qualification applies only to the untagged `1.0.0-rc.1` candidate commit
+`2819dae3b6338bb1df6d105ebb5b7433936a993d`.
 It uses wire `1.0` and compact `CONTRACT_HASH` `163acc57d8a62b66`.
-The local wire-0.8 qualification does not apply to that candidate or to NCP 1.0.
-Galadriel has no native-1.0 migration or compatibility evidence.
+The candidate has no release tag, so the commit is its identity.
+Under GLD-090-PIN-004 it is not a released integration.
+The retired pin was commit `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`, selected
+by the public annotated `v0.8.0` tag (wire `0.8`).
+The 2026-08-03 NCP status inspection is bound to
+[commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd),
+an earlier state of the same unreleased and release-blocked candidate.
+Galadriel has no native-1.0 role or compatibility evidence.
 
 The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
 records `G03` as `OPEN`.
@@ -512,7 +520,7 @@ or widen authority, or encode an authoritative effect, `ALLOW`, or command.
 No native-1.0 raw-advisory publisher exists.
 Galadriel 0.9 records native-1.0 integration as `NOT_CLAIMED`.
 That claim tier is separate from NCP's external **NOT RUN** gate state.
-GitHub reports that the tag object and target commit are unsigned.
+GitHub reports that commit `2819dae3b6338bb1df6d105ebb5b7433936a993d` is unsigned.
 The immutable 40-hex revision and Cargo lock entry give identity.
 They do not give upstream signature assurance.
 
@@ -520,16 +528,15 @@ They do not give upstream signature assurance.
 default. A temporary exception **SHALL** name the exact package, owner, reason,
 and expiry.
 
-The only 0.9.0 exceptions are `spin` 0.9.8 and 0.10.0. The exact NCP 0.8 and
-Zenoh 1.9 graph selects them transitively. Neither package has a RustSec advisory
-in the checked database. The exceptions expire on 2026-10-01.
-The reviewed NCP and Zenoh migration **SHALL** remove them.
+`deny.toml` has no yanked-release or advisory exception. It sets
+`yanked = "deny"` and an empty advisory `ignore` list. The 2026-09-29 lock patch
+replaced the yanked `spin` 0.9.8 and 0.10.0 releases with 0.9.9 and 0.10.1. It
+also selected the reviewed Zenoh transport backport, which resolves `lz4_flex`
+0.11.6 and fixes `RUSTSEC-2026-0041`. Transport compression stays disabled as
+defense in depth.
 
-The separate ignored `RUSTSEC-2026-0041` entry has the same owner and expiry. It
-is admissible only while CI proves that the complete all-feature graph excludes
-Zenoh transport compression.
-
-The resolved metadata gate requires one crates.io `zenoh-transport` 1.9.0 package.
+The resolved metadata gate requires one `zenoh-transport` 1.9.0 package from the
+reviewed backport revision `9045545b72a77602a87f40203cb614b48157b4bc`.
 It also requires one matching node.
 It requires exactly `shared-memory`, `transport_tcp`, `transport_tls`,
 `transport_udp`, and `zenoh-shm`.

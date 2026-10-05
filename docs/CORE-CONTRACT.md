@@ -41,8 +41,8 @@ constructor or deserializer performs this validation.
 **GLD-090-DOM-002 — bounded canonical representation.** Numeric identifiers,
 counters, and millisecond timestamps use JSON numbers. These values **SHALL** be
 in `0..=9_007_199_254_740_991`. `TrackId` **SHALL** preserve this complete range.
-The range includes zero. The frozen Galadriel and Crebain observation schema v1
-requires this range.
+The range includes zero. The frozen Galadriel and Crebain observation shape
+requires this range in schema `1.0` and in its wire-1.0 successor, schema `2.0`.
 
 Projection frame, projection context, and frozen-prior identifiers **SHALL** also
 be nonzero. Text identities **SHALL** contain 1 through 64 UTF-8 bytes. They

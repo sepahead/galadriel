@@ -734,13 +734,13 @@ EXPECTED_RELEASE_CRATES = (
 EXPECTED_GIT_PACKAGE_SOURCES = {
     "ncp-core": (
         "git+https://github.com/sepahead/NCP"
-        "?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
-        "#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
+        "?rev=2819dae3b6338bb1df6d105ebb5b7433936a993d"
+        "#2819dae3b6338bb1df6d105ebb5b7433936a993d"
     ),
     "ncp-zenoh": (
         "git+https://github.com/sepahead/NCP"
-        "?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
-        "#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
+        "?rev=2819dae3b6338bb1df6d105ebb5b7433936a993d"
+        "#2819dae3b6338bb1df6d105ebb5b7433936a993d"
     ),
     "pid-core": (
         "git+https://github.com/sepahead/pid-rs"

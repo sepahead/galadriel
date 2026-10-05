@@ -51,6 +51,20 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Changed
 
+- Move the optional NCP integration from the immutable `v0.8.0` commit (wire
+  0.8) to the untagged NCP 1.0.0-rc.1 candidate at commit
+  `2819dae3b6338bb1df6d105ebb5b7433936a993d` (wire 1.0, compact `CONTRACT_HASH`
+  `163acc57d8a62b66`). The observation sidecar and producer-monitor envelopes
+  advance from schema 1.0 to 2.0. Their shapes are unchanged; only
+  `schema_version` and `ncp_version` change, and schema 1.0 envelopes are
+  rejected. The new `galadriel-pid-envelope-v2` and `galadriel-monitor-envelope-v2`
+  JSON Schemas define the producer contract; the v1 files remain as the record of
+  the retired envelope. A producer such as CREBAIN must emit schema 2.0 with
+  `ncp_version` 1.0. The 0.9.0 release records add ecosystem observation
+  `ECO-020`, which supersedes the NCP selection in `ECO-002`, and the license
+  input record for the added `sha2` 0.10.9. The fuzz lock and seeds follow the
+  same pin and schema. Native-1.0 roles and NCP 1.0 qualification remain
+  `NOT_CLAIMED`.
 - Correct the CREBAIN categorical MGW scientific object model and bump its
   machine output from schema v2 to v3. Version 3 separately binds the paper
   functional, raw-row empirical-PMF sample-estimator route, upstream
@@ -161,6 +175,11 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Fixed
 
+- Correct stale dependency-policy statements: the license-inventory counts and
+  digests, the expired `spin` exceptions and the removed `RUSTSEC-2026-0041`
+  ignore (both resolved by the 2026-09-29 lock patch), and the crates.io
+  `zenoh-transport` source (now the reviewed backport). Correct the workflow
+  guide's `pid-core` manifest version to 0.9.0.
 - Remove PID atoms and rotating arithmetic-mean targets from the operational
   sensor-consensus report. The previous rows estimated different questions and
   were not comparable PID atoms.

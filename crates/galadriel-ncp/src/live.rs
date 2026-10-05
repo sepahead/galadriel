@@ -3118,7 +3118,7 @@ mod tests {
         let tap = IngestCounters::default();
         let subscription = IngestCounters::default();
 
-        for (expected_count, version) in [(1, "0.6"), (2, "1.0")] {
+        for (expected_count, version) in [(1, "0.8"), (2, "1.1")] {
             let mut wrong_version = envelope(test_observation(1, 0, 1, Modality::Radar, 3.0, 3));
             wrong_version.ncp_version = version.to_string();
             let payload = serde_json::to_vec(&wrong_version).unwrap();

@@ -4,7 +4,7 @@ This guide retains the detailed source workflows from the previous README.
 Run commands from the repository root.
 The [current overview](../README.md) separates standalone use and the independent local adapter.
 
-The ecosystem inspection section records dated source-release and wire-0.8 boundaries.
+The ecosystem inspection section records dated source-release and NCP pin boundaries.
 Its broad integration statements apply to that historical scope.
 They do not remove the newer [local scalar component](../crates/galadriel-local-adapter/README.md).
 Neither interface has complete installed ecosystem or field-calibration qualification.
@@ -104,7 +104,7 @@ A shared transport or historical fixture also does not prove such an integration
 | Project | Direction | Required or optional | Why connected | Explicit 0.9.0 boundary |
 | --- | --- | --- | --- | --- |
 | [pid-rs](https://github.com/sepahead/pid-rs) | Upstream algorithm library | The default CLI build does not use it. `galadriel-dependence`, justification, and evaluation require its exact `pid-core` pin. The CLI `dependence` feature also requires the pin. It is linked code, not a runtime service. | Stable report-first KSG supports the opt-in in-process/library MI companion. Its executable integrations are the synthetic demo, evaluation, and benchmark; `replay`, `observe`, and NCP do not invoke it. Categorical Makkeh–Gutknecht–Wibral and related-but-distinct continuous Ehrlich–Schick-Poland–Makkeh–Lanfermann–Wollstadt–Wibral PID support separate offline studies. | Pin `1cd2424f7967e1752dcc8e53859e8fdad3566f51` declares 1.0.0. It transitively resolves `pid-runlog` 1.0.0 from the same revision. Galadriel claims no public v1 tag or published upstream 1.x artifact. |
-| [NCP](https://github.com/sepahead/NCP) | Upstream wire and transport libraries | The default CLI build does not use it. `galadriel-ncp`, evaluation, and CLI `ncp` require `ncp-core`. CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` also pulls `ncp-zenoh`, Zenoh, and Tokio. | It supplies wire-0.8 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded offline JSONL, and operational receiver. | Both NCP crates pin `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`. This pin does not prove remote authorization, ACL enforcement, or wire-1.0 compatibility. |
+| [NCP](https://github.com/sepahead/NCP) | Upstream wire and transport libraries | The default CLI build does not use it. `galadriel-ncp`, evaluation, and CLI `ncp` require `ncp-core`. CLI `ncp-live` or direct `galadriel-ncp` feature `zenoh` also pulls `ncp-zenoh`, Zenoh, and Tokio. | It supplies wire-1.0 key, version, and contract helpers. It also supplies the optional Zenoh bus. Galadriel owns its sidecar envelopes, bounded offline JSONL, and operational receiver. | Both NCP crates pin `2f5bd586d4bb20c90362bb6f5698b7f64057ba4e`. This pin does not prove remote authorization, ACL enforcement, or wire-1.0 compatibility. |
 | [Crebain](https://github.com/sepahead/crebain) | External upstream producer relationship | There is no Cargo dependency. The demo, simulation, evaluation, and replay do not require Crebain. Live operation needs an authorized contract-conforming producer. The code identity does not have to be Crebain. | It supplies the inspected reference component for the observation and monitor sidecar contract. It also supplies the byte-identical retained registry fixture. | Crebain's formal 0.9 boundary freezes an earlier Galadriel audit head. Galadriel claims no reciprocal final-candidate or deployment qualification. |
 | [Haldir](https://github.com/sepahead/haldir) | Prospective record-only consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It defines the intended future record-only boundary. It also defines a separately admitted restrict-only boundary. Local tests verify that the validator rejects transitions that grant or widen authority. | The integration phase has not started. There is no runtime evidence. |
 | [Prisoma](https://github.com/sepahead/prisoma) | Prospective downstream offline comparator and covariate consumer | Version 0.9.0 has no dependency, adapter, route, or runtime edge. | It documents a possible future immutable offline covariate import. The inspected historical wire-0.8 surface keeps Galadriel sidecars outside its base `SensorFrame` routes. | The inspected relationship records intention or adjacency only. Shared NCP and PID dependencies do not imply schema compatibility or independent-implementation replication. |
@@ -167,12 +167,13 @@ cross-reference.
 These mutable repository heads are inspection provenance, not reciprocal compatibility pins.
 The 2026-08-03 NCP status inspection is bound to
 [commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).
-That commit is the unreleased and release-blocked `1.0.0-rc.1` candidate.
+That commit is an earlier state of the same unreleased and release-blocked
+`1.0.0-rc.1` candidate.
 It uses wire `1.0` and compact `CONTRACT_HASH` `163acc57d8a62b66`.
-The latest immutable NCP release is `v0.8.0`, which uses a different wire.
-Galadriel remains pinned to that release and has no native-1.0 migration.
-Wire `1.0` is incompatible with the current named wire-0.8 sidecars.
-These sidecars are historical NCP 1.0 migration input, not native-1.0 role evidence.
+Galadriel now pins that candidate at commit `2819dae3b6338bb1df6d105ebb5b7433936a993d`.
+The latest tagged NCP protocol release is `v0.8.0`, which uses wire `0.8`.
+The named sidecars carry wire `1.0` in schema `2.0` envelopes.
+They are project surfaces, not native-1.0 role evidence.
 
 The pinned [NCP task ledger](https://github.com/sepahead/NCP/blob/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd/evidence/implementation/task-ledger.v1.json)
 records `G03` as `OPEN`.
@@ -192,7 +193,7 @@ non-authoritative requested effect.
 It cannot reuse observer credentials, self-admit, derive `StateUnusable`, grant
 or widen authority, or encode an authoritative effect, `ALLOW`, or command.
 No native-1.0 raw-advisory publisher exists.
-Crebain retains component-level schema-v1 alignment.
+Crebain retains component-level alignment only with the retired schema `1.0`; the current envelopes use schema `2.0`.
 Crebain freezes Galadriel `94e2f8cc01f352d2bf899b7f656997f143a2588f` only as an audit input.
 
 None of the retained Haldir objects contains a Galadriel adapter or runtime edge.
@@ -207,7 +208,7 @@ The canonical [machine-readable inspection cut](../release/0.9.0/ecosystem-cut.j
 It also binds local absence declarations, relationship classes, optionality, rationale, and the acyclic boundary.
 It binds the ordered Haldir supersession and Paper2Brain observation.
 It classifies the immutable 2026-08-03 NCP release-status snapshot separately
-from Galadriel's unchanged wire-0.8 dependency pin.
+from Galadriel's NCP dependency selection.
 
 [`docs/PRODUCER-CONTRACT.md`](../docs/PRODUCER-CONTRACT.md) defines the exact route and lifecycle rules.
 [`docs/ADVISORY-BOUNDARY.md`](../docs/ADVISORY-BOUNDARY.md) defines the downstream-effect rules.
@@ -484,8 +485,8 @@ Workspace-wide builds deliberately include those crates.
 | Feature | Pulls | Adds |
 |---|---|---|
 | default | no sibling integration crates | core, simulator, CLI |
-| `dependence` | Exact `pid-core` Git revision whose manifest declares 1.0.0. Only its stable default surface is selected; `parallel` and research features remain off. | Descriptive report-first pairwise KSG-MI companion. It does not change the default verdict and makes no upstream 1.x release claim. |
-| `ncp` | `ncp-core` | Bounded JSONL ingest. NCP 0.8 key helpers. Strict observation and producer-monitor envelopes. The CLI `replay` subcommand. |
+| `dependence` | Exact `pid-core` Git revision whose manifest declares 0.9.0. Only its stable default surface is selected; `parallel` and research features remain off. | Descriptive report-first pairwise KSG-MI companion. It does not change the default verdict and makes no upstream 1.x release claim. |
+| `ncp` | `ncp-core` | Bounded JSONL ingest. NCP 1.0 key helpers. Strict observation and producer-monitor envelopes. The CLI `replay` subcommand. |
 | `ncp-live` | `ncp-zenoh`, exact `zenoh` 1.9 guard types, `tokio` | strict `observe` command plus bounded two-route receiver, deadlines, lifecycle gate, and health state |
 
 Raw JSONL replay does not contain the required producer, lifecycle, and clock
@@ -502,9 +503,9 @@ The pinned `ncp-core` manifest also declares opt-in `schema` and `ts` aliases.
 The retained offline, live, and evaluation dependency graphs select neither alias.
 
 Exact Git revisions pin the public `pid-rs` repository and NCP's `ncp-core` and `ncp-zenoh` crates.
-The pid-rs revision declares 1.0.0.
+The pid-rs revision's `pid-core` manifest declares 0.9.0.
 The retained 2026-07-22 inspection found no public v1 tag.
-The NCP revision corresponds to public tag `v0.8.0`.
+The NCP revision is the untagged `1.0.0-rc.1` candidate commit.
 A fresh clone needs no sibling checkout, private repository token, or global Git credential rewrite.
 
 For prospective live use, use only the rendered observer configuration.
@@ -588,13 +589,13 @@ It does not authenticate the writer or make the receipts durable.
 Receipts remain in-memory audit evidence, not a durable journal.
 See [`docs/STATE-MACHINE.md`](../docs/STATE-MACHINE.md).
 
-Every live payload uses a strict `galadriel_pid_observation` schema `1.0` envelope.
+Every live payload uses a strict `galadriel_pid_observation` schema `2.0` envelope.
 The envelope carries `ncp_version`, advisory `contract_hash`, `session_id`, and `producer_id`.
 The two identities use the canonical Galadriel core ASCII grammar.
 The runtime rejects a generic NCP-valid value that does not use this grammar.
 
 The envelope also carries the historical Crebain-compatible `observation` shape.
-[`galadriel-pid-envelope-v1.schema.json`](../crates/galadriel-ncp/schemas/galadriel-pid-envelope-v1.schema.json) defines the exact contract for an external producer.
+[`galadriel-pid-envelope-v2.schema.json`](../crates/galadriel-ncp/schemas/galadriel-pid-envelope-v2.schema.json) defines the exact contract for an external producer.
 This file is a frozen producer-conformance schema.
 The runtime `SidecarEnvelope` validation gate is the authoritative consumer-acceptance check.
 
@@ -617,9 +618,9 @@ Producers MUST use a fresh deployment-supplied session identifier for every proc
 Monitor heartbeats make all-modal silence visible after the finite initial grace.
 They also make it visible after the configured steady monotonic deadline.
 
-Producer lifecycle and liveness use a separate strict `galadriel_producer_event` schema `1.0`.
+Producer lifecycle and liveness use a separate strict `galadriel_producer_event` schema `2.0`.
 It uses `{realm}/session/{epoch}/sensor/galadriel-monitor`.
-[`galadriel-monitor-envelope-v1.schema.json`](../crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v1.schema.json) freezes its bounded codec.
+[`galadriel-monitor-envelope-v2.schema.json`](../crates/galadriel-ncp/schemas/galadriel-monitor-envelope-v2.schema.json) freezes its bounded codec.
 It also freezes adjacent-tagged heartbeat, outcome, miss, and frame-summary types.
 The monitor tap, pinned registry, fail-closed assembler, lifecycle adapter, and operational receiver implement the Galadriel consumer boundary.
 [`docs/PRODUCER-CONTRACT.md`](../docs/PRODUCER-CONTRACT.md) describes this boundary.

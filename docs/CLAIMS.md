@@ -59,9 +59,14 @@ parts of the component under specified conditions. It makes none of these claims
 
 Dated read-only ecosystem inspections through 2026-08-18 do not change a claim
 tier.
-Galadriel remains pinned to NCP wire 0.8.
-The implemented sidecars are historical NCP 1.0 migration input.
+Galadriel pins the untagged NCP 1.0.0-rc.1 candidate at commit
+`2819dae3b6338bb1df6d105ebb5b7433936a993d` (wire 1.0).
+The implemented schema 2.0 sidecars are project surfaces on that wire.
 They are not native-1.0 role evidence.
+`CLM-008` stays `NOT_CLAIMED`. Its limitations text is copied into the
+immutable 116-task projection as the `T105` residual risk, so it still names
+the retired `v0.8.0` selection. [`ECO-020`](../release/0.9.0/ecosystem-cut.json)
+records the current NCP selection and supersedes `ECO-002`.
 
 The 2026-08-03 NCP status inspection is bound to
 [commit `1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd`](https://github.com/sepahead/NCP/commit/1bcfb190d4d9a2e0032f44e634854ff9ed19a0bd).

@@ -2959,11 +2959,11 @@ while not marker.exists() and time.monotonic() < deadline:
                 ),
                 SimpleNamespace(
                     name="ncp",
-                    version="0.8.0",
+                    version="1.0.0-rc.1",
                     source=(
                         "git+https://github.com/sepahead/ncp"
-                        "?rev=2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
-                        "#2f5bd586d4bb20c90362bb6f5698b7f64057ba4e"
+                        "?rev=2819dae3b6338bb1df6d105ebb5b7433936a993d"
+                        "#2819dae3b6338bb1df6d105ebb5b7433936a993d"
                     ),
                     workspace=False,
                     manifest_path=str(
@@ -2971,7 +2971,7 @@ while not marker.exists() and time.monotonic() < deadline:
                         / "git"
                         / "checkouts"
                         / "ncp-0123456789abcdef"
-                        / "2f5bd58"
+                        / "2819dae"
                         / "crates"
                         / "ncp"
                         / "Cargo.toml"
@@ -2983,7 +2983,7 @@ while not marker.exists() and time.monotonic() < deadline:
                                 / "git"
                                 / "checkouts"
                                 / "ncp-0123456789abcdef"
-                                / "2f5bd58"
+                                / "2819dae"
                                 / "crates"
                                 / "ncp"
                                 / "src"
