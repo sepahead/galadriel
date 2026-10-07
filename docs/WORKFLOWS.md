@@ -771,7 +771,7 @@ A passing qualification tier MUST retain 15 two-run comparisons.
 They cover one source archive, seven unpublished package archives, and seven SBOM documents.
 Semantic checks bind source and package members to the candidate tree.
 They also close SBOM fields against the validated `Cargo.lock` graph.
-The license inventory is the exact 382-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset of that 437-package graph.
+The license inventory is the exact 381-package `CARGO_DENY_HOST_FILTERED_GRAPH` subset of that 436-package graph.
 See [`docs/DEPENDENCY-POLICY.md`](../docs/DEPENDENCY-POLICY.md) for the exact checks.
 
 These checks are author-operated on the recorded host.

@@ -181,6 +181,11 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Fixed
 
+- Raise `event-listener` from 5.4.1 to 5.4.2 for RUSTSEC-2026-0221 (unsound `Send` and
+  `Sync` for `StackSlot`). The new release drops `concurrent-queue` 2.5.0, so the license
+  inventory becomes 381 packages and 705 assignments in a new append-only record. This
+  also restores the 436-package lock that the qualification vulnerability report and
+  several documents expected after the NCP 1.0 candidate had added `sha2`.
 - Correct stale dependency-policy statements: the license-inventory counts and
   digests, the expired `spin` exceptions and the removed `RUSTSEC-2026-0041`
   ignore (both resolved by the 2026-09-29 lock patch), and the crates.io

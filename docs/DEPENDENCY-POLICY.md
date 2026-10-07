@@ -54,9 +54,10 @@ Each record names its predecessor and copies the predecessor's active projection
 2. The [Zenoh transport record](../release/0.9.0/tool-inputs/rustsec-2026-0041-0285-license-2026-09-29.json) selects the reviewed `zenoh-transport` backport and the patched `lz4_flex`, `rustls`, `rustls-webpki`, and `spin` releases.
 3. The [pid-core record](../release/0.9.0/tool-inputs/pid-core-bc3aa80-license-2026-10-01.json) replaces `pid-core` and `pid-runlog` 1.0.0 with `pid-core` 0.9.0 at `bc3aa80`.
 4. The [NCP record](../release/0.9.0/tool-inputs/ncp-2819dae-license-2026-10-03.json) replaces `ncp-core` and `ncp-zenoh` 0.8.0 with the 1.0.0-rc.1 candidate and adds `sha2` 0.10.9 (Apache-2.0 or MIT).
+5. The [event-listener record](../release/0.9.0/tool-inputs/event-listener-5.4.2-license-2026-10-07.json) raises `event-listener` from 5.4.1 to 5.4.2 for RUSTSEC-2026-0221. The new release no longer depends on `concurrent-queue` 2.5.0 (Apache-2.0 or MIT), which leaves the graph.
 
-The NCP record binds the current projection hashes.
-The verifier requires exactly 382 packages, 707 assignments, and both complete identity projections.
+The event-listener record binds the current projection hashes.
+The verifier requires exactly 381 packages, 705 assignments, and both complete identity projections.
 Historical or altered inventories cannot satisfy the current source gate.
 
 ## Abbreviations
@@ -442,13 +443,13 @@ In a passing qualification, the SBOMs describe the qualified source graph.
 They do not identify a deployed binary or target environment.
 
 The license inventory uses scope `CARGO_DENY_HOST_FILTERED_GRAPH`.
-It contains the exact 382-package host-filtered subset of the validated
-437-package graph.
-It contains exactly 707 license assignments.
+It contains the exact 381-package host-filtered subset of the validated
+436-package graph.
+It contains exactly 705 license assignments.
 Its sorted package-identity set has this SHA-256 value:
-`033803e9ac6dc08ed85c915ceaa6887d6f1a4c60ebc56874ce838e6e91fd19df`.
+`164150ccf852bf7e95c121b4a1078ac071d9911145a2c805a8f0f74db6ecae29`.
 Its canonical package-and-license content has this SHA-256 value:
-`bac82b0bdfa8f92efec88bb205b86fedd7b3899cc101d086039911ae2d5d03c4`.
+`ac8ab6011c3c69893454a5cfea8125c3f5565de6feca6ccdd0ce8aacc6ca31c5`.
 The supply-chain CI job rebuilds this inventory from locked metadata.
 It verifies both exact digests.
 
@@ -457,7 +458,7 @@ The exact identity form is `workspace+crates/{name}#{name}@{version}`.
 This inventory does not describe another host or target graph.
 
 The license-policy summary requires zero errors and zero warnings.
-It also requires 374 accepted help records and eight skipped notes.
+It also requires 373 accepted help records and eight skipped notes.
 The vulnerability report requires the pinned database and exact `Cargo.lock`.
 It retains the two declared unmaintained-package warnings.
 These checks do not prove vulnerability-free code or maintenance assurance.
