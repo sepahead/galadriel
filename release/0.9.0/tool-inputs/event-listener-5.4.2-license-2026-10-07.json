@@ -1,0 +1,58 @@
+{
+  "schema": "galadriel.qualification-license-input-revision.v2",
+  "revision": "2026-10-07-event-listener-5.4.2",
+  "scope": "exact_lock_patch_projection_only",
+  "release_authority": false,
+  "inventory_scope": "CARGO_DENY_HOST_FILTERED_GRAPH",
+  "package_count": 381,
+  "license_assignment_count": 705,
+  "historical": {
+    "source_record": "release/0.9.0/tool-inputs/ncp-2819dae-license-2026-10-03.json",
+    "lockfile_sha256": "71f96481656d3d76e131ad4603d2789ce2ced2b37f9b116f7f7f8dd02c971aa0",
+    "projections": {
+      "package_ids_sha256": "033803e9ac6dc08ed85c915ceaa6887d6f1a4c60ebc56874ce838e6e91fd19df",
+      "semantic_sha256": "bac82b0bdfa8f92efec88bb205b86fedd7b3899cc101d086039911ae2d5d03c4"
+    },
+    "current_qualification_authority": false
+  },
+  "active": {
+    "lockfile_sha256": "049a70cf65a70293fcc503caf0e48751a41d11194895bb58476e954f40e1425c",
+    "projections": {
+      "package_ids_sha256": "164150ccf852bf7e95c121b4a1078ac071d9911145a2c805a8f0f74db6ecae29",
+      "semantic_sha256": "ac8ab6011c3c69893454a5cfea8125c3f5565de6feca6ccdd0ce8aacc6ca31c5"
+    }
+  },
+  "changed_identities": {
+    "removed": [
+      "registry+https://github.com/rust-lang/crates.io-index#concurrent-queue@2.5.0",
+      "registry+https://github.com/rust-lang/crates.io-index#event-listener@5.4.1"
+    ],
+    "added": [
+      "registry+https://github.com/rust-lang/crates.io-index#event-listener@5.4.2"
+    ]
+  },
+  "license_policy_summary": {
+    "accepted_help_count": 373,
+    "skipped_note_count": 8,
+    "skipped_private_crates": [
+      "galadriel-cli",
+      "galadriel-core",
+      "galadriel-dependence",
+      "galadriel-eval",
+      "galadriel-justify",
+      "galadriel-ncp",
+      "galadriel-sim",
+      "zenoh-transport"
+    ],
+    "note": "event-listener 5.4.2 fixes RUSTSEC-2026-0221 (unsound Send and Sync for StackSlot) and no longer depends on concurrent-queue, so concurrent-queue 2.5.0 (Apache-2.0 OR MIT) leaves the host-filtered graph. The unpublished zenoh-transport backport (publish = false) is still skipped as a private crate. Its declared license, EPL-2.0 OR Apache-2.0, is unchanged and remains in the inventory."
+  },
+  "reconstruction": {
+    "method": "cargo metadata --locked --offline --all-features and cargo deny 0.19.9 list --layout crate on the exact lock, checked by repo_work/qualification_artifacts.py",
+    "scope": "Observed package and assignment identity; no new legal clearance, upstream signature, scientific release, or terminal qualification."
+  },
+  "unchanged_requirements": [
+    "Exact closed Cargo metadata and lock joins",
+    "License policy, tools, and advisory database",
+    "Historical terminal artifacts and source evidence"
+  ]
+}

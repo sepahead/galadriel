@@ -181,7 +181,7 @@ A sandboxed process can request work from an existing external service.
 The process scan cannot attribute that external service work.
 
 The license inventory scope is `CARGO_DENY_HOST_FILTERED_GRAPH`.
-It contains exactly 382 host-filtered packages from the validated 437-package Cargo graph.
+It contains exactly 381 host-filtered packages from the validated 436-package Cargo graph.
 It is not a complete all-target license inventory.
 
 Use `CPython 3.14.6` for canonical release-asset construction, verification, and reconstruction.
