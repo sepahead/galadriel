@@ -101,12 +101,12 @@
       "size_bytes": 15669
     },
     {
-      "git_blob_id": "378d25aefa4cd782343ec890573508d7521be556",
+      "git_blob_id": "61bd91f4f45928cc4ec5d6c08958c71e85335580",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "a1bf7626adcf5cf3a2f9aefb8055d390aa2f8ae0f19b6ec5767d98f313ea8ea9",
-      "size_bytes": 66176
+      "sha256": "d7a9898319fc90c3fc116ff2f6db7cc1dca065ee228c7f6d9597a92ed5f28716",
+      "size_bytes": 66708
     },
     {
       "git_blob_id": "93e56077732b34820e2594e8f61d5579b5f9849d",
@@ -637,20 +637,20 @@
       "size_bytes": 19639
     },
     {
-      "git_blob_id": "c2901b88367f58b05525ee0a672e6c891d7d39e6",
+      "git_blob_id": "44f7f710dc8089a8ad34d42ee3dbd259f10c079f",
       "git_mode": "100644",
       "path": "assets/crebain-mgw-method-map.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "243a05afcd9221ff6f3527ffe36d2630a3a2bcd08d963ae27ea59f078d2a1f27",
-      "size_bytes": 28393
+      "sha256": "49929e829f32eeec54d190f15347d8b1321f9b4239fda7ea552b70c3dd2fa165",
+      "size_bytes": 28563
     },
     {
-      "git_blob_id": "0161f0d603f16e1a07cfc1a5c9e01a032efa68a5",
+      "git_blob_id": "cabd4ee60a9736289291728468e4ca7e2ac4d10d",
       "git_mode": "100644",
       "path": "assets/detector-evidence.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "1fe521436ae28bf1dfa03bf41179299f914007a3a1698fd8bf5ec5a16515fc8f",
-      "size_bytes": 10716
+      "sha256": "429091d0aef723a9f39931c409a773e4a17087bdb7cb2184c5ede4b76ab09c60",
+      "size_bytes": 10725
     },
     {
       "git_blob_id": "5877487e19de7956eef686ff98de9b97c7b7fd87",
@@ -661,12 +661,12 @@
       "size_bytes": 9510
     },
     {
-      "git_blob_id": "f6fb678e0f0c4d1c9a4d8c53aa35de09b98ae6e8",
+      "git_blob_id": "0ec53caba7d579f281d90fae45ffbe1c7e5a1c4a",
       "git_mode": "100644",
       "path": "assets/lifecycle-receipts.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "82793c3650de0bf6afa6849bd73dca9617d96f74adebe6f9cbd57c487bb7d7c8",
-      "size_bytes": 9848
+      "sha256": "5aba0b98b40cd48d3212a9abf2e3466339d412270f9c1503012d29327ca5fb42",
+      "size_bytes": 9906
     },
     {
       "git_blob_id": "5c78afb33cfda601457c0d0eac12e1298b128f39",
@@ -685,12 +685,12 @@
       "size_bytes": 11595
     },
     {
-      "git_blob_id": "c3b6a46563a0bcbe10c300f3a3d4c2ae2ed1bc84",
+      "git_blob_id": "de20b80370ac1e639e6aa3932d6412e72aa8b7b9",
       "git_mode": "100644",
       "path": "assets/system-boundary.svg",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5448ffb7e804701aeb5e0abdb5b0c3bcdc976cd1df04f4238fc1fb75b787108c",
-      "size_bytes": 12142
+      "sha256": "65b255d38e23b329f579b86f6e4d175c18ae443b435fdd3bfaa6fecdb73a9608",
+      "size_bytes": 12164
     },
     {
       "git_blob_id": "c8b06120e872993601d7d38855da811c5bf56464",

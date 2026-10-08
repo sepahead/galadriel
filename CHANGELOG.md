@@ -181,6 +181,13 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Fixed
 
+- Fit every label of the four documentation figures inside its box. In
+  `system-boundary.svg`, `detector-evidence.svg`, and `lifecycle-receipts.svg`, text
+  crossed box edges and labels sat on arrows when rendered in Arial. The figures
+  gain width and spacing, the column-B heading is no longer crossed by an arrow,
+  and the intended equation indents are restored. In `crebain-mgw-method-map.svg`,
+  the value labels mask the grid lines and the background covers the whole canvas.
+  The content of all four figures is unchanged.
 - Raise `event-listener` from 5.4.1 to 5.4.2 for RUSTSEC-2026-0221 (unsound `Send` and
   `Sync` for `StackSlot`). The new release drops `concurrent-queue` 2.5.0, so the license
   inventory becomes 381 packages and 705 assignments in a new append-only record. This

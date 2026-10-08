@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc" xml:lang="en" focusable="false">
+<svg xmlns="http://www.w3.org/2000/svg" width="1720" height="1020" viewBox="0 0 1720 1020" role="img" aria-labelledby="title desc" xml:lang="en" focusable="false">
   <title id="title">Galadriel 0.9 evidence flow and authority boundary</title>
   <desc id="desc">A left-to-right system diagram. A conforming producer sends exact observation and monitor sidecars into a bounded cross-route assembler and typed lifecycle admission gate. Accepted frames feed two core detector evidence paths: per-channel NIS and CUSUM magnitude evidence, and signed-correlation consistency evidence in a producer-declared common projection. Conservative fusion produces a raw advisory report. Invalid or incomplete input abstains, rejects, or faults. A dashed, non-authoritative branch computes an optional geometry-gated pairwise KSG mutual-information report. This branch is an opt-in in-process library companion with executable use in the synthetic demo, evaluation, and benchmark. Replay, observe, and NCP do not invoke it. A separate lower galadriel-justify research lane evaluates categorical Makkeh-Gutknecht-Wibral PID or continuous Ehrlich PID only for fixed ordered sources and a predeclared target with explicit provenance. Neither mutual information nor PID enters fusion, and Galadriel has no command or authority-grant path.</desc>
   <defs>
@@ -31,156 +31,156 @@
     </style>
   </defs>
 
-  <rect width="1600" height="1000" fill="#ffffff"/>
+  <rect width="1720" height="1020" fill="#ffffff"/>
 
   <text x="58" y="58" class="title">Galadriel 0.9 — evidence flow and authority boundary</text>
   <text x="58" y="91" class="subtitle">Implemented operational evidence is solid. Descriptive research is dashed. Every unavailable estimand fails closed.</text>
 
-  <rect x="45" y="125" width="1510" height="515" rx="18" class="lane"/>
+  <rect x="45" y="125" width="1650" height="535" rx="18" class="lane"/>
   <text x="70" y="158" class="section">OPERATIONAL ADMISSION AND CORE DETECTOR VERDICT</text>
 
-  <rect x="70" y="205" width="225" height="160" rx="14" class="node neutral"/>
+  <rect x="70" y="205" width="265" height="160" rx="14" class="node neutral"/>
   <text x="92" y="239" class="node-title">Producer</text>
   <text x="92" y="271" class="body">Frozen prior per sequence</text>
   <text x="92" y="299" class="body">Declared frame and context</text>
   <text x="92" y="327" class="body">Association outcomes</text>
   <text x="92" y="349" class="small">External authorization is separate.</text>
 
-  <rect x="345" y="185" width="235" height="105" rx="14" class="node neutral"/>
-  <text x="367" y="219" class="node-title">Observation sidecar</text>
-  <text x="367" y="249" class="body">NIS, innovation, projection</text>
-  <text x="367" y="274" class="small">Exact route and schema</text>
+  <rect x="385" y="185" width="270" height="105" rx="14" class="node neutral"/>
+  <text x="407" y="219" class="node-title">Observation sidecar</text>
+  <text x="407" y="249" class="body">NIS, innovation, projection</text>
+  <text x="407" y="274" class="small">Exact route and schema</text>
 
-  <rect x="345" y="315" width="235" height="105" rx="14" class="node neutral"/>
-  <text x="367" y="349" class="node-title">Monitor sidecar</text>
-  <text x="367" y="379" class="body">Misses, outcomes, summaries</text>
-  <text x="367" y="404" class="small">Heartbeat and sequence</text>
+  <rect x="385" y="315" width="270" height="105" rx="14" class="node neutral"/>
+  <text x="407" y="349" class="node-title">Monitor sidecar</text>
+  <text x="407" y="379" class="body">Misses, outcomes, summaries</text>
+  <text x="407" y="404" class="small">Heartbeat and sequence</text>
 
-  <path d="M295 255 H330 V237 H345" class="solid-arrow"/>
-  <path d="M333 230 L345 237 L333 244 Z" class="arrowhead"/>
-  <path d="M295 315 H330 V367 H345" class="solid-arrow"/>
-  <path d="M333 360 L345 367 L333 374 Z" class="arrowhead"/>
+  <path d="M335 255 H370 V237 H385" class="solid-arrow"/>
+  <path d="M373 230 L385 237 L373 244 Z" class="arrowhead"/>
+  <path d="M335 315 H370 V367 H385" class="solid-arrow"/>
+  <path d="M373 360 L385 367 L373 374 Z" class="arrowhead"/>
 
-  <rect x="630" y="185" width="300" height="235" rx="14" class="node admission"/>
-  <text x="652" y="220" class="node-title">Assembly + lifecycle gate</text>
-  <text x="652" y="253" class="body">Route, registry, replay, deadline</text>
-  <text x="652" y="283" class="body">and prior-identity checks</text>
-  <line x1="652" y1="301" x2="908" y2="301" class="divider"/>
-  <text x="652" y="329" class="equation">position = (session, epoch,</text>
-  <text x="652" y="351" class="equation">stream, generation,</text>
-  <text x="652" y="373" class="equation">sequence, timestamp,</text>
-  <text x="652" y="395" class="equation">clock domain)</text>
-  <text x="652" y="413" class="small">Only complete, exact successors cross.</text>
+  <rect x="705" y="185" width="320" height="245" rx="14" class="node admission"/>
+  <text x="727" y="220" class="node-title">Assembly + lifecycle gate</text>
+  <text x="727" y="253" class="body">Route, registry, replay, deadline</text>
+  <text x="727" y="283" class="body">and prior-identity checks</text>
+  <line x1="727" y1="301" x2="1003" y2="301" class="divider"/>
+  <text x="727" y="329" class="equation">position = (session, epoch,</text>
+  <text x="727" y="351" class="equation">stream, generation,</text>
+  <text x="727" y="373" class="equation">sequence, timestamp,</text>
+  <text x="727" y="395" class="equation">clock domain)</text>
+  <text x="727" y="413" class="small">Only complete, exact successors cross.</text>
 
-  <path d="M580 237 H630" class="solid-arrow"/>
-  <path d="M618 230 L630 237 L618 244 Z" class="arrowhead"/>
-  <path d="M580 367 H605 V315 H630" class="solid-arrow"/>
-  <path d="M618 308 L630 315 L618 322 Z" class="arrowhead"/>
+  <path d="M655 237 H705" class="solid-arrow"/>
+  <path d="M693 230 L705 237 L693 244 Z" class="arrowhead"/>
+  <path d="M655 367 H680 V315 H705" class="solid-arrow"/>
+  <path d="M693 308 L705 315 L693 322 Z" class="arrowhead"/>
 
-  <rect x="995" y="175" width="245" height="145" rx="14" class="node magnitude"/>
-  <text x="1017" y="209" class="node-title">Magnitude evidence</text>
-  <text x="1017" y="241" class="equation">q = yᵀ S⁻¹ y</text>
-  <text x="1017" y="269" class="body">Right-tail NIS</text>
-  <text x="1017" y="291" class="small">Two-arm CUSUM</text>
-  <text x="1017" y="313" class="small">Core dof=3: lower arm inert.</text>
+  <rect x="1090" y="175" width="275" height="152" rx="14" class="node magnitude"/>
+  <text x="1112" y="209" class="node-title">Magnitude evidence</text>
+  <text x="1112" y="241" class="equation">q = yᵀ S⁻¹ y</text>
+  <text x="1112" y="269" class="body">Right-tail NIS</text>
+  <text x="1112" y="291" class="small">Two-arm CUSUM</text>
+  <text x="1112" y="313" class="small">Core dof=3: lower arm inert.</text>
 
-  <rect x="995" y="335" width="245" height="145" rx="14" class="node consistency"/>
-  <text x="1017" y="369" class="node-title">Signed consistency</text>
-  <text x="1017" y="401" class="equation">ρ_ab = Pearson(X_a, X_b)</text>
-  <text x="1017" y="429" class="body">Positive strict-majority clique</text>
-  <text x="1017" y="457" class="small">Common producer-declared gauge</text>
+  <rect x="1090" y="335" width="275" height="145" rx="14" class="node consistency"/>
+  <text x="1112" y="369" class="node-title">Signed consistency</text>
+  <text x="1112" y="401" class="equation">ρ_ab = Pearson(X_a, X_b)</text>
+  <text x="1112" y="429" class="body">Positive strict-majority clique</text>
+  <text x="1112" y="457" class="small">Common producer-declared gauge</text>
 
-  <path d="M930 265 H958 V240 H995" class="solid-arrow"/>
-  <path d="M983 233 L995 240 L983 247 Z" class="arrowhead"/>
-  <path d="M930 330 H958 V407 H995" class="solid-arrow"/>
-  <path d="M983 400 L995 407 L983 414 Z" class="arrowhead"/>
+  <path d="M1025 265 H1053 V240 H1090" class="solid-arrow"/>
+  <path d="M1078 233 L1090 240 L1078 247 Z" class="arrowhead"/>
+  <path d="M1025 330 H1053 V407 H1090" class="solid-arrow"/>
+  <path d="M1078 400 L1090 407 L1078 414 Z" class="arrowhead"/>
 
-  <rect x="1290" y="230" width="235" height="205" rx="14" class="node fusion"/>
-  <text x="1312" y="266" class="node-title">Conservative fusion</text>
-  <text x="1312" y="298" class="body">Complete magnitude report</text>
-  <text x="1312" y="326" class="body">+ signed consistency state</text>
-  <line x1="1312" y1="343" x2="1503" y2="343" class="divider"/>
-  <text x="1312" y="374" class="body">Accepted advisory verdict</text>
-  <text x="1312" y="401" class="small">Nominal ≠ permission</text>
-  <text x="1312" y="423" class="small">Cause remains unclassified.</text>
+  <rect x="1415" y="230" width="255" height="205" rx="14" class="node fusion"/>
+  <text x="1437" y="266" class="node-title">Conservative fusion</text>
+  <text x="1437" y="298" class="body">Complete magnitude report</text>
+  <text x="1437" y="326" class="body">+ signed consistency state</text>
+  <line x1="1437" y1="343" x2="1648" y2="343" class="divider"/>
+  <text x="1437" y="374" class="body">Accepted advisory verdict</text>
+  <text x="1437" y="401" class="small">Nominal ≠ permission</text>
+  <text x="1437" y="423" class="small">Cause remains unclassified.</text>
 
-  <path d="M1240 240 H1260 V292 H1290" class="solid-arrow"/>
-  <path d="M1278 285 L1290 292 L1278 299 Z" class="arrowhead"/>
-  <path d="M1240 407 H1260 V365 H1290" class="solid-arrow"/>
-  <path d="M1278 358 L1290 365 L1278 372 Z" class="arrowhead"/>
+  <path d="M1365 240 H1385 V292 H1415" class="solid-arrow"/>
+  <path d="M1403 285 L1415 292 L1403 299 Z" class="arrowhead"/>
+  <path d="M1365 407 H1385 V365 H1415" class="solid-arrow"/>
+  <path d="M1403 358 L1415 365 L1403 372 Z" class="arrowhead"/>
 
-  <rect x="630" y="485" width="300" height="115" rx="14" class="node failure"/>
-  <text x="652" y="519" class="node-title">Fail closed</text>
-  <text x="652" y="551" class="body">Abstain · reject · terminal fault</text>
-  <text x="652" y="579" class="small">Missing evidence never becomes nominal.</text>
-  <path d="M780 420 V485" class="failure-arrow"/>
-  <path d="M773 473 L780 485 L787 473 Z" class="arrowhead-red"/>
-  <text x="793" y="462" class="small">incomplete / invalid</text>
+  <rect x="705" y="485" width="320" height="115" rx="14" class="node failure"/>
+  <text x="727" y="519" class="node-title">Fail closed</text>
+  <text x="727" y="551" class="body">Abstain · reject · terminal fault</text>
+  <text x="727" y="579" class="small">Missing evidence never becomes nominal.</text>
+  <path d="M865 430 V485" class="failure-arrow"/>
+  <path d="M858 473 L865 485 L872 473 Z" class="arrowhead-red"/>
+  <text x="878" y="462" class="small">incomplete / invalid</text>
 
-  <rect x="995" y="500" width="245" height="125" rx="14" class="node research"/>
-  <text x="1017" y="534" class="node-title">Pairwise KSG-MI</text>
-  <text x="1017" y="558" class="body">Complete pair graph</text>
-  <text x="1017" y="583" class="small">No noise · nats · descriptive</text>
-  <text x="1017" y="603" class="small">Library · demo · eval · bench</text>
-  <text x="1017" y="621" class="small">Not replay · observe · NCP</text>
-  <path d="M958 407 V562 H995" class="research-arrow"/>
-  <path d="M983 555 L995 562 L983 569 Z" class="arrowhead-purple"/>
+  <rect x="1090" y="500" width="275" height="140" rx="14" class="node research"/>
+  <text x="1112" y="534" class="node-title">Pairwise KSG-MI</text>
+  <text x="1112" y="558" class="body">Complete pair graph</text>
+  <text x="1112" y="583" class="small">No noise · nats · descriptive</text>
+  <text x="1112" y="603" class="small">Library · demo · eval · bench</text>
+  <text x="1112" y="621" class="small">Not replay · observe · NCP</text>
+  <path d="M1053 407 V562 H1090" class="research-arrow"/>
+  <path d="M1078 555 L1090 562 L1078 569 Z" class="arrowhead-purple"/>
 
-  <rect x="1290" y="500" width="235" height="110" rx="14" class="node research"/>
-  <text x="1312" y="534" class="node-title">Companion report</text>
-  <text x="1312" y="563" class="body">Separation / no separation /</text>
-  <text x="1312" y="589" class="body">unavailable — never fused</text>
-  <path d="M1240 562 H1290" class="research-arrow"/>
-  <path d="M1278 555 L1290 562 L1278 569 Z" class="arrowhead-purple"/>
+  <rect x="1415" y="500" width="255" height="110" rx="14" class="node research"/>
+  <text x="1437" y="534" class="node-title">Companion report</text>
+  <text x="1437" y="563" class="body">Separation / no separation /</text>
+  <text x="1437" y="589" class="body">unavailable — never fused</text>
+  <path d="M1365 562 H1415" class="research-arrow"/>
+  <path d="M1403 555 L1415 562 L1403 569 Z" class="arrowhead-purple"/>
 
-  <rect x="45" y="675" width="1510" height="245" rx="18" class="lane"/>
-  <text x="70" y="708" class="section">SEPARATE OFFLINE PID RESEARCH — NO OPERATIONAL OR AUTHORITY EDGE</text>
+  <rect x="45" y="695" width="1650" height="245" rx="18" class="lane"/>
+  <text x="70" y="728" class="section">SEPARATE OFFLINE PID RESEARCH — NO OPERATIONAL OR AUTHORITY EDGE</text>
 
-  <rect x="70" y="745" width="330" height="130" rx="14" class="node neutral"/>
-  <text x="92" y="779" class="node-title">Fixed scientific question</text>
-  <text x="92" y="811" class="body">Ordered sources (S₁, S₂)</text>
-  <text x="92" y="839" class="body">Predeclared target T + exact law</text>
-  <text x="92" y="863" class="small">Gauge, rows, units, software identity</text>
+  <rect x="70" y="765" width="350" height="130" rx="14" class="node neutral"/>
+  <text x="92" y="799" class="node-title">Fixed scientific question</text>
+  <text x="92" y="831" class="body">Ordered sources (S₁, S₂)</text>
+  <text x="92" y="859" class="body">Predeclared target T + exact law</text>
+  <text x="92" y="883" class="small">Gauge, rows, units, software identity</text>
 
-  <rect x="470" y="725" width="335" height="85" rx="14" class="node research"/>
-  <text x="492" y="754" class="node-title">Categorical shared exclusions</text>
-  <text x="492" y="778" class="small">Makkeh · Gutknecht · Wibral</text>
-  <text x="492" y="796" class="small">Native nats · aggregate atoms: bits</text>
+  <rect x="490" y="745" width="355" height="85" rx="14" class="node research"/>
+  <text x="512" y="774" class="node-title">Categorical shared exclusions</text>
+  <text x="512" y="798" class="small">Makkeh · Gutknecht · Wibral</text>
+  <text x="512" y="816" class="small">Native nats · aggregate atoms: bits</text>
 
-  <rect x="470" y="820" width="335" height="75" rx="14" class="node research"/>
-  <text x="492" y="854" class="node-title">Continuous Ehrlich PID2</text>
-  <text x="492" y="880" class="small">Distinct functional and estimator · nats</text>
+  <rect x="490" y="840" width="355" height="75" rx="14" class="node research"/>
+  <text x="512" y="874" class="node-title">Continuous Ehrlich PID2</text>
+  <text x="512" y="900" class="small">Distinct functional and estimator · nats</text>
 
-  <path d="M400 810 H435 V762 H470" class="research-arrow"/>
-  <path d="M458 755 L470 762 L458 769 Z" class="arrowhead-purple"/>
-  <path d="M400 810 H435 V857 H470" class="research-arrow"/>
-  <path d="M458 850 L470 857 L458 864 Z" class="arrowhead-purple"/>
+  <path d="M420 830 H455 V782 H490" class="research-arrow"/>
+  <path d="M478 775 L490 782 L478 789 Z" class="arrowhead-purple"/>
+  <path d="M420 830 H455 V877 H490" class="research-arrow"/>
+  <path d="M478 870 L490 877 L478 884 Z" class="arrowhead-purple"/>
 
-  <rect x="875" y="745" width="350" height="130" rx="14" class="node research"/>
-  <text x="897" y="779" class="node-title">Typed research result</text>
-  <text x="897" y="811" class="body">Red · Unique₁ · Unique₂ · Syn</text>
-  <text x="897" y="839" class="body">Question, references, trial reports</text>
-  <text x="897" y="863" class="small">Synthetic/theoretical evidence only</text>
-  <path d="M805 762 H840 V810 H875" class="research-arrow"/>
-  <path d="M805 857 H840 V810 H875" class="research-arrow"/>
-  <path d="M863 803 L875 810 L863 817 Z" class="arrowhead-purple"/>
+  <rect x="915" y="765" width="375" height="130" rx="14" class="node research"/>
+  <text x="937" y="799" class="node-title">Typed research result</text>
+  <text x="937" y="831" class="body">Red · Unique₁ · Unique₂ · Syn</text>
+  <text x="937" y="859" class="body">Question, references, trial reports</text>
+  <text x="937" y="883" class="small">Synthetic/theoretical evidence only</text>
+  <path d="M845 782 H880 V830 H915" class="research-arrow"/>
+  <path d="M845 877 H880 V830 H915" class="research-arrow"/>
+  <path d="M903 823 L915 830 L903 837 Z" class="arrowhead-purple"/>
 
-  <rect x="1290" y="745" width="235" height="130" rx="14" class="node failure"/>
-  <text x="1312" y="779" class="node-title">Authority firewall</text>
-  <text x="1312" y="811" class="body">No grant · no command</text>
-  <text x="1312" y="839" class="body">No refresh · no restore</text>
-  <text x="1312" y="863" class="small">Nominal is never authorization.</text>
-  <line x1="1254" y1="748" x2="1254" y2="872" stroke="#b42318" stroke-width="7"/>
-  <line x1="1240" y1="775" x2="1268" y2="747" stroke="#b42318" stroke-width="4"/>
-  <line x1="1240" y1="844" x2="1268" y2="872" stroke="#b42318" stroke-width="4"/>
+  <rect x="1415" y="765" width="255" height="130" rx="14" class="node failure"/>
+  <text x="1437" y="799" class="node-title">Authority firewall</text>
+  <text x="1437" y="831" class="body">No grant · no command</text>
+  <text x="1437" y="859" class="body">No refresh · no restore</text>
+  <text x="1437" y="883" class="small">Nominal is never authorization.</text>
+  <line x1="1352" y1="768" x2="1352" y2="892" stroke="#b42318" stroke-width="7"/>
+  <line x1="1338" y1="795" x2="1366" y2="767" stroke="#b42318" stroke-width="4"/>
+  <line x1="1338" y1="864" x2="1366" y2="892" stroke="#b42318" stroke-width="4"/>
 
-  <line x1="70" y1="954" x2="130" y2="954" class="solid-arrow"/>
-  <path d="M118 947 L130 954 L118 961 Z" class="arrowhead"/>
-  <text x="145" y="960" class="small">implemented evidence flow</text>
-  <line x1="410" y1="954" x2="470" y2="954" class="research-arrow"/>
-  <path d="M458 947 L470 954 L458 961 Z" class="arrowhead-purple"/>
-  <text x="485" y="960" class="small">descriptive or offline research</text>
-  <line x1="805" y1="938" x2="805" y2="970" stroke="#b42318" stroke-width="7"/>
-  <text x="830" y="960" class="small">rejection or authority boundary</text>
-  <text x="1530" y="990" class="small" text-anchor="end">Every arrow is one-way. No command loop exists.</text>
+  <line x1="70" y1="974" x2="130" y2="974" class="solid-arrow"/>
+  <path d="M118 967 L130 974 L118 981 Z" class="arrowhead"/>
+  <text x="145" y="980" class="small">implemented evidence flow</text>
+  <line x1="410" y1="974" x2="470" y2="974" class="research-arrow"/>
+  <path d="M458 967 L470 974 L458 981 Z" class="arrowhead-purple"/>
+  <text x="485" y="980" class="small">descriptive or offline research</text>
+  <line x1="805" y1="958" x2="805" y2="990" stroke="#b42318" stroke-width="7"/>
+  <text x="830" y="980" class="small">rejection or authority boundary</text>
+  <text x="1670" y="1010" class="small" text-anchor="end">Every arrow is one-way. No command loop exists.</text>
 </svg>
