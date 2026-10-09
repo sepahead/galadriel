@@ -179,6 +179,13 @@ Before `1.0`, minor releases can contain breaking changes.
   normalized spread calculation, while removing arithmetic that could not
   change the disposition.
 
+### Documentation
+
+- Added two figures: Gaussian mutual information at correlation plus and minus 0.6,
+  which shows why mutual information cannot replace signed consistency, and the
+  CREBAIN drone fixture's atoms on the shared-exclusion lattice. Both embed their
+  fonts and match the retained PID3 table.
+
 ### Fixed
 
 - Fit every label of the four documentation figures inside its box. In

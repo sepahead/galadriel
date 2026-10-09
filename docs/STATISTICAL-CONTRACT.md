@@ -269,6 +269,14 @@ are unbound. It rejects mixed bindings. It does not return a sealed
 
 ## Optional dependence companion and offline PID boundary
 
+[![Gaussian mutual information is the same at correlation plus and minus 0.6, so two sensor pairs that agree or disagree carry equal information](../assets/mutual-information-sign.svg)](../assets/mutual-information-sign.svg)
+
+Mutual information is symmetric in the sign of a dependence. For a Gaussian pair,
+$I=-\tfrac12\log(1-\rho^2)$ is 0.223 nats at both $\rho=+0.6$ and $\rho=-0.6$.
+A sensor pair that agrees and a pair that disagrees therefore carry equal mutual
+information. The signed-consistency evidence keeps the sign; a mutual-information
+companion cannot replace it.
+
 The optional in-process/library companion is not PID. Its current executable
 integrations are the synthetic demo, evaluation harness, and benchmark; raw
 `replay`, `observe`, and NCP ingestion do not invoke it. It evaluates one symmetric complete
