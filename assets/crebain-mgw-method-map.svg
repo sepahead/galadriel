@@ -11,6 +11,7 @@
       .body { font-size: 21px; fill: #2C3E50; }
       .small { font-size: 18px; fill: #3F596F; }
       .tiny { font-size: 16px; fill: #3F596F; }
+      .value { paint-order: stroke; stroke: #FCFBF7; stroke-width: 5px; stroke-linejoin: round; }
       .table-main { font-size: 19px; fill: #2C3E50; }
       .table-small { font-size: 17px; fill: #3F596F; }
       .table-id { font-family: "IBM Plex Mono", Menlo, Consolas, monospace; font-size: 13px; fill: #3F596F; }
@@ -43,7 +44,7 @@
     </style>
   </defs>
 
-  <rect width="1800" height="2640" fill="#F7F3E9"/>
+  <rect width="1800" height="2756" fill="#F7F3E9"/>
   <text x="55" y="58" class="title">Choose the scientific object from the question—not from a method hierarchy</text>
   <text x="55" y="96" class="subtitle">The four lanes are parallel. An unavailable object never triggers a fallback into a different estimand.</text>
   <line x1="55" y1="112" x2="1745" y2="112" class="title-rule" aria-hidden="true"/>
@@ -115,35 +116,35 @@
   <rect x="350" y="896" width="428" height="15" rx="7" class="info"/>
   <rect x="350" y="920" width="302" height="15" rx="7" class="misinfo"/>
   <rect x="350" y="944" width="126" height="15" rx="7" class="net"/>
-  <text x="788" y="909" class="tiny">0.287682</text>
-  <text x="662" y="933" class="tiny">0.202733</text>
-  <text x="486" y="957" class="tiny">0.084950</text>
+  <text x="788" y="909" class="tiny value">0.287682</text>
+  <text x="662" y="933" class="tiny value">0.202733</text>
+  <text x="486" y="957" class="tiny value">0.084950</text>
 
   <text x="325" y="1025" text-anchor="end" class="body">Unique visual</text>
   <rect x="350" y="996" width="604" height="15" rx="7" class="info"/>
   <rect x="350" y="1020" width="409" height="15" rx="7" class="misinfo"/>
   <rect x="350" y="1044" width="195" height="15" rx="7" class="net"/>
-  <text x="964" y="1009" class="tiny">0.405465</text>
-  <text x="769" y="1033" class="tiny">0.274653</text>
-  <text x="555" y="1057" class="tiny">0.130812</text>
+  <text x="964" y="1009" class="tiny value">0.405465</text>
+  <text x="769" y="1033" class="tiny value">0.274653</text>
+  <text x="555" y="1057" class="tiny value">0.130812</text>
 
   <text x="325" y="1125" text-anchor="end" class="body">Unique radar</text>
   <rect x="350" y="1096" width="604" height="15" rx="7" class="info"/>
   <rect x="350" y="1120" width="409" height="15" rx="7" class="misinfo"/>
   <rect x="350" y="1144" width="195" height="15" rx="7" class="net"/>
-  <text x="964" y="1109" class="tiny">0.405465</text>
-  <text x="769" y="1133" class="tiny">0.274653</text>
-  <text x="555" y="1157" class="tiny">0.130812</text>
+  <text x="964" y="1109" class="tiny value">0.405465</text>
+  <text x="769" y="1133" class="tiny value">0.274653</text>
+  <text x="555" y="1157" class="tiny value">0.130812</text>
 
   <text x="325" y="1225" text-anchor="end" class="body">Synergy</text>
   <rect x="350" y="1196" width="428" height="15" rx="7" class="info"/>
   <rect x="350" y="1220" width="107" height="15" rx="7" class="misinfo"/>
   <rect x="350" y="1244" width="321" height="15" rx="7" class="net"/>
-  <text x="788" y="1209" class="tiny">0.287682</text>
-  <text x="467" y="1233" class="tiny">0.071921</text>
-  <text x="681" y="1257" class="tiny">0.215762</text>
+  <text x="788" y="1209" class="tiny value">0.287682</text>
+  <text x="467" y="1233" class="tiny value">0.071921</text>
+  <text x="681" y="1257" class="tiny value">0.215762</text>
 
-  <rect x="1110" y="848" width="620" height="405" rx="16" class="warning"/>
+  <rect x="1110" y="848" width="620" height="418" rx="16" class="warning"/>
   <text x="1134" y="888" class="node-title">Interpretation and assurance firewall</text>
   <text x="1134" y="929" class="body">MGW adds a target-specific allocation that</text>
   <text x="1134" y="958" class="body">pairwise or joint association alone does not provide.</text>
