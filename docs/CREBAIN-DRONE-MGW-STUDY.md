@@ -414,6 +414,13 @@ source-order fields, and the row-order digest provide that protection.
 
 ## 7. Exploratory PID3 result
 
+[![The drone fixture's two-source atoms and all 18 three-source atoms on the shared-exclusion lattice](../assets/crebain-mgw-lattice.svg)](../assets/crebain-mgw-lattice.svg)
+
+The figure places the net atoms of the table below on the redundancy lattice, in
+thousandths of a nat. The five outlined atoms lie outside the down-set of `{V,R}`.
+They add up to the acoustic bit's conditional information given the visual and radar
+bits, one quarter of $\log2$.
+
 The antichain notation concatenates source collections. For example, `{V}{R,A}`
 means the antichain containing the singleton visual collection and the joint
 radar–acoustic collection.

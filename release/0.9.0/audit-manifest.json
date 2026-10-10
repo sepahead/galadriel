@@ -101,12 +101,12 @@
       "size_bytes": 15669
     },
     {
-      "git_blob_id": "61bd91f4f45928cc4ec5d6c08958c71e85335580",
+      "git_blob_id": "5e48c707505b3702d9e21f8561defb91b2ae8303",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d7a9898319fc90c3fc116ff2f6db7cc1dca065ee228c7f6d9597a92ed5f28716",
-      "size_bytes": 66708
+      "sha256": "0af35fb1cf2062f9e20511d18eade99fb194871ee186d713a210a23de2ad7079",
+      "size_bytes": 67017
     },
     {
       "git_blob_id": "93e56077732b34820e2594e8f61d5579b5f9849d",
@@ -637,6 +637,14 @@
       "size_bytes": 19639
     },
     {
+      "git_blob_id": "51042be9d63f0ebdf4388599c803434c49ec9405",
+      "git_mode": "100644",
+      "path": "assets/crebain-mgw-lattice.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "5984c36254bf9a4e7fe159c4848e0591ce097f1f7d13314dd71b95a7c0bb3183",
+      "size_bytes": 109954
+    },
+    {
       "git_blob_id": "44f7f710dc8089a8ad34d42ee3dbd259f10c079f",
       "git_mode": "100644",
       "path": "assets/crebain-mgw-method-map.svg",
@@ -675,6 +683,14 @@
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "17ebecb012f66b85ead18ba31d7834e0bae9080866280b9294373331b3f77bbc",
       "size_bytes": 25112
+    },
+    {
+      "git_blob_id": "fed693f6712af9e7b05d345611b976a22d01c671",
+      "git_mode": "100644",
+      "path": "assets/mutual-information-sign.svg",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "ece4b1355e5202ca33688a65c86771f8269b24f3823047a72ec60c62de558e89",
+      "size_bytes": 79937
     },
     {
       "git_blob_id": "29ceb1b021c6ecdd65ada64496af223b8c960148",
@@ -1485,12 +1501,12 @@
       "size_bytes": 7861
     },
     {
-      "git_blob_id": "370534991992bccb5f0ac0424610634a94beffdd",
+      "git_blob_id": "69295bc1cc4f43f75908c9e6773f24cdeaa5f048",
       "git_mode": "100644",
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "d0cf87d8c6e69c411fdcee84a7507798661fb03b1cea28238f04d162d4647b98",
-      "size_bytes": 54993
+      "sha256": "e8c8dca695251f55afa7d94008c916f699c8fb58e6dee38dbf68d86d045d0f73",
+      "size_bytes": 55448
     },
     {
       "git_blob_id": "86681f41dd0dd95b564588fe0bc46028c0f965d1",
@@ -1613,12 +1629,12 @@
       "size_bytes": 17401
     },
     {
-      "git_blob_id": "14c035cc1ec351505bc6af5d196a3b5517147122",
+      "git_blob_id": "c2df680e6c76e3596129ed3cd3e34f837f6f2734",
       "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "8c49d3fd76373d684ec64f8f3560231e3336043fc2542b41548ca7942e810951",
-      "size_bytes": 26841
+      "sha256": "50c6cb61515c116af7765d648e99fc33f79fc8af4c213dee27cdcd63412ddaf4",
+      "size_bytes": 27421
     },
     {
       "git_blob_id": "148ec21d2b24e3c45a13b238b450e9eb3ab4cd9e",
@@ -2959,97 +2975,97 @@
     },
     {
       "kind": "paper",
-      "line": 572,
+      "line": 579,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1093/biomet/41.1-2.100"
     },
     {
       "kind": "paper",
-      "line": 780,
+      "line": 787,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.103.032149"
     },
     {
       "kind": "paper",
-      "line": 784,
+      "line": 791,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1098/rspa.2021.0110"
     },
     {
       "kind": "external_reference",
-      "line": 787,
+      "line": 794,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://arxiv.org/abs/1004.2515"
     },
     {
       "kind": "paper",
-      "line": 790,
+      "line": 797,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.87.012130"
     },
     {
       "kind": "paper",
-      "line": 794,
+      "line": 801,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1109/ISIT.2014.6875230"
     },
     {
       "kind": "paper",
-      "line": 798,
+      "line": 805,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/8rzp-w5z1"
     },
     {
       "kind": "paper",
-      "line": 803,
+      "line": 810,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.110.014115"
     },
     {
       "kind": "external_reference",
-      "line": 807,
+      "line": 814,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://arxiv.org/abs/2106.12393"
     },
     {
       "kind": "paper",
-      "line": 810,
+      "line": 817,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.69.066138"
     },
     {
       "kind": "paper",
-      "line": 813,
+      "line": 820,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.3390/e16042161"
     },
     {
       "kind": "paper",
-      "line": 816,
+      "line": 823,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1007/BF02289159"
     },
     {
       "kind": "paper",
-      "line": 821,
+      "line": 828,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1103/PhysRevE.100.032305"
     },
     {
       "kind": "paper",
-      "line": 823,
+      "line": 830,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1093/biomet/41.1-2.100"
     },
     {
       "kind": "paper",
-      "line": 828,
+      "line": 835,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://doi.org/10.1073/pnas.2408125122"
     },
     {
       "kind": "external_reference",
-      "line": 833,
+      "line": 840,
       "path": "docs/CREBAIN-DRONE-MGW-STUDY.md",
       "url": "https://openreview.net/forum?id=CLE09ESvul"
     },
@@ -3855,12 +3871,12 @@
       "size_bytes": 5573
     },
     {
-      "git_blob_id": "14c035cc1ec351505bc6af5d196a3b5517147122",
+      "git_blob_id": "c2df680e6c76e3596129ed3cd3e34f837f6f2734",
       "git_mode": "100644",
       "path": "docs/STATISTICAL-CONTRACT.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "8c49d3fd76373d684ec64f8f3560231e3336043fc2542b41548ca7942e810951",
-      "size_bytes": 26841
+      "sha256": "50c6cb61515c116af7765d648e99fc33f79fc8af4c213dee27cdcd63412ddaf4",
+      "size_bytes": 27421
     },
     {
       "git_blob_id": "148ec21d2b24e3c45a13b238b450e9eb3ab4cd9e",
