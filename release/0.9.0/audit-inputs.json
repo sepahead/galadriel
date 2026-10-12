@@ -381,6 +381,7 @@
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "patterns": [
         "AGENTS.md",
+        "agent-index.json",
         "CLAUDE.mdc",
         ".gitignore",
         ".gitattributes",

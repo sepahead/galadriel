@@ -1,0 +1,151 @@
+{
+  "schema": "sepahead.agent-index.v1",
+  "repository": "sepahead/galadriel",
+  "summary": "Galadriel: a Rust detector, fusion and justification toolkit for signed consistency, with optional NCP sidecars, an MI companion and offline PID studies; release 0.9.0 is an unpublished candidate. AGENTS.md is the operating contract; this index restates its operational facts for tools.",
+  "entry_documents": [
+    {
+      "path": "AGENTS.md",
+      "role": "operating contract for agents"
+    },
+    {
+      "path": "README.md",
+      "role": "overview"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "role": "contribution rules"
+    },
+    {
+      "path": "docs/MAINTAINER_WORKFLOWS.md",
+      "role": "generators, coupled release records and qualification procedures"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "role": "complete applicable CI command set, with local-adapter.yml"
+    },
+    {
+      "path": ".github/workflows/local-adapter.yml",
+      "role": "independent local-adapter source gate"
+    },
+    {
+      "path": "docs/CLAIMS.md",
+      "role": "public claims and errata"
+    },
+    {
+      "path": "SECURITY.md",
+      "role": "security policy and private reporting"
+    }
+  ],
+  "delivery": {
+    "default_branch": "main",
+    "merge": "Work on a signed branch, open a pull request, wait for the three required checks, then squash-merge.",
+    "signing": "signed commits are required on main",
+    "attribution": "no AI attribution or co-author trailers",
+    "owner_only": [
+      "release publication",
+      "tag creation or move",
+      "reference deletion",
+      "repository setting change"
+    ]
+  },
+  "gates": [
+    {
+      "id": "release-audit",
+      "when": "last, after every other edit, with every change staged",
+      "command": "python3 -B -E -s -S scripts/release_audit.py generate && python3 -B -E -s -S scripts/release_audit.py verify",
+      "cost": "fast"
+    },
+    {
+      "id": "generated-release-records",
+      "when": "a release record, task projection or convergence input changes",
+      "command": "python3 -B -E -s -S repo_work/build_task_dispositions.py verify && python3 -B -E -s -S repo_work/local_convergence.py schema --repo .",
+      "cost": "fast"
+    },
+    {
+      "id": "public-api",
+      "when": "a public Rust declaration changes",
+      "command": "python3 -B -E -s -S repo_work/check_public_api.py",
+      "cost": "fast"
+    },
+    {
+      "id": "agent-index",
+      "when": "agent-index.json or a path it names changes",
+      "command": "python3 -B -E -s -S scripts/check_agent_index.py",
+      "cost": "fast"
+    },
+    {
+      "id": "rust-lint",
+      "when": "Rust source changes",
+      "command": "cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+      "cost": "medium"
+    },
+    {
+      "id": "workspace-tests",
+      "when": "Rust source changes; part of the CI set, not the complete mirror",
+      "command": "cargo test --workspace --all-features --locked",
+      "cost": "full"
+    }
+  ],
+  "generated": [
+    {
+      "path": "release/0.9.0/audit-manifest.json",
+      "regenerate": "python3 -B -E -s -S scripts/release_audit.py generate"
+    },
+    {
+      "path": "release/0.9.0/requirements-ledger.json",
+      "regenerate": "python3 -B -E -s -S scripts/release_audit.py generate"
+    },
+    {
+      "path": "release/0.9.0/local-convergence-schema.json",
+      "regenerate": "python3 -B -E -s -S repo_work/local_convergence.py schema --repo ."
+    }
+  ],
+  "frozen": [
+    {
+      "path": "release/0.9.0/tasks.json",
+      "reason": "immutable 116-task projection, bound with task-closure-plan.json and task-dispositions.json by clm-018-assurance.json"
+    },
+    {
+      "path": "evidence/results/post-audit-v1-8a0084f/report.md",
+      "reason": "historical record"
+    },
+    {
+      "path": "release/0.9.0/evidence/ACCEPTANCE-CRITERIA.md",
+      "reason": "historical record"
+    },
+    {
+      "path": "release/0.9.0/reviews/phase-1.md",
+      "reason": "historical record"
+    },
+    {
+      "path": "release/0.9.0/WITHDRAWN-RELEASES.md",
+      "reason": "historical record"
+    },
+    {
+      "path": "docs/history/2026-07-10-review/",
+      "reason": "byte-preserved historical review archive"
+    },
+    {
+      "path": "LICENSE*",
+      "reason": "license files preserved byte for byte"
+    }
+  ],
+  "ecosystem": [
+    {
+      "repository": "sepahead/NCP",
+      "relation": "observer and raw-advisory publisher pinned to the 1.0.0-rc.1 candidate"
+    },
+    {
+      "repository": "sepahead/crebain",
+      "relation": "advisory producer and the drone MGW study fixture"
+    },
+    {
+      "repository": "sepahead/haldir",
+      "relation": "advisory evidence only; it never grants or widens authority"
+    },
+    {
+      "repository": "sepahead/pid-rs",
+      "relation": "offline PID studies under the pid-rs 1.0 migration contract"
+    }
+  ]
+}

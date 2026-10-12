@@ -211,6 +211,8 @@ Relocation does not refresh the reviews or grant current qualification.
 
 Run focused checks during implementation.
 Use `.github/workflows/ci.yml` and `.github/workflows/local-adapter.yml` for the complete applicable command set.
+[`agent-index.json`](agent-index.json) restates the gates, artifacts, and ecosystem relations of this file for tools.
+Update it when a gate or a named path changes, then run `python3 -B -E -s -S scripts/check_agent_index.py`.
 The exact command and qualification details remain in [MAINTAINER_WORKFLOWS.md](docs/MAINTAINER_WORKFLOWS.md).
 Do not describe a focused subset as the full CI mirror.
 Do not call a failed, skipped, observational, or unavailable gate passed.

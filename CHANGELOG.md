@@ -181,6 +181,10 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Documentation
 
+- Add `agent-index.json`, a machine-readable index of the gates, generated and
+  frozen artifacts, and ecosystem relations in `AGENTS.md`.
+  `scripts/check_agent_index.py` fails when a named path or script is missing, a
+  gate identifier repeats, or a machine-specific path appears; CI runs it.
 - Added two figures: Gaussian mutual information at correlation plus and minus 0.6,
   which shows why mutual information cannot replace signed consistency, and the
   CREBAIN drone fixture's atoms on the shared-exclusion lattice. Both embed their

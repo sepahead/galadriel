@@ -126,6 +126,9 @@ jobs:
             --allowed-signers release/0.9.0/audit/ALLOWED_SIGNERS
           python3 -B -E -s -S scripts/release_audit.py verify
 
+      - name: Verify the agent index
+        run: python3 -B -E -s -S scripts/check_agent_index.py
+
       - name: Verify exact public API snapshots
         run: python3 -B -E -s -S repo_work/check_public_api.py
 

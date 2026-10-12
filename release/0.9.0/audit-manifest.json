@@ -53,12 +53,12 @@
       "size_bytes": 933
     },
     {
-      "git_blob_id": "adeb405c83099fc493fd971c178d4dfe878c7d63",
+      "git_blob_id": "fb4704b7cabee4f700f2ab212ff6d320935e9331",
       "git_mode": "100644",
       "path": ".github/workflows/ci.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "e4689d05776559c1312800d63a8c8408caa363d94421874b7b0ff1b2e356596d",
-      "size_bytes": 12061
+      "sha256": "bce17b2fa98835b42c98493063161c32387daa84b661f90056a4818da284a7a6",
+      "size_bytes": 12161
     },
     {
       "git_blob_id": "f65e0e64ca1d9bb0be3ff73c8413ffa56e699930",
@@ -93,20 +93,20 @@
       "size_bytes": 1508
     },
     {
-      "git_blob_id": "bb3f2b9c9f16dbe0aeaf4cf12e6c2a7bb56fffad",
+      "git_blob_id": "2f94028e36a0247beb0713d07d5a52246aa9b091",
       "git_mode": "100644",
       "path": "AGENTS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "145837b3c67ff4d6b129ca9d672bf1b70292941f0789c1ec84b2281df111fe11",
-      "size_bytes": 15669
+      "sha256": "bd8b5a01054311cb5867b96757a73a492842a30254628acc3cebb8cf656a868a",
+      "size_bytes": 15895
     },
     {
-      "git_blob_id": "5e48c707505b3702d9e21f8561defb91b2ae8303",
+      "git_blob_id": "0cebc9cbb891164dbc0a12c32f971f62893f9229",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "0af35fb1cf2062f9e20511d18eade99fb194871ee186d713a210a23de2ad7079",
-      "size_bytes": 67017
+      "sha256": "ef7b415707eec493af11178d3afdf2b33478631d1abfdf44010189066e7cc38f",
+      "size_bytes": 67312
     },
     {
       "git_blob_id": "93e56077732b34820e2594e8f61d5579b5f9849d",
@@ -219,6 +219,14 @@
       "purpose": "normative documentation, repository metadata, and operator tooling",
       "sha256": "8ccc9a5cac53e99b1d0e7249bc71d5712470f5313e039109d434d9b42dd19e0a",
       "size_bytes": 1260
+    },
+    {
+      "git_blob_id": "104b9637ad733fdd011175e074121d6318be4013",
+      "git_mode": "100644",
+      "path": "agent-index.json",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "f46469b90834bdb4fdac87693cfc0890b8cba005746070ebc99bc4df62e005b9",
+      "size_bytes": 4914
     },
     {
       "git_blob_id": "691e51297e02d65ed397cc1ee82b0652f3179a5a",
@@ -1981,12 +1989,12 @@
       "size_bytes": 184807
     },
     {
-      "git_blob_id": "fd8ea61fd83a61d82284344c2b977c8262d068dd",
+      "git_blob_id": "98a4314ec76415c3e3f8fee072fed6557c449402",
       "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "6f1eac9df323d8ff0a009da9a8290bc2bffabe591cdcea35a6b85091990e35b7",
-      "size_bytes": 22450
+      "sha256": "c6037cc21a79ae3ea394ba0ee2dedf7981500cf9236c1fc1d65a77e7b995ad79",
+      "size_bytes": 22478
     },
     {
       "git_blob_id": "7e563049b65dc6761e76b7d0c96c1cc10bd5c0dc",
@@ -2357,12 +2365,12 @@
       "size_bytes": 260546
     },
     {
-      "git_blob_id": "a93c374a03201244e9021c9d38c4d4bacdafa270",
+      "git_blob_id": "d278dd3d95e6653c46956f26c5cf92ed2f5b5e2d",
       "git_mode": "100644",
       "path": "repo_work/freeze_audit_inputs.py",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "71d2903e138c09fabed2984beea6147833e3e9bbee1ac7b3e6434ef14c810753",
-      "size_bytes": 100405
+      "sha256": "54254d588f91f1394fd8aa0a8588cb4aebc9ec81d6d58cf9e0b8dea2ec3ceb1a",
+      "size_bytes": 100441
     },
     {
       "git_blob_id": "3f9fbb1f4e30f56c621929f9f115e83ebe76b2a7",
@@ -2603,6 +2611,14 @@
       "purpose": "locked software/toolchain input",
       "sha256": "102194270e5b9e364d761f5a990da88598a1d70441aa8b36aaa06f520dc55221",
       "size_bytes": 212
+    },
+    {
+      "git_blob_id": "c0147d42e9a714400532e07b64a5cb5cabbe05be",
+      "git_mode": "100644",
+      "path": "scripts/check_agent_index.py",
+      "purpose": "normative documentation, repository metadata, and operator tooling",
+      "sha256": "37fdcda51761d04b97c9e2002909d463652d9a10681f727e83e2de08ed407c32",
+      "size_bytes": 6502
     },
     {
       "git_blob_id": "786edeec4a0c353a5d88062d3f75e0163b8c387d",
