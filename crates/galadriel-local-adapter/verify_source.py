@@ -59,7 +59,7 @@ def git_packages(lock: dict) -> dict[str, str]:
 def sdk_source(profile: dict) -> str:
     sdk = profile["sdk"]
     require(set(sdk) == {"name", "version", "repository", "revision"}, "SDK field roster")
-    require(sdk["name"] == "ncp-local" and sdk["version"] == "1.0.0", "SDK package identity")
+    require(sdk["name"] == "ncp-local" and sdk["version"] == "1.0.1", "SDK package identity")
     require(sdk["repository"] == "https://github.com/sepahead/NCP", "SDK repository")
     require(re.fullmatch(r"[0-9a-f]{40}", sdk["revision"]) is not None, "SDK revision")
     return f"git+{sdk['repository']}?rev={sdk['revision']}#{sdk['revision']}"
@@ -88,7 +88,7 @@ def check_manifests(profile, root, manifest, root_lock, native_lock, policy):
     require(manifest["features"] == {"default": [], "ncp-local": ["dep:ncp-local", "dep:serde", "dep:serde_json"]}, "Unexpected adapter feature surface")
     require(manifest["dependencies"]["galadriel-core"] == {"version": "=0.9.0", "path": "../galadriel-core"}, "Existing core dependency required")
     sdk = profile["sdk"]
-    expected = {"version": "=1.0.0", "git": sdk["repository"], "rev": sdk["revision"], "optional": True}
+    expected = {"version": "=1.0.1", "git": sdk["repository"], "rev": sdk["revision"], "optional": True}
     require(manifest["dependencies"]["ncp-local"] == expected, "Native SDK must use the exact public Git pin; sibling construction is not admissible")
     require(git_packages(native_lock) == {"ncp-local": sdk_source(profile)}, "Native lock Git source")
     require(policy["advisories"].get("ignore") == [], "Native policy cannot inherit unrelated exceptions")

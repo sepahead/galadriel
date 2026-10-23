@@ -143,7 +143,7 @@ Neither lifecycle integrity nor transport authentication proves physical truth.
 
 The Neuro-Cybernetic Protocol (NCP) is optional.
 The independent local package compiles the `monitor` role under `galadriel.scalar-nis-record-only.v1`.
-Its `ncp-local` feature selects SDK `1.0.0` at public revision `de751d499b5e07d1c95a072e08255083d77cb38b`.
+Its `ncp-local` feature selects SDK `1.0.1` at public revision `99e9adce147fe5bc770d2dcfe5f21cbd2274efeb`, the tag `sdk-v1.0.1`.
 The seven-member root workspace uses its separate NCP 1.0.0-rc.1 candidate dependencies (wire 1.0).
 
 ```bash
