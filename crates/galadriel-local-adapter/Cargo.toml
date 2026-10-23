@@ -24,7 +24,7 @@ ncp-local = ["dep:ncp-local", "dep:serde", "dep:serde_json"]
 galadriel-core = { version = "=0.9.0", path = "../galadriel-core" }
 sha2 = "0.11"
 thiserror = "2"
-ncp-local = { version = "=1.0.0", git = "https://github.com/sepahead/NCP", rev = "de751d499b5e07d1c95a072e08255083d77cb38b", optional = true }
+ncp-local = { version = "=1.0.1", git = "https://github.com/sepahead/NCP", rev = "99e9adce147fe5bc770d2dcfe5f21cbd2274efeb", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 

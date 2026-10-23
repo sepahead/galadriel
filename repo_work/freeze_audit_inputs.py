@@ -65,6 +65,7 @@ RELEASE_INPUTS = (
     "release/0.9.0/tool-inputs/pid-core-bc3aa80-license-2026-10-01.json",
     "release/0.9.0/tool-inputs/ncp-2819dae-license-2026-10-03.json",
     "release/0.9.0/tool-inputs/event-listener-5.4.2-license-2026-10-07.json",
+    "release/0.9.0/tool-inputs/rustsec-2026-0338-0383-license-2026-10-23.json",
     "release/0.9.0/ecosystem-cut.json",
     "release/0.9.0/handoff-source.json",
     "release/0.9.0/tasks.json",

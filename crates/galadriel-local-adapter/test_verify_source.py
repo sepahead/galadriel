@@ -18,7 +18,7 @@ def fixture():
     values = [profile, load(ROOT / "Cargo.toml"), load(COMPONENT / "Cargo.toml"), load(ROOT / "Cargo.lock"), load(COMPONENT / "Cargo.lock"), load(COMPONENT / "deny.toml")]
     # The synthetic positive represents the intended public pin, never sibling authority.
     sdk = profile["sdk"]
-    values[2]["dependencies"]["ncp-local"] = {"version": "=1.0.0", "git": sdk["repository"], "rev": sdk["revision"], "optional": True}
+    values[2]["dependencies"]["ncp-local"] = {"version": "=1.0.1", "git": sdk["repository"], "rev": sdk["revision"], "optional": True}
     for package in values[4]["package"]:
         if package["name"] == "ncp-local":
             package["source"] = verifier.sdk_source(profile)
@@ -28,7 +28,7 @@ def fixture():
 def graph(native):
     profile = fixture()[0]
     names = ["galadriel-local-adapter", "galadriel-core"] + (["ncp-local"] if native else [])
-    packages = [{"id": name, "name": name, "version": "1.0.0" if name == "ncp-local" else "0.9.0", "source": verifier.sdk_source(profile) if name == "ncp-local" else None, "manifest_path": str(COMPONENT / "Cargo.toml" if name == "galadriel-local-adapter" else COMPONENT.parent / name / "Cargo.toml")} for name in names]
+    packages = [{"id": name, "name": name, "version": "1.0.1" if name == "ncp-local" else "0.9.0", "source": verifier.sdk_source(profile) if name == "ncp-local" else None, "manifest_path": str(COMPONENT / "Cargo.toml" if name == "galadriel-local-adapter" else COMPONENT.parent / name / "Cargo.toml")} for name in names]
     nodes = [{"id": name, "features": ["ncp-local"] if native and index == 0 else [], "deps": [{"pkg": dependency} for dependency in names[1:]] if index == 0 else []} for index, name in enumerate(names)]
     return {"packages": packages, "workspace_members": names[:1], "resolve": {"root": names[0], "nodes": nodes}}
 

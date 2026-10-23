@@ -55,8 +55,9 @@ Each record names its predecessor and copies the predecessor's active projection
 3. The [pid-core record](../release/0.9.0/tool-inputs/pid-core-bc3aa80-license-2026-10-01.json) replaces `pid-core` and `pid-runlog` 1.0.0 with `pid-core` 0.9.0 at `bc3aa80`.
 4. The [NCP record](../release/0.9.0/tool-inputs/ncp-2819dae-license-2026-10-03.json) replaces `ncp-core` and `ncp-zenoh` 0.8.0 with the 1.0.0-rc.1 candidate and adds `sha2` 0.10.9 (Apache-2.0 or MIT).
 5. The [event-listener record](../release/0.9.0/tool-inputs/event-listener-5.4.2-license-2026-10-07.json) raises `event-listener` from 5.4.1 to 5.4.2 for RUSTSEC-2026-0221. The new release no longer depends on `concurrent-queue` 2.5.0 (Apache-2.0 or MIT), which leaves the graph.
+6. The [TLS-stack record](../release/0.9.0/tool-inputs/rustsec-2026-0338-0383-license-2026-10-23.json) raises `quinn-proto` to 0.11.19, `rustls` to 0.23.46, `rustls-webpki` to 0.103.16, and `webpki-roots` and `webpki-root-certs` to 1.0.10 for RUSTSEC-2026-0338 to -0342, -0346 to -0349, and -0381 to -0383. Each replacement keeps its predecessor's license assignments.
 
-The event-listener record binds the current projection hashes.
+The TLS-stack record binds the current projection hashes.
 The verifier requires exactly 381 packages, 705 assignments, and both complete identity projections.
 Historical or altered inventories cannot satisfy the current source gate.
 
@@ -447,9 +448,9 @@ It contains the exact 381-package host-filtered subset of the validated
 436-package graph.
 It contains exactly 705 license assignments.
 Its sorted package-identity set has this SHA-256 value:
-`164150ccf852bf7e95c121b4a1078ac071d9911145a2c805a8f0f74db6ecae29`.
+`fa63c60eb4d744f37a76d6c285ed842d8e562e3c947b1518432cb35f0c70899e`.
 Its canonical package-and-license content has this SHA-256 value:
-`ac8ab6011c3c69893454a5cfea8125c3f5565de6feca6ccdd0ce8aacc6ca31c5`.
+`52902a6961d9e2efd8382434fcf9cb79cf8264a7140602b9ec37a7e14281b555`.
 The supply-chain CI job rebuilds this inventory from locked metadata.
 It verifies both exact digests.
 

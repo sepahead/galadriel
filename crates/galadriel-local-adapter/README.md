@@ -176,7 +176,7 @@ An unacknowledged result blocks the next mutation.
 The maximum local frame is 65,536 bytes, excluding its four-byte big-endian length prefix.
 Detector storage remains bounded by three single-channel, 64-sample windows.
 
-The manifest pins public NCP source at `de751d499b5e07d1c95a072e08255083d77cb38b`.
+The manifest pins SDK `1.0.1` from public NCP source at `99e9adce147fe5bc770d2dcfe5f21cbd2274efeb`, the tag `sdk-v1.0.1`.
 The independent lock and source gate verify that exact optional SDK dependency.
 No remote transport, signature, physical validity, Haldir gate, or complete release qualification follows from this component interface.
 

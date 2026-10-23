@@ -51,6 +51,10 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Changed
 
+- Move the independent `galadriel-local-adapter` to the released `ncp-local` 1.0.1 SDK at
+  commit `99e9adce147fe5bc770d2dcfe5f21cbd2274efeb`, the NCP tag `sdk-v1.0.1`, in its manifest,
+  lockfile, source profile, and source verifier. The SDK patch release keeps every byte on the
+  wire and every public interface. The root workspace keeps its NCP 1.0.0-rc.1 dependencies.
 - Rewrite the agent contract. `AGENTS.md` gains an authority-and-workflow section
   (agents may merge CI-green pull requests to `main`; tags, releases, reference
   deletion, and settings stay release-operator actions) and an artifact-classes
@@ -192,6 +196,11 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Fixed
 
+- Raise `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338 to -0342), `rustls` to 0.23.46
+  (RUSTSEC-2026-0346 to -0349), `rustls-webpki` to 0.103.16 (RUSTSEC-2026-0382), and
+  `webpki-roots` and `webpki-root-certs` to 1.0.10 (RUSTSEC-2026-0381 and -0383) in the root
+  lock. Each replacement keeps its license assignments, so the inventory stays at 381 packages
+  and 705 assignments; a new append-only record binds the changed package identities.
 - Fit every label of the four documentation figures inside its box. In
   `system-boundary.svg`, `detector-evidence.svg`, and `lifecycle-receipts.svg`, text
   crossed box edges and labels sat on arrows when rendered in Arial. The figures
