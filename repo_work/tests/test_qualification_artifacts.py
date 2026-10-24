@@ -1275,6 +1275,7 @@ class CargoDenyLicenseValidatorTest(unittest.TestCase):
             "ncp-2819dae-license-2026-10-03.json",
             "event-listener-5.4.2-license-2026-10-07.json",
             "rustsec-2026-0338-0383-license-2026-10-23.json",
+            "rustsec-2026-0386-license-2026-10-24.json",
         )
         chain = [
             json.loads((tool_inputs / name).read_text()) for name in chain_names

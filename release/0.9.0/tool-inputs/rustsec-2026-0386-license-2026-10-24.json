@@ -1,0 +1,57 @@
+{
+  "schema": "galadriel.qualification-license-input-revision.v2",
+  "revision": "2026-10-24-rustsec-2026-0386",
+  "scope": "exact_lock_patch_projection_only",
+  "release_authority": false,
+  "inventory_scope": "CARGO_DENY_HOST_FILTERED_GRAPH",
+  "package_count": 381,
+  "license_assignment_count": 705,
+  "historical": {
+    "source_record": "release/0.9.0/tool-inputs/rustsec-2026-0338-0383-license-2026-10-23.json",
+    "lockfile_sha256": "d9867da5411ee6ce8ce95afbdff271874ea6442f225de614765b1e08a3cdcb39",
+    "projections": {
+      "package_ids_sha256": "fa63c60eb4d744f37a76d6c285ed842d8e562e3c947b1518432cb35f0c70899e",
+      "semantic_sha256": "52902a6961d9e2efd8382434fcf9cb79cf8264a7140602b9ec37a7e14281b555"
+    },
+    "current_qualification_authority": false
+  },
+  "active": {
+    "lockfile_sha256": "5bf591bcd3dadea414c713a73a5fbee3c415bdfa345e21d0d85522153f614a4d",
+    "projections": {
+      "package_ids_sha256": "3d6cdd14bccd38d3e0ffce2d775775c18afb8ed38408c93baac00b10f6e521c7",
+      "semantic_sha256": "93d4f1df1271e256f2e7332687343a7a17ae15b63071634beadbe52bddf33365"
+    }
+  },
+  "changed_identities": {
+    "removed": [
+      "registry+https://github.com/rust-lang/crates.io-index#tokio@1.53.1"
+    ],
+    "added": [
+      "registry+https://github.com/rust-lang/crates.io-index#tokio@1.54.1"
+    ]
+  },
+  "license_policy_summary": {
+    "accepted_help_count": 373,
+    "skipped_note_count": 8,
+    "skipped_private_crates": [
+      "galadriel-cli",
+      "galadriel-core",
+      "galadriel-dependence",
+      "galadriel-eval",
+      "galadriel-justify",
+      "galadriel-ncp",
+      "galadriel-sim",
+      "zenoh-transport"
+    ],
+    "note": "tokio 1.54.1 fixes RUSTSEC-2026-0386 (the safe AsyncFd constructors violate I/O safety). It keeps tokio's MIT license assignment. Only tokio's version and checksum change in the lock; no other package or dependency edge changes. The package and assignment counts are unchanged."
+  },
+  "reconstruction": {
+    "method": "cargo metadata --locked --offline --all-features and cargo deny 0.19.9 list --layout crate on the exact lock, checked by repo_work/qualification_artifacts.py",
+    "scope": "Observed package and assignment identity; no new legal clearance, upstream signature, scientific release, or terminal qualification."
+  },
+  "unchanged_requirements": [
+    "Exact closed Cargo metadata and lock joins",
+    "License policy, tools, and advisory database",
+    "Historical terminal artifacts and source evidence"
+  ]
+}

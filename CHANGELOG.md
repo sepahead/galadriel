@@ -49,6 +49,13 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ## [Unreleased]
 
+### Security
+
+- Raise `tokio` from 1.53.1 to 1.54.1 in the root lock for RUSTSEC-2026-0386 (the safe
+  `AsyncFd` constructors violate I/O safety). Only tokio's version and checksum change. The
+  tokio license record continues the projection chain; counts stay at 381 packages and 705
+  assignments.
+
 ### Changed
 
 - Move the independent `galadriel-local-adapter` to the released `ncp-local` 1.0.1 SDK at
