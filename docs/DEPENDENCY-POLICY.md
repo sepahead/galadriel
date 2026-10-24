@@ -56,8 +56,9 @@ Each record names its predecessor and copies the predecessor's active projection
 4. The [NCP record](../release/0.9.0/tool-inputs/ncp-2819dae-license-2026-10-03.json) replaces `ncp-core` and `ncp-zenoh` 0.8.0 with the 1.0.0-rc.1 candidate and adds `sha2` 0.10.9 (Apache-2.0 or MIT).
 5. The [event-listener record](../release/0.9.0/tool-inputs/event-listener-5.4.2-license-2026-10-07.json) raises `event-listener` from 5.4.1 to 5.4.2 for RUSTSEC-2026-0221. The new release no longer depends on `concurrent-queue` 2.5.0 (Apache-2.0 or MIT), which leaves the graph.
 6. The [TLS-stack record](../release/0.9.0/tool-inputs/rustsec-2026-0338-0383-license-2026-10-23.json) raises `quinn-proto` to 0.11.19, `rustls` to 0.23.46, `rustls-webpki` to 0.103.16, and `webpki-roots` and `webpki-root-certs` to 1.0.10 for RUSTSEC-2026-0338 to -0342, -0346 to -0349, and -0381 to -0383. Each replacement keeps its predecessor's license assignments.
+7. The [tokio record](../release/0.9.0/tool-inputs/rustsec-2026-0386-license-2026-10-24.json) raises `tokio` from 1.53.1 to 1.54.1 for RUSTSEC-2026-0386. It keeps its MIT assignment, and no other package or edge changes.
 
-The TLS-stack record binds the current projection hashes.
+The tokio record binds the current projection hashes.
 The verifier requires exactly 381 packages, 705 assignments, and both complete identity projections.
 Historical or altered inventories cannot satisfy the current source gate.
 
