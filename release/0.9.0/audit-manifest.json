@@ -93,12 +93,12 @@
       "size_bytes": 1508
     },
     {
-      "git_blob_id": "b009ea3e82cd54d10d19e25b2dd775af0b5e81e4",
+      "git_blob_id": "45318ed58a7f9cf2d3a0a1f4dc8d59a386d753b2",
       "git_mode": "100644",
       "path": "AGENTS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "98144e6d6889e171ae237d6c0910302e62f4caea98ee13b2bcdf9f5bb698528a",
-      "size_bytes": 15917
+      "sha256": "45483dfd4451f24b2cc08b26104f639642e0225bb5b1d389067dab1515f4bb9c",
+      "size_bytes": 16205
     },
     {
       "git_blob_id": "b9c23372f9600705bcafd50c97da856898aae6c3",

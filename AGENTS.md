@@ -222,6 +222,9 @@ Use American English, active voice, one term per concept, and one instruction pe
 Keep procedural sentences within 20 words and descriptive sentences within 25 words when practical.
 Define abbreviations, mathematical symbols, units, assumptions, and operating bounds.
 Preserve exact identifiers, thresholds, commands, historical wording, and legal meaning.
+Do not cite social-media posts. A post can be deleted or edited, and it can state an opinion as a fact.
+That biases readers and agents and weakens scientific rigor.
+State the substance in your own words with its date, cite the primary source, and do not link the post or name its author.
 Keep SVGs self-contained, readable, and accessible with adjacent prose alternatives.
 Inspect their rendered layout at normal, enlarged, and phone widths.
 
