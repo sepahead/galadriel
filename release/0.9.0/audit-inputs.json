@@ -302,6 +302,7 @@
       "purpose": "test and interoperability input fixtures",
       "patterns": [
         "crates/*/tests/fixtures/*",
+        "crates/*/tests/fixtures/*/*",
         "crates/*/fixtures/*",
         "deploy/reference/*",
         "deploy/secure-client-endpoint-corpus.json"

@@ -37,7 +37,7 @@ Schema `2.0` keeps the exact schema `1.0` shapes. The `schema_version` and
 accepted.
 In this contract, "v1 observation" names the frozen observation shape of the
 observation route, and the monitor field `v1_expected` keeps its name.
-The experimental [local scalar owner](../crates/galadriel-local-adapter/README.md#optional-private-pipe-owner) uses a separate, explicitly selected private-pipe contract.
+The experimental [NCP 2 loop reader](../crates/galadriel-local-adapter/README.md#optional-ncp-2-loop-reader) reads recorded CREBAIN NCP 2 loop runs under a separate, explicitly selected feature.
 It does not satisfy this contract's remote producer or deployment qualification gates.
 
 These Galadriel components exist and have component tests:

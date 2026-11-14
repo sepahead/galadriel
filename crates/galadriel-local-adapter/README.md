@@ -1,6 +1,6 @@
 # Local scalar magnitude adapter
 
-Status: experimental scalar library and optional local NCP process owner.
+Status: experimental scalar library and optional reader of CREBAIN NCP 2 loop runs.
 Full ecosystem and release qualification remain separate.
 
 This independent Cargo workspace reuses the existing `galadriel-core` package.
@@ -62,7 +62,7 @@ Available zero is a measurement. Missing evidence never becomes zero.
 
 The adapter validates every present scalar before it changes detector state.
 `validate_frame` provides the same complete preflight without mutation or position reservation.
-The protocol owner can use it before the execution boundary.
+A caller can use it before it commits to a frame.
 Wrong arity, non-finite NIS, negative NIS, or changed dimensions reject the complete frame before ingestion.
 Corrected input can reuse that unconsumed position.
 
@@ -72,7 +72,7 @@ Later calls fail until the caller prepares a new instance under a fresh external
 This library does not authenticate that external generation.
 
 Sequence gaps, replay, timestamp regression, excessive timestamp gaps, and unexpected engine failures also retire the instance.
-Cancellation and transport failures belong to the external NCP owner.
+Cancellation and transport failures belong to the caller.
 The library does not infer silence from missing calls or read a wall clock.
 
 ## Mathematical boundary
@@ -107,82 +107,61 @@ Separate synthetic two-modality controls exercise nominal and anomalous paths.
 Negative controls cover missingness, invalid numbers, changed dimensions, replay, gaps, clock discontinuity, and exhaustion.
 These component checks do not qualify NCP transport, real producer semantics, field calibration, or Haldir gating.
 
-## Optional private-pipe owner
+## Optional NCP 2 loop reader
 
-The `ncp-local` feature adds the `galadriel-ncp-local` binary and the `ncp_local::local_owner` library constructor.
-It uses the standalone `ncp-local` Rust SDK.
-This SDK contains the bounded local contract and has no Zenoh dependency.
+The `ncp-loop` feature adds the `galadriel-ncp-loop` binary and the `ncp_loop::assess_run` library function.
+It uses the NCP 2 Rust core, package `sepahead-ncp-core` (library `ncp`), version `2.0.0`.
 The separate `galadriel-ncp` consumer keeps its own NCP 1.0.0-rc.1 candidate dependency.
 The default library has no NCP dependency.
 The Galadriel wire-1.0 sidecar and Zenoh profiles remain separate.
 
 ```bash
-cargo build --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-local --bin galadriel-ncp-local
+cargo build --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-loop --bin galadriel-ncp-loop
+galadriel-ncp-loop assess RUN_DIR
 ```
 
-The supervisor launches the binary with `--run-id UUID --generation UUID`.
-Each value must be a fresh, canonical UUID version 4.
-The binary uses inherited standard input and standard output as private protocol pipes.
-Standard output contains only length-prefixed NCP frames.
-The compiled role is `monitor`.
-The binary accepts no endpoint, role override, shell command, or executable selector.
+CREBAIN's `crebain-ncp-loop` runs controllers and simulated drone worlds, each in its own NCP 2 session.
+It writes `manifest.json` and one transcript for each session into a run directory.
+The reader assesses such a directory after the run; it opens no listener, network connection, or subprocess.
+It prints one JSON report.
 
-Preparation uses shared NCP `PrepareData` and `RunPlan` types.
-The exact application profile is `galadriel.scalar-nis-record-only.v1`.
-The closed configuration contains only `body_generation`, which binds the expected body process generation.
-The body and monitor generations must differ.
-The plan admits one through three entities, at most 1,024 steps, and only direct simulation with record-only monitoring.
-Unsupported gated, advisory-control, or calibrated-posterior selections fail before preparation.
+For each world of the manifest, the reader checks the world transcript before it uses a value:
 
-Each `assess` body contains only `body_response`, the complete committed body `step` response.
-Before ingestion, the owner checks its schema, role, run, generation, profile, sequence, outcome, and complete response digest.
-It then validates the complete shared `BodyResult`, snapshot, plan, roster, time, and source diagnostics.
-Later body results must join the preceding accepted snapshot digest.
-The supervisor retains responsibility for authentic process custody and the original request-to-response join.
-Local digest verification establishes supplied-byte integrity, not producer authentication.
+- The file has at most 256 MiB, and the NCP 2 transcript verifier accepts it.
+- A transcript of version 2 ends with its end record.
+- It holds one complete client session: `open`, `prepare`, one `step` for each tick, `finish`, and `close`, each with an `ok` response to its own request.
+- The session opens `crebain.body` with the manifest's body contract.
+- `prepare` names the manifest's drones, steps, and tick, and each step continues the state chain: it names the state digest that the previous result produced.
+- The innovations of each step name the step and list the world's drones in order.
 
-Each entity owns one scalar monitor instance.
-The actual producer track identifier and fusion sequence enter that instance unchanged.
-The source sensor and track remain fixed after its first observation.
-The producer fusion sequence must advance by exactly one.
-Body steps and producer fusion sequences remain distinct identifiers.
-Integer microseconds convert exactly to milliseconds under the shared plan.
+Any failed check refuses the whole run.
+The transcripts are not signed, so these checks establish the integrity of the supplied files, not their producer.
 
-An initial birth or unavailable update returns `not_ready` and no detector report.
-The first actual update creates the detector at its actual producer sequence.
-Birth or unavailable evidence after activation permanently retires that entity's window.
-Later updates return `retired` with no report until a fresh monitor generation is prepared.
-No fabricated observation or producer sequence performs this retirement.
+Each drone owns one scalar monitor instance for one Visual channel with three degrees of freedom.
+A drone's track waits until the kernel reports its first observed innovation.
+The producer's fusion track and fusion sequence then enter the monitor unchanged, and the sensor and track stay fixed.
+A step whose innovation is unavailable after activation retires that track for the rest of the run.
+Later steps report the retired window with no detector report.
+No observation or sequence is made up for a missing innovation.
 
-The output schema is `galadriel.local.assessment.v1`.
-It binds the plan, body response digest, snapshot digest, step, and sample time.
-It includes the actual ordered source diagnostics and serialized detector reports.
+The output schema is `galadriel.ncp-loop.assessment.v1`, with application profile `galadriel.scalar-nis-loop.v1`.
+It names each world transcript by its SHA-256 digest and each step by its tick, simulated time, and state digest.
+It includes each drone's observed NIS, track status, abstention reason, adapter identity, and serialized detector report.
 Classification and configuration identity remain explicit, and `calibrated_posterior` remains `false`.
-The top-level configuration digest identifies the detector parameters.
-Each engine report's `config_identity` also binds the selected exploratory research capability.
-Those two digests intentionally identify different objects.
 One Visual channel with three declared dimensions cannot satisfy the unchanged two-modality minimum.
 Its actual engine report therefore retains `InsufficientEvidence`.
+A run has at most 1,024 steps, and detector storage stays bounded by one 64-sample window for each drone.
 
-`finish` requires exactly `plan_digest` and `completed_steps`, joined to the prepared plan and exact terminal count.
-`abort` accepts an empty object only.
-Abort, pipe loss, malformed framing, or output failure retires the endpoint through the shared NCP owner.
-The supervisor must enforce child-process deadlines and bounded termination.
-This binary does not measure or enforce a wall-clock execution deadline.
-
-The shared NCP owner retains one exact response until its digest is acknowledged.
-An exact retry returns the retained bytes without repeating detector ingestion.
-An unacknowledged result blocks the next mutation.
-The maximum local frame is 65,536 bytes, excluding its four-byte big-endian length prefix.
-Detector storage remains bounded by three single-channel, 64-sample windows.
-
-The manifest pins SDK `1.0.1` from public NCP source at `99e9adce147fe5bc770d2dcfe5f21cbd2274efeb`, the tag `sdk-v1.0.1`.
-The independent lock and source gate verify that exact optional SDK dependency.
+The manifest pins `sepahead-ncp-core` `2.0.0` from public NCP source at `2e24ef5b89feb3f1e4f4972e290201d93e2d0a8d`, which implements revision 4 of the NCP 2 specification.
+The independent lock and source gate verify that exact optional dependency.
 No remote transport, signature, physical validity, Haldir gate, or complete release qualification follows from this component interface.
 
+The tests assess three recorded CREBAIN runs in [`tests/fixtures`](tests/fixtures/README.md): a clean run, a run with a sensor offset and a missing measurement, and a run with two worlds and five drones.
+They also refuse a changed transcript byte, a missing end record, a manifest that does not match the run, and a controller transcript in place of a world transcript.
+
 ```bash
-cargo test --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-local
-cargo clippy --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-local --all-targets -- -D warnings
+cargo test --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-loop
+cargo clippy --locked --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-loop --all-targets -- -D warnings
 ```
 
 ## Independent source gate
@@ -197,7 +176,7 @@ The source verifier rejects a development sibling SDK path.
 It requires the selected full Git revision in the manifest, lock, and resolved native graph.
 Its pure graph must exclude NCP.
 Both graphs must reuse the actual core from this source tree.
-PID, Zenoh, Tokio, and broad NCP packages cannot enter either graph.
+PID, Zenoh, Tokio, and the NCP 1 packages `ncp-core`, `ncp-zenoh`, and `ncp-local` cannot enter either graph.
 The verifier checks the exact adapter file roster and reports each source digest.
 These checks identify supplied source and Cargo metadata; they do not attest loaded code or scientific validity.
 
@@ -211,7 +190,7 @@ cargo metadata --locked --offline --format-version=1 \
   --no-default-features > "$adapter_metadata/pure.json"
 cargo metadata --locked --offline --format-version=1 \
   --manifest-path crates/galadriel-local-adapter/Cargo.toml \
-  --no-default-features --features ncp-local > "$adapter_metadata/native.json"
+  --no-default-features --features ncp-loop > "$adapter_metadata/native.json"
 python3 -B -E -s -S -m unittest discover \
   -s crates/galadriel-local-adapter -p test_verify_source.py -v
 python3 -B -E -s -S crates/galadriel-local-adapter/verify_source.py \
@@ -225,7 +204,7 @@ Both Rust toolchains run the unchanged core's own tests with its empty feature s
 It uses the existing pinned RustSec database and Rust toolchains.
 A separate root archive must build with this adapter absent.
 The native checkout must build without any sibling NCP source directory.
-Existing native tests run the actual private-pipe binary and core detector.
+The native tests assess the recorded CREBAIN runs with the actual core detector.
 The source-policy tests use clearly identified synthetic metadata for hostile-input controls.
 Those synthetic records cannot substitute for the actual Cargo graphs.
 

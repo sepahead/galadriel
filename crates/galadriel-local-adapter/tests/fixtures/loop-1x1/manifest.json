@@ -1,0 +1,23 @@
+{
+  "body_contract": "46df238708ce175babc3f4f58015a60d614675971027721ff92209703ddb5435",
+  "controller_contract": "a5a42f5ba2c88d77f16b812a78a880415319728aec619331e3f7120ad6b7dc57",
+  "controllers": [
+    {
+      "drone_ids": [
+        "alpha"
+      ],
+      "transcript": "controller-0.ncpt",
+      "world": 0
+    }
+  ],
+  "steps": 20,
+  "tick_ms": 20,
+  "worlds": [
+    {
+      "drone_ids": [
+        "alpha"
+      ],
+      "transcript": "world-0.ncpt"
+    }
+  ]
+}

@@ -9,7 +9,7 @@
 //! needs a justified innovation covariance, degrees of freedom, and sampling model.
 //! Representation checks do not establish those assumptions or authenticate a producer.
 //! The scalar API owns no transport, command capability, persistence, or clock.
-//! The optional `ncp-local` feature adds a separately bounded private-pipe owner.
+//! The optional `ncp-loop` feature adds a record-only reader of CREBAIN NCP 2 loop runs.
 
 use galadriel_core::{
     AssessmentClassification, AssessmentFailure, ClockDomain, DetectorConfig,
@@ -19,9 +19,8 @@ use galadriel_core::{
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 
-/// Explicitly selected candidate NCP private-pipe monitor owner.
-#[cfg(feature = "ncp-local")]
-pub mod ncp_local;
+#[cfg(feature = "ncp-loop")]
+pub mod ncp_loop;
 
 /// Exact research profile selected by this adapter.
 pub const RESEARCH_PROFILE: ExploratoryResearchProfile =

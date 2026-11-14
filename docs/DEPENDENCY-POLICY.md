@@ -4,7 +4,7 @@
 
 `crates/galadriel-local-adapter` has its own Cargo workspace and committed lock.
 Its default library has no NCP dependency.
-The optional native owner selects only the standalone `ncp-local` SDK.
+The optional NCP 2 loop reader selects only the NCP 2 Rust core `sepahead-ncp-core`.
 It reuses the existing `galadriel-core` package from the same source tree.
 It does not copy the detector or change the root PID and NCP pins.
 

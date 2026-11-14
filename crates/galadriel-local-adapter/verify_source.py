@@ -13,6 +13,13 @@ import tomllib
 
 MAX_FILE_BYTES = 16 * 1024 * 1024
 ADAPTER = "galadriel-local-adapter"
+# The NCP 2 Rust core, which the adapter imports as `ncp` behind the `ncp-loop` feature.
+SDK_PACKAGE = "sepahead-ncp-core"
+SDK_VERSION = "2.0.0"
+SDK_KEY = "ncp"
+FEATURE = "ncp-loop"
+# Earlier NCP packages, which must not reappear in the adapter's graph.
+RETIRED = ("ncp-local", "ncp-core", "ncp-zenoh")
 
 
 def require(condition: bool, message: str) -> None:
@@ -59,7 +66,7 @@ def git_packages(lock: dict) -> dict[str, str]:
 def sdk_source(profile: dict) -> str:
     sdk = profile["sdk"]
     require(set(sdk) == {"name", "version", "repository", "revision"}, "SDK field roster")
-    require(sdk["name"] == "ncp-local" and sdk["version"] == "1.0.1", "SDK package identity")
+    require(sdk["name"] == SDK_PACKAGE and sdk["version"] == SDK_VERSION, "SDK package identity")
     require(sdk["repository"] == "https://github.com/sepahead/NCP", "SDK repository")
     require(re.fullmatch(r"[0-9a-f]{40}", sdk["revision"]) is not None, "SDK revision")
     return f"git+{sdk['repository']}?rev={sdk['revision']}#{sdk['revision']}"
@@ -78,19 +85,20 @@ def check_manifests(profile, root, manifest, root_lock, native_lock, policy):
     require(len(profile["root_members"]) == 7, "Original seven-package root is required")
     require(f"crates/{ADAPTER}" in root["workspace"]["exclude"], "Adapter must be excluded")
     require(git_packages(root_lock) == profile["root_git_pins"], "Historical root Git pins")
-    require(not any(p["name"] in {ADAPTER, "ncp-local"} for p in root_lock["package"]), "Native dependency entered root lock")
+    require(not any(p["name"] in {ADAPTER, SDK_PACKAGE} for p in root_lock["package"]), "Native dependency entered root lock")
     require(manifest["package"]["name"] == ADAPTER, "Adapter package name")
     require(manifest["package"]["version"] == profile["package_version"], "Adapter version")
     require(manifest["package"]["publish"] is False, "Crate publication is forbidden")
     require(manifest["workspace"]["resolver"] == "2", "Independent workspace required")
     require(manifest["lints"]["rust"]["unsafe_code"] == "forbid", "Unsafe code policy")
     require(manifest["features"]["default"] == [], "Native feature must remain optional")
-    require(manifest["features"] == {"default": [], "ncp-local": ["dep:ncp-local", "dep:serde", "dep:serde_json"]}, "Unexpected adapter feature surface")
+    require(manifest["features"] == {"default": [], FEATURE: [f"dep:{SDK_KEY}", "dep:serde", "dep:serde_json"]}, "Unexpected adapter feature surface")
     require(manifest["dependencies"]["galadriel-core"] == {"version": "=0.9.0", "path": "../galadriel-core"}, "Existing core dependency required")
     sdk = profile["sdk"]
-    expected = {"version": "=1.0.1", "git": sdk["repository"], "rev": sdk["revision"], "optional": True}
-    require(manifest["dependencies"]["ncp-local"] == expected, "Native SDK must use the exact public Git pin; sibling construction is not admissible")
-    require(git_packages(native_lock) == {"ncp-local": sdk_source(profile)}, "Native lock Git source")
+    expected = {"package": SDK_PACKAGE, "version": f"={SDK_VERSION}", "git": sdk["repository"], "rev": sdk["revision"], "optional": True}
+    require(manifest["dependencies"].get(SDK_KEY) == expected, "Native SDK must use the exact public Git pin; sibling construction is not admissible")
+    require(not any(name in manifest["dependencies"] for name in RETIRED), "An earlier NCP package is a dependency")
+    require(git_packages(native_lock) == {SDK_PACKAGE: sdk_source(profile)}, "Native lock Git source")
     require(policy["advisories"].get("ignore") == [], "Native policy cannot inherit unrelated exceptions")
     require(policy["sources"]["unknown-git"] == "deny", "Unknown Git source policy")
     require(policy["sources"]["allow-git"] == [sdk["repository"]], "Native Git allowlist")
@@ -106,7 +114,7 @@ def check_graph(metadata: dict, profile: dict, component: Path, *, native: bool)
     require(packages[root]["name"] == ADAPTER, "Graph root identity")
     require(packages[root]["version"] == profile["package_version"], "Graph root version")
     require(Path(packages[root]["manifest_path"]) == component / "Cargo.toml", "Graph manifest identity")
-    require(nodes[root]["features"] == (["ncp-local"] if native else []), "Exact adapter feature selection")
+    require(nodes[root]["features"] == ([FEATURE] if native else []), "Exact adapter feature selection")
     todo, reached = [root], set()
     while todo:
         current = todo.pop()
@@ -117,13 +125,13 @@ def check_graph(metadata: dict, profile: dict, component: Path, *, native: bool)
         require(len(reached) <= 128, "Native graph package bound")
         todo.extend(dep["pkg"] for dep in nodes[current]["deps"])
     names = {packages[key]["name"] for key in reached}
-    forbidden = {name for name in names if name.startswith(("pid-", "zenoh", "tokio", "ncp-core", "ncp-zenoh"))}
+    forbidden = {name for name in names if name.startswith(("pid-", "zenoh", "tokio") + RETIRED)}
     require(not forbidden, "Native graph acquired an unrelated runtime dependency")
-    require(("ncp-local" in names) is native, "Native feature graph mismatch")
+    require((SDK_PACKAGE in names) is native, "Native feature graph mismatch")
     require("galadriel-core" in names, "Actual core is absent")
     for key in reached:
         package = packages[key]
-        if package["name"] == "ncp-local":
+        if package["name"] == SDK_PACKAGE:
             require(package["source"] == sdk_source(profile), "Native package source identity")
             require(package["version"] == profile["sdk"]["version"], "Resolved SDK version")
             require(nodes[key]["features"] == [], "Unexpected SDK feature selection")
@@ -138,7 +146,7 @@ def check_graph(metadata: dict, profile: dict, component: Path, *, native: bool)
             require(Path(package["manifest_path"]) == expected[package["name"]], "Local core source path")
             require(package["version"] == "0.9.0", "Local package version")
         elif package["source"].startswith("git+"):
-            require(package["name"] == "ncp-local" and package["source"] == sdk_source(profile), "Resolved SDK source")
+            require(package["name"] == SDK_PACKAGE and package["source"] == sdk_source(profile), "Resolved SDK source")
         else:
             require(package["source"] == "registry+https://github.com/rust-lang/crates.io-index", "Unlisted registry source")
     return len(reached)

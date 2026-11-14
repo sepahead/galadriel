@@ -34,11 +34,11 @@ retains the exact dated identities.
 
 ## Dependency and activation matrix
 
-The optional candidate local process interface has a separate scope.
-[`galadriel-local-adapter`](../crates/galadriel-local-adapter/README.md#optional-private-pipe-owner) invokes the actual scalar research detector through private NCP pipes.
-Its `ncp-local` feature uses the shared candidate local plan and response contracts.
-It accepts only record-only monitoring and binds the configured body generation before ingestion.
-The pinned SDK and component tests do not establish reciprocal release qualification or remote deployment.
+The optional NCP 2 loop reader has a separate scope.
+[`galadriel-local-adapter`](../crates/galadriel-local-adapter/README.md#optional-ncp-2-loop-reader) invokes the actual scalar research detector on the recorded world transcripts of a CREBAIN NCP 2 loop run.
+Its `ncp-loop` feature uses the NCP 2 Rust core at revision 4 of the NCP 2 specification.
+It accepts only record-only assessment and checks each transcript, the state chain, and the manifest before ingestion.
+The pinned core and component tests do not establish reciprocal release qualification or remote deployment.
 The matrix below describes the 0.9.0 release cut on the NCP 1.0.0-rc.1 candidate pin.
 
 `required` applies only to the named build or operating mode. It does not mean

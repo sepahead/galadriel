@@ -69,12 +69,12 @@
       "size_bytes": 14030
     },
     {
-      "git_blob_id": "28b8ec5b069f8d78e09b989fa29ef08cc98e2582",
+      "git_blob_id": "e1b519d58e2f117e99b1c08a7ebf4bfd8e6c769d",
       "git_mode": "100644",
       "path": ".github/workflows/local-adapter.yml",
       "purpose": "continuous-integration and dependency-update policy",
-      "sha256": "43b90273817705d2622bbb24d71c929881cc4fc2634ed1efd9eea6526e14ec31",
-      "size_bytes": 8345
+      "sha256": "b4a7cee80cf5fa0c0884cb98eb320a2e5ecfca1606c6fc63ccdc08be1925ccf0",
+      "size_bytes": 8342
     },
     {
       "git_blob_id": "11e2b007ffb644259e56266a236b2956b6c59aa7",
@@ -93,20 +93,20 @@
       "size_bytes": 1508
     },
     {
-      "git_blob_id": "45318ed58a7f9cf2d3a0a1f4dc8d59a386d753b2",
+      "git_blob_id": "3c6c62999841967b470feea8c6840cb4d104570d",
       "git_mode": "100644",
       "path": "AGENTS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "45483dfd4451f24b2cc08b26104f639642e0225bb5b1d389067dab1515f4bb9c",
-      "size_bytes": 16205
+      "sha256": "c8685076832eeeb31fb8ea487e5e9ec6f1afb3dd5e8cd3cdf5cb5c90b91d4f76",
+      "size_bytes": 16213
     },
     {
-      "git_blob_id": "b9c23372f9600705bcafd50c97da856898aae6c3",
+      "git_blob_id": "f02f2e712d68a95095458cb6f8baac2b50d11936",
       "git_mode": "100644",
       "path": "CHANGELOG.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "59da25a4812382b218dee796012e13c47d351e80ea808fefdf637283104da78e",
-      "size_bytes": 68428
+      "sha256": "83d8c80a0dfc58d142c3785ab4eb943bf521a460c770baa3e64265dce6d2b5e5",
+      "size_bytes": 69323
     },
     {
       "git_blob_id": "93e56077732b34820e2594e8f61d5579b5f9849d",
@@ -189,12 +189,12 @@
       "size_bytes": 1074
     },
     {
-      "git_blob_id": "7c29d057978bd7bc69dc9cbc6907dc2685377967",
+      "git_blob_id": "e28487c024b6827d7dfb294defd6d11b25c7b472",
       "git_mode": "100644",
       "path": "README.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "56349b2318655d6c299a21cbd0f19af98292efaab19e7a617a858d4672259481",
-      "size_bytes": 18438
+      "sha256": "371482b92ca5f4520cfb569cd51d8d149ba1d4a77fff1185189be0ff4e6a9c4f",
+      "size_bytes": 18421
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",
@@ -1069,28 +1069,28 @@
       "size_bytes": 3303
     },
     {
-      "git_blob_id": "fbac6e5da00ccbe60b0a7c1a6f30e216b369e854",
+      "git_blob_id": "7b9aceaf38a3cd417089517c71148daeecb01e52",
       "git_mode": "100644",
       "path": "crates/galadriel-local-adapter/Cargo.lock",
       "purpose": "locked software/toolchain input",
-      "sha256": "cb6dcd23bb09fef07660e29a9fbc69b50ce2b22c95bd8e7dfea72a9b668f095e",
-      "size_bytes": 8354
+      "sha256": "6f9e249fbf8376242cef6b1e4d16ac3ae625e8615d4ff780a3b36444a7225cfe",
+      "size_bytes": 7598
     },
     {
-      "git_blob_id": "c0b86d532c81976dd4e875ef1c0fb6394efc6b50",
+      "git_blob_id": "0dcd681c68cc60452cbda1eeebaca1ce58f31d3a",
       "git_mode": "100644",
       "path": "crates/galadriel-local-adapter/Cargo.toml",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "3e78e1f551b32d95d5f162bc353ee65a8695dd757e86426c0b8d2cfa01ec74de",
-      "size_bytes": 1056
+      "sha256": "9c88391e5e43a81f37ea3b178c0165e70e8989076457d002c91cb9b9aa54f0d0",
+      "size_bytes": 1071
     },
     {
-      "git_blob_id": "6612766494d922c3ace7bccef0ef2d5003aabad6",
+      "git_blob_id": "edebd1bc3691551abcdfb65e8cbd30574884615c",
       "git_mode": "100644",
       "path": "crates/galadriel-local-adapter/README.md",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "39faf6a39b1bfd35c57d79a330f8721c7afe3697c8bef0faec3872568209b0ff",
-      "size_bytes": 13372
+      "sha256": "daa0ad5ed9a56b5ef50664863c61467e078cb561c68a59d6d77669b42f82da2d",
+      "size_bytes": 12405
     },
     {
       "git_blob_id": "dae242c3ef56e0112e7ce6679179676f210e5630",
@@ -1101,52 +1101,180 @@
       "size_bytes": 491
     },
     {
-      "git_blob_id": "48e305f64223eda0ae03c45a8ca36c60d3576607",
+      "git_blob_id": "51b9398c3dedfb88b91afe3e4d654b29b3745896",
       "git_mode": "100644",
       "path": "crates/galadriel-local-adapter/source-profile.json",
       "purpose": "independent experimental local-adapter source contract and verifier",
-      "sha256": "335aebd1f716c5dedc6a5337ad9380ca9dad35f3c2e81fc589bfbff6787966ae",
-      "size_bytes": 1482
+      "sha256": "cafce69f6456113799c9832be373694f402ffc5eeaf7b611154a81298cebf028",
+      "size_bytes": 2232
     },
     {
-      "git_blob_id": "60edbf9b4e1e88e514e3c905cdcdec8ab9ae983f",
+      "git_blob_id": "d35a54ddec4edfc4df07793f7198e1f41bed6613",
       "git_mode": "100644",
-      "path": "crates/galadriel-local-adapter/src/bin/galadriel-ncp-local.rs",
+      "path": "crates/galadriel-local-adapter/src/bin/galadriel-ncp-loop.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "61c470999747981892305cfc6a53bbd4cab18ee6d89a0df17debd298c7377fe6",
-      "size_bytes": 1346
+      "sha256": "6da11df9d8e974e171c5595e37fccc38ad830c94f3c3cc15f02c555e42a3a551",
+      "size_bytes": 989
     },
     {
-      "git_blob_id": "42016af7b97c6458b0e910d48b7aa310d3e5cd0b",
+      "git_blob_id": "64a2bdd00093facb895fea178006f22532f556ed",
       "git_mode": "100644",
       "path": "crates/galadriel-local-adapter/src/lib.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "9187825218a99520608b85e4beb308340b0eada9bc4f2a19aaadf4ee6ca118c3",
-      "size_bytes": 16747
+      "sha256": "e24ae3e70d8e65ebb08447f086df8aab33516fa575cd97a46ff0114bc61eec07",
+      "size_bytes": 16686
     },
     {
-      "git_blob_id": "b901b6648dda19da8c20e44fa6303b600b02a584",
+      "git_blob_id": "6a0b45b5449d73148533fab695b315ade5010ac0",
       "git_mode": "100644",
-      "path": "crates/galadriel-local-adapter/src/ncp_local.rs",
+      "path": "crates/galadriel-local-adapter/src/ncp_loop.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "abdcb26ff72805c13d35189b6721a92553692c8de49b693a4aee1bd9370df8b8",
-      "size_bytes": 16629
+      "sha256": "d7695791e14193ee2936e0ea9d849ff675a95554d0efd9cb4471d5affba556de",
+      "size_bytes": 17513
     },
     {
-      "git_blob_id": "28c3be7c9778a9a0d95c516a9bb8dfea2d31bc1e",
+      "git_blob_id": "3d616179b4b17dd0021c6630e8ae7f284965fc0a",
       "git_mode": "100644",
       "path": "crates/galadriel-local-adapter/test_verify_source.py",
       "purpose": "independent experimental local-adapter source contract and verifier",
-      "sha256": "96a15ce9aa687a6dc590671302fe85e1f732d63614c4d0db321e3da684d0cba0",
-      "size_bytes": 7254
+      "sha256": "c54cab93d87acbded3c012f5986048b24f35f801059922e25ac8fab1b7855556",
+      "size_bytes": 7652
     },
     {
-      "git_blob_id": "2021fa9335b77203ce593ff8afd7b143cf289ebc",
+      "git_blob_id": "3270a1a0c11d440118e7fcc053d0cdfb5bca1b8e",
       "git_mode": "100644",
-      "path": "crates/galadriel-local-adapter/tests/ncp_local.rs",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/README.md",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "a19c7201ff98e9147e243655472041121f9cd6c9a8c67c3be852a19376d755c1",
+      "size_bytes": 1169
+    },
+    {
+      "git_blob_id": "3a676e8ea89a432e2e4ed45da5a36a592ddf4c61",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-1x1-faults/config.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "904f1e87d8b9b50a10f8fbd0fb3592b339298a10c89d51326da838d947e880e2",
+      "size_bytes": 3523
+    },
+    {
+      "git_blob_id": "322166e305d492521252d764d490248380a80f71",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-1x1-faults/controller-0.ncpt",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "fccb1799a779226624694ba429d0def528b5eb5a8b844e3129f29327ed8fc68a",
+      "size_bytes": 42348
+    },
+    {
+      "git_blob_id": "1d7bfb8d06774b9db026c8e35dd0c142038219e2",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-1x1-faults/manifest.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "faa145d7f3a22ce9d1e1dec7e68c15092659ebfda8a9a2b58e27e502a3ddbe01",
+      "size_bytes": 467
+    },
+    {
+      "git_blob_id": "ba00fa420d21eda1c6d2610ba0699c90e7bd1f95",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-1x1-faults/world-0.ncpt",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "77387e2fa71f3af3a0301121e850a4d6d0b783a2ffd87b675ed52de843a74c60",
+      "size_bytes": 131950
+    },
+    {
+      "git_blob_id": "3ac3496561d85dbd8d83c9ea007fd4856b10c4dd",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-1x1/config.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "73cf193c9467318c3c83e1029dec1286c0d5fccfa659eee16926770433191b5e",
+      "size_bytes": 865
+    },
+    {
+      "git_blob_id": "718e52a2d0a801e3891440698078837d5c61f205",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-1x1/controller-0.ncpt",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "27e990b8bff00c9a6b2ca3c7f31275db8fb8bb68d751aaeda04d2f8ad7f66420",
+      "size_bytes": 22148
+    },
+    {
+      "git_blob_id": "154350a6f574e314fdf821f5e9f1d32a1eb91f47",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-1x1/manifest.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "92818440a0e71c26fedaefe72f421b7d911013120563d8d64bd7f03ca79937b5",
+      "size_bytes": 467
+    },
+    {
+      "git_blob_id": "a3bfd16c668efc807a1394efedb5450d417ea065",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-1x1/world-0.ncpt",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "3f27e482fa5a6cf935a5fe8af5d675d0536d75fe1cbd60c4a79d545b1252c3e6",
+      "size_bytes": 67062
+    },
+    {
+      "git_blob_id": "94400156be465f48c81a08cf8b551d00d5bbdeed",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-2x3/config.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "ee374275c50b63788903353fda26a3ae8a89a1412dab6d514784c912e79b7bb2",
+      "size_bytes": 3173
+    },
+    {
+      "git_blob_id": "78f529b6045a5bf1eb0d6f2fd2b235937f041d72",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-2x3/controller-0.ncpt",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "d428d7dbdf0a9428387946dd8e687626054de905f80a1cddf26420915fa025c3",
+      "size_bytes": 14216
+    },
+    {
+      "git_blob_id": "54708ba49983285a5f00bb142e323dd0788a148c",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-2x3/controller-1.ncpt",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "e9476b6ab78fba78684020069b2a4ac68b887c3cecdcccc9d38e960def84c303",
+      "size_bytes": 12272
+    },
+    {
+      "git_blob_id": "344279571f0c4f164d087336207d2e7c50235811",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-2x3/controller-2.ncpt",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "e8fe113effcf1482d56920a3ac4c9f48370369b5382144ad10395dcb591624f6",
+      "size_bytes": 13672
+    },
+    {
+      "git_blob_id": "2d25bceeae23011e07fd793eec99c5248cda125e",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-2x3/manifest.json",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "7f1aa234f29e68d45e95bf871f7899d034ff9a1329b191c2156b4c98ee23df95",
+      "size_bytes": 882
+    },
+    {
+      "git_blob_id": "4d4aab85669d44499e1c044786e03c8471774e23",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-2x3/world-0.ncpt",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "38c7b1a882f0381c3c58002d605ae3ae37b6a35fcdf73feaf905330c63e74e8e",
+      "size_bytes": 58178
+    },
+    {
+      "git_blob_id": "2ba0d2ea1c5301d582fec7622dbbb75883746d26",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/fixtures/loop-2x3/world-1.ncpt",
+      "purpose": "test and interoperability input fixtures",
+      "sha256": "047efdca6c8016eb6c63c4c16d17d8b6469dc49a94f43b755ed27fff421723a2",
+      "size_bytes": 45226
+    },
+    {
+      "git_blob_id": "42e46383d0af10017eecad6cd1e64546502a5754",
+      "git_mode": "100644",
+      "path": "crates/galadriel-local-adapter/tests/ncp_loop.rs",
       "purpose": "Rust implementation, tests, manifests, schemas, and fuzz inputs",
-      "sha256": "2de7413d2a28f24955c05fef692494dfe5f49cd1804d81621f6248600661e298",
-      "size_bytes": 24812
+      "sha256": "8bc86a4f8f2945564b71e5cddc531089b5c4074f4314c63b36a5b1e37d2b0945",
+      "size_bytes": 7324
     },
     {
       "git_blob_id": "c3a9f2c99905db762b0ddacd8f9990897629bbd1",
@@ -1157,12 +1285,12 @@
       "size_bytes": 12657
     },
     {
-      "git_blob_id": "17db765673adb062b0636e1cbe2428d4578203eb",
+      "git_blob_id": "ed6fcb861e74387ff9b2d04a0aa0ce09f6e32abd",
       "git_mode": "100644",
       "path": "crates/galadriel-local-adapter/verify_source.py",
       "purpose": "independent experimental local-adapter source contract and verifier",
-      "sha256": "13ce68647eb4dac7b95544bd8d26778e3e8bebcdbe4b863b01ab200f3f00c1aa",
-      "size_bytes": 9635
+      "sha256": "f11491d80371ea81c52ab41d326505a95bd29c55cd3f7533d2f3c66e51188362",
+      "size_bytes": 10070
     },
     {
       "git_blob_id": "23f487fc293060d3a6d4b786556266430feaacbb",
@@ -1477,12 +1605,12 @@
       "size_bytes": 22490
     },
     {
-      "git_blob_id": "24c6ca36acc59457a172150f129b8f74c149bdec",
+      "git_blob_id": "b5f162c33e61a7a9a3d23df9dbae67b94d5b54f5",
       "git_mode": "100644",
       "path": "docs/API-SURFACE.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "72aa9092c5cb0220bdc8fecbba979c2d37700700b2ca45ce9f39aec1aa629341",
-      "size_bytes": 15210
+      "sha256": "13b20158a7460c68a2583857c70a7a53541ce10160a2efc59900960426cfff0a",
+      "size_bytes": 15190
     },
     {
       "git_blob_id": "82f9ea079ee24addb85c2539f54bb1cb41b949de",
@@ -1517,20 +1645,20 @@
       "size_bytes": 55448
     },
     {
-      "git_blob_id": "cb60b64266eac571609d17ec8cfda7685e66f409",
+      "git_blob_id": "596e0073085031f531ab787eff6784bc9fb4177d",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "eac58288500541e234cb948392dff27e079ad59ce0cb319ff096040fdf0dd407",
-      "size_bytes": 32767
+      "sha256": "690bf37f1f6499b0995c4cb918821aa53a0a2665faa671218e584348a39da568",
+      "size_bytes": 32781
     },
     {
-      "git_blob_id": "bca40bf803c947216222c8e2536547ab5c2b746d",
+      "git_blob_id": "708bbba06f3d3778a1f9e6dc70991d63e008e4da",
       "git_mode": "100644",
       "path": "docs/ECOSYSTEM-CONNECTIONS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "7914e66718d35e8962df3b3f9ad15e347a3e80a1c7907e7ad8d5f371654367c1",
-      "size_bytes": 30821
+      "sha256": "a50c5ca9da0296fee49c437dd9c8dba72c9f191d73be630fc0479c5469fca09e",
+      "size_bytes": 30867
     },
     {
       "git_blob_id": "87c95b50bdd65b71f8556423c5e69dfb7a2b1321",
@@ -1605,12 +1733,12 @@
       "size_bytes": 15068
     },
     {
-      "git_blob_id": "4a7d673a3db3aaffc9aad173a0762b47b60eb6a8",
+      "git_blob_id": "254ce8844560bc9306e1de5dd9ec844560a93f18",
       "git_mode": "100644",
       "path": "docs/PRODUCER-CONTRACT.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "55a5521360b43b6e9ec445fab3e0b1807d41018b1df4321c3e97f72ee85ceb88",
-      "size_bytes": 38371
+      "sha256": "0d219d240e4520efbf8743530a33dbde9c3a69296784b9fefce41c87aa7c5547",
+      "size_bytes": 38395
     },
     {
       "git_blob_id": "659f629c57ce9eb2db4af0fa528aeed49a125603",
@@ -1653,12 +1781,12 @@
       "size_bytes": 16832
     },
     {
-      "git_blob_id": "55f7a83d95b3d70cadc9e9ed9d2cdf1beec7ffdc",
+      "git_blob_id": "95a921cfc05a4fbf7b819cb74e2678fd8c46b3dd",
       "git_mode": "100644",
       "path": "docs/WORKFLOWS.md",
       "purpose": "normative documentation, repository metadata, and operator tooling",
-      "sha256": "5bdca7933e1a5965b65f78b4a360900917f0d489b69791963b3f253b4a53a0fe",
-      "size_bytes": 53186
+      "sha256": "9c78ee7e63bdbf246ba51e0acb47262cf7677baeb5ee306467f47a0b107c9b80",
+      "size_bytes": 53201
     },
     {
       "git_blob_id": "23704a3e820b303d8c3eb88c3a02fb2065e858ca",
@@ -1989,12 +2117,12 @@
       "size_bytes": 184807
     },
     {
-      "git_blob_id": "fde31f9c7c68694c79686ad5d3aa96e516005d28",
+      "git_blob_id": "30ff4a82c9fc783ba9e42ab3a23921d02b3f4b50",
       "git_mode": "100644",
       "path": "release/0.9.0/audit-inputs.json",
       "purpose": "release governance, claims, review, and signed audit inputs",
-      "sha256": "7bcc9b50af3a686ff20cdbf2789008fadad518ea11bdbee60f4f6c38f09304d1",
-      "size_bytes": 22641
+      "sha256": "5aba04c5cd716e5cc86374578fb433fdd8e9ec077b74b370febe6cbb844191ca",
+      "size_bytes": 22680
     },
     {
       "git_blob_id": "7e563049b65dc6761e76b7d0c96c1cc10bd5c0dc",
@@ -2893,49 +3021,49 @@
     },
     {
       "kind": "external_reference",
-      "line": 177,
+      "line": 175,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP/blob/main/local/modular/STATUS.md"
     },
     {
       "kind": "external_reference",
-      "line": 178,
+      "line": 176,
       "path": "README.md",
       "url": "https://github.com/sepahead/crebain/tree/main/integrations/ncp-force-ground-sensors"
     },
     {
       "kind": "external_reference",
-      "line": 182,
+      "line": 180,
       "path": "README.md",
       "url": "https://github.com/sepahead/crebain"
     },
     {
       "kind": "external_reference",
-      "line": 183,
+      "line": 181,
       "path": "README.md",
       "url": "https://github.com/sepahead/NCP"
     },
     {
       "kind": "external_reference",
-      "line": 184,
+      "line": 182,
       "path": "README.md",
       "url": "https://github.com/sepahead/pid-rs"
     },
     {
       "kind": "external_reference",
-      "line": 185,
+      "line": 183,
       "path": "README.md",
       "url": "https://github.com/sepahead/prisoma"
     },
     {
       "kind": "external_reference",
-      "line": 186,
+      "line": 184,
       "path": "README.md",
       "url": "https://github.com/sepahead/Paper2Brain"
     },
     {
       "kind": "external_reference",
-      "line": 187,
+      "line": 185,
       "path": "README.md",
       "url": "https://github.com/sepahead/haldir"
     },
@@ -3927,12 +4055,12 @@
       "size_bytes": 22490
     },
     {
-      "git_blob_id": "24c6ca36acc59457a172150f129b8f74c149bdec",
+      "git_blob_id": "b5f162c33e61a7a9a3d23df9dbae67b94d5b54f5",
       "git_mode": "100644",
       "path": "docs/API-SURFACE.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "72aa9092c5cb0220bdc8fecbba979c2d37700700b2ca45ce9f39aec1aa629341",
-      "size_bytes": 15210
+      "sha256": "13b20158a7460c68a2583857c70a7a53541ce10160a2efc59900960426cfff0a",
+      "size_bytes": 15190
     },
     {
       "git_blob_id": "67257f62dd8485af3886c2d2cf073a52c0acc226",
@@ -3943,12 +4071,12 @@
       "size_bytes": 1260
     },
     {
-      "git_blob_id": "cb60b64266eac571609d17ec8cfda7685e66f409",
+      "git_blob_id": "596e0073085031f531ab787eff6784bc9fb4177d",
       "git_mode": "100644",
       "path": "docs/DEPENDENCY-POLICY.md",
       "purpose": "normative 0.9.0 release contract",
-      "sha256": "eac58288500541e234cb948392dff27e079ad59ce0cb319ff096040fdf0dd407",
-      "size_bytes": 32767
+      "sha256": "690bf37f1f6499b0995c4cb918821aa53a0a2665faa671218e584348a39da568",
+      "size_bytes": 32781
     },
     {
       "git_blob_id": "9435b7605e786d371e99cda0559fd4fc9f632b8b",

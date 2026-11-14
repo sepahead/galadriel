@@ -44,8 +44,8 @@ Its scalar reports remain exploratory magnitude diagnostics.
 Missing evidence retires its window and produces explicit abstention.
 The [adapter guide](../crates/galadriel-local-adapter/README.md) defines its bounded
 local API.
-Its explicit `ncp-local` feature adds a private-pipe monitor owner under the candidate NCP local contract.
-This owner can return advisory evidence only.
+Its explicit `ncp-loop` feature adds a record-only reader of CREBAIN NCP 2 loop runs.
+This reader can return advisory evidence only.
 It provides no command capability or remote transport qualification.
 
 The sidecar and monitor schemas accept only the Galadriel core identity grammar.
