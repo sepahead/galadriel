@@ -58,6 +58,16 @@ Before `1.0`, minor releases can contain breaking changes.
 
 ### Changed
 
+- Move the independent `galadriel-local-adapter` from the `ncp-local` private-pipe owner to NCP 2:
+  the `ncp-loop` feature and the `galadriel-ncp-loop` binary assess the recorded world transcripts
+  of a CREBAIN NCP 2 loop run. They use the NCP 2 Rust core `sepahead-ncp-core` 2.0.0 at commit
+  `2e24ef5b89feb3f1e4f4972e290201d93e2d0a8d` (revision 4 of the NCP 2 specification). The reader
+  checks each world transcript with the NCP 2 verifier, the state chain of its steps, and the
+  manifest, and then feeds each drone's observed innovations to one scalar monitor; a missing
+  innovation after activation retires that drone's track. Seven tests read three recorded CREBAIN
+  runs (`tests/fixtures`). The manifest, lockfile, source profile, source verifier and its tests,
+  the local-adapter workflow, and the documentation follow. The root workspace keeps its NCP
+  1.0.0-rc.1 dependencies.
 - Move the independent `galadriel-local-adapter` to the released `ncp-local` 1.0.1 SDK at
   commit `99e9adce147fe5bc770d2dcfe5f21cbd2274efeb`, the NCP tag `sdk-v1.0.1`, in its manifest,
   lockfile, source profile, and source verifier. The SDK patch release keeps every byte on the

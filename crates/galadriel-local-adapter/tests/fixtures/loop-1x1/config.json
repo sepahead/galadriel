@@ -1,0 +1,53 @@
+{
+  "tick_ms": 20,
+  "steps": 20,
+  "body_command": [
+    "crebain-ncp-simulation"
+  ],
+  "worlds": [
+    {
+      "drones": [
+        {
+          "id": "alpha",
+          "initial_position_m": [
+            0.0,
+            0.0,
+            10.0
+          ],
+          "initial_velocity_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "sensor_variance_m2": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "target_m": [
+            12.0,
+            -6.0,
+            18.0
+          ]
+        }
+      ],
+      "schedule": []
+    }
+  ],
+  "controllers": [
+    {
+      "command": [
+        "crebain-ncp-controller"
+      ],
+      "world": 0,
+      "drone_ids": [
+        "alpha"
+      ],
+      "parameters": {
+        "kp": 1.0,
+        "kd": 2.0,
+        "max_acceleration_mps2": 5.0
+      }
+    }
+  ]
+}

@@ -66,7 +66,7 @@ jobs:
             --no-default-features > "$metadata_root/pure.json"
           cargo metadata --locked --offline --format-version=1 \
             --manifest-path crates/galadriel-local-adapter/Cargo.toml \
-            --no-default-features --features ncp-local > "$metadata_root/native.json"
+            --no-default-features --features ncp-loop > "$metadata_root/native.json"
           python3 -B -E -s -S -m unittest discover \
             -s crates/galadriel-local-adapter -p test_verify_source.py -v
           python3 -B -E -s -S crates/galadriel-local-adapter/verify_source.py \
@@ -101,7 +101,7 @@ jobs:
           RUSTDOCFLAGS: "-D warnings"
         run: |
           cargo doc --locked --offline --manifest-path crates/galadriel-local-adapter/Cargo.toml --all-features --no-deps
-          cargo build --locked --offline --release --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-local --bin galadriel-ncp-local
+          cargo build --locked --offline --release --manifest-path crates/galadriel-local-adapter/Cargo.toml --features ncp-loop --bin galadriel-ncp-loop
 
       - name: Install pinned dependency-policy tool
         env:

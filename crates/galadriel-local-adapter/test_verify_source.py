@@ -18,18 +18,19 @@ def fixture():
     values = [profile, load(ROOT / "Cargo.toml"), load(COMPONENT / "Cargo.toml"), load(ROOT / "Cargo.lock"), load(COMPONENT / "Cargo.lock"), load(COMPONENT / "deny.toml")]
     # The synthetic positive represents the intended public pin, never sibling authority.
     sdk = profile["sdk"]
-    values[2]["dependencies"]["ncp-local"] = {"version": "=1.0.1", "git": sdk["repository"], "rev": sdk["revision"], "optional": True}
+    values[2]["dependencies"][verifier.SDK_KEY] = {"package": verifier.SDK_PACKAGE, "version": f"={verifier.SDK_VERSION}", "git": sdk["repository"], "rev": sdk["revision"], "optional": True}
     for package in values[4]["package"]:
-        if package["name"] == "ncp-local":
+        if package["name"] == verifier.SDK_PACKAGE:
             package["source"] = verifier.sdk_source(profile)
     return values
 
 
 def graph(native):
     profile = fixture()[0]
-    names = ["galadriel-local-adapter", "galadriel-core"] + (["ncp-local"] if native else [])
-    packages = [{"id": name, "name": name, "version": "1.0.1" if name == "ncp-local" else "0.9.0", "source": verifier.sdk_source(profile) if name == "ncp-local" else None, "manifest_path": str(COMPONENT / "Cargo.toml" if name == "galadriel-local-adapter" else COMPONENT.parent / name / "Cargo.toml")} for name in names]
-    nodes = [{"id": name, "features": ["ncp-local"] if native and index == 0 else [], "deps": [{"pkg": dependency} for dependency in names[1:]] if index == 0 else []} for index, name in enumerate(names)]
+    sdk = verifier.SDK_PACKAGE
+    names = ["galadriel-local-adapter", "galadriel-core"] + ([sdk] if native else [])
+    packages = [{"id": name, "name": name, "version": verifier.SDK_VERSION if name == sdk else "0.9.0", "source": verifier.sdk_source(profile) if name == sdk else None, "manifest_path": str(COMPONENT / "Cargo.toml" if name == "galadriel-local-adapter" else COMPONENT.parent / name / "Cargo.toml")} for name in names]
+    nodes = [{"id": name, "features": [verifier.FEATURE] if native and index == 0 else [], "deps": [{"pkg": dependency} for dependency in names[1:]] if index == 0 else []} for index, name in enumerate(names)]
     return {"packages": packages, "workspace_members": names[:1], "resolve": {"root": names[0], "nodes": nodes}}
 
 
@@ -39,18 +40,21 @@ class SourcePolicyTests(unittest.TestCase):
 
     def test_manifest_boundary_changes_reject(self):
         mutations = {
-            "sibling": lambda v: v[2]["dependencies"]["ncp-local"].update(path="../../../NCP/local/rust"),
-            "floating": lambda v: v[2]["dependencies"]["ncp-local"].pop("rev"),
-            "wrong_revision": lambda v: v[2]["dependencies"]["ncp-local"].update(rev="a" * 40),
+            "sibling": lambda v: v[2]["dependencies"]["ncp"].update(path="../../../NCP/rust"),
+            "floating": lambda v: v[2]["dependencies"]["ncp"].pop("rev"),
+            "wrong_revision": lambda v: v[2]["dependencies"]["ncp"].update(rev="a" * 40),
+            "other_package": lambda v: v[2]["dependencies"]["ncp"].update(package="ncp-local"),
+            "other_version": lambda v: v[2]["dependencies"]["ncp"].update(version="=1.0.1"),
+            "earlier_sdk": lambda v: v[2]["dependencies"].update({"ncp-local": {"version": "=1.0.1", "optional": True}}),
             "published": lambda v: v[2]["package"].update(publish=True),
-            "default_native": lambda v: v[2]["features"].update(default=["ncp-local"]),
+            "default_native": lambda v: v[2]["features"].update(default=["ncp-loop"]),
             "core_copy": lambda v: v[2]["dependencies"]["galadriel-core"].update(path="copied-core"),
             "root_member": lambda v: v[1]["workspace"]["members"].append("crates/galadriel-local-adapter"),
             "authority": lambda v: v[0].update(release_authority=True),
             "exception": lambda v: v[5]["advisories"]["ignore"].append("unrelated"),
             "unknown_git": lambda v: v[5]["sources"].update({"unknown-git": "allow"}),
             "changed_root_pin": lambda v: v[3]["package"].append({"name": "unexpected", "source": "git+https://example.invalid/repo#" + "a" * 40}),
-            "changed_native_pin": lambda v: next(p for p in v[4]["package"] if p["name"] == "ncp-local").update(source="git+https://example.invalid/repo#" + "a" * 40),
+            "changed_native_pin": lambda v: next(p for p in v[4]["package"] if p["name"] == verifier.SDK_PACKAGE).update(source="git+https://example.invalid/repo#" + "a" * 40),
         }
         for name, mutate in mutations.items():
             with self.subTest(name=name):
@@ -105,7 +109,7 @@ class SourcePolicyTests(unittest.TestCase):
                     verifier.check_graph(value, fixture()[0], COMPONENT, native=True)
 
     def test_unrelated_runtime_dependency_rejects(self):
-        for name in ["pid-core", "ncp-core", "ncp-zenoh", "tokio", "zenoh"]:
+        for name in ["pid-core", "ncp-core", "ncp-zenoh", "ncp-local", "tokio", "zenoh"]:
             with self.subTest(name=name):
                 value = graph(True)
                 value["packages"].append({"id": name, "name": name, "source": "registry+https://github.com/rust-lang/crates.io-index"})

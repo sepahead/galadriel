@@ -113,7 +113,7 @@ Galadriel has no ROS binding, Haldir runtime edge, or command-authority path.
 
 The independent `galadriel-local-adapter` workspace remains excluded from root Cargo commands.
 Its default library has no NCP dependency.
-Its optional `ncp-local` feature uses only SDK `1.0.1` at `99e9adce147fe5bc770d2dcfe5f21cbd2274efeb`, the tag `sdk-v1.0.1`.
+Its optional `ncp-loop` feature uses only the NCP 2 core `sepahead-ncp-core` `2.0.0` at `2e24ef5b89feb3f1e4f4972e290201d93e2d0a8d`.
 Use its explicit manifest path and separate source gate.
 Do not replace either immutable dependency with a sibling path or broad compatibility tunnel.
 

@@ -460,7 +460,7 @@ Author and maintainer: **Sepehr Mahmoudian**.
 | [`galadriel-cli`](../crates/galadriel-cli) | `demo`, `replay`, and strict `observe` driver | Operator prototype. The live path has component tests. |
 | [`galadriel-dependence`](../crates/galadriel-dependence) | Geometry-gated pairwise KSG-MI companion | Optional descriptive research path; never fused |
 | [`galadriel-ncp`](../crates/galadriel-ncp) | strict codecs, pinned registry, monitor tap, assembler, lifecycle gate, operational Zenoh receiver | Unit, golden, and in-process Zenoh tests. No external deployment evidence. |
-| [`galadriel-local-adapter`](../crates/galadriel-local-adapter) | Bounded scalar input for the actual exploratory magnitude detector | Experimental library with an optional private-pipe owner. Integrated release gates remain open. |
+| [`galadriel-local-adapter`](../crates/galadriel-local-adapter) | Bounded scalar input for the actual exploratory magnitude detector | Experimental library with an optional reader of CREBAIN NCP 2 loop runs. Integrated release gates remain open. |
 | [`galadriel-eval`](../crates/galadriel-eval) | Monte Carlo evaluation and cost bench | Synthetic only |
 | [`galadriel-justify`](../crates/galadriel-justify) | canonical forced-versus-justified studies | Synthetic/theoretical only |
 

@@ -18,13 +18,13 @@ unsafe_code = "forbid"
 
 [features]
 default = []
-ncp-local = ["dep:ncp-local", "dep:serde", "dep:serde_json"]
+ncp-loop = ["dep:ncp", "dep:serde", "dep:serde_json"]
 
 [dependencies]
 galadriel-core = { version = "=0.9.0", path = "../galadriel-core" }
 sha2 = "0.11"
 thiserror = "2"
-ncp-local = { version = "=1.0.1", git = "https://github.com/sepahead/NCP", rev = "99e9adce147fe5bc770d2dcfe5f21cbd2274efeb", optional = true }
+ncp = { package = "sepahead-ncp-core", version = "=2.0.0", git = "https://github.com/sepahead/NCP", rev = "2e24ef5b89feb3f1e4f4972e290201d93e2d0a8d", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 
@@ -32,9 +32,9 @@ serde_json = { version = "1", optional = true }
 serde_json = "1"
 
 [[bin]]
-name = "galadriel-ncp-local"
-path = "src/bin/galadriel-ncp-local.rs"
-required-features = ["ncp-local"]
+name = "galadriel-ncp-loop"
+path = "src/bin/galadriel-ncp-loop.rs"
+required-features = ["ncp-loop"]
 
 [profile.release]
 lto = "thin"

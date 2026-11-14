@@ -52,7 +52,7 @@ Its selected build graph excludes the optional PID and transport libraries.
 | --- | --- | --- |
 | [Standalone core](crates/galadriel-core/README.md) | Typed observations, magnitude, signed consistency, sealed reports | Caller-declared source labels and statistical assumptions need independent justification |
 | [Scalar library](crates/galadriel-local-adapter/README.md) | Bounded NIS streams using the actual exploratory magnitude engine | Magnitude diagnostic, not a complete signed-consistency report |
-| [Fixed-profile scalar NCP process](crates/galadriel-local-adapter/README.md#optional-private-pipe-owner) | Private-pipe, record-only assessment of an exact body response | This adapter supplies one Visual modality per entity and retains insufficiency |
+| [Scalar assessment of NCP 2 loop runs](crates/galadriel-local-adapter/README.md#optional-ncp-2-loop-reader) | Record-only assessment of the world transcripts of a CREBAIN NCP 2 loop run | This adapter supplies one Visual modality per drone and retains insufficiency |
 | [Wire-1.0 sidecar workflows](docs/WORKFLOWS.md#cli-features-and-workspace-dependencies) | Sidecars, diagnostic JSONL replay, optional Zenoh receiver | Untagged NCP 1.0.0-rc.1 candidate transport; deployment and calibration remain unqualified |
 | [Optional MI and offline PID](docs/PID_RS_1_0_MIGRATION.md) | Explicit dependence questions and synthetic studies | These methods do not alter the core verdict or prove attack mechanisms |
 
@@ -142,27 +142,25 @@ Neither lifecycle integrity nor transport authentication proves physical truth.
 ## Selectable NCP integration
 
 The Neuro-Cybernetic Protocol (NCP) is optional.
-The independent local package compiles the `monitor` role under `galadriel.scalar-nis-record-only.v1`.
-Its `ncp-local` feature selects SDK `1.0.1` at public revision `99e9adce147fe5bc770d2dcfe5f21cbd2274efeb`, the tag `sdk-v1.0.1`.
+The independent local package assesses CREBAIN NCP 2 loop runs under `galadriel.scalar-nis-loop.v1`.
+Its `ncp-loop` feature selects the NCP 2 Rust core `sepahead-ncp-core` `2.0.0` at public revision `2e24ef5b89feb3f1e4f4972e290201d93e2d0a8d` (revision 4 of the NCP 2 specification).
 The seven-member root workspace uses its separate NCP 1.0.0-rc.1 candidate dependencies (wire 1.0).
 
 ```bash
 cargo build --locked \
   --manifest-path crates/galadriel-local-adapter/Cargo.toml \
-  --features ncp-local --bin galadriel-ncp-local
+  --features ncp-loop --bin galadriel-ncp-loop
+galadriel-ncp-loop assess RUN_DIR
 ```
 
-The supervisor launches this process with fresh run and generation identities and private standard-input/output pipes.
-Preparation binds the expected body generation.
-Each assessment verifies a committed body response, exact plan, roster, step, time, and supplied-byte digest.
-It preserves actual source diagnostics and the core engine's report.
-One exact response remains retained until acknowledgment.
-An exact retry does not ingest the frame twice.
+The reader checks each world transcript of a run with the NCP 2 verifier, the state chain of its steps, and the manifest.
+It then feeds each drone's observed innovations, in step order, to one scalar monitor for that drone.
+A missing innovation after activation retires the drone's track; no observation is made up for it.
+It preserves the core engine's report and names each transcript by its digest.
 
-This application admits one through three entities and at most 1,024 steps.
+This application admits at most 1,024 steps and opens no listener, network connection, or subprocess.
 It is record-only and accepts no command capability.
-The supervisor owns process custody, deadlines, termination, and request-to-response joins.
-Response integrity does not authenticate the physical producer or make a receipt durable.
+The transcripts are not signed: their integrity does not authenticate the physical producer.
 
 Select this adapter only in a composition that satisfies its exact input contract.
 It does not require every ecosystem project as a dependency.
@@ -262,7 +260,7 @@ Read the [claims matrix](docs/CLAIMS.md), [security policy](SECURITY.md), and [r
 cargo test --locked -p galadriel-core --no-default-features
 cargo test --locked \
   --manifest-path crates/galadriel-local-adapter/Cargo.toml \
-  --features ncp-local
+  --features ncp-loop
 ```
 
 These are focused component checks.
@@ -277,7 +275,7 @@ All Rust targets forbid unsafe code.
 | [Workflow guide](docs/WORKFLOWS.md) | Detailed standalone, detector, historical transport, and evidence procedures |
 | [Core contract](docs/CORE-CONTRACT.md) · [Configuration](docs/CONFIGURATION-CONTRACT.md) | Typed data, accepted profiles, identity, and bounds |
 | [Statistical contract](docs/STATISTICAL-CONTRACT.md) · [Evaluation](docs/EVALUATION.md) | Mathematical assumptions, estimands, and experiments |
-| [Local adapter](crates/galadriel-local-adapter/README.md) | Scalar library, private-pipe owner, and exact source gate |
+| [Local adapter](crates/galadriel-local-adapter/README.md) | Scalar library, NCP 2 loop reader, and exact source gate |
 | [Producer contract](docs/PRODUCER-CONTRACT.md) · [State machine](docs/STATE-MACHINE.md) | Comparable observations and lifecycle handling |
 | [Agent contract](AGENTS.md) · [Contributing](CONTRIBUTING.md) | Maintainer and coding-agent instructions |
 | [Historical review archive](docs/history/2026-07-10-review/README.md) | Unchanged former `.superstack` records and original source identities |

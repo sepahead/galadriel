@@ -1,0 +1,180 @@
+{
+  "tick_ms": 20,
+  "steps": 10,
+  "body_command": [
+    "crebain-ncp-simulation"
+  ],
+  "worlds": [
+    {
+      "drones": [
+        {
+          "id": "alpha",
+          "initial_position_m": [
+            0.0,
+            0.0,
+            10.0
+          ],
+          "initial_velocity_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "sensor_variance_m2": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "target_m": [
+            10.0,
+            5.0,
+            15.0
+          ]
+        },
+        {
+          "id": "bravo",
+          "initial_position_m": [
+            20.0,
+            0.0,
+            10.0
+          ],
+          "initial_velocity_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "sensor_variance_m2": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "target_m": [
+            15.0,
+            -5.0,
+            12.0
+          ]
+        },
+        {
+          "id": "charlie",
+          "initial_position_m": [
+            -10.0,
+            10.0,
+            5.0
+          ],
+          "initial_velocity_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "sensor_variance_m2": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "target_m": [
+            -4.0,
+            4.0,
+            9.0
+          ]
+        }
+      ],
+      "schedule": []
+    },
+    {
+      "drones": [
+        {
+          "id": "delta",
+          "initial_position_m": [
+            0.0,
+            0.0,
+            30.0
+          ],
+          "initial_velocity_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "sensor_variance_m2": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "target_m": [
+            8.0,
+            8.0,
+            20.0
+          ]
+        },
+        {
+          "id": "echo",
+          "initial_position_m": [
+            5.0,
+            -5.0,
+            25.0
+          ],
+          "initial_velocity_mps": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "sensor_variance_m2": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "target_m": [
+            -6.0,
+            2.0,
+            22.0
+          ]
+        }
+      ],
+      "schedule": []
+    }
+  ],
+  "controllers": [
+    {
+      "command": [
+        "crebain-ncp-controller"
+      ],
+      "world": 0,
+      "drone_ids": [
+        "alpha",
+        "bravo"
+      ],
+      "parameters": {
+        "kp": 1.0,
+        "kd": 2.0,
+        "max_acceleration_mps2": 5.0
+      }
+    },
+    {
+      "command": [
+        "crebain-ncp-controller"
+      ],
+      "world": 0,
+      "drone_ids": [
+        "charlie"
+      ],
+      "parameters": {
+        "kp": 1.0,
+        "kd": 2.0,
+        "max_acceleration_mps2": 5.0
+      }
+    },
+    {
+      "command": [
+        "crebain-ncp-controller"
+      ],
+      "world": 1,
+      "drone_ids": [
+        "delta",
+        "echo"
+      ],
+      "parameters": {
+        "kp": 1.0,
+        "kd": 2.0,
+        "max_acceleration_mps2": 5.0
+      }
+    }
+  ]
+}
